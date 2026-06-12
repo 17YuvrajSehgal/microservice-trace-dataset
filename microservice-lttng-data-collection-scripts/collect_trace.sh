@@ -64,8 +64,17 @@ lttng add-context --userspace --type=vpid --type=vtid --type=procname 2>/dev/nul
 lttng start
 
 sudo lttng create sockshop-kernel --output="$OUTPUT_DIR/kernel"
-sudo lttng enable-event -k --all '*'
-sudo lttng add-context --kernel --type=pid --type=tid --type=procname 2>/dev/null || true
+# Large per-CPU ring buffers to avoid discarded events under peak stress.
+# The LTTng kernel default (~1 MB/CPU) overflows during heavy bursts. We use
+# many sub-buffers (8 MB x 32 = 256 MB/CPU) so that, while the consumer is
+# starved of CPU/disk under load, there is almost always a free sub-buffer to
+# rotate into instead of dropping events. Override via the env vars below if
+# RAM is constrained (256 MB/CPU x N_CPU is reserved at session start).
+sudo lttng enable-channel -k channel0 \
+    --subbuf-size="${KERNEL_SUBBUF_SIZE:-8M}" \
+    --num-subbuf="${KERNEL_NUM_SUBBUF:-32}"
+sudo lttng enable-event -k --all '*' --channel channel0
+sudo lttng add-context --kernel --channel channel0 --type=pid --type=tid --type=procname 2>/dev/null || true
 sudo lttng start
 
 snapshot_metadata "start"

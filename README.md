@@ -288,8 +288,13 @@ Per run, the collection script (`collect_trace.sh`) does the following:
    the `lttng_python` event `otel.spans`, and adds `vpid`/`vtid`/`procname`
    userspace contexts.
 2. Creates a kernel session (`sockshop-kernel`) writing CTF to `<run>/kernel/`,
-   enables all kernel events (`-k --all '*'`) and adds `pid`/`tid`/`procname`
-   kernel contexts.
+   creates an explicit `channel0` with large per-CPU ring buffers
+   (`8 MB × 32 = 256 MB/CPU` by default, overridable via `KERNEL_SUBBUF_SIZE`/
+   `KERNEL_NUM_SUBBUF`) to avoid discarded events under peak stress, enables all
+   kernel events (`-k --all '*'`) on it, and adds `pid`/`tid`/`procname` kernel
+   contexts. (Earlier runs in the published 148 GB release used the LTTng default
+   buffers and could drop events under heavy load; see
+   `DOCS/final/collection_changes_notebook.md`.)
 3. Starts both sessions and writes the `*_start` snapshots.
 4. Starts the OpenTelemetry-to-LTTng relay
    (`agents/otel-to-lttng.py`) which subscribes to `docker logs -f` on the
@@ -418,10 +423,16 @@ The full collection toolchain ships in this repository:
 - `microservice-lttng-data-collection-scripts/load_generator.py` — workload.
 - `microservice-lttng-data-collection-scripts/agents/otel-to-lttng.py` —
   OpenTelemetry-to-LTTng UST relay.
+- `microservice-lttng-data-collection-scripts/sample_normal.sh`,
+  `sample_disk_stress.sh`, `sample_mem_stress.sh` — short-duration (30 s)
+  wrappers that collect a small, fully lossless subset for pipeline testing and
+  demos. See `DOCS/final/sample.md`.
 - `DOCS/final/reproduce_sock_shop_env.md` — host setup, Docker Compose reset,
   and verification steps for the Sock Shop deployment used here.
 - `DOCS/final/micro-service-setup.md` — end-to-end setup notes (VM,
   Docker Compose, LTTng, Prometheus).
+- `DOCS/final/collection_changes_notebook.md` — engineering notebook for the
+  ring-buffer (lossless) fix and the sample scripts.
 
 A typical reproduction step looks like:
 
@@ -433,6 +444,10 @@ A typical reproduction step looks like:
 
 # (3) Or an anomaly scenario:
 ./microservice-lttng-data-collection-scripts/1_cpu_stress.sh run01 100
+
+# (4) Or a small, fully-lossless sample subset (30 s each):
+PROMETHEUS=http://localhost:9090 \
+  ./microservice-lttng-data-collection-scripts/sample_disk_stress.sh sample 30
 ```
 
 Each wrapper writes its trace bundle to `~/traces/<scenario>/<run>/` and
