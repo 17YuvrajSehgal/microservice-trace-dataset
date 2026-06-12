@@ -1,0 +1,41 @@
+# Compose override that injects the OpenTelemetry Java agent into the four
+# Spring Boot Sock Shop services (carts, orders, shipping, queue-master) so the
+# agents/otel-to-lttng.py relay can pick up LoggingSpanExporter lines from
+# `docker logs` and forward them as LTTng UST events.
+#
+# Usage on the trace-collection VM:
+#   cd ~/microservices-demo/deploy/docker-compose
+#   COMPOSE_COMPATIBILITY=true docker compose \
+#     -f docker-compose.yml \
+#     -f docker-compose.monitoring.yml \
+#     -f ~/microservice-trace-dataset/microservice-lttng-data-collection-scripts/docker-compose.otel.yml \
+#     up -d
+#
+# Relative volume paths resolve against this override file's directory (Compose
+# v2 behaviour), so `./agents` always points at the sibling agents/ folder that
+# already ships in this repo, regardless of where the repo is cloned.
+
+services:
+  carts:
+    volumes:
+      - ./agents:/otel:ro
+    environment:
+      - JAVA_OPTS=-javaagent:/otel/opentelemetry-javaagent.jar -Dotel.javaagent.configuration-file=/otel/otel.properties -Xms64m -Xmx256m -XX:+UseG1GC -Djava.security.egd=file:/dev/urandom -Dspring.zipkin.enabled=false
+
+  orders:
+    volumes:
+      - ./agents:/otel:ro
+    environment:
+      - JAVA_OPTS=-javaagent:/otel/opentelemetry-javaagent.jar -Dotel.javaagent.configuration-file=/otel/otel.properties -Xms64m -Xmx256m -XX:+UseG1GC -Djava.security.egd=file:/dev/urandom -Dspring.zipkin.enabled=false
+
+  shipping:
+    volumes:
+      - ./agents:/otel:ro
+    environment:
+      - JAVA_OPTS=-javaagent:/otel/opentelemetry-javaagent.jar -Dotel.javaagent.configuration-file=/otel/otel.properties -Xms64m -Xmx256m -XX:+UseG1GC -Djava.security.egd=file:/dev/urandom -Dspring.zipkin.enabled=false
+
+  queue-master:
+    volumes:
+      - ./agents:/otel:ro
+    environment:
+      - JAVA_OPTS=-javaagent:/otel/opentelemetry-javaagent.jar -Dotel.javaagent.configuration-file=/otel/otel.properties -Xms64m -Xmx256m -XX:+UseG1GC -Djava.security.egd=file:/dev/urandom -Dspring.zipkin.enabled=false
