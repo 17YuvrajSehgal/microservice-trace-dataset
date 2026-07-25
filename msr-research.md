@@ -121,12 +121,37 @@ Flagged as a caveat in our own README; a reviewer will flag it too.
   per run (`file` exporter). This upgrades the 4 Java services from export-time
   lines to **native spans with start/end timestamps, parent/child links, and
   attributes** with a ~2-line config change.
-- Extend coverage beyond the Java four: front-end (Node) via
-  `@opentelemetry/auto-instrumentations-node`, catalogue/payment/user (Go) via
-  upstream builds if feasible — otherwise **document partial coverage honestly**
-  and add the edge-router (nginx) access log with trace-context headers as a
-  cheap topology-wide fallback. Coverage of carts/orders/shipping/queue-master +
-  front-end already spans every request path in the load generator's journeys.
+- Extend coverage beyond the Java four using a **three-tier design**. Coverage
+  is not a completeness chore — it is the internal validity of RQ1/RQ3: if the
+  trace modality only sees 4 of 14 services, traces lose comparisons because
+  instrumentation was partial, not because the modality is less informative.
+  - **Tier 1 (must):** `front-end` (Node — entry point of every user journey;
+    root spans stitch the whole trace tree; drop-in
+    `@opentelemetry/auto-instrumentations-node` + image rebuild) and
+    `catalogue` (Go — the most-hit service in the load generator, currently
+    invisible; needs ~50–100 lines of `otelhttp` middleware in source).
+    Both repos are forked (`17YuvrajSehgal/front-end`, `…/catalogue`) for this.
+  - **Tier 2 (should):** `user` and `payment` (Go, same `otelhttp` pattern) —
+    login/registration and checkout critical paths. Fork when reached.
+    Tier 1 + the Java four already covers every load-generator journey
+    end-to-end at entry and mid-chain.
+  - **Tier 3 (deliberately NOT instrumented):** databases (mongo 3.4, mysql),
+    rabbitmq, edge-router. These are **controlled trace blind spots**, kept by
+    design: real systems always contain uninstrumentable components, and these
+    remain fully visible to client-side DB spans (the Java agent already emits
+    them), cAdvisor metrics, container logs, and — crucially — kernel traces,
+    which see every syscall a database makes without touching it. This sets up
+    a testable sub-question: *can the kernel modality compensate where traces
+    are blind* (e.g., slow disk under catalogue-db)? Cheap Tier-3 addition:
+    edge-router (nginx) access logs including the `traceparent` header — a
+    topology-wide request record for the logs modality without touching nginx
+    internals.
+  - **Disciplines that make partial coverage a design variable, not a flaw:**
+    (a) ship a per-service **coverage matrix** (spans / logs / per-container
+    metrics / kernel visibility) in the dataset metadata; (b) every
+    service-targeted fault targets either a trace-covered service or an
+    explicitly labeled blind-spot case in `ground_truth.json` — never an
+    accidental gap (see §5).
 - Keep the LTTng-UST relay running **in addition** — it is our cross-layer
   clock bridge (spans and kernel events in one LTTng clock domain) and a
   differentiator; now it relays OTLP-export confirmations rather than being the
@@ -230,6 +255,14 @@ Each fault recipe declares its **expected winning modality** a priori
 (pre-registered in the recipe file): A→kernel/metrics disambiguate; B→traces
 localize, kernel explains; C→logs/traces win; 12→kernel-only. The study then
 *tests* these predictions — that is the paper's narrative spine.
+
+**Fault-target ↔ coverage alignment rule (see §3/M3 tiers):** every
+service-targeted recipe declares whether its target is trace-covered (Tier 1/2)
+or a deliberate blind spot (Tier 3), recorded in `ground_truth.json` as
+`target_trace_visibility: covered | blind_spot`. Blind-spot faults (e.g., slow
+disk under catalogue-db, rabbitmq backlog) are chosen intentionally to test
+whether kernel/metrics/logs compensate for trace blindness; no fault target is
+ever an *accidental* coverage gap.
 
 **Workload conditions** (per mentor: repeat analysis across conditions):
 - `steady` — current 200 VU profile;
@@ -350,7 +383,12 @@ for metrics) are shipped with the harness.
   `Full` (+L0 raw CTF for ≥1 repeat per condition, ~2–4 TB): institutional
   object store / HF Datasets with manifest + checksums. (Precedent: our
   existing 148 GB release; OpenRCA ships 68 GB.)
-- **Reproducibility:** pinned images/digests, one-command `collect.sh
+- **Reproducibility:** the deployment repo is a **git-submodule pin of our
+  fork** (`17YuvrajSehgal/microservices-demo`, done 25-07-2026 — upstream is
+  deprecated/frozen; the fork insures against upstream/image disappearance and
+  hosts our instrumentation changes; per-run `ground_truth.json` cites the
+  submodule SHA). Plus: pinned images/digests (rebuilt service images published
+  to GHCR from the forks), one-command `collect.sh
   <fault> <intensity> <workload> <run>`, CI smoke run (60 s normal), datasheet
   (Gebru et al.), CC-BY-4.0 data / Apache-2.0 code.
 - **Repo hygiene prerequisites:** vendor or re-release the sibling
@@ -441,7 +479,7 @@ catalog's two-axis structure, and RQ1–RQ4 are the non-negotiable core.
 
 | Risk | Mitigation |
 |---|---|
-| Go/Node services resist OTel instrumentation | Ship with Java-4 + front-end coverage; nginx access logs w/ trace headers as topology fallback; document honestly (coverage already spans all load-gen journeys) |
+| Go/Node services resist OTel instrumentation | Tiered fallback (§3/M3): ship with Java-4 + Tier-1 (front-end, catalogue); demote unfinished Tier-2 services to labeled blind spots; nginx traceparent access logs as topology-wide fallback; coverage matrix documents whatever lands |
 | Single-host criticized as unrealistic | Frame as explicit scope: modality-informativeness questions are orthogonal to distribution; multi-host = future work; cite mentor-style "start from what exists" economy |
 | "Synthetic faults" criticism | C-family recipes mirror published postmortem patterns (slow query, retry storm, dependency outage) — cite postmortems per recipe (idea1 mitigation, kept) |
 | LLM-judge validity for T3 | Fact-checklist scoring against machine-readable ground truth is primary; judge is secondary; human audit on a sample |
