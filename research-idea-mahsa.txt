@@ -1,0 +1,17 @@
+I am planning to conduct a research study on observability modalities in distributed systems especially using kernel traces, my main target is MSR research conference where I want to publish my dataset as well as my paper. I have this repository that I created earlier for other research paper accepted in JSS, I would like to continue to develop this repository and create a better dataset that will contain diverse type of systems (agentic, distributed, etc.) and different workload conditions. I have not planned what to do yet, but i got these suggestions from my mentor:
+
+"""
+I suggest starting with the systems you already have rather than building a new benchmark from scratch. These systems already provide KPIs, logs, and distributed traces. We can augment them by collecting kernel traces, giving us four complementary observability modalities.
+Next, we define a small set of representative reasoning tasks. Four tasks should be sufficient, for example: RCA, Repair generation, Incident explanation,  Anomaly detection.
+Using these tasks, we can investigate the following research questions:
+How informative is each observability modality?
+Which tasks require which modality?
+How much additional value does each modality contribute beyond the others?
+What is the cost–benefit trade-off of collecting and using each modality?
+Since your datasets already contain incidents under different workload conditions, we can repeat the analysis for both normal operation and stress conditions. This would allow us to study whether the usefulness of each modality changes as systems become more complex or failures become harder to diagnose.
+Once this study is complete, we can extend the benchmark to agentic systems by incorporating agent trajectories as an additional observability modality. Personally, I think this extension is substantial enough to become a separate follow-up paper rather than being included in the initial study.
+
+"""
+
+
+Read this repository carefully and understand the different aspects of it, how can we collect kernel traces, what are the changes in the microservice, agentic systems that we must include so that dataset is unique along with the kernel traces, and then help me to develop this research idea. What data can be collected, how it can be used, what research questions can be answered, and how it can be extended to agentic systems.
