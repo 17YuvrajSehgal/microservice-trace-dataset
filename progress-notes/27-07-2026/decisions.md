@@ -210,6 +210,24 @@ predict metrics for T1 and kernel only for T2/T3 cause-attribution —
 node-exporter series are resource-explicit, so claiming kernel wins
 detection there would have been a strawman.
 
+### 12. Dataset name collision check done — recommend StrataTrace (or TetraObs)
+Checked papers (web) + GitHub repos (gh search) for all candidates:
+- **FourSight ❌** — GitHub crowded; worst hit is `4dn-dcic/foursight`, an
+  AWS infrastructure *monitoring* tool (collision in our exact domain);
+  plus trading/Connect-4 repos and the Foresight homophone problem.
+- **KODA ❌** — exact-name 2024 ML paper (Koopman-operator forecasting,
+  arXiv:2409.19518); brand noise (Koda robot dog, Škoda).
+- **ModSense ⚠️** — several small squatter repos; name reads as IoT/sensor
+  dataset (DataSense/MMSense cluster), mis-signaling the domain.
+- **TetraObs ✅** — zero GitHub repos, zero paper hits. Caveat: number-bound
+  ("four") — awkward when paper 2 adds the 5th modality.
+- **StrataTrace ✅ (recommended)** — zero GitHub repos, zero paper hits;
+  number-free; "strata" = telemetry layers matches the plan's cross-layer
+  framing (kernel = deepest stratum) and scales to modality additions.
+  (`StrataObs` also free as fallback.)
+Decision: user + mentor pick between StrataTrace / TetraObs; msr-research.md
+header updated with the vetted list.
+
 ## Open items (carried from 25-07-2026)
 - **Phase-0 gate:** deploy the extended stack on the GCP VM, run one 30 s
   sample, hand-audit ONE request across all four modalities (load CSV → OTLP
@@ -219,4 +237,5 @@ detection there would have been a strawman.
   done (§8).
 - Venue split decision with mentor (MSR technical track vs FSE/EMSE for the
   study paper).
-- Dataset name collision check (FourSight / KODA / ModSense).
+- ~~Dataset name collision check~~ — done (§12); StrataTrace recommended,
+  final pick with mentor.

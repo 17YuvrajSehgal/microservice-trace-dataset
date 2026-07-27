@@ -3,9 +3,15 @@
 **A kernel-trace-augmented, four-modality incident dataset + a per-task modality
 ablation study for operations reasoning.**
 
-**Working name candidates:** `FourSight` (four modalities / incident foresight),
-`KODA` (Kernel-augmented Observability Dataset & Analysis), `ModSense`.
-Decide after a collision check.
+**Working name candidates** (collision check done 27-07-2026, see that day's
+decisions §12): original candidates all compromised — `FourSight` (GitHub
+crowded incl. an AWS *monitoring* tool `4dn-dcic/foursight`; Foresight
+homophone soup), `KODA` (2024 ML paper arXiv:2409.19518), `ModSense`
+(repo squatters + mis-signals IoT sensing). **Vetted clean:** `StrataTrace`
+(recommended — number-free layered-telemetry metaphor, survives the
+5th-modality agentic extension; zero GitHub/paper hits) and `TetraObs`
+(crisp four-modality branding, zero hits, but number-bound: awkward when
+paper 2 adds agent trajectories). Final pick: with mentor.
 
 **Primary target:** MSR 2027 — *two* coupled submissions:
 1. **Data & Tool Showcase** (4 pages + 1 refs): the dataset + loader + collection rig.
