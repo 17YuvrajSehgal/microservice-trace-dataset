@@ -1,0 +1,41 @@
+# Opt-in compose override: Toxiproxy in the catalogue->catalogue-db path.
+#
+# METHODOLOGICAL NOTE (why the proxy is always in-path): fault recipes toggle
+# toxics via the Toxiproxy HTTP API mid-run, which is instantaneous and needs
+# no container restarts. The alternative - inserting a proxy only for fault
+# runs - would require restarting the service at injection time, polluting
+# every modality with restart artifacts. Cost: one constant sub-millisecond
+# in-memory hop on the DB path, present identically in ALL scenarios
+# (including normal), so cross-scenario comparisons stay fair. Deployments
+# that include this overlay must include it for normal runs too.
+#
+# Used by: faults/slow_db.sh, faults/error_storm.sh (API on :8474).
+#
+# Ordering: add AFTER docker-compose.catalogue-otel.yml (both define the
+# catalogue command; this one must win because it adds the -DSN repoint):
+#   COMPOSE_COMPATIBILITY=true docker compose \
+#     -f docker-compose.yml \
+#     -f docker-compose.monitoring.yml \
+#     -f "$TRACE_SCRIPTS_DIR/docker-compose.metrics.yml" \
+#     -f "$TRACE_SCRIPTS_DIR/docker-compose.otel.yml" \
+#     -f "$TRACE_SCRIPTS_DIR/docker-compose.frontend-otel.yml" \
+#     -f "$TRACE_SCRIPTS_DIR/docker-compose.catalogue-otel.yml" \
+#     -f "$TRACE_SCRIPTS_DIR/docker-compose.toxiproxy.yml" \
+#     up -d
+
+services:
+  toxiproxy:
+    image: ghcr.io/shopify/toxiproxy:2.9.0
+    command: ["-host=0.0.0.0", "-config=/toxiproxy.json"]
+    volumes:
+      - ${TRACE_SCRIPTS_DIR:?set TRACE_SCRIPTS_DIR to the microservice-lttng-data-collection-scripts dir}/agents/toxiproxy-config.json:/toxiproxy.json:ro
+    ports:
+      # Toxiproxy admin API - the fault recipes drive toxics through this.
+      - "8474:8474"
+    restart: unless-stopped
+
+  catalogue:
+    # Same command as the stock deployment (port 80) but with the DSN
+    # repointed at the proxy. Works with either the stock image or
+    # catalogue-otel:phase0 (both accept -DSN).
+    command: ["/app", "-port=80", "-DSN=catalogue_user:default_password@tcp(toxiproxy:3306)/socksdb"]

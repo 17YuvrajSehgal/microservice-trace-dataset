@@ -153,6 +153,40 @@ three out-of-window decoys excluded, drift math exact (0.400 ms as
 constructed). Kernel section = VM verification (needs CTF + babeltrace2).
 This script is the seed of the loader SDK's alignment test (Phase 3).
 
+### 10. Fault recipes built and mechanically verified (Phase-1 head start)
+`faults/` now holds fault_lib.sh + 7 recipes (slow_db, error_storm,
+svc_cpu_cap, svc_mem_cap, dependency_outage, queue_backlog, noisy_neighbor)
++ README with the **pre-registered fault→modality prediction table** —
+committed before any ablation experiment runs, per the plan's narrative
+design. Key decisions & findings:
+- **Toxiproxy is ALWAYS in-path** (docker-compose.toxiproxy.yml): toggling
+  toxics via API is instant and restart-free; inserting a proxy only for
+  fault runs would pollute every modality with restart artifacts. Cost:
+  constant sub-ms hop in all scenarios incl. normal (measured locally:
+  baseline through proxy ≈ direct baseline at 0.22 s). Recipes toggle via
+  the :8474 API.
+- **Every recipe writes ground_truth.json** (fault_lib.sh) with exact
+  injection window, params, target, blast radius, pre-registered winner,
+  `target_trace_visibility`, and remediation — the §6 schema seeded at the
+  recipe level.
+- **Verified end-to-end locally** with the instrumented catalogue:
+  slow_db 0.22 s → 1.1–1.3 s → 0.21 s; error_storm 200 → 500s → 200 with
+  the predicted log evidence ("connection reset by peer", "driver: bad
+  connection") — the logs-win pre-registration already has empirical
+  support.
+- **Three docker-update API gotchas found by testing restore paths against
+  cgroup truth** (would have silently corrupted recovery windows):
+  (1) `--cpus=0` is a no-op, the real unlimited-reset is `--cpu-quota=-1`;
+  (2) memory limits CANNOT be cleared at all — restore approximates with
+  host MemTotal, recorded in ground truth; (3) docker leaves NanoCpus
+  stale after quota resets, so recipes capture both representations.
+- **Port-80 bug caught in catalogue-otel overlay**: stock image runs
+  `/app -port=80`, fork Dockerfile says 8080 — the image swap would have
+  broken front-end→catalogue on the VM. Overlay now pins
+  `command: /app -port=80`.
+- Windows testing gotcha: PowerShell splits unquoted `-host=0.0.0.0` at the
+  dots (toxiproxy bound host "0"); quote such args. Compose YAML unaffected.
+
 ## Open items (carried from 25-07-2026)
 - **Phase-0 gate:** deploy the extended stack on the GCP VM, run one 30 s
   sample, hand-audit ONE request across all four modalities (load CSV → OTLP

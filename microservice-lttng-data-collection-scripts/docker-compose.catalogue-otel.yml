@@ -25,6 +25,10 @@
 services:
   catalogue:
     image: catalogue-otel:phase0
+    # The stock deployed image runs `/app -port=80` (front-end and
+    # edge-router call catalogue:80) while the fork's Dockerfile CMD says
+    # -port=8080; pin the command so the swap cannot change the port.
+    command: ["/app", "-port=80"]
     environment:
       - OTEL_SERVICE_NAME=catalogue
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
