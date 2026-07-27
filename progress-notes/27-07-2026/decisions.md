@@ -119,12 +119,27 @@ Decisions with rationale:
 - Upstream `go vet` finding fixed in passing: unbuffered signal.Notify
   channel. (Upstream test-file vet warning left as-is.)
 
+### 8. Sibling packages vendored — repo is now self-contained for baselines
+`models/` (LSTM, Transformer + support modules) and `dataset/` (Dictionary,
+IterableDataset) copied verbatim from `adaptive_tracer` at
+`405e49e` ("added 100 user results", 2026-03-31; the only dirty files there
+were untracked result tables, so the SHA cleanly describes the copy).
+Layout matches what every `microservice/` script expects (repo root on
+sys.path). `IterableDataset.py` included because `dataset/__init__.py`
+imports it — any `dataset.*` import executes the package init.
+**Verified** in a clean python:3.12 + torch-cpu container: all three import
+patterns used by the analysis code work (package import of models, package
+import of Dictionary + instantiation, path-based importlib load).
+**Rule going forward:** the vendored copies are authoritative for this repo
+(VENDORED.md in each dir); fixes land here, not in adaptive_tracer.
+
 ## Open items (carried from 25-07-2026)
 - **Phase-0 gate:** deploy the extended stack on the GCP VM, run one 30 s
   sample, hand-audit ONE request across all four modalities (load CSV → OTLP
   span tree → logs → metrics window → kernel syscalls via pid↔container
   join). Everything up to this gate is now verified.
-- Vendor `models/` + `dataset/Dictionary.py` from `adaptive_tracer`.
+- ~~Vendor `models/` + `dataset/Dictionary.py` from `adaptive_tracer`~~ —
+  done (§8).
 - Venue split decision with mentor (MSR technical track vs FSE/EMSE for the
   study paper).
 - Dataset name collision check (FourSight / KODA / ModSense).
