@@ -19,12 +19,11 @@ On the VM:
    metrics window → kernel syscalls via the pid↔container join
    (meta snapshots). Audit passes ⇒ Phase 0 complete.
 
-Prep that can be done before the VM session (offered, not yet started):
-- **Audit helper script**: input = run dir + trace_id (or auto-pick slowest
-  request from load CSV); output = matching records from all four modalities
-  side by side with timestamps. Later evolves into the loader SDK's
-  alignment test.
-- **VM runbook**: steps 1–4 as a mechanical checklist file.
+Prep done before the VM session:
+- ~~Audit helper script~~ — done: `audit_alignment.py` (see decisions §9),
+  verified on a synthetic bundle; kernel section verifies on first VM run.
+- ~~VM runbook~~ — `vm-todo.md` serves as the runbook (includes Tier-1 image
+  builds and the audit command).
 
 ## 2. Parallel items (no VM needed)
 - Vendor `models/` + `dataset/Dictionary.py` from the `adaptive_tracer`

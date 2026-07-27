@@ -26,10 +26,16 @@ happens on the VM only. This list is what the next VM session(s) must cover.
    `git clone -b otel-instrumentation https://github.com/17YuvrajSehgal/catalogue.git && docker build -f catalogue/docker/catalogue/Dockerfile -t catalogue-otel:phase0 catalogue/`
    then append `-f "$TRACE_SCRIPTS_DIR/docker-compose.frontend-otel.yml"`
    and `-f "$TRACE_SCRIPTS_DIR/docker-compose.catalogue-otel.yml"`.
-6. THE AUDIT: one request traced across all four modalities — load CSV row →
-   OTLP span tree → log lines → metrics window → kernel syscalls via
-   pid↔container join. Passing = Phase 0 complete; record the audit in that
-   day's progress notes with the trace_id used.
+6. THE AUDIT — run the audit tool on the sample run:
+   `python3 "$TRACE_SCRIPTS_DIR/audit_alignment.py" ~/traces/<scenario>/<run> \
+      --load-csv <load_results.csv> --metrics-dir <metrics_full_dir>`
+   It picks the slowest request (or pass --trace-id), prints the aligned
+   span tree / log lines / load rows / metric samples / kernel events
+   (babeltrace2 window trim + container tid join) and a per-modality
+   verdict + clock drift. All six verdict lines OK = Phase 0 complete;
+   record the trace_id and the verdict block in that day's progress notes.
+   (Kernel section is the one part unverified locally — first VM run
+   checks it.)
 
 ## Later VM sessions (Phase 1+)
 - tc/netem + tbf fault recipes (need sch_netem etc. — kernel-module

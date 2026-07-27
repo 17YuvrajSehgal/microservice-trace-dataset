@@ -133,6 +133,26 @@ import of Dictionary + instantiation, path-based importlib load).
 **Rule going forward:** the vendored copies are authoritative for this repo
 (VENDORED.md in each dir); fixes land here, not in adaptive_tracer.
 
+### 9. Cross-modality audit tool built and verified (audit_alignment.py)
+`microservice-lttng-data-collection-scripts/audit_alignment.py` — the Phase-0
+gate tool: given a run bundle (+ optional load CSV / metrics dir), picks a
+trace (explicit or slowest server span) and prints the aligned view across
+all modalities + a per-modality verdict. Design decisions:
+- **Stdlib-only Python** — no pip installs on the VM.
+- **Every section degrades gracefully** (partial bundles still audit; kernel
+  section requires babeltrace2 and says so instead of failing).
+- **Kernel attribution** joins babeltrace2 output (`--clock-gmt --begin
+  --end` window trim) to containers via the meta/ docker-top tid maps —
+  the same pid↔service join the study's L1/L2 derivers will use.
+- **Clock verdict** computes realtime−monotonic offsets from the runinfo
+  anchors at start/end and reports drift — the plan's measured-alignment
+  claim in one number.
+**Verified** on a synthetic bundle built around the real catalogue span
+fixture: all in-window records surface (trace-id log line starred), all
+three out-of-window decoys excluded, drift math exact (0.400 ms as
+constructed). Kernel section = VM verification (needs CTF + babeltrace2).
+This script is the seed of the loader SDK's alignment test (Phase 3).
+
 ## Open items (carried from 25-07-2026)
 - **Phase-0 gate:** deploy the extended stack on the GCP VM, run one 30 s
   sample, hand-audit ONE request across all four modalities (load CSV → OTLP
