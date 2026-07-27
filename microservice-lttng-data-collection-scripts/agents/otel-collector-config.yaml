@@ -1,0 +1,39 @@
+# OpenTelemetry Collector config for the Phase-0 trace pipeline.
+#
+# The Sock Shop Java agents (see otel.properties) export spans twice:
+#   - `otlp`    -> this collector -> file exporter (native spans, OTLP-JSON lines)
+#   - `logging` -> container stdout -> agents/otel-to-lttng.py -> LTTng UST
+# The OTLP path is the dataset's distributed-trace modality; the logging path
+# is kept as the cross-layer clock bridge into the kernel trace domain.
+#
+# The collector appends one JSON object (a ResourceSpans batch) per line to
+# /otlp-out/spans.jsonl. collect_trace.sh slices that file by byte offset at
+# run start/end to produce the per-run OTLP bundle.
+
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        # Bind all interfaces: the Java agents connect from other containers.
+        # (Recent collector versions default to localhost-only.)
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  batch: {}
+
+exporters:
+  file/spans:
+    path: /otlp-out/spans.jsonl
+    flush_interval: 1s
+  # Span counts in `docker logs <collector>` for quick liveness checks.
+  debug:
+    verbosity: basic
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [file/spans, debug]

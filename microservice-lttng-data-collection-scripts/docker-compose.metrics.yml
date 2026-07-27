@@ -1,0 +1,45 @@
+# Compose override for the Phase-0 metrics modality.
+#
+# 1. Adds cAdvisor so Prometheus collects per-container CPU/memory/network/
+#    blkio series (container_*). Without these, the metrics modality has no
+#    service-level resource visibility (node-exporter is host-wide only) and
+#    would be unfairly handicapped in the modality comparison.
+# 2. Replaces the Prometheus scrape config with prometheus-cadvisor.yml
+#    (upstream config + cadvisor job). Compose merges volume mounts by
+#    container target path, so this later file's mount wins over the one in
+#    docker-compose.monitoring.yml.
+#
+# Usage on the trace-collection VM (add after the monitoring override):
+#   cd ~/microservices-demo/deploy/docker-compose
+#   export TRACE_SCRIPTS_DIR=~/microservice-trace-dataset/microservice-lttng-data-collection-scripts
+#   COMPOSE_COMPATIBILITY=true docker compose \
+#     -f docker-compose.yml \
+#     -f docker-compose.monitoring.yml \
+#     -f "$TRACE_SCRIPTS_DIR/docker-compose.metrics.yml" \
+#     -f "$TRACE_SCRIPTS_DIR/docker-compose.otel.yml" \
+#     up -d
+#
+# TRACE_SCRIPTS_DIR must point at this file's directory (see the note in
+# docker-compose.otel.yml about Compose resolving relative mounts against the
+# project directory, not the override file's directory).
+
+services:
+  prometheus:
+    volumes:
+      - ${TRACE_SCRIPTS_DIR:?set TRACE_SCRIPTS_DIR to the microservice-lttng-data-collection-scripts dir}/prometheus-cadvisor.yml:/etc/prometheus/prometheus.yml
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.49.1
+    container_name: cadvisor
+    privileged: true
+    devices:
+      - /dev/kmsg
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+    ports:
+      - "8080:8080"
+    restart: unless-stopped

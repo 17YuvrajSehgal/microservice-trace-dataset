@@ -1,0 +1,89 @@
+# Prometheus scrape config for the Phase-0 metrics modality.
+#
+# This is the upstream Sock Shop prometheus.yml (deploy/docker-compose/
+# prometheus.yml, fork pin 9dff06f) with upstream's inline comments stripped —
+# functionally identical (same jobs/targets/intervals, diff-verified
+# 25-07-2026) — plus the `cadvisor` job at the bottom. It is bind-mounted OVER the upstream file by
+# docker-compose.metrics.yml (compose merges volume mounts by target path, so
+# the override wins). Upstream is frozen, so drift against the copied portion
+# is not a concern.
+#
+# cAdvisor provides the per-container CPU/memory/network/blkio series
+# (container_*) that per-service RCA from the metrics modality requires;
+# node-exporter only covers whole-host resources and the app histograms only
+# cover request-level signals.
+
+global:
+    # How frequently to scrape targets by default.
+    scrape_interval: 1m
+    # How long until a scrape request times out.
+    scrape_timeout: 10s
+    # How frequently to evaluate rules.
+    evaluation_interval: 1m
+
+rule_files:
+    - "/etc/prometheus/alert.rules"
+
+alerting:
+  alertmanagers:
+  - static_configs:
+    - targets:
+      - alertmanager:9093
+
+scrape_configs:
+    - job_name: "frontend"
+      scrape_interval: 5s
+      metrics_path: 'metrics'
+      static_configs:
+        - targets: ['edge-router']
+
+    - job_name: "catalogue"
+      scrape_interval: 5s
+      static_configs:
+        - targets: ['catalogue']
+
+    - job_name: "payment"
+      scrape_interval: 5s
+      static_configs:
+        - targets: ['payment']
+
+    - job_name: "user"
+      scrape_interval: 5s
+      static_configs:
+        - targets: ['user']
+
+    - job_name: "orders"
+      scrape_interval: 5s
+      metrics_path: 'metrics'
+      static_configs:
+        - targets: ['orders']
+
+    - job_name: "cart"
+      scrape_interval: 5s
+      metrics_path: 'metrics'
+      static_configs:
+        - targets: ['carts']
+
+    - job_name: "shipping"
+      scrape_interval: 5s
+      metrics_path: 'metrics'
+      static_configs:
+        - targets: ['shipping']
+
+    - job_name: "queue-master"
+      scrape_interval: 5s
+      metrics_path: 'prometheus'
+      static_configs:
+        - targets: ['queue-master']
+
+    - job_name: 'node-exporter'
+      scrape_interval: 5s
+      metrics_path: 'metrics'
+      static_configs:
+        - targets: ['nodeexporter:9100']
+
+    - job_name: 'cadvisor'
+      scrape_interval: 5s
+      metrics_path: 'metrics'
+      static_configs:
+        - targets: ['cadvisor:8080']

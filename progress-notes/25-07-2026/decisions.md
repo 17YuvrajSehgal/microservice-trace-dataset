@@ -84,14 +84,76 @@ every service-targeted fault targets either a covered service or an
 explicitly-labeled blind-spot case. Cheap add: nginx access logs with
 traceparent header = topology-wide request log for the logs modality.
 
+### 8. Phase-0 collection-rig changes drafted and locally verified (Docker tests)
+All four modality upgrades drafted and each tested on the local machine:
+- **Traces:** OTel Collector (`otel/opentelemetry-collector-contrib:0.157.0`,
+  pinned) + Java agent (2.25.0) flipped to **dual export
+  `otel.traces.exporter=otlp,logging`** — OTLP gives native spans (verified
+  end-to-end locally: OTLP/HTTP test span → collector → `spans.jsonl`);
+  `logging` is deliberately KEPT so the docker-logs→LTTng-UST relay keeps
+  working as the cross-layer clock bridge. Per-service `OTEL_SERVICE_NAME`
+  added (a shared otel.properties would otherwise make every service report
+  `unknown_service:java` in OTLP resources).
+- **Per-run OTLP bundling by byte-offset slicing** of the collector's global
+  `spans.jsonl` (offset at run start, slice after a 3 s drain at run end;
+  exact windowing downstream via native span timestamps). Chosen over
+  rotation/truncation because it never touches the collector's open file
+  handle.
+- **Logs:** single post-run `docker logs --timestamps --since <run-start>`
+  dump per container (verified: `--since` accepts our UTC format and filters
+  correctly). Post-run rather than streaming so the logs modality adds zero
+  load inside the measured window — protects the RQ4 overhead numbers.
+- **Metrics:** `download_metrics_full.sh` exports EVERY metric name in the
+  run window at native 5 s resolution (verified against a live Prometheus:
+  307/307 metrics, valid gzipped multi-series JSON). Curated
+  `download_metrics.sh` retained as the "lite" KPI view. cAdvisor added for
+  per-container series — via overlay only: compose merges volume mounts by
+  target path, so `docker-compose.metrics.yml` mounts our
+  `prometheus-cadvisor.yml` (upstream config + cadvisor job) over the
+  upstream file. No fork edit needed.
+- **Clock anchors:** `snapshot_metadata()` now records
+  (CLOCK_REALTIME, CLOCK_MONOTONIC, CLOCK_BOOTTIME) triples + NTP status at
+  start / every 10 s tick / end (verified in a Linux container). Rationale:
+  LTTng stamps events with MONOTONIC, everything else uses REALTIME; the
+  pairs make the per-run alignment offset and drift *measured* numbers, per
+  the plan's claim #1.
+
+**Gotchas caught by local verification (reporting-relevant):**
+- Current Docker Compose resolves relative bind-mount paths in override files
+  against the PROJECT directory (first `-f` file), NOT the override file's
+  directory — the old `./agents` comment claim no longer holds. All override
+  mounts now use a required `${TRACE_SCRIPTS_DIR:?...}` env var that fails
+  fast if unset. Any reproduction instructions (README, datasheet) must
+  include `export TRACE_SCRIPTS_DIR=...`.
+- jq on Windows (Git Bash) emits CRLF line endings: metric names picked up a
+  trailing `\r`, silently producing `name^M.json.gz` files while Prometheus
+  accepted the polluted query (CR = whitespace in PromQL) — so the run
+  *looked* 100% successful. Fixed with `tr -d '\r'` in
+  `download_metrics_full.sh`; harmless on the Linux VM but essential for
+  cross-platform reproduction. Full re-verification after the fix:
+  273/273 metrics, clean filenames, valid gzipped `query_range` JSON.
+- Verified against the submodule (not just asserted): upstream
+  `docker-compose.monitoring.yml` has NO cadvisor service (no collision with
+  our override), upstream mounts its config at the same
+  `/etc/prometheus/prometheus.yml` target (so the merge-by-target-path
+  override works), and `prometheus-cadvisor.yml` is functionally identical to
+  upstream's scrape config (diff: comments only) + the cadvisor job.
+- Remaining Phase-0 verifications done in a clean session: collector 0.157.0
+  end-to-end (OTLP/HTTP test span → `spans.jsonl`, one JSON object per line),
+  byte-offset slice arithmetic (`tail -c +offset+1` exact, no off-by-one),
+  `docker logs --since` honors our UTC format, clock-anchor snippet runs on
+  Linux Python 3.12.
+
 ## Open items
 - ~~Fold the three-tier coverage design into `msr-research.md` §3/M3~~ — done
   same day (§3/M3 tiers, §5 fault-target↔coverage alignment rule with
   `target_trace_visibility` ground-truth field, risk-table fallback updated,
   §8 records the submodule pin).
-- Phase-0 spike: OTLP file export via collector; logs dump; full Prometheus
-  export; one hand-audited fully-aligned run. Highest-leverage change:
-  flip `agents/otel.properties` from `logging` exporter to `otlp`.
+- ~~Phase-0 rig changes: OTLP file export via collector; logs dump; full
+  Prometheus export; clock anchors~~ — drafted AND locally verified (§8).
+  Remaining Phase-0 step: deploy on the GCP VM and hand-audit one
+  fully-aligned run across all four modalities (needs the VM; not doable on
+  the Windows dev machine — no LTTng).
 - Vendor `models/` + `dataset/Dictionary.py` from `adaptive_tracer`.
 - Decide venue split with mentor: study paper to MSR technical track vs FSE/EMSE.
 - Name collision check for dataset name (FourSight / KODA / ModSense).
