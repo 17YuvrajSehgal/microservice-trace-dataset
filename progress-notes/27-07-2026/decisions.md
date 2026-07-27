@@ -58,6 +58,35 @@ userspace fault recipes (Toxiproxy/docker-update/pause), analysis code;
 VM = everything touching LTTng, tc/netem, performance numbers, or published
 data. VM work is tracked in `vm-todo.md` (this folder).
 
+### 6. Tier-1 front-end instrumentation done and locally verified
+Fork branch `17YuvrajSehgal/front-end@otel-instrumentation` (c11b5d9);
+opt-in overlay `docker-compose.frontend-otel.yml` (5-file merge verified).
+Decisions with rationale:
+- **Base image node:10-alpine → node:20-alpine.** Node 10 (EOL 2021) is
+  below every OTLP-capable OTel JS release. App deps are pure JS; verified
+  the app boots and serves on Node 20 unchanged. This is the *only* runtime
+  change — keeps the "minimal, documented fork diff" discipline.
+- **Zero-code instrumentation, opt-in at deploy time** via
+  `NODE_OPTIONS=--require @opentelemetry/auto-instrumentations-node/register`
+  (deps baked into image, activation via env) — same overlay-controlled
+  pattern as the Java agent; the image runs untraced without the env var.
+  Pinned: api 1.9.1, auto-instrumentations-node 0.79.0.
+- **CMD `npm start` → `node server.js`**: NODE_OPTIONS otherwise instruments
+  the npm wrapper process too (observed: duplicate OTel init, pids 1+18).
+- **`OTEL_NODE_RESOURCE_DETECTORS=env,host,os,process,serviceinstance`**:
+  the default (all) probes GCP/AWS/Azure metadata services at startup and
+  flooded the trace with multi-second dns.lookup/tcp.connect spans + blocked
+  first requests. Keep the same list on the VM for span-stream consistency.
+- Verified end-to-end locally: `GET /` produces a kind=SERVER span with the
+  full Express middleware chain (query→expressInit→serveStatic), exported
+  OTLP/gRPC → collector → spans.jsonl.
+**Verification gotcha (for future local tests):** PowerShell
+`Invoke-WebRequest` against Docker-published localhost ports can hang
+(IPv6 localhost); `curl.exe` returned HTTP 200 in 0.23 s on the same
+endpoint. Use curl for local HTTP checks.
+**VM follow-up added to vm-todo.md**: build `frontend-otel:phase0` from the
+fork branch on the VM before adding the overlay.
+
 ## Open items (carried from 25-07-2026)
 - **Phase-0 gate:** deploy the extended stack on the GCP VM, run one 30 s
   sample, hand-audit ONE request across all four modalities (load CSV → OTLP

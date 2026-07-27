@@ -1,0 +1,40 @@
+# Opt-in compose override: OTel-instrumented front-end (Tier-1 coverage).
+#
+# Replaces the stock weaveworksdemos/front-end:0.3.12 image with the
+# instrumented build from the 17YuvrajSehgal/front-end fork, branch
+# `otel-instrumentation` (Node 20 + @opentelemetry/auto-instrumentations-node;
+# tracing activated via NODE_OPTIONS below, so the image runs untraced when
+# the env var is absent).
+#
+# Build the image on the deployment host first:
+#   git clone -b otel-instrumentation https://github.com/17YuvrajSehgal/front-end.git
+#   docker build -t frontend-otel:phase0 front-end/
+# (GHCR publishing with digest pinning replaces this local build in Phase 1.)
+#
+# Then add this file AFTER docker-compose.otel.yml:
+#   COMPOSE_COMPATIBILITY=true docker compose \
+#     -f docker-compose.yml \
+#     -f docker-compose.monitoring.yml \
+#     -f "$TRACE_SCRIPTS_DIR/docker-compose.metrics.yml" \
+#     -f "$TRACE_SCRIPTS_DIR/docker-compose.otel.yml" \
+#     -f "$TRACE_SCRIPTS_DIR/docker-compose.frontend-otel.yml" \
+#     up -d
+#
+# OTEL_NODE_RESOURCE_DETECTORS deliberately excludes the cloud detectors:
+# with the default (all), startup probes the GCP/AWS/Azure metadata services
+# and floods the trace with multi-second dns.lookup/tcp.connect spans on
+# non-cloud hosts (observed locally 27-07-2026). Keep the list identical on
+# the VM for cross-environment consistency of the span stream.
+
+services:
+  front-end:
+    image: frontend-otel:phase0
+    environment:
+      - NODE_OPTIONS=--require @opentelemetry/auto-instrumentations-node/register
+      - OTEL_SERVICE_NAME=front-end
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
+      - OTEL_EXPORTER_OTLP_PROTOCOL=grpc
+      - OTEL_TRACES_EXPORTER=otlp
+      - OTEL_METRICS_EXPORTER=none
+      - OTEL_LOGS_EXPORTER=none
+      - OTEL_NODE_RESOURCE_DETECTORS=env,host,os,process,serviceinstance
