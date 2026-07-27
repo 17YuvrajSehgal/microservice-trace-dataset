@@ -1,48 +1,43 @@
-# Next steps — as of 27-07-2026
+# Next steps — as of 27-07-2026 (end of day)
 
-## 1. Phase-0 gate (immediate, needs the GCP VM)
-Deploy the extended stack and hand-audit one fully-aligned run. This is the
-single item between us and Phase 1 (msr-research.md §10 gate).
+The local work queue is EMPTY. Everything below either needs the GCP VM or
+the mentor. Full record of what was completed today: `decisions.md` §1–§12.
 
-On the VM:
-1. `git pull` + `git submodule update --init` (rig changes + submodule are on
-   GitHub as of commit 5aa35b4).
-2. Bring up the extended stack:
-   `export TRACE_SCRIPTS_DIR=~/microservice-trace-dataset/microservice-lttng-data-collection-scripts`
-   then the four `-f` compose files per the usage headers in
-   `docker-compose.metrics.yml` / `docker-compose.otel.yml`.
-3. Pre-tracing sanity checks: spans appear in `otlp-out/spans.jsonl` while
-   clicking through the front-end; `container_*` series in Prometheus
-   (cAdvisor up); otel-collector in `docker ps`.
-4. Run one 30 s sample (`sample_normal.sh` pattern), then audit ONE request
-   end-to-end: load-generator CSV row → OTLP span tree → log lines →
-   metrics window → kernel syscalls via the pid↔container join
-   (meta snapshots). Audit passes ⇒ Phase 0 complete.
+## Done today (summary, details in decisions.md)
+- Phase-0 rig committed + independently re-verified; full-stack compose
+  conformance verified; pushed (§1–§2, commit 9a44380).
+- Tier-1 instrumentation: front-end (Node 20 + OTel, §6) and catalogue
+  (Go modules + otelhttp, §7), both verified end-to-end locally, overlays
+  merged-render-checked, branches on the forks.
+- `models/` + `dataset/` vendored from adaptive_tracer @405e49e (§8).
+- `audit_alignment.py` cross-modality audit tool, verified on a synthetic
+  bundle (§9).
+- Fault recipes: fault_lib + 7 recipes, all mechanically verified locally,
+  incl. three docker-update API gotchas fixed in restore paths (§10).
+- `fault_catalog.md` pre-registration: 12×4 informativeness matrix,
+  per-task winners, signature cards, H1–H4, frozen scoring rules (§11).
+- Name decided: **StrataTrace** (§12).
 
-Prep done before the VM session:
-- ~~Audit helper script~~ — done: `audit_alignment.py` (see decisions §9),
-  verified on a synthetic bundle; kernel section verifies on first VM run.
-- ~~VM runbook~~ — `vm-todo.md` serves as the runbook (includes Tier-1 image
-  builds and the audit command).
+## 1. VM session (the only engineering blocker) — runbook: vm-todo.md
+Phase-0 gate: bring up the extended stack (now 7 compose files incl.
+toxiproxy), build the two Tier-1 images from the fork branches, run a 30 s
+sample, and run `audit_alignment.py` on it. Six OK verdict lines ⇒ Phase 0
+complete ⇒ Phase 2 collection can start (recipes + ground truth +
+pre-registration are already in place).
+Also on the VM (Phase 1 wrap-up): fault-intensity calibration (critical for
+noisy_neighbor's "KPIs barely move" property), per-container netem recipe
+(F12), `verify_injection.py` automation over the recipes' ground-truth
+records, overhead-matrix runs for RQ4.
 
-## 2. Parallel items (no VM needed)
-- Vendor `models/` + `dataset/Dictionary.py` from the `adaptive_tracer`
-  checkout into this repo (T1 baselines cannot run without them).
-- Mentor conversation: venue split for the study paper (MSR technical track
-  vs FSE/EMSE) + sanity pass on msr-research.md. Blocking the paper split,
-  nothing else.
-- Dataset name collision check (FourSight / KODA / ModSense) before the name
-  leaks into file paths and docs.
-
-## 3. After the gate — Phase 1 opens
-- Fault catalog recipes 5–12 (Toxiproxy slow-DB, docker-update caps,
-  per-container netem, dependency pause, error storm, queue backlog,
-  noisy neighbor).
-- `ground_truth.json` + `verify_injection.py` + subtle-intensity calibration.
-- Pre-registered fault→modality prediction table (`fault_catalog.md`).
-- Tier-1 instrumentation (front-end Node auto-instr, catalogue Go otelhttp)
-  can start any time — needed before the full campaign, not before the audit.
+## 2. Mentor conversation (the only decision blocker)
+- Venue split: study paper to MSR 2027 technical track vs FSE/EMSE
+  (data paper target is fixed: MSR Data & Tool Showcase, abstract Nov 5).
+- Sanity pass on msr-research.md + fault_catalog.md pre-registrations
+  (predictions freeze at Phase-2 campaign start — mentor review before the
+  freeze is the moment to amend cheaply).
+- FYI: name decided (StrataTrace) — flag for approval.
 
 ## Pacing check
-Today Jul 27; MSR abstract Nov 5. Plan budgets Phase 0 through week 2 —
-VM audit this week keeps us on schedule.
+Jul 27 today; MSR abstract Nov 5 (14.5 weeks). Plan budgets Phase 0 through
+week 2. Local prep finished ahead of schedule; the VM session is the
+critical path — doing it this week keeps everything green.
