@@ -410,6 +410,24 @@ latency of the Spring Boot span exporter.
 
 ## Reproduction
 
+### Getting the code
+
+The Sock Shop deployment repo is vendored as a **git submodule**
+(`microservices-demo/`, a pinned fork of the now-frozen upstream), so a plain
+clone leaves that directory empty. Clone recursively:
+
+```bash
+git clone --recursive https://github.com/17YuvrajSehgal/microservice-trace-dataset.git
+
+# Or, if you already cloned without --recursive:
+git submodule update --init
+```
+
+The submodule pins the exact deployment commit the dataset was collected
+against; `git submodule status` shows the SHA to cite.
+
+### Collection toolchain
+
 The full collection toolchain ships in this repository:
 
 - `microservice-lttng-data-collection-scripts/collect_trace.sh` — starts both
