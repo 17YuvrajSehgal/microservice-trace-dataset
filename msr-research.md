@@ -255,6 +255,10 @@ Each fault recipe declares its **expected winning modality** a priori
 (pre-registered in the recipe file): A→kernel/metrics disambiguate; B→traces
 localize, kernel explains; C→logs/traces win; 12→kernel-only. The study then
 *tests* these predictions — that is the paper's narrative spine.
+**The pre-registration lives in `fault_catalog.md`** (per-fault expected
+signatures per modality, per-task winner predictions with explicit rival
+hypotheses, frozen scoring rules, and the aggregate hypotheses H1–H4);
+recipes embed the same predictions in their ground-truth output.
 
 **Fault-target ↔ coverage alignment rule (see §3/M3 tiers):** every
 service-targeted recipe declares whether its target is trace-covered (Tier 1/2)

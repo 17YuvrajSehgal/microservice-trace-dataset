@@ -187,6 +187,29 @@ design. Key decisions & findings:
 - Windows testing gotcha: PowerShell splits unquoted `-host=0.0.0.0` at the
   dots (toxiproxy bound host "0"); quote such args. Compose YAML unaffected.
 
+### 11. Fault→modality predictions formally pre-registered (fault_catalog.md)
+Repo-root `fault_catalog.md` commits the predictions BEFORE any ablation
+experiment: per-fault informativeness matrix (12 faults × 4 modalities),
+per-task winners (T1 detect / T2 RCA / T3 explain), per-fault expected
+signature cards (which double as T3 grading checklists), and four frozen
+aggregate hypotheses (H1: kernel = only no-blind-spot modality; H2:
+blind-spot faults show the largest kernel-ablation drops; H3: metrics win
+aggressive-intensity detection but the edge shrinks at subtle; H4: no
+single modality tops T2 across all families). Key methodological choices:
+- **Scoring rules frozen with the predictions** (top-1-or-CI-overlap for
+  winners; ≥80%-of-runs mechanical checks for signatures) so
+  confirmation/refutation is decided by rule, not argument.
+- **Rival hypotheses registered honestly** where cAdvisor counters
+  (cfs_throttled, memory_failcnt) genuinely compete with kernel/logs
+  evidence (F7/F8) — a rival win is reported as a refutation, and is
+  itself an interesting cost-benefit finding.
+- **Amendment-log discipline**: predictions freeze at Phase-2 campaign
+  start; changes only as dated amendments, never edits.
+Refined vs the earlier informal table: host-resource faults (F1–F4) now
+predict metrics for T1 and kernel only for T2/T3 cause-attribution —
+node-exporter series are resource-explicit, so claiming kernel wins
+detection there would have been a strawman.
+
 ## Open items (carried from 25-07-2026)
 - **Phase-0 gate:** deploy the extended stack on the GCP VM, run one 30 s
   sample, hand-audit ONE request across all four modalities (load CSV → OTLP
