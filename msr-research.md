@@ -3,15 +3,13 @@
 **A kernel-trace-augmented, four-modality incident dataset + a per-task modality
 ablation study for operations reasoning.**
 
-**Working name candidates** (collision check done 27-07-2026, see that day's
-decisions §12): original candidates all compromised — `FourSight` (GitHub
-crowded incl. an AWS *monitoring* tool `4dn-dcic/foursight`; Foresight
-homophone soup), `KODA` (2024 ML paper arXiv:2409.19518), `ModSense`
-(repo squatters + mis-signals IoT sensing). **Vetted clean:** `StrataTrace`
-(recommended — number-free layered-telemetry metaphor, survives the
-5th-modality agentic extension; zero GitHub/paper hits) and `TetraObs`
-(crisp four-modality branding, zero hits, but number-bound: awkward when
-paper 2 adds agent trajectories). Final pick: with mentor.
+**Name: `StrataTrace`** (decided 27-07-2026 after a collision check — zero
+GitHub/paper hits; number-free layered-telemetry metaphor, kernel traces as
+the deepest stratum; survives the 5th-modality agentic extension. Rejected:
+`FourSight` (GitHub crowded incl. the `4dn-dcic/foursight` AWS monitoring
+tool), `KODA` (2024 ML paper arXiv:2409.19518), `ModSense` (squatters +
+IoT mis-signal), `TetraObs` (clean but number-bound). Full record: progress
+notes 27-07-2026 §12.)
 
 **Primary target:** MSR 2027 — *two* coupled submissions:
 1. **Data & Tool Showcase** (4 pages + 1 refs): the dataset + loader + collection rig.
@@ -385,7 +383,7 @@ for metrics) are shipped with the harness.
 
 ## 8. Release engineering
 
-- **Loader SDK** (`pip install <name>`): one call → time-aligned per-run
+- **Loader SDK** (`pip install stratatrace`): one call → time-aligned per-run
   dataframes per modality + ground truth; handles CTF (bt2) for L0 and Parquet
   for L1–L3.
 - **Tiers:** `Lite` (≤ ~150 GB, Zenodo DOI): all runs at L1–L3 kernel + full
@@ -520,4 +518,6 @@ per-service.
 4. Literature deep-pass before writing: RCAEval (FSE'26), LEMMA-RCA, OpenRCA
    (ICLR'25), LO2, Nezha, AIOpsLab, ITBench, AgentSight, TRAIL, Who&When —
    the §2 table must survive adversarial review.
-5. Name collision check, then rename repo artifacts.
+5. ~~Name collision check~~ — done; name is **StrataTrace**. Rename repo
+   artifacts (dataset tiers → `StrataTrace-Lite`/`StrataTrace-Full`, loader
+   SDK → `stratatrace`) as they get built; the collection repo name stays.

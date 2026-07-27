@@ -225,8 +225,10 @@ Checked papers (web) + GitHub repos (gh search) for all candidates:
   number-free; "strata" = telemetry layers matches the plan's cross-layer
   framing (kernel = deepest stratum) and scales to modality additions.
   (`StrataObs` also free as fallback.)
-Decision: user + mentor pick between StrataTrace / TetraObs; msr-research.md
-header updated with the vetted list.
+**Decision (same day): `StrataTrace`.** msr-research.md updated (header,
+loader SDK = `pip install stratatrace`, tier names `StrataTrace-Lite/Full`).
+The collection repo keeps its name; dataset artifacts adopt StrataTrace as
+they get built.
 
 ## Open items (carried from 25-07-2026)
 - **Phase-0 gate:** deploy the extended stack on the GCP VM, run one 30 s
