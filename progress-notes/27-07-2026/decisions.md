@@ -48,6 +48,16 @@ Phase-0 rig commit and the submodule pin to the
 `17YuvrajSehgal/microservices-demo` fork (9dff06f). Service forks
 (`front-end`, `catalogue`) exist on GitHub, unmodified so far.
 
+### 5. WSL2 rehearsal considered and declined — VM-only for LTTng
+The local WSL2 kernel (6.6.114.1-microsoft-standard) does support modules/
+tracepoints, so an lttng-modules build was feasible in principle, but the
+setup cost (kernel-source build for headers + native docker-ce to avoid the
+Docker Desktop pid-namespace skew on the kernel↔container join) is not worth
+it. **Standing split:** local PC = pipeline mechanics, image builds,
+userspace fault recipes (Toxiproxy/docker-update/pause), analysis code;
+VM = everything touching LTTng, tc/netem, performance numbers, or published
+data. VM work is tracked in `vm-todo.md` (this folder).
+
 ## Open items (carried from 25-07-2026)
 - **Phase-0 gate:** deploy the extended stack on the GCP VM, run one 30 s
   sample, hand-audit ONE request across all four modalities (load CSV → OTLP
