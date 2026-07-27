@@ -1,0 +1,30 @@
+# Opt-in compose override: OTel-instrumented catalogue (Tier-1 coverage).
+#
+# Replaces the stock weaveworksdemos/catalogue:0.3.5 image with the
+# instrumented build from the 17YuvrajSehgal/catalogue fork, branch
+# `otel-instrumentation` (Go modules + Go 1.23 + otelhttp server spans named
+# by route template; tracing activated by OTEL_EXPORTER_OTLP_ENDPOINT below,
+# so the image runs untraced when the env var is absent; /metrics scrapes are
+# never traced).
+#
+# Build the image on the deployment host first:
+#   git clone -b otel-instrumentation https://github.com/17YuvrajSehgal/catalogue.git
+#   docker build -f catalogue/docker/catalogue/Dockerfile -t catalogue-otel:phase0 catalogue/
+# (GHCR publishing with digest pinning replaces this local build in Phase 1.)
+#
+# Then add this file AFTER docker-compose.otel.yml:
+#   COMPOSE_COMPATIBILITY=true docker compose \
+#     -f docker-compose.yml \
+#     -f docker-compose.monitoring.yml \
+#     -f "$TRACE_SCRIPTS_DIR/docker-compose.metrics.yml" \
+#     -f "$TRACE_SCRIPTS_DIR/docker-compose.otel.yml" \
+#     -f "$TRACE_SCRIPTS_DIR/docker-compose.frontend-otel.yml" \
+#     -f "$TRACE_SCRIPTS_DIR/docker-compose.catalogue-otel.yml" \
+#     up -d
+
+services:
+  catalogue:
+    image: catalogue-otel:phase0
+    environment:
+      - OTEL_SERVICE_NAME=catalogue
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317

@@ -19,10 +19,13 @@ happens on the VM only. This list is what the next VM session(s) must cover.
 4. `chronyc tracking` available for the clock anchors (GCP images ship
    chrony; snapshot falls back to timedatectl, but confirm which fires).
 5. Run one 30 s sample (`sample_normal.sh` pattern).
-   Optional in the same session: build the instrumented front-end and add
-   its overlay (root spans for every journey):
+   Optional in the same session: build the two instrumented Tier-1 services
+   and add their overlays (front-end = root spans for every journey;
+   catalogue = the most-hit service becomes trace-visible):
    `git clone -b otel-instrumentation https://github.com/17YuvrajSehgal/front-end.git && docker build -t frontend-otel:phase0 front-end/`
-   then append `-f "$TRACE_SCRIPTS_DIR/docker-compose.frontend-otel.yml"`.
+   `git clone -b otel-instrumentation https://github.com/17YuvrajSehgal/catalogue.git && docker build -f catalogue/docker/catalogue/Dockerfile -t catalogue-otel:phase0 catalogue/`
+   then append `-f "$TRACE_SCRIPTS_DIR/docker-compose.frontend-otel.yml"`
+   and `-f "$TRACE_SCRIPTS_DIR/docker-compose.catalogue-otel.yml"`.
 6. THE AUDIT: one request traced across all four modalities — load CSV row →
    OTLP span tree → log lines → metrics window → kernel syscalls via
    pid↔container join. Passing = Phase 0 complete; record the audit in that

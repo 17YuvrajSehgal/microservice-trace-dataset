@@ -87,6 +87,38 @@ endpoint. Use curl for local HTTP checks.
 **VM follow-up added to vm-todo.md**: build `frontend-otel:phase0` from the
 fork branch on the VM before adding the overlay.
 
+### 7. Tier-1 catalogue (Go) instrumentation done and locally verified
+Fork branch `17YuvrajSehgal/catalogue@otel-instrumentation` (0d18219);
+opt-in overlay `docker-compose.catalogue-otel.yml` (6-file merge verified).
+Decisions with rationale:
+- **gvt/GOPATH → Go modules (Go 1.23)**: mandatory for OTel Go. Notable:
+  upstream's build fetched deps *unpinned at image-build time* (only
+  vendor/manifest was tracked) — the old image was never reproducible.
+  go.sum now pins everything. go-kit pinned v0.4.0; two API drifts vs the
+  2016 SHA the code targeted had to be adapted (NewServer ctx arg ×5,
+  log.NewContext→log.With) — everything else untouched.
+- **Dormant Zipkin wiring removed** (never active: ZIPKIN env unset in our
+  deployment) instead of migrating it — its ancient thrift dependency chain
+  was the biggest modules-migration risk. go-kit layers get a NoopTracer;
+  real spans come from an otelhttp wrapper with route-template span names
+  ("GET /catalogue/{id}").
+- **weaveworks/common middleware replaced by ~40-line local equivalent** —
+  metric name + label set byte-identical (verified in /metrics output:
+  http_request_duration_seconds{method,path,status_code,isWS}) so the
+  metrics modality's scrape is untouched. Avoids dragging in the whole
+  weaveworks/common dependency tree.
+- **/metrics requests excluded from tracing** (otelhttp.WithFilter): at 5s
+  scrape interval they would add ~720 self-observation spans/hour/service —
+  cross-modality contamination (metrics collection polluting traces).
+  Verified: /metrics=200 with no span. Consider same exclusion semantics
+  for other services when instrumenting (Java agent has equivalent config).
+- Verified end-to-end with real catalogue-db: /catalogue returns DB rows,
+  kind=SERVER spans with route templates exported OTLP/gRPC, histogram
+  continuity, /health span present. (Note: /health *blocks* when the DB is
+  absent — upstream behavior, its handler queries the DB; not a regression.)
+- Upstream `go vet` finding fixed in passing: unbuffered signal.Notify
+  channel. (Upstream test-file vet warning left as-is.)
+
 ## Open items (carried from 25-07-2026)
 - **Phase-0 gate:** deploy the extended stack on the GCP VM, run one 30 s
   sample, hand-audit ONE request across all four modalities (load CSV → OTLP
