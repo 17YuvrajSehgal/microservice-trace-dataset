@@ -35,7 +35,9 @@ fault→modality predictions are `fault_catalog.md`.
   collect+load+metrics+audit; expect six OK). Gotchas + fixes are in
   `microservice-lttng-data-collection-scripts/TROUBLESHOOTING.md`.
 - The VM is currently STOPPED (disk persists). Restart:
-  `gcloud compute instances start stratatrace-collector --zone=us-east1-b`.
+  `gcloud compute instances start stratatrace-collector --zone=us-east1-d`.
+  (Relocated b→d on 2026-07-28 when us-east1-b ran out of n2 capacity;
+  recreated from a boot-disk snapshot, same name/machine type, data intact.)
 - This session drove the VM directly via `gcloud compute ssh --command`; a
   separate on-VM Claude session is optional, not required.
 - Tier-1 instrumented services live on fork branches

@@ -26,7 +26,7 @@ fits the disk** (scale-and-kernel-profile.md). No GCS streaming needed.
 
 **To launch the campaign on the VM (INJECTION_S>=120 is the default):**
 ```
-gcloud compute instances start stratatrace-collector --zone=us-east1-b
+gcloud compute instances start stratatrace-collector --zone=us-east1-d
 # ensure stack up (prometheus/cadvisor started); then:
 nohup microservice-lttng-data-collection-scripts/run_campaign.sh > ~/campaign.out 2>&1 &
 ```
@@ -46,8 +46,8 @@ couple runs, confirm bundles + manifest, then let the full matrix run (~1-2 days
 
 ## Resume on the VM (fast path)
 ```
-gcloud compute instances start stratatrace-collector --zone=us-east1-b
-gcloud compute ssh stratatrace-collector --zone=us-east1-b
+gcloud compute instances start stratatrace-collector --zone=us-east1-d
+gcloud compute ssh stratatrace-collector --zone=us-east1-d
 cd microservice-trace-dataset && git pull
 # if stack down after stop/start: sudo docker start prometheus cadvisor
 #   (or re-run the last stage of vm_bootstrap.sh)

@@ -1,13 +1,13 @@
 # VM-only TODO (running list — things that need the GCP Linux VM)
 
 **The VM (created 27-07-2026, record for the datasheet):**
-`stratatrace-collector`, project `yuvraj-msc`, zone **`us-east1-b`**
+`stratatrace-collector`, project `yuvraj-msc`, zone **`us-east1-d`** (relocated from us-east1-b 28-07 for capacity)
 (us-central1-a/b/c/f were capacity-exhausted), `n2-custom-12-40960`
 (12 vCPU / 40 GB — matches the prior collection's shape for LTTng
 channel-count and overhead-number comparability), 200 GB pd-ssd,
 `ubuntu-2404-lts-amd64`. Keep this exact configuration fixed for the whole
 campaign; all RQ4 overhead numbers come from it. Stop when idle:
-`gcloud compute instances stop stratatrace-collector --zone=us-east1-b`.
+`gcloud compute instances stop stratatrace-collector --zone=us-east1-d`.
 
 Decision context: WSL2 rehearsal was considered and declined (would need an
 lttng-modules build against the Microsoft kernel plus native docker-ce for
