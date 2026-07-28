@@ -25,8 +25,11 @@ Implemented in `collect_trace.sh` as `KERNEL_EVENTS=curated` (default):
   tcp_* udp_* irq_* softirq_*` (best-effort per kernel);
 - **EXCLUDED**: kmem_*/mm_*/page-fault/reclaim (memory), and timer_* (very
   high volume, not requested).
-`KERNEL_EVENTS=all` retained for ~3 full-capture showcase runs (preserves the
-"full kernel capture" claim).
+The curated profile is IDENTICAL for every run (no full-capture "showcase"
+runs — dropped per user 28-07). `KERNEL_EVENTS=all` remains only as an
+optional escape hatch for a one-off experiment (e.g. re-adding memory events
+per the advisor's "see if more is required later"); the campaign never uses
+it.
 
 **Why:** L1/L2 analysis (wait attribution) reads syscalls + sched, so the
 curated set covers the analysis; memory faults' kernel signal is intentionally

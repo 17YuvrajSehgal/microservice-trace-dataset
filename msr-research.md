@@ -295,14 +295,13 @@ runs; more fault diversity beats more repeats. Target ≈ **40 runs**:
 This answers every RQ (informativeness, task→modality, marginal value,
 cost–benefit, intensity/workload sensitivity) with variance where it matters,
 at a scale comparable to peer kernel-free datasets (OpenRCA 68 GB, our prior
-release 148 GB). **Kernel = the curated event profile** (§collect_trace: all
-syscalls + sched/block/net/irq tracepoints, memory events EXCLUDED per
-advisor guidance) → ~2–3 GB/run instead of ~8 GB, so ~40 runs ≈ **~100 GB
-raw**, fitting the existing 200 GB VM disk with no object-store streaming
-needed. `KERNEL_EVENTS=all` is kept for ~3 full-capture showcase runs to
-preserve the "full kernel capture" claim. Campaign wall-clock ≈ **1–2 days**.
-Run length 180–300 s (60 s baseline, ≥120 s injection — required by
-verify_injection's rate-window settling — 60 s recovery).
+release 148 GB). **Kernel = the curated event profile, identical for every
+run** (§collect_trace: all syscalls + sched/block/net/irq tracepoints, memory
+events EXCLUDED per advisor guidance) → ~2–3 GB/run instead of ~8 GB, so ~40
+runs ≈ **~100 GB raw**, fitting the existing 200 GB VM disk with no
+object-store streaming needed. Campaign wall-clock ≈ **1–2 days**. Run length
+180–300 s (60 s baseline, ≥120 s injection — required by verify_injection's
+rate-window settling — 60 s recovery).
 
 ---
 
@@ -408,10 +407,9 @@ for metrics) are shipped with the harness.
   for L1–L3.
 - **Tiers:** `Lite` (~20–30 GB, Zenodo DOI): all ~40 runs at L1–L3 kernel +
   full M1–M3 + ground truth — sufficient to reproduce every headline result.
-  `Full` (~100 GB: + L0 raw curated CTF for all runs, + the ~3 `KERNEL_EVENTS=all`
-  showcase runs): Zenodo/HF Datasets with manifest + checksums — small enough
-  to ship whole, no institutional object store needed. (Precedent: our prior
-  148 GB release; OpenRCA ships 68 GB.)
+  `Full` (~100 GB: + L0 raw curated CTF for all runs): Zenodo/HF Datasets with
+  manifest + checksums — small enough to ship whole, no institutional object
+  store needed. (Precedent: our prior 148 GB release; OpenRCA ships 68 GB.)
 - **Reproducibility:** the deployment repo is a **git-submodule pin of our
   fork** (`17YuvrajSehgal/microservices-demo`, done 25-07-2026 — upstream is
   deprecated/frozen; the fork insures against upstream/image disappearance and

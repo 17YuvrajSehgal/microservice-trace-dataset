@@ -152,16 +152,17 @@ sudo lttng enable-channel -k channel0 \
     --subbuf-size="${KERNEL_SUBBUF_SIZE:-8M}" \
     --num-subbuf="${KERNEL_NUM_SUBBUF:-32}"
 
-# Kernel event selection. Default = a CURATED profile (advisor-recommended):
-# all syscalls (covers filesystem read/write/open, process fork/exec/exit, and
-# network socket/send/recv at the syscall boundary) plus the sched, block-I/O,
-# network-device, and IRQ tracepoint families. MEMORY events (kmem_*, mm_*,
-# page-fault/reclaim) are deliberately EXCLUDED - they are the highest-volume,
-# most expensive class and are not needed by the L1/L2 analysis (which reads
-# syscalls + sched for wait attribution). This keeps kernel output ~2-3 GB/run
-# vs ~8 GB for --all, which is what makes the ~40-run campaign fit on disk.
-# Memory instrumentation can be re-added later per-fault if the analysis needs
-# it. Set KERNEL_EVENTS=all for the full-capture showcase runs.
+# Kernel event selection: a CURATED profile (advisor-recommended) is used for
+# EVERY run - all syscalls (covers filesystem read/write/open, process
+# fork/exec/exit, and network socket/send/recv at the syscall boundary) plus
+# the sched, block-I/O, network-device, and IRQ tracepoint families. MEMORY
+# events (kmem_*, mm_*, page-fault/reclaim) are deliberately EXCLUDED - they
+# are the highest-volume, most expensive class and are not needed by the L1/L2
+# analysis (which reads syscalls + sched for wait attribution). This keeps
+# kernel output ~2-3 GB/run vs ~8 GB for --all, which is what makes the ~40-run
+# campaign fit on disk. KERNEL_EVENTS=all is an optional escape hatch (e.g. to
+# re-add memory instrumentation for a one-off experiment); the campaign does
+# NOT use it - the profile is the same for every run.
 if [ "${KERNEL_EVENTS:-curated}" = "all" ]; then
     sudo lttng enable-event -k --all '*' --channel channel0
 else
