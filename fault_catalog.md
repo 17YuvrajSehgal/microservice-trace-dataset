@@ -237,14 +237,28 @@ thresholds calibrate against real KPIs on the VM in Phase 1.
 
 ## 6. Verification status
 
-| Fault | Recipe status | Injection verified | Intensity calibrated |
-|---|---|---|---|
-| F1–F4 | existing scripts, used in 148 GB release | Grafana PDFs (prior release) | aggressive only; subtle = VM task |
-| F5, F6 | implemented | locally, end-to-end vs instrumented catalogue (27-07-2026) | VM task |
-| F7, F8 | implemented | mechanics locally vs cgroup files (27-07-2026) | VM task |
-| F9, F10 | implemented | pause mechanics locally (27-07-2026) | n/a (binary) |
-| F11 | implemented | cap mechanics locally (27-07-2026) | **critical VM task** (KPIs-barely-move property) |
-| F12 | planned | — | — |
+**Phase-1 calibration COMPLETE on the VM (28-07-2026)** — see
+`progress-notes/28-07-2026/calibration-summary.md` for the full baseline→
+injection deltas. Full pipeline (run_scenario → verify_injection → audit)
+validated end-to-end on a real slow_db run (verify CONFIRMED; all 6 audit
+modalities aligned).
+
+| Fault | Recipe status | VM calibration result |
+|---|---|---|
+| F1–F4 (host stressors) | existing | targets set; empirical VM re-check pending in campaign |
+| F5 slow_db | implemented | CONFIRMED: catalogue p95 4.8ms→2.2s (465×) |
+| F6 error_storm | implemented | CONFIRMED: catalogue 5xx 0→139/s |
+| F7 svc_cpu_cap | implemented | CONFIRMED: carts p95 20ms→7s (throttle-metric pivot to latency) |
+| F8 svc_mem_cap | implemented | CONFIRMED: mem limit 42GB→cap (usage-ratio unusable; limit-drop used) |
+| F9 dependency_outage | implemented | METRICS-WEAK: payment CPU −58%; hangs-not-errors (kernel finding) |
+| F10 queue_backlog | implemented | METRICS-WEAK: queue-master CPU −77% (silent failure) |
+| F11 noisy_neighbor | implemented | CONFIRMED + premise validated: neighbor 0.75 core, service KPIs flat |
+| F12 per-container netem | planned | — |
+
+**Calibration corrections** (verification_targets.json): metric-name split
+by runtime (http_ for Go/Node, plain for Java); no cfs-throttle metric on this
+cadvisor build; svc_mem_cap uses limit-drop; verify_injection settle_s skip for
+rate-window ramp-up. Campaign requirement: **INJECTION_S ≥ 120s**.
 
 ## 7. Amendment log
 
