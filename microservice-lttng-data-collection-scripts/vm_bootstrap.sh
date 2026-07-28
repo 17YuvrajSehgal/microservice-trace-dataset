@@ -27,6 +27,18 @@ if ! command -v docker >/dev/null; then
 fi
 sudo usermod -aG docker "$(whoami)"
 
+# Docker 29 defaults to the containerd-snapshotter ("overlayfs") image store,
+# which cAdvisor 0.49 cannot read - it fails to resolve container->service
+# names, leaving the metrics modality with only unlabeled cgroup ids. Revert
+# to the classic overlay2 store (cAdvisor-compatible, and the standard,
+# reproducible choice). Requires a docker restart; images are rebuilt below.
+if ! grep -q "containerd-snapshotter" /etc/docker/daemon.json 2>/dev/null; then
+    echo '{ "features": { "containerd-snapshotter": false } }' | sudo tee /etc/docker/daemon.json >/dev/null
+    sudo systemctl restart docker
+    sleep 3
+fi
+echo "docker storage driver: $(sudo docker info -f '{{.Driver}}')"
+
 echo "=== [3/5] verify LTTng kernel modules build against this kernel ==="
 sudo modprobe lttng-tracer && echo "lttng-tracer OK" || {
     echo "ERROR: lttng-modules failed to load - check dkms status"; exit 1; }
