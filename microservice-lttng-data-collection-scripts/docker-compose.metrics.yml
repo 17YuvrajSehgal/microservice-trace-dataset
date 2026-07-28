@@ -25,6 +25,10 @@
 
 services:
   prometheus:
+    # Upstream's monitoring compose gives prometheus NO restart policy, so it
+    # stays DOWN after a host reboot - which silently empties the metrics
+    # modality for every run until someone notices (cost us a full gate run).
+    restart: unless-stopped
     volumes:
       - ${TRACE_SCRIPTS_DIR:?set TRACE_SCRIPTS_DIR to the microservice-lttng-data-collection-scripts dir}/prometheus-cadvisor.yml:/etc/prometheus/prometheus.yml
 

@@ -22,13 +22,22 @@ fault→modality predictions are `fault_catalog.md`.
    campaign starts they may only change via its §7 Amendment log — never
    edit the predictions in place.
 
-## Current state (as of 2026-07-27, all local prep done on Windows)
+## Current state (as of 2026-07-28)
 
-- **Phase 0 rig complete and locally verified**; the one remaining Phase-0
-  step is the **VM gate**: runbook in
-  `progress-notes/27-07-2026/vm-todo.md` — bring up the extended stack,
-  run a 30 s sample, run `audit_alignment.py`, all six verdict lines OK ⇒
-  Phase 0 passed ⇒ Phase-2 collection unblocked.
+- **PHASE 0 GATE PASSED** on the GCP VM `stratatrace-collector` (us-east1-b):
+  all six modalities time-aligned on a real run (trace/logs/load/metrics/
+  kernel 2.3M events/clocks 0.001 ms drift). Evidence + full debug log in
+  `progress-notes/28-07-2026/`. Phase-2 collection is unblocked.
+- **Fresh-VM fast path** (do NOT rediscover this session's bugs): after
+  `git clone --recursive`, run `microservice-lttng-data-collection-scripts/
+  vm_bootstrap.sh` (installs LTTng/Docker, builds the 2 images, brings up the
+  7-file stack, health-checks) then `run_gate.sh gate01` (one-command
+  collect+load+metrics+audit; expect six OK). Gotchas + fixes are in
+  `microservice-lttng-data-collection-scripts/TROUBLESHOOTING.md`.
+- The VM is currently STOPPED (disk persists). Restart:
+  `gcloud compute instances start stratatrace-collector --zone=us-east1-b`.
+- This session drove the VM directly via `gcloud compute ssh --command`; a
+  separate on-VM Claude session is optional, not required.
 - Tier-1 instrumented services live on fork branches
   (`17YuvrajSehgal/front-end@otel-instrumentation`,
   `17YuvrajSehgal/catalogue@otel-instrumentation`); built locally, verified

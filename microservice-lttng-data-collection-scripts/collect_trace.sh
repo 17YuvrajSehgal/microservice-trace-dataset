@@ -206,6 +206,11 @@ if [[ -f "$OTLP_SRC" ]]; then
         echo "drain_seconds=$OTLP_DRAIN_S"
     } > "$OTLP_DIR/slice_info.txt"
     echo "[$TYPE/$RUN] otlp: sliced $((OTLP_END_OFFSET - OTLP_START_OFFSET)) bytes ($(wc -l < "$OTLP_DIR/spans.jsonl") lines)"
+    # Rotate the global collector span file so it cannot grow unbounded across
+    # a campaign. The collector appends with O_APPEND, so truncating to 0 is
+    # safe (its next write lands at offset 0, and the next run captures a fresh
+    # start offset). Root-owned (collector runs as uid 0), hence sudo.
+    sudo truncate -s 0 "$OTLP_SRC" 2>/dev/null || true
 else
     echo "[$TYPE/$RUN] otlp: $OTLP_SRC not found (collector not deployed?) - skipping"
 fi
