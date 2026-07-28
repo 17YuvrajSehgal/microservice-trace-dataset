@@ -246,7 +246,12 @@ def audit_kernel(kernel_dir, t0, t1, tid_map, max_lines):
     # v1 flag; passing it to bt2 aborts the run (silent 0 events).
     fmt = "%Y-%m-%d %H:%M:%S.%f"
     cmd = [bt, kernel_dir, "--begin", t0.strftime(fmt), "--end", t1.strftime(fmt)]
-    ev_re = re.compile(r"\] \S+ (\S+): \{ cpu_id = \d+ \}, \{ pid = (\d+), tid = (\d+), procname = \"([^\"]*)\"")
+    # Anchor on the event name immediately before ": { cpu_id" rather than on
+    # position after "]": the babeltrace2 line is
+    #   [ts] (+delta) <hostname> <event>: { cpu_id = N }, { pid = .., tid = .., procname = ".." }
+    # and <hostname> (e.g. host.zone.project.internal) is a variable token that
+    # a position-based pattern silently fails to skip -> 0 matches.
+    ev_re = re.compile(r"(\w+): \{ cpu_id = \d+ \}, \{ pid = (\d+), tid = (\d+), procname = \"([^\"]*)\"")
     tid_to_container = {t: c for c, ts in (tid_map or {}).items() for t in ts}
     counts, samples, total = {}, [], 0
     try:
