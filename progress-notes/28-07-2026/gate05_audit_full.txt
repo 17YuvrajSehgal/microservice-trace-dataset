@@ -1,0 +1,135 @@
+===== GATE05 AUDIT =====
+==============================================================================
+AUDIT trace_id=80fcf9fcb3dcf45639fe440e917119a3
+window 2026-07-28T04:15:21.369000+00:00 .. 2026-07-28T04:15:28.577280+00:00  (pad 2.0s)
+==============================================================================
+
+--- 1. TRACE: 47 span(s), services: carts, front-end, orders, queue-master, shipping ---
+  [front-end] POST /orders  (SERVER, 04:15:23.369000 +1628.5ms)
+    [front-end] middleware - query  (INTERNAL, 04:15:23.369000 +0.1ms)
+    [front-end] middleware - expressInit  (INTERNAL, 04:15:23.369000 +0.0ms)
+    [front-end] middleware - <anonymous>  (INTERNAL, 04:15:23.369000 +0.0ms)
+    [front-end] middleware - mounted_app  (INTERNAL, 04:15:23.369000 +0.1ms)
+      [front-end] middleware - query  (INTERNAL, 04:15:23.369000 +0.0ms)
+      [front-end] middleware - expressInit  (INTERNAL, 04:15:23.369000 +0.0ms)
+      [front-end] middleware - middleware  (INTERNAL, 04:15:23.369000 +0.0ms)
+    [front-end] middleware - serveStatic  (INTERNAL, 04:15:23.369000 +0.0ms)
+    [front-end] middleware - session  (INTERNAL, 04:15:23.369000 +0.7ms)
+    [front-end] middleware - jsonParser  (INTERNAL, 04:15:23.370000 +0.1ms)
+    [front-end] middleware - cookieParser  (INTERNAL, 04:15:23.370000 +0.1ms)
+    [front-end] middleware - logger  (INTERNAL, 04:15:23.370000 +0.2ms)
+    [front-end] middleware - mounted_app  (INTERNAL, 04:15:23.371000 +0.1ms)
+      [front-end] middleware - query  (INTERNAL, 04:15:23.371000 +0.0ms)
+      [front-end] middleware - expressInit  (INTERNAL, 04:15:23.371000 +0.0ms)
+    [front-end] middleware - mounted_app  (INTERNAL, 04:15:23.371000 +0.1ms)
+      [front-end] middleware - query  (INTERNAL, 04:15:23.371000 +0.0ms)
+      [front-end] middleware - expressInit  (INTERNAL, 04:15:23.371000 +0.0ms)
+    [front-end] middleware - mounted_app  (INTERNAL, 04:15:23.371000 +1626.5ms)
+      [front-end] middleware - query  (INTERNAL, 04:15:23.371000 +0.0ms)
+      [front-end] middleware - expressInit  (INTERNAL, 04:15:23.371000 +0.0ms)
+      [front-end] request handler - /orders  (INTERNAL, 04:15:23.371000 +1626.4ms)
+        [front-end] GET  (CLIENT, 04:15:23.373000 +2.4ms)
+        [front-end] GET  (CLIENT, 04:15:23.376000 +2.3ms)
+        [front-end] GET  (CLIENT, 04:15:23.377000 +5.3ms)
+        [front-end] POST  (CLIENT, 04:15:23.389000 +1603.3ms)
+          [front-end] dns.lookup  (CLIENT, 04:15:23.389000 +1.4ms)
+          [front-end] tcp.connect  (INTERNAL, 04:15:23.389000 +15.7ms)
+          [orders] POST /orders  (SERVER, 04:15:23.407000 +1578.6ms)
+            [orders] GET  (CLIENT, 04:15:23.679494 +33.8ms)
+            [orders] GET  (CLIENT, 04:15:23.680254 +34.4ms)
+            [orders] GET  (CLIENT, 04:15:23.680340 +32.7ms)
+              [carts] GET /carts/{customerId:.*}/items  (SERVER, 04:15:23.702000 +5.6ms)
+                [carts] CartRepository.findByCustomerId  (INTERNAL, 04:15:23.703448 +2.2ms)
+                  [carts] find data.cart  (CLIENT, 04:15:23.703956 +0.5ms)
+                  [carts] find data.item  (CLIENT, 04:15:23.704948 +0.3ms)
+            [orders] GET  (CLIENT, 04:15:23.680402 +35.4ms)
+            [orders] POST  (CLIENT, 04:15:23.768038 +9.0ms)
+            [orders] POST  (CLIENT, 04:15:23.817013 +969.4ms)
+              [shipping] POST /shipping  (SERVER, 04:15:23.987000 +834.6ms)
+                [shipping] <default> publish  (PRODUCER, 04:15:24.749859 +7.4ms)
+                  [queue-master] shipping-task process  (CONSUMER, 04:15:26.568000 +2.5ms)
+                    [queue-master] POST  (CLIENT, 04:15:26.574759 +2.5ms)
+                  [queue-master] shipping-task process  (CONSUMER, 04:15:26.568000 +0.1ms)
+            [orders] CustomerOrderRepository.save  (INTERNAL, 04:15:24.789050 +95.1ms)
+              [orders] insert data.customerOrder  (CLIENT, 04:15:24.865042 +8.6ms)
+
+--- 2. LOGS (/home/17yuv/traces/normal/gate05/logs) ---
+    04:15:21.369654 [docker-compose_user_1] 2026-07-28T04:15:21.369654201Z ts=2026-07-28T04:15:21Z caller=middlewares.go:46 method=Register username=gplbcgsl email=jkoemd@vvlk.com took=559.837µs
+    04:15:21.369818 [docker-compose_front-end_1] 2026-07-28T04:15:21.369818621Z { id: '6a682cd9ee11cb0001d37a4e' }
+    04:15:21.369840 [docker-compose_front-end_1] 2026-07-28T04:15:21.369840487Z 6a682cd9ee11cb0001d37a4e
+    04:15:21.369844 [docker-compose_front-end_1] 2026-07-28T04:15:21.369844925Z Merging carts for customer id: 6a682cd9ee11cb0001d37a4e and session id: 8zgKocN9Sz6cxXZAN9wpWRFycaFC2RQW
+    04:15:21.372388 [docker-compose_front-end_1] 2026-07-28T04:15:21.372388308Z Posting Customer: {"username":"ubhcmbhh","password":"vvzpxvrrlnbw","email":"fabeup@fkhs.com","firstName":"Eusew","lastName":"Smwgiai"}
+    04:15:21.374646 [docker-compose_front-end_1] 2026-07-28T04:15:21.374646883Z { id: '6a682cd9ee11cb0001d37a4f' }
+    04:15:21.374668 [docker-compose_user_1] 2026-07-28T04:15:21.374668595Z ts=2026-07-28T04:15:21Z caller=middlewares.go:46 method=Register username=ubhcmbhh email=fabeup@fkhs.com took=556.025µs
+    04:15:21.374669 [docker-compose_front-end_1] 2026-07-28T04:15:21.374669941Z 6a682cd9ee11cb0001d37a4f
+    04:15:21.374767 [docker-compose_front-end_1] 2026-07-28T04:15:21.374767230Z Merging carts for customer id: 6a682cd9ee11cb0001d37a4f and session id: wI2dAHbdhbgzKxqkIMwgToDXgtAYFrIV
+    04:15:21.377282 [docker-compose_front-end_1] 2026-07-28T04:15:21.377282666Z Posting Customer: {"username":"ajqkhoil","password":"ekibaksqtbvm","email":"zntgio@hcof.com","firstName":"Fbezo","lastName":"Bymnvvo"}
+    04:15:21.379648 [docker-compose_front-end_1] 2026-07-28T04:15:21.379648063Z { id: '6a682cd9ee11cb0001d37a50' }
+    04:15:21.379792 [docker-compose_front-end_1] 2026-07-28T04:15:21.379792974Z 6a682cd9ee11cb0001d37a50
+    04:15:21.379822 [docker-compose_user_1] 2026-07-28T04:15:21.379822437Z ts=2026-07-28T04:15:21Z caller=middlewares.go:46 method=Register username=ajqkhoil email=zntgio@hcof.com took=472.308µs
+    04:15:21.379871 [docker-compose_front-end_1] 2026-07-28T04:15:21.379871668Z Merging carts for customer id: 6a682cd9ee11cb0001d37a50 and session id: JkMkaQU7AV4sZpciTds32ri-3Va-sVPz
+    04:15:21.386720 [docker-compose_front-end_1] 2026-07-28T04:15:21.386720350Z Posting Customer: {"username":"hsuzbpji","password":"zyejhypgipxl","email":"tuwiws@zzyf.com","firstName":"Wudcm","lastName":"Ycfnjfd"}
+    04:15:21.389258 [docker-compose_user_1] 2026-07-28T04:15:21.389258780Z ts=2026-07-28T04:15:21Z caller=middlewares.go:46 method=Register username=hsuzbpji email=tuwiws@zzyf.com took=539.701µs
+    04:15:21.390074 [docker-compose_front-end_1] 2026-07-28T04:15:21.390074191Z { id: '6a682cd9ee11cb0001d37a51' }
+    04:15:21.390105 [docker-compose_front-end_1] 2026-07-28T04:15:21.390105559Z 6a682cd9ee11cb0001d37a51
+    04:15:21.390123 [docker-compose_front-end_1] 2026-07-28T04:15:21.390123323Z Merging carts for customer id: 6a682cd9ee11cb0001d37a51 and session id: jB8xzfvPYpxKa-i6tnL5lNaiTMsmuSAT
+    04:15:21.393987 [docker-compose_front-end_1] 2026-07-28T04:15:21.393987739Z Posting Customer: {"username":"cmenuery","password":"veucnttwkolo","email":"wndrbt@tqgo.com","firstName":"Iqeoq","lastName":"Lapyxsh"}
+    04:15:21.397727 [docker-compose_user_1] 2026-07-28T04:15:21.397727630Z ts=2026-07-28T04:15:21Z caller=middlewares.go:46 method=Register username=cmenuery email=wndrbt@tqgo.com took=555.919µs
+    04:15:21.398394 [docker-compose_front-end_1] 2026-07-28T04:15:21.398394650Z { id: '6a682cd9ee11cb0001d37a52' }
+    04:15:21.399766 [docker-compose_front-end_1] 2026-07-28T04:15:21.399766163Z 6a682cd9ee11cb0001d37a52
+    04:15:21.399785 [docker-compose_front-end_1] 2026-07-28T04:15:21.399785182Z Merging carts for customer id: 6a682cd9ee11cb0001d37a52 and session id: gp95JrSWK724ylWae-ntJirO9bNYLHk2
+    04:15:21.400788 [docker-compose_front-end_1] 2026-07-28T04:15:21.400788576Z { id: '6a682cd9ee11cb0001d37a53' }
+    04:15:21.401163 [docker-compose_front-end_1] 2026-07-28T04:15:21.401163495Z 6a682cd9ee11cb0001d37a53
+    04:15:21.401180 [docker-compose_front-end_1] 2026-07-28T04:15:21.401180621Z Merging carts for customer id: 6a682cd9ee11cb0001d37a53 and session id: bCVFnWs5OiiacDh7h7gcv3ssMQnC7xnP
+    04:15:21.404259 [docker-compose_carts-db_1] 2026-07-28T04:15:21.404259203Z 2026-07-28T04:15:21.403+0000 I NETWORK  [thread1] connection accepted from 172.18.0.19:43168 #2 (2 connections now open)
+    04:15:21.404329 [docker-compose_carts-db_1] 2026-07-28T04:15:21.404329398Z 2026-07-28T04:15:21.404+0000 I NETWORK  [thread1] connection accepted from 172.18.0.19:43180 #3 (3 connections now open)
+    04:15:21.404822 [docker-compose_carts-db_1] 2026-07-28T04:15:21.404822471Z 2026-07-28T04:15:21.404+0000 I NETWORK  [thread1] connection accepted from 172.18.0.19:43190 #4 (4 connections now open)
+    04:15:21.405711 [docker-compose_carts-db_1] 2026-07-28T04:15:21.405711452Z 2026-07-28T04:15:21.405+0000 I NETWORK  [thread1] connection accepted from 172.18.0.19:43198 #5 (5 connections now open)
+    04:15:21.406091 [docker-compose_carts-db_1] 2026-07-28T04:15:21.406091507Z 2026-07-28T04:15:21.405+0000 I NETWORK  [thread1] connection accepted from 172.18.0.19:43204 #6 (6 connections now open)
+    04:15:21.406467 [docker-compose_carts-db_1] 2026-07-28T04:15:21.406467727Z 2026-07-28T04:15:21.406+0000 I NETWORK  [thread1] connection accepted from 172.18.0.19:43206 #7 (7 connections now open)
+    04:15:21.406634 [docker-compose_carts_1] 2026-07-28T04:15:21.406634329Z 2026-07-28T04:15:21.406Z INFO 'Opened connection [connectionId{localValue:32, serverValue:3}] to carts-db:27017' : 4ce9c7fbf2a479f5ec4876a4843aaf35 f01c2ea24de769ec [sco
+    04:15:21.406889 [docker-compose_carts_1] 2026-07-28T04:15:21.406889847Z 2026-07-28 04:15:21.406  INFO [carts,9bfb48e46676b8dc,d6b8b2a2b64dfe9a,false] 7 --- [-nio-80-exec-46] org.mongodb.driver.connection            : Opened connection [conne
+    04:15:21.407541 [docker-compose_carts_1] 2026-07-28T04:15:21.407541392Z 2026-07-28T04:15:21.407Z INFO 'Opened connection [connectionId{localValue:16, serverValue:2}] to carts-db:27017' : 64c78e0dba7452fe19e16b8e7bd7e1b0 3457bdc96767ebd2 [sco
+    04:15:21.407811 [docker-compose_carts_1] 2026-07-28T04:15:21.407811907Z 2026-07-28 04:15:21.407  INFO [carts,1a18e88241b82288,19dd87a1370b20ae,false] 7 --- [p-nio-80-exec-3] org.mongodb.driver.connection            : Opened connection [conne
+    04:15:21.408253 [docker-compose_carts-db_1] 2026-07-28T04:15:21.408253060Z 2026-07-28T04:15:21.408+0000 I NETWORK  [thread1] connection accepted from 172.18.0.19:43210 #8 (8 connections now open)
+    04:15:21.408526 [docker-compose_carts-db_1] 2026-07-28T04:15:21.408526508Z 2026-07-28T04:15:21.408+0000 I NETWORK  [thread1] connection accepted from 172.18.0.19:43222 #9 (9 connections now open)
+    04:15:21.408709 [docker-compose_carts-db_1] 2026-07-28T04:15:21.408709832Z 2026-07-28T04:15:21.408+0000 I NETWORK  [thread1] connection accepted from 172.18.0.19:43224 #10 (10 connections now open)
+  ... 7908 more lines in window
+
+--- 3. LOAD generator ---
+    04:15:21.654302 1,register,POST,/register,200,781.16
+    04:15:21.667462 39,register,POST,/register,200,753.0
+    04:15:21.669011 26,register,POST,/register,200,769.59
+    04:15:21.670253 45,register,POST,/register,200,749.54
+    04:15:21.671506 46,register,POST,/register,200,749.98
+    04:15:21.672522 24,register,POST,/register,200,775.23
+    04:15:21.673742 36,register,POST,/register,200,763.74
+    04:15:21.674527 7,register,POST,/register,200,795.54
+    04:15:21.675891 44,register,POST,/register,200,755.96
+    04:15:21.676942 18,register,POST,/register,200,786.33
+    04:15:21.707092 4,register,POST,/register,200,830.61
+    04:15:21.708256 13,register,POST,/register,200,822.31
+    04:15:21.709370 17,register,POST,/register,200,819.49
+    04:15:21.710273 23,register,POST,/register,200,813.81
+    04:15:21.711155 42,register,POST,/register,200,793.64
+
+--- 4. METRICS ---
+
+--- 5. KERNEL ---
+  (0 events in window (check CTF is user-readable and window overlaps the trace))
+
+--- 6. CLOCK anchors (meta/runinfo) ---
+    start: realtime-monotonic offset = 1785211966413952508 ns
+    end: realtime-monotonic offset = 1785211966413953423 ns
+    offset drift over run = 915 ns (0.001 ms)
+
+==============================================================================
+VERDICT
+  trace    OK (47 spans)
+  logs     OK (7948 lines in window, 25 contain trace_id)
+  load     OK (984 client requests in window)
+  metrics  EMPTY (no samples near window)
+  kernel   SKIPPED (0 events in window (check CTF is user-readable and window overlaps the trace))
+  clocks   OK (drift 0.001 ms over run)
+==============================================================================
+GATE05_DONE

@@ -1,0 +1,42 @@
+===== GATE06 RE-AUDIT (kernel + verdict) =====
+--- 5. KERNEL ---
+       36042  host:dockerd                             rcu_utilization
+       24588  host:lttng-consumerd                     block_dirty_buffer
+       21882  host:java                                rcu_utilization
+       19634  host:containerd-shim                     rcu_utilization
+       18122  host:dockerd                             sched_stat_runtime
+       17324  host:traefik                             rcu_utilization
+       17071  host:dockerd                             sched_switch
+       16075  host:swapper/0                           power_cpu_idle
+       15722  host:swapper/0                           rcu_utilization
+       15056  host:python3                             rcu_utilization
+       14890  host:swapper/2                           rcu_utilization
+       14732  host:swapper/6                           rcu_utilization
+    | [04:20:56.837031980] (+0.000003104) stratatrace-collector.us-east1-b.c.yuvraj-msc.internal syscall_exit_epoll_pwait: { cpu_id = 0 }, { pid = 2317, tid = 2317, procname = "node" }, { ret = 0, fds_lengt
+    | [04:20:56.837053506] (+0.000021526) stratatrace-collector.us-east1-b.c.yuvraj-msc.internal syscall_entry_epoll_pwait: { cpu_id = 0 }, { pid = 2317, tid = 2317, procname = "node" }, { epfd = 13, maxeve
+    | [04:20:56.837055008] (+0.000001502) stratatrace-collector.us-east1-b.c.yuvraj-msc.internal syscall_exit_epoll_pwait: { cpu_id = 0 }, { pid = 2317, tid = 2317, procname = "node" }, { ret = 0, fds_lengt
+    | [04:20:56.837055755] (+0.000000747) stratatrace-collector.us-east1-b.c.yuvraj-msc.internal syscall_entry_epoll_pwait: { cpu_id = 0 }, { pid = 2317, tid = 2317, procname = "node" }, { epfd = 13, maxeve
+    | [04:20:56.837057121] (+0.000001366) stratatrace-collector.us-east1-b.c.yuvraj-msc.internal timer_hrtimer_start: { cpu_id = 0 }, { pid = 2317, tid = 2317, procname = "node" }, { hrtimer = 0xFFFFD0DA82B
+    | [04:20:56.837057616] (+0.000000495) stratatrace-collector.us-east1-b.c.yuvraj-msc.internal rcu_utilization: { cpu_id = 0 }, { pid = 2317, tid = 2317, procname = "node" }, { s = "Start context switch" 
+    | [04:20:56.837057808] (+0.000000192) stratatrace-collector.us-east1-b.c.yuvraj-msc.internal rcu_utilization: { cpu_id = 0 }, { pid = 2317, tid = 2317, procname = "node" }, { s = "End context switch" }
+    | [04:20:56.837058811] (+0.000001003) stratatrace-collector.us-east1-b.c.yuvraj-msc.internal sched_stat_runtime: { cpu_id = 0 }, { pid = 2317, tid = 2317, procname = "node" }, { comm = "node", tid = 231
+    | [04:20:56.837059399] (+0.000000588) stratatrace-collector.us-east1-b.c.yuvraj-msc.internal timer_hrtimer_cancel: { cpu_id = 0 }, { pid = 2317, tid = 2317, procname = "node" }, { hrtimer = 0xFFFF8CF6D7
+    | [04:20:56.837059966] (+0.000000567) stratatrace-collector.us-east1-b.c.yuvraj-msc.internal timer_hrtimer_start: { cpu_id = 0 }, { pid = 2317, tid = 2317, procname = "node" }, { hrtimer = 0xFFFF8CF6D78
+    | [04:20:56.837061455] (+0.000001489) stratatrace-collector.us-east1-b.c.yuvraj-msc.internal sched_switch: { cpu_id = 0 }, { pid = 2317, tid = 2317, procname = "node" }, { prev_comm = "node", prev_tid =
+    | [04:20:56.847158927] (+0.000003926) stratatrace-collector.us-east1-b.c.yuvraj-msc.internal syscall_exit_epoll_pwait: { cpu_id = 0 }, { pid = 2317, tid = 2317, procname = "node" }, { ret = 0, fds_lengt
+
+--- 6. CLOCK anchors (meta/runinfo) ---
+    start: realtime-monotonic offset = 1785211966413952744 ns
+    end: realtime-monotonic offset = 1785211966413953532 ns
+    offset drift over run = 788 ns (0.001 ms)
+
+==============================================================================
+VERDICT
+  trace    OK (24 spans)
+  logs     OK (4340 lines in window, 0 contain trace_id)
+  load     OK (468 client requests in window)
+  metrics  OK (207 series with samples near window)
+  kernel   OK (2319085 events in window, 6345 (container,event) groups)
+  clocks   OK (drift 0.001 ms over run)
+==============================================================================
+AUDITB_DONE
