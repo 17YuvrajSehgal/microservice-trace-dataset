@@ -151,7 +151,29 @@ sudo lttng create sockshop-kernel --output="$OUTPUT_DIR/kernel"
 sudo lttng enable-channel -k channel0 \
     --subbuf-size="${KERNEL_SUBBUF_SIZE:-8M}" \
     --num-subbuf="${KERNEL_NUM_SUBBUF:-32}"
-sudo lttng enable-event -k --all '*' --channel channel0
+
+# Kernel event selection. Default = a CURATED profile (advisor-recommended):
+# all syscalls (covers filesystem read/write/open, process fork/exec/exit, and
+# network socket/send/recv at the syscall boundary) plus the sched, block-I/O,
+# network-device, and IRQ tracepoint families. MEMORY events (kmem_*, mm_*,
+# page-fault/reclaim) are deliberately EXCLUDED - they are the highest-volume,
+# most expensive class and are not needed by the L1/L2 analysis (which reads
+# syscalls + sched for wait attribution). This keeps kernel output ~2-3 GB/run
+# vs ~8 GB for --all, which is what makes the ~40-run campaign fit on disk.
+# Memory instrumentation can be re-added later per-fault if the analysis needs
+# it. Set KERNEL_EVENTS=all for the full-capture showcase runs.
+if [ "${KERNEL_EVENTS:-curated}" = "all" ]; then
+    sudo lttng enable-event -k --all '*' --channel channel0
+else
+    # All syscalls (entry+exit), the core signal for L2 wait attribution.
+    sudo lttng enable-event -k --syscall --all --channel channel0 2>/dev/null || true
+    # Tracepoint families; some wildcards may match nothing on a given kernel,
+    # so each is best-effort (|| true) and failures are non-fatal.
+    for grp in 'sched_*' 'block_*' 'net_*' 'netif_*' 'napi_*' 'skb_*' \
+               'sock_*' 'tcp_*' 'udp_*' 'irq_*' 'softirq_*'; do
+        sudo lttng enable-event -k "$grp" --channel channel0 2>/dev/null || true
+    done
+fi
 sudo lttng add-context --kernel --channel channel0 --type=pid --type=tid --type=procname 2>/dev/null || true
 sudo lttng start
 
