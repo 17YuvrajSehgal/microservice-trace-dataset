@@ -22,6 +22,7 @@ Usage:
 import argparse
 import datetime as dt
 import json
+import math
 import os
 import sys
 import urllib.parse
@@ -87,9 +88,13 @@ def analyze(samples, t_start, t_end, baseline_s, recovery_s, target, settle_s=0)
     Returns a dict with the per-window stats and a per-target pass/fail.
     """
     settle = min(settle_s, (t_end - t_start) * 0.5)
-    base = [v for ts, v in samples if t_start - baseline_s <= ts < t_start]
-    inj = [v for ts, v in samples if t_start + settle <= ts <= t_end]
-    rec = [v for ts, v in samples if t_end < ts <= t_end + recovery_s]
+    # Filter non-finite values: histogram_quantile returns NaN for a scrape
+    # window with no/sparse requests (e.g. carts during a quiet baseline), and
+    # an unfiltered NaN poisons baseline_mean so every comparison against it is
+    # False - a fired fault then reads 'unconfirmed'. Keep only finite samples.
+    base = [v for ts, v in samples if t_start - baseline_s <= ts < t_start and math.isfinite(v)]
+    inj = [v for ts, v in samples if t_start + settle <= ts <= t_end and math.isfinite(v)]
+    rec = [v for ts, v in samples if t_end < ts <= t_end + recovery_s and math.isfinite(v)]
 
     b_mean, b_std = _stats(base)
     i_mean, _ = _stats(inj)
