@@ -1,0 +1,95 @@
+# CLAUDE.md
+
+## What this repo is
+
+**StrataTrace**: a four-modality observability dataset (metrics, logs,
+distributed traces, **kernel traces**) collected from Sock Shop under
+labeled fault injections, plus a per-task modality-ablation study (RCA,
+anomaly detection, incident explanation, repair). Target: **MSR 2027** —
+Data & Tool Showcase (abstract **Nov 5, 2026**, paper Nov 10) + a study
+paper. The full research plan is `msr-research.md`; the pre-registered
+fault→modality predictions are `fault_catalog.md`.
+
+## Session habits (required, every session)
+
+1. **Log research/method decisions** (with the *why*, selectively — not an
+   activity log) in `progress-notes/DD-MM-YYYY/decisions.md` (day-first
+   date; create the folder per day). Update `next-steps.md` at session end.
+2. **Read the latest `progress-notes/` day first** to pick up state; this
+   file only summarizes.
+3. Commit and push at natural milestones (user expects work on GitHub).
+4. `fault_catalog.md` predictions are pre-registered: after the Phase-2
+   campaign starts they may only change via its §7 Amendment log — never
+   edit the predictions in place.
+
+## Current state (as of 2026-07-27, all local prep done on Windows)
+
+- **Phase 0 rig complete and locally verified**; the one remaining Phase-0
+  step is the **VM gate**: runbook in
+  `progress-notes/27-07-2026/vm-todo.md` — bring up the extended stack,
+  run a 30 s sample, run `audit_alignment.py`, all six verdict lines OK ⇒
+  Phase 0 passed ⇒ Phase-2 collection unblocked.
+- Tier-1 instrumented services live on fork branches
+  (`17YuvrajSehgal/front-end@otel-instrumentation`,
+  `17YuvrajSehgal/catalogue@otel-instrumentation`); built locally, verified
+  emitting OTLP server spans. Build commands are in the overlay headers.
+- 7 fault recipes in `microservice-lttng-data-collection-scripts/faults/`,
+  mechanically verified; VM still owes intensity calibration
+  (especially noisy_neighbor's "KPIs barely move" property), the F12
+  per-container netem recipe, and `verify_injection.py` automation.
+- Vendored `models/` + `dataset/` (from adaptive_tracer @405e49e) are the
+  authoritative copies (see VENDORED.md in each).
+
+## Key technical facts (hard-won; do not rediscover)
+
+- `microservices-demo/` is a **git submodule** of the pinned fork (upstream
+  is frozen/deprecated). Clone with `--recursive`. Never edit it in place;
+  service changes go via fork branches + the compose overlays.
+- **Deployment = 7 compose `-f` files, order matters.** The full command
+  with correct ordering is in the header of
+  `microservice-lttng-data-collection-scripts/docker-compose.toxiproxy.yml`.
+  `TRACE_SCRIPTS_DIR` (abs path to `microservice-lttng-data-collection-scripts`)
+  MUST be exported — compose resolves relative bind mounts against the
+  project dir, not the override file's dir.
+- Java agents dual-export spans: `otlp` → collector → `otlp-out/spans.jsonl`
+  (the dataset's trace modality) AND `logging` → docker logs → the
+  otel-to-lttng.py UST relay (cross-layer clock bridge). Both must stay.
+- **Toxiproxy sits permanently in the catalogue→catalogue-db path** (fault
+  toggling must be restart-free); normal runs include it too. See the
+  methodological note in docker-compose.toxiproxy.yml.
+- `collect_trace.sh` needs sudo for the kernel LTTng session; it also
+  captures per-run logs, slices the OTLP file by byte offset, and records
+  (realtime, monotonic, boottime) clock anchors in every meta snapshot.
+- Fault recipes write ground truth to `$FAULT_STATE_DIR`
+  (default `~/fault-state`). Their docker-update restore paths work around
+  real API traps (`--cpus=0` and `-m 0` are silent no-ops; memory limits
+  cannot be cleared — details `faults/README.md` and progress-notes
+  27-07-2026 §10). Verify restores against `/sys/fs/cgroup/*`, not
+  `docker inspect`.
+- Instrumented catalogue must run with `command: /app -port=80` (stock
+  port); the fork Dockerfile's default is 8080 — overlays pin this.
+- Node front-end: instrumentation activates via `NODE_OPTIONS`;
+  `OTEL_NODE_RESOURCE_DETECTORS` is pinned (cloud detectors probe metadata
+  endpoints and pollute traces off-cloud; keep the same list on GCP for
+  span-stream consistency).
+
+## Map
+
+| Path | What |
+|---|---|
+| `msr-research.md` | The research plan (phases in §10) |
+| `fault_catalog.md` | Pre-registered predictions, scoring rules, H1–H4 |
+| `progress-notes/` | Daily decision log — **read latest day first** |
+| `microservice-lttng-data-collection-scripts/` | All collection tooling: collect_trace.sh, overlays, faults/, audit_alignment.py, download_metrics*.sh, load_generator.py |
+| `microservice/` | LMAT preprocessing/training/eval (imports vendored `models/`, `dataset/`) |
+| `models/`, `dataset/` | Vendored, authoritative (VENDORED.md) |
+| `microservices-demo/` | Submodule: pinned Sock Shop deploy fork |
+| `DOCS/` | JSS-era docs; some paths reference the old adaptive_tracer workspace (known drift) |
+| `pdf_proofs_of_injection/` | Grafana evidence for the prior 148 GB release |
+
+## Environment note
+
+The dataset collection VM is a GCP Ubuntu 24.04 box with LTTng 2.15,
+Babeltrace2, Docker 27+, and (historically) the Sock Shop deployment under
+`~/microservices-demo`. All performance/overhead numbers for the paper come
+from the VM only — never from laptops/WSL.

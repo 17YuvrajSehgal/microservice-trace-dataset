@@ -6,9 +6,17 @@ clean pid namespaces — not worth the effort). Everything LTTng-adjacent
 happens on the VM only. This list is what the next VM session(s) must cover.
 
 ## Phase-0 gate (next VM session)
-1. `git pull` + `git submodule update --init` (rig at commit 9a44380+).
-2. Bring up extended stack: `export TRACE_SCRIPTS_DIR=...` + the four `-f`
-   compose files (usage headers in docker-compose.metrics.yml / .otel.yml).
+1. `git pull` + `git submodule update --init` (or fresh
+   `git clone --recursive`).
+2. Bring up the extended stack — now SEVEN `-f` files; the full ordered
+   command is in the header of `docker-compose.toxiproxy.yml`. Deploy from
+   the SUBMODULE's compose dir
+   (`<repo>/microservices-demo/deploy/docker-compose`), not the VM's old
+   standalone `~/microservices-demo` clone, so the pinned fork is what
+   runs. `export TRACE_SCRIPTS_DIR=<abs path to
+   microservice-lttng-data-collection-scripts>` first. Note: toxiproxy is
+   part of the stack for NORMAL runs too (methodological note in that
+   overlay's header).
 3. Sanity checks before tracing:
    - spans arriving in `otlp-out/spans.jsonl` while browsing the front-end
      (also confirms the `user: "0:0"` collector can write the bind mount);
