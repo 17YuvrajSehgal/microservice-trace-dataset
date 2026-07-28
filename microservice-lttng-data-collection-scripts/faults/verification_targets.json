@@ -1,7 +1,7 @@
 {
   "_comment": "Pre-registered per-fault target-metric panel (fault_catalog.md §6 realized). For each fault, the Prometheus signal(s) that MUST move if the injection actually took effect. verify_injection.py evaluates these over the baseline vs injection windows and writes a confirmed|borderline|unconfirmed verdict. One target per fault is marked canonical=true (drives the verdict); others are corroborating. Direction: 'increase'|'decrease'. threshold_sigma = min standardized delta over baseline stdev; min_fraction = min share of the injection window past the raw threshold. These are QC gates, NOT the study's modality claims (those live in fault_catalog.md).",
 
-  "_windows": {"baseline_s": 60, "recovery_s": 60, "rate_window": "1m"},
+  "_windows": {"baseline_s": 60, "recovery_s": 60, "rate_window": "1m", "settle_s": 30, "_settle_note": "skip the first 30s of the injection window when scoring: 1m-rate-windowed metrics take ~a rate-window to ramp after onset. Campaign runs should use INJECTION_S >= 120 so a clean settled segment remains."},
 
   "_metric_naming": "CALIBRATED 2026-07-28 against the live stack. Request-duration metric name differs by service runtime: Go/Node services (catalogue, frontend) expose 'http_request_duration_seconds'; Java/Spring services (cart, orders, payment, user, shipping) expose 'request_duration_seconds'. Prometheus job labels are singular for carts ('cart'). cAdvisor container 'name' labels are 'docker-compose_<svc>_1'; carts=docker-compose_carts_1 (regex '.*carts_1$' excludes carts-db). NOTE: this cAdvisor build exposes NO cfs-throttle metric, so svc_cpu_cap verifies via app latency, not throttle counters.",
 

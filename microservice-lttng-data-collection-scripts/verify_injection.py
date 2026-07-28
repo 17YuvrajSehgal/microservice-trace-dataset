@@ -73,14 +73,22 @@ def _stats(vals):
     return mean, var ** 0.5
 
 
-def analyze(samples, t_start, t_end, baseline_s, recovery_s, target):
+def analyze(samples, t_start, t_end, baseline_s, recovery_s, target, settle_s=0):
     """Pure verdict for one target metric.
 
     samples: [(epoch, value)]; t_start/t_end: injection window epochs.
+    settle_s: skip this many seconds at the START of the injection window when
+      computing injection stats. Rate-windowed metrics (e.g. a p95 over
+      rate(..[1m])) take ~one rate-window to ramp after onset, so the first
+      part of the injection window still averages in pre-injection samples and
+      dilutes the signal. Skipping the settling period makes the injection
+      stats reflect the settled fault state. Capped at half the window so short
+      injections still yield samples.
     Returns a dict with the per-window stats and a per-target pass/fail.
     """
+    settle = min(settle_s, (t_end - t_start) * 0.5)
     base = [v for ts, v in samples if t_start - baseline_s <= ts < t_start]
-    inj = [v for ts, v in samples if t_start <= ts <= t_end]
+    inj = [v for ts, v in samples if t_start + settle <= ts <= t_end]
     rec = [v for ts, v in samples if t_end < ts <= t_end + recovery_s]
 
     b_mean, b_std = _stats(base)
@@ -185,6 +193,7 @@ def run_verification(gt, targets_all, prom_url, step, out_json, out_png):
     win = targets_all.get("_windows", {})
     baseline_s = win.get("baseline_s", 60)
     recovery_s = win.get("recovery_s", 60)
+    settle_s = win.get("settle_s", 30)
 
     checks, series_by_name = [], {}
     for t in targets:
@@ -192,7 +201,7 @@ def run_verification(gt, targets_all, prom_url, step, out_json, out_png):
             prom_url, t["promql"],
             t_start - baseline_s - 15, t_end + recovery_s + 15, step)
         series_by_name[t["name"]] = samples
-        checks.append(analyze(samples, t_start, t_end, baseline_s, recovery_s, t))
+        checks.append(analyze(samples, t_start, t_end, baseline_s, recovery_s, t, settle_s))
 
     verdict = overall_verdict(checks)
     result = {
@@ -256,6 +265,22 @@ def self_test():
         ok = ok and good
         print(f"  {'OK ' if good else 'BAD'} {label:<28} -> {got:<12} "
               f"(want {expect}; sigma={c['delta_sigma']} frac={c['fraction_above_threshold']})")
+
+    # Rate-window ramp-up: metric only rises in the 2nd half of the injection
+    # window (models a p95 over rate(..[1m]) taking a window to climb). Without
+    # settling the fraction gate fails -> unconfirmed; with settle_s the
+    # injection stats reflect the settled state -> confirmed. This is the exact
+    # case that made a real slow_db run read 'unconfirmed' (frac 0.667 < 0.7).
+    ramp = [(float(ts), 0.10) for ts in range(int(t0 - 60), int(t0 + 25), 5)] \
+        + [(float(ts), 0.95) for ts in range(int(t0 + 25), int(t1 + 60), 5)]
+    c_no = analyze(ramp, t0, t1, 60, 60, inc, settle_s=0)
+    c_settle = analyze(ramp, t0, t1, 60, 60, inc, settle_s=30)
+    v_no, v_settle = overall_verdict([c_no]), overall_verdict([c_settle])
+    ramp_good = (v_no != "confirmed" and v_settle == "confirmed")
+    ok = ok and ramp_good
+    print(f"  {'OK ' if ramp_good else 'BAD'} {'ramp-up (settle fixes)':<28} -> "
+          f"no-settle={v_no} settle={v_settle} (want unconfirmed/borderline -> confirmed)")
+
     print("SELF-TEST:", "PASS" if ok else "FAIL")
     return 0 if ok else 1
 
