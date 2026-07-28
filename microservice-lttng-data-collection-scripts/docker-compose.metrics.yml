@@ -41,5 +41,9 @@ services:
       - /var/lib/docker/:/var/lib/docker:ro
       - /dev/disk/:/dev/disk:ro
     ports:
-      - "8080:8080"
+      # Host 8081 (not 8080): Sock Shop's edge-router already publishes host
+      # 8080. Prometheus scrapes cadvisor over the compose network at
+      # cadvisor:8080 (see prometheus-cadvisor.yml), so the container port and
+      # the scrape are unaffected; this host publish is only for debugging.
+      - "8081:8080"
     restart: unless-stopped
