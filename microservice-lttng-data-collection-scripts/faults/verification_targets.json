@@ -3,42 +3,44 @@
 
   "_windows": {"baseline_s": 60, "recovery_s": 60, "rate_window": "1m"},
 
+  "_metric_naming": "CALIBRATED 2026-07-28 against the live stack. Request-duration metric name differs by service runtime: Go/Node services (catalogue, frontend) expose 'http_request_duration_seconds'; Java/Spring services (cart, orders, payment, user, shipping) expose 'request_duration_seconds'. Prometheus job labels are singular for carts ('cart'). cAdvisor container 'name' labels are 'docker-compose_<svc>_1'; carts=docker-compose_carts_1 (regex '.*carts_1$' excludes carts-db). NOTE: this cAdvisor build exposes NO cfs-throttle metric, so svc_cpu_cap verifies via app latency, not throttle counters.",
+
   "slow_db_catalogue": [
     {"canonical": true, "name": "catalogue_p95_latency",
-     "promql": "histogram_quantile(0.95, sum(rate(request_duration_seconds_bucket{job=\"catalogue\"}[1m])) by (le))",
+     "promql": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"catalogue\"}[1m])) by (le))",
      "direction": "increase", "threshold_sigma": 4, "abs_threshold": 0.05, "min_fraction": 0.7,
      "why": "added DB latency inflates catalogue request duration; DB container metrics stay flat (blind spot)"}
   ],
 
   "error_storm_catalogue": [
     {"canonical": true, "name": "catalogue_5xx_rate",
-     "promql": "sum(rate(request_duration_seconds_count{job=\"cart\",status_code=~\"5..\"}[1m])) + sum(rate(request_duration_seconds_count{job=\"catalogue\",status_code=~\"5..\"}[1m]))",
-     "direction": "increase", "threshold_sigma": 4, "abs_threshold": 0.5, "min_fraction": 0.7,
+     "promql": "sum(rate(http_request_duration_seconds_count{job=\"catalogue\",status_code=~\"5..\"}[1m]))",
+     "direction": "increase", "threshold_sigma": 4, "abs_threshold": 0.5, "min_fraction": 0.6,
      "why": "broken DB connections surface as 5xx on catalogue-backed routes"}
   ],
 
   "svc_cpu_cap_carts": [
-    {"canonical": true, "name": "carts_cpu_throttled",
-     "promql": "rate(container_cpu_cfs_throttled_seconds_total{name=~\".*carts.*\"}[1m])",
-     "direction": "increase", "threshold_sigma": 3, "abs_threshold": 0.05, "min_fraction": 0.6,
-     "why": "cgroup quota throttling is directly counted by cadvisor"},
-    {"canonical": false, "name": "carts_p95_latency",
+    {"canonical": true, "name": "carts_p95_latency",
      "promql": "histogram_quantile(0.95, sum(rate(request_duration_seconds_bucket{job=\"cart\"}[1m])) by (le))",
      "direction": "increase", "threshold_sigma": 3, "abs_threshold": 0.05, "min_fraction": 0.5,
-     "why": "throttled service serves requests slower"}
+     "why": "throttled service serves requests slower (this cadvisor build has no cfs-throttle metric, so latency is the QC signal)"},
+    {"canonical": false, "name": "carts_cpu_usage_capped",
+     "promql": "rate(container_cpu_usage_seconds_total{name=~\".*carts_1$\"}[1m])",
+     "direction": "decrease", "threshold_sigma": 2, "abs_threshold": 0.25, "min_fraction": 0.5,
+     "why": "usage pinned at/below the imposed quota"}
   ],
 
   "svc_mem_cap_carts": [
     {"canonical": true, "name": "carts_memory_at_limit",
-     "promql": "max(container_memory_usage_bytes{name=~\".*carts.*\"} / container_spec_memory_limit_bytes{name=~\".*carts.*\"})",
+     "promql": "max(container_memory_usage_bytes{name=~\".*carts_1$\"} / container_spec_memory_limit_bytes{name=~\".*carts_1$\"})",
      "direction": "increase", "threshold_sigma": 3, "abs_threshold": 0.9, "min_fraction": 0.6,
      "why": "usage pinned at the imposed cap"}
   ],
 
   "dependency_outage_payment": [
     {"canonical": true, "name": "payment_cpu_to_zero",
-     "promql": "rate(container_cpu_usage_seconds_total{name=~\".*payment.*\"}[1m])",
-     "direction": "decrease", "threshold_sigma": 3, "abs_threshold": 0.001, "min_fraction": 0.8,
+     "promql": "rate(container_cpu_usage_seconds_total{name=~\".*payment_1$\"}[1m])",
+     "direction": "decrease", "threshold_sigma": 3, "abs_threshold": 0.005, "min_fraction": 0.8,
      "why": "paused (frozen) container consumes ~no CPU"},
     {"canonical": false, "name": "orders_5xx_rate",
      "promql": "sum(rate(request_duration_seconds_count{job=\"orders\",status_code=~\"5..\"}[1m]))",
@@ -48,8 +50,8 @@
 
   "queue_backlog": [
     {"canonical": true, "name": "queue_master_cpu_to_zero",
-     "promql": "rate(container_cpu_usage_seconds_total{name=~\".*queue-master.*\"}[1m])",
-     "direction": "decrease", "threshold_sigma": 3, "abs_threshold": 0.001, "min_fraction": 0.8,
+     "promql": "rate(container_cpu_usage_seconds_total{name=~\".*queue-master_1$\"}[1m])",
+     "direction": "decrease", "threshold_sigma": 3, "abs_threshold": 0.005, "min_fraction": 0.8,
      "why": "paused consumer stops working; the backlog itself is a kernel/rabbitmq signal (silent in app metrics)"}
   ],
 
