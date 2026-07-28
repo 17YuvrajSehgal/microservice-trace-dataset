@@ -223,6 +223,18 @@ Predictions registered now: traces win localization (single edge inflates);
 kernel confirms via socket-level waits on one path. To be implemented in
 the VM phase; parameters TBD before the campaign freeze.
 
+## 6a. Realized verification panel
+
+The per-fault "expected metric movement" table is realized as
+`faults/verification_targets.json` (canonical + corroborating Prometheus
+targets per fault, with direction, σ-threshold, absolute threshold, and
+min-fraction-of-window gates) and evaluated by `verify_injection.py`, which
+writes a `confirmed | borderline | unconfirmed` verdict + impact PNG per run
+from the ground-truth injection window. `run_scenario.sh` wires this into
+every fault run (baseline → inject → recover → verify → audit). The verdict
+math is regression-tested offline (`verify_injection.py --self-test`);
+thresholds calibrate against real KPIs on the VM in Phase 1.
+
 ## 6. Verification status
 
 | Fault | Recipe status | Injection verified | Intensity calibrated |

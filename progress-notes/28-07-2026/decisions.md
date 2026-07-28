@@ -77,7 +77,29 @@ Audit tool (`audit_alignment.py`) — none catchable on synthetic data:
   (collect_trace slices per-run by byte offset but never truncates). Needs
   rotation for a multi-hundred-run campaign (VM-todo).
 
+## Phase-1 tooling built (local, no faults run on the dev PC)
+User constraint: do NOT run fault injection on the dev PC. So these were
+built with offline unit tests only; real fault-through-Prometheus validation
+is deferred to the VM (Phase 1).
+- **`faults/verification_targets.json`** — the pre-registered per-fault
+  target-metric panel (fault_catalog.md §6a): canonical + corroborating
+  Prometheus signals per fault, with direction / σ-threshold / abs-threshold
+  / min-fraction gates. 11 faults covered.
+- **`verify_injection.py`** — reads a recipe's ground_truth.json window +
+  the targets, queries Prometheus over baseline/injection/recovery, writes
+  `confirmed | borderline | unconfirmed` + impact PNG. Handles flat baselines
+  (σ undefined → abs-threshold fallback) and noisy baselines (σ computed).
+  Verdict math is **regression-tested offline** (`--self-test`, 5 cases
+  across all tiers + both directions, all pass). The live-Prometheus query
+  path mirrors download_metrics.sh (proven) and runs on the VM.
+- **`run_scenario.sh`** — the Phase-2 workhorse: continuous trace+load across
+  baseline→inject→hold→cleanup→recovery, then verify + audit, emitting a run
+  bundle with ground_truth.json + verification.json. Syntax-checked; VM-only
+  to run (LTTng + injects faults).
+
 ## State
-Local queue empty; VM gate cleared. Next: Phase-1 intensity calibration +
-`verify_injection.py`, then the Phase-2 campaign. Mentor items unchanged
-(venue split; StrataTrace name approval).
+VM gate cleared; Phase-1 QC tooling built and offline-tested. Next on the VM:
+fault intensity calibration (run_scenario.sh per recipe; tune thresholds in
+verification_targets.json against real KPIs; noisy_neighbor is the critical
+one), then the Phase-2 campaign. Mentor items unchanged (venue split;
+StrataTrace name approval; pre-registration review before the freeze).
