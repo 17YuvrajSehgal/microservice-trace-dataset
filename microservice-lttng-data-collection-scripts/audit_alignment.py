@@ -92,17 +92,27 @@ def load_spans(otlp_file):
     return spans
 
 
+# Observability self-traffic: Prometheus scrapes each service's /metrics (and
+# health probes hit /health). These produce SERVER spans that are not user
+# requests, so they make poor audit anchors - the run's actual load is what we
+# want to trace across modalities.
+_SELF_TRAFFIC = re.compile(r"/(metrics|health|prometheus)\b", re.IGNORECASE)
+
+
 def pick_trace(spans, trace_id):
     if trace_id:
         chosen = [s for s in spans if s["trace_id"].lower() == trace_id.lower()]
         if not chosen:
             sys.exit(f"trace_id {trace_id} not found in OTLP file")
         return chosen
-    # Slowest server span (kind=2) picks the trace.
-    servers = [s for s in spans if s["kind"] == 2] or spans
-    if not servers:
+    # Slowest server span (kind=2) picks the trace, preferring real user
+    # requests over observability self-traffic (/metrics, /health).
+    servers = [s for s in spans if s["kind"] == 2]
+    user = [s for s in servers if not _SELF_TRAFFIC.search(s["name"])]
+    pool = user or servers or spans
+    if not pool:
         sys.exit("no spans in OTLP file")
-    slowest = max(servers, key=lambda s: s["end_ns"] - s["start_ns"])
+    slowest = max(pool, key=lambda s: s["end_ns"] - s["start_ns"])
     return [s for s in spans if s["trace_id"] == slowest["trace_id"]]
 
 
@@ -175,14 +185,16 @@ def audit_load_csv(path, t0, t1):
 # -------------------------------------------------------------- metrics ----
 
 def audit_metrics(metrics_dir, t0, t1, services):
-    """Print samples inside [t0, t1] for series whose file or labels mention
-    an involved service, plus host-level vm_* exports."""
+    """Print samples inside [t0, t1] for series relevant to the traced
+    services. Handles both export namings: the curated download_metrics.sh
+    (files vm_*, <svc>_qps ...) and the full download_metrics_full.sh (files
+    named by raw metric name, service identified only in the series labels)."""
     out = []
+    svc_set = set(services)
     for path in sorted(glob.glob(os.path.join(metrics_dir, "*.json*"))):
         base = os.path.basename(path).split(".json")[0]
-        relevant = base.startswith("vm_") or any(svc in base for svc in services)
-        if not relevant:
-            continue
+        # Curated naming: filename already encodes host/service relevance.
+        name_relevant = base.startswith("vm_") or any(s in base for s in svc_set)
         opener = gzip.open if path.endswith(".gz") else open
         try:
             with opener(path, "rt", encoding="utf-8") as f:
@@ -190,11 +202,17 @@ def audit_metrics(metrics_dir, t0, t1, services):
         except (OSError, json.JSONDecodeError):
             continue
         for series in doc.get("data", {}).get("result", []):
+            metric = series.get("metric", {})
+            # Raw naming: match the traced services against the label values.
+            label_relevant = bool(svc_set) and any(
+                s in str(v) for v in metric.values() for s in svc_set)
+            if not (name_relevant or label_relevant):
+                continue
             vals = [(dt.datetime.fromtimestamp(float(ts), tz=UTC), v)
                     for ts, v in series.get("values", [])]
             inside = [(ts, v) for ts, v in vals if t0 <= ts <= t1]
             if inside:
-                label = json.dumps(series.get("metric", {}), sort_keys=True)[:90]
+                label = json.dumps(metric, sort_keys=True)[:90]
                 out.append((base, label, inside))
     return out
 
@@ -223,13 +241,16 @@ def audit_kernel(kernel_dir, t0, t1, tid_map, max_lines):
     bt = shutil.which("babeltrace2")
     if not bt:
         return None, "babeltrace2 not on PATH - run this on the collection VM"
+    # bt2 trimmer: --begin/--end take "YYYY-MM-DD HH:MM:SS.ffffff" and print in
+    # the host TZ (the VM is UTC). NOTE: no --clock-gmt - that is a babeltrace
+    # v1 flag; passing it to bt2 aborts the run (silent 0 events).
     fmt = "%Y-%m-%d %H:%M:%S.%f"
-    cmd = [bt, "--clock-gmt", "--begin", t0.strftime(fmt), "--end", t1.strftime(fmt), kernel_dir]
+    cmd = [bt, kernel_dir, "--begin", t0.strftime(fmt), "--end", t1.strftime(fmt)]
     ev_re = re.compile(r"\] \S+ (\S+): \{ cpu_id = \d+ \}, \{ pid = (\d+), tid = (\d+), procname = \"([^\"]*)\"")
     tid_to_container = {t: c for c, ts in (tid_map or {}).items() for t in ts}
     counts, samples, total = {}, [], 0
     try:
-        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True, errors="replace")
+        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, errors="replace")
         for line in proc.stdout:
             m = ev_re.search(line)
             if not m:
@@ -240,9 +261,16 @@ def audit_kernel(kernel_dir, t0, t1, tid_map, max_lines):
             counts[(who, event)] = counts.get((who, event), 0) + 1
             if len(samples) < max_lines and tid in tid_to_container:
                 samples.append(line.rstrip()[:200])
+        stderr = proc.stderr.read()
         proc.wait(timeout=600)
     except (OSError, subprocess.TimeoutExpired) as e:
         return None, f"babeltrace2 failed: {e}"
+    if total == 0:
+        # Surface the cause instead of a silent empty result: usually a
+        # root-owned CTF (needs the collect_trace.sh chown) or a bt2 error.
+        hint = stderr.strip().splitlines()[-1] if stderr.strip() else \
+            "0 events in window (check CTF is user-readable and window overlaps the trace)"
+        return (0, counts, samples), hint
     return (total, counts, samples), None
 
 

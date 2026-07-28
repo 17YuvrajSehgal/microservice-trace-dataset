@@ -192,4 +192,9 @@ fi
 
 echo "$TYPE,$RUN,$(date -u +%Y-%m-%dT%H:%M:%SZ),${DURATION}s,FULL" >> "$META_DIR/trace_runs.csv"
 
-echo "[$TYPE/$RUN] DONE. $(sudo du -sh "$OUTPUT_DIR")"
+# The kernel session runs as root, so its CTF output is root-owned. Hand the
+# whole bundle back to the invoking user so downstream tools (audit,
+# babeltrace2, the loader SDK) and dataset consumers can read it without sudo.
+sudo chown -R "$(id -u):$(id -g)" "$OUTPUT_DIR" 2>/dev/null || true
+
+echo "[$TYPE/$RUN] DONE. $(du -sh "$OUTPUT_DIR")"
