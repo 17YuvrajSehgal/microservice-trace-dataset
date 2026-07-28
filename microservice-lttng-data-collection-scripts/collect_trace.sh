@@ -116,6 +116,26 @@ otlp_start_offset() {
     fi
 }
 
+# Pre-flight: clear any LTTng state left by a previous run that was
+# interrupted before its teardown (e.g. an SSH drop mid-collection). A leaked
+# session leaves the consumer daemon wedged, and a plain `lttng destroy` then
+# BLOCKS FOREVER waiting for it to flush - which is how the whole rig hangs.
+# So bound every destroy with `timeout`, and if it does not return, force-kill
+# the daemons (SIGKILL, no destroy) and let the create below respawn them.
+lttng_preflight() {
+    if ! timeout 10 lttng destroy -a >/dev/null 2>&1; then
+        echo "[preflight] user lttng destroy wedged; force-killing daemons"
+        pkill -9 -x lttng 2>/dev/null || true
+        pkill -9 lttng-sessiond lttng-consumerd 2>/dev/null || true
+    fi
+    if ! sudo timeout 10 lttng destroy -a >/dev/null 2>&1; then
+        echo "[preflight] root lttng destroy wedged; force-killing daemons"
+        sudo pkill -9 lttng-sessiond lttng-consumerd lttng-runas 2>/dev/null || true
+    fi
+    sleep 1
+}
+lttng_preflight
+
 lttng create sockshop-ust --output="$OUTPUT_DIR/ust"
 lttng enable-event --python otel.spans
 lttng add-context --userspace --type=vpid --type=vtid --type=procname 2>/dev/null || true
