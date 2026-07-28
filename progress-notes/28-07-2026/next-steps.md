@@ -10,21 +10,39 @@
 VM is STOPPED (disk persists, 171G free).
 
 ## Next: Phase 2 — the collection campaign
-The rig is fully validated. The campaign runs run_scenario.sh over the
-fault × intensity × workload × repeats matrix.
+The rig is fully validated AND the campaign infrastructure is BUILT (see
+below). Scale + kernel profile finalized: **~40 runs, curated kernel, ~100GB,
+fits the disk** (scale-and-kernel-profile.md). No GCS streaming needed.
 
-1. **Decide the campaign matrix** (fault_catalog + msr-research §5):
-   ~12 faults × 2 intensities × 5 repeats (steady) + normals + a low/burst
-   subset ≈ 150–200 runs. Each ~4–5 min (180–300s) + ~10GB kernel.
-   Storage: ~2–4 TB raw -> resize disk or stream bundles to GCS (decide first).
-2. **Use INJECTION_S >= 120** (verify_injection settle needs a settled segment;
-   calibration used 40s which was marginal).
-3. **Write a campaign driver** that loops run_scenario over the matrix with
-   nightly QC (verification-confirmed rate per recipe; fix recipes >20%
-   unconfirmed before continuing) — mirrors the loop in msr-research §10.
-4. Host-stressor faults (F1–F4) need one empirical VM re-check of their
-   verification_targets (only the service/app faults were calibrated live).
-5. F12 per-container netem recipe still to implement (VM-only, sch_netem).
+**Campaign infrastructure (built + committed, syntax-checked, VM-untested):**
+- `run_campaign.sh` — the ~40-run matrix driver. Resumable (skips runs with a
+  runinfo_end.txt), per-run QC verdict -> campaign_manifest.csv, end summary
+  flags non-confirmed fault runs. `--dry-run` and `--only <recipe>` for
+  smoke-testing. Dry-run confirms exactly 40 runs.
+- `run_scenario.sh` — now supports PROFILE (steady|burst) + RECIPE=normal
+  (fault-free reference run).
+- `load_generator.py` — `--profile burst` ramps base->peak (verified locally).
+- `faults/anomaly_cpu.sh` — host CPU stressor recipe (the matrix's host fault).
+
+**To launch the campaign on the VM (INJECTION_S>=120 is the default):**
+```
+gcloud compute instances start stratatrace-collector --zone=us-east1-b
+# ensure stack up (prometheus/cadvisor started); then:
+nohup microservice-lttng-data-collection-scripts/run_campaign.sh > ~/campaign.out 2>&1 &
+```
+Smoke-test first: `run_campaign.sh --only normal` (or `--only slow_db`) for a
+couple runs, confirm bundles + manifest, then let the full matrix run (~1-2 days).
+
+**Pre-campaign VM checks (small):**
+1. Validate the CURATED kernel profile on the first real run (which wildcards
+   match this kernel; actual per-run GB) — see scale-and-kernel-profile.md.
+2. Empirically check the `anomaly_cpu` verification target live (only the
+   service/app faults were calibrated; host CPU saturation may also stress the
+   collector/load-gen — watch the first aggressive run).
+3. `pip install matplotlib` on the VM for verify_injection impact PNGs.
+
+**Deferred (NOT in the ~40-run matrix, not blocking):**
+- F12 per-container netem recipe (VM-only, sch_netem) — optional catalog extra.
 
 ## Resume on the VM (fast path)
 ```
