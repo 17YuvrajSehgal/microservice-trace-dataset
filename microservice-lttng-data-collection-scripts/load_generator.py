@@ -57,9 +57,15 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--host",       default="http://localhost:30001",
                    help="Base URL of the Sock Shop front-end")
     p.add_argument("--users",      type=int, default=5,
-                   help="Number of concurrent virtual users")
+                   help="Peak number of concurrent virtual users")
     p.add_argument("--duration",   type=int, default=300,
                    help="Total run duration in seconds")
+    p.add_argument("--profile",    default="steady",
+                   choices=["steady", "burst"],
+                   help="Load shape: 'steady' spawns all users at once; "
+                        "'burst' ramps from a base up to --users over --ramp-seconds")
+    p.add_argument("--ramp-seconds", type=float, default=0.0,
+                   help="Burst ramp duration (default: half the run duration)")
     p.add_argument("--think-min",  type=float, default=0.5,
                    help="Minimum think-time (seconds) between requests")
     p.add_argument("--think-max",  type=float, default=2.0,
@@ -629,27 +635,41 @@ def main() -> None:
     stop_event = threading.Event()
     threads: list[threading.Thread] = []
 
-    for uid in range(1, args.users + 1):
-        user = VirtualUser(
-            user_id=uid,
-            base_url=args.host,
-            think_min=args.think_min,
-            think_max=args.think_max,
-        )
-        t = threading.Thread(
-            target=user.run_journey,
-            args=(stop_event,),
-            name=f"user-{uid}",
-            daemon=True,
-        )
-        threads.append(t)
+    # Spawn schedule: each user's delay (seconds after start) before it joins.
+    # steady -> everyone at t=0; burst -> a base cohort at t=0, then the rest
+    # ramped linearly to the peak over the ramp window (models 'ramp 50->300').
+    peak = args.users
+    if args.profile == "burst" and peak > 1:
+        base = max(1, peak // 4)
+        ramp_s = args.ramp_seconds or (args.duration * 0.5)
+        extra = peak - base
+        spawn_delays = [0.0] * base + [
+            round((i + 1) / extra * ramp_s, 3) for i in range(extra)
+        ]
+        log.info("Profile     : burst (base %d -> peak %d over %.0fs)", base, peak, ramp_s)
+    else:
+        spawn_delays = [0.0] * peak
+        log.info("Profile     : steady (%d users at once)", peak)
 
-    log.info("Starting %d virtual users …", args.users)
-    for t in threads:
-        t.start()
+    def make_user(uid: int) -> threading.Thread:
+        user = VirtualUser(uid, args.host, args.think_min, args.think_max)
+        return threading.Thread(target=user.run_journey, args=(stop_event,),
+                                name=f"user-{uid}", daemon=True)
 
+    log.info("Starting %d virtual users …", peak)
+    run_start = time.time()
     try:
-        time.sleep(args.duration)
+        for uid, delay in enumerate(spawn_delays, 1):
+            now = time.time() - run_start
+            if delay > now:
+                time.sleep(delay - now)
+            t = make_user(uid)
+            t.start()
+            threads.append(t)
+        # sustain at peak for the remainder of the run
+        remaining = args.duration - (time.time() - run_start)
+        if remaining > 0:
+            time.sleep(remaining)
     except KeyboardInterrupt:
         log.info("Interrupted by user — shutting down …")
 

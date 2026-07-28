@@ -33,8 +33,18 @@ DURATION=$((BASELINE_S + INJECTION_S + RECOVERY_S))
 PROM="${PROMETHEUS:-http://localhost:9090}"
 FRONTEND="${FRONTEND_HOST:-http://localhost:80}"
 
-RECIPE_SH="$SD/faults/${RECIPE}.sh"
-[[ -x "$RECIPE_SH" ]] || { echo "no such recipe: $RECIPE_SH"; exit 1; }
+# RECIPE="normal" is a fault-free reference run (trace + load + audit, no
+# injection/verify). Any other value must name an executable faults/ recipe.
+NORMAL=0
+if [[ "$RECIPE" == "normal" ]]; then
+    NORMAL=1
+else
+    RECIPE_SH="$SD/faults/${RECIPE}.sh"
+    [[ -x "$RECIPE_SH" ]] || { echo "no such recipe: $RECIPE_SH"; exit 1; }
+fi
+
+# Workload shape passed through to the load generator (steady|burst).
+PROFILE="${PROFILE:-steady}"
 
 # Per-run fault-state dir so exactly one ground_truth.json belongs to this run.
 export FAULT_STATE_DIR="$HOME/fault-state/$RUN"
@@ -45,7 +55,7 @@ if ! curl -sf -m 8 "$PROM/api/v1/query?query=up" >/dev/null 2>&1; then
     echo "WARNING: Prometheus unreachable at $PROM - metrics + verification will be empty."
 fi
 
-echo "[$RUN] scenario=$RECIPE intensity=$INTENSITY duration=${DURATION}s "\
+echo "[$RUN] scenario=$RECIPE intensity=$INTENSITY workload=$PROFILE duration=${DURATION}s "\
 "(baseline ${BASELINE_S}s / injection ${INJECTION_S}s / recovery ${RECOVERY_S}s)"
 
 # 1) continuous tracing for the whole window (scenario dir = recipe name)
@@ -54,18 +64,21 @@ TRACE_PID=$!
 
 # 2) continuous load for the whole window
 python3 "$SD/load_generator.py" --host "$FRONTEND" --users "$USERS" \
-    --duration "$DURATION" --think-min 0.1 --think-max 0.3 \
+    --duration "$DURATION" --profile "$PROFILE" --think-min 0.1 --think-max 0.3 \
     --output "$HOME/${RUN}_load.csv" > "$HOME/${RUN}_load.log" 2>&1 &
 LOAD_PID=$!
 
 # 3) baseline -> inject -> hold -> cleanup -> recovery (the recipe stamps the
 #    exact injection window into ground_truth.json via gt_begin/gt_end).
-sleep "$BASELINE_S"
-echo "[$RUN] injecting $RECIPE ($INTENSITY) at baseline+${BASELINE_S}s"
-"$RECIPE_SH" inject "$INTENSITY" || echo "[$RUN] WARN: inject returned nonzero"
-sleep "$INJECTION_S"
-echo "[$RUN] cleaning up $RECIPE"
-"$RECIPE_SH" cleanup || echo "[$RUN] WARN: cleanup returned nonzero"
+#    Skipped entirely for a normal (fault-free) reference run.
+if [[ "$NORMAL" -eq 0 ]]; then
+    sleep "$BASELINE_S"
+    echo "[$RUN] injecting $RECIPE ($INTENSITY) at baseline+${BASELINE_S}s"
+    "$RECIPE_SH" inject "$INTENSITY" || echo "[$RUN] WARN: inject returned nonzero"
+    sleep "$INJECTION_S"
+    echo "[$RUN] cleaning up $RECIPE"
+    "$RECIPE_SH" cleanup || echo "[$RUN] WARN: cleanup returned nonzero"
+fi
 
 # recovery window elapses while tracing continues to the end
 wait "$TRACE_PID" 2>/dev/null || true
@@ -78,15 +91,17 @@ S=$(grep timestamp_utc "$RUN_DIR/meta/runinfo_start.txt" 2>/dev/null | cut -d= -
 E=$(grep timestamp_utc "$RUN_DIR/meta/runinfo_end.txt" 2>/dev/null | cut -d= -f2)
 PROMETHEUS="$PROM" STEP=5s "$SD/download_metrics_full.sh" "$S" "$E" "$HOME/${RUN}_metrics" || true
 
-# 5) verify the injection actually moved its target metric(s)
-GT=$(ls "$FAULT_STATE_DIR"/*.ground_truth.json 2>/dev/null | head -1)
-if [[ -n "$GT" ]]; then
-    cp "$GT" "$RUN_DIR/ground_truth.json"
-    python3 "$SD/verify_injection.py" --ground-truth "$GT" \
-        --prometheus "$PROM" --out "$RUN_DIR/verification.json" \
-        --plot "$RUN_DIR/verification.png" || true
-else
-    echo "[$RUN] WARN: no ground_truth.json produced by the recipe"
+# 5) verify the injection actually moved its target metric(s) (fault runs only)
+if [[ "$NORMAL" -eq 0 ]]; then
+    GT=$(ls "$FAULT_STATE_DIR"/*.ground_truth.json 2>/dev/null | head -1)
+    if [[ -n "$GT" ]]; then
+        cp "$GT" "$RUN_DIR/ground_truth.json"
+        python3 "$SD/verify_injection.py" --ground-truth "$GT" \
+            --prometheus "$PROM" --out "$RUN_DIR/verification.json" \
+            --plot "$RUN_DIR/verification.png" || true
+    else
+        echo "[$RUN] WARN: no ground_truth.json produced by the recipe"
+    fi
 fi
 
 # 6) cross-modality alignment audit
