@@ -71,6 +71,14 @@ for entry in "${MATRIX[@]}"; do
     PROFILE="$workload" "$SD/run_scenario.sh" "$recipe" "$intensity" "$RUN" "$USERS" \
         > "$HOME/${RUN}.log" 2>&1 || echo "[$idx] WARN: run_scenario returned nonzero for $RUN"
 
+    # Compress the kernel CTF streams (~3-4x) now the inline audit has run, so
+    # the campaign footprint stays ~3 GB/run instead of ~9-10 GB and fits the
+    # SSD quota. metadata/index stay uncompressed; derivers gunzip on demand.
+    # Runs sequentially (between runs), so it never perturbs live tracing.
+    if [[ -d "$RUN_DIR/kernel/kernel" ]]; then
+        gzip -q "$RUN_DIR"/kernel/kernel/channel0_* 2>/dev/null || true
+    fi
+
     verdict="n/a"
     [[ -f "$RUN_DIR/verification.json" ]] && verdict=$(python3 -c \
         "import json;print(json.load(open('$RUN_DIR/verification.json')).get('verification_status','n/a'))" 2>/dev/null || echo n/a)
