@@ -97,6 +97,34 @@ is deferred to the VM (Phase 1).
   bundle with ground_truth.json + verification.json. Syntax-checked; VM-only
   to run (LTTng + injects faults).
 
+## Phase-1 calibration findings (VM, 2026-07-28) — infra fixes + metric mapping
+Calibration surfaced several stack-reality gaps; all now fixed/documented:
+- **Docker 29 storage driver:** defaults to containerd-snapshotter
+  ("overlayfs") which cAdvisor 0.49 can't read → container metrics had NO
+  service labels, silently handicapping the metrics modality. FIX: pin
+  classic overlay2 via daemon.json (baked into vm_bootstrap.sh). After the
+  switch, cadvisor labels containers (`docker-compose_<svc>_1`) and exposes
+  memory-limit metrics.
+- **No cfs-throttle metric:** this cadvisor build exposes only
+  container_cpu_usage/system/user + spec_cpu_period — NO
+  container_cpu_cfs_throttled_*. So svc_cpu_cap can't verify via throttle
+  counters; pivoted to app-latency (canonical) + capped-usage (corroborating).
+- **Request-duration metric name splits by runtime** (the big one): Go/Node
+  services (catalogue, frontend) expose `http_request_duration_seconds`;
+  Java services (cart, orders, payment, user, shipping) expose
+  `request_duration_seconds`. Prometheus job label for carts is `cart`
+  (singular). verification_targets.json corrected per service + a
+  `_metric_naming` note added.
+- **Prometheus/cAdvisor lack restart policy** → down after reboot; applied
+  `docker update --restart=unless-stopped` to the running prometheus, and
+  the compose override sets it for future recreates.
+- **Calibration method:** lightweight `/tmp/calibrate.sh <recipe> <intensity>
+  <promql>` probes baseline/inject/recovery of a target metric with load
+  running (no kernel trace) — fast, disk-light. Full run_scenario (with
+  kernel) is for final validation, not per-iteration tuning.
+- Load must be launched with `setsid ... </dev/null &` — a plain
+  `nohup & disown` dies when the flaky SSH channel drops.
+
 ## State
 VM gate cleared; Phase-1 QC tooling built and offline-tested. Next on the VM:
 fault intensity calibration (run_scenario.sh per recipe; tune thresholds in
