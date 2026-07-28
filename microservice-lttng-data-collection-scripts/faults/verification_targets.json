@@ -31,28 +31,32 @@
   ],
 
   "svc_mem_cap_carts": [
-    {"canonical": true, "name": "carts_memory_at_limit",
-     "promql": "max(container_memory_usage_bytes{name=~\".*carts_1$\"} / container_spec_memory_limit_bytes{name=~\".*carts_1$\"})",
-     "direction": "increase", "threshold_sigma": 3, "abs_threshold": 0.9, "min_fraction": 0.6,
-     "why": "usage pinned at the imposed cap"}
+    {"canonical": true, "name": "carts_memory_limit_dropped",
+     "promql": "min(container_spec_memory_limit_bytes{name=~\".*carts_1$\"})",
+     "direction": "decrease", "threshold_sigma": 3, "abs_threshold": 1000000000, "min_fraction": 0.8,
+     "why": "the cap is applied: limit drops from host-total (~42GB) to the cap (<=300MB). Reliable for both intensities. (usage/limit ratio is unusable: uncapped baseline limit = host total.) carts working set is ~545MB, so any cap <=300MB necessarily constrains it."},
+    {"canonical": false, "name": "carts_oom_kills",
+     "promql": "increase(container_oom_events_total{name=~\".*carts_1$\"}[2m])",
+     "direction": "increase", "threshold_sigma": 2, "abs_threshold": 1, "min_fraction": 0.2,
+     "why": "aggressive cap (160MB, below the working set) forces OOM kills; subtle cap causes GC pressure without necessarily OOMing"}
   ],
 
   "dependency_outage_payment": [
-    {"canonical": true, "name": "payment_cpu_to_zero",
+    {"canonical": true, "name": "payment_cpu_drops",
      "promql": "rate(container_cpu_usage_seconds_total{name=~\".*payment_1$\"}[1m])",
-     "direction": "decrease", "threshold_sigma": 3, "abs_threshold": 0.005, "min_fraction": 0.8,
-     "why": "paused (frozen) container consumes ~no CPU"},
-    {"canonical": false, "name": "orders_5xx_rate",
+     "direction": "decrease", "threshold_sigma": 2, "abs_threshold": 0.003, "min_fraction": 0.4,
+     "why": "METRICS-WEAK fault (calibrated: payment baseline CPU ~0.004 core drops ~58% to ~0.0018 under pause, smeared by the 1m rate window; may verify BORDERLINE). This aligns with fault_catalog.md: TRACES win this fault (the broken orders->payment edge), not metrics. See orders_5xx note below."},
+    {"canonical": false, "name": "orders_5xx_rate_EXPECTED_BLIND",
      "promql": "sum(rate(request_duration_seconds_count{job=\"orders\",status_code=~\"5..\"}[1m]))",
-     "direction": "increase", "threshold_sigma": 3, "abs_threshold": 0.1, "min_fraction": 0.5,
-     "why": "orders fails when its payment dependency is unreachable"}
+     "direction": "increase", "threshold_sigma": 3, "abs_threshold": 0.1, "min_fraction": 0.3,
+     "why": "CALIBRATION FINDING: stays ~0. docker pause FREEZES payment, so orders' HTTP call HANGS (blocked socket read) rather than fail-fast - the request never completes with an error status inside the window. A frozen dependency is metrics/logs-INVISIBLE while the kernel sees orders threads blocked in read() on the payment socket. This is a concrete instance of the study's kernel-wins thesis; kept as documentation, not a verification gate."}
   ],
 
   "queue_backlog": [
-    {"canonical": true, "name": "queue_master_cpu_to_zero",
+    {"canonical": true, "name": "queue_master_cpu_drops",
      "promql": "rate(container_cpu_usage_seconds_total{name=~\".*queue-master_1$\"}[1m])",
-     "direction": "decrease", "threshold_sigma": 3, "abs_threshold": 0.005, "min_fraction": 0.8,
-     "why": "paused consumer stops working; the backlog itself is a kernel/rabbitmq signal (silent in app metrics)"}
+     "direction": "decrease", "threshold_sigma": 2, "abs_threshold": 0.004, "min_fraction": 0.5,
+     "why": "calibrated: queue-master baseline CPU ~0.008 core drops ~77% to ~0.0019 under pause (1m-rate-smeared). METRICS-WEAK silent-failure fault: orders keep succeeding, no error anywhere; the real signal is the KERNEL (queue-master cgroup goes quiet while rabbitmq keeps taking inbound) - matches fault_catalog.md's kernel-wins prediction."}
   ],
 
   "noisy_neighbor": [
