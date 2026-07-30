@@ -104,12 +104,30 @@ def attribute(kernel_dir, target_comm, begin_iso, end_iso, names):
     return total, len(acc)
 
 def summarize(total):
-    idle = total.get("idle_epoll",0) + total.get("idle_sleep",0)
-    active = {k:v for k,v in total.items() if k not in ("idle_epoll","idle_sleep")}
-    denom = sum(active.values()) or 1
-    return {"active_pct": {k: round(100*v/denom,1) for k,v in sorted(active.items(), key=lambda x:-x[1])},
-            "active_seconds": {k: round(v/1e9,3) for k,v in active.items()},
-            "idle_seconds": round(idle/1e9,3)}
+    # Rule-out buckets. For Go/Java runtimes the DB-wait is off-CPU I/O-readiness
+    # parking (epoll/futex), NOT a blocked read() — so the decisive, robust claim
+    # is the rule-out: low on_cpu => not compute-bound; low disk => not disk-bound;
+    # high runnable_wait => CPU contention; high off_cpu_io_wait => external I/O /
+    # dependency latency.
+    g = lambda *ks: sum(total.get(k, 0) for k in ks)
+    buckets = {
+        "on_cpu": g("on_cpu"),
+        "runnable_wait": g("runnable_wait"),
+        "disk_wait": g("blocked_disk"),
+        "off_cpu_io_wait": g("blocked_read_net","blocked_write_net","blocked_futex",
+                             "idle_epoll","idle_sleep","blocked_other"),
+    }
+    denom = sum(buckets.values()) or 1
+    pct = {k: round(100*v/denom, 1) for k, v in buckets.items()}
+    # crude verdict hint the LLM can lean on (it still reasons over hypotheses)
+    if pct["on_cpu"] >= 60: hint = "cpu_bound"
+    elif pct["runnable_wait"] >= 30: hint = "cpu_contention (runnable but starved)"
+    elif pct["disk_wait"] >= 30: hint = "disk_bound"
+    elif pct["off_cpu_io_wait"] >= 60: hint = "external_io_or_dependency_wait"
+    else: hint = "mixed"
+    return {"rule_out_pct": pct, "verdict_hint": hint,
+            "seconds": {k: round(v/1e9, 3) for k, v in buckets.items()},
+            "family_seconds": {k: round(v/1e9, 3) for k, v in sorted(total.items(), key=lambda x:-x[1])}}
 
 def _cap(begin, end, sec):
     if not sec: return end
