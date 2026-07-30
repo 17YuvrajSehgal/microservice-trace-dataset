@@ -17,11 +17,15 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE); sys.path.insert(0, os.path.join(HERE, "engine"))
 import demo_cli
 
-try:
+try:                                   # official Anthropic SDK
     from mcp.server.fastmcp import FastMCP
-except Exception as ex:  # pragma: no cover
-    sys.stderr.write(f"[mcp_server] `mcp` package not available ({ex}). Use demo_cli.py instead.\n")
-    raise SystemExit(1)
+except Exception:
+    try:                               # standalone fastmcp package
+        from fastmcp import FastMCP
+    except Exception as ex:  # pragma: no cover
+        sys.stderr.write(f"[mcp_server] no FastMCP available ({ex}); pip install fastmcp. "
+                         f"Meanwhile demo_cli.py has identical logic.\n")
+        raise SystemExit(1)
 
 mcp = FastMCP("collection-aware-rca")
 

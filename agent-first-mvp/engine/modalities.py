@@ -91,6 +91,8 @@ def log_signals(logs_dir, services, begin_iso, end_iso):
 # ---- metrics: the pre-computed change-point in verification.json --------------
 def metric_changepoint(run_dir):
     path = os.path.join(run_dir, "verification.json")
+    if not os.path.exists(path):                      # live captures have no pre-computed check
+        return {"status": "live (metric not pre-computed)", "checks": []}, 0
     b = os.path.getsize(path)
     v = json.load(open(path))
     out = []
