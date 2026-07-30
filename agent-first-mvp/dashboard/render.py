@@ -130,16 +130,19 @@ def render(res):
   <div class="v-gauge">{gauge(conf)}<div class="gauge-cap">confidence</div></div>
 </section>
 
-<div class="grid2">
+{f'''<div class="grid2">
   <section class="card">
     <h3>Kernel wait-attribution<small>{esc(subj or "")} · {k.get(subj,{}).get("n_tids_seen","?")} threads · babeltrace2</small></h3>
-    <div class="donut-row">{donut(donut_data) if donut_data else ""}<ul class="legend">{legend}</ul></div>
+    <div class="donut-row">{donut(donut_data)}<ul class="legend">{legend}</ul></div>
   </section>
   <section class="card">
     <h3>Ruled out<small>by the same evidence</small></h3>
     <ul class="ruled">{ruled_html}</ul>
   </section>
-</div>
+</div>''' if donut_data else f'''<section class="card">
+    <h3>Ruled out<small>by the same evidence</small></h3>
+    <ul class="ruled">{ruled_html}</ul>
+</section>'''}
 
 <section class="card">
   <h3>The agent chose to collect <em>only</em> this<small>phase-1 collection spec</small></h3>
