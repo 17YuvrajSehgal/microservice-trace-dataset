@@ -16,9 +16,9 @@ import rca
 
 KERNEL_NAMES = ["sched_switch","sched_waking","sched_wakeup","syscall_entry_","syscall_exit_"]
 
-def _bundle_mb(run_dir):
+def _dir_mb(path):
     tot = 0
-    for root, _, files in os.walk(run_dir):
+    for root, _, files in os.walk(path):
         for fn in files:
             try: tot += os.path.getsize(os.path.join(root, fn))
             except OSError: pass
@@ -87,7 +87,13 @@ def run(skill_path, run_dir, kernel_dir, problem, max_seconds=0, mode="replay", 
            wa._cap(gt["fault"]["injection_start_utc"], gt["fault"]["injection_end_utc"], max_seconds)]
     gather = GATHERERS.get(skill.get("fault_source"), gather_generic)
     ev = gather(skill, run_dir, kernel_dir, win, max_seconds)
-    ev["full_bundle_mb"] = _bundle_mb(run_dir)
+    # size accounting: scoped (touched) vs what an *undirected* kernel-deep tool
+    # would have to ingest for this run — the full decompressed kernel + all spans/logs.
+    ev["on_disk_bundle_mb"] = _dir_mb(run_dir)                 # gzipped storage
+    ev["undirected_processing_mb"] = round(_dir_mb(kernel_dir)  # full decompressed kernel
+                                           + _dir_mb(os.path.join(run_dir, "otlp"))
+                                           + _dir_mb(os.path.join(run_dir, "logs")), 1)
+    ev["full_bundle_mb"] = ev["undirected_processing_mb"]      # headline denominator
     verdict = rca.decide(skill, ev)
     result = {
         "skill": skill.get("skill"), "fault_source": skill.get("fault_source"),
