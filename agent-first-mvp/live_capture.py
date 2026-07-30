@@ -59,7 +59,7 @@ def slice_bytes(src, out, off0):
     except OSError:
         return 0
 
-def capture(skill, baseline_s=12, injection_s=35, users=6):
+def capture(skill, baseline_s=12, injection_s=35, users=8, drain_s=10):
     """Run the live loop for a skill dict. Returns (run_dir, kernel_dir) for phase2."""
     import importlib.util
     sys.path.insert(0, os.path.join(HERE, "engine"))
@@ -111,6 +111,8 @@ def capture(skill, baseline_s=12, injection_s=35, users=6):
     finally:
         log("stop + destroy kernel session (cleanup)…")
         sh("sudo lttng stop"); sh("sudo lttng destroy")
+        # the session is root-owned (sudo lttng); hand it back so babeltrace2 (our uid) can read it
+        sh(f"sudo chown -R $(id -u):$(id -g) {run_dir}/kernel")
         if fault_injected:
             sh(f"cd {SCRIPTS}/faults && ./{recipe} cleanup")
         if load and load.poll() is None:
@@ -118,7 +120,8 @@ def capture(skill, baseline_s=12, injection_s=35, users=6):
             try: load.wait(5)
             except Exception: load.kill()
 
-    time.sleep(3)  # let the collector flush trailing spans
+    log(f"draining {drain_s}s so the OTel collector flushes the window's spans…")
+    time.sleep(drain_s)  # collector batches spans; too short => catalogue spans missed
     nb = slice_bytes(otlp_src, os.path.join(run_dir, "otlp", "spans.jsonl"), off0)
     log(f"sliced {nb/1e6:.1f} MB of spans for the window")
     _dump_logs(run_dir, spec, begin)
@@ -157,7 +160,8 @@ if __name__ == "__main__":
     ap.add_argument("--skill", required=True)
     ap.add_argument("--baseline-s", type=int, default=12)
     ap.add_argument("--injection-s", type=int, default=35)
+    ap.add_argument("--users", type=int, default=8)
     a = ap.parse_args()
     sk = json.load(open(os.path.join(HERE, "skills", a.skill, "skill.json")))
-    rd, kd = capture(sk, a.baseline_s, a.injection_s)
+    rd, kd = capture(sk, a.baseline_s, a.injection_s, a.users)
     print(json.dumps({"run_dir": rd, "kernel_dir": kd}))
