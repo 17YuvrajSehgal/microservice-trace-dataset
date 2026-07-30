@@ -1,0 +1,10 @@
+{
+  "_comment": "Replay registry: fault_source -> collected run + its decompressed kernel working copy (~/mvp_work, READ-ONLY on ~/traces). Paths may use ~ .",
+  "slow_db": {
+    "skill": "db-slowness-rca",
+    "run_dir": "~/traces/slow_db/slow_db_aggressive_steady_r1",
+    "kernel_dir": "~/mvp_work/slow_db_r1/kernel/kernel",
+    "problem": "my catalogue database is really slow",
+    "max_seconds": 60
+  }
+}
