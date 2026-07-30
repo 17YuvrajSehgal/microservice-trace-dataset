@@ -20,6 +20,9 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.dirname(HERE)
 SCRIPTS = os.path.join(REPO, "microservice-lttng-data-collection-scripts")
 CAPROOT = os.path.expanduser("~/mvp_captures")
+# Sock Shop is reached through the edge-router on :80 (every campaign script uses this;
+# the load_generator's own :30001 default is stale for the current deployment).
+FRONTEND_HOST = os.environ.get("FRONTEND_HOST", "http://localhost:80")
 FAULT_RECIPE = {  # fault_source -> (recipe script, intensity, target services for spans/logs)
     "slow_db": ("slow_db.sh", "aggressive"),
     "noisy_neighbor": ("noisy_neighbor.sh", "aggressive"),
@@ -92,7 +95,7 @@ def capture(skill, baseline_s=12, injection_s=35, users=8, drain_s=10):
         begin = _utc()
         log(f"load: {users} users on the live stack; baseline {baseline_s}s…")
         load = subprocess.Popen([sys.executable, os.path.join(SCRIPTS, "load_generator.py"),
-                                 "--host", "http://localhost:30001", "--users", str(users),
+                                 "--host", FRONTEND_HOST, "--users", str(users),
                                  "--duration", str(baseline_s + injection_s + 5),
                                  "--output", os.path.join(run_dir, "load.csv")],
                                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
