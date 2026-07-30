@@ -7,7 +7,10 @@ visual verdict. The novel unit is the *collection-aware skill*: no incumbent (Da
 Dynatrace) or academic system (TMLL, TAAF, HolmesGPT) decides *what to collect from the
 problem statement*, and none go kernel-deep.
 
-Full plan/architecture: `../DOCS/agent-first-mvp-plan.md`.
+**Documentation:**
+- `../DOCS/agent-first-architecture.md` — full architecture + Mermaid diagrams (flow, MCP, pipeline, data contracts, usage) — **start here to understand the idea**
+- `../DOCS/agent-first-mvp-demo-runbook.md` — the 4-act demo runbook + fallback ladder
+- `../DOCS/agent-first-mvp-plan.md` — the original build plan
 
 ## Skill catalog (each maps to a real, calibrated, ground-truth fault in the StrataTrace dataset)
 
