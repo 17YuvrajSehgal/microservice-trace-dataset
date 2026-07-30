@@ -63,32 +63,61 @@ h1 .grad{background:linear-gradient(92deg,var(--brand),var(--ai));-webkit-backgr
 .diff{margin-top:26px;font-size:14.5px;color:var(--muted);border-left:2px solid var(--ai);padding-left:14px;max-width:80ch}
 .diff b{color:var(--tx)}
 
-/* ---- slide 2 : architecture ---- */
-.arch{margin-top:26px;display:flex;flex-direction:column;gap:14px}
-.lane{display:grid;grid-template-columns:92px 1fr;gap:16px;align-items:center}
-.lane .tag{font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);
-  text-align:right;line-height:1.3}
-.lane .tag b{color:var(--brand);display:block;font-size:12px}
-.row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.box{display:flex;align-items:center;gap:11px;background:var(--panel);border:1px solid var(--line);
-  border-radius:13px;padding:13px 16px}
-.box .bi{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;font-size:19px;
-  background:#0b1524;border:1px solid var(--line);flex:none}
-.box .bt{font-size:14px;font-weight:600;line-height:1.25}
-.box .bt small{display:block;font-weight:400;color:var(--muted);font-size:11.5px;font-family:var(--mono);margin-top:2px}
-.box.agent .bi{color:var(--ai)} .box.mcp .bi{color:var(--brand)} .box.orch .bi{color:var(--warn)}
-.box.user .bi{color:var(--muted)} .box.eng .bi{color:var(--warn)} .box.out .bi{color:var(--good)}
-.box.data .bi{color:var(--brand)} .box.live .bi{color:var(--crit)}
-.conn{display:grid;place-items:center;color:var(--dim);flex:none;width:30px}
-.conn .lbl{font-family:var(--mono);font-size:9.5px;color:var(--brand);white-space:nowrap;margin-bottom:1px;letter-spacing:.03em}
-.conn svg{width:22px;height:16px;stroke:var(--brand);opacity:.65}
-.mods{display:flex;gap:8px;flex-wrap:wrap}
-.mod{display:flex;align-items:center;gap:8px;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:9px 12px;font-size:12.5px;font-weight:600}
-.mod .ic{font-size:16px}
-.mod.k .ic{color:var(--kernel)} .mod.t .ic{color:var(--traces)} .mod.l .ic{color:var(--logs)} .mod.m .ic{color:var(--metrics)}
-.mod .decisive{font-family:var(--mono);font-size:9px;color:var(--kernel);text-transform:uppercase;letter-spacing:.05em}
-.note{margin-top:20px;display:flex;align-items:center;gap:12px;background:linear-gradient(90deg,#101c30,#0d1626);
-  border:1px solid var(--line);border-left:3px solid var(--good);border-radius:12px;padding:14px 18px;font-size:14.5px}
+/* ---- slide 2 : architecture pipeline (input -> processing -> output) ---- */
+.pipe{margin-top:22px;display:flex;align-items:stretch;gap:0}
+.zone{display:flex;flex-direction:column}
+.zone.in{flex:1.12} .zone.proc{flex:2.2} .zone.out{flex:1.02}
+.zhead{font-family:var(--mono);font-size:10px;letter-spacing:.15em;text-transform:uppercase;text-align:center;
+  padding-bottom:8px;margin-bottom:12px;border-bottom:1px solid var(--line)}
+.zone.in .zhead{color:var(--brand)} .zone.proc .zhead{color:var(--ai)} .zone.out .zhead{color:var(--good)}
+.zbody{flex:1;display:flex;flex-direction:column;gap:11px;justify-content:center}
+/* horizontal connector carrying the "passed" artifact token */
+.hconn{flex:0 0 92px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9px;padding-top:30px}
+.tok{display:inline-flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10px;color:var(--tx);
+  background:var(--panel2);border:1px solid var(--line);border-radius:20px;padding:4px 10px;white-space:nowrap;line-height:1}
+.tok .ic{font-size:13px;color:var(--brand)}
+.tok.art{border-color:#38bdf866;background:#0c1a2b} .tok.art .ic{color:var(--brand)}
+.tok.gd{border-color:#3fd68a66;background:#0c1f18} .tok.gd .ic{color:var(--good)}
+.harrow{width:60px;height:14px;stroke:var(--brand);opacity:.7;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+/* generic pipeline card */
+.pc{background:var(--panel);border:1px solid var(--line);border-radius:13px;padding:13px 15px}
+.pc .ph{display:flex;align-items:center;gap:11px}
+.pc .pi{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;font-size:18px;background:#0b1524;border:1px solid var(--line);flex:none}
+.pc .pt{font-size:14px;font-weight:650;line-height:1.2}
+.pc .pt small{display:block;font-weight:400;color:var(--muted);font-size:11px;font-family:var(--mono);margin-top:2px}
+.pc.user .pi{color:var(--brand)} .pc.verdict .pi{color:var(--good)} .pc.dash .pi{color:var(--brand)} .pc.skills .pi{color:var(--ai)}
+.skcap{font-family:var(--mono);font-size:9.5px;color:var(--muted);margin-top:9px}
+.skchips{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}
+.skchip{font-family:var(--mono);font-size:9.5px;color:#c8bcff;background:#a78bfa14;border:1px solid #a78bfa3a;border-radius:6px;padding:3px 7px}
+/* processing internals */
+.orch{display:flex;align-items:center;gap:10px;background:linear-gradient(90deg,#151234,#101a2c);border:1px solid #2b2552;border-radius:12px;padding:10px 14px}
+.orch .oi{width:30px;height:30px;border-radius:8px;display:grid;place-items:center;font-size:16px;background:#0b1524;border:1px solid var(--line);flex:none}
+.orch .oi.r{color:var(--ai)} .orch .oi.p{color:var(--brand)}
+.orch .ot{font-size:12px;font-weight:600;line-height:1.25}.orch .ot small{color:var(--muted);font-family:var(--mono);font-size:10px;font-weight:400;display:block}
+.orch .sw{color:var(--muted);font-size:14px;margin:0 -2px}
+.orch .role{margin-left:auto;font-family:var(--mono);font-size:9px;letter-spacing:.05em;text-transform:uppercase;color:var(--ai);text-align:right;line-height:1.35}
+.phase{position:relative;padding:12px 14px 12px 16px;background:var(--panel);border:1px solid var(--line);border-radius:13px}
+.phase::before{content:"";position:absolute;left:0;top:12px;bottom:12px;width:3px;border-radius:0 3px 3px 0}
+.phase.p1::before{background:var(--brand)} .phase.p2::before{background:var(--ai)}
+.ptag{font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;margin-bottom:8px}
+.phase.p1 .ptag{color:var(--brand)} .phase.p2 .ptag{color:var(--ai)}
+.pline{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.pstep{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600}
+.pstep .ic{font-size:16px;color:var(--warn)}
+.mchip{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:600;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:6px 9px}
+.mchip .ic{font-size:14px}
+.mchip.k .ic{color:var(--kernel)}.mchip.t .ic{color:var(--traces)}.mchip.l .ic{color:var(--logs)}.mchip.m .ic{color:var(--metrics)}
+.arrm{color:var(--dim);font-size:15px;flex:none}
+.subnote{font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:7px}
+/* vertical hand-off between phases (what is passed) */
+.handoff{display:flex;align-items:center;gap:10px;justify-content:center;margin:1px 0}
+.handoff .dn{width:14px;height:22px;stroke:var(--brand);opacity:.85;flex:none;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.feeders{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:9px}
+.feeders .flabel{font-family:var(--mono);font-size:10px;color:var(--muted)}
+.src{display:inline-flex;align-items:center;gap:6px;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:5px 9px;font-size:11px;font-weight:600}
+.src .ic{font-size:13px} .src.data .ic{color:var(--brand)} .src.live .ic{color:var(--crit)}
+.note{margin-top:18px;display:flex;align-items:center;gap:12px;background:linear-gradient(90deg,#101c30,#0d1626);
+  border:1px solid var(--line);border-left:3px solid var(--good);border-radius:12px;padding:13px 18px;font-size:14px}
 .note .ic{font-size:22px;color:var(--good);flex:none}
 .note b{color:var(--good)}
 
@@ -220,57 +249,78 @@ h1 .grad{background:linear-gradient(92deg,var(--brand),var(--ai));-webkit-backgr
   <!-- ================= SLIDE 2 : ARCHITECTURE ================= -->
   <section class="slide" data-i="1">
    <div class="inner">
-    <span class="eyebrow"><span class="pip"></span> Architecture &mdash; how it works together</span>
-    <h1>Agent&nbsp;+&nbsp;MCP&nbsp;+&nbsp;orchestration&nbsp;+&nbsp;<span class="grad">kernel-deep engine</span></h1>
+    <span class="eyebrow"><span class="pip"></span> Architecture &mdash; input &rarr; processing &rarr; output</span>
+    <h1>From a plain-language problem to a <span class="grad">kernel-deep verdict</span></h1>
 
-    <div class="arch">
-     <div class="lane">
-      <div class="tag"><b>drive</b>the loop</div>
-      <div class="row">
-       <div class="box user"><span class="bi"><svg class="ic"><use href="#i-user"/></svg></span><span class="bt">Problem<small>natural language</small></span></div>
-       <div class="conn"><span class="lbl">discover</span><svg viewBox="0 0 24 16" class="ic"><path d="M2 8h20M17 3l5 5-5 5"/></svg></div>
-       <div class="box agent"><span class="bi"><svg class="ic"><use href="#i-robot"/></svg></span><span class="bt">Claude&nbsp;agent<small>reasons + orchestrates</small></span></div>
-       <div class="conn"><span class="lbl">MCP&nbsp;stdio</span><svg viewBox="0 0 24 16" class="ic"><path d="M2 8h20M17 3l5 5-5 5"/></svg></div>
-       <div class="box mcp"><span class="bi"><svg class="ic"><use href="#i-plug"/></svg></span><span class="bt">MCP&nbsp;server<small>discover · phase1 · run_skill</small></span></div>
-      </div>
-     </div>
+    <div class="pipe">
 
-     <div class="lane">
-      <div class="tag"><b>phase 1</b>decide</div>
-      <div class="row">
-       <div class="box orch"><span class="bi"><svg class="ic"><use href="#i-scope"/></svg></span><span class="bt">Emit collection spec<small>events · syscalls · services · lttng cmd</small></span></div>
-       <div class="conn"><span class="lbl">shown to user</span><svg viewBox="0 0 24 16" class="ic"><path d="M2 8h20M17 3l5 5-5 5"/></svg></div>
-       <div class="box"><span class="bi" style="color:var(--muted)"><svg class="ic"><use href="#i-check"/></svg></span><span class="bt">Approve &amp; scope<small>collect only what&rsquo;s declared</small></span></div>
-      </div>
-     </div>
-
-     <div class="lane">
-      <div class="tag"><b>phase 2</b>analyze</div>
-      <div class="row">
-       <div class="box eng"><span class="bi"><svg class="ic"><use href="#i-gear"/></svg></span><span class="bt">Engine gathers<small>only the scoped modalities</small></span></div>
-       <div class="conn"><svg viewBox="0 0 24 16" class="ic"><path d="M2 8h20M17 3l5 5-5 5"/></svg></div>
-       <div class="mods">
-        <span class="mod k"><svg class="ic"><use href="#i-chip"/></svg> Kernel<span class="decisive">wait-attr</span></span>
-        <span class="mod t"><svg class="ic"><use href="#i-traces"/></svg> Traces</span>
-        <span class="mod l"><svg class="ic"><use href="#i-logs"/></svg> Logs</span>
-        <span class="mod m"><svg class="ic"><use href="#i-metrics"/></svg> Metrics</span>
+     <!-- INPUT -->
+     <div class="zone in">
+      <div class="zhead">Input</div>
+      <div class="zbody">
+       <div class="pc user"><div class="ph"><span class="pi"><svg class="ic"><use href="#i-chat"/></svg></span>
+         <span class="pt">Problem<small>&ldquo;my database is slow&rdquo;</small></span></div></div>
+       <div class="pc skills"><div class="ph"><span class="pi"><svg class="ic"><use href="#i-spec"/></svg></span>
+         <span class="pt">Skill library<small>reusable diagnostic contracts</small></span></div>
+         <div class="skcap">the agent matches the problem to one skill &rarr;</div>
+         <div class="skchips"><span class="skchip">db-slowness</span><span class="skchip">noisy-neighbor</span><span class="skchip">dependency-outage</span><span class="skchip">error-storm</span><span class="skchip">cpu-saturation</span></div>
        </div>
-       <div class="conn"><svg viewBox="0 0 24 16" class="ic"><path d="M2 8h20M17 3l5 5-5 5"/></svg></div>
-       <div class="box out"><span class="bi"><svg class="ic"><use href="#i-target"/></svg></span><span class="bt">Deterministic verdict<small>+ dashboard</small></span></div>
       </div>
      </div>
 
-     <div class="lane">
-      <div class="tag"><b>source</b>data</div>
-      <div class="row">
-       <div class="box data"><span class="bi"><svg class="ic"><use href="#i-db"/></svg></span><span class="bt">Dataset<small>replay &mdash; safe default</small></span></div>
-       <div class="box live"><span class="bi"><svg class="ic"><use href="#i-live"/></svg></span><span class="bt">Live capture<small>scoped LTTng + fault inject</small></span></div>
-       <span style="color:var(--muted);font-size:12.5px;font-family:var(--mono)">&mdash;&nbsp;same engine, either source</span>
+     <!-- input -> processing -->
+     <div class="hconn"><span class="tok"><svg class="ic"><use href="#i-robot"/></svg> matched skill</span>
+       <svg class="harrow" viewBox="0 0 60 14"><path d="M0 7h53M47 2l6 5-6 5"/></svg></div>
+
+     <!-- PROCESSING -->
+     <div class="zone proc">
+      <div class="zhead">Processing &mdash; the agent runs a two-phase loop over MCP</div>
+      <div class="zbody">
+       <div class="orch"><span class="oi r"><svg class="ic"><use href="#i-robot"/></svg></span>
+         <span class="ot">Claude agent</span><span class="sw">&#8646;</span>
+         <span class="oi p"><svg class="ic"><use href="#i-plug"/></svg></span>
+         <span class="ot">MCP server<small>discover &middot; phase1 &middot; run_skill</small></span>
+         <span class="role">orchestrates<br>both phases</span></div>
+
+       <div class="phase p1"><div class="ptag">Phase 1 &middot; decide what to collect</div>
+         <div class="pline"><span class="pstep"><svg class="ic"><use href="#i-scope"/></svg> Skill emits</span>
+           <span class="arrm">&rarr;</span><span class="tok art"><svg class="ic"><use href="#i-spec"/></svg> Collection Spec</span></div>
+         <div class="subnote">events &middot; syscalls &middot; target services &middot; the exact lttng command</div></div>
+
+       <div class="handoff"><svg class="dn" viewBox="0 0 14 22"><path d="M7 0v15M2 10l5 5 5-5"/></svg>
+         <span class="tok art"><svg class="ic"><use href="#i-spec"/></svg> passes the Collection Spec &mdash; collect only this</span></div>
+
+       <div class="phase p2"><div class="ptag">Phase 2 &middot; collect &amp; analyze</div>
+         <div class="pline"><span class="mchip k"><svg class="ic"><use href="#i-chip"/></svg> Kernel</span>
+           <span class="mchip t"><svg class="ic"><use href="#i-traces"/></svg> Traces</span>
+           <span class="mchip l"><svg class="ic"><use href="#i-logs"/></svg> Logs</span>
+           <span class="mchip m"><svg class="ic"><use href="#i-metrics"/></svg> Metrics</span>
+           <span class="arrm">&rarr;</span><span class="tok gd"><svg class="ic"><use href="#i-check"/></svg> evidence</span>
+           <span class="arrm">&rarr;</span><span class="tok gd"><svg class="ic"><use href="#i-target"/></svg> verdict</span></div>
+         <div class="feeders"><span class="flabel">reads only the scoped data from</span>
+           <span class="src data"><svg class="ic"><use href="#i-db"/></svg> Dataset (replay)</span>
+           <span class="src live"><svg class="ic"><use href="#i-live"/></svg> Live capture</span></div></div>
       </div>
      </div>
+
+     <!-- processing -> output -->
+     <div class="hconn"><span class="tok gd"><svg class="ic"><use href="#i-target"/></svg> verdict</span>
+       <svg class="harrow" viewBox="0 0 60 14"><path d="M0 7h53M47 2l6 5-6 5"/></svg></div>
+
+     <!-- OUTPUT -->
+     <div class="zone out">
+      <div class="zhead">Output</div>
+      <div class="zbody">
+       <div class="pc verdict"><div class="ph"><span class="pi"><svg class="ic"><use href="#i-target"/></svg></span>
+         <span class="pt">Verdict<small>root cause &middot; ruled-out &middot; fix</small></span></div></div>
+       <div class="pc dash"><div class="ph"><span class="pi"><svg class="ic"><use href="#i-metrics"/></svg></span>
+         <span class="pt">Dashboard<small>evidence &middot; data saved</small></span></div></div>
+      </div>
+     </div>
+
     </div>
 
-    <div class="note"><svg class="ic"><use href="#i-shield"/></svg><span>The agent <b>orchestrates</b> the two-phase loop; the verdict is <b>deterministic</b> (rule-scored over the evidence) &mdash; the LLM narrates, but never invents the root cause.</span></div>
+    <div class="note"><svg class="ic"><use href="#i-shield"/></svg><span>The agent <b>orchestrates</b> the loop; the verdict is <b>deterministic</b> (rule-scored over the evidence) &mdash; the LLM narrates, but never invents the root cause.</span></div>
    </div>
   </section>
 
