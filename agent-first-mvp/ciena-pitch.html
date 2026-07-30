@@ -1,0 +1,369 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>StrataTrace — agent-first, collection-aware observability</title>
+<style>
+:root{
+  --bg:#080c15; --panel:#0f1826; --panel2:#0c1420; --line:#1e2b40; --track:#16223a;
+  --tx:#e7eef8; --muted:#8698b4; --dim:#5f7089;
+  --brand:#38bdf8; --ai:#a78bfa; --good:#3fd68a; --warn:#f6c445; --crit:#f0663f;
+  --kernel:#a78bfa; --traces:#34d399; --logs:#f6c445; --metrics:#38bdf8;
+  --mono:ui-monospace,"SF Mono","JetBrains Mono","Cascadia Code",Menlo,Consolas,monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Inter,Helvetica,Arial,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{background:var(--bg);color:var(--tx);font-family:var(--sans);overflow:hidden;
+  -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:radial-gradient(1100px 620px at 78% -12%,#16305033,transparent 60%),
+             radial-gradient(900px 560px at 8% 108%,#241a5522,transparent 55%)}
+
+/* deck mechanics */
+.stage{position:fixed;inset:0;overflow:hidden;z-index:1}
+.track{display:flex;height:100%;transition:transform .58s cubic-bezier(.7,0,.2,1)}
+.slide{min-width:100vw;height:100vh;display:flex;flex-direction:column;justify-content:center;
+  padding:clamp(28px,5vw,80px) clamp(24px,6vw,96px)}
+.inner{width:100%;max-width:1160px;margin:0 auto}
+
+/* shared type */
+.eyebrow{display:inline-flex;align-items:center;gap:9px;font-family:var(--mono);font-size:12px;
+  letter-spacing:.22em;text-transform:uppercase;color:var(--brand);margin-bottom:22px}
+.eyebrow .pip{width:7px;height:7px;border-radius:50%;background:var(--brand);box-shadow:0 0 12px var(--brand)}
+h1{font-size:clamp(30px,4.6vw,54px);line-height:1.05;font-weight:680;letter-spacing:-.02em;text-wrap:balance}
+h1 .grad{background:linear-gradient(92deg,var(--brand),var(--ai));-webkit-background-clip:text;background-clip:text;color:transparent}
+.lede{margin-top:16px;font-size:clamp(15px,1.6vw,19px);color:var(--muted);max-width:66ch;line-height:1.55}
+.kbd{font-family:var(--mono);font-size:.9em;background:var(--panel2);border:1px solid var(--line);
+  border-radius:5px;padding:1px 7px;color:var(--tx)}
+
+/* icons */
+.ic{width:1em;height:1em;stroke:currentColor;stroke-width:1.7;fill:none;
+  stroke-linecap:round;stroke-linejoin:round;vertical-align:-.13em;display:inline-block}
+
+/* ---- slide 1 : the idea ---- */
+.flow{display:flex;align-items:stretch;gap:6px;margin-top:40px;flex-wrap:nowrap}
+.node{flex:1;min-width:0;background:var(--panel);border:1px solid var(--line);border-radius:16px;
+  padding:20px 16px;display:flex;flex-direction:column;gap:11px;position:relative}
+.node .halo{width:46px;height:46px;border-radius:12px;display:grid;place-items:center;font-size:24px;
+  background:#0b1524;border:1px solid var(--line)}
+.node.n1 .halo{color:var(--brand)} .node.n2 .halo{color:var(--ai)} .node.n3 .halo{color:var(--warn)}
+.node.n4 .halo{color:var(--kernel)} .node.n5 .halo{color:var(--good)}
+.node .k{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.node .v{font-size:14.5px;font-weight:600;line-height:1.3}
+.node .v small{display:block;font-weight:400;color:var(--muted);font-size:12.5px;margin-top:3px}
+.arrow{flex:0 0 26px;display:grid;place-items:center;color:var(--dim)}
+.arrow svg{width:22px;height:22px;stroke:var(--brand);opacity:.6}
+.underline{display:flex;gap:14px;flex-wrap:wrap;margin-top:34px}
+.pill{display:inline-flex;align-items:center;gap:9px;background:var(--panel2);border:1px solid var(--line);
+  border-radius:30px;padding:9px 16px;font-size:13.5px;color:var(--tx)}
+.pill .ic{font-size:16px;color:var(--brand)}
+.pill b{color:var(--good)}
+.diff{margin-top:26px;font-size:14.5px;color:var(--muted);border-left:2px solid var(--ai);padding-left:14px;max-width:80ch}
+.diff b{color:var(--tx)}
+
+/* ---- slide 2 : architecture ---- */
+.arch{margin-top:26px;display:flex;flex-direction:column;gap:14px}
+.lane{display:grid;grid-template-columns:92px 1fr;gap:16px;align-items:center}
+.lane .tag{font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);
+  text-align:right;line-height:1.3}
+.lane .tag b{color:var(--brand);display:block;font-size:12px}
+.row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.box{display:flex;align-items:center;gap:11px;background:var(--panel);border:1px solid var(--line);
+  border-radius:13px;padding:13px 16px}
+.box .bi{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;font-size:19px;
+  background:#0b1524;border:1px solid var(--line);flex:none}
+.box .bt{font-size:14px;font-weight:600;line-height:1.25}
+.box .bt small{display:block;font-weight:400;color:var(--muted);font-size:11.5px;font-family:var(--mono);margin-top:2px}
+.box.agent .bi{color:var(--ai)} .box.mcp .bi{color:var(--brand)} .box.orch .bi{color:var(--warn)}
+.box.user .bi{color:var(--muted)} .box.eng .bi{color:var(--warn)} .box.out .bi{color:var(--good)}
+.box.data .bi{color:var(--brand)} .box.live .bi{color:var(--crit)}
+.conn{display:grid;place-items:center;color:var(--dim);flex:none;width:30px}
+.conn .lbl{font-family:var(--mono);font-size:9.5px;color:var(--brand);white-space:nowrap;margin-bottom:1px;letter-spacing:.03em}
+.conn svg{width:22px;height:16px;stroke:var(--brand);opacity:.65}
+.mods{display:flex;gap:8px;flex-wrap:wrap}
+.mod{display:flex;align-items:center;gap:8px;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:9px 12px;font-size:12.5px;font-weight:600}
+.mod .ic{font-size:16px}
+.mod.k .ic{color:var(--kernel)} .mod.t .ic{color:var(--traces)} .mod.l .ic{color:var(--logs)} .mod.m .ic{color:var(--metrics)}
+.mod .decisive{font-family:var(--mono);font-size:9px;color:var(--kernel);text-transform:uppercase;letter-spacing:.05em}
+.note{margin-top:20px;display:flex;align-items:center;gap:12px;background:linear-gradient(90deg,#101c30,#0d1626);
+  border:1px solid var(--line);border-left:3px solid var(--good);border-radius:12px;padding:14px 18px;font-size:14.5px}
+.note .ic{font-size:22px;color:var(--good);flex:none}
+.note b{color:var(--good)}
+
+/* ---- slide 3 : results ---- */
+.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:26px}
+.rc{background:var(--panel);border:1px solid var(--line);border-radius:15px;padding:18px 17px;position:relative;overflow:hidden}
+.rc.star{border-color:#7a63d6;background:linear-gradient(180deg,#161233,#0f1826)}
+.rc .prob{font-size:14px;font-weight:600;line-height:1.3;min-height:2.6em}
+.rc .mod-badge{display:inline-block;font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.03em;
+  padding:3px 9px;border-radius:6px;margin:11px 0 14px;text-transform:uppercase}
+.rc .big{font-size:34px;font-weight:800;letter-spacing:-.02em;font-family:var(--mono)}
+.rc .big small{font-size:14px;color:var(--muted);font-weight:500}
+.rc .lab{font-size:11.5px;color:var(--muted);margin-top:2px}
+.rc .tick{position:absolute;top:15px;right:15px;color:var(--good);font-size:19px}
+.b-k{background:#a78bfa22;color:#c4b6ff;border:1px solid #a78bfa55}
+.b-t{background:#34d39922;color:#8ff0c4;border:1px solid #34d39955}
+.b-l{background:#f6c44522;color:#ffdf8f;border:1px solid #f6c44555}
+.finds{display:grid;grid-template-columns:1fr 1fr;gap:11px 26px;margin-top:24px}
+.find{display:flex;gap:11px;align-items:flex-start;font-size:14px;color:var(--tx);line-height:1.4}
+.find .ic{font-size:18px;color:var(--good);flex:none;margin-top:1px}
+.find b{color:#fff} .find span{color:var(--muted)}
+.impact{margin-top:26px;display:flex;gap:0;border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--panel)}
+.impact .cell{flex:1;padding:18px 20px;border-right:1px solid var(--line);text-align:center}
+.impact .cell:last-child{border-right:0}
+.impact .n{font-family:var(--mono);font-size:30px;font-weight:800;letter-spacing:-.02em}
+.impact .n.g{color:var(--good)} .impact .n.b{color:var(--brand)} .impact .n.a{color:var(--ai)}
+.impact .c{font-size:12.5px;color:var(--muted);margin-top:3px}
+
+/* nav + chrome */
+.brand{position:fixed;top:26px;left:clamp(24px,6vw,96px);z-index:5;display:flex;align-items:center;gap:10px;
+  font-family:var(--mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.brand .logo{width:22px;height:22px;border-radius:6px;background:linear-gradient(135deg,var(--brand),var(--ai));display:grid;place-items:center;color:#04101c;font-weight:800;font-size:13px;font-family:var(--sans)}
+.forwho{position:fixed;top:27px;right:clamp(24px,6vw,96px);z-index:5;font-family:var(--mono);font-size:11px;
+  letter-spacing:.14em;text-transform:uppercase;color:var(--dim)}
+.progress{position:fixed;top:0;left:0;height:3px;background:linear-gradient(90deg,var(--brand),var(--ai));z-index:6;transition:width .58s cubic-bezier(.7,0,.2,1)}
+.nav{position:fixed;bottom:26px;left:0;right:0;z-index:5;display:flex;align-items:center;justify-content:center;gap:18px}
+.dots{display:flex;gap:10px}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--line);border:none;cursor:pointer;transition:.25s;padding:0}
+.dot.on{background:var(--brand);width:26px;border-radius:5px}
+.count{font-family:var(--mono);font-size:12px;color:var(--muted);min-width:44px;text-align:center}
+.arrbtn{position:fixed;top:50%;transform:translateY(-50%);z-index:5;width:44px;height:44px;border-radius:50%;
+  background:var(--panel);border:1px solid var(--line);color:var(--tx);cursor:pointer;display:grid;place-items:center;transition:.2s}
+.arrbtn:hover{border-color:var(--brand);color:var(--brand)}
+.arrbtn.prev{left:22px} .arrbtn.next{right:22px}
+.arrbtn:disabled{opacity:.25;cursor:default}
+.hint{position:fixed;bottom:27px;right:clamp(24px,6vw,96px);z-index:5;font-family:var(--mono);font-size:11px;color:var(--dim)}
+
+/* reveal animation */
+.slide .inner>*{opacity:0;transform:translateY(16px);transition:opacity .5s ease,transform .5s ease}
+.slide.active .inner>*{opacity:1;transform:none}
+.slide.active .inner>*:nth-child(2){transition-delay:.06s}
+.slide.active .inner>*:nth-child(3){transition-delay:.12s}
+.slide.active .inner>*:nth-child(4){transition-delay:.18s}
+.slide.active .inner>*:nth-child(5){transition-delay:.24s}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+@media(max-width:820px){
+  .flow{flex-wrap:wrap}.arrow{display:none}.node{min-width:140px}
+  .grid4{grid-template-columns:1fr 1fr}.finds{grid-template-columns:1fr}
+  .lane{grid-template-columns:1fr}.lane .tag{text-align:left}
+  .arrbtn{display:none}
+}
+</style>
+</head>
+<body>
+
+<!-- icon defs -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+<symbol id="i-chat" viewBox="0 0 24 24"><path d="M4 4h16a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H9l-4 4v-4H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z"/><path d="M8 9h8M8 12h5"/></symbol>
+<symbol id="i-spec" viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 3.5h6V6H9z"/><path d="M8.5 11h7M8.5 15h5"/></symbol>
+<symbol id="i-scope" viewBox="0 0 24 24"><path d="M3 5h18l-7 8v6l-4 2v-8z"/></symbol>
+<symbol id="i-chip" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="1.5"/><rect x="9.5" y="9.5" width="5" height="5"/><path d="M9 3v3M15 3v3M9 18v3M15 18v3M3 9h3M3 15h3M18 9h3M18 15h3"/></symbol>
+<symbol id="i-check" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8 12.2l2.6 2.6L16 9"/></symbol>
+<symbol id="i-robot" viewBox="0 0 24 24"><rect x="4" y="8" width="16" height="12" rx="3"/><path d="M12 4.5V8"/><circle cx="12" cy="4" r="1.4"/><circle cx="9.2" cy="13" r="1.2"/><circle cx="14.8" cy="13" r="1.2"/><path d="M9.5 16.5h5M2 13v2M22 13v2"/></symbol>
+<symbol id="i-plug" viewBox="0 0 24 24"><path d="M9 3v5M15 3v5"/><path d="M6 8h12v2a6 6 0 0 1-12 0z"/><path d="M12 16v5"/></symbol>
+<symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.6 4.6l2.1 2.1M17.3 17.3l2.1 2.1M19.4 4.6l-2.1 2.1M6.7 17.3l-2.1 2.1"/></symbol>
+<symbol id="i-traces" viewBox="0 0 24 24"><circle cx="6" cy="6" r="2.2"/><circle cx="18" cy="8" r="2.2"/><circle cx="10" cy="18" r="2.2"/><path d="M7.8 6.6l8.3 1M7.2 7.9l2.2 8M11.7 16.9L16 10"/></symbol>
+<symbol id="i-logs" viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8.5 8h7M8.5 12h7M8.5 16h4"/></symbol>
+<symbol id="i-metrics" viewBox="0 0 24 24"><path d="M3 21h18"/><rect x="5" y="11" width="3" height="7"/><rect x="10.5" y="6" width="3" height="12"/><rect x="16" y="13" width="3" height="5"/></symbol>
+<symbol id="i-db" viewBox="0 0 24 24"><ellipse cx="12" cy="6" rx="7" ry="3"/><path d="M5 6v6c0 1.7 3.1 3 7 3s7-1.3 7-3V6M5 12v6c0 1.7 3.1 3 7 3s7-1.3 7-3v-6"/></symbol>
+<symbol id="i-live" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="3.4" fill="currentColor" stroke="none"/></symbol>
+<symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13 2L4.5 13.5H11l-1 8.5L19.5 10H13z"/></symbol>
+<symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.6"/><path d="M5 20a7 7 0 0 1 14 0"/></symbol>
+<symbol id="i-target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.2"/><circle cx="12" cy="12" r="1" fill="currentColor" stroke="none"/></symbol>
+<symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.5-3 7.8-7 9-4-1.2-7-4.5-7-9V6z"/><path d="M9 12l2 2 4-4.5"/></symbol>
+<symbol id="i-chev" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></symbol>
+<symbol id="i-down" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></symbol>
+</defs></svg>
+
+<div class="progress" id="prog"></div>
+<div class="brand"><span class="logo">S</span> StrataTrace</div>
+<div class="forwho">prepared for Ciena</div>
+
+<div class="stage">
+ <div class="track" id="track">
+
+  <!-- ================= SLIDE 1 : THE IDEA ================= -->
+  <section class="slide" data-i="0">
+   <div class="inner">
+    <span class="eyebrow"><span class="pip"></span> The idea</span>
+    <h1>The agent decides <span class="grad">what to collect</span><br>— from the problem itself.</h1>
+    <p class="lede">Kernel-deep telemetry is terabyte-scale — you can&rsquo;t capture everything, everywhere. Today&rsquo;s tools dashboard what was already collected. Ours turns a plain-language problem into a <b style="color:var(--tx)">scoped collection plan</b>, then goes kernel-deep on only that.</p>
+
+    <div class="flow">
+     <div class="node n1"><span class="halo"><svg class="ic"><use href="#i-chat"/></svg></span>
+       <span class="k">Problem</span><span class="v">&ldquo;my database is slow&rdquo;<small>plain language</small></span></div>
+     <div class="arrow"><svg viewBox="0 0 24 24" class="ic"><use href="#i-chev"/></svg></div>
+     <div class="node n2"><span class="halo"><svg class="ic"><use href="#i-spec"/></svg></span>
+       <span class="k">Skill</span><span class="v">collection-aware<small>diagnostic contract</small></span></div>
+     <div class="arrow"><svg viewBox="0 0 24 24" class="ic"><use href="#i-chev"/></svg></div>
+     <div class="node n3"><span class="halo"><svg class="ic"><use href="#i-scope"/></svg></span>
+       <span class="k">Collection spec</span><span class="v">only these events<small>+ services, &le;60s</small></span></div>
+     <div class="arrow"><svg viewBox="0 0 24 24" class="ic"><use href="#i-chev"/></svg></div>
+     <div class="node n4"><span class="halo"><svg class="ic"><use href="#i-chip"/></svg></span>
+       <span class="k">Kernel-deep</span><span class="v">scoped collect<small>+ wait-attribution</small></span></div>
+     <div class="arrow"><svg viewBox="0 0 24 24" class="ic"><use href="#i-chev"/></svg></div>
+     <div class="node n5"><span class="halo"><svg class="ic"><use href="#i-check"/></svg></span>
+       <span class="k">Verdict</span><span class="v">precise root cause<small>+ fix + data saved</small></span></div>
+    </div>
+
+    <div class="underline">
+     <span class="pill"><svg class="ic"><use href="#i-chip"/></svg> Kernel-deep root cause</span>
+     <span class="pill"><svg class="ic"><use href="#i-scope"/></svg> <b>up to 32&times;</b>&nbsp;less data</span>
+     <span class="pill"><svg class="ic"><use href="#i-shield"/></svg> Deterministic verdict</span>
+    </div>
+    <p class="diff"><b>The wedge:</b> no incumbent (Datadog, Dynatrace) or research system (TMLL, HolmesGPT) decides <b>what to collect from the problem statement</b> &mdash; and none go kernel-deep.</p>
+   </div>
+  </section>
+
+  <!-- ================= SLIDE 2 : ARCHITECTURE ================= -->
+  <section class="slide" data-i="1">
+   <div class="inner">
+    <span class="eyebrow"><span class="pip"></span> Architecture &mdash; how it works together</span>
+    <h1>Agent&nbsp;+&nbsp;MCP&nbsp;+&nbsp;orchestration&nbsp;+&nbsp;<span class="grad">kernel-deep engine</span></h1>
+
+    <div class="arch">
+     <div class="lane">
+      <div class="tag"><b>drive</b>the loop</div>
+      <div class="row">
+       <div class="box user"><span class="bi"><svg class="ic"><use href="#i-user"/></svg></span><span class="bt">Problem<small>natural language</small></span></div>
+       <div class="conn"><span class="lbl">discover</span><svg viewBox="0 0 24 16" class="ic"><path d="M2 8h20M17 3l5 5-5 5"/></svg></div>
+       <div class="box agent"><span class="bi"><svg class="ic"><use href="#i-robot"/></svg></span><span class="bt">Claude&nbsp;agent<small>reasons + orchestrates</small></span></div>
+       <div class="conn"><span class="lbl">MCP&nbsp;stdio</span><svg viewBox="0 0 24 16" class="ic"><path d="M2 8h20M17 3l5 5-5 5"/></svg></div>
+       <div class="box mcp"><span class="bi"><svg class="ic"><use href="#i-plug"/></svg></span><span class="bt">MCP&nbsp;server<small>discover · phase1 · run_skill</small></span></div>
+      </div>
+     </div>
+
+     <div class="lane">
+      <div class="tag"><b>phase 1</b>decide</div>
+      <div class="row">
+       <div class="box orch"><span class="bi"><svg class="ic"><use href="#i-scope"/></svg></span><span class="bt">Emit collection spec<small>events · syscalls · services · lttng cmd</small></span></div>
+       <div class="conn"><span class="lbl">shown to user</span><svg viewBox="0 0 24 16" class="ic"><path d="M2 8h20M17 3l5 5-5 5"/></svg></div>
+       <div class="box"><span class="bi" style="color:var(--muted)"><svg class="ic"><use href="#i-check"/></svg></span><span class="bt">Approve &amp; scope<small>collect only what&rsquo;s declared</small></span></div>
+      </div>
+     </div>
+
+     <div class="lane">
+      <div class="tag"><b>phase 2</b>analyze</div>
+      <div class="row">
+       <div class="box eng"><span class="bi"><svg class="ic"><use href="#i-gear"/></svg></span><span class="bt">Engine gathers<small>only the scoped modalities</small></span></div>
+       <div class="conn"><svg viewBox="0 0 24 16" class="ic"><path d="M2 8h20M17 3l5 5-5 5"/></svg></div>
+       <div class="mods">
+        <span class="mod k"><svg class="ic"><use href="#i-chip"/></svg> Kernel<span class="decisive">wait-attr</span></span>
+        <span class="mod t"><svg class="ic"><use href="#i-traces"/></svg> Traces</span>
+        <span class="mod l"><svg class="ic"><use href="#i-logs"/></svg> Logs</span>
+        <span class="mod m"><svg class="ic"><use href="#i-metrics"/></svg> Metrics</span>
+       </div>
+       <div class="conn"><svg viewBox="0 0 24 16" class="ic"><path d="M2 8h20M17 3l5 5-5 5"/></svg></div>
+       <div class="box out"><span class="bi"><svg class="ic"><use href="#i-target"/></svg></span><span class="bt">Deterministic verdict<small>+ dashboard</small></span></div>
+      </div>
+     </div>
+
+     <div class="lane">
+      <div class="tag"><b>source</b>data</div>
+      <div class="row">
+       <div class="box data"><span class="bi"><svg class="ic"><use href="#i-db"/></svg></span><span class="bt">Dataset<small>replay &mdash; safe default</small></span></div>
+       <div class="box live"><span class="bi"><svg class="ic"><use href="#i-live"/></svg></span><span class="bt">Live capture<small>scoped LTTng + fault inject</small></span></div>
+       <span style="color:var(--muted);font-size:12.5px;font-family:var(--mono)">&mdash;&nbsp;same engine, either source</span>
+      </div>
+     </div>
+    </div>
+
+    <div class="note"><svg class="ic"><use href="#i-shield"/></svg><span>The agent <b>orchestrates</b> the two-phase loop; the verdict is <b>deterministic</b> (rule-scored over the evidence) &mdash; the LLM narrates, but never invents the root cause.</span></div>
+   </div>
+  </section>
+
+  <!-- ================= SLIDE 3 : RESULTS & IMPACT ================= -->
+  <section class="slide" data-i="2">
+   <div class="inner">
+    <span class="eyebrow"><span class="pip"></span> Results &amp; impact</span>
+    <h1>4 problems. 4 decisive modalities. <span class="grad">All correct.</span></h1>
+
+    <div class="grid4">
+     <div class="rc"><svg class="ic tick"><use href="#i-check"/></svg>
+      <div class="prob">&ldquo;my database is slow&rdquo;</div>
+      <span class="mod-badge b-k">kernel + traces</span>
+      <div class="big">32<small>&times;</small></div><div class="lab">less data · DB connection-path latency</div></div>
+
+     <div class="rc star"><svg class="ic tick"><use href="#i-check"/></svg>
+      <div class="prob">&ldquo;everything&rsquo;s a bit slow&rdquo;</div>
+      <span class="mod-badge b-k">kernel-only</span>
+      <div class="big">13<small>&times;</small></div><div class="lab">names the noisy neighbor &mdash; <b style="color:var(--warn)">invisible to metrics&nbsp;/&nbsp;traces</b></div></div>
+
+     <div class="rc"><svg class="ic tick"><use href="#i-check"/></svg>
+      <div class="prob">&ldquo;orders are failing&rdquo;</div>
+      <span class="mod-badge b-t">traces + kernel</span>
+      <div class="big">28<small>&times;</small></div><div class="lab">payment frozen &mdash; 0 spans, callers hang</div></div>
+
+     <div class="rc"><svg class="ic tick"><use href="#i-check"/></svg>
+      <div class="prob">&ldquo;tons of 500 errors&rdquo;</div>
+      <span class="mod-badge b-l">logs + metrics</span>
+      <div class="big">2<small>&times;</small></div><div class="lab">DB connection resets · fail-fast</div></div>
+    </div>
+
+    <div class="finds">
+     <div class="find"><svg class="ic"><use href="#i-check"/></svg><span><b>A different modality is decisive each time</b> &mdash; the system chooses correctly from the problem alone.</span></div>
+     <div class="find"><svg class="ic"><use href="#i-check"/></svg><span><b>Kernel depth is necessary:</b> in the noisy-neighbor case, service KPIs stay flat (p95 &asymp; 5&nbsp;ms) &mdash; only the kernel names the culprit.</span></div>
+     <div class="find"><svg class="ic"><use href="#i-check"/></svg><span><b>Works live:</b> scoped capture + fault injection on a running stack &rarr; correct verdict on <b>fresh</b> data.</span></div>
+     <div class="find"><svg class="ic"><use href="#i-check"/></svg><span><b>No hallucinated root cause:</b> the verdict is rule-scored over structured evidence; the LLM only writes the narrative.</span></div>
+    </div>
+
+    <div class="impact">
+     <div class="cell"><div class="n g">4 / 4</div><div class="c">correct vs hidden ground truth</div></div>
+     <div class="cell"><div class="n b">up to 32&times;</div><div class="c">less data ingested</div></div>
+     <div class="cell"><div class="n a">natural language</div><div class="c">&rarr; kernel-deep RCA</div></div>
+    </div>
+   </div>
+  </section>
+
+ </div>
+</div>
+
+<button class="arrbtn prev" id="prev" aria-label="previous"><svg class="ic" style="font-size:22px;transform:scaleX(-1)"><use href="#i-chev"/></svg></button>
+<button class="arrbtn next" id="next" aria-label="next"><svg class="ic" style="font-size:22px"><use href="#i-chev"/></svg></button>
+
+<div class="nav">
+ <div class="dots" id="dots"></div>
+ <span class="count" id="count">1 / 3</span>
+</div>
+<div class="hint">&larr; &rarr; or click to navigate</div>
+
+<script>
+(function(){
+  var slides=[].slice.call(document.querySelectorAll('.slide'));
+  var track=document.getElementById('track'), dotsWrap=document.getElementById('dots');
+  var count=document.getElementById('count'), prog=document.getElementById('prog');
+  var prev=document.getElementById('prev'), next=document.getElementById('next');
+  var n=slides.length, i=0;
+  slides.forEach(function(_,k){
+    var b=document.createElement('button'); b.className='dot'+(k===0?' on':'');
+    b.setAttribute('aria-label','slide '+(k+1)); b.onclick=function(){go(k)}; dotsWrap.appendChild(b);
+  });
+  var dots=[].slice.call(dotsWrap.children);
+  function go(k){
+    i=Math.max(0,Math.min(n-1,k));
+    track.style.transform='translateX('+(-i*100)+'vw)';
+    dots.forEach(function(d,x){d.classList.toggle('on',x===i)});
+    slides.forEach(function(s,x){s.classList.toggle('active',x===i)});
+    count.textContent=(i+1)+' / '+n;
+    prog.style.width=((i+1)/n*100)+'%';
+    prev.disabled=(i===0); next.disabled=(i===n-1);
+  }
+  next.onclick=function(){go(i+1)}; prev.onclick=function(){go(i-1)};
+  document.addEventListener('keydown',function(e){
+    if(e.key==='ArrowRight'||e.key===' '||e.key==='PageDown'){e.preventDefault();go(i+1)}
+    else if(e.key==='ArrowLeft'||e.key==='PageUp'){e.preventDefault();go(i-1)}
+    else if(e.key==='Home'){go(0)} else if(e.key==='End'){go(n-1)}
+  });
+  var sx=null;
+  document.addEventListener('touchstart',function(e){sx=e.touches[0].clientX},{passive:true});
+  document.addEventListener('touchend',function(e){
+    if(sx===null)return; var dx=e.changedTouches[0].clientX-sx;
+    if(Math.abs(dx)>50){go(i+(dx<0?1:-1))} sx=null;
+  },{passive:true});
+  go(0);
+})();
+</script>
+</body>
+</html>
