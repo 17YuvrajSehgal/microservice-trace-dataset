@@ -62,10 +62,11 @@ def execute(name, live=False, run_dir=None, kernel=None, problem=None, max_secon
             run_dir, kernel = m.capture(skill)   # blocks; returns fresh paths
     if not run_dir or not os.path.exists(run_dir):
         raise FileNotFoundError(f"no run for fault '{fs}' (looked at {run_dir}); register it in runs.json")
-    out_json = os.path.join(RESULTS, f"{name}.json")
+    tag = f"{name}-live" if live else name          # keep live outputs distinct from the replay ones
+    out_json = os.path.join(RESULTS, f"{tag}.json")
     res = phase2.run(skill_path(name), run_dir, kernel, problem, max_seconds,
                      mode=("live" if live else "replay"), out_path=out_json)
-    res["dashboard_html"] = os.path.join(RESULTS, f"{name}.html")
+    res["dashboard_html"] = os.path.join(RESULTS, f"{tag}.html")
     open(res["dashboard_html"], "w", encoding="utf-8").write(dash.full_page(res))
     return res
 

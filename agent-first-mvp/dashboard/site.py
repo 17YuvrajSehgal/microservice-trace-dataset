@@ -116,6 +116,7 @@ if __name__ == "__main__":
     order = ["db-slowness-rca","noisy-neighbor-rca","dependency-outage-rca","error-storm-rca","cpu-saturation-rca"]
     results = []
     for p in glob.glob(os.path.join(results_dir, "*.json")):
+        if p.endswith("-live.json"): continue          # live runs get their own dashboard, not a bench row
         try: results.append(json.load(open(p)))
         except Exception: pass
     results.sort(key=lambda r: order.index(r["skill"]) if r.get("skill") in order else 99)
