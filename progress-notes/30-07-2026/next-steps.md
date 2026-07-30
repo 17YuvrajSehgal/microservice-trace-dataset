@@ -18,16 +18,15 @@ Dataset safe: all analysis READ-ONLY on `~/traces`; work in `~/mvp_work/`, live 
 - **Dashboards**: `dashboard/render.py` (kernel-instrument verdict page) + `site.py`
   (benchmark + catalog landing). Pre-cached in `~/mvp_work/results/` (+ Artifacts).
 - **Live mode**: `live_capture.py` — scoped LTTng session (only declared events) + tested
-  fault inject under load + `finally` cleanup + chown; verified producing the correct
-  live verdict from fresh data.
+  fault inject under REAL load (edge-router `:80`) + `finally` cleanup + chown; verified
+  producing the correct live verdict from fresh data, with genuine catalogue p95 ≈ 2.07 s
+  spans AND kernel off-CPU-I/O 100% rule-out. (Two live gotchas fixed: `sudo lttng` CTF is
+  root-owned → chown back before babeltrace2; load host is `:80` not the load_generator's
+  stale `:30001` default.)
 - Runbook: `DOCS/agent-first-mvp-demo-runbook.md`.
 
 ## Do first next session
-1. **Live trace signal is thin** (catalogue spans n≈0 in a 30s live window — OTel collector
-   batch flush). Kernel carries the live verdict correctly, but to make the live trace
-   modality land: raise the collector's batch flush or the OTLP drain, or lengthen the
-   injection window; consider reading the collector's flush interval.
-2. **Wire the 5th skill** (cpu-saturation-rca / anomaly_cpu) — decompress its kernel copy,
+1. **Wire the 5th skill** (cpu-saturation-rca / anomaly_cpu) — decompress its kernel copy,
    add gatherer+decider (stress-ng aggressor on-CPU + host-CPU metric). Then the benchmark
    is 5/5.
 3. **Honesty guard in `rca.decide_*`**: if the kernel evidence is empty (0 tids / all-zero),
