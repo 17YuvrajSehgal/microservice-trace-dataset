@@ -57,6 +57,7 @@ def attribute(kernel_dir, target_comm, begin_iso, end_iso, names):
                           stdout=subprocess.PIPE, text=True, errors="replace")
     p1.stdout.close()
     st, blk, opsys, last, acc = {}, {}, {}, {}, {}
+    matched_bytes = [0]
     def ensure(t):
         if t not in st: st[t], blk[t], opsys[t], last[t], acc[t] = "off", None, None, None, {}
     def add(t, cat, a, b):
@@ -72,6 +73,7 @@ def attribute(kernel_dir, target_comm, begin_iso, end_iso, names):
             m = _SS.search(line)
             if not m: continue
             pc, pt, pstate, nc, nt = m.group(1), int(m.group(2)), int(m.group(3)), m.group(4), int(m.group(5))
+            if pc == target_comm or nc == target_comm: matched_bytes[0] += len(line)
             if pc == target_comm:
                 ensure(pt)
                 if st[pt] == "on": add(pt, "on_cpu", last[pt], ts)
@@ -88,12 +90,14 @@ def attribute(kernel_dir, target_comm, begin_iso, end_iso, names):
         elif ev in ("sched_waking","sched_wakeup"):
             m = _WK.search(line)
             if not m or m.group(1) != target_comm: continue
+            matched_bytes[0] += len(line)
             t = int(m.group(2)); ensure(t)
             if st[t] == "blk": add(t, blk[t] or "blocked_other", last[t], ts)
             st[t], last[t] = "run", ts
         elif ev.startswith("syscall_entry_") or ev.startswith("syscall_exit_"):
             mc = _CTXTID.search(line)
             if not mc or mc.group(2) != target_comm: continue
+            matched_bytes[0] += len(line)
             t = int(mc.group(1)); ensure(t)
             if ev.startswith("syscall_entry_"): opsys[t] = ev[len("syscall_entry_"):]
             elif opsys.get(t) == ev[len("syscall_exit_"):]: opsys[t] = None
@@ -101,7 +105,7 @@ def attribute(kernel_dir, target_comm, begin_iso, end_iso, names):
     total = {}
     for t in acc:
         for cat, v in acc[t].items(): total[cat] = total.get(cat,0)+v
-    return total, len(acc)
+    return total, len(acc), matched_bytes[0]
 
 def summarize(total):
     # Rule-out buckets. For Go/Java runtimes the DB-wait is off-CPU I/O-readiness
@@ -138,9 +142,9 @@ def attribute_run(run_dir, kernel_dir, service, names, max_seconds=0, comm=None)
     gt = json.load(open(os.path.join(run_dir,"ground_truth.json")))["fault"]
     comm = comm or SERVICE_COMM.get(service, service)
     begin = gt["injection_start_utc"]; end = _cap(begin, gt["injection_end_utc"], max_seconds)
-    total, ntids = attribute(kernel_dir, comm, begin, end, names)
+    total, ntids, mbytes = attribute(kernel_dir, comm, begin, end, names)
     return {"service": service, "comm": comm, "n_tids_seen": ntids, "window": [begin, end],
-            **summarize(total), "raw_ns": total}
+            "scoped_bytes": mbytes, **summarize(total), "raw_ns": total}
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
