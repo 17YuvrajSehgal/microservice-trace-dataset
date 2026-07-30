@@ -11,6 +11,7 @@ This path never touches the dataset except read-only. Stdlib only.
 """
 import argparse, glob, json, os, sys
 HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, HERE)
 sys.path.insert(0, os.path.join(HERE, "engine"))
 import phase2, rca
 from dashboard import render as dash
