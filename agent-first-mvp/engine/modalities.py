@@ -53,8 +53,12 @@ def span_latency(spans_path, begin_iso, end_iso, services):
 
 # ---- logs: per-request duration + error signatures ---------------------------
 _TOOK = re.compile(r"took=([\d.]+)(µs|ms|s|us)\b")
-_ERRRE = re.compile(r"\b(error|err=(?!null)|panic|refused|reset by peer|timeout|5\d\d)\b", re.I)
+_ERRRE = re.compile(r"(err=(?!null)\S+|\berror\b|\bpanic\b|reset by peer|connection reset|ECONNRESET|"
+                    r"connection refused|broken pipe|\btimed?\s*out\b|no such host|dial tcp|\bEOF\b|"
+                    r"i/o timeout|[^0-9](5\d\d)[^0-9])", re.I)
 _UNIT = {"µs":1e-6, "us":1e-6, "ms":1e-3, "s":1.0}
+def _sig(line):  # normalize a log line into a signature: drop digits/hex so variants group
+    return re.sub(r"0x[0-9a-f]+|\d+", "N", line)[:110]
 
 def log_signals(logs_dir, services, begin_iso, end_iso):
     lo = dt.datetime.strptime(begin_iso, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=dt.timezone.utc)
@@ -63,23 +67,25 @@ def log_signals(logs_dir, services, begin_iso, end_iso):
     for svc in services:
         path = os.path.join(logs_dir, f"docker-compose_{svc}_1.log")
         if not os.path.exists(path): continue
-        vals, errs = [], {}
+        vals, sigcount, sample, nerr = [], {}, {}, 0
         with open(path, "rb") as f:
             for raw in f:
                 bytes_touched += len(raw)
                 line = raw.decode("utf-8", "replace")
-                ts = line[:30]
-                try: t = dt.datetime.strptime(ts[:19], "%Y-%m-%dT%H:%M:%S").replace(tzinfo=dt.timezone.utc)
+                try: t = dt.datetime.strptime(line[:19], "%Y-%m-%dT%H:%M:%S").replace(tzinfo=dt.timezone.utc)
                 except Exception: t = None
                 if t is not None and not (lo <= t <= hi): continue
                 mt = _TOOK.search(line)
                 if mt: vals.append(float(mt.group(1))*_UNIT.get(mt.group(2),1.0))
                 if _ERRRE.search(line):
-                    key = "err_line"; errs[key] = errs.get(key,0)+1
+                    nerr += 1; s = _sig(line.strip()); sigcount[s] = sigcount.get(s,0)+1
+                    if s not in sample: sample[s] = line.strip()[-160:]
         if vals:
             took[svc] = {"n": len(vals), "p50_ms": round((_pctl(vals,0.5) or 0)*1e3,2),
                          "p95_ms": round((_pctl(vals,0.95) or 0)*1e3,2), "max_ms": round(max(vals)*1e3,2)}
-        if errs: errors[svc] = errs
+        if nerr:
+            top = sorted(sigcount.items(), key=lambda x:-x[1])[:3]
+            errors[svc] = {"n": nerr, "signatures": [{"count": c, "sample": sample[s]} for s, c in top]}
     return {"took": took, "errors": errors}, bytes_touched
 
 # ---- metrics: the pre-computed change-point in verification.json --------------

@@ -18,6 +18,7 @@ KERNEL_NAMES = ["sched_switch","sched_waking","sched_wakeup","syscall_entry_","s
 
 def _dir_mb(path):
     tot = 0
+    if not path or not os.path.isdir(path): return 0.0
     for root, _, files in os.walk(path):
         for fn in files:
             try: tot += os.path.getsize(os.path.join(root, fn))
@@ -55,6 +56,43 @@ def gather_slow_db(skill, run_dir, kernel_dir, window, max_seconds):
     ev["data_touched_mb"] = round(touched/1e6, 2)
     return ev
 
+def _kern(ev, svc, run_dir, kernel_dir, max_seconds, comm=None):
+    r = wa.attribute_run(run_dir, kernel_dir, svc, KERNEL_NAMES, max_seconds, comm=comm)
+    ev["kernel"][svc] = {k: r[k] for k in ("rule_out_pct","verdict_hint","seconds","n_tids_seen","scoped_bytes")}
+    return r.get("scoped_bytes", 0)
+
+def gather_noisy_neighbor(skill, run_dir, kernel_dir, window, max_seconds):
+    ev = {"kernel": {}, "spans": {}, "logs": {}, "metrics": {}}; t = 0
+    t += _kern(ev, "noisy-neighbor", run_dir, kernel_dir, max_seconds, comm="stress-ng")  # aggressor
+    t += _kern(ev, "catalogue", run_dir, kernel_dir, max_seconds)                          # victim
+    b, e = window
+    sp, spb = mod.span_latency(os.path.join(run_dir,"otlp","spans.jsonl"), b, e, ["catalogue","front-end"])
+    mc, mcb = mod.metric_changepoint(run_dir)
+    ev["spans"] = sp; ev["metrics"] = mc; ev["data_touched_mb"] = round((t+spb+mcb)/1e6, 2)
+    return ev
+
+def gather_dependency_outage(skill, run_dir, kernel_dir, window, max_seconds):
+    ev = {"kernel": {}, "spans": {}, "logs": {}, "metrics": {}}; t = 0
+    t += _kern(ev, "payment", run_dir, kernel_dir, max_seconds)   # frozen -> silent
+    b, e = window
+    sp, spb = mod.span_latency(os.path.join(run_dir,"otlp","spans.jsonl"), b, e, ["orders","payment","front-end"])
+    lg, lgb = mod.log_signals(os.path.join(run_dir,"logs"), ["orders","payment"], b, e)
+    mc, mcb = mod.metric_changepoint(run_dir)
+    ev["spans"] = sp; ev["logs"] = lg; ev["metrics"] = mc
+    ev["data_touched_mb"] = round((t+spb+lgb+mcb)/1e6, 2)
+    return ev
+
+def gather_error_storm(skill, run_dir, kernel_dir, window, max_seconds):
+    # logs+metrics are decisive here; no kernel needed (and none decompressed)
+    ev = {"kernel": {}, "spans": {}, "logs": {}, "metrics": {}}
+    b, e = window
+    sp, spb = mod.span_latency(os.path.join(run_dir,"otlp","spans.jsonl"), b, e, ["catalogue","front-end"])
+    lg, lgb = mod.log_signals(os.path.join(run_dir,"logs"), ["catalogue","catalogue-db"], b, e)
+    mc, mcb = mod.metric_changepoint(run_dir)
+    ev["spans"] = sp; ev["logs"] = lg; ev["metrics"] = mc
+    ev["data_touched_mb"] = round((spb+lgb+mcb)/1e6, 2)
+    return ev
+
 def gather_generic(skill, run_dir, kernel_dir, window, max_seconds):
     """Fallback for non-slow_db skills: attribute each scoped service + spans/logs/metrics."""
     req = skill.get("requirements", {})
@@ -78,7 +116,8 @@ def gather_generic(skill, run_dir, kernel_dir, window, max_seconds):
     ev["data_touched_mb"] = round(touched/1e6, 2)
     return ev
 
-GATHERERS = {"slow_db": gather_slow_db}
+GATHERERS = {"slow_db": gather_slow_db, "noisy_neighbor": gather_noisy_neighbor,
+             "dependency_outage": gather_dependency_outage, "error_storm": gather_error_storm}
 
 def run(skill_path, run_dir, kernel_dir, problem, max_seconds=0, mode="replay", out_path=None):
     skill = json.load(open(skill_path))

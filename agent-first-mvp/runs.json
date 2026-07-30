@@ -1,10 +1,31 @@
 {
-  "_comment": "Replay registry: fault_source -> collected run + its decompressed kernel working copy (~/mvp_work, READ-ONLY on ~/traces). Paths may use ~ .",
+  "_comment": "Replay registry: fault_source -> collected run + its decompressed kernel working copy (~/mvp_work, READ-ONLY on ~/traces). error_storm is logs/metrics-decisive and needs no kernel copy.",
   "slow_db": {
     "skill": "db-slowness-rca",
     "run_dir": "~/traces/slow_db/slow_db_aggressive_steady_r1",
     "kernel_dir": "~/mvp_work/slow_db_r1/kernel/kernel",
     "problem": "my catalogue database is really slow",
+    "max_seconds": 60
+  },
+  "noisy_neighbor": {
+    "skill": "noisy-neighbor-rca",
+    "run_dir": "~/traces/noisy_neighbor/noisy_neighbor_aggressive_steady_r1",
+    "kernel_dir": "~/mvp_work/noisy_r1/kernel/kernel",
+    "problem": "everything feels a bit slow but I can't find a cause",
+    "max_seconds": 60
+  },
+  "dependency_outage": {
+    "skill": "dependency-outage-rca",
+    "run_dir": "~/traces/dependency_outage/dependency_outage_aggressive_steady_r1",
+    "kernel_dir": "~/mvp_work/depout_r1/kernel/kernel",
+    "problem": "orders are failing and checkout is broken",
+    "max_seconds": 60
+  },
+  "error_storm": {
+    "skill": "error-storm-rca",
+    "run_dir": "~/traces/error_storm/error_storm_aggressive_steady_r1",
+    "kernel_dir": "",
+    "problem": "we're seeing tons of 500 errors from catalogue",
     "max_seconds": 60
   }
 }
