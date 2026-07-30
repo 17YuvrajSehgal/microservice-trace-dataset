@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "collection-aware-rca": {
+      "command": "python3",
+      "args": ["agent-first-mvp/mcp_server.py"],
+      "description": "Agent-first collection-aware RCA over the StrataTrace dataset (discover_skills / phase1_requirements / run_skill)."
+    }
+  }
+}

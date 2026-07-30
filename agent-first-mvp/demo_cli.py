@@ -44,7 +44,9 @@ def discover(problem):
 def phase1(name):
     return phase2.phase1(load_skill(name))
 
-def run(name, live=False, run_dir=None, kernel=None, problem=None, max_seconds=None):
+def execute(name, live=False, run_dir=None, kernel=None, problem=None, max_seconds=None):
+    """Core: resolve registry, run phase-2, write result.json + dashboard. Returns the
+    result dict. NO stdout printing (safe to call from the MCP stdio server)."""
     skill = load_skill(name); fs = skill.get("fault_source")
     reg = load_runs().get(fs, {})
     run_dir = _exp(run_dir or reg.get("run_dir"))
@@ -52,7 +54,6 @@ def run(name, live=False, run_dir=None, kernel=None, problem=None, max_seconds=N
     problem = problem or reg.get("problem")
     max_seconds = max_seconds if max_seconds is not None else reg.get("max_seconds", 60)
     if live:
-        # MODE A: live scoped capture -> produces a run_dir+kernel we then analyze
         import importlib.util
         lc = os.path.join(HERE, "live_capture.py")
         if os.path.exists(lc):
@@ -60,14 +61,20 @@ def run(name, live=False, run_dir=None, kernel=None, problem=None, max_seconds=N
             m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
             run_dir, kernel = m.capture(skill)   # blocks; returns fresh paths
     if not run_dir or not os.path.exists(run_dir):
-        print(f"[!] no run for fault '{fs}' (looked at {run_dir}). Register it in runs.json.", file=sys.stderr)
-        sys.exit(2)
+        raise FileNotFoundError(f"no run for fault '{fs}' (looked at {run_dir}); register it in runs.json")
     out_json = os.path.join(RESULTS, f"{name}.json")
     res = phase2.run(skill_path(name), run_dir, kernel, problem, max_seconds,
                      mode=("live" if live else "replay"), out_path=out_json)
-    out_html = os.path.join(RESULTS, f"{name}.html")
-    open(out_html, "w", encoding="utf-8").write(dash.full_page(res))
-    v = res["verdict"]
+    res["dashboard_html"] = os.path.join(RESULTS, f"{name}.html")
+    open(res["dashboard_html"], "w", encoding="utf-8").write(dash.full_page(res))
+    return res
+
+def run(name, live=False, run_dir=None, kernel=None, problem=None, max_seconds=None):
+    try:
+        res = execute(name, live, run_dir, kernel, problem, max_seconds)
+    except FileNotFoundError as ex:
+        print(f"[!] {ex}", file=sys.stderr); sys.exit(2)
+    out_html = res["dashboard_html"]; v = res["verdict"]
     print(f"\n  PROBLEM   {res['problem_statement']}")
     print(f"  SKILL     {name}  ({res['mode']})")
     print(f"  ROOT CAUSE {v['root_cause']}")
