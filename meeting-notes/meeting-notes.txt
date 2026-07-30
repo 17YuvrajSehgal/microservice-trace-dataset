@@ -1,0 +1,320 @@
+Below is a structured summary of the meeting, organized by the major discussion points, decisions, and action items for each student. The summary is based on the meeting transcript.
+Meeting Summary (July 29, 2026)
+Main Discussion Themes
+The meeting focused on two closely related research directions:
+Agentic AI support for Trace Compass/TMLL
+Agent-first architecture for software observability and diagnostics
+A recurring point throughout the meeting was that simply building a chatbot or client is not a research contribution. The contribution must come from improving the architecture, analysis capabilities, or infrastructure.
+Overall Decisions
+1. Move beyond "chatbot" implementations
+The team agreed that simply connecting an LLM to Trace Compass through TMLL/MCP is useful as an engineering exercise but is not publishable research.
+Future work should instead contribute to:
+Trace Compass architecture
+TMLL infrastructure
+MCP capabilities
+Analysis modules
+Cross-view reasoning
+Agent-oriented observability
+2. Think in layers
+The project should evolve in layers.
+Layer 1
+Access Trace Compass views
+Read existing views through MCP
+Layer 2
+Intelligent analysis
+Root cause analysis
+Cross-view reasoning
+Critical path analysis
+Complex anomaly detection
+Layer 3
+Agent-driven workflows
+Automatic view selection
+Automated navigation
+Interactive visualization
+3. Focus on architectural contributions
+Architecture is becoming the primary research contribution.
+Examples discussed:
+RAG layer
+GraphRAG
+Central indexing layer
+Cross-view reasoning
+Skill-based architecture
+Agent-first observability
+4. Skills become the new interface
+Instead of building isolated tools, design reusable AI "skills."
+Each skill defines:
+required telemetry
+required traces
+required logs
+preprocessing
+analysis pipeline
+outputs
+This makes the system reusable by future AI agents.
+5. Agent-first design
+The group agreed that future systems should be designed assuming users interact through AI agents rather than traditional interfaces.
+This philosophy should guide:
+architecture
+APIs
+skills
+MCP interfaces
+Student Tasks
+Sneh
+Current Status
+Completed
+Connected Trace Compass with TMLL/MCP
+Built a client that can query Trace Compass
+Can explain simple execution slowdowns
+Retrieves relevant portions of traces
+Missing
+Scientific contribution
+Architecture contribution
+Cross-view reasoning
+Advanced analysis
+Immediate Tasks
+1. Study TMLL deeply
+Read
+paper
+architecture
+code
+implementation
+Understand
+State System
+MCP
+analysis pipeline
+2. Finish Trace Compass labs
+Especially:
+advanced analysis
+complex views
+critical path
+3. Support all Trace Compass views
+Instead of only one view:
+create connectors for every important view
+Each connector should become a clean module.
+4. Submit Pull Requests
+Clean up TMLL extensions.
+Create PRs back to the project repository.
+Goal:
+Become recognized by the Trace Compass community.
+5. Investigate architectural improvements
+Potential ideas
+GraphRAG
+central indexing
+cross-view reasoning
+critical path support
+complex anomaly reasoning
+6. Architecture Diagram
+Prepare architecture showing
+Chat Client
+↓
+MCP
+↓
+TMLL
+↓
+Trace Compass
+↓
+Custom modules
+Show exactly where your contributions are.
+Send architecture before tomorrow's meeting.
+7. Friday Demo
+Only demonstrate if there is genuine novelty.
+Do not demo only a client.
+Yuvraj
+Current Status
+Completed
+Large observability dataset
+Sock Shop benchmark
+Multiple fault injections
+Logs
+Kernel traces
+OpenTelemetry traces
+Metrics
+Dataset Improvements
+Add
+single-service failures
+multi-service failures
+fault categories
+clearer taxonomy
+Share fault definitions.
+Research Direction
+Move toward an empirical observability study.
+Possible downstream tasks
+anomaly detection
+RCA
+comprehension
+diagnosis
+Compare
+logs
+traces
+kernel traces
+metrics
+Perform systematic ablation studies.
+New Architecture Project
+Primary assignment
+Build an Agent-first Babeltrace architecture
+Instead of Trace Compass.
+Architecture
+Input
+↓
+MCP
+↓
+Analysis
+↓
+Output
+Should support
+logs
+traces
+metrics
+plugins
+AI agents
+Explore Babeltrace
+Determine
+supported inputs
+plugin system
+scalability
+APIs
+Investigate whether it supports
+logs
+arbitrary formats
+LTTng
+MCP for Babeltrace
+Prototype
+Simple MCP interface
+Functions
+access traces
+query events
+retrieve subsets
+No advanced analysis yet.
+Skill-based Architecture
+Design skills containing
+Input requirements
+↓
+Data collection
+↓
+Preprocessing
+↓
+Analysis
+↓
+Output generation
+Each skill should specify
+required events
+required telemetry
+workflow
+outputs
+Presentation
+Prepare
+2–3 slides
+Topics
+Agent-first philosophy
+Skill architecture
+Example use cases
+Morteza
+Main feedback
+Stress test existing systems.
+Find scenarios they cannot solve.
+Contributions should come from identifying limitations rather than reproducing existing functionality.
+Research Ideas Generated
+Several future research directions emerged.
+Trace Compass
+Cross-view reasoning
+Critical path reasoning
+Advanced anomaly reasoning
+GraphRAG
+Central RAG index
+Interactive AI navigation
+View automation
+Babeltrace
+MCP interface
+Agent APIs
+Plugin architecture
+Large-scale trace processing
+Skills
+Root cause skill
+Performance diagnosis skill
+Paper-reading skill
+Conference submission skill
+Research workflow skill
+Deliverables Before Next Meeting
+Sneek
+Read TMLL paper
+Read architecture
+Finish Trace Compass labs
+Prepare architecture diagram
+Clean TMLL code
+Prepare pull requests
+Investigate architectural improvements
+Send architecture tonight
+Yuvraj
+Improve fault taxonomy
+Add service-level scenarios
+Investigate Babeltrace architecture
+Design MCP interface
+Design skill-based architecture
+Prepare architecture slides
+Create a simple MCP prototype
+Share architecture before tomorrow
+Long-Term Vision
+The discussion converged on a common research vision:
+Build an agent-first observability platform rather than isolated AI tools.
+Introduce reusable skills that specify data collection, analysis, and output workflows.
+Develop architectures that support multiple telemetry sources (logs, traces, metrics, kernel traces) through MCP-style interfaces.
+Use this platform as the foundation for multiple future papers on observability, root cause analysis, adaptive tracing, and AI-assisted software diagnostics.
+
+
+
+
+
+
+
+_____________________________
+Naser Ezzati-Jivan, Ph.D.
+Associate Professor
+Department of Computer Science
+Brock University
+Core Faculty, Environmental Sustainability Research Centre
+St. Catharines, Ontario, Canada L2S 3A1
+Phone: (905) 688-5550 ext. 3520
+Email: nezzatijivan@brocku.ca
+
+From: Naser Ezzati-Jivan <nezzatijivan@brocku.ca>
+Sent: July 29, 2026 1:28 PM
+To: Sneh Patel <sp18oo@brocku.ca>; Yuvraj Sehgal <ys19rk@brocku.ca>
+Cc: Mahsa Panahandeh <mpanahan@uottawa.ca>
+Subject: Meetings note and minutes
+
+Meeting Record
+Live Session
+Jul 29, 2026, 1:10 PM – Jul 29, 2026, 1:22 PM · live
+Meeting Minutes
+Discussion Points
+Need to decide on the terrorist events topic and how analysis/output should be structured.
+Different analysis types require different outputs (graphical, tabular, text) and different explanation formats.
+Proposed design: define a “use case” that specifies the events, trace/log formats, and general workflow requirements.
+Proposed design: define a “skill” per use case; each skill packages the full chain (preprocessing, mining, root cause analysis, and output generation) plus required codes/config.
+Skill should also dictate data collection details (what to collect, how to save, where to save, and required formats), not only analysis.
+Need a wrapper/manager layer that decides what data to collect based on the skill/use case (not just collecting data blindly).
+Question about generalizing skills across customers/datasets (e.g., CMS skill using LTTNG traces) and how other companies would obtain/produce required traces.
+Bottom-up approach: design for Siena/specific datasets first; later versions may merge/extend skills.
+Demo/architecture presentation plan: 2–3 slides covering agent-first design, including data collection, analysis, and output under a skill.
+Demo requirements: use a simple trace workflow (e.g., determine active trades/events, guide trace collection, run analysis, generate graphical/tabular/text outputs).
+Implementation approach: first phase provides requirements (what events/metrics to collect in a JSON-like format); second phase executes collection, analysis, and output.
+Later phase may use RAG/search; for now a simple operation can list required events/metrics based on available data.
+Decisions
+Adopt a two-layer design: use case definitions (requirements) and skills that package the full workflow including data collection, analysis, and outputs.
+Use a bottom-up architecture approach tailored to Siena/specific datasets first, with potential merging in later phases.
+For the demo, present an agent-first design with at least two example use cases (e.g., locks-related and LTTNG trace-based).
+Implement a phased workflow: Phase 1 generates collection/analysis requirements; Phase 2 performs collection, analysis, and output generation.
+Represent required trace/event/metric collection instructions in a machine-readable format (e.g., JSON) so the agent can drive LTTNG event selection.
+Action Items
+Create the architecture/design for the agent-first system (use case → skill packaging → workflow chain) and share it with the team.
+Prepare a 2–3 slide presentation for tomorrow: first slide agent-first design, second slide the proposed system/skill workflow, including data collection, analysis, and output.
+Include two demo examples in the presentation: one use case focused on locks; another based on LTTNG trace data (and possibly other locks together).
+Build a demo that uses bubble trace (or equivalent) and explores a simple MCP integration where an AI agent can connect to it.
+Implement a simple trace-driven skill demo that shows: which trades/events are active, which events to collect, guided trace collection, and generation of graphical/tabular/text outputs.
+Define the Phase 1 requirement format (e.g., JSON) listing required LTTNG events/metrics (e.g., CPU/process/file event patterns) so Phase 2 can execute collection and analysis.
+Send architecture to the recipient later tonight as stated in the discussion.
+Key Moments
+Agreement that skills must dictate both data collection and analysis/output, including trace/log formats and storage details.
+Discussion of generalization challenges across customers/datasets and the decision to proceed bottom-up for Siena-specific datasets first.
+Plan to present an agent-first design with two use case examples (locks and LTTNG traces).
+Decision to use a two-phase approach: requirements generation first, then execution (collection + analysis + outputs).
+Emphasis on careful architectural presentation to ensure stakeholders adopt the proposed system tomorrow.
