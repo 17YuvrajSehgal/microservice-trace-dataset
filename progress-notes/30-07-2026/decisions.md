@@ -72,3 +72,34 @@ live captures in `~/mvp_captures/`. Safety snapshot: `stratatrace-dataset-safe-2
   name-collision package — use `fastmcp`).
 - Pending: finish 4-fault validation, generate site + pre-cache dashboards, live dry-run,
   demo runbook.
+
+## Dataset review — closing Naser's open asks (later 30-07)
+
+1. **Fault blast-radius table** (`fault_blast_radius.md`, repo root) — his §4.1 ask.
+   Derived from `faults/*.sh` `EXPECTED_BLAST_RADIUS` + ground truth (NOT editing the frozen
+   `fault_catalog.md`). Tiers: **host-wide** (anomaly_cpu, noisy_neighbor) · **3-in-path**
+   (slow_db, dependency_outage, queue_backlog[silent/async]) · **2** (error_storm,
+   svc_cpu_cap→carts, svc_mem_cap→carts). Point for Naser: service faults are *bounded*
+   (2–3 svc) — answers his "faults bring down the whole thing" concern.
+
+2. **Curated kernel profile — resolves the IO-vs-memory ⚠️.** `collect_trace.sh` curated
+   profile = ALL syscalls + `sched_/block_/net_/netif_/napi_/skb_/sock_/tcp_/udp_/irq_/softirq_`.
+   → **IO is IN** (block_rq_* + fs syscalls); **memory-management tracepoints are OUT**
+   (kmem/pgfault/reclaim/kswapd; only via `KERNEL_EVENTS=all`). The transcript's "don't
+   collect IO" is almost certainly an ASR slip for "memory." **Implication flagged in the
+   doc:** F3/F8 kernel cards assume a reclaim/pgfault signature that the curated profile
+   does not capture — for `svc_mem_cap` kernel evidence is syscalls/sched/block only (logs
+   win T2/T3 anyway, as predicted). Confirm intent with Naser; amend F3/F8 via §7 log or
+   re-run with `KERNEL_EVENTS=all` if the memory-tracepoint signal is wanted.
+
+3. **Counts reconciled:** collected v1 = **8 fault families / 40 runs / 164 GB** (34 fault =
+   31 confirmed + 3 borderline; 6 normal). Of 12 *designed* (F1–F12), F2/F3/F4/F12 are
+   designed-but-deferred. Meeting's "12 fault types" = catalog design count, not collected.
+
+4. **Babeltrace2 non-LTTng parsing** (§4.2 gating question) — spike in
+   `microservice-lttng-data-collection-scripts/babeltrace-spike/`. Answer = **yes** (plugin
+   graph). Built-in `source.text.dmesg` parses plain text (guaranteed proof); wrote
+   `applog_source.py`, a bt2 **source component** for our Sock Shop Go-kit logs
+   (`method/err/took_ns`). Parsing **verified offline** (selftest 4/4); bt2 wrapper pending
+   VM validation (`run_spike.sh`). VM currently **TERMINATED** — did not start it (cost);
+   the empirical run is one VM session away.
