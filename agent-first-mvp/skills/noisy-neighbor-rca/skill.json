@@ -1,0 +1,39 @@
+{
+  "skill": "noisy-neighbor-rca",
+  "version": "0.1.0",
+  "title": "Noisy-neighbor contention analysis (kernel-only showcase)",
+  "problem_triggers": ["everything is a bit slow", "intermittent slowness", "slow but nothing is erroring", "unexplained latency"],
+  "decisive_modality": "kernel-only",
+  "fault_source": "noisy_neighbor",
+  "hypotheses": [
+    {"id": "colocated_cpu_hog", "evidence": "a non-service container consumes cores; services show elevated runnable-wait but flat app KPIs"},
+    {"id": "genuine_service_load", "evidence": "service KPIs (latency/throughput) actually degrade beyond normal variance"}
+  ],
+  "requirements": {
+    "kernel_lttng": {
+      "events": ["sched_switch", "sched_waking", "sched_wakeup", "sched_stat_runtime"],
+      "syscalls": [],
+      "contexts": ["pid", "tid", "procname"],
+      "scope": {"target_services": ["all"]},
+      "mode": "snapshot", "max_duration_s": 60,
+      "capture_cmd": "lttng enable-event -k sched_switch,sched_waking,sched_wakeup,sched_stat_runtime"
+    },
+    "otel": {"services": ["catalogue"], "signals": ["traces"]},
+    "logs": {"services": [], "level": "ERROR+"},
+    "metrics": ["histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"catalogue\"}[1m])) by (le))"]
+  },
+  "workflow": [
+    {"id": "collect", "op": "scoped_capture_or_replay", "from": "requirements"},
+    {"id": "topcpu", "op": "oncpu_by_process", "inputs": ["collect"]},
+    {"id": "kpiflat", "op": "kpi_variance_check", "inputs": ["collect"]},
+    {"id": "reason", "op": "llm_rca", "inputs": ["topcpu", "kpiflat", "hypotheses"]}
+  ],
+  "output": {
+    "format": "html+json",
+    "contract": {
+      "root_cause": "string", "evidence": "list", "ruled_out": "list",
+      "decisive_modality": "string", "confidence": "float",
+      "recommended_fix": "string", "data_touched_mb": "float"
+    }
+  }
+}

@@ -1,0 +1,40 @@
+{
+  "skill": "error-storm-rca",
+  "version": "0.1.0",
+  "title": "Error-storm root-cause analysis (logs showcase)",
+  "problem_triggers": ["lots of 5xx errors", "error rate spiked", "service is throwing errors", "500s everywhere"],
+  "decisive_modality": "logs+traces",
+  "fault_source": "error_storm",
+  "hypotheses": [
+    {"id": "downstream_conn_failure", "evidence": "logs show DB/driver connection resets or refusals; 5xx concentrated on DB-backed routes"},
+    {"id": "bad_deploy", "evidence": "errors coincide with a version/config change, uniform across routes"},
+    {"id": "resource_exhaustion", "evidence": "errors correlate with CPU/mem pressure rather than a dependency"}
+  ],
+  "requirements": {
+    "kernel_lttng": {
+      "events": ["sched_switch"],
+      "syscalls": ["connect", "recvfrom", "sendto"],
+      "contexts": ["pid", "tid", "procname"],
+      "scope": {"target_services": ["catalogue", "catalogue-db"]},
+      "mode": "snapshot", "max_duration_s": 60,
+      "capture_cmd": "lttng enable-event -k --syscall connect,recvfrom,sendto && lttng enable-event -k sched_switch"
+    },
+    "otel": {"services": ["catalogue"], "signals": ["traces"]},
+    "logs": {"services": ["catalogue", "catalogue-db"], "level": "INFO+"},
+    "metrics": ["sum(rate(http_request_duration_seconds_count{job=\"catalogue\",status_code=~\"5..\"}[1m]))"]
+  },
+  "workflow": [
+    {"id": "collect", "op": "scoped_capture_or_replay", "from": "requirements"},
+    {"id": "logscan", "op": "log_error_signature", "inputs": ["collect"]},
+    {"id": "rate5xx", "op": "error_rate_series", "inputs": ["collect"]},
+    {"id": "reason", "op": "llm_rca", "inputs": ["logscan", "rate5xx", "hypotheses"]}
+  ],
+  "output": {
+    "format": "html+json",
+    "contract": {
+      "root_cause": "string", "evidence": "list", "ruled_out": "list",
+      "decisive_modality": "string", "confidence": "float",
+      "recommended_fix": "string", "data_touched_mb": "float"
+    }
+  }
+}

@@ -1,0 +1,40 @@
+{
+  "skill": "cpu-saturation-rca",
+  "version": "0.1.0",
+  "title": "Host CPU saturation root-cause analysis",
+  "problem_triggers": ["cpu is at 100%", "cpu pegged", "system is maxed out", "everything is slow and cpu is high"],
+  "decisive_modality": "kernel+metrics",
+  "fault_source": "anomaly_cpu",
+  "hypotheses": [
+    {"id": "external_cpu_hog", "evidence": "a non-service process dominates on-CPU time in sched_switch"},
+    {"id": "service_cpu_regression", "evidence": "a monitored service's own threads dominate on-CPU time"},
+    {"id": "runqueue_contention", "evidence": "high runnable-wait across services with no single dominant hog"}
+  ],
+  "requirements": {
+    "kernel_lttng": {
+      "events": ["sched_switch", "sched_waking", "sched_wakeup", "sched_stat_runtime"],
+      "syscalls": [],
+      "contexts": ["pid", "tid", "procname"],
+      "scope": {"target_services": ["all"]},
+      "mode": "snapshot", "max_duration_s": 60,
+      "capture_cmd": "lttng enable-event -k sched_switch,sched_waking,sched_wakeup,sched_stat_runtime"
+    },
+    "otel": {"services": [], "signals": []},
+    "logs": {"services": [], "level": "ERROR+"},
+    "metrics": ["100 - (avg(rate(node_cpu_seconds_total{mode=\"idle\"}[1m])) * 100)"]
+  },
+  "workflow": [
+    {"id": "collect", "op": "scoped_capture_or_replay", "from": "requirements"},
+    {"id": "topcpu", "op": "oncpu_by_process", "inputs": ["collect"]},
+    {"id": "onset", "op": "change_point", "inputs": ["collect"]},
+    {"id": "reason", "op": "llm_rca", "inputs": ["topcpu", "onset", "hypotheses"]}
+  ],
+  "output": {
+    "format": "html+json",
+    "contract": {
+      "root_cause": "string", "evidence": "list", "ruled_out": "list",
+      "decisive_modality": "string", "confidence": "float",
+      "recommended_fix": "string", "data_touched_mb": "float"
+    }
+  }
+}
