@@ -64,8 +64,11 @@ The memory stressor was the session's hard problem. Chain of elimination:
   hitting the cap forces reclaim + swap; **bounded → cannot OOM-kill the stack** (the reason
   we can't just run an unbounded allocator). `--memory-swap` gives cgroup swap headroom.
 - **Why `--bigheap` over `--vm`:** `--bigheap` grows the heap via realloc and *holds* it;
-  the cgroup cap does the bounding that `--vm-bytes` failed to. **Not yet confirmed on VM**
-  (rewritten offline); one run next start should meet the gate (reclaim already proven).
+  the cgroup cap does the bounding that `--vm-bytes` failed to.
+- **✅ CONFIRMED on VM (same session):** `host_mem_available_drop` 0.837 → **0.147** (pass).
+  Live monitoring showed MemAvail collapse 33 G→~4.8 G (~12%) with swap climbing to 5–7 G —
+  the cap cycles (fill→reclaim→refill), giving sustained reclaim pressure. This closes the
+  memory fault: **5/5 wave-2 faults now confirmed.**
 
 ## 7. RQ4 overhead = wrap the existing fair harness, don't rebuild
 `collect_overhead.sh` orchestrates the **existing** rotated baseline/lttng_only/lmat_async
