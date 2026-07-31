@@ -35,8 +35,8 @@ case "${1:-}" in
     # Total resident pressure = WORKERS x PCT of RAM. Kept below 100% so the
     # stack degrades under reclaim/swap rather than being OOM-killed outright.
     case "$INTENSITY" in
-      subtle)     WORKERS="${WORKERS:-2}" PCT="${PCT:-22%}" ;;   # ~44% RAM
-      aggressive) WORKERS="${WORKERS:-3}" PCT="${PCT:-26%}" ;;   # ~78% RAM
+      subtle)     WORKERS="${WORKERS:-2}" PCT="${PCT:-18%}" ;;   # ~36% RAM
+      aggressive) WORKERS="${WORKERS:-3}" PCT="${PCT:-22%}" ;;   # ~66% resident + stack -> MemAvail<0.25, ~7GB headroom (OOM-safe with the stack up)
       *) echo "unknown intensity: $INTENSITY"; exit 1 ;;
     esac
     docker run -d --name "$CONTAINER" "$STRESS_IMAGE" \
