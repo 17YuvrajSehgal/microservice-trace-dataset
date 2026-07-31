@@ -72,11 +72,17 @@ The memory stressor was the session's hard problem. Chain of elimination:
   `--vm-keep --vm-hang 0` HOLDS the full allocation (probed: 34 GB held, avail 35→7 G,
   swap→6 G). Size it to ~88% RAM so alloc+stack overshoots physical into the 16 GB swap →
   **host-global reclaim (`mm_vmscan_*`) AND MemAvailable collapse**, OOM-safe.
-- **✅ CONFIRMED on VM (same session):** `host_mem_available_drop` 0.849 → **0.021** (pass).
-  Live monitor: MemAvail 40 G→~0.6 G (~2%) with swap climbing **steadily 1→8.5 G** —
-  sustained global reclaim (vs the capped run's oscillation). Produced a **19 GB** kernel
-  trace (reclaim/writeback flood); `mm_vmscan_` classes enabled + firing. This closes the
-  memory fault: **5/5 wave-2 faults confirmed** (disk · net · mem · svc_mem_cap · svc_net).
+- **✅ CONFIRMED on VM (same session), both signals:**
+  - *Metrics:* `host_mem_available_drop` 0.849 → **0.021** (pass). Live monitor: MemAvail
+    40 G→~0.6 G with swap climbing **steadily 1→8.5 G** (sustained global reclaim, vs the
+    capped run's oscillation).
+  - *Kernel (the winning modality):* decoding the 19 GB trace → **2.95 M `mm_vmscan_`
+    events** — `write_folio` 2.5 M (swap-out), `lru_shrink_inactive` 105 K, `lru_isolate`
+    191 K, `shrink_slab` 69 K, **`direct_reclaim` 3.1 K** (in-line reclaim = severe
+    pressure), + `kswapd_wake/sleep`. The capped run had ZERO of these; uncapped restored
+    the full F3 signature.
+  This closes the memory fault: **5/5 wave-2 faults confirmed** (disk · net · mem ·
+  svc_mem_cap · svc_net), and it wins on both metrics + kernel exactly as pre-registered.
 
 ## 7. RQ4 overhead = wrap the existing fair harness, don't rebuild
 `collect_overhead.sh` orchestrates the **existing** rotated baseline/lttng_only/lmat_async
