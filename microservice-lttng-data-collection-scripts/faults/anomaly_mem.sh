@@ -1,20 +1,22 @@
 #!/bin/bash
-# Fault recipe: host-wide MEMORY pressure (stress-ng --bigheap). Fills the F3 gap.
-# Bounded by a --memory-capped container so it drives reclaim / paging without
-# hard-OOM-killing the collector or the stack. Named anomaly_mem to match
-# anomaly_cpu + the existing verification_targets.json entry.
+# Fault recipe: host-wide MEMORY pressure (stress-ng --vm, single worker, uncapped).
+# Fills the F3 gap. Named anomaly_mem to match anomaly_cpu + the existing
+# verification_targets.json entry.
 #
 # Pre-registered expectation (fault_catalog.md F3): metrics detect (MemAvailable
 # collapse); logs may show JVM GC storms / OOM; the KERNEL shows reclaim
 # (mm_vmscan_*) + page-cache writeback (writeback_*) + allocation-stall waits.
 #
-# MECHANISM (wave-2 finding, 31-07): stress-ng --vm capped at ~7-8 GB on this VM
-# regardless of workers/bytes/--vm-hang (it churns allocate/free rather than
-# sustaining). We switched to **stress-ng --bigheap** (grows the heap via realloc
-# and HOLDS it) run in a **--memory-capped container**: the cgroup cap bounds host
-# RAM at the target (can't OOM-kill the stack), and hitting the cap triggers
-# reclaim -> mm_vmscan_memcg_* (+ swap-out writeback_*) — the exact F3 signature.
-# Needs the VM's 16 GB swap (added 31-07). --brk is a lighter alternative.
+# MECHANISM (wave-2 finding, 31-07, calibrated on the VM):
+#  - MULTI-worker --vm capped at ~7-8 GB (workers thrash/cycle) -> MemAvailable
+#    barely moved. A SINGLE worker with absolute --vm-bytes + --vm-keep --vm-hang 0
+#    HOLDS the full allocation (probed: 34 GB held, avail 35->7 GB, swap->6 GB).
+#  - --bigheap in a --memory-CAPPED container passed the MemAvailable gate but the
+#    memcg cap CONTAINED reclaim (OOM-killed the worker inside the cgroup; oom_ x2)
+#    so host-global kswapd never ran -> ZERO mm_vmscan_ (the kernel signature was
+#    LOST). So we run UNCAPPED and size the allocation to overshoot physical RAM
+#    into swap: that forces global reclaim (mm_vmscan_*) AND drops MemAvailable,
+#    while the 16 GB swap (added 31-07) keeps it OOM-safe (alloc+stack < RAM+swap).
 #
 # NOTE: the memory-management kernel signature is only captured with KERNEL_MEM=1
 # (collect_trace.sh) - run_scenario/collect_wave2 set this for memory faults.
@@ -38,25 +40,23 @@ CONTAINER="anomaly-mem-stress"
 case "${1:-}" in
   inject)
     INTENSITY="${2:-aggressive}"
-    # --bigheap grows the heap (realloc) and HOLDS it, run in a --memory-capped
-    # container: the cgroup cap = target host RAM, so the container fills up to the
-    # cap (dropping host MemAvailable) and hitting the cap forces reclaim
-    # (mm_vmscan_memcg_*) + swap-out. Bounded by the cap -> cannot OOM-kill the
-    # stack (unlike unbounded --vm/--brk). --memory-swap gives cgroup swap headroom
-    # so overflow pages out (the VM's 16 GB swap) instead of cgroup-OOM-cycling.
+    # UNCAPPED single-worker --vm: one worker mmaps the full target, --vm-keep
+    # holds the mapping and --vm-hang 0 sleeps on it (no free/re-alloc churn), so
+    # the whole allocation stays resident. Sized as a % of RAM so alloc+stack
+    # overshoots physical into the 16 GB swap -> host-global reclaim (mm_vmscan_*)
+    # AND MemAvailable collapse, while staying under RAM+swap (OOM-safe). NO
+    # --memory cap: a cgroup cap contains reclaim in the memcg and kills the
+    # global kernel signature (the wave-2 finding).
     case "$INTENSITY" in
-      subtle)     FRAC="${FRAC:-45}" ;;   # ~45% RAM
-      aggressive) FRAC="${FRAC:-70}" ;;   # ~70% RAM -> MemAvailable collapse + active reclaim
+      subtle)     FRAC="${FRAC:-72}" ;;   # ~72% RAM held (near the gate; RQ5 variant)
+      aggressive) FRAC="${FRAC:-88}" ;;   # ~88% RAM -> avail ~0.15 + swap-out reclaim
       *) echo "unknown intensity: $INTENSITY"; exit 1 ;;
     esac
-    WORKERS="${WORKERS:-2}"
     TOTAL_MB=$(( $(awk '/MemTotal/{print $2}' /proc/meminfo) / 1024 ))
-    CAP_MB=$(( TOTAL_MB * FRAC / 100 ))
-    docker run -d --name "$CONTAINER" \
-        --memory "${CAP_MB}m" --memory-swap "$(( CAP_MB + 8192 ))m" \
-        "$STRESS_IMAGE" \
-        stress-ng --bigheap "$WORKERS" > /dev/null
-    gt_begin "$INTENSITY" "{\"stressor\": \"bigheap\", \"workers\": $WORKERS, \"mem_cap_mb\": $CAP_MB, \"target_frac_pct\": $FRAC, \"container\": \"$CONTAINER\"}"
+    VM_MB=$(( TOTAL_MB * FRAC / 100 ))
+    docker run -d --name "$CONTAINER" "$STRESS_IMAGE" \
+        stress-ng --vm 1 --vm-bytes "${VM_MB}m" --vm-keep --vm-hang 0 --page-in > /dev/null
+    gt_begin "$INTENSITY" "{\"stressor\": \"vm-hang(single,uncapped)\", \"vm_bytes_mb\": $VM_MB, \"target_frac_pct\": $FRAC, \"container\": \"$CONTAINER\"}"
     ;;
   cleanup)
     docker rm -f "$CONTAINER" > /dev/null 2>&1 || true
