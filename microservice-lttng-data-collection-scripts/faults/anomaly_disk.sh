@@ -1,23 +1,22 @@
 #!/bin/bash
-# Fault recipe: host-wide DISK I/O saturation (stress-ng --hdd), inject/cleanup
-# form so run_scenario/run_campaign drive it like the other faults. Fills the
-# F2 gap (only host-CPU was collected in v1); one of the four confusable
-# resource stressors RQ1 needs.
+# Fault recipe: host-wide DISK I/O saturation (stress-ng --hdd). Fills the F2
+# gap (only host-CPU was collected in v1); one of the four confusable resource
+# stressors RQ1 needs. Named anomaly_disk to match anomaly_cpu + the existing
+# verification_targets.json entry.
 #
 # Pre-registered expectation (fault_catalog.md F2): metrics detect (node disk
 # io_time -> 1); the KERNEL disambiguates - block_rq_* dominated by the stressor,
 # DB threads in D-state (uninterruptible) waits.
 #
-# Containerized (like anomaly_cpu) with a host bind-mount so the writes hit the
-# real block device -> block-layer kernel events. fsync (not O_DIRECT, which
-# overlay may reject) for strong write-latency pressure.
+# Containerized with a host bind-mount so writes hit the real block device ->
+# block-layer kernel events. fsync (not O_DIRECT, which overlay may reject).
 #
-# Usage: ./host_disk.sh inject [subtle|aggressive] | cleanup | status
+# Usage: ./anomaly_disk.sh inject [subtle|aggressive] | cleanup | status
 set -euo pipefail
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/fault_lib.sh"
 
 FAULT_FAMILY="A_host_resource"
-FAULT_NAME="host_disk"
+FAULT_NAME="anomaly_disk"
 FAULT_SCOPE="host"
 TARGET_SERVICE="host"
 EXPECTED_BLAST_RADIUS='["host", "all services"]'
@@ -26,8 +25,8 @@ TARGET_TRACE_VISIBILITY="n/a"
 REMEDIATION="kill the stress-ng workers"
 
 STRESS_IMAGE="${STRESS_IMAGE:-alexeiled/stress-ng:latest-ubuntu}"
-CONTAINER="host-disk-stress"
-SCRATCH="${DISK_SCRATCH:-/var/tmp/host-disk-stress}"
+CONTAINER="anomaly-disk-stress"
+SCRATCH="${DISK_SCRATCH:-/var/tmp/anomaly-disk-stress}"
 
 case "${1:-}" in
   inject)

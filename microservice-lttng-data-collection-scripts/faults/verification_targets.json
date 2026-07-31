@@ -83,8 +83,8 @@
   "anomaly_mem": [
     {"canonical": true, "name": "host_mem_available_drop",
      "promql": "node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes",
-     "direction": "decrease", "threshold_sigma": 5, "abs_threshold": 0.2, "min_fraction": 0.8,
-     "why": "stress-ng --vm touches ~95% of RAM"}
+     "direction": "decrease", "threshold_sigma": 5, "abs_threshold": 0.25, "min_fraction": 0.8,
+     "why": "stress-ng --vm drives MemAvailable down; aggressive ~78% RAM (bounded to avoid OOM-killing lttng) -> MemAvailable ratio < 0.25. Finalize on VM calibration."}
   ],
 
   "anomaly_net": [
@@ -92,5 +92,12 @@
      "promql": "sum(rate(node_network_receive_bytes_total{device!=\"lo\"}[1m]))",
      "direction": "decrease", "threshold_sigma": 3, "abs_threshold": 0, "min_fraction": 0.5,
      "why": "tbf shaping + netem loss reduce effective throughput (corroborate with probe latency)"}
+  ],
+
+  "svc_net_carts": [
+    {"canonical": true, "name": "carts_p95_latency",
+     "promql": "histogram_quantile(0.95, sum(rate(request_duration_seconds_bucket{job=\"cart\"}[1m])) by (le))",
+     "direction": "increase", "threshold_sigma": 3, "abs_threshold": 0.03, "min_fraction": 0.5,
+     "why": "per-container netem inside carts' netns inflates carts request latency; single-service impairment (front-end sees it upstream). Calibrate on the VM."}
   ]
 }

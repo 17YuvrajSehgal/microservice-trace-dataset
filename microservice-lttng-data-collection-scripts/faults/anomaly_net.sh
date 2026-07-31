@@ -1,20 +1,21 @@
 #!/bin/bash
 # Fault recipe: host-wide NETWORK impairment (tc netem delay/jitter/loss + tbf
 # rate cap) on the Docker bridge the stack runs on. Fills the F4 gap. Runs on
-# the HOST with sudo (tc acts on the bridge iface), not in a container.
+# the HOST with sudo (tc acts on the bridge iface), not in a container. Named
+# anomaly_net to match anomaly_cpu + the existing verification_targets.json entry.
 #
 # Pre-registered expectation (fault_catalog.md F4): metrics detect (netdev
 # throughput drop, inter-service latency up); TRACES localize (client-send ->
 # server-recv inter-hop gap inflates uniformly across edges - distinguishes
 # network from service slowness); kernel confirms via socket backlog / retx.
 #
-# Usage: ./host_net.sh inject [subtle|aggressive] | cleanup | status
+# Usage: ./anomaly_net.sh inject [subtle|aggressive] | cleanup | status
 #   NET_IFACE=<iface> to override the auto-detected bridge.
 set -euo pipefail
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/fault_lib.sh"
 
 FAULT_FAMILY="A_host_resource"
-FAULT_NAME="host_net"
+FAULT_NAME="anomaly_net"
 FAULT_SCOPE="host"
 TARGET_SERVICE="host"
 EXPECTED_BLAST_RADIUS='["host", "all services"]'
@@ -44,7 +45,7 @@ case "${1:-}" in
       aggressive) DELAY="${DELAY:-100}" JITTER="${JITTER:-30}" LOSS="${LOSS:-3}"   RATE="${RATE:-20mbit}"  ;;
       *) echo "unknown intensity: $INTENSITY"; exit 1 ;;
     esac
-    echo "[host_net] applying netem on $IFACE"
+    echo "[anomaly_net] applying netem on $IFACE"
     sudo tc qdisc add dev "$IFACE" root handle 1: netem \
         delay "${DELAY}ms" "${JITTER}ms" distribution normal loss "${LOSS}%"
     sudo tc qdisc add dev "$IFACE" parent 1: handle 10: tbf \
