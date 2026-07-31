@@ -38,10 +38,14 @@ case "${1:-}" in
       *) echo "unknown intensity: $INTENSITY"; exit 1 ;;
     esac
     mkdir -p "$SCRATCH"
+    # direct,fsync: O_DIRECT bypasses the page cache (the /var/tmp bind-mount is
+    # ext4, which supports it) so writes hit the block device -> higher io_time /
+    # cleaner block_rq_* signal than fsync alone.
+    HDD_OPTS="${HDD_OPTS:-direct,fsync}"
     docker run -d --name "$CONTAINER" -v "$SCRATCH":/stress "$STRESS_IMAGE" \
-        stress-ng --hdd "$WORKERS" --hdd-bytes "$BYTES" --hdd-opts fsync \
+        stress-ng --hdd "$WORKERS" --hdd-bytes "$BYTES" --hdd-opts "$HDD_OPTS" \
                   --temp-path /stress > /dev/null
-    gt_begin "$INTENSITY" "{\"hdd_workers\": $WORKERS, \"hdd_bytes\": \"$BYTES\", \"hdd_opts\": \"fsync\", \"scratch\": \"$SCRATCH\", \"container\": \"$CONTAINER\"}"
+    gt_begin "$INTENSITY" "{\"hdd_workers\": $WORKERS, \"hdd_bytes\": \"$BYTES\", \"hdd_opts\": \"$HDD_OPTS\", \"scratch\": \"$SCRATCH\", \"container\": \"$CONTAINER\"}"
     ;;
   cleanup)
     docker rm -f "$CONTAINER" > /dev/null 2>&1 || true
