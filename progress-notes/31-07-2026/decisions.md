@@ -59,16 +59,24 @@ The memory stressor was the session's hard problem. Chain of elimination:
 - **Decisive observation:** the **F3 kernel signature already fires** at 0.63 —
   `mm_vmscan_lru_isolate` 104K, `mm_vmscan_lru_shrink_inactive` 59K, `shrink_slab` — so the
   *kernel modality is already captured*; only the MemAvailable **gate** wasn't met.
-- **Decision:** rewrite to **`stress-ng --bigheap N` in a `--memory`-capped container**. The
-  cgroup cap = target host RAM, so the container fills to the cap (drops MemAvailable) and
-  hitting the cap forces reclaim + swap; **bounded → cannot OOM-kill the stack** (the reason
-  we can't just run an unbounded allocator). `--memory-swap` gives cgroup swap headroom.
-- **Why `--bigheap` over `--vm`:** `--bigheap` grows the heap via realloc and *holds* it;
-  the cgroup cap does the bounding that `--vm-bytes` failed to.
-- **✅ CONFIRMED on VM (same session):** `host_mem_available_drop` 0.837 → **0.147** (pass).
-  Live monitoring showed MemAvail collapse 33 G→~4.8 G (~12%) with swap climbing to 5–7 G —
-  the cap cycles (fill→reclaim→refill), giving sustained reclaim pressure. This closes the
-  memory fault: **5/5 wave-2 faults now confirmed.**
+- **First attempt — `--bigheap` in a `--memory`-capped container:** passed the MemAvailable
+  gate (0.147) BUT the run's tracepoints showed **zero `mm_vmscan_`** (heavy `writeback_`
+  only) + **`oom_`×2**. Root cause: the cgroup `--memory` cap **contained reclaim inside the
+  memcg** — it OOM-killed the bigheap worker internally rather than driving host-global
+  `kswapd`, so the F3 **kernel reclaim signature was lost.** Since the memory fault's
+  *winning modality is kernel*, passing only the metrics gate is not enough — the recipe has
+  to produce the global reclaim signal. **Lesson: never bound a host-pressure fault with a
+  cgroup cap; the cap moves the pressure into a memcg the host-wide kernel trace can't see.**
+- **Final decision — UNCAPPED single-worker `--vm`:** the ~8 GB cap was a *multi-worker*
+  artifact (workers thrash/cycle). A **single** worker with absolute `--vm-bytes` +
+  `--vm-keep --vm-hang 0` HOLDS the full allocation (probed: 34 GB held, avail 35→7 G,
+  swap→6 G). Size it to ~88% RAM so alloc+stack overshoots physical into the 16 GB swap →
+  **host-global reclaim (`mm_vmscan_*`) AND MemAvailable collapse**, OOM-safe.
+- **✅ CONFIRMED on VM (same session):** `host_mem_available_drop` 0.849 → **0.021** (pass).
+  Live monitor: MemAvail 40 G→~0.6 G (~2%) with swap climbing **steadily 1→8.5 G** —
+  sustained global reclaim (vs the capped run's oscillation). Produced a **19 GB** kernel
+  trace (reclaim/writeback flood); `mm_vmscan_` classes enabled + firing. This closes the
+  memory fault: **5/5 wave-2 faults confirmed** (disk · net · mem · svc_mem_cap · svc_net).
 
 ## 7. RQ4 overhead = wrap the existing fair harness, don't rebuild
 `collect_overhead.sh` orchestrates the **existing** rotated baseline/lttng_only/lmat_async
