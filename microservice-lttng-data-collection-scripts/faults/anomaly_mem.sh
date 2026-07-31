@@ -32,16 +32,21 @@ CONTAINER="anomaly-mem-stress"
 case "${1:-}" in
   inject)
     INTENSITY="${2:-aggressive}"
-    # Total resident pressure = WORKERS x PCT of RAM. Kept below 100% so the
-    # stack degrades under reclaim/swap rather than being OOM-killed outright.
+    # Consume+HOLD a fraction of RAM. Key: --vm-hang 0 makes each worker touch its
+    # pages then hang, keeping them resident (the default/--vm-method loop frees and
+    # re-allocs, so it never sustains pressure - the wave-2 finding). Absolute
+    # per-worker bytes computed from MemTotal (--vm-bytes % under-allocated here).
+    # Needs the VM's 16 GB swap so overshoot reclaims to swap instead of hard-OOM.
     case "$INTENSITY" in
-      subtle)     WORKERS="${WORKERS:-2}" PCT="${PCT:-18%}" ;;   # ~36% RAM
-      aggressive) WORKERS="${WORKERS:-3}" PCT="${PCT:-22%}" ;;   # ~66% resident + stack -> MemAvail<0.25, ~7GB headroom (OOM-safe with the stack up)
+      subtle)     WORKERS="${WORKERS:-2}" FRAC="${FRAC:-40}" ;;   # ~40% RAM held
+      aggressive) WORKERS="${WORKERS:-4}" FRAC="${FRAC:-72}" ;;   # ~72% RAM held -> reclaim/swap fires
       *) echo "unknown intensity: $INTENSITY"; exit 1 ;;
     esac
+    TOTAL_MB=$(( $(awk '/MemTotal/{print $2}' /proc/meminfo) / 1024 ))
+    PERWORKER_MB=$(( TOTAL_MB * FRAC / 100 / WORKERS ))
     docker run -d --name "$CONTAINER" "$STRESS_IMAGE" \
-        stress-ng --vm "$WORKERS" --vm-bytes "$PCT" --vm-method all --vm-keep --page-in > /dev/null
-    gt_begin "$INTENSITY" "{\"vm_workers\": $WORKERS, \"vm_bytes\": \"$PCT\", \"vm_keep\": true, \"container\": \"$CONTAINER\"}"
+        stress-ng --vm "$WORKERS" --vm-bytes "${PERWORKER_MB}m" --vm-hang 0 --vm-keep --page-in > /dev/null
+    gt_begin "$INTENSITY" "{\"vm_workers\": $WORKERS, \"vm_bytes_mb_each\": $PERWORKER_MB, \"target_frac_pct\": $FRAC, \"mode\": \"vm-hang(hold)\", \"container\": \"$CONTAINER\"}"
     ;;
   cleanup)
     docker rm -f "$CONTAINER" > /dev/null 2>&1 || true
