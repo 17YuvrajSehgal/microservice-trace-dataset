@@ -170,8 +170,16 @@ else
     sudo lttng enable-event -k --syscall --all --channel channel0 2>/dev/null || true
     # Tracepoint families; some wildcards may match nothing on a given kernel,
     # so each is best-effort (|| true) and failures are non-fatal.
-    for grp in 'sched_*' 'block_*' 'net_*' 'netif_*' 'napi_*' 'skb_*' \
-               'sock_*' 'tcp_*' 'udp_*' 'irq_*' 'softirq_*'; do
+    KERNEL_GROUPS='sched_* block_* net_* netif_* napi_* skb_* sock_* tcp_* udp_* irq_* softirq_*'
+    # Memory-management tracepoints are EXCLUDED from the default curated profile
+    # (advisor guidance + storage: ~2-3 GB/run). Opt in with KERNEL_MEM=1 for the
+    # memory-layer faults (host_mem, svc_mem_cap) so the kernel modality can see
+    # reclaim / paging / page-cache writeback - the F3/F8 signature the study needs.
+    if [ "${KERNEL_MEM:-0}" = "1" ]; then
+        KERNEL_GROUPS="$KERNEL_GROUPS kmem_* mm_* vmscan_* writeback_* compaction_* migrate_*"
+        echo "[collect] KERNEL_MEM=1 -> memory-management tracepoints ADDED to profile"
+    fi
+    for grp in $KERNEL_GROUPS; do
         sudo lttng enable-event -k "$grp" --channel channel0 2>/dev/null || true
     done
 fi
