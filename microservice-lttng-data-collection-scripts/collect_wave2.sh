@@ -62,6 +62,12 @@ for p in "${PLAN[@]}"; do
   echo "--- [$RUN]  kernel_mem=$kmem  svc=${svc:-none} ---"
   KERNEL_MEM="$kmem" TARGET_SVC="${svc:-}" "$SD/run_scenario.sh" "$recipe" "$inten" "$RUN" "${USERS:-200}" || echo "[$RUN] run_scenario returned nonzero"
   RD="$HOME/traces/$recipe/$RUN"
+  # Compress the kernel CTF streams (~6x) now the inline audit has run - matches the
+  # v1 storage format (run_campaign.sh does the same) and keeps each run ~3 GB instead
+  # of ~20 GB (raw), which the resource-stress + KERNEL_MEM runs otherwise balloon to.
+  # metadata/index stay raw; derivers/babeltrace gunzip on demand. Sequential -> no
+  # perturbation of live tracing.
+  [ -d "$RD/kernel/kernel" ] && gzip -q "$RD"/kernel/kernel/channel0_* 2>/dev/null || true
   V=$(python3 -c "import json;print(json.load(open('$RD/verification.json')).get('verification_status','n/a'))" 2>/dev/null || echo n/a)
   VERD["$RUN"]="$V"
   echo "[$RUN] -> $V"
