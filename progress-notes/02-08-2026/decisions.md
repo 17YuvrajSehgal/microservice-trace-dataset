@@ -38,7 +38,29 @@ compression pass:
 - **Verdict:** gz channels + raw metadata/index round-trip cleanly; the dataset is
   analysis-ready in its stored (compressed) form. Derivers/loaders just gunzip on demand.
 
+## 3. Started the derivers/loader — `stratatrace/` package
+Kicked off Phase-3 representation work (msr-research.md §4). New `stratatrace/` package:
+- **L1 kernel-KPI deriver** (`derive_kernel_l1.py`): reads a run's gz-CTF (decompresses to
+  temp since bt2 can't read `.gz`), aggregates per **(service, 1 s window)** → compact
+  Parquet — syscall family counts, syscall + block latency percentiles (entry/exit &
+  issue/complete pairing), sched_switch/wakeup, block/net rates + bytes, and
+  reclaim/writeback/pagefault counters. Wrote a *richer* bt2 reader than
+  `preprocess_lmat_kernel.py`'s (that one drops the block/net/sched detail fields L1 needs).
+- **Loader SDK** (`loader.py`): `load_run(dir)` → lazy `.spans()/.logs()/.metrics()/
+  .kernel_l1()` DataFrames + `.ground_truth`/`.verification`/`.clock_anchors`; `list_runs()`
+  iterates a traces root. Defensive about layout (missing modality → empty frame).
+- Packaging: `pyproject.toml` (`pip install -e .`, console script `stratatrace-derive-l1`),
+  `__init__.py`, `README.md` with the L0–L3 ladder status.
+- **Tested offline** (no bt2/VM): deriver helpers (percentiles, family map) + loader against a
+  synthetic run dir — all pass.
+- **Design choices / refinements tracked in the README:** service attribution keys on
+  `procname` for v1 (exact per-container needs the pid→cgroup snapshot in `meta/`); block
+  latency pairs on `nr_sector` (coarse → refine to `(dev,sector)`); loader metrics/spans path
+  resolvers try known candidates (pin after VM validation).
+
 ## Outcome
-Data-collection phase is **complete**: v1 (40 runs) + wave-2 (15 confirmed) + RQ4 overhead,
-all gzipped/verified. Next is the derived-layer work (L1/L2/L3, loader SDK) that unblocks the
-modality-ablation study. VM stopped.
+Data-collection phase is **complete** (v1 + wave-2 + RQ4 overhead, gzipped/verified) and the
+Phase-3 derived layer is **started** (L1 + loader skeleton, offline-tested). **Next:** validate
+`derive_kernel_l1.py` on a real run on the VM (esp. the exact CTF event/field names for
+block/net/sched + service attribution), then L2 (wait attribution) and L3 (NL digest). VM
+stopped. Added `RESULTS.md` (durable results ledger).
