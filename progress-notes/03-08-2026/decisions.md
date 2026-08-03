@@ -31,12 +31,17 @@ Key outcomes and decisions:
 - **L3** produced 26,967 templated digests that read correctly (*"io syscalls 7.9×;
   writeback 5.3×; block p95 latency NEW"*); 6,572 mention reclaim.
 
-## 4. Open refinement (now concrete): service attribution
-L1/L3 key `service` on raw **procname**, which yields **229 "services"** including kernel
-threads (`kswapd0`, `N_scheduler`, `udev-worker`) mixed with app threads — too noisy for
-per-microservice study tables. **Next:** map procname → microservice (reuse L2's
-`SERVICE_COMM`, aggregate kernel/system threads), or use the pid→cgroup snapshot in `meta/`
-for exact per-container attribution. Offline-doable; validate on the saved L1.
+## 4. Service attribution — IMPLEMENTED (`service_map.py`)
+The raw-procname key gave **229 "services"** (kernel threads `kswapd0`/`N_scheduler` mixed with
+app threads). Added a two-tier resolver: (1) exact **TGID→service** from the run's
+`meta/top_<container>_*` docker-top snapshots — the container main PID is the TGID shared by all
+its threads and equals the event `pid`, so it splits same-comm services (carts/orders/shipping
+are all comm "java") — the identity L2 uses; (2) a procname classifier fallback (kernel
+threads→`kernel`, `traefik`→edge-router, `stress-ng`→aggressor, else `system:<comm>`). L1 now
+parses the event `pid` in both readers and keys `service` via `classify()`. **Offline-tested**
+(TGID split java→carts/orders, kernel bucketing, snapshot parse, CLI pid parse). **VM re-derive
+pending** to refresh parquets + confirm 229→~15 clean services. L3 needs no change (consumes
+L1's service column).
 
 ## State
 - Ladder built + validated; `kernel_l1.parquet` + `kernel_l3.jsonl` saved into the anomaly_mem
