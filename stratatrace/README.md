@@ -54,14 +54,22 @@ L1 decompresses the gzipped CTF channels into a temp dir (bt2 can't read `.gz`),
 and writes a small Parquet. Columns: `run_id, service, window_start_s`, syscall family counts,
 syscall + block latency percentiles, sched/block/net/reclaim/writeback/pagefault rates.
 
+## Service attribution (`service_map.py`)
+L1 resolves each event's `service` two ways: (1) an exact **TGID→service** map built from the
+run's `meta/top_<container>_*` docker-top snapshots (the container main PID == the TGID shared
+by all its threads == the event's `pid`), which correctly splits same-comm services (the
+carts/orders/shipping JVMs are all comm "java"); (2) a **procname classifier** fallback for
+non-container pids — kernel threads (`kswapd0`, `ksoftirqd`, `N_scheduler`, …) bucket to
+`kernel`, unique host comms map (`traefik`→edge-router, `stress-ng`→aggressor), else
+`system:<comm>`. This collapses the raw-procname noise (229 "services") to the real services
++ `kernel`/`system` buckets. Offline-tested; **re-derive L1 on the VM to refresh** parquets
+made before this change.
+
 ## Known refinements (tracked)
-- **Service attribution (next priority)** — L1/L3 key `service` by raw `procname`, which on a
-  real run yields **229 "services"** including kernel threads (`kswapd0`, `N_scheduler`,
-  `udev-worker`) mixed with app threads — too noisy for per-microservice tables. Map procname
-  → microservice (reuse L2's `SERVICE_COMM`; bucket kernel/system threads), or use the
-  pid→cgroup snapshot in `meta/` for exact per-container attribution. Schema already carries
-  the `service` column so this is a drop-in. (The raw-procname output is still correct and
-  useful — e.g. it correctly attributes the F3 reclaim to `kswapd0`.)
+- **Block latency pairing** — v1 pairs block issue→complete on `nr_sector` (coarse); refine
+  to `(dev, sector)`.
+- **L2 sharing** — `derive_kernel_l2.py` still carries its own service maps; fold onto
+  `service_map.py` to avoid drift.
 - **Block latency pairing** — v1 pairs block issue→complete on `nr_sector` (coarse); refine to
   `(dev, sector)` once validated on the VM.
 - **Loader paths** — metrics dir / spans filename resolvers try known candidates; pin once

@@ -49,6 +49,8 @@ try:
 except Exception:
     BT2_AVAILABLE = False
 
+from service_map import build_tgid_service, classify
+
 # Cap latency samples kept per (window, service) bucket so a 1 s window with millions of
 # syscalls doesn't balloon RAM (the bt2-python run OOM-pressured the VM). Percentiles over a
 # 20k first-sample are accurate enough for L1 KPIs.
@@ -169,10 +171,14 @@ def stream_events_cli(ctf_root: str, warmup_s: float):
             name = raw[len("syscall_entry_"):]
         elif is_exit:
             name = raw[len("syscall_exit_"):]
+        # anchor field parsing to the context brace ( ... }, { pid = P, tid = T, procname ... )
+        cend = line.find("}", ci)
+        ctx = line.find("{", cend) if cend >= 0 else ci
         out = {
             "raw": raw, "name": name, "ts": ts,
-            "tid": _int_after(line, "tid = ", ci),
-            "proc": _proc(line, ci),
+            "pid": _int_after(line, "pid = ", ctx),
+            "tid": _int_after(line, "tid = ", ctx),
+            "proc": _proc(line, ctx),
             "is_entry": is_entry, "is_exit": is_exit,
         }
         if raw.startswith("block_"):
@@ -221,6 +227,7 @@ def stream_events_bt2(ctf_root: str, warmup_s: float):
         name = name.replace("entry_", "").replace("exit_", "")
         out = {
             "raw": raw, "name": name, "ts": ts,
+            "pid": int(_sf(ev, ("vpid", "pid"), 0) or 0),
             "tid": int(_sf(ev, ("vtid", "tid"), 0) or 0),
             "proc": str(_sf(ev, ("procname",), "unknown")),
             "is_entry": is_entry, "is_exit": is_exit,
@@ -266,6 +273,10 @@ def derive(run_dir: str, window_ms: float, warmup_s: float, tmp_root: str, reade
     ctf_root = prepare_ctf(kernel_dir, tmp_root)
     run_id = os.path.basename(run_dir.rstrip("/"))
     win_ns = int(window_ms * 1e6)
+    # exact TGID->service map from the run's container snapshots; classify() falls back to a
+    # procname classifier (kernel threads -> "kernel") for non-container pids.
+    tgid_service = build_tgid_service(os.path.join(run_dir, "meta"))
+    log(f"tgid->service map: {len(tgid_service)} containers resolved from meta/")
 
     # windows[(win_idx, service)] -> bucket ; pairing state per (service, tid)
     windows: dict = defaultdict(new_bucket)
@@ -278,7 +289,7 @@ def derive(run_dir: str, window_ms: float, warmup_s: float, tmp_root: str, reade
         if base_ts is None:
             base_ts = e["ts"]
         widx = (e["ts"] - base_ts) // win_ns
-        svc = e["proc"]
+        svc = classify(e["pid"], e["proc"], tgid_service)
         b = windows[(widx, svc)]
         b["events"] += 1
         raw, name = e["raw"], e["name"]
