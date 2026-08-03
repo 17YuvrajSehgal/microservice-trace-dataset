@@ -40,19 +40,13 @@ import sys
 import tempfile
 
 from derive_kernel_l1 import prepare_ctf  # gz-aware CTF stage (shared)
+from service_map import SERVICE_CONTAINER, container_pids  # TGID identity (shared, all-PIDs)
 
-# service -> process comm (fallback identity) ; -> docker container basename (TGID identity)
+# service -> process comm (fallback identity, when a container has no docker-top snapshot)
 SERVICE_COMM = {
     "catalogue": "app", "catalogue-db": "mysqld", "front-end": "node",
     "payment": "app", "user": "app", "toxiproxy": "toxiproxy",
     "carts": "java", "orders": "java", "shipping": "java", "queue-master": "java",
-}
-SERVICE_CONTAINER = {
-    "catalogue": "docker-compose_catalogue", "catalogue-db": "docker-compose_catalogue-db",
-    "front-end": "docker-compose_front-end", "payment": "docker-compose_payment",
-    "orders": "docker-compose_orders", "user": "docker-compose_user",
-    "carts": "docker-compose_carts", "shipping": "docker-compose_shipping",
-    "queue-master": "docker-compose_queue-master",
 }
 
 _TS = re.compile(r"^\[(\d{2}):(\d{2}):(\d{2})\.(\d{9})\]")
@@ -85,23 +79,7 @@ def _bt(ts):
     return dt.datetime.strptime(ts, "%Y-%m-%dT%H:%M:%SZ").strftime("%Y-%m-%d %H:%M:%S.000000")
 
 
-def main_pid(meta_dir, container):
-    for pat in (f"top_{container}_1_start.txt", f"top_{container}_1_*.txt", f"top_*{container}*start*.txt"):
-        for path in sorted(glob.glob(os.path.join(meta_dir, pat))):
-            with open(path, encoding="utf-8", errors="replace") as f:
-                hdr = f.readline().split()
-                try:
-                    c = [h.upper() for h in hdr].index("PID")
-                except ValueError:
-                    continue
-                for line in f:
-                    p = line.split()
-                    if len(p) > c and p[c].isdigit():
-                        return int(p[c])
-    return None
-
-
-def attribute(ctf_root, target_comm, begin_iso, end_iso, names, target_tgid=None):
+def attribute(ctf_root, target_comm, begin_iso, end_iso, names, target_tgids=None):
     bt = ["babeltrace2", ctf_root, "--begin", _bt(begin_iso), "--end", _bt(end_iso)]
     p1 = subprocess.Popen(bt, stdout=subprocess.PIPE)
     p2 = subprocess.Popen(["grep", "-E", "|".join(names)], stdin=p1.stdout,
@@ -111,8 +89,8 @@ def attribute(ctf_root, target_comm, begin_iso, end_iso, names, target_tgid=None
     tid2tgid = {}
 
     def belongs(tid, comm):
-        if target_tgid is not None:
-            return tid2tgid.get(tid) == target_tgid
+        if target_tgids:
+            return tid2tgid.get(tid) in target_tgids
         return comm == target_comm
 
     def ensure(t):
@@ -228,10 +206,10 @@ def derive(run_dir, services, max_seconds, tmp_root, names):
     rows = []
     for svc in services:
         comm = SERVICE_COMM.get(svc, svc)
-        tgid = main_pid(meta_dir, SERVICE_CONTAINER[svc]) if svc in SERVICE_CONTAINER else None
-        total, ntids = attribute(ctf_root, comm, begin, end, names, target_tgid=tgid)
+        tgids = container_pids(meta_dir, SERVICE_CONTAINER[svc]) if svc in SERVICE_CONTAINER else set()
+        total, ntids = attribute(ctf_root, comm, begin, end, names, target_tgids=tgids)
         s = summarize(total)
-        rows.append({"run_id": run_id, "service": svc, "comm": comm, "tgid": tgid,
+        rows.append({"run_id": run_id, "service": svc, "comm": comm, "tgids": sorted(tgids),
                      "n_tids_seen": ntids, "window_begin_utc": begin, "window_end_utc": end,
                      "fault_name": gt.get("name"), "fault_target": gt.get("target_service"),
                      **s})

@@ -54,8 +54,12 @@ def is_kernel_thread(comm: str) -> bool:
     return bool(_KERNEL_RE.match(comm)) or comm.startswith("[")
 
 
-def _main_pid(meta_dir: str, container: str):
-    """Container main PID (== TGID) from the docker-top start snapshot."""
+def container_pids(meta_dir: str, container: str) -> set:
+    """ALL host PIDs (== TGIDs) of a container's processes from its docker-top start snapshot.
+    Not just PID 1: services with a shell-wrapper entrypoint (Sock Shop's `java.sh`) run PID 1
+    = the shell and the real service as its java child under a different TGID — the service's
+    threads carry that child TGID, so both must map to the service."""
+    pids: set = set()
     for pat in (f"top_{container}_1_start.txt", f"top_{container}_1_*.txt", f"top_*{container}*start*.txt"):
         for path in sorted(glob.glob(os.path.join(meta_dir, pat))):
             try:
@@ -68,18 +72,20 @@ def _main_pid(meta_dir: str, container: str):
                     for line in f:
                         p = line.split()
                         if len(p) > c and p[c].isdigit():
-                            return int(p[c])
+                            pids.add(int(p[c]))
             except OSError:
                 continue
-    return None
+        if pids:
+            break
+    return pids
 
 
 def build_tgid_service(meta_dir: str) -> dict:
-    """Return {tgid: service} from every container's docker-top snapshot in meta_dir."""
+    """Return {tgid: service} from every container's docker-top snapshot in meta_dir —
+    mapping ALL of each container's PIDs (shell + runtime child) to its service."""
     out = {}
     for service, container in SERVICE_CONTAINER.items():
-        pid = _main_pid(meta_dir, container)
-        if pid is not None:
+        for pid in container_pids(meta_dir, container):
             out[pid] = service
     return out
 
