@@ -29,9 +29,13 @@ for fam, run_id, rd in list_runs("~/traces"):
 | Level | What | Status |
 |---|---|---|
 | **L0** | raw CTF (LTTng, gzipped channels) | shipped by collection |
-| **L1** | kernel KPIs per (service, 1s window) → Parquet | **`derive_kernel_l1.py`** — offline-tested; VM-validate |
-| **L2** | per-service wait attribution (on-CPU / runnable-wait / blocked-disk/net/futex) → JSONL | **`derive_kernel_l2.py`** — productionized from the MVP engine; offline-tested helpers; VM-validate |
-| **L3** | templated NL kernel digest per (service, window) → JSONL | **`derive_kernel_l3.py`** — offline-tested end-to-end (consumes L1) |
+| **L1** | kernel KPIs per (service, 1s window) → Parquet | **`derive_kernel_l1.py`** — **VM-validated** (all KPIs populate; F3 reclaim signature via kswapd0). Use the fast `--reader cli` (default). |
+| **L2** | per-service wait attribution (on-CPU / runnable-wait / blocked-disk/net/futex) → JSONL | **`derive_kernel_l2.py`** — productionized from the MVP engine; offline-tested; **real-data VM validation pending** |
+| **L3** | templated NL kernel digest per (service, window) → JSONL | **`derive_kernel_l3.py`** — **VM-validated** end-to-end on real L1 |
+
+> **Performance:** the kernel traces are huge (a memory-pressure run = **333 M events**). Use
+> the default `--reader cli` (babeltrace2 subprocess, ~15× the bt2-python bindings). Even so,
+> deriving is minutes-to-tens-of-minutes per big run — run the batch unattended.
 
 Derive all three for a run (on the VM):
 ```
@@ -51,9 +55,13 @@ and writes a small Parquet. Columns: `run_id, service, window_start_s`, syscall 
 syscall + block latency percentiles, sched/block/net/reclaim/writeback/pagefault rates.
 
 ## Known refinements (tracked)
-- **Service attribution** — L1 v1 keys `service` by `procname`; exact per-container
-  attribution needs the run's pid→cgroup snapshot (in `meta/`). Schema already carries the
-  `service` column so this is a drop-in.
+- **Service attribution (next priority)** — L1/L3 key `service` by raw `procname`, which on a
+  real run yields **229 "services"** including kernel threads (`kswapd0`, `N_scheduler`,
+  `udev-worker`) mixed with app threads — too noisy for per-microservice tables. Map procname
+  → microservice (reuse L2's `SERVICE_COMM`; bucket kernel/system threads), or use the
+  pid→cgroup snapshot in `meta/` for exact per-container attribution. Schema already carries
+  the `service` column so this is a drop-in. (The raw-procname output is still correct and
+  useful — e.g. it correctly attributes the F3 reclaim to `kswapd0`.)
 - **Block latency pairing** — v1 pairs block issue→complete on `nr_sector` (coarse); refine to
   `(dev, sector)` once validated on the VM.
 - **Loader paths** — metrics dir / spans filename resolvers try known candidates; pin once
