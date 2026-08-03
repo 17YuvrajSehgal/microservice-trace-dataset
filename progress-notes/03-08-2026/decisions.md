@@ -48,3 +48,28 @@ L1's service column).
   run dir. **L2 not yet run on real data** (next). Loader validated. VM STOPPED (~3 h session).
 - Deriving all 55 runs is a multi-hour batch even at CLI speed (this run alone = 26 min at
   333 M events; most runs are far smaller) — run it unattended.
+
+---
+
+## 5. Service-attribution fix (shell-wrapper bug) + L2 real-data validation
+Re-deriving L1 with the new mapping surfaced a bug, then validated the fix:
+- **Bug:** Sock Shop's java services use a **shell-wrapper entrypoint** (`java.sh` = container
+  PID 1) that *forks* the real `java` process under a **different TGID**. `main_pid`/`build_
+  tgid_service` keyed only on PID 1 (the shell) → the service's threads (carrying the java
+  child TGID) went unmapped: **carts L2 = 0 threads**, and L1 lumped all JVMs as `system:java`
+  (Go/Node services worked — they *are* PID 1).
+- **Fix:** `container_pids()` now returns **all** of a container's PIDs (shell + java child);
+  L1 `classify` + L2 `attribute` match any. Go services unaffected. Validated on the real
+  slow_db meta: map went 13→**22 entries**, `626364 (java child) → carts`, and all 13 real
+  microservices resolve (incl. carts/orders/shipping/queue-master).
+- **L2 validated end-to-end (svc_net, netem on carts):** `carts` **0 → 241 threads**,
+  **99.9% off-CPU I/O wait → `external_io_or_dependency_wait`** — exactly the "why slow" answer
+  (carts blocked on network). catalogue 14 tids / 99.6%, front-end 9 tids / 96.3%. **The whole
+  ladder (L1/L2/L3) + loader is now validated on real data.**
+- **Ops notes:** all traces are 100–300 M events (no "small" run — slow_db burst = 266 M);
+  L1 re-derive is ~27 min/trace. Heavy SSH commands (kill/pull/launch of big procs)
+  intermittently 128'd under derive load — run launches as minimal standalone commands, pull
+  separately. The `system:*` buckets (dockerd, containerd, lttng, host tools) are correctly
+  non-services; optionally collapse to one `system` bucket for the study.
+- **Pending:** batch **re-derive L1** across all runs with the fix (unattended, ~hours) to
+  refresh the parquets — the fix is code-validated, only the stored artifacts are stale.
