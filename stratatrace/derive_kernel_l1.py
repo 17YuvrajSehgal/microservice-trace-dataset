@@ -38,6 +38,7 @@ import argparse
 import gzip
 import os
 import shutil
+import subprocess
 import sys
 import tempfile
 from collections import defaultdict
@@ -47,6 +48,11 @@ try:
     BT2_AVAILABLE = True
 except Exception:
     BT2_AVAILABLE = False
+
+# Cap latency samples kept per (window, service) bucket so a 1 s window with millions of
+# syscalls doesn't balloon RAM (the bt2-python run OOM-pressured the VM). Percentiles over a
+# 20k first-sample are accurate enough for L1 KPIs.
+_LAT_SAMPLE_CAP = 20000
 
 
 def log(msg: str, prefix: str = "L1") -> None:
@@ -110,9 +116,90 @@ def _sf(ev, names, default=None):
     return default
 
 
-def stream_events(ctf_root: str, warmup_s: float):
-    """Yield rich event dicts from the kernel CTF. Extracts the extra block/net/sched
-    fields L1 needs (parse_kernel_bt2 in preprocess_lmat_kernel.py drops them)."""
+def _int_after(line, key, start=0):
+    """Fast parse of an integer field `key = <digits>` from a babeltrace2 text line."""
+    i = line.find(key, start)
+    if i < 0:
+        return 0
+    i += len(key)
+    j = i
+    n = len(line)
+    while j < n and (line[j].isdigit() or (j == i and line[j] == "-")):
+        j += 1
+    try:
+        return int(line[i:j])
+    except ValueError:
+        return 0
+
+
+def stream_events_cli(ctf_root: str, warmup_s: float):
+    """FAST reader: babeltrace2 CLI (C decode) + minimal str parsing. ~5-10x the
+    bt2-python object iterator, which is impractically slow on the big (60-80M-event)
+    resource-stress traces. Yields the same event dicts as the bt2 reader."""
+    p = subprocess.Popen(["babeltrace2", ctf_root], stdout=subprocess.PIPE,
+                         text=True, errors="replace", bufsize=1 << 20)
+    first_ts = None
+    warmup_ns = int(warmup_s * 1e9)
+    n = 0
+    for line in p.stdout:
+        if not line or line[0] != "[":
+            continue
+        rb = line.find("]")
+        ts_str = line[1:rb]
+        c1 = ts_str.find(":"); c2 = ts_str.find(":", c1 + 1); dot = ts_str.find(".")
+        if c1 < 0 or c2 < 0 or dot < 0:
+            continue
+        try:
+            ts = ((int(ts_str[:c1]) * 3600 + int(ts_str[c1 + 1:c2]) * 60 + int(ts_str[c2 + 1:dot]))
+                  * 1_000_000_000) + int(ts_str[dot + 1:])
+        except ValueError:
+            continue
+        if first_ts is None:
+            first_ts = ts
+        if ts - first_ts < warmup_ns:
+            continue
+        ci = line.find(": { cpu_id", rb)
+        if ci < 0:
+            continue
+        raw = line[line.rfind(" ", 0, ci) + 1:ci]
+        is_entry = raw.startswith("syscall_entry_")
+        is_exit = raw.startswith("syscall_exit_")
+        name = raw
+        if is_entry:
+            name = raw[len("syscall_entry_"):]
+        elif is_exit:
+            name = raw[len("syscall_exit_"):]
+        out = {
+            "raw": raw, "name": name, "ts": ts,
+            "tid": _int_after(line, "tid = ", ci),
+            "proc": _proc(line, ci),
+            "is_entry": is_entry, "is_exit": is_exit,
+        }
+        if raw.startswith("block_"):
+            out["nr_sector"] = _int_after(line, "nr_sector = ", ci)
+        elif raw.startswith("net_dev_xmit") or raw.startswith("netif_receive"):
+            out["len"] = _int_after(line, "len = ", ci)
+        n += 1
+        yield out
+        if n % 2_000_000 == 0:
+            log(f"read {n:,} events (cli)")
+    p.stdout.close()
+    p.wait()
+    log(f"read {n:,} events (cli, total)")
+
+
+def _proc(line, start):
+    i = line.find('procname = "', start)
+    if i < 0:
+        return "unknown"
+    i += len('procname = "')
+    j = line.find('"', i)
+    return line[i:j] if j > i else "unknown"
+
+
+def stream_events_bt2(ctf_root: str, warmup_s: float):
+    """Reference reader via the bt2 python bindings (correct but slow; use --reader bt2
+    only for cross-checking the fast CLI reader)."""
     it = bt2.TraceCollectionMessageIterator(ctf_root)
     first_ts = None
     warmup_ns = int(warmup_s * 1e9)
@@ -138,15 +225,14 @@ def stream_events(ctf_root: str, warmup_s: float):
             "proc": str(_sf(ev, ("procname",), "unknown")),
             "is_entry": is_entry, "is_exit": is_exit,
         }
-        # extra fields for byte/latency KPIs (only present on some event classes)
         if raw.startswith("kernel:block_") or raw.startswith("block_"):
             out["nr_sector"] = int(_sf(ev, ("nr_sector",), 0) or 0)
         if "net_dev_xmit" in raw or "netif_receive" in raw:
             out["len"] = int(_sf(ev, ("len",), 0) or 0)
         yield out
         if n % 1_000_000 == 0:
-            log(f"read {n:,} events")
-    log(f"read {n:,} events (total)")
+            log(f"read {n:,} events (bt2)")
+    log(f"read {n:,} events (bt2, total)")
 
 
 def new_bucket():
@@ -174,7 +260,7 @@ def percentiles(vals_ns):
     return (pct(50), pct(95), pct(99))
 
 
-def derive(run_dir: str, window_ms: float, warmup_s: float, tmp_root: str):
+def derive(run_dir: str, window_ms: float, warmup_s: float, tmp_root: str, reader: str = "cli"):
     """Return a list of per-(service, window) KPI row dicts."""
     kernel_dir = os.path.join(run_dir, "kernel")
     ctf_root = prepare_ctf(kernel_dir, tmp_root)
@@ -187,7 +273,8 @@ def derive(run_dir: str, window_ms: float, warmup_s: float, tmp_root: str):
     blk_issue: dict = {}  # sector -> issue_ts           (block rq awaiting complete)
     base_ts = None
 
-    for e in stream_events(ctf_root, warmup_s):
+    stream = stream_events_bt2 if reader == "bt2" else stream_events_cli
+    for e in stream(ctf_root, warmup_s):
         if base_ts is None:
             base_ts = e["ts"]
         widx = (e["ts"] - base_ts) // win_ns
@@ -202,7 +289,7 @@ def derive(run_dir: str, window_ms: float, warmup_s: float, tmp_root: str):
             sys_open[(svc, e["tid"])] = e["ts"]
         elif e["is_exit"] and ("syscall" in raw or raw.startswith("kernel:sys")):
             t0 = sys_open.pop((svc, e["tid"]), None)
-            if t0 is not None:
+            if t0 is not None and len(b["_sys_lat"]) < _LAT_SAMPLE_CAP:
                 b["_sys_lat"].append(e["ts"] - t0)
         # scheduler
         elif "sched_switch" in raw:
@@ -216,7 +303,7 @@ def derive(run_dir: str, window_ms: float, warmup_s: float, tmp_root: str):
             blk_issue[e.get("nr_sector", -1)] = e["ts"]  # coarse; refined via (dev,sector) later
         elif "block_rq_complete" in raw:
             t0 = blk_issue.pop(e.get("nr_sector", -1), None)
-            if t0 is not None:
+            if t0 is not None and len(b["_blk_lat"]) < _LAT_SAMPLE_CAP:
                 b["_blk_lat"].append(e["ts"] - t0)
         # net
         elif "net_dev_xmit" in raw or "netif_receive" in raw:
@@ -256,17 +343,22 @@ def main():
     ap.add_argument("--out", default=None, help="output parquet (default: <run_dir>/kernel_l1.parquet)")
     ap.add_argument("--window-ms", type=float, default=1000.0)
     ap.add_argument("--warmup-s", type=float, default=0.0)
+    ap.add_argument("--reader", choices=("cli", "bt2"), default="cli",
+                    help="cli = fast babeltrace2 subprocess (default); bt2 = slow python bindings (cross-check)")
     ap.add_argument("--keep-temp", action="store_true")
     args = ap.parse_args()
 
-    if not BT2_AVAILABLE:
-        log("ERROR: bt2 (babeltrace2 python bindings) not available — run on the VM.")
+    if args.reader == "bt2" and not BT2_AVAILABLE:
+        log("ERROR: --reader bt2 needs the bt2 python bindings (VM-only).")
+        sys.exit(2)
+    if args.reader == "cli" and not shutil.which("babeltrace2"):
+        log("ERROR: babeltrace2 CLI not found (VM-only).")
         sys.exit(2)
 
     out = args.out or os.path.join(args.run_dir, "kernel_l1.parquet")
     tmp_root = tempfile.mkdtemp(prefix="stratatrace_l1_")
     try:
-        rows = derive(args.run_dir, args.window_ms, args.warmup_s, tmp_root)
+        rows = derive(args.run_dir, args.window_ms, args.warmup_s, tmp_root, args.reader)
         try:
             import pandas as pd
             df = pd.DataFrame(rows)
