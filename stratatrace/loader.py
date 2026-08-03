@@ -41,6 +41,46 @@ def _first_existing(*paths):
     return None
 
 
+def _otlp_attrs(attr_list):
+    """Flatten an OTLP attributes list [{key, value:{stringValue|intValue|..}}] to a dict."""
+    out = {}
+    for a in attr_list or []:
+        v = a.get("value", {})
+        out[a.get("key")] = next(iter(v.values()), None) if isinstance(v, dict) else v
+    return out
+
+
+def _flatten_otlp(obj):
+    """Yield one flat row per span from an OTLP export line ({resourceSpans:[...]}).
+    If obj is already a flat span (no resourceSpans), yield it unchanged."""
+    if not isinstance(obj, dict) or "resourceSpans" not in obj:
+        return [obj]
+    rows = []
+    for rs in obj.get("resourceSpans", []):
+        res = _otlp_attrs(rs.get("resource", {}).get("attributes", []))
+        service = res.get("service.name")
+        for ss in rs.get("scopeSpans", []):
+            for sp in ss.get("spans", []):
+                row = {
+                    "service": service,
+                    "trace_id": sp.get("traceId"),
+                    "span_id": sp.get("spanId"),
+                    "parent_span_id": sp.get("parentSpanId"),
+                    "name": sp.get("name"),
+                    "kind": sp.get("kind"),
+                    "start_ns": sp.get("startTimeUnixNano"),
+                    "end_ns": sp.get("endTimeUnixNano"),
+                }
+                st, en = sp.get("startTimeUnixNano"), sp.get("endTimeUnixNano")
+                try:
+                    row["dur_ms"] = (int(en) - int(st)) / 1e6
+                except (TypeError, ValueError):
+                    row["dur_ms"] = None
+                row.update(_otlp_attrs(sp.get("attributes", [])))
+                rows.append(row)
+    return rows
+
+
 def _empty_df():
     try:
         import pandas as pd
@@ -66,20 +106,22 @@ class Run:
         )
         if not path:
             return _empty_df()
-        rows = []
+        spans = []
         with open(path, "r", errors="replace") as fh:
             for line in fh:
                 line = line.strip()
-                if line:
-                    try:
-                        rows.append(json.loads(line))
-                    except json.JSONDecodeError:
-                        continue
+                if not line:
+                    continue
+                try:
+                    obj = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                spans.extend(_flatten_otlp(obj))
         try:
             import pandas as pd
-            return pd.json_normalize(rows)
+            return pd.json_normalize(spans)
         except ImportError:
-            return rows
+            return spans
 
     # ---- logs ----------------------------------------------------------------------------
     def logs(self):
@@ -100,13 +142,26 @@ class Run:
             return rows
 
     # ---- metrics (Prometheus, gz per metric) ---------------------------------------------
+    def _sibling_dir(self, suffix):
+        """Resolve a `<run_id><suffix>` artifact that the collector writes as a SIBLING of the
+        run (run_scenario.sh writes metrics to $HOME/<run_id>_metrics, load to
+        $HOME/<run_id>_load.csv) — walk up a few parent levels to find it."""
+        run_id = os.path.basename(self.run_dir.rstrip("/"))
+        p = self.run_dir
+        for _ in range(4):
+            p = os.path.dirname(p)
+            cand = os.path.join(p, run_id + suffix)
+            if os.path.exists(cand):
+                return cand
+        return None
+
     def metrics(self):
         """Prometheus series in long form (metric, labels, timestamp, value)."""
         mdir = _first_existing(
             os.path.join(self.run_dir, "metrics"),
             os.path.join(self.run_dir, "metrics_full"),
             os.path.join(self.run_dir, "meta", "metrics"),
-        )
+        ) or self._sibling_dir("_metrics")
         if not mdir:
             return _empty_df()
         rows = []
@@ -143,6 +198,21 @@ class Run:
         try:
             import pandas as pd
             return pd.read_parquet(path) if path.endswith(".parquet") else pd.read_csv(path)
+        except ImportError:
+            return []
+
+    def load(self):
+        """Closed-loop load-generator results (per-request latency) as a DataFrame.
+        Collector writes this as the sibling $HOME/<run_id>_load.csv."""
+        path = _first_existing(
+            os.path.join(self.run_dir, "load.csv"),
+            self._sibling_dir("_load.csv"),
+        )
+        if not path:
+            return _empty_df()
+        try:
+            import pandas as pd
+            return pd.read_csv(path)
         except ImportError:
             return []
 
