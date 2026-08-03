@@ -146,6 +146,35 @@ class Run:
         except ImportError:
             return []
 
+    def kernel_l2(self):
+        """L2 per-service wait attribution (JSONL from derive_kernel_l2.py); empty if absent."""
+        path = _first_existing(os.path.join(self.run_dir, "kernel_l2.jsonl"))
+        return self._read_jsonl(path)
+
+    def kernel_l3(self):
+        """L3 NL kernel digests (JSONL from derive_kernel_l3.py); empty if absent."""
+        path = _first_existing(os.path.join(self.run_dir, "kernel_l3.jsonl"))
+        return self._read_jsonl(path)
+
+    @staticmethod
+    def _read_jsonl(path):
+        if not path:
+            return _empty_df()
+        rows = []
+        with open(path, "r", errors="replace") as fh:
+            for line in fh:
+                line = line.strip()
+                if line:
+                    try:
+                        rows.append(json.loads(line))
+                    except json.JSONDecodeError:
+                        continue
+        try:
+            import pandas as pd
+            return pd.DataFrame(rows)
+        except ImportError:
+            return rows
+
     def has_kernel_l0(self) -> bool:
         """True if raw CTF channels (L0) are present for this run."""
         return bool(glob.glob(os.path.join(self.run_dir, "kernel", "**", "metadata"), recursive=True))

@@ -29,9 +29,18 @@ for fam, run_id, rd in list_runs("~/traces"):
 | Level | What | Status |
 |---|---|---|
 | **L0** | raw CTF (LTTng, gzipped channels) | shipped by collection |
-| **L1** | kernel KPIs per (service, 1s window) → Parquet | **`derive_kernel_l1.py` (v1)** |
-| **L2** | per-request wait attribution (on-CPU / runnable-wait / blocked-disk/net/futex) | roadmap (builds on `microservice/preprocess_sockshop.py --seg_mode ust` + `agent-first-mvp/engine/wait_attribution.py`) |
-| **L3** | templated NL kernel digest per (window, service) | roadmap |
+| **L1** | kernel KPIs per (service, 1s window) → Parquet | **`derive_kernel_l1.py`** — offline-tested; VM-validate |
+| **L2** | per-service wait attribution (on-CPU / runnable-wait / blocked-disk/net/futex) → JSONL | **`derive_kernel_l2.py`** — productionized from the MVP engine; offline-tested helpers; VM-validate |
+| **L3** | templated NL kernel digest per (service, window) → JSONL | **`derive_kernel_l3.py`** — offline-tested end-to-end (consumes L1) |
+
+Derive all three for a run (on the VM):
+```
+python3 stratatrace/derive_kernel_l1.py <run_dir>     # -> kernel_l1.parquet
+python3 stratatrace/derive_kernel_l3.py <run_dir>     # -> kernel_l3.jsonl  (needs L1)
+python3 stratatrace/derive_kernel_l2.py <run_dir>     # -> kernel_l2.jsonl  (needs babeltrace2)
+```
+L2 v1 is per-(service, injection-window); per-*request* attribution (join spans × tids) is the
+documented refinement.
 
 ### Derive L1 for a run (on the VM)
 ```
