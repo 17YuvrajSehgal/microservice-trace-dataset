@@ -280,14 +280,29 @@ Ran one full scenario on the VM (`svc_cpu_cap subtle ts-travel-service`, 20/30/2
   uncompressed → ~7-8 G gzipped. 38 runs ≈ **285 G**; VM has **457 G free** → fits (campaign gzips
   between runs, peak ~1 run uncompressed). No disk expansion needed.
 
+## Toxiproxy + verification_targets(TT) DONE — full OB fault parity (46-run matrix)
+- **Toxiproxy permanently in front of the shared `mysql`** (`docker-compose.toxiproxy.yml` +
+  `agents/toxiproxy-config-tt.json`, proxy `mysql`:3306→mysql:3306, admin :8474): repoints all 20
+  DB services' `*_MYSQL_HOST`→toxiproxy (loads after dbenv so it wins), in-path for every run.
+  `slow_db.sh`/`error_storm.sh` made PROXY/TARGET_SERVICE/FAULT_NAME env-overridable. Commit `5ed85ee`.
+- **slow_db VALIDATED live (dramatic):** 500 ms latency toxic on mysql → search **0.14 s → 16 s**
+  (100×+; the search fans out to ~30 DB round-trips, each +500 ms), cleanup → 0.14 s. Since mysql
+  is uninstrumented this is a **trace blind spot across TT's ~22-container shared DB** — the
+  textbook kernel-wins fault. Toxiproxy transparent when idle (0.15 s).
+- **`run_campaign_tt.sh` now 46 runs** (matches OB): slow_db + error_storm added with PROXY=mysql
+  + shared-DB blast radius; INTENSITY/WORKLOAD variants include them.
+- **`verification_targets_tt.json`** (11 faults) — cAdvisor + node metrics ONLY (TT has no
+  app-latency Prometheus metric, so slow_db/svc_net/anomaly_net are metrics-WEAK by design →
+  throughput-drop proxies, kernel/traces/load-CSV carry them; thresholds CALIBRATE). Wired via
+  `VERIFY_TARGETS` (run_scenario `--targets`). **verify path proven:** on the 33 s slow_db test →
+  BORDERLINE with `mysql_cpu` moving correctly (0.0114→0.0056, -51%), just under 3σ due to the
+  short window; 120 s campaign runs + calibration will settle it.
+
 ## Remaining before the full TT campaign run
-1. Toxiproxy in front of the shared `mysql` → adds slow_db + error_storm + connection-cap
-   queue_backlog remodel (2-3 more fault types) to the 8 already covered.
-2. `verification_targets(TT).json` (per-fault Prometheus panel for verify_injection.py; the
-   scenario runs `verification=n/a` until this exists — bundle + audit are already complete).
-3. Intensity calibration (noisy_neighbor "KPIs barely move", svc_cpu_cap subtle) on the VM.
-4. **Launch `run_campaign_tt.sh`** unattended (~38 runs × ~5 min + gzip ≈ several hours), then
-   batch L1/L3 derive — same as the Sock Shop 46-run batch.
-- **VM `strata-tt-collector` (us-east4-c) RUNNING.** Whole TT pipeline production-ready + every
-  stage validated on real data: deploy + booking flow + PHASE-0 gate + fault injection + Phase-2
-  scenario (labeled bundle) + campaign matrix (dry-run) + disk headroom.
+1. Intensity calibration (the CALIBRATE thresholds: noisy_neighbor "KPIs barely move", svc_cpu_cap
+   subtle, slow_db latency, mem-cap vs JVM heap) on the VM.
+2. **Launch `run_campaign_tt.sh`** unattended (46 runs × ~5 min + gzip ≈ several hours), then batch
+   L1/L3 derive — same as the Sock Shop 46-run batch.
+- **VM `strata-tt-collector` (us-east4-c) RUNNING.** TT pipeline is FEATURE-COMPLETE with full OB
+  parity, every stage validated on real data: deploy + booking flow + PHASE-0 gate + fault
+  injection (incl. toxiproxy slow_db) + verification + Phase-2 scenario/46-run campaign.
