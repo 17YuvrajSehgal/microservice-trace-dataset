@@ -37,8 +37,9 @@ if [ ! -f "$TT_SCRIPTS_DIR/agents/opentelemetry-javaagent.jar" ]; then
      https://github.com/open-telemetry/opentelemetry-java-instrumentation/releases/download/v2.25.0/opentelemetry-javaagent.jar
 fi
 
-echo "== [4/6] clone OUR TT fork (recursive) -> $TT_DIR =="
-[ -d "$TT_DIR/.git" ] || git clone --recursive "$FORK" "$TT_DIR"
+echo "== [4/6] clone OUR TT fork, branch stratatrace (clean base: stock ts-common + jre-11, no"
+echo "         LTTng-UST source tracing, no avatar; the prior LTTng work stays on master) =="
+[ -d "$TT_DIR/.git" ] || git clone --recursive -b stratatrace "$FORK" "$TT_DIR"
 
 echo "== [5/6] build OUR images from source (SLOW: mvn jars + docker, ~1-2 h first time) =="
 cd "$TT_DIR"

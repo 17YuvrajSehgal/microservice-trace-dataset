@@ -53,7 +53,7 @@ _SOCKSHOP_SVC_COMM = {
 _TT_JAVA = [
     "ts-admin-basic-info-service", "ts-admin-order-service", "ts-admin-route-service",
     "ts-admin-travel-service", "ts-admin-user-service", "ts-assurance-service", "ts-auth-service",
-    "ts-avatar-service", "ts-basic-service", "ts-cancel-service", "ts-config-service",
+    "ts-basic-service", "ts-cancel-service", "ts-config-service",
     "ts-consign-price-service", "ts-consign-service", "ts-contacts-service", "ts-execute-service",
     "ts-food-map-service", "ts-food-service", "ts-inside-payment-service", "ts-news-service",
     "ts-notification-service", "ts-order-other-service", "ts-order-service", "ts-payment-service",
