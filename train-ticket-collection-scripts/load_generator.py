@@ -34,11 +34,12 @@ from concurrent.futures import ThreadPoolExecutor
 
 import requests
 
-# --- TT API (validate on VM) -----------------------------------------------------------------
+# --- TT API (VALIDATED end-to-end on the live stack 2026-08-04) ------------------------------
 LOGIN = "/api/v1/users/login"
 TRIPS = "/api/v1/travelservice/trips/left"          # high-speed trains
 TRIPS2 = "/api/v1/travel2service/trips/left"         # other trains
-ORDERS_REFRESH = "/api/v1/orderservice/order/refresh"
+CONTACTS = "/api/v1/contactservice/contacts/account/"  # + accountId -> the user's seeded contacts
+ORDERS_REFRESH = "/api/v1/orderservice/order/refresh"  # POST {loginId: accountId}
 PRESERVE = "/api/v1/preserveservice/preserve"
 PAY = "/api/v1/inside_pay_service/inside_payment"
 
@@ -102,13 +103,39 @@ def _login(sess, uid, host, user, pw):
     r = _req(sess, uid, "login", "POST", host, LOGIN, json={"username": user, "password": pw})
     if r is not None and r.status_code == 200:
         try:
-            tok = (r.json().get("data") or {}).get("token")
+            data = r.json().get("data") or {}
+            tok = data.get("token")
             if tok:
                 sess.headers["Authorization"] = "Bearer " + tok
+                sess.account_id = data.get("userId", "")   # needed for contacts/preserve/orders
                 return True
         except Exception:  # noqa: BLE001
             pass
     return False
+
+
+def _contacts_id(sess, uid, host):
+    """Fetch + cache one of the account's seeded contacts (booking needs a real contactsId)."""
+    cid = getattr(sess, "contacts_id", None)
+    if cid is not None:
+        return cid
+    acc = getattr(sess, "account_id", "")
+    r = _req(sess, uid, "book_pay", "GET", host, CONTACTS + acc) if acc else None
+    try:
+        data = (r.json().get("data") if r is not None else None) or []
+        cid = data[0]["id"] if data else ""
+    except Exception:  # noqa: BLE001
+        cid = ""
+    sess.contacts_id = cid
+    return cid
+
+
+def _trip_id_str(trip):
+    """Search returns tripId as {type,number}; preserve/pay want the 'D1345' string form."""
+    tid = (trip or {}).get("tripId")
+    if isinstance(tid, dict):
+        return f"{tid.get('type', '')}{tid.get('number', '')}"
+    return tid or "D1345"
 
 
 def _search(sess, uid, host, scenario, path):
@@ -128,7 +155,8 @@ def journey(sess, uid, host, scenario, user, pw):
         _search(sess, uid, host, scenario, TRIPS2)
     elif scenario == "browse_orders":
         _search(sess, uid, host, scenario, TRIPS)
-        _req(sess, uid, scenario, "GET", host, ORDERS_REFRESH)
+        _req(sess, uid, scenario, "POST", host, ORDERS_REFRESH,
+             json={"loginId": getattr(sess, "account_id", "")})
     elif scenario == "book_pay":
         r = _search(sess, uid, host, scenario, TRIPS)
         trip = None
@@ -138,14 +166,29 @@ def journey(sess, uid, host, scenario, user, pw):
                 trip = data[0]
         except Exception:  # noqa: BLE001
             trip = None
-        frm, to = random.choice(ROUTES)
+        if trip is None:
+            return
+        trip_id = _trip_id_str(trip)
+        acc = getattr(sess, "account_id", "")
         preserve_body = {
-            "accountId": "", "contactsId": "", "tripId": (trip or {}).get("tripId", "D1345"),
+            "accountId": acc, "contactsId": _contacts_id(sess, uid, host), "tripId": trip_id,
             "seatType": "2", "date": _depart_date(),
-            "from": frm, "to": to, "assurance": "0", "foodType": "0", "consigneeName": "",
+            "from": trip.get("startStation", "shanghai"), "to": trip.get("terminalStation", "suzhou"),
+            "assurance": "0", "foodType": "0", "consigneeName": "",
         }
-        _req(sess, uid, scenario, "POST", host, PRESERVE, json=preserve_body)
-        _req(sess, uid, scenario, "POST", host, PAY, json={"orderId": "", "tripId": preserve_body["tripId"]})
+        pr = _req(sess, uid, scenario, "POST", host, PRESERVE, json=preserve_body)
+        # preserve returns "Success" (not an orderId); fetch the newest order and pay it.
+        if pr is not None and pr.status_code == 200:
+            o = _req(sess, uid, scenario, "POST", host, ORDERS_REFRESH, json={"loginId": acc})
+            oid = ""
+            try:
+                orders = (o.json().get("data") if o is not None else None) or []
+                if orders:
+                    oid = orders[0].get("id", "")
+            except Exception:  # noqa: BLE001
+                oid = ""
+            if oid:
+                _req(sess, uid, scenario, "POST", host, PAY, json={"orderId": oid, "tripId": trip_id})
 
 
 def worker(uid, host, duration, think, profile, user, pw):
