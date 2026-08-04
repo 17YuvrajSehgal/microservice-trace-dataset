@@ -65,4 +65,28 @@ agentic). Decided to **audit + freeze v1 first** (protect it before branching). 
 M5 track** (planned paper-2, rig-ready, reuses this testbed + ground truth) over a 2nd app
 (Train Ticket = full rig re-standup, future-work per plan §10). Keep the ablation study on the
 critical path — it's what proves v1's value.
-**Next:** await user's pick (agentic collection vs release packaging vs the study).
+
+---
+
+## Train Ticket = 2nd app — offline authoring done (user chose to proceed)
+Read supervisor+meeting notes + mapped Sock Shop deployment/pipeline (2 explore agents). TT =
+FudanSELab/train-ticket (forked `17YuvrajSehgal/train-ticket`), **~67 containers** (41 uniform
+Java Spring Boot `ts-*-service` + 24 mongo + mysql/redis + JS ui-dashboard:8080), compose v3,
+build-from-source (`${IMG_REPO}/${IMG_TAG}`), **no built-in observability**.
+- **Key win:** uniform Java → OTel agent injects into all 41 via `JAVA_TOOL_OPTIONS` (no source
+  forks; Spring Boot has no explicit compose `command` so it's honored). Deploy compose on one
+  big VM (not TT's k8s) for single-host LTTng consistency.
+- **Authored (offline, committed):** `service_map`+L2 refactored to **profile-based**
+  (`STRATATRACE_APP`, default sockshop=v1 unchanged; trainticket profile = 68 containers);
+  generated `docker-compose.otel.yml` (agent injection + collector); `docker-compose.metrics.yml`
+  + `prometheus-tt.yml` (TT ships none); reused generic agent configs; `load_generator.py` (TT
+  booking flow, identical CLI/CSV, `--probe` for live API check); `vm_bootstrap_tt.sh` + README +
+  `PORT-PLAN.md`. All in `train-ticket-collection-scripts/`.
+- **9 Sock Shop lessons baked into PORT-PLAN** (map-ALL-PIDs, CLI reader, per-netns netem, gzip,
+  uncapped `--vm-hang`, warmup, SSH-by-PGID, collapse-system, KERNEL_MEM/mm_vmscan).
+- **Remaining (Phase 0b/1, needs live stack):** `load_generator --probe` API validation;
+  `collect_trace` container-regex + `fault_lib` prefix → TT (parameterize); otel-to-lttng(TT);
+  toxiproxy on a TT DB path; fault recipes repoint (re-model queue_backlog — no rabbitmq);
+  `verification_targets`(TT) re-calibrate; alignment gate; tracing-scope/campaign-size decision.
+- **VM:** new `n2-standard-16`/64 GB/~1 TB, created at deploy time (not during authoring). v1 VM
+  untouched. See [[project_trainticket_track]].
