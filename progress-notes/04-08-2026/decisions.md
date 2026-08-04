@@ -90,3 +90,21 @@ build-from-source (`${IMG_REPO}/${IMG_TAG}`), **no built-in observability**.
   `verification_targets`(TT) re-calibrate; alignment gate; tracing-scope/campaign-size decision.
 - **VM:** new `n2-standard-16`/64 GB/~1 TB, created at deploy time (not during authoring). v1 VM
   untouched. See [[project_trainticket_track]].
+
+## TT Phase-0b: VM + standup — stack UP, 3/4 modalities live
+- **VM `strata-tt-collector`** (us-east4-c — us-east1 SSD quota was full; fresh region keeps v1
+  untouched), n2-standard-16/64GB/500GB.
+- **Fork was NOT stock** — prior Feb-2026 LTTng-UST effort + inconsistencies. User chose the
+  Sock Shop-consistent OTel-spans approach. On a clean **`stratatrace` branch**: reverted
+  ts-common LTTng-UST source tracing; removed 3 fork-deleted-but-compose-referenced services
+  (avatar/food-map/ticketinfo); **added missing ts-gateway-service** (ui-dashboard nginx routes
+  through it); gateway internal-only (host-port 18888 collided w/ assurance); fixed non-UTF-8
+  byte in generated overlay. Built OUR images (mvn jars -> docker compose build).
+- **Deployed base+metrics+otel: 70 containers, entry ts-ui-dashboard:8080=200, Prometheus=200,
+  cAdvisor healthy, OTel spans FLOWING (agent injection works).** 2 non-critical services
+  restart (ts-voucher=Python/mysql-pw, ts-ticket-office=Node) — off the booking path.
+- **TT is mostly-Java + a few Python/Node** (voucher, ticket-office) — move those out of
+  _TT_JAVA later (agent injection is a no-op on them anyway).
+- **TODO:** push the `stratatrace` branch to the fork (secure token pipe); `load_generator
+  --probe` API validation; parameterize collect_trace for TT names + run the alignment gate;
+  fix/accept the 2 stragglers.
