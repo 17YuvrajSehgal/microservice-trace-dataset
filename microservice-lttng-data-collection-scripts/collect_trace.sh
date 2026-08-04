@@ -21,6 +21,16 @@ OTLP_SRC="${OTLP_SRC:-$SCRIPT_DIR/otlp-out/spans.jsonl}"
 # processor flushes trailing spans to disk.
 OTLP_DRAIN_S="${OTLP_DRAIN_S:-3}"
 
+# App profile: which containers to snapshot (docker-top for kernel-thread attribution) + dump
+# logs for, and the LTTng session-name prefix. Defaults keep the frozen Sock Shop v1 behavior
+# byte-identical; export these to collect from another stack. Train Ticket, e.g.:
+#   TRACE_APP=trainticket \
+#   CONTAINER_REGEX='trainticket_.*_1|^mysql$|^nacos$' \
+#   LOG_CONTAINER_REGEX='trainticket_.*_1|^mysql$|^nacos$|^otel-collector$'
+TRACE_APP="${TRACE_APP:-sockshop}"
+CONTAINER_REGEX="${CONTAINER_REGEX:-docker-compose_(front-end|edge-router|carts|orders|payment|shipping|user|catalogue|catalogue-db|carts-db|orders-db|user-db|session-db|queue-master|rabbitmq)_1}"
+LOG_CONTAINER_REGEX="${LOG_CONTAINER_REGEX:-docker-compose_(front-end|edge-router|carts|orders|payment|shipping|user|catalogue|catalogue-db|carts-db|orders-db|user-db|session-db|queue-master|rabbitmq|otel-collector)_1}"
+
 mkdir -p "$OUTPUT_DIR"/{kernel,ust}
 mkdir -p "$META_DIR" "$LOGS_DIR" "$OTLP_DIR"
 
@@ -62,14 +72,14 @@ PY
     ps -eLo pid,tid,ppid,psr,cls,pri,stat,comm,cmd \
         > "$META_DIR/ps_threads_${tag}.txt" 2>&1 || true
 
-    mapfile -t SOCKSHOP_CONTAINERS < <(
-        docker ps --format '{{.Names}}' | grep -E 'docker-compose_(front-end|edge-router|carts|orders|payment|shipping|user|catalogue|catalogue-db|carts-db|orders-db|user-db|session-db|queue-master|rabbitmq)_1' || true
+    mapfile -t APP_CONTAINERS < <(
+        docker ps --format '{{.Names}}' | grep -E "$CONTAINER_REGEX" || true
     )
 
-    printf "%s\n" "${SOCKSHOP_CONTAINERS[@]}" \
+    printf "%s\n" "${APP_CONTAINERS[@]}" \
         > "$META_DIR/container_list_${tag}.txt"
 
-    for c in "${SOCKSHOP_CONTAINERS[@]}"; do
+    for c in "${APP_CONTAINERS[@]}"; do
         safe_name="${c//\//_}"
 
         docker inspect "$c" > "$META_DIR/inspect_${safe_name}_${tag}.json" 2>&1 || true
@@ -95,7 +105,7 @@ PY
 # stderr are kept in one stream in emission order.
 collect_logs() {
     mapfile -t LOG_CONTAINERS < <(
-        docker ps --format '{{.Names}}' | grep -E 'docker-compose_(front-end|edge-router|carts|orders|payment|shipping|user|catalogue|catalogue-db|carts-db|orders-db|user-db|session-db|queue-master|rabbitmq|otel-collector)_1' || true
+        docker ps --format '{{.Names}}' | grep -E "$LOG_CONTAINER_REGEX" || true
     )
 
     for c in "${LOG_CONTAINERS[@]}"; do
@@ -136,12 +146,12 @@ lttng_preflight() {
 }
 lttng_preflight
 
-lttng create sockshop-ust --output="$OUTPUT_DIR/ust"
+lttng create "${TRACE_APP}-ust" --output="$OUTPUT_DIR/ust"
 lttng enable-event --python otel.spans
 lttng add-context --userspace --type=vpid --type=vtid --type=procname 2>/dev/null || true
 lttng start
 
-sudo lttng create sockshop-kernel --output="$OUTPUT_DIR/kernel"
+sudo lttng create "${TRACE_APP}-kernel" --output="$OUTPUT_DIR/kernel"
 # Large per-CPU ring buffers to avoid discarded events under peak stress.
 # The LTTng kernel default (~1 MB/CPU) overflows during heavy bursts. We use
 # many sub-buffers (8 MB x 32 = 256 MB/CPU) so that, while the consumer is
