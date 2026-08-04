@@ -220,10 +220,22 @@ User chose "continue Phase 1 now". Drove the WRITE path and cleared its last blo
   the full realistic booking workflow (auth→travel→basic→route→train→price→seat→contacts→order→
   preserve→inside_payment→payment→MySQL) with zero errors. TT load generator is production-ready.
 
+## TT PHASE-0 GATE PASSED — six modalities time-aligned on a real run (OB parity)
+The Sock Shop analogue milestone, now for Train Ticket. Parameterized the shared tooling +
+ran a real traced gate:
+- **`collect_trace.sh` parameterized** (`51793fc`): env `TRACE_APP` / `CONTAINER_REGEX` /
+  `LOG_CONTAINER_REGEX` (Sock Shop defaults keep v1 byte-identical). TT uses
+  `trainticket_.*_1|^mysql$|^nacos$` — matches all 44 service_map containers, excludes pure infra.
+- **`run_gate_tt.sh`** (`eaaac19`): one-command TT gate; reuses collect_trace + download_metrics_full
+  + audit_alignment, supplies TT wiring (regex, `OTLP_SRC`=TT spans, TT load_generator, :8080).
+- **`run_gate_tt.sh tt_gate01 60 15` VERDICT — all six OK:** trace 141 spans · logs 16233 lines
+  (238 w/ trace_id) · load 222 requests · metrics 885 series · **kernel 8,192,101 events / 5041
+  (container,event) groups** · **clocks drift 0.001 ms**. Four modalities time-aligned on a real
+  TT booking-load run — the OB-parity the user required ("everything in OB is also there").
+
 ## Remaining Phase 1
-1. Parameterize `collect_trace` for `trainticket_*` container names + `fault_lib` prefix.
-2. Six-modality alignment gate (the OB-parity check the user asked for).
-3. Fault recipes → TT with blast-radius tags (mentor's ask); toxiproxy on a TT DB path.
-4. Fix/accept the 2 non-Java stragglers (voucher=Python, ticket-office=Node; off booking path).
-5. Tracing-scope / campaign-size decision, then the full run.
-- **VM `strata-tt-collector` (us-east4-c) RUNNING** — full booking flow live, traces+metrics OK.
+1. Fault recipes → TT with blast-radius tags (mentor's ask); toxiproxy on a TT DB path;
+   `verification_targets(TT)`; re-model queue_backlog (no rabbitmq in TT).
+2. Fix/accept the 2 non-Java stragglers (voucher=Python, ticket-office=Node; off booking path).
+3. Tracing-scope / campaign-size decision (48 containers full-syscall = big traces), then full run.
+- **VM `strata-tt-collector` (us-east4-c) RUNNING** — booking flow live, PHASE-0 gate passed.
