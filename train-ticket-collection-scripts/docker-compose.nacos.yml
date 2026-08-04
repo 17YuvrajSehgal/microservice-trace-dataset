@@ -1,0 +1,130 @@
+# docker-compose.nacos.yml (Train Ticket) - nacos discovery server + point services at it.
+# TT gateway + backends use spring-cloud nacos discovery (lb:// routing); the compose omitted
+# nacos so the gateway crash-looped and all routes 502d. Standalone nacos + NACOS_ADDRS for
+# every Java service + the gateway so they register/discover. Load with the other overlays.
+services:
+  nacos:
+    image: nacos/nacos-server:v2.0.3
+    container_name: nacos
+    environment:
+      MODE: standalone
+    ports: ["8848:8848", "9848:9848"]
+    networks: ["my-network"]
+    restart: unless-stopped
+  ts-admin-basic-info-service:
+    environment:
+      NACOS_ADDRS: "nacos:8848"
+  ts-admin-order-service:
+    environment:
+      NACOS_ADDRS: "nacos:8848"
+  ts-admin-route-service:
+    environment:
+      NACOS_ADDRS: "nacos:8848"
+  ts-admin-travel-service:
+    environment:
+      NACOS_ADDRS: "nacos:8848"
+  ts-admin-user-service:
+    environment:
+      NACOS_ADDRS: "nacos:8848"
+  ts-assurance-service:
+    environment:
+      NACOS_ADDRS: "nacos:8848"
+  ts-auth-service:
+    environment:
+      NACOS_ADDRS: "nacos:8848"
+  ts-basic-service:
+    environment:
+      NACOS_ADDRS: "nacos:8848"
+  ts-cancel-service:
+    environment:
+      NACOS_ADDRS: "nacos:8848"
+  ts-config-service:
+    environment:
+      NACOS_ADDRS: "nacos:8848"
+  ts-consign-price-service:
+    environment:
+      NACOS_ADDRS: "nacos:8848"
+  ts-consign-service:
+    environment:
+      NACOS_ADDRS: "nacos:8848"
+  ts-contacts-service:
+    environment:
+      NACOS_ADDRS: "nacos:8848"
+  ts-execute-service:
+    environment:
+      NACOS_ADDRS: "nacos:8848"
+  ts-food-service:
+    environment:
+      NACOS_ADDRS: "nacos:8848"
+  ts-inside-payment-service:
+    environment:
+      NACOS_ADDRS: "nacos:8848"
+  ts-news-service:
+    environment:
+      NACOS_ADDRS: "nacos:8848"
+  ts-notification-service:
+    environment:
+      NACOS_ADDRS: "nacos:8848"
+  ts-order-other-service:
+    environment:
+      NACOS_ADDRS: "nacos:8848"
+  ts-order-service:
+    environment:
+      NACOS_ADDRS: "nacos:8848"
+  ts-payment-service:
+    environment:
+      NACOS_ADDRS: "nacos:8848"
+  ts-preserve-other-service:
+    environment:
+      NACOS_ADDRS: "nacos:8848"
+  ts-preserve-service:
+    environment:
+      NACOS_ADDRS: "nacos:8848"
+  ts-price-service:
+    environment:
+      NACOS_ADDRS: "nacos:8848"
+  ts-rebook-service:
+    environment:
+      NACOS_ADDRS: "nacos:8848"
+  ts-route-plan-service:
+    environment:
+      NACOS_ADDRS: "nacos:8848"
+  ts-route-service:
+    environment:
+      NACOS_ADDRS: "nacos:8848"
+  ts-seat-service:
+    environment:
+      NACOS_ADDRS: "nacos:8848"
+  ts-security-service:
+    environment:
+      NACOS_ADDRS: "nacos:8848"
+  ts-station-service:
+    environment:
+      NACOS_ADDRS: "nacos:8848"
+  ts-ticket-office-service:
+    environment:
+      NACOS_ADDRS: "nacos:8848"
+  ts-train-service:
+    environment:
+      NACOS_ADDRS: "nacos:8848"
+  ts-travel-plan-service:
+    environment:
+      NACOS_ADDRS: "nacos:8848"
+  ts-travel-service:
+    environment:
+      NACOS_ADDRS: "nacos:8848"
+  ts-travel2-service:
+    environment:
+      NACOS_ADDRS: "nacos:8848"
+  ts-user-service:
+    environment:
+      NACOS_ADDRS: "nacos:8848"
+  ts-verification-code-service:
+    environment:
+      NACOS_ADDRS: "nacos:8848"
+  ts-voucher-service:
+    environment:
+      NACOS_ADDRS: "nacos:8848"
+  ts-gateway-service:
+    environment:
+      NACOS_ADDRS: "nacos:8848"
