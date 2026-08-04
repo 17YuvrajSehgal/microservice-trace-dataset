@@ -205,12 +205,25 @@ never the problem. Drove the booking flow and fixed a chain of 4 real bugs:
   consistent (5 trips, 10 routes w/ matching route_ids, 6 train types, 10 prices, 13 stations,
   config). Commits `eec65a3` (charset+API), `9307424` (future date).
 
-## Immediate next (Phase 1)
-1. **book_pay flow** — search works; `preserve`+`inside_payment` need field validation like trips
-   did, AND a real `contactsId` (booking needs a contact; load_generator sends `""`). Add
-   contacts fetch/create to the generator, then validate preserve→pay end-to-end.
-2. Fix/accept the 2 non-Java stragglers (voucher=Python, ticket-office=Node; off booking path).
-3. Parameterize `collect_trace` for `trainticket_*` container names + run the six-modality
-   alignment gate (the OB-parity check the user asked for).
-4. Fault recipes → TT with blast-radius tags (mentor's ask); toxiproxy on a TT DB path.
-5. **VM `strata-tt-collector` (us-east4-c) left RUNNING** — stack healthy, booking search live.
+## FULL booking flow (login→search→book→pay) VALIDATED at load — load_generator complete
+User chose "continue Phase 1 now". Drove the WRITE path and cleared its last blocker:
+- **JDK 11 removed `javax.xml.bind`** — TT (jjwt 0.9.x) calls `DatatypeConverter` →
+  `NoClassDefFoundError` 403 on preserve/pay (read path login/search never hits it). Fix, no
+  rebuild: append `-Xbootclasspath/a:/otel/jaxb-api.jar` to every service's `JAVA_TOOL_OPTIONS`
+  (agents dir already mounted at /otel); `vm_bootstrap_tt` downloads jaxb-api-2.3.1. Commit `16cb797`.
+- **load_generator book_pay completed** (`a5eccae`): capture accountId at login; fetch+cache a
+  seeded `contactsId` (fdse_microservice has 2 contacts, `GET contacts/account/{acc}`); tripId in
+  search is `{type,number}` → needs the `D1345` string; preserve returns "Success" (not an
+  orderId) so fetch newest order via `order/refresh` (POST `{loginId}`) then `inside_payment`.
+- **Live load test (5 users, 25 s, steady): 276 requests, 276 ok, 0 fail.** All 200 across
+  users/travel/travel2/contacts/**preserve ×12**/order/**inside_pay ×12**. The generator exercises
+  the full realistic booking workflow (auth→travel→basic→route→train→price→seat→contacts→order→
+  preserve→inside_payment→payment→MySQL) with zero errors. TT load generator is production-ready.
+
+## Remaining Phase 1
+1. Parameterize `collect_trace` for `trainticket_*` container names + `fault_lib` prefix.
+2. Six-modality alignment gate (the OB-parity check the user asked for).
+3. Fault recipes → TT with blast-radius tags (mentor's ask); toxiproxy on a TT DB path.
+4. Fix/accept the 2 non-Java stragglers (voucher=Python, ticket-office=Node; off booking path).
+5. Tracing-scope / campaign-size decision, then the full run.
+- **VM `strata-tt-collector` (us-east4-c) RUNNING** — full booking flow live, traces+metrics OK.
