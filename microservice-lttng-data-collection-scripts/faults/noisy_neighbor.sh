@@ -21,9 +21,9 @@ FAULT_FAMILY="E_infrastructure"
 FAULT_NAME="noisy_neighbor"
 FAULT_SCOPE="host"
 TARGET_SERVICE="host"
-EXPECTED_BLAST_RADIUS='["host", "all services (mild)"]'
-EXPECTED_WINNING_MODALITY="kernel"
-TARGET_TRACE_VISIBILITY="blind_spot"
+EXPECTED_BLAST_RADIUS="${EXPECTED_BLAST_RADIUS:-[\"host\", \"all services (mild)\"]}"
+EXPECTED_WINNING_MODALITY="${EXPECTED_WINNING_MODALITY:-kernel}"
+TARGET_TRACE_VISIBILITY="${TARGET_TRACE_VISIBILITY:-blind_spot}"
 REMEDIATION="remove the neighbor container"
 
 STRESS_IMAGE="${STRESS_IMAGE:-alexeiled/stress-ng:latest-ubuntu}"

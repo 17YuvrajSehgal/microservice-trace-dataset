@@ -21,9 +21,9 @@ FAULT_FAMILY="A_host_resource"
 FAULT_NAME="anomaly_net"
 FAULT_SCOPE="host"
 TARGET_SERVICE="host"
-EXPECTED_BLAST_RADIUS='["host", "all services"]'
-EXPECTED_WINNING_MODALITY="traces"
-TARGET_TRACE_VISIBILITY="n/a"
+EXPECTED_BLAST_RADIUS="${EXPECTED_BLAST_RADIUS:-[\"host\", \"all services\"]}"
+EXPECTED_WINNING_MODALITY="${EXPECTED_WINNING_MODALITY:-traces}"
+TARGET_TRACE_VISIBILITY="${TARGET_TRACE_VISIBILITY:-n/a}"
 REMEDIATION="tc qdisc del root in every stack container netns"
 
 IFACE="${SVC_NET_IFACE:-eth0}"

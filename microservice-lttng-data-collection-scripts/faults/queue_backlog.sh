@@ -24,9 +24,9 @@ FAULT_FAMILY="D_dependency"
 FAULT_NAME="queue_backlog"
 FAULT_SCOPE="service"
 TARGET_SERVICE="$TARGET_SVC"
-EXPECTED_BLAST_RADIUS='["queue-master", "rabbitmq", "shipping"]'
-EXPECTED_WINNING_MODALITY="kernel"
-TARGET_TRACE_VISIBILITY="blind_spot"
+EXPECTED_BLAST_RADIUS="${EXPECTED_BLAST_RADIUS:-[\"queue-master\", \"rabbitmq\", \"shipping\"]}"
+EXPECTED_WINNING_MODALITY="${EXPECTED_WINNING_MODALITY:-kernel}"
+TARGET_TRACE_VISIBILITY="${TARGET_TRACE_VISIBILITY:-blind_spot}"
 REMEDIATION="docker unpause queue-master; consumer drains the backlog"
 
 CONTAINER="$(resolve_container "$TARGET_SVC")"

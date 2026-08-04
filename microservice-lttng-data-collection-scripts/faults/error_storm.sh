@@ -23,9 +23,9 @@ FAULT_FAMILY="C_application"
 FAULT_NAME="error_storm_catalogue"
 FAULT_SCOPE="service"
 TARGET_SERVICE="catalogue"
-EXPECTED_BLAST_RADIUS='["catalogue", "front-end"]'
-EXPECTED_WINNING_MODALITY="logs"
-TARGET_TRACE_VISIBILITY="covered"
+EXPECTED_BLAST_RADIUS="${EXPECTED_BLAST_RADIUS:-[\"catalogue\", \"front-end\"]}"
+EXPECTED_WINNING_MODALITY="${EXPECTED_WINNING_MODALITY:-logs}"
+TARGET_TRACE_VISIBILITY="${TARGET_TRACE_VISIBILITY:-covered}"
 REMEDIATION="remove connection-breaking toxic from catalogue-db proxy"
 
 PROXY="catalogue-db"

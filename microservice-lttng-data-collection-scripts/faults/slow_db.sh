@@ -23,9 +23,9 @@ FAULT_FAMILY="C_application"
 FAULT_NAME="slow_db_catalogue"
 FAULT_SCOPE="service"
 TARGET_SERVICE="catalogue-db"
-EXPECTED_BLAST_RADIUS='["catalogue-db", "catalogue", "front-end"]'
-EXPECTED_WINNING_MODALITY="kernel"
-TARGET_TRACE_VISIBILITY="blind_spot"
+EXPECTED_BLAST_RADIUS="${EXPECTED_BLAST_RADIUS:-[\"catalogue-db\", \"catalogue\", \"front-end\"]}"
+EXPECTED_WINNING_MODALITY="${EXPECTED_WINNING_MODALITY:-kernel}"
+TARGET_TRACE_VISIBILITY="${TARGET_TRACE_VISIBILITY:-blind_spot}"
 REMEDIATION="remove latency toxic from catalogue-db proxy"
 
 PROXY="catalogue-db"
