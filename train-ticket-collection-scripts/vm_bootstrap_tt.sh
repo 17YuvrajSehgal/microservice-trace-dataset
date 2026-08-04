@@ -68,7 +68,29 @@ for i in $(seq 1 30); do
   ui=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8080/ 2>/dev/null || echo 000)
   pr=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:9090/-/ready 2>/dev/null || echo 000)
   echo "  t+$((i*10))s: ts-ui-dashboard=$ui prometheus=$pr running=$(docker ps -q | wc -l)"
-  [ "$ui" = 200 ] && [ "$pr" = 200 ] && { echo "  STACK UP"; break; }
+  [ "$ui" = 200 ] && [ "$pr" = 200 ] && { echo "  static UP"; break; }
   sleep 10
 done
-echo "== done. Next: load_generator.py --probe to validate the TT API, then run the alignment gate. =="
+
+# The ui-dashboard nginx resolves ts-gateway-service ONCE at load; the gateway takes ~70 s to
+# boot (JVM + nacos) so nginx caches a dead/absent IP -> 502 on /api/v1. Restart the ui-dashboard
+# after the gateway is up so nginx re-resolves. (Any redeploy that recreates the gateway needs
+# this too - it gets a new container IP.)
+echo "== waiting for gateway, then restarting ui-dashboard to refresh its nginx DNS =="
+for i in $(seq 1 24); do
+  docker logs "${COMPOSE_PROJECT_NAME}_ts-gateway-service_1" 2>&1 | grep -q "Started GatewayApplication" && break
+  sleep 5
+done
+docker restart "${COMPOSE_PROJECT_NAME}_ts-ui-dashboard_1" >/dev/null 2>&1 || true
+sleep 8
+
+echo "== API gate: real login through nginx -> gateway -> auth -> MySQL =="
+for i in $(seq 1 12); do
+  code=$(curl -s -o /dev/null -w '%{http_code}' -X POST http://localhost:8080/api/v1/users/login \
+    -H 'Content-Type: application/json' \
+    -d '{"username":"fdse_microservice","password":"111111"}' 2>/dev/null || echo 000)
+  echo "  login attempt $i: HTTP $code"
+  [ "$code" = 200 ] && { echo "  API UP (login 200)"; break; }
+  sleep 10
+done
+echo "== done. Next: seed TT data (empty DBs -> search returns []), then load_generator + alignment gate. =="
