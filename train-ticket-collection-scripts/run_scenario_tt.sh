@@ -25,5 +25,7 @@ export LOG_CONTAINER_REGEX="${LOG_CONTAINER_REGEX:-trainticket_.*_1|^mysql$|^nac
 export OTLP_SRC="${OTLP_SRC:-$TTD/otlp-out/spans.jsonl}"
 export LOAD_GEN="$TTD/load_generator.py"                            # the TT booking load generator
 export FRONTEND_HOST="${FRONTEND_HOST:-http://localhost:8080}"     # TT front door (Sock Shop = :80)
+export VERIFY_TARGETS="${VERIFY_TARGETS:-$TTD/verification_targets_tt.json}"  # cAdvisor/node QC panel
+export TOXIPROXY_API="${TOXIPROXY_API:-http://localhost:8474}"     # slow_db/error_storm toxics
 
 exec "$SD/run_scenario.sh" "$@"

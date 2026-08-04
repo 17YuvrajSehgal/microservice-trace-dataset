@@ -101,6 +101,7 @@ if [[ "$NORMAL" -eq 0 ]]; then
     if [[ -n "$GT" ]]; then
         cp "$GT" "$RUN_DIR/ground_truth.json"
         python3 "$SD/verify_injection.py" --ground-truth "$GT" \
+            ${VERIFY_TARGETS:+--targets "$VERIFY_TARGETS"} \
             --prometheus "$PROM" --out "$RUN_DIR/verification.json" \
             --plot "$RUN_DIR/verification.png" || true
     else

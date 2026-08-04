@@ -27,10 +27,14 @@ COMPOSE_PROJECT_NAME=trainticket COMPOSE_COMPATIBILITY=true IMG_REPO=stratatrace
 docker compose -f docker-compose.yml \
   -f "$TT_SCRIPTS_DIR/docker-compose.nacos.yml" \
   -f "$TT_SCRIPTS_DIR/docker-compose.dbenv.yml" \
+  -f "$TT_SCRIPTS_DIR/docker-compose.toxiproxy.yml" \
   -f "$TT_SCRIPTS_DIR/docker-compose.metrics.yml" \
   -f "$TT_SCRIPTS_DIR/docker-compose.otel.yml" \
   up -d
 ```
+`docker-compose.toxiproxy.yml` puts a Toxiproxy permanently in front of the shared `mysql` (loads
+after dbenv so the `*_MYSQL_HOST=toxiproxy` repoint wins) — in-path for EVERY run so scenarios stay
+comparable. `faults/slow_db.sh` + `faults/error_storm.sh` toggle toxics via its admin API (:8474).
 The stock TT compose can't boot on its own: its source expects **nacos** discovery, **MySQL**
 (`jdbc:mysql://ts-*-mysql`), and a **gateway** the compose never had. Two overlays supply them —
 `docker-compose.nacos.yml` (nacos-server + `NACOS_ADDRS`) and `docker-compose.dbenv.yml` (one

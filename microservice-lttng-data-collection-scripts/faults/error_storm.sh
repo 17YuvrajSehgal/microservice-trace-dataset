@@ -20,15 +20,16 @@ set -euo pipefail
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/fault_lib.sh"
 
 FAULT_FAMILY="C_application"
-FAULT_NAME="error_storm_catalogue"
+FAULT_NAME="${FAULT_NAME:-error_storm_catalogue}"
 FAULT_SCOPE="service"
-TARGET_SERVICE="catalogue"
+TARGET_SERVICE="${TARGET_SERVICE:-catalogue}"
 EXPECTED_BLAST_RADIUS="${EXPECTED_BLAST_RADIUS:-[\"catalogue\", \"front-end\"]}"
 EXPECTED_WINNING_MODALITY="${EXPECTED_WINNING_MODALITY:-logs}"
 TARGET_TRACE_VISIBILITY="${TARGET_TRACE_VISIBILITY:-covered}"
-REMEDIATION="remove connection-breaking toxic from catalogue-db proxy"
+REMEDIATION="remove connection-breaking toxic from the DB proxy"
 
-PROXY="catalogue-db"
+# Proxy name in toxiproxy-config(-tt).json: "catalogue-db" (Sock Shop) or "mysql" (Train Ticket).
+PROXY="${PROXY:-catalogue-db}"
 TOXIC_NAME="error_storm"
 
 case "${1:-}" in

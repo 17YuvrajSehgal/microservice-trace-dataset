@@ -61,9 +61,12 @@ echo "== [6/6] bring up the instrumented stack (base + nacos + shared-mysql + me
 # mongo now) -> metrics -> otel (java-agent injection). TT's compose alone can't boot: its source
 # wants nacos+MySQL+gateway that the stock compose lacks - these overlays supply them.
 export TT_SCRIPTS_DIR
+# toxiproxy loads AFTER dbenv so its *_MYSQL_HOST=toxiproxy repoint wins (mysql -> toxiproxy);
+# it stays in-path for EVERY run (incl. normal) so scenarios stay comparable.
 OVERLAYS="-f docker-compose.yml \
   -f $TT_SCRIPTS_DIR/docker-compose.nacos.yml \
   -f $TT_SCRIPTS_DIR/docker-compose.dbenv.yml \
+  -f $TT_SCRIPTS_DIR/docker-compose.toxiproxy.yml \
   -f $TT_SCRIPTS_DIR/docker-compose.metrics.yml \
   -f $TT_SCRIPTS_DIR/docker-compose.otel.yml"
 sg docker -c "docker compose $OVERLAYS up -d" || docker compose $OVERLAYS up -d

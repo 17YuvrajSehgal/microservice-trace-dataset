@@ -20,15 +20,16 @@ set -euo pipefail
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/fault_lib.sh"
 
 FAULT_FAMILY="C_application"
-FAULT_NAME="slow_db_catalogue"
+FAULT_NAME="${FAULT_NAME:-slow_db_catalogue}"
 FAULT_SCOPE="service"
-TARGET_SERVICE="catalogue-db"
+TARGET_SERVICE="${TARGET_SERVICE:-catalogue-db}"
 EXPECTED_BLAST_RADIUS="${EXPECTED_BLAST_RADIUS:-[\"catalogue-db\", \"catalogue\", \"front-end\"]}"
 EXPECTED_WINNING_MODALITY="${EXPECTED_WINNING_MODALITY:-kernel}"
 TARGET_TRACE_VISIBILITY="${TARGET_TRACE_VISIBILITY:-blind_spot}"
-REMEDIATION="remove latency toxic from catalogue-db proxy"
+REMEDIATION="remove latency toxic from the DB proxy"
 
-PROXY="catalogue-db"
+# Proxy name in toxiproxy-config(-tt).json: "catalogue-db" (Sock Shop) or "mysql" (Train Ticket).
+PROXY="${PROXY:-catalogue-db}"
 TOXIC_NAME="slowdb_latency"
 
 case "${1:-}" in

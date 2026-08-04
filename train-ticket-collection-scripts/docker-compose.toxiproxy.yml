@@ -1,0 +1,76 @@
+# docker-compose.toxiproxy.yml (Train Ticket) - Toxiproxy PERMANENTLY in front of the shared
+# mysql, exactly like Sock Shop's catalogue-db proxy. Recipes toggle latency/timeout/reset
+# toxics via the admin API (:8474) mid-run, restart-free. The proxy is a constant sub-ms hop
+# present in ALL scenarios (incl. normal) so cross-scenario comparisons stay fair - LOAD THIS
+# OVERLAY FOR EVERY RUN. Load AFTER dbenv so the *_MYSQL_HOST repoint (mysql -> toxiproxy) wins.
+# Used by faults/slow_db.sh + faults/error_storm.sh (PROXY=mysql).
+services:
+  toxiproxy:
+    image: ghcr.io/shopify/toxiproxy:2.9.0
+    container_name: toxiproxy
+    command: ["-host=0.0.0.0", "-config=/toxiproxy.json"]
+    volumes:
+      - ${TT_SCRIPTS_DIR:?set TT_SCRIPTS_DIR}/agents/toxiproxy-config-tt.json:/toxiproxy.json:ro
+    ports: ["8474:8474"]   # admin API - the fault recipes drive toxics through this
+    networks: ["my-network"]
+    restart: unless-stopped
+  ts-assurance-service:
+    environment:
+      ASSURANCE_MYSQL_HOST: "toxiproxy"
+  ts-auth-service:
+    environment:
+      AUTH_MYSQL_HOST: "toxiproxy"
+  ts-config-service:
+    environment:
+      CONFIG_MYSQL_HOST: "toxiproxy"
+  ts-consign-price-service:
+    environment:
+      CONSIGN_PRICE_MYSQL_HOST: "toxiproxy"
+  ts-consign-service:
+    environment:
+      CONSIGN_MYSQL_HOST: "toxiproxy"
+  ts-contacts-service:
+    environment:
+      CONTACTS_MYSQL_HOST: "toxiproxy"
+  ts-food-service:
+    environment:
+      FOOD_MYSQL_HOST: "toxiproxy"
+  ts-inside-payment-service:
+    environment:
+      INSIDE_PAYMENT_MYSQL_HOST: "toxiproxy"
+  ts-notification-service:
+    environment:
+      NOTIFICATION_MYSQL_HOST: "toxiproxy"
+  ts-order-other-service:
+    environment:
+      ORDER_OTHER_MYSQL_HOST: "toxiproxy"
+  ts-order-service:
+    environment:
+      ORDER_MYSQL_HOST: "toxiproxy"
+  ts-payment-service:
+    environment:
+      PAYMENT_MYSQL_HOST: "toxiproxy"
+  ts-price-service:
+    environment:
+      PRICE_MYSQL_HOST: "toxiproxy"
+  ts-route-service:
+    environment:
+      ROUTE_MYSQL_HOST: "toxiproxy"
+  ts-security-service:
+    environment:
+      SECURITY_MYSQL_HOST: "toxiproxy"
+  ts-station-service:
+    environment:
+      STATION_MYSQL_HOST: "toxiproxy"
+  ts-train-service:
+    environment:
+      TRAIN_MYSQL_HOST: "toxiproxy"
+  ts-travel-service:
+    environment:
+      TRAVEL_MYSQL_HOST: "toxiproxy"
+  ts-travel2-service:
+    environment:
+      TRAVEL2_MYSQL_HOST: "toxiproxy"
+  ts-user-service:
+    environment:
+      USER_MYSQL_HOST: "toxiproxy"

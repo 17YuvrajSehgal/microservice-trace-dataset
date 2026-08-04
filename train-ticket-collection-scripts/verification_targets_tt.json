@@ -1,0 +1,88 @@
+{
+  "_comment": "Pre-registered per-fault QC panel for Train Ticket (the TT analogue of faults/verification_targets.json). For each fault, the Prometheus signal(s) that MUST move if the injection took effect; verify_injection.py scores baseline vs injection windows -> confirmed|borderline|unconfirmed. One canonical=true per fault drives the verdict. These are QC gates, NOT the study's modality claims.",
+
+  "_metric_naming": "TT services expose NO app-level request-duration metrics (no micrometer/actuator - see prometheus-tt.yml), so every signal here is cAdvisor (per-container CPU/mem/net) or node-exporter (host). cAdvisor 'name' label = the container name: services = 'trainticket_ts-<svc>-service_1' (match '.*ts-<svc>-service_1$'); the shared DB = 'mysql' (exact); noisy neighbor = '.*noisy-neighbor.*'. Consequence: latency-type faults (slow_db, svc_net, anomaly_net) have NO direct app-metric signal on TT - they verify via a closed-loop THROUGHPUT drop and are metrics-WEAK by design (the study's point: kernel/traces + the client-side load CSV carry them). Thresholds marked CALIBRATE are provisional pending VM calibration.",
+
+  "_windows": {"baseline_s": 60, "recovery_s": 60, "rate_window": "1m", "settle_s": 30, "_note": "INJECTION_S >= 120 so a settled segment remains after the 1m-rate ramp."},
+
+  "slow_db_mysql": [
+    {"canonical": true, "name": "mysql_cpu_throughput_drop",
+     "promql": "rate(container_cpu_usage_seconds_total{name=\"mysql\"}[1m])",
+     "direction": "decrease", "threshold_sigma": 3, "abs_threshold": 0.02, "min_fraction": 0.5,
+     "why": "CALIBRATE. Latency toxic on the shared mysql proxy: in the closed loop fewer queries/s complete -> mysql does less work/s -> CPU drops. METRICS-WEAK & a trace BLIND SPOT (mysql uninstrumented); the real signal is the KERNEL (services blocked in read() on the DB socket) + the client-side latency in the load CSV. Mirrors slow_db_catalogue on Sock Shop but starker (no app latency metric at all)."}
+  ],
+
+  "error_storm_mysql": [
+    {"canonical": true, "name": "mysql_net_recv_drop",
+     "promql": "rate(container_network_receive_bytes_total{name=\"mysql\"}[1m])",
+     "direction": "decrease", "threshold_sigma": 3, "abs_threshold": 1000, "min_fraction": 0.4,
+     "why": "CALIBRATE. timeout/reset_peer toxic breaks DB connections -> fewer successful queries reach mysql -> inbound bytes drop. The primary error signal (5xx to clients) lives in the LOAD CSV + service LOGS, not Prometheus (no app metrics)."}
+  ],
+
+  "svc_cpu_cap_ts-travel-service": [
+    {"canonical": true, "name": "travel_cpu_usage_capped",
+     "promql": "rate(container_cpu_usage_seconds_total{name=~\".*ts-travel-service_1$\"}[1m])",
+     "direction": "decrease", "threshold_sigma": 3, "abs_threshold": 0.15, "min_fraction": 0.5,
+     "why": "CALIBRATE. cgroup quota pins ts-travel-service CPU at/below the cap (0.5 subtle / 0.2 aggressive). Reliable cAdvisor signal (same mechanism as Sock Shop svc_cpu_cap_carts). App-latency inflation is trace/kernel-visible but has no TT Prometheus metric."}
+  ],
+
+  "svc_mem_cap_ts-order-service": [
+    {"canonical": true, "name": "order_memory_limit_dropped",
+     "promql": "min(container_spec_memory_limit_bytes{name=~\".*ts-order-service_1$\"})",
+     "direction": "decrease", "threshold_sigma": 3, "abs_threshold": 1000000000, "min_fraction": 0.8,
+     "why": "The cap is applied: the limit drops from host-total to the cap (<= a few hundred MB). Reliable for both intensities (same as Sock Shop svc_mem_cap_carts)."},
+    {"canonical": false, "name": "order_oom_kills",
+     "promql": "increase(container_oom_events_total{name=~\".*ts-order-service_1$\"}[2m])",
+     "direction": "increase", "threshold_sigma": 2, "abs_threshold": 1, "min_fraction": 0.2,
+     "why": "an aggressive cap below the JVM working set forces OOM kills; subtle causes GC pressure without necessarily OOMing. CALIBRATE the cap vs the Spring Boot heap."}
+  ],
+
+  "svc_net_ts-basic-service": [
+    {"canonical": true, "name": "basic_net_throughput_drop",
+     "promql": "rate(container_network_transmit_bytes_total{name=~\".*ts-basic-service_1$\"}[1m])",
+     "direction": "decrease", "threshold_sigma": 3, "abs_threshold": 500, "min_fraction": 0.4,
+     "why": "CALIBRATE. per-netns netem inside ts-basic-service inflates its hop latency -> in the closed loop it completes fewer aggregations/s -> transmit bytes drop. METRICS-WEAK (no app latency); traces/kernel carry the latency."}
+  ],
+
+  "dependency_outage_ts-seat-service": [
+    {"canonical": true, "name": "seat_cpu_drops_to_zero",
+     "promql": "rate(container_cpu_usage_seconds_total{name=~\".*ts-seat-service_1$\"}[1m])",
+     "direction": "decrease", "threshold_sigma": 3, "abs_threshold": 0.002, "min_fraction": 0.6,
+     "why": "docker pause FREEZES ts-seat-service -> its CPU goes to ~0. Reliable. But the CALLER-side impact (travel/preserve threads blocked on the frozen seat socket) is metrics/logs-INVISIBLE - a frozen dependency is exactly the kernel-wins case (blocked read() on the seat socket), same finding as Sock Shop dependency_outage."}
+  ],
+
+  "noisy_neighbor": [
+    {"canonical": true, "name": "neighbor_cpu_active",
+     "promql": "rate(container_cpu_usage_seconds_total{name=~\".*noisy-neighbor.*\"}[1m])",
+     "direction": "increase", "threshold_sigma": 3, "abs_threshold": 0.5, "min_fraction": 0.8,
+     "why": "verifies the neighbor stressor FIRED (app-agnostic container). The premise - TT booking KPIs stay within normal variance under mild host CPU contention - is the study finding, not a QC gate. CALIBRATE the cap so KPIs barely move."}
+  ],
+
+  "anomaly_cpu": [
+    {"canonical": true, "name": "host_cpu_nonidle",
+     "promql": "100 - (avg(rate(node_cpu_seconds_total{mode=\"idle\"}[1m])) * 100)",
+     "direction": "increase", "threshold_sigma": 5, "abs_threshold": 80, "min_fraction": 0.8,
+     "why": "host-wide stress-ng saturates all cores (node-exporter, app-agnostic - identical to Sock Shop)."}
+  ],
+
+  "anomaly_mem": [
+    {"canonical": true, "name": "host_mem_available_drop",
+     "promql": "node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes",
+     "direction": "decrease", "threshold_sigma": 5, "abs_threshold": 0.25, "min_fraction": 0.8,
+     "why": "stress-ng --vm drives MemAvailable down (node-exporter, app-agnostic). CALIBRATE the bound so it does not OOM-kill lttng/JVMs on the 64GB box."}
+  ],
+
+  "anomaly_disk": [
+    {"canonical": true, "name": "host_disk_io_time",
+     "promql": "rate(node_disk_io_time_seconds_total[1m])",
+     "direction": "increase", "threshold_sigma": 4, "abs_threshold": 0.5, "min_fraction": 0.6,
+     "why": "stress-ng --hdd saturates block I/O (node-exporter, app-agnostic - identical to Sock Shop)."}
+  ],
+
+  "anomaly_net": [
+    {"canonical": true, "name": "mysql_net_recv_drop_hostnet",
+     "promql": "rate(container_network_receive_bytes_total{name=\"mysql\"}[1m])",
+     "direction": "decrease", "threshold_sigma": 3, "abs_threshold": 1000, "min_fraction": 0.4,
+     "why": "CALIBRATE. host-bridge netem (delay + loss) inflates every inter-container hop -> the closed loop slows -> fewer queries reach the shared mysql -> inbound bytes drop. No app-latency metric on TT (Sock Shop used catalogue p95); a container-throughput proxy is the closest Prometheus signal, traces carry the real latency."}
+  ]
+}
