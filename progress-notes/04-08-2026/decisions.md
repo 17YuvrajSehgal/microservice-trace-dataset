@@ -136,3 +136,54 @@ Pushed the clean `stratatrace` branch to `17YuvrajSehgal/train-ticket` (@ 4abb42
 clone since the VM scp/token failed) and added **train-ticket as a pinned submodule** of the
 research repo (branch stratatrace), mirroring `microservices-demo @ 9dff06f`. Both now visible
 in the repo. (Deployment still blocked on the mongo-vs-mysql compose issue — separate.)
+
+## RESOLVED: coherent shared-MySQL compose (the mongo-vs-mysql blocker)
+Built the coherent MySQL deployment. **Root cause confirmed by reading every service's source:**
+TT migrated to nacos+MySQL but its docker-compose was never updated — it still shipped 24
+`ts-*-mongo` that NO service connects to.
+- **DB inventory (source of truth = each service's `application.yml`/`.yaml`):** **20 services use
+  MySQL** (`jdbc:mysql://ts-*-mysql`). A `.yml`-only scan first found 18 — **auth + user live in
+  `application.YAML`** (auth even defaults pw `Abcd1234#`), caught by widening to all extensions.
+  The 2 nominal "mongo" services (preserve, preserve-other) have their **mongo config commented
+  out** → **nothing needs Mongo.**
+- **Fix (3 parts):**
+  1. **Base compose (submodule → `d6d37a5a`):** removed all 24 dead `ts-*-mongo` (121 lines; no
+     `depends_on` referenced them, so clean). Base now = 40 app svcs + redis + `ts-voucher-mysql`.
+  2. **`docker-compose.dbenv.yml` + `tt-init.sql` (NEW):** ONE shared `mysql:8`
+     (`--default-authentication-plugin=mysql_native_password`, `--max_connections=2000`) + **20
+     per-service databases**; override every MySQL service's `<PREFIX>_MYSQL_{HOST,PORT,DATABASE,
+     USER,PASSWORD}` → `mysql:3306 / ts-<x>-mysql / root / root`. Normalizes the bad source
+     defaults (10.176.122.1, localhost, an `s-train-mysql` typo, auth's `Abcd1234#`).
+     `ddl-auto=update` auto-creates each service's tables in its empty DB.
+  3. **`service_map.py` trainticket profile:** dropped `_TT_MONGO`; added shared `mysql`+`nacos`
+     (explicit `container_name`, no project prefix); added `ts-gateway-service` to the Java set.
+     **sockshop profile byte-identical** (v1 untouched). Regenerated `docker-compose.otel.yml` →
+     39 Java services incl. the gateway (Spring Cloud Gateway is on every request path).
+- **Deploy order (compose merges by name, later wins):** base → nacos → dbenv → metrics → otel.
+  Updated `vm_bootstrap_tt.sh` + README. Committed parent `bb55798`, pushed both repos.
+- **Why one shared MySQL, not 20:** matches k8s intent (one mysql StatefulSet), saves ~19 DB
+  containers of RAM, and `ddl-auto` means empty DBs are enough.
+
+## VALIDATED ON VM: TT deploys coherently, full request path works end-to-end
+Redeployed on `strata-tt-collector` (us-east4-c) with base(no-mongo)+nacos+dbenv+metrics+otel:
+- **The MySQL blocker is gone.** `ts-auth-service` (previously died on `UnknownHostException
+  ts-auth-mysql`) now connects to the shared `mysql` and **builds its schema via `ddl-auto`** —
+  OTel JDBC spans show `CREATE/ALTER table` on `db.name=ts-auth-mysql`. **20 databases created.**
+- **End-to-end 200s:** `load_generator --probe` → **LOGIN 200** (real JWT for `fdse_microservice`,
+  i.e. nginx→gateway→auth→MySQL) + **SEARCH 200** (`[]` — travel→MySQL responds; empty only
+  because DBs aren't seeded). Path proven: **nginx → Spring Cloud Gateway → nacos-discovered
+  service → shared MySQL.**
+- **Stack health:** 48 running / 2 restarting (voucher=Python, ticket-office=Node — off the
+  booking path, agent-injection no-ops on them, non-blocking); **nacos 36 services registered**;
+  **OTel spans flowing** (2.3 MB / 416 batches incl. JDBC spans); **Prometheus 200, cAdvisor 200,
+  3 targets up**. 3/4 modalities live (logs always; kernel rig already proven).
+- **New lesson — nginx stale DNS (baked into `vm_bootstrap_tt.sh`):** the ui-dashboard nginx
+  resolves `ts-gateway-service` ONCE at load; the gateway boots ~70 s later (JVM+nacos) → nginx
+  caches an absent IP → **every `/api/v1` 502s**. Fix: after "Started GatewayApplication", restart
+  the ui-dashboard so nginx re-resolves, and gate on a **real login POST=200** (the static page is
+  200 even when the gateway path is dead). Any redeploy that recreates the gateway needs this.
+- **Immediate next (Phase 1):** (1) **seed TT data** — DBs are empty so search=`[]`; the booking
+  flow (search→book→pay) needs trips/stations/routes/prices loaded (TT data-init). (2) fix/accept
+  the 2 non-Java stragglers. (3) parameterize `collect_trace` for `trainticket_*` container names +
+  run the six-modality alignment gate. (4) fault recipes → TT (blast-radius tags per mentor). VM
+  left RUNNING for the seeding step.
