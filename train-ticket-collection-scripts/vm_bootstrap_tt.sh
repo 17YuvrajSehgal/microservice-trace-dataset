@@ -1,0 +1,66 @@
+#!/bin/bash
+# vm_bootstrap_tt.sh — one-shot provisioner for the Train Ticket collector VM.
+# Mirrors the Sock Shop vm_bootstrap.sh: installs LTTng/Babeltrace/Docker (+ the overlay2 fix
+# cAdvisor needs), clones OUR TT fork, builds OUR images from source, brings up the instrumented
+# stack (base + metrics + otel), and health-checks. Run on a fresh Ubuntu 24.04 VM.
+#
+#   export STRATA_REPO=~/microservice-trace-dataset      # this research repo (already cloned)
+#   bash $STRATA_REPO/train-ticket-collection-scripts/vm_bootstrap_tt.sh
+set -euo pipefail
+STRATA_REPO="${STRATA_REPO:-$HOME/microservice-trace-dataset}"
+TT_SCRIPTS_DIR="$STRATA_REPO/train-ticket-collection-scripts"
+TT_DIR="${TT_DIR:-$HOME/train-ticket}"           # the fork clone = compose project dir
+FORK="${FORK:-https://github.com/17YuvrajSehgal/train-ticket.git}"
+export IMG_REPO="${IMG_REPO:-stratatrace-tt}" IMG_TAG="${IMG_TAG:-v1}"    # OUR image tags
+export COMPOSE_PROJECT_NAME=trainticket COMPOSE_COMPATIBILITY=true
+
+echo "== [1/6] apt: LTTng, Babeltrace2, stress-ng, tools =="
+sudo apt-get update -qq
+sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq \
+  lttng-tools lttng-modules-dkms babeltrace2 liblttng-ust-dev python3-lttngust \
+  stress-ng jq git curl python3-pip >/dev/null
+pip3 install -q --break-system-packages pandas pyarrow requests 2>/dev/null || true
+
+echo "== [2/6] Docker + overlay2 (cAdvisor 0.49 can't read the containerd snapshotter store) =="
+if ! command -v docker >/dev/null; then curl -fsSL https://get.docker.com | sudo sh; fi
+echo '{ "features": { "containerd-snapshotter": false } }' | sudo tee /etc/docker/daemon.json >/dev/null
+sudo systemctl restart docker; sleep 3
+sudo usermod -aG docker "$USER" || true
+sudo modprobe lttng-tracer 2>/dev/null || echo "  (lttng-tracer modprobe deferred)"
+
+echo "== [3/6] OTel Java agent jar (copy from the Sock Shop agents dir; same repo) =="
+mkdir -p "$TT_SCRIPTS_DIR/agents" "$TT_SCRIPTS_DIR/otlp-out"
+if [ ! -f "$TT_SCRIPTS_DIR/agents/opentelemetry-javaagent.jar" ]; then
+  cp "$STRATA_REPO/microservice-lttng-data-collection-scripts/agents/opentelemetry-javaagent.jar" \
+     "$TT_SCRIPTS_DIR/agents/" 2>/dev/null || \
+  curl -fsSL -o "$TT_SCRIPTS_DIR/agents/opentelemetry-javaagent.jar" \
+     https://github.com/open-telemetry/opentelemetry-java-instrumentation/releases/download/v2.25.0/opentelemetry-javaagent.jar
+fi
+
+echo "== [4/6] clone OUR TT fork (recursive) -> $TT_DIR =="
+[ -d "$TT_DIR/.git" ] || git clone --recursive "$FORK" "$TT_DIR"
+
+echo "== [5/6] build OUR images from source (SLOW: 41 Maven services, ~1-2 h first time) =="
+cd "$TT_DIR"
+sg docker -c "docker compose build" || docker compose build
+
+echo "== [6/6] bring up the instrumented stack (base + metrics + otel) =="
+export TT_SCRIPTS_DIR
+sg docker -c "docker compose \
+  -f docker-compose.yml \
+  -f '$TT_SCRIPTS_DIR/docker-compose.metrics.yml' \
+  -f '$TT_SCRIPTS_DIR/docker-compose.otel.yml' \
+  up -d" || docker compose \
+  -f docker-compose.yml \
+  -f "$TT_SCRIPTS_DIR/docker-compose.metrics.yml" \
+  -f "$TT_SCRIPTS_DIR/docker-compose.otel.yml" up -d
+
+echo "== health-check (allow ~2-3 min for 41 JVMs to come up) =="
+for i in $(seq 1 30); do
+  ui=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8080/ 2>/dev/null || echo 000)
+  pr=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:9090/-/ready 2>/dev/null || echo 000)
+  echo "  t+$((i*10))s: ts-ui-dashboard=$ui prometheus=$pr running=$(docker ps -q | wc -l)"
+  [ "$ui" = 200 ] && [ "$pr" = 200 ] && { echo "  STACK UP"; break; }
+  sleep 10
+done
+echo "== done. Next: load_generator.py --probe to validate the TT API, then run the alignment gate. =="
