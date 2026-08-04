@@ -30,7 +30,12 @@ while [[ $# -gt 0 ]]; do
 done
 
 # --- per-fault TT config (FAULTS-TT.md); host-scoped anomalies omitted -> recipe defaults ------
-declare -A TARGET BLAST MODALITY TRACEVIS PXY TSVC FNAME
+declare -A TARGET BLAST MODALITY TRACEVIS PXY TSVC FNAME EXTRAENV
+# CALIBRATED 2026-08-04 on the VM: TT's baseline RAM (~33GB) is far higher than Sock Shop's, so the
+# recipe's default anomaly_mem FRAC (88% aggressive) drives MemAvailable to ~5% or OOM-kills the
+# stressor (erratic). FRAC=35 holds ~22GB -> MemAvailable ~13% (<0.25 gate, fires) with ~8GB
+# headroom so the JVMs/lttng survive a 120s injection. Only anomaly_mem reads FRAC.
+EXTRAENV[anomaly_mem]="FRAC=35"
 # service-targeted (docker update / netem / docker pause): use TARGET_SVC
 TARGET[svc_cpu_cap]=ts-travel-service
 BLAST[svc_cpu_cap]='["ts-travel-service","ts-preserve-service","ts-gateway-service","ts-ui-dashboard"]'
@@ -89,6 +94,7 @@ for entry in "${MATRIX[@]}"; do
     echo "[$idx/${#MATRIX[@]}] RUN  $RUN  (users=$USERS target=$disp_target)"
     if [[ "$DRY" -eq 1 ]]; then continue; fi
 
+    env ${EXTRAENV[$recipe]:-} \
     PROFILE="$workload" \
     TARGET_SVC="$tsvc" \
     PROXY="${PXY[$recipe]:-}" \
