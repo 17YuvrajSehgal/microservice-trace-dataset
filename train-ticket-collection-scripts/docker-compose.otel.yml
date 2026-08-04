@@ -1,7 +1,6 @@
 # docker-compose.otel.yml (Train Ticket) — GENERATED from service_map._TT_JAVA.
-# Injects the OTel Java agent into all ts-*-service via JAVA_TOOL_OPTIONS (Spring Boot
-# honors it even with the java -jar CMD; no image rebuild) + the otel-collector
-# (OTLP -> /otlp-out/spans.jsonl). Requires TT_SCRIPTS_DIR. Load AFTER the base.
+# OTel Java agent into all ts-*-service via JAVA_TOOL_OPTIONS + otel-collector -> /otlp-out/spans.jsonl.
+# Requires TT_SCRIPTS_DIR. Load AFTER the base.
 services:
   otel-collector:
     image: otel/opentelemetry-collector-contrib:0.157.0
@@ -98,12 +97,6 @@ services:
     environment:
       JAVA_TOOL_OPTIONS: "-javaagent:/otel/opentelemetry-javaagent.jar -Dotel.javaagent.configuration-file=/otel/otel.properties"
       OTEL_SERVICE_NAME: "ts-execute-service"
-  ts-food-map-service:
-    volumes:
-      - ${TT_SCRIPTS_DIR:?}/agents:/otel:ro
-    environment:
-      JAVA_TOOL_OPTIONS: "-javaagent:/otel/opentelemetry-javaagent.jar -Dotel.javaagent.configuration-file=/otel/otel.properties"
-      OTEL_SERVICE_NAME: "ts-food-map-service"
   ts-food-service:
     volumes:
       - ${TT_SCRIPTS_DIR:?}/agents:/otel:ro
@@ -206,12 +199,6 @@ services:
     environment:
       JAVA_TOOL_OPTIONS: "-javaagent:/otel/opentelemetry-javaagent.jar -Dotel.javaagent.configuration-file=/otel/otel.properties"
       OTEL_SERVICE_NAME: "ts-ticket-office-service"
-  ts-ticketinfo-service:
-    volumes:
-      - ${TT_SCRIPTS_DIR:?}/agents:/otel:ro
-    environment:
-      JAVA_TOOL_OPTIONS: "-javaagent:/otel/opentelemetry-javaagent.jar -Dotel.javaagent.configuration-file=/otel/otel.properties"
-      OTEL_SERVICE_NAME: "ts-ticketinfo-service"
   ts-train-service:
     volumes:
       - ${TT_SCRIPTS_DIR:?}/agents:/otel:ro
