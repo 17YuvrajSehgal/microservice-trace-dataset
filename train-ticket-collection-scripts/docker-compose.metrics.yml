@@ -1,0 +1,40 @@
+# docker-compose.metrics.yml (Train Ticket) — Prometheus + node-exporter + cAdvisor.
+# TT ships NO monitoring (Sock Shop got Prometheus from microservices-demo's monitoring overlay;
+# TT does not), so this overlay adds the entire metrics stack. cAdvisor gives per-container
+# CPU/mem/net/blkio (the metrics modality's per-service signal); node-exporter gives host series.
+# Requires TT_SCRIPTS_DIR. Needs Docker on classic overlay2 (cAdvisor 0.49 can't read the
+# containerd snapshotter store) — vm_bootstrap_tt pins that. Load after the base + otel.
+services:
+  prometheus:
+    image: prom/prometheus:v2.45.0
+    container_name: prometheus
+    volumes:
+      - ${TT_SCRIPTS_DIR:?set TT_SCRIPTS_DIR to abs path of train-ticket-collection-scripts}/prometheus-tt.yml:/etc/prometheus/prometheus.yml:ro
+    ports: ["9090:9090"]
+    networks: ["my-network"]
+    restart: unless-stopped
+
+  nodeexporter:
+    image: prom/node-exporter:v1.7.0
+    container_name: nodeexporter
+    command: ["--path.rootfs=/host"]
+    pid: host
+    volumes:
+      - "/:/host:ro,rslave"
+    ports: ["9100:9100"]
+    networks: ["my-network"]
+    restart: unless-stopped
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.49.1
+    container_name: cadvisor
+    privileged: true
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+    ports: ["8081:8080"]   # host 8081: TT ui-dashboard already owns 8080
+    networks: ["my-network"]
+    restart: unless-stopped

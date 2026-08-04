@@ -1,0 +1,262 @@
+# docker-compose.otel.yml (Train Ticket) — GENERATED from service_map._TT_JAVA.
+# Injects the OTel Java agent into all 41 ts-*-service via JAVA_TOOL_OPTIONS (Spring Boot
+# honors it; no image rebuild) + the otel-collector (OTLP -> /otlp-out/spans.jsonl).
+# Requires TT_SCRIPTS_DIR = abs path of train-ticket-collection-scripts. Load AFTER the base.
+services:
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.157.0
+    container_name: otel-collector
+    user: "0:0"
+    command: ["--config=/etc/otel/config.yaml"]
+    volumes:
+      - ${TT_SCRIPTS_DIR:?set TT_SCRIPTS_DIR to abs path of train-ticket-collection-scripts}/agents/otel-collector-config.yaml:/etc/otel/config.yaml:ro
+      - ${TT_SCRIPTS_DIR:?}/otlp-out:/otlp-out
+    ports: ["4317:4317", "4318:4318"]
+    networks: ["my-network"]
+    restart: unless-stopped
+  ts-admin-basic-info-service:
+    volumes:
+      - ${TT_SCRIPTS_DIR:?}/agents:/otel:ro
+    environment:
+      JAVA_TOOL_OPTIONS: "-javaagent:/otel/opentelemetry-javaagent.jar -Dotel.javaagent.configuration-file=/otel/otel.properties"
+      OTEL_SERVICE_NAME: "ts-admin-basic-info-service"
+  ts-admin-order-service:
+    volumes:
+      - ${TT_SCRIPTS_DIR:?}/agents:/otel:ro
+    environment:
+      JAVA_TOOL_OPTIONS: "-javaagent:/otel/opentelemetry-javaagent.jar -Dotel.javaagent.configuration-file=/otel/otel.properties"
+      OTEL_SERVICE_NAME: "ts-admin-order-service"
+  ts-admin-route-service:
+    volumes:
+      - ${TT_SCRIPTS_DIR:?}/agents:/otel:ro
+    environment:
+      JAVA_TOOL_OPTIONS: "-javaagent:/otel/opentelemetry-javaagent.jar -Dotel.javaagent.configuration-file=/otel/otel.properties"
+      OTEL_SERVICE_NAME: "ts-admin-route-service"
+  ts-admin-travel-service:
+    volumes:
+      - ${TT_SCRIPTS_DIR:?}/agents:/otel:ro
+    environment:
+      JAVA_TOOL_OPTIONS: "-javaagent:/otel/opentelemetry-javaagent.jar -Dotel.javaagent.configuration-file=/otel/otel.properties"
+      OTEL_SERVICE_NAME: "ts-admin-travel-service"
+  ts-admin-user-service:
+    volumes:
+      - ${TT_SCRIPTS_DIR:?}/agents:/otel:ro
+    environment:
+      JAVA_TOOL_OPTIONS: "-javaagent:/otel/opentelemetry-javaagent.jar -Dotel.javaagent.configuration-file=/otel/otel.properties"
+      OTEL_SERVICE_NAME: "ts-admin-user-service"
+  ts-assurance-service:
+    volumes:
+      - ${TT_SCRIPTS_DIR:?}/agents:/otel:ro
+    environment:
+      JAVA_TOOL_OPTIONS: "-javaagent:/otel/opentelemetry-javaagent.jar -Dotel.javaagent.configuration-file=/otel/otel.properties"
+      OTEL_SERVICE_NAME: "ts-assurance-service"
+  ts-auth-service:
+    volumes:
+      - ${TT_SCRIPTS_DIR:?}/agents:/otel:ro
+    environment:
+      JAVA_TOOL_OPTIONS: "-javaagent:/otel/opentelemetry-javaagent.jar -Dotel.javaagent.configuration-file=/otel/otel.properties"
+      OTEL_SERVICE_NAME: "ts-auth-service"
+  ts-avatar-service:
+    volumes:
+      - ${TT_SCRIPTS_DIR:?}/agents:/otel:ro
+    environment:
+      JAVA_TOOL_OPTIONS: "-javaagent:/otel/opentelemetry-javaagent.jar -Dotel.javaagent.configuration-file=/otel/otel.properties"
+      OTEL_SERVICE_NAME: "ts-avatar-service"
+  ts-basic-service:
+    volumes:
+      - ${TT_SCRIPTS_DIR:?}/agents:/otel:ro
+    environment:
+      JAVA_TOOL_OPTIONS: "-javaagent:/otel/opentelemetry-javaagent.jar -Dotel.javaagent.configuration-file=/otel/otel.properties"
+      OTEL_SERVICE_NAME: "ts-basic-service"
+  ts-cancel-service:
+    volumes:
+      - ${TT_SCRIPTS_DIR:?}/agents:/otel:ro
+    environment:
+      JAVA_TOOL_OPTIONS: "-javaagent:/otel/opentelemetry-javaagent.jar -Dotel.javaagent.configuration-file=/otel/otel.properties"
+      OTEL_SERVICE_NAME: "ts-cancel-service"
+  ts-config-service:
+    volumes:
+      - ${TT_SCRIPTS_DIR:?}/agents:/otel:ro
+    environment:
+      JAVA_TOOL_OPTIONS: "-javaagent:/otel/opentelemetry-javaagent.jar -Dotel.javaagent.configuration-file=/otel/otel.properties"
+      OTEL_SERVICE_NAME: "ts-config-service"
+  ts-consign-price-service:
+    volumes:
+      - ${TT_SCRIPTS_DIR:?}/agents:/otel:ro
+    environment:
+      JAVA_TOOL_OPTIONS: "-javaagent:/otel/opentelemetry-javaagent.jar -Dotel.javaagent.configuration-file=/otel/otel.properties"
+      OTEL_SERVICE_NAME: "ts-consign-price-service"
+  ts-consign-service:
+    volumes:
+      - ${TT_SCRIPTS_DIR:?}/agents:/otel:ro
+    environment:
+      JAVA_TOOL_OPTIONS: "-javaagent:/otel/opentelemetry-javaagent.jar -Dotel.javaagent.configuration-file=/otel/otel.properties"
+      OTEL_SERVICE_NAME: "ts-consign-service"
+  ts-contacts-service:
+    volumes:
+      - ${TT_SCRIPTS_DIR:?}/agents:/otel:ro
+    environment:
+      JAVA_TOOL_OPTIONS: "-javaagent:/otel/opentelemetry-javaagent.jar -Dotel.javaagent.configuration-file=/otel/otel.properties"
+      OTEL_SERVICE_NAME: "ts-contacts-service"
+  ts-execute-service:
+    volumes:
+      - ${TT_SCRIPTS_DIR:?}/agents:/otel:ro
+    environment:
+      JAVA_TOOL_OPTIONS: "-javaagent:/otel/opentelemetry-javaagent.jar -Dotel.javaagent.configuration-file=/otel/otel.properties"
+      OTEL_SERVICE_NAME: "ts-execute-service"
+  ts-food-map-service:
+    volumes:
+      - ${TT_SCRIPTS_DIR:?}/agents:/otel:ro
+    environment:
+      JAVA_TOOL_OPTIONS: "-javaagent:/otel/opentelemetry-javaagent.jar -Dotel.javaagent.configuration-file=/otel/otel.properties"
+      OTEL_SERVICE_NAME: "ts-food-map-service"
+  ts-food-service:
+    volumes:
+      - ${TT_SCRIPTS_DIR:?}/agents:/otel:ro
+    environment:
+      JAVA_TOOL_OPTIONS: "-javaagent:/otel/opentelemetry-javaagent.jar -Dotel.javaagent.configuration-file=/otel/otel.properties"
+      OTEL_SERVICE_NAME: "ts-food-service"
+  ts-inside-payment-service:
+    volumes:
+      - ${TT_SCRIPTS_DIR:?}/agents:/otel:ro
+    environment:
+      JAVA_TOOL_OPTIONS: "-javaagent:/otel/opentelemetry-javaagent.jar -Dotel.javaagent.configuration-file=/otel/otel.properties"
+      OTEL_SERVICE_NAME: "ts-inside-payment-service"
+  ts-news-service:
+    volumes:
+      - ${TT_SCRIPTS_DIR:?}/agents:/otel:ro
+    environment:
+      JAVA_TOOL_OPTIONS: "-javaagent:/otel/opentelemetry-javaagent.jar -Dotel.javaagent.configuration-file=/otel/otel.properties"
+      OTEL_SERVICE_NAME: "ts-news-service"
+  ts-notification-service:
+    volumes:
+      - ${TT_SCRIPTS_DIR:?}/agents:/otel:ro
+    environment:
+      JAVA_TOOL_OPTIONS: "-javaagent:/otel/opentelemetry-javaagent.jar -Dotel.javaagent.configuration-file=/otel/otel.properties"
+      OTEL_SERVICE_NAME: "ts-notification-service"
+  ts-order-other-service:
+    volumes:
+      - ${TT_SCRIPTS_DIR:?}/agents:/otel:ro
+    environment:
+      JAVA_TOOL_OPTIONS: "-javaagent:/otel/opentelemetry-javaagent.jar -Dotel.javaagent.configuration-file=/otel/otel.properties"
+      OTEL_SERVICE_NAME: "ts-order-other-service"
+  ts-order-service:
+    volumes:
+      - ${TT_SCRIPTS_DIR:?}/agents:/otel:ro
+    environment:
+      JAVA_TOOL_OPTIONS: "-javaagent:/otel/opentelemetry-javaagent.jar -Dotel.javaagent.configuration-file=/otel/otel.properties"
+      OTEL_SERVICE_NAME: "ts-order-service"
+  ts-payment-service:
+    volumes:
+      - ${TT_SCRIPTS_DIR:?}/agents:/otel:ro
+    environment:
+      JAVA_TOOL_OPTIONS: "-javaagent:/otel/opentelemetry-javaagent.jar -Dotel.javaagent.configuration-file=/otel/otel.properties"
+      OTEL_SERVICE_NAME: "ts-payment-service"
+  ts-preserve-other-service:
+    volumes:
+      - ${TT_SCRIPTS_DIR:?}/agents:/otel:ro
+    environment:
+      JAVA_TOOL_OPTIONS: "-javaagent:/otel/opentelemetry-javaagent.jar -Dotel.javaagent.configuration-file=/otel/otel.properties"
+      OTEL_SERVICE_NAME: "ts-preserve-other-service"
+  ts-preserve-service:
+    volumes:
+      - ${TT_SCRIPTS_DIR:?}/agents:/otel:ro
+    environment:
+      JAVA_TOOL_OPTIONS: "-javaagent:/otel/opentelemetry-javaagent.jar -Dotel.javaagent.configuration-file=/otel/otel.properties"
+      OTEL_SERVICE_NAME: "ts-preserve-service"
+  ts-price-service:
+    volumes:
+      - ${TT_SCRIPTS_DIR:?}/agents:/otel:ro
+    environment:
+      JAVA_TOOL_OPTIONS: "-javaagent:/otel/opentelemetry-javaagent.jar -Dotel.javaagent.configuration-file=/otel/otel.properties"
+      OTEL_SERVICE_NAME: "ts-price-service"
+  ts-rebook-service:
+    volumes:
+      - ${TT_SCRIPTS_DIR:?}/agents:/otel:ro
+    environment:
+      JAVA_TOOL_OPTIONS: "-javaagent:/otel/opentelemetry-javaagent.jar -Dotel.javaagent.configuration-file=/otel/otel.properties"
+      OTEL_SERVICE_NAME: "ts-rebook-service"
+  ts-route-plan-service:
+    volumes:
+      - ${TT_SCRIPTS_DIR:?}/agents:/otel:ro
+    environment:
+      JAVA_TOOL_OPTIONS: "-javaagent:/otel/opentelemetry-javaagent.jar -Dotel.javaagent.configuration-file=/otel/otel.properties"
+      OTEL_SERVICE_NAME: "ts-route-plan-service"
+  ts-route-service:
+    volumes:
+      - ${TT_SCRIPTS_DIR:?}/agents:/otel:ro
+    environment:
+      JAVA_TOOL_OPTIONS: "-javaagent:/otel/opentelemetry-javaagent.jar -Dotel.javaagent.configuration-file=/otel/otel.properties"
+      OTEL_SERVICE_NAME: "ts-route-service"
+  ts-seat-service:
+    volumes:
+      - ${TT_SCRIPTS_DIR:?}/agents:/otel:ro
+    environment:
+      JAVA_TOOL_OPTIONS: "-javaagent:/otel/opentelemetry-javaagent.jar -Dotel.javaagent.configuration-file=/otel/otel.properties"
+      OTEL_SERVICE_NAME: "ts-seat-service"
+  ts-security-service:
+    volumes:
+      - ${TT_SCRIPTS_DIR:?}/agents:/otel:ro
+    environment:
+      JAVA_TOOL_OPTIONS: "-javaagent:/otel/opentelemetry-javaagent.jar -Dotel.javaagent.configuration-file=/otel/otel.properties"
+      OTEL_SERVICE_NAME: "ts-security-service"
+  ts-station-service:
+    volumes:
+      - ${TT_SCRIPTS_DIR:?}/agents:/otel:ro
+    environment:
+      JAVA_TOOL_OPTIONS: "-javaagent:/otel/opentelemetry-javaagent.jar -Dotel.javaagent.configuration-file=/otel/otel.properties"
+      OTEL_SERVICE_NAME: "ts-station-service"
+  ts-ticket-office-service:
+    volumes:
+      - ${TT_SCRIPTS_DIR:?}/agents:/otel:ro
+    environment:
+      JAVA_TOOL_OPTIONS: "-javaagent:/otel/opentelemetry-javaagent.jar -Dotel.javaagent.configuration-file=/otel/otel.properties"
+      OTEL_SERVICE_NAME: "ts-ticket-office-service"
+  ts-ticketinfo-service:
+    volumes:
+      - ${TT_SCRIPTS_DIR:?}/agents:/otel:ro
+    environment:
+      JAVA_TOOL_OPTIONS: "-javaagent:/otel/opentelemetry-javaagent.jar -Dotel.javaagent.configuration-file=/otel/otel.properties"
+      OTEL_SERVICE_NAME: "ts-ticketinfo-service"
+  ts-train-service:
+    volumes:
+      - ${TT_SCRIPTS_DIR:?}/agents:/otel:ro
+    environment:
+      JAVA_TOOL_OPTIONS: "-javaagent:/otel/opentelemetry-javaagent.jar -Dotel.javaagent.configuration-file=/otel/otel.properties"
+      OTEL_SERVICE_NAME: "ts-train-service"
+  ts-travel-plan-service:
+    volumes:
+      - ${TT_SCRIPTS_DIR:?}/agents:/otel:ro
+    environment:
+      JAVA_TOOL_OPTIONS: "-javaagent:/otel/opentelemetry-javaagent.jar -Dotel.javaagent.configuration-file=/otel/otel.properties"
+      OTEL_SERVICE_NAME: "ts-travel-plan-service"
+  ts-travel-service:
+    volumes:
+      - ${TT_SCRIPTS_DIR:?}/agents:/otel:ro
+    environment:
+      JAVA_TOOL_OPTIONS: "-javaagent:/otel/opentelemetry-javaagent.jar -Dotel.javaagent.configuration-file=/otel/otel.properties"
+      OTEL_SERVICE_NAME: "ts-travel-service"
+  ts-travel2-service:
+    volumes:
+      - ${TT_SCRIPTS_DIR:?}/agents:/otel:ro
+    environment:
+      JAVA_TOOL_OPTIONS: "-javaagent:/otel/opentelemetry-javaagent.jar -Dotel.javaagent.configuration-file=/otel/otel.properties"
+      OTEL_SERVICE_NAME: "ts-travel2-service"
+  ts-user-service:
+    volumes:
+      - ${TT_SCRIPTS_DIR:?}/agents:/otel:ro
+    environment:
+      JAVA_TOOL_OPTIONS: "-javaagent:/otel/opentelemetry-javaagent.jar -Dotel.javaagent.configuration-file=/otel/otel.properties"
+      OTEL_SERVICE_NAME: "ts-user-service"
+  ts-verification-code-service:
+    volumes:
+      - ${TT_SCRIPTS_DIR:?}/agents:/otel:ro
+    environment:
+      JAVA_TOOL_OPTIONS: "-javaagent:/otel/opentelemetry-javaagent.jar -Dotel.javaagent.configuration-file=/otel/otel.properties"
+      OTEL_SERVICE_NAME: "ts-verification-code-service"
+  ts-voucher-service:
+    volumes:
+      - ${TT_SCRIPTS_DIR:?}/agents:/otel:ro
+    environment:
+      JAVA_TOOL_OPTIONS: "-javaagent:/otel/opentelemetry-javaagent.jar -Dotel.javaagent.configuration-file=/otel/otel.properties"
+      OTEL_SERVICE_NAME: "ts-voucher-service"
