@@ -267,7 +267,8 @@ def percentiles(vals_ns):
     return (pct(50), pct(95), pct(99))
 
 
-def derive(run_dir: str, window_ms: float, warmup_s: float, tmp_root: str, reader: str = "cli"):
+def derive(run_dir: str, window_ms: float, warmup_s: float, tmp_root: str, reader: str = "cli",
+           collapse_system: bool = True):
     """Return a list of per-(service, window) KPI row dicts."""
     kernel_dir = os.path.join(run_dir, "kernel")
     ctf_root = prepare_ctf(kernel_dir, tmp_root)
@@ -289,7 +290,7 @@ def derive(run_dir: str, window_ms: float, warmup_s: float, tmp_root: str, reade
         if base_ts is None:
             base_ts = e["ts"]
         widx = (e["ts"] - base_ts) // win_ns
-        svc = classify(e["pid"], e["proc"], tgid_service)
+        svc = classify(e["pid"], e["proc"], tgid_service, collapse_system)
         b = windows[(widx, svc)]
         b["events"] += 1
         raw, name = e["raw"], e["name"]
@@ -356,6 +357,8 @@ def main():
     ap.add_argument("--warmup-s", type=float, default=0.0)
     ap.add_argument("--reader", choices=("cli", "bt2"), default="cli",
                     help="cli = fast babeltrace2 subprocess (default); bt2 = slow python bindings (cross-check)")
+    ap.add_argument("--keep-system-detail", action="store_true",
+                    help="keep per-comm system:<comm> labels instead of collapsing host processes to one 'system' bucket")
     ap.add_argument("--keep-temp", action="store_true")
     args = ap.parse_args()
 
@@ -369,7 +372,8 @@ def main():
     out = args.out or os.path.join(args.run_dir, "kernel_l1.parquet")
     tmp_root = tempfile.mkdtemp(prefix="stratatrace_l1_")
     try:
-        rows = derive(args.run_dir, args.window_ms, args.warmup_s, tmp_root, args.reader)
+        rows = derive(args.run_dir, args.window_ms, args.warmup_s, tmp_root, args.reader,
+                      collapse_system=not args.keep_system_detail)
         try:
             import pandas as pd
             df = pd.DataFrame(rows)

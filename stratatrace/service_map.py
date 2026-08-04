@@ -90,8 +90,14 @@ def build_tgid_service(meta_dir: str) -> dict:
     return out
 
 
-def classify(pid, procname, tgid_service: dict) -> str:
-    """Resolve a microservice for an event. Exact TGID map first, then procname fallback."""
+def classify(pid, procname, tgid_service: dict, collapse_system: bool = False) -> str:
+    """Resolve a microservice for an event. Exact TGID map first, then procname fallback.
+
+    collapse_system: fold every non-container host process (dockerd, containerd, host CLI
+    tools, stray java/python, …) into a single `system` bucket instead of `system:<comm>`.
+    This gives clean study tables (~13 microservices + `kernel` + `system`) — the raw kernel
+    trace otherwise yields 100+ `system:<comm>` labels that are all non-service host noise.
+    `kernel` (kswapd/ksoftirqd/… — meaningful, e.g. the F3 reclaim actor) stays separate."""
     if tgid_service:
         svc = tgid_service.get(pid)
         if svc is not None:
@@ -100,4 +106,4 @@ def classify(pid, procname, tgid_service: dict) -> str:
         return "kernel"
     if procname in COMM_SERVICE:
         return COMM_SERVICE[procname]
-    return f"system:{procname}"
+    return "system" if collapse_system else f"system:{procname}"
