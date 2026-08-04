@@ -249,11 +249,28 @@ ran a real traced gate:
   blind spot (mysql/nacos uninstrumented) → the **kernel** modality must carry it. `queue_backlog`
   re-modeled as MySQL connection-pool exhaustion (TT has no message broker).
 
-## Remaining before the full TT campaign
-1. Toxiproxy in front of the shared `mysql` (slow_db restart-free + connection-cap queue_backlog).
-2. `verification_targets(TT)` (per-fault automated confirmation) + a TT campaign driver
-   (fault × intensity × repeats wrapping `run_gate_tt.sh`) + intensity calibration.
-3. **Tracing-scope / campaign-size decision** (48 containers full-syscall = big traces) — user's call.
-4. Fix/accept the 2 non-Java stragglers (voucher=Python, ticket-office=Node; off booking path).
-- **VM `strata-tt-collector` (us-east4-c) RUNNING** — booking flow live, PHASE-0 gate passed,
-  fault injection validated. Whole TT pipeline is production-ready; the full campaign is the next phase.
+## Tracing scope: "same as OB" — TT Phase-2 campaign driver built
+User: **"do the same what we did in online boutique"** → identical methodology, full tracing
+(collect_trace enables `-k --all '*'` + `--syscall --all`, already applied to TT in the gate). No
+scoping-down. Built the campaign infrastructure to match the Sock Shop rig:
+- **`run_scenario.sh`** gained a `LOAD_GEN` env (default = Sock Shop generator) so another app
+  reuses the baseline→inject→recovery→metrics→verify→audit workhorse verbatim (SS unchanged).
+- **`run_scenario_tt.sh`** — exports the TT app profile (TRACE_APP/CONTAINER_PREFIX/CONTAINER_REGEX/
+  OTLP_SRC/LOAD_GEN/:8080) + delegates to `run_scenario.sh`.
+- **`run_campaign_tt.sh`** — **38-run TT matrix** (normals steady+burst ×3 + 8 core faults
+  aggressive/steady ×3 + intensity + workload variants), per-fault TT TARGET_SVC + blast radius
+  from FAULTS-TT.md. Covers faults runnable without extra infra (docker update / netem /
+  **docker pause** for dependency_outage / stress-ng). Commit `74909e4`.
+- **Fault mechanism audit:** slow_db + error_storm use **toxiproxy** (excluded pending TT
+  mysql-toxiproxy); dependency_outage=docker pause, svc_net/anomaly_net=netem, svc_cpu/mem=docker
+  update, anomalies=stress-ng — all work standalone on TT.
+
+## Remaining before the full TT campaign run
+1. Toxiproxy in front of the shared `mysql` → adds slow_db + error_storm + connection-cap
+   queue_backlog remodel (2-3 more fault types).
+2. `verification_targets(TT).json` (per-fault Prometheus panel for verify_injection.py).
+3. Intensity calibration (noisy_neighbor "KPIs barely move", svc_cpu_cap subtle) on the VM.
+4. **Launch `run_campaign_tt.sh`** unattended (~38 runs × ~4 min + gzip ≈ several hours), then
+   batch L1/L3 derive — same as the Sock Shop 46-run batch.
+- **VM `strata-tt-collector` (us-east4-c) RUNNING.** Whole TT pipeline production-ready:
+  deploy + booking flow + PHASE-0 gate + fault injection + Phase-2 scenario/campaign drivers.
