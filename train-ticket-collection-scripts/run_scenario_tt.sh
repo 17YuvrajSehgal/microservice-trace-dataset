@@ -28,4 +28,4 @@ export FRONTEND_HOST="${FRONTEND_HOST:-http://localhost:8080}"     # TT front do
 export VERIFY_TARGETS="${VERIFY_TARGETS:-$TTD/verification_targets_tt.json}"  # cAdvisor/node QC panel
 export TOXIPROXY_API="${TOXIPROXY_API:-http://localhost:8474}"     # slow_db/error_storm toxics
 
-exec "$SD/run_scenario.sh" "$@"
+exec bash "$SD/run_scenario.sh" "$@"

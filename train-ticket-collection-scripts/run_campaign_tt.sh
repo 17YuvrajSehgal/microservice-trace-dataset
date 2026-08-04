@@ -103,7 +103,7 @@ for entry in "${MATRIX[@]}"; do
     EXPECTED_BLAST_RADIUS="${BLAST[$recipe]:-}" \
     EXPECTED_WINNING_MODALITY="${MODALITY[$recipe]:-}" \
     TARGET_TRACE_VISIBILITY="${TRACEVIS[$recipe]:-}" \
-        "$TTD/run_scenario_tt.sh" "$recipe" "$intensity" "$RUN" "$USERS" \
+        bash "$TTD/run_scenario_tt.sh" "$recipe" "$intensity" "$RUN" "$USERS" \
         > "$HOME/${RUN}.log" 2>&1 || echo "[$idx] WARN: run_scenario_tt returned nonzero for $RUN"
 
     # gzip the kernel CTF (~3-4x) between runs so the footprint fits the SSD quota.
