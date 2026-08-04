@@ -42,10 +42,13 @@ ORDERS_REFRESH = "/api/v1/orderservice/order/refresh"
 PRESERVE = "/api/v1/preserveservice/preserve"
 PAY = "/api/v1/inside_pay_service/inside_payment"
 
-# Standard TT test account + a common route (validate/adjust on VM).
+# Standard TT test account + routes VALIDATED on the live stack. The seeded trips (G1234-D1345,
+# from ts-travel-service InitData) run shanghai -> suzhou -> taiyuan; station names in the DB are
+# lowercase, no spaces (shanghai, suzhou, taiyuan - NOT "Shang Hai"). trips/left matches these
+# names against the route, so the search terms MUST be the seeded lowercase names.
 DEFAULT_USER = "fdse_microservice"
 DEFAULT_PASS = "111111"
-ROUTES = [("Shang Hai", "Su Zhou"), ("Nan Jing", "Shang Hai"), ("Su Zhou", "Shang Hai")]
+ROUTES = [("shanghai", "suzhou"), ("shanghai", "taiyuan"), ("suzhou", "taiyuan")]
 
 # weighted journey mix per profile (scenario -> weight)
 PROFILES = {
@@ -102,7 +105,9 @@ def _login(sess, uid, host, user, pw):
 
 def _search(sess, uid, host, scenario, path):
     frm, to = random.choice(ROUTES)
-    body = {"startingPlace": frm, "endPlace": to,
+    # field is startPlace (TripInfo.startPlace) - NOT startingPlace; the wrong name deserializes
+    # to null and trips/left silently returns [] ("[query][Travel Query Fail][Something null]").
+    body = {"startPlace": frm, "endPlace": to,
             "departureTime": dt.date.today().strftime("%Y-%m-%d")}
     return _req(sess, uid, scenario, "POST", host, path, json=body)
 
@@ -162,7 +167,7 @@ def probe(host, user, pw):
             s.headers["Authorization"] = "Bearer " + tok
     print("SEARCH", host + TRIPS)
     r = s.post(host.rstrip("/") + TRIPS,
-               json={"startingPlace": "Shang Hai", "endPlace": "Su Zhou",
+               json={"startPlace": "shanghai", "endPlace": "suzhou",
                      "departureTime": dt.date.today().strftime("%Y-%m-%d")}, timeout=30)
     print(" ", r.status_code, r.text[:400])
 
