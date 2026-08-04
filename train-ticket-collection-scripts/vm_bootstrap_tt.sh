@@ -14,11 +14,11 @@ FORK="${FORK:-https://github.com/17YuvrajSehgal/train-ticket.git}"
 export IMG_REPO="${IMG_REPO:-stratatrace-tt}" IMG_TAG="${IMG_TAG:-v1}"    # OUR image tags
 export COMPOSE_PROJECT_NAME=trainticket COMPOSE_COMPATIBILITY=true
 
-echo "== [1/6] apt: LTTng, Babeltrace2, stress-ng, tools =="
+echo "== [1/6] apt: LTTng, Babeltrace2, stress-ng, JDK11+Maven (TT builds from source), tools =="
 sudo apt-get update -qq
 sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq \
   lttng-tools lttng-modules-dkms babeltrace2 liblttng-ust-dev python3-lttngust \
-  stress-ng jq git curl python3-pip >/dev/null
+  stress-ng jq git curl python3-pip openjdk-11-jdk maven >/dev/null
 pip3 install -q --break-system-packages pandas pyarrow requests 2>/dev/null || true
 
 echo "== [2/6] Docker + overlay2 (cAdvisor 0.49 can't read the containerd snapshotter store) =="
@@ -40,8 +40,13 @@ fi
 echo "== [4/6] clone OUR TT fork (recursive) -> $TT_DIR =="
 [ -d "$TT_DIR/.git" ] || git clone --recursive "$FORK" "$TT_DIR"
 
-echo "== [5/6] build OUR images from source (SLOW: 41 Maven services, ~1-2 h first time) =="
+echo "== [5/6] build OUR images from source (SLOW: mvn jars + docker, ~1-2 h first time) =="
 cd "$TT_DIR"
+# TT Dockerfiles do `ADD ./target/*.jar` -> jars MUST be built first (mvn), then imaged.
+# -T 4 = 4 parallel modules (16 vCPU, keep RAM sane); -DskipTests for speed.
+echo "  [5a] mvn clean package (41 modules, downloads ~/.m2 deps first run) ..."
+mvn -q -T 4 clean package -DskipTests 2>&1 | tail -20 || { echo "MVN FAILED"; exit 1; }
+echo "  [5b] docker compose build (package jars into OUR images) ..."
 sg docker -c "docker compose build" || docker compose build
 
 echo "== [6/6] bring up the instrumented stack (base + metrics + otel) =="
