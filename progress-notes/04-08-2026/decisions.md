@@ -41,5 +41,28 @@ proper pre-flight and an auto-stop watcher. Outcome:
 Kernel representation ladder is **fully derived for the whole dataset**: L0 (raw CTF, gz) +
 **L1 (46 KPI parquets)** + **L3 (46 NL-digest jsonl)** + L2 engine validated (per-run L2 is
 on-demand, scoped). Loader validated. VM STOPPED.
-**Next:** package the derived tiers + the modality-ablation study (which modality wins per
-fault), and the agentic 5th-skill/compound-fault work.
+
+---
+
+## StrataTrace v1 — FROZEN (2026-08-04)
+User asked whether we can save the first dataset and branch to new subjects (a 2nd app +
+agentic). Decided to **audit + freeze v1 first** (protect it before branching). Done:
+- **Completeness audit:** 46/46 runs have all 4 modalities + L1/L3 + gt/verif/load/meta —
+  **zero gaps.** cAdvisor per-container metrics present (a gap I'd feared is closed; 432
+  series/run). Verification 43 confirmed / 3 borderline / 0 unconfirmed.
+- **Two documented limitations** (in the datasheet, not silent): (1) traces cover **6/14
+  services** — Tier-2 `user`+`payment` are deliberate blind spots (design variable for the
+  "can kernel compensate" RQ); (2) the **3 `dependency_outage` runs are borderline** — fault
+  is real but its verify target likely mis-catches on a trace-blind service; review the check.
+- **Freeze artifacts** (`release/`): `DATASET_MANIFEST.csv` (46-run index), `COVERAGE_MATRIX.md`,
+  `FREEZE-v1.md`. **Disk snapshot `strata-v1-freeze-20260804`** (READY, supersedes the stale
+  `...20260729`). **Git tag `strata-v1-freeze`.**
+- **Not the freeze, but the path to *citable*** (release packaging, plan §8): datasheet,
+  canonical splits (exclude 3 borderline), Lite/Full tiers, Zenodo DOI, GHCR images,
+  `pip install stratatrace` finalize.
+
+**Recommendation to user on branching:** v1 is now safe to build on. Prioritize the **agentic
+M5 track** (planned paper-2, rig-ready, reuses this testbed + ground truth) over a 2nd app
+(Train Ticket = full rig re-standup, future-work per plan §10). Keep the ablation study on the
+critical path — it's what proves v1's value.
+**Next:** await user's pick (agentic collection vs release packaging vs the study).
