@@ -265,12 +265,29 @@ scoping-down. Built the campaign infrastructure to match the Sock Shop rig:
   mysql-toxiproxy); dependency_outage=docker pause, svc_net/anomaly_net=netem, svc_cpu/mem=docker
   update, anomalies=stress-ng — all work standalone on TT.
 
+## Phase-2 workhorse VALIDATED — a real labeled TT fault bundle
+Ran one full scenario on the VM (`svc_cpu_cap subtle ts-travel-service`, 20/30/20 s):
+- **All six modalities OK** + `ground_truth.json` in the bundle with `target_service:
+  ts-travel-service`, the TT `expected_blast_radius`, and the **injection window** (19:37:47→
+  19:38:17, matching INJECTION_S=30). The CPU cap visibly throttled the search path (fewer kernel
+  events under fault than the no-fault run — the fault working).
+- **Footgun found:** `run_scenario_tt.sh` standalone doesn't set `TARGET_SVC`, so a service-fault
+  falls back to the recipe's Sock Shop default (`carts`) → caps a non-existent `trainticket_carts_1`
+  → inject silently fails (`|| WARN`), bundle collects with NO fault. **The campaign driver sets
+  TARGET_SVC per fault, so `run_campaign_tt.sh` is correct**; only ad-hoc `run_scenario_tt` calls
+  must pass `TARGET_SVC`.
+- **Scale/disk:** ~7.8 G uncompressed kernel / 70 s @ 15 u → a 240 s campaign run @ 20 u ≈ 27-30 G
+  uncompressed → ~7-8 G gzipped. 38 runs ≈ **285 G**; VM has **457 G free** → fits (campaign gzips
+  between runs, peak ~1 run uncompressed). No disk expansion needed.
+
 ## Remaining before the full TT campaign run
 1. Toxiproxy in front of the shared `mysql` → adds slow_db + error_storm + connection-cap
-   queue_backlog remodel (2-3 more fault types).
-2. `verification_targets(TT).json` (per-fault Prometheus panel for verify_injection.py).
+   queue_backlog remodel (2-3 more fault types) to the 8 already covered.
+2. `verification_targets(TT).json` (per-fault Prometheus panel for verify_injection.py; the
+   scenario runs `verification=n/a` until this exists — bundle + audit are already complete).
 3. Intensity calibration (noisy_neighbor "KPIs barely move", svc_cpu_cap subtle) on the VM.
-4. **Launch `run_campaign_tt.sh`** unattended (~38 runs × ~4 min + gzip ≈ several hours), then
+4. **Launch `run_campaign_tt.sh`** unattended (~38 runs × ~5 min + gzip ≈ several hours), then
    batch L1/L3 derive — same as the Sock Shop 46-run batch.
-- **VM `strata-tt-collector` (us-east4-c) RUNNING.** Whole TT pipeline production-ready:
-  deploy + booking flow + PHASE-0 gate + fault injection + Phase-2 scenario/campaign drivers.
+- **VM `strata-tt-collector` (us-east4-c) RUNNING.** Whole TT pipeline production-ready + every
+  stage validated on real data: deploy + booking flow + PHASE-0 gate + fault injection + Phase-2
+  scenario (labeled bundle) + campaign matrix (dry-run) + disk headroom.
