@@ -233,9 +233,27 @@ ran a real traced gate:
   (container,event) groups** · **clocks drift 0.001 ms**. Four modalities time-aligned on a real
   TT booking-load run — the OB-parity the user required ("everything in OB is also there").
 
-## Remaining Phase 1
-1. Fault recipes → TT with blast-radius tags (mentor's ask); toxiproxy on a TT DB path;
-   `verification_targets(TT)`; re-model queue_backlog (no rabbitmq in TT).
-2. Fix/accept the 2 non-Java stragglers (voucher=Python, ticket-office=Node; off booking path).
-3. Tracing-scope / campaign-size decision (48 containers full-syscall = big traces), then full run.
-- **VM `strata-tt-collector` (us-east4-c) RUNNING** — booking flow live, PHASE-0 gate passed.
+## TT fault recipes ready + blast-radius plan (mentor's ask) — validated
+- **All 13 shared fault recipes made TT-ready:** `EXPECTED_BLAST_RADIUS` /
+  `EXPECTED_WINNING_MODALITY` / `TARGET_TRACE_VISIBILITY` now env-overridable (`${VAR:-default}`,
+  Sock Shop defaults byte-identical). Recipes already resolve TT containers via
+  `CONTAINER_PREFIX=trainticket`. Commit `3c81d1e`.
+- **Validated on VM:** `CONTAINER_PREFIX=trainticket TARGET_SVC=ts-travel-service svc_cpu_cap.sh
+  inject subtle` → caps `trainticket_ts-travel-service_1` (cgroup `cpu.max=50000 100000`); with the
+  blast-radius env → ground truth records the **TT blast radius**
+  `[ts-travel-service, ts-preserve-service, ts-gateway-service, ts-ui-dashboard]`; cleanup restores;
+  stack stays healthy (login 200).
+- **`FAULTS-TT.md`** = pre-registered TT fault→target→blast-radius→modality plan, blast radii
+  grounded in the **observed call graph** (login/search/book/pay). Headline TT finding: **slow_db
+  on the SHARED mysql = ~22-container blast** (vs Sock Shop per-service DBs) AND a clean trace
+  blind spot (mysql/nacos uninstrumented) → the **kernel** modality must carry it. `queue_backlog`
+  re-modeled as MySQL connection-pool exhaustion (TT has no message broker).
+
+## Remaining before the full TT campaign
+1. Toxiproxy in front of the shared `mysql` (slow_db restart-free + connection-cap queue_backlog).
+2. `verification_targets(TT)` (per-fault automated confirmation) + a TT campaign driver
+   (fault × intensity × repeats wrapping `run_gate_tt.sh`) + intensity calibration.
+3. **Tracing-scope / campaign-size decision** (48 containers full-syscall = big traces) — user's call.
+4. Fix/accept the 2 non-Java stragglers (voucher=Python, ticket-office=Node; off booking path).
+- **VM `strata-tt-collector` (us-east4-c) RUNNING** — booking flow live, PHASE-0 gate passed,
+  fault injection validated. Whole TT pipeline is production-ready; the full campaign is the next phase.
