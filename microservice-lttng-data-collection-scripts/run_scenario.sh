@@ -45,6 +45,10 @@ fi
 
 # Workload shape passed through to the load generator (steady|burst).
 PROFILE="${PROFILE:-steady}"
+# Load generator (default = the Sock Shop one alongside this script). Another app exports
+# LOAD_GEN=<its load_generator.py> plus the collect_trace app-profile env (TRACE_APP,
+# CONTAINER_REGEX, LOG_CONTAINER_REGEX, OTLP_SRC) and CONTAINER_PREFIX for the fault recipes.
+LOAD_GEN="${LOAD_GEN:-$SD/load_generator.py}"
 
 # Per-run fault-state dir so exactly one ground_truth.json belongs to this run.
 export FAULT_STATE_DIR="$HOME/fault-state/$RUN"
@@ -63,7 +67,7 @@ echo "[$RUN] scenario=$RECIPE intensity=$INTENSITY workload=$PROFILE duration=${
 TRACE_PID=$!
 
 # 2) continuous load for the whole window
-python3 "$SD/load_generator.py" --host "$FRONTEND" --users "$USERS" \
+python3 "$LOAD_GEN" --host "$FRONTEND" --users "$USERS" \
     --duration "$DURATION" --profile "$PROFILE" --think-min 0.1 --think-max 0.3 \
     --output "$HOME/${RUN}_load.csv" > "$HOME/${RUN}_load.log" 2>&1 &
 LOAD_PID=$!
