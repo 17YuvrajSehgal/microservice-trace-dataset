@@ -108,3 +108,25 @@ build-from-source (`${IMG_REPO}/${IMG_TAG}`), **no built-in observability**.
 - **TODO:** push the `stratatrace` branch to the fork (secure token pipe); `load_generator
   --probe` API validation; parameterize collect_trace for TT names + run the alignment gate;
   fix/accept the 2 stragglers.
+
+## TT deployment — the compose is fundamentally broken across ALL FudanSELab versions
+Chasing the standup surfaced a hard truth: TT's `docker-compose.yml` is stale/incoherent in
+EVERY release (v1.0.0/v0.2.0/v0.1.0 + master):
+- **Source** (all versions) uses **nacos discovery** + **MySQL** (`jdbc:mysql://ts-*-mysql`) +
+  routes the ui-dashboard through **ts-gateway-service**.
+- **Compose** (all versions) has **MongoDB** (`ts-*-mongo`, 48 refs), **no nacos**, **no gateway**.
+So the compose was never kept in sync with the source's migration to nacos+MySQL+gateway. The
+MAINTAINED deployment is k8s (`deployment/` manifests have nacos+MySQL+gateway); compose is a
+dead artifact. Fixing revealed the chain: missing nacos (added) -> missing gateway (added) ->
+services want ts-*-MYSQL but compose gives ts-*-MONGO (UnknownHostException ts-auth-mysql).
+- **What works:** VM up, OUR images built from the pinned fork, infra healthy (nacos,
+  Prometheus, cAdvisor, node-exporter, otel-collector; **OTel spans flowing**). Rig is proven;
+  TT's app-deployment is the blocker.
+- **Realistic paths (next session):** (a) BUILD a coherent MySQL compose ourselves — deploy
+  ts-*-mysql DBs (env-overridable `${*_MYSQL_HOST}`; likely one MySQL + per-service databases +
+  hibernate ddl-auto) keeping the added nacos+gateway; (b) TT on single-node **kind** (the
+  maintained k8s path, host-level LTTng still works on one node); (c) a vetted community TT
+  compose. **User chose "known-good release" — but none exists in FudanSELab; re-decide among
+  (a)/(b)/(c).**
+- **VM stopped** to halt spend; stratatrace-branch fixes (nacos/gateway/orphan-removal) + all
+  overlays committed. `stratatrace` branch NOT yet pushed to fork (Windows scp/token friction).
