@@ -182,8 +182,35 @@ Redeployed on `strata-tt-collector` (us-east4-c) with base(no-mongo)+nacos+dbenv
   caches an absent IP → **every `/api/v1` 502s**. Fix: after "Started GatewayApplication", restart
   the ui-dashboard so nginx re-resolves, and gate on a **real login POST=200** (the static page is
   200 even when the gateway path is dead). Any redeploy that recreates the gateway needs this.
-- **Immediate next (Phase 1):** (1) **seed TT data** — DBs are empty so search=`[]`; the booking
-  flow (search→book→pay) needs trips/stations/routes/prices loaded (TT data-init). (2) fix/accept
-  the 2 non-Java stragglers. (3) parameterize `collect_trace` for `trainticket_*` container names +
-  run the six-modality alignment gate. (4) fault recipes → TT (blast-radius tags per mentor). VM
-  left RUNNING for the seeding step.
+## TT booking SEARCH path validated end-to-end — 4 bugs found by driving the live API
+Turned out TT auto-seeds (every service has an `InitData.java` CommandLineRunner) — data was
+never the problem. Drove the booking flow and fixed a chain of 4 real bugs:
+1. **Wrong request field** — load_generator sent `startingPlace`; the entity is `TripInfo.
+   startPlace`. Wrong name → null → trips/left silently `[]` (`[Travel Query Fail][Something
+   null]`, a pure request-validation guard). Fixed to `startPlace`.
+2. **Station-name format** — seeded stations are lowercase/no-space (`shanghai`,`suzhou`,
+   `taiyuan`), NOT the canonical "Shang Hai". Routes updated to the seeded names that have trips
+   (InitData seeds shanghai→suzhou→taiyuan).
+3. **MySQL 8 utf8mb4 × MyISAM × varchar(255) PK** — TT's DDL (`create table config ... primary
+   key(name) engine=MyISAM`) is MySQL-5.x-era. utf8mb4 = 4 B → 255-char PK = 1020 B > MyISAM's
+   1000 B limit → "Specified key was too long" → **config (and other) tables never created** →
+   config empty → **ts-seat-service 500** → trips/left 500. Fix: `mysql --character-set-server=
+   utf8` (3 B → 765 B). After a clean `down -v` redeploy the `config` table creates + seeds.
+4. **afterToday date guard** — `trips/left` returns `[]` unless `departureTime` is strictly after
+   today (`TravelServiceImpl.afterToday`). load_generator sent today → empty. Now queries
+   `DEPART_DAYS_AHEAD=3` out.
+- **RESULT (live):** `load_generator --probe` → LOGIN 200 (JWT) + SEARCH 200 returning trip
+  **D1345** (DongCheOne, shanghai→suzhou, ¥22.5, seats avail). Full path works: nginx → Spring
+  Cloud Gateway → travel → basic(route+train+price) → seat → shared MySQL. All seed data verified
+  consistent (5 trips, 10 routes w/ matching route_ids, 6 train types, 10 prices, 13 stations,
+  config). Commits `eec65a3` (charset+API), `9307424` (future date).
+
+## Immediate next (Phase 1)
+1. **book_pay flow** — search works; `preserve`+`inside_payment` need field validation like trips
+   did, AND a real `contactsId` (booking needs a contact; load_generator sends `""`). Add
+   contacts fetch/create to the generator, then validate preserve→pay end-to-end.
+2. Fix/accept the 2 non-Java stragglers (voucher=Python, ticket-office=Node; off booking path).
+3. Parameterize `collect_trace` for `trainticket_*` container names + run the six-modality
+   alignment gate (the OB-parity check the user asked for).
+4. Fault recipes → TT with blast-radius tags (mentor's ask); toxiproxy on a TT DB path.
+5. **VM `strata-tt-collector` (us-east4-c) left RUNNING** — stack healthy, booking search live.
