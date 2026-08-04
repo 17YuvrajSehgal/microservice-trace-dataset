@@ -319,6 +319,25 @@ Ran one full scenario on the VM (`svc_cpu_cap subtle ts-travel-service`, 20/30/2
      filemode). `env script`/`./script`/`exec script` -> "Permission denied" -> every run failed
      instantly and the campaign blazed through 46 empty runs. Fix: `git update-index --chmod=+x`
      AND invoke via `bash <script>`. (`9a53eb5`)
+## SCALE PROBLEM hit + SOLVED (disk) — campaign re-running clean
+Once real runs started, two scale issues surfaced (the flagged "48 containers = big traces" risk,
+now concrete):
+- **Per-run bundle ~11 GB** (kernel 4.7 GB gz + ~6 GB docker logs — the OTel LOGGING span-exporter
+  dumps every span to stdout; redundant with OTLP but complete). 46 runs = ~506 GB.
+- **~30 min/run** (the per-run `audit_alignment` reading the multi-GB kernel trace dominates) →
+  46 runs ≈ ~20-23 h.
+- **DISK: the 500 GB root is pd-balanced = SSD quota, and us-east4 SSD_TOTAL_GB is 500/500 FULL**
+  → can't resize (overflow ~run 40). BUT **DISKS_TOTAL_GB (pd-standard) had 4096 GB free.**
+- **FIX (no fidelity loss):** created a **3 TB pd-standard data disk** `strata-tt-data`, attached,
+  ext4, mounted `/mnt/data` (fstab `nofail` so it re-mounts across the auto-stop/restart),
+  symlinked `~/traces -> /mnt/data/traces`. Sustained write **363 MB/s > the ~285 MB/s LTTng peak**
+  + 4 GB ring buffers → verified **Discarded events: 0** on the first new run. Full 46-run "same
+  as OB" now fits (2.7 TB free).
+  - Gotcha: cross-device `mv ~/traces` = copy+delete, and `sudo lttng` leaves root-owned kernel
+    files on an interrupted run -> needed `sudo rm` + drop incomplete runs before the symlink.
+- **Campaign RE-RUNNING** (systemd-run, resumable): skipped the 5 complete normals, resumed at
+  run 6, auto-stop watcher armed. ~40 runs left × ~30 min ≈ ~20 h.
 - **NEXT (after collection):** batch L1/L3 derive across the 46 TT runs (`STRATATRACE_APP=
-  trainticket`), same as the Sock Shop 46-run batch (~10h). VM must be restarted for it.
+  trainticket`), same as the Sock Shop 46-run batch (~15-20 h for TT's bigger traces). VM
+  auto-stops after collection; restart for the derive (`/mnt/data` re-mounts via fstab).
 - **TT pipeline is FEATURE-COMPLETE with full OB parity**, every stage validated on real data.
