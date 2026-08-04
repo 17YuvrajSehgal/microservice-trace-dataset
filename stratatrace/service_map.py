@@ -20,8 +20,13 @@ import glob
 import os
 import re
 
-# service -> docker container basename in meta/top_<container>_1_*.txt (from the MVP engine)
-SERVICE_CONTAINER = {
+# ---------------------------------------------------------------------------------------------
+# App profiles. Select with env STRATATRACE_APP (default "sockshop" — keeps the frozen v1
+# behavior identical). Each profile supplies SERVICE_CONTAINER (service -> docker container
+# basename in meta/top_<container>_1_*.txt) and COMM_SERVICE (fallback comm -> service).
+# ---------------------------------------------------------------------------------------------
+
+_SOCKSHOP_CONTAINER = {
     "catalogue": "docker-compose_catalogue", "catalogue-db": "docker-compose_catalogue-db",
     "front-end": "docker-compose_front-end", "payment": "docker-compose_payment",
     "orders": "docker-compose_orders", "orders-db": "docker-compose_orders-db",
@@ -31,12 +36,64 @@ SERVICE_CONTAINER = {
     "rabbitmq": "docker-compose_rabbitmq", "session-db": "docker-compose_session-db",
     "toxiproxy": "docker-compose_toxiproxy",
 }
-
-# unique host/aggressor comms with an unambiguous service mapping (fallback only)
-COMM_SERVICE = {
+_SOCKSHOP_COMM = {
     "stress-ng": "aggressor", "stress-ng-vm": "aggressor", "stress-ng-cpu": "aggressor",
     "stress-ng-hdd": "aggressor", "traefik": "edge-router",
 }
+# service -> process comm (L2 fallback identity when a container has no docker-top snapshot)
+_SOCKSHOP_SVC_COMM = {
+    "catalogue": "app", "catalogue-db": "mysqld", "front-end": "node",
+    "payment": "app", "user": "app", "toxiproxy": "toxiproxy",
+    "carts": "java", "orders": "java", "shipping": "java", "queue-master": "java",
+}
+
+# Train Ticket (FudanSELab). Compose project name = "trainticket" (COMPOSE_PROJECT_NAME set in
+# the deploy command) + COMPOSE_COMPATIBILITY -> containers "trainticket_<svc>_1". 41 Java
+# Spring Boot services + 24 per-service MongoDB + mysql + redis + the JS ui-dashboard entry.
+_TT_JAVA = [
+    "ts-admin-basic-info-service", "ts-admin-order-service", "ts-admin-route-service",
+    "ts-admin-travel-service", "ts-admin-user-service", "ts-assurance-service", "ts-auth-service",
+    "ts-avatar-service", "ts-basic-service", "ts-cancel-service", "ts-config-service",
+    "ts-consign-price-service", "ts-consign-service", "ts-contacts-service", "ts-execute-service",
+    "ts-food-map-service", "ts-food-service", "ts-inside-payment-service", "ts-news-service",
+    "ts-notification-service", "ts-order-other-service", "ts-order-service", "ts-payment-service",
+    "ts-preserve-other-service", "ts-preserve-service", "ts-price-service", "ts-rebook-service",
+    "ts-route-plan-service", "ts-route-service", "ts-seat-service", "ts-security-service",
+    "ts-station-service", "ts-ticket-office-service", "ts-ticketinfo-service", "ts-train-service",
+    "ts-travel-plan-service", "ts-travel-service", "ts-travel2-service", "ts-user-service",
+    "ts-verification-code-service", "ts-voucher-service",
+]
+_TT_MONGO = [
+    "ts-account-mongo", "ts-assurance-mongo", "ts-auth-mongo", "ts-config-mongo",
+    "ts-consign-mongo", "ts-consign-price-mongo", "ts-contacts-mongo", "ts-food-map-mongo",
+    "ts-food-mongo", "ts-inside-payment-mongo", "ts-news-mongo", "ts-order-mongo",
+    "ts-order-other-mongo", "ts-payment-mongo", "ts-price-mongo", "ts-rebook-mongo",
+    "ts-route-mongo", "ts-security-mongo", "ts-station-mongo", "ts-ticket-office-mongo",
+    "ts-train-mongo", "ts-travel-mongo", "ts-travel2-mongo", "ts-user-mongo",
+]
+_TT_OTHER = ["ts-ui-dashboard", "ts-voucher-mysql", "redis"]
+_TT_PROJECT = os.environ.get("TT_COMPOSE_PROJECT", "trainticket")
+_TRAINTICKET_CONTAINER = {s: f"{_TT_PROJECT}_{s}" for s in (_TT_JAVA + _TT_MONGO + _TT_OTHER)}
+_TRAINTICKET_COMM = {
+    "stress-ng": "aggressor", "stress-ng-vm": "aggressor", "stress-ng-cpu": "aggressor",
+    "stress-ng-hdd": "aggressor",
+}
+_TRAINTICKET_SVC_COMM = {
+    **{s: "java" for s in _TT_JAVA},
+    **{m: "mongod" for m in _TT_MONGO},
+    "ts-voucher-mysql": "mysqld", "ts-ui-dashboard": "node", "redis": "redis-server",
+}
+
+_PROFILES = {
+    "sockshop": (_SOCKSHOP_CONTAINER, _SOCKSHOP_COMM, _SOCKSHOP_SVC_COMM),
+    "trainticket": (_TRAINTICKET_CONTAINER, _TRAINTICKET_COMM, _TRAINTICKET_SVC_COMM),
+}
+_APP = os.environ.get("STRATATRACE_APP", "sockshop").lower()
+if _APP not in _PROFILES:
+    raise ValueError(f"STRATATRACE_APP={_APP!r} not in {list(_PROFILES)}")
+
+# active profile (module-level; the derivers read these)
+SERVICE_CONTAINER, COMM_SERVICE, SERVICE_COMM = _PROFILES[_APP]
 
 # kernel / system threads -> bucketed as "kernel" (never a microservice)
 _KERNEL_RE = re.compile(

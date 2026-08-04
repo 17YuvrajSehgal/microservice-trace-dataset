@@ -40,14 +40,7 @@ import sys
 import tempfile
 
 from derive_kernel_l1 import prepare_ctf  # gz-aware CTF stage (shared)
-from service_map import SERVICE_CONTAINER, container_pids  # TGID identity (shared, all-PIDs)
-
-# service -> process comm (fallback identity, when a container has no docker-top snapshot)
-SERVICE_COMM = {
-    "catalogue": "app", "catalogue-db": "mysqld", "front-end": "node",
-    "payment": "app", "user": "app", "toxiproxy": "toxiproxy",
-    "carts": "java", "orders": "java", "shipping": "java", "queue-master": "java",
-}
+from service_map import SERVICE_CONTAINER, SERVICE_COMM, container_pids  # profile-driven (STRATATRACE_APP)
 
 _TS = re.compile(r"^\[(\d{2}):(\d{2}):(\d{2})\.(\d{9})\]")
 _EVT = re.compile(r"\] (?:\(\+[^)]*\) )?\S+ (\w+): \{ cpu_id")
@@ -228,13 +221,18 @@ def main():
     ap.add_argument("--keep-temp", action="store_true")
     args = ap.parse_args()
 
+    # profile-appropriate default L2 targets (entry + a couple of core services); overridden by --services
+    _DEFAULT_SVCS = {
+        "sockshop": ["catalogue", "carts", "front-end"],
+        "trainticket": ["ts-ui-dashboard", "ts-order-service", "ts-travel-service"],
+    }.get(os.environ.get("STRATATRACE_APP", "sockshop").lower(), ["ts-ui-dashboard"])
     if args.services:
         services = [s.strip() for s in args.services.split(",") if s.strip()]
     else:
         gt = json.load(open(os.path.join(args.run_dir, "ground_truth.json")))["fault"]
         tgt = gt.get("target_service")
         services = list(dict.fromkeys([s for s in ([tgt] if tgt and tgt in SERVICE_CONTAINER else [])
-                                       + ["catalogue", "carts", "front-end"]]))
+                                       + _DEFAULT_SVCS]))
     out = args.out or os.path.join(args.run_dir, "kernel_l2.jsonl")
     tmp_root = tempfile.mkdtemp(prefix="stratatrace_l2_")
     try:
