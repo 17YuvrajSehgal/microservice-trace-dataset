@@ -28,7 +28,7 @@ sudo systemctl restart docker; sleep 3
 sudo usermod -aG docker "$USER" || true
 sudo modprobe lttng-tracer 2>/dev/null || echo "  (lttng-tracer modprobe deferred)"
 
-echo "== [3/6] OTel Java agent jar (copy from the Sock Shop agents dir; same repo) =="
+echo "== [3/6] OTel Java agent jar (copy from the Sock Shop agents dir; same repo) + jaxb-api =="
 mkdir -p "$TT_SCRIPTS_DIR/agents" "$TT_SCRIPTS_DIR/otlp-out"
 if [ ! -f "$TT_SCRIPTS_DIR/agents/opentelemetry-javaagent.jar" ]; then
   cp "$STRATA_REPO/microservice-lttng-data-collection-scripts/agents/opentelemetry-javaagent.jar" \
@@ -36,6 +36,11 @@ if [ ! -f "$TT_SCRIPTS_DIR/agents/opentelemetry-javaagent.jar" ]; then
   curl -fsSL -o "$TT_SCRIPTS_DIR/agents/opentelemetry-javaagent.jar" \
      https://github.com/open-telemetry/opentelemetry-java-instrumentation/releases/download/v2.25.0/opentelemetry-javaagent.jar
 fi
+# jaxb-api: TT (jjwt 0.9.x) calls javax.xml.bind.DatatypeConverter, removed in JDK 11 ->
+# NoClassDefFoundError on the write path (preserve/pay). The otel overlay puts this jar on the
+# service boot classpath via -Xbootclasspath/a:/otel/jaxb-api.jar.
+[ -f "$TT_SCRIPTS_DIR/agents/jaxb-api.jar" ] || curl -fsSL -o "$TT_SCRIPTS_DIR/agents/jaxb-api.jar" \
+  https://repo1.maven.org/maven2/javax/xml/bind/jaxb-api/2.3.1/jaxb-api-2.3.1.jar
 
 echo "== [4/6] clone OUR TT fork, branch stratatrace (clean base: stock ts-common + jre-11, no"
 echo "         LTTng-UST source tracing, no avatar; the prior LTTng work stays on master) =="
