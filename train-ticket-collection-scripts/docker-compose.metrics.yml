@@ -1,9 +1,9 @@
-# docker-compose.metrics.yml (Train Ticket) — Prometheus + node-exporter + cAdvisor.
+# docker-compose.metrics.yml (Train Ticket) - Prometheus + node-exporter + cAdvisor.
 # TT ships NO monitoring (Sock Shop got Prometheus from microservices-demo's monitoring overlay;
 # TT does not), so this overlay adds the entire metrics stack. cAdvisor gives per-container
 # CPU/mem/net/blkio (the metrics modality's per-service signal); node-exporter gives host series.
 # Requires TT_SCRIPTS_DIR. Needs Docker on classic overlay2 (cAdvisor 0.49 can't read the
-# containerd snapshotter store) — vm_bootstrap_tt pins that. Load after the base + otel.
+# containerd snapshotter store) - vm_bootstrap_tt pins that. Load after the base + otel.
 services:
   prometheus:
     image: prom/prometheus:v2.45.0

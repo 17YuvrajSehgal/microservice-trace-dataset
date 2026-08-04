@@ -1,4 +1,4 @@
-# docker-compose.otel.yml (Train Ticket) — GENERATED from service_map._TT_JAVA.
+# docker-compose.otel.yml (Train Ticket) - GENERATED from service_map._TT_JAVA.
 # OTel Java agent into all ts-*-service via JAVA_TOOL_OPTIONS + otel-collector -> /otlp-out/spans.jsonl.
 # Requires TT_SCRIPTS_DIR. Load AFTER the base.
 services:

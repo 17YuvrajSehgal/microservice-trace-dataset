@@ -1,7 +1,7 @@
 # Prometheus scrape config (Train Ticket). cAdvisor per-container + node-exporter host series.
 # Per-service app metrics: TT Spring Boot services do NOT ship a micrometer /actuator/prometheus
 # endpoint by default, so service-level latency/QPS for the metrics modality is not available
-# from Prometheus here — it comes from the TRACES modality (OTLP spans give per-request latency)
+# from Prometheus here - it comes from the TRACES modality (OTLP spans give per-request latency)
 # and cAdvisor (per-container resource). If actuator/prometheus turns out to be enabled on the
 # VM, uncomment the ts-services job below and fill targets (job labels must match
 # verification_targets.json). 5s scrape matches STEP=5s in download_metrics_full.sh.
