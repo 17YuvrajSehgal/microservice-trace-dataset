@@ -130,3 +130,9 @@ services want ts-*-MYSQL but compose gives ts-*-MONGO (UnknownHostException ts-a
   (a)/(b)/(c).**
 - **VM stopped** to halt spend; stratatrace-branch fixes (nacos/gateway/orphan-removal) + all
   overlays committed. `stratatrace` branch NOT yet pushed to fork (Windows scp/token friction).
+
+## Resolved: stratatrace branch pushed + train-ticket submodule added
+Pushed the clean `stratatrace` branch to `17YuvrajSehgal/train-ticket` (@ 4abb427, from a local
+clone since the VM scp/token failed) and added **train-ticket as a pinned submodule** of the
+research repo (branch stratatrace), mirroring `microservices-demo @ 9dff06f`. Both now visible
+in the repo. (Deployment still blocked on the mongo-vs-mysql compose issue — separate.)
