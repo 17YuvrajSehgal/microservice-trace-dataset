@@ -50,6 +50,14 @@ DEFAULT_USER = "fdse_microservice"
 DEFAULT_PASS = "111111"
 ROUTES = [("shanghai", "suzhou"), ("shanghai", "taiyuan"), ("suzhou", "taiyuan")]
 
+# trips/left rejects any departureTime that is not strictly after today (TravelServiceImpl.
+# afterToday) -> returns []. Query a few days ahead so the booking flow returns real trips.
+DEPART_DAYS_AHEAD = 3
+
+
+def _depart_date():
+    return (dt.date.today() + dt.timedelta(days=DEPART_DAYS_AHEAD)).strftime("%Y-%m-%d")
+
 # weighted journey mix per profile (scenario -> weight)
 PROFILES = {
     "steady": {"search": 55, "browse_orders": 20, "book_pay": 20, "search2": 5},
@@ -107,8 +115,7 @@ def _search(sess, uid, host, scenario, path):
     frm, to = random.choice(ROUTES)
     # field is startPlace (TripInfo.startPlace) - NOT startingPlace; the wrong name deserializes
     # to null and trips/left silently returns [] ("[query][Travel Query Fail][Something null]").
-    body = {"startPlace": frm, "endPlace": to,
-            "departureTime": dt.date.today().strftime("%Y-%m-%d")}
+    body = {"startPlace": frm, "endPlace": to, "departureTime": _depart_date()}
     return _req(sess, uid, scenario, "POST", host, path, json=body)
 
 
@@ -134,7 +141,7 @@ def journey(sess, uid, host, scenario, user, pw):
         frm, to = random.choice(ROUTES)
         preserve_body = {
             "accountId": "", "contactsId": "", "tripId": (trip or {}).get("tripId", "D1345"),
-            "seatType": "2", "date": dt.date.today().strftime("%Y-%m-%d"),
+            "seatType": "2", "date": _depart_date(),
             "from": frm, "to": to, "assurance": "0", "foodType": "0", "consigneeName": "",
         }
         _req(sess, uid, scenario, "POST", host, PRESERVE, json=preserve_body)
@@ -168,7 +175,7 @@ def probe(host, user, pw):
     print("SEARCH", host + TRIPS)
     r = s.post(host.rstrip("/") + TRIPS,
                json={"startPlace": "shanghai", "endPlace": "suzhou",
-                     "departureTime": dt.date.today().strftime("%Y-%m-%d")}, timeout=30)
+                     "departureTime": _depart_date()}, timeout=30)
     print(" ", r.status_code, r.text[:400])
 
 
