@@ -298,11 +298,27 @@ Ran one full scenario on the VM (`svc_cpu_cap subtle ts-travel-service`, 20/30/2
   BORDERLINE with `mysql_cpu` moving correctly (0.0114→0.0056, -51%), just under 3σ due to the
   short window; 120 s campaign runs + calibration will settle it.
 
-## Remaining before the full TT campaign run
-1. Intensity calibration (the CALIBRATE thresholds: noisy_neighbor "KPIs barely move", svc_cpu_cap
-   subtle, slow_db latency, mem-cap vs JVM heap) on the VM.
-2. **Launch `run_campaign_tt.sh`** unattended (46 runs × ~5 min + gzip ≈ several hours), then batch
-   L1/L3 derive — same as the Sock Shop 46-run batch.
-- **VM `strata-tt-collector` (us-east4-c) RUNNING.** TT pipeline is FEATURE-COMPLETE with full OB
-  parity, every stage validated on real data: deploy + booking flow + PHASE-0 gate + fault
-  injection (incl. toxiproxy slow_db) + verification + Phase-2 scenario/46-run campaign.
+## Calibration pass DONE + campaign LAUNCHED (46 runs, running)
+- **Calibration** (`calibrate_tt.sh`, 13 faults under load; details above): safety bound for
+  anomaly_mem (FRAC=35), threshold tuning (anomaly_disk/noisy 0.5->0.15), and the headline finding
+  — TT latency faults are metrics-blind (slow_db search 60ms->28.8s, dep_outage ->30s hang) while
+  cAdvisor signals flip/weak: the kernel-wins thesis, quantified. Committed `d173fcf`.
+- **CAMPAIGN RUNNING** (launched 2026-08-04 21:18 UTC): 46-run matrix via `systemd-run --unit=
+  tt-campaign` (baseline 60 / injection 120 / recovery 60). `tt-campaign-watch` unit shuts the VM
+  down 5 min after completion (data persists on the boot disk). Monitor: `systemctl status
+  tt-campaign`, `tail ~/tt_campaign.out`, `~/tt_campaign_manifest.csv`.
+- **HARD-WON LAUNCH LESSONS (do NOT rediscover):**
+  1. **Never `pkill -f`/`pgrep -f` a pattern that also appears in your own gcloud-ssh command** —
+     it self-matches, so `pkill` kills the SSH session (truncated output) and `pgrep -fc` counts
+     itself (phantom "proc: 1"). Use `ps aux | grep '[b]racket'` or kill by PID.
+  2. **Detached launch over `gcloud ssh --command` needs `systemd-run`, not `setsid &`** — non-PTY
+     SSH close kills backgrounded processes. `sudo systemd-run --unit=... --uid=$(id -u) --gid=
+     $(id -g) --property=SupplementaryGroups=docker --setenv=HOME=... --setenv=PATH=... bash -c
+     '...'` runs fully independently (docker + sudo work; needs HOME+PATH+docker group).
+  3. **Write-created scripts have NO +x bit and `git reset --hard` on Linux won't add it** (Windows
+     filemode). `env script`/`./script`/`exec script` -> "Permission denied" -> every run failed
+     instantly and the campaign blazed through 46 empty runs. Fix: `git update-index --chmod=+x`
+     AND invoke via `bash <script>`. (`9a53eb5`)
+- **NEXT (after collection):** batch L1/L3 derive across the 46 TT runs (`STRATATRACE_APP=
+  trainticket`), same as the Sock Shop 46-run batch (~10h). VM must be restarted for it.
+- **TT pipeline is FEATURE-COMPLETE with full OB parity**, every stage validated on real data.
