@@ -50,18 +50,20 @@ mvn -q -T 4 clean package -DskipTests 2>&1 | tail -20 || { echo "MVN FAILED"; ex
 echo "  [5b] docker compose build (package jars into OUR images) ..."
 sg docker -c "docker compose build" || docker compose build
 
-echo "== [6/6] bring up the instrumented stack (base + metrics + otel) =="
+echo "== [6/6] bring up the instrumented stack (base + nacos + shared-mysql + metrics + otel) =="
+# Overlay order (compose merges by service name, later wins): base app -> nacos (discovery +
+# NACOS_ADDRS) -> dbenv (shared mysql:8 + per-service *_MYSQL_* env; the base compose ships no
+# mongo now) -> metrics -> otel (java-agent injection). TT's compose alone can't boot: its source
+# wants nacos+MySQL+gateway that the stock compose lacks - these overlays supply them.
 export TT_SCRIPTS_DIR
-sg docker -c "docker compose \
-  -f docker-compose.yml \
-  -f '$TT_SCRIPTS_DIR/docker-compose.metrics.yml' \
-  -f '$TT_SCRIPTS_DIR/docker-compose.otel.yml' \
-  up -d" || docker compose \
-  -f docker-compose.yml \
-  -f "$TT_SCRIPTS_DIR/docker-compose.metrics.yml" \
-  -f "$TT_SCRIPTS_DIR/docker-compose.otel.yml" up -d
+OVERLAYS="-f docker-compose.yml \
+  -f $TT_SCRIPTS_DIR/docker-compose.nacos.yml \
+  -f $TT_SCRIPTS_DIR/docker-compose.dbenv.yml \
+  -f $TT_SCRIPTS_DIR/docker-compose.metrics.yml \
+  -f $TT_SCRIPTS_DIR/docker-compose.otel.yml"
+sg docker -c "docker compose $OVERLAYS up -d" || docker compose $OVERLAYS up -d
 
-echo "== health-check (allow ~2-3 min for 41 JVMs to come up) =="
+echo "== health-check (allow ~3-5 min: nacos+mysql first, then ~40 JVMs register & connect) =="
 for i in $(seq 1 30); do
   ui=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8080/ 2>/dev/null || echo 000)
   pr=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:9090/-/ready 2>/dev/null || echo 000)

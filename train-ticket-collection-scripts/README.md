@@ -25,17 +25,27 @@ export TT_SCRIPTS_DIR=~/microservice-trace-dataset/train-ticket-collection-scrip
 cd ~/train-ticket
 COMPOSE_PROJECT_NAME=trainticket COMPOSE_COMPATIBILITY=true IMG_REPO=stratatrace-tt IMG_TAG=v1 \
 docker compose -f docker-compose.yml \
+  -f "$TT_SCRIPTS_DIR/docker-compose.nacos.yml" \
+  -f "$TT_SCRIPTS_DIR/docker-compose.dbenv.yml" \
   -f "$TT_SCRIPTS_DIR/docker-compose.metrics.yml" \
   -f "$TT_SCRIPTS_DIR/docker-compose.otel.yml" \
   up -d
 ```
+The stock TT compose can't boot on its own: its source expects **nacos** discovery, **MySQL**
+(`jdbc:mysql://ts-*-mysql`), and a **gateway** the compose never had. Two overlays supply them —
+`docker-compose.nacos.yml` (nacos-server + `NACOS_ADDRS`) and `docker-compose.dbenv.yml` (one
+shared `mysql:8` + `tt-init.sql` per-service databases + normalized `<PREFIX>_MYSQL_*` env). The
+24 dead `ts-*-mongo` are removed from the base compose (all services migrated to MySQL).
 `COMPOSE_PROJECT_NAME=trainticket` + `COMPOSE_COMPATIBILITY=true` → containers
 `trainticket_<svc>_1` (what `service_map` and the collection tooling expect). Toxiproxy overlay
 (added in Phase 1) loads last, for the slow_db/error_storm faults.
 
 ## What's here (Phase 0a — authored offline)
-- `docker-compose.otel.yml` — GENERATED: OTel Java agent into all 41 `ts-*-service` via
-  `JAVA_TOOL_OPTIONS` (no rebuild) + otel-collector → `otlp-out/spans.jsonl`.
+- `docker-compose.otel.yml` — GENERATED: OTel Java agent into all 39 Java `ts-*-service` (incl.
+  the Spring Cloud gateway) via `JAVA_TOOL_OPTIONS` (no rebuild) + otel-collector → `otlp-out/spans.jsonl`.
+- `docker-compose.nacos.yml` — nacos-server + `NACOS_ADDRS` (TT source needs nacos discovery).
+- `docker-compose.dbenv.yml` + `tt-init.sql` — one shared `mysql:8` + per-service databases +
+  normalized `<PREFIX>_MYSQL_*` env (TT source uses MySQL; the 24 dead mongos were removed).
 - `docker-compose.metrics.yml` + `prometheus-tt.yml` — Prometheus + node-exporter + cAdvisor.
 - `agents/otel.properties`, `agents/otel-collector-config.yaml` — reused generic dual-export.
 - `load_generator.py` — TT booking flow (login→search→book→pay), identical CLI/CSV; `--probe`

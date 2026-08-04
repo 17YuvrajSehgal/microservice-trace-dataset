@@ -1,0 +1,156 @@
+# docker-compose.dbenv.yml (Train Ticket) - shared MySQL 8 for all MySQL services.
+# TT's compose ships MongoDB but 20 services' SOURCE uses MySQL (jdbc:mysql://ts-*-mysql) with
+# bad defaults (10.176.122.1, localhost, an 's-train-mysql' typo, auth pw 'Abcd1234#'). One
+# MySQL 8 + tt-init.sql databases + normalize every service's <PREFIX>_MYSQL_* env to it.
+# The 2 Mongo services (preserve, preserve-other) keep their mongos in the base compose.
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: mysql
+    command: ["--default-authentication-plugin=mysql_native_password", "--max_connections=2000"]
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+    volumes:
+      - ${TT_SCRIPTS_DIR:?set TT_SCRIPTS_DIR}/tt-init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    networks: ["my-network"]
+    restart: unless-stopped
+  ts-assurance-service:
+    environment:
+      ASSURANCE_MYSQL_HOST: "mysql"
+      ASSURANCE_MYSQL_PORT: "3306"
+      ASSURANCE_MYSQL_DATABASE: "ts-assurance-mysql"
+      ASSURANCE_MYSQL_USER: "root"
+      ASSURANCE_MYSQL_PASSWORD: "root"
+  ts-auth-service:
+    environment:
+      AUTH_MYSQL_HOST: "mysql"
+      AUTH_MYSQL_PORT: "3306"
+      AUTH_MYSQL_DATABASE: "ts-auth-mysql"
+      AUTH_MYSQL_USER: "root"
+      AUTH_MYSQL_PASSWORD: "root"
+  ts-config-service:
+    environment:
+      CONFIG_MYSQL_HOST: "mysql"
+      CONFIG_MYSQL_PORT: "3306"
+      CONFIG_MYSQL_DATABASE: "ts-config-mysql"
+      CONFIG_MYSQL_USER: "root"
+      CONFIG_MYSQL_PASSWORD: "root"
+  ts-consign-price-service:
+    environment:
+      CONSIGN_PRICE_MYSQL_HOST: "mysql"
+      CONSIGN_PRICE_MYSQL_PORT: "3306"
+      CONSIGN_PRICE_MYSQL_DATABASE: "ts-consign-price-mysql"
+      CONSIGN_PRICE_MYSQL_USER: "root"
+      CONSIGN_PRICE_MYSQL_PASSWORD: "root"
+  ts-consign-service:
+    environment:
+      CONSIGN_MYSQL_HOST: "mysql"
+      CONSIGN_MYSQL_PORT: "3306"
+      CONSIGN_MYSQL_DATABASE: "ts-consign-mysql"
+      CONSIGN_MYSQL_USER: "root"
+      CONSIGN_MYSQL_PASSWORD: "root"
+  ts-contacts-service:
+    environment:
+      CONTACTS_MYSQL_HOST: "mysql"
+      CONTACTS_MYSQL_PORT: "3306"
+      CONTACTS_MYSQL_DATABASE: "ts-contacts-mysql"
+      CONTACTS_MYSQL_USER: "root"
+      CONTACTS_MYSQL_PASSWORD: "root"
+  ts-food-service:
+    environment:
+      FOOD_MYSQL_HOST: "mysql"
+      FOOD_MYSQL_PORT: "3306"
+      FOOD_MYSQL_DATABASE: "ts-food-mysql"
+      FOOD_MYSQL_USER: "root"
+      FOOD_MYSQL_PASSWORD: "root"
+  ts-inside-payment-service:
+    environment:
+      INSIDE_PAYMENT_MYSQL_HOST: "mysql"
+      INSIDE_PAYMENT_MYSQL_PORT: "3306"
+      INSIDE_PAYMENT_MYSQL_DATABASE: "ts-inside-payment-mysql"
+      INSIDE_PAYMENT_MYSQL_USER: "root"
+      INSIDE_PAYMENT_MYSQL_PASSWORD: "root"
+  ts-notification-service:
+    environment:
+      NOTIFICATION_MYSQL_HOST: "mysql"
+      NOTIFICATION_MYSQL_PORT: "3306"
+      NOTIFICATION_MYSQL_DATABASE: "ts-notification-mysql"
+      NOTIFICATION_MYSQL_USER: "root"
+      NOTIFICATION_MYSQL_PASSWORD: "root"
+  ts-order-other-service:
+    environment:
+      ORDER_OTHER_MYSQL_HOST: "mysql"
+      ORDER_OTHER_MYSQL_PORT: "3306"
+      ORDER_OTHER_MYSQL_DATABASE: "ts-order-other-mysql"
+      ORDER_OTHER_MYSQL_USER: "root"
+      ORDER_OTHER_MYSQL_PASSWORD: "root"
+  ts-order-service:
+    environment:
+      ORDER_MYSQL_HOST: "mysql"
+      ORDER_MYSQL_PORT: "3306"
+      ORDER_MYSQL_DATABASE: "ts-order-mysql"
+      ORDER_MYSQL_USER: "root"
+      ORDER_MYSQL_PASSWORD: "root"
+  ts-payment-service:
+    environment:
+      PAYMENT_MYSQL_HOST: "mysql"
+      PAYMENT_MYSQL_PORT: "3306"
+      PAYMENT_MYSQL_DATABASE: "ts-payment-mysql"
+      PAYMENT_MYSQL_USER: "root"
+      PAYMENT_MYSQL_PASSWORD: "root"
+  ts-price-service:
+    environment:
+      PRICE_MYSQL_HOST: "mysql"
+      PRICE_MYSQL_PORT: "3306"
+      PRICE_MYSQL_DATABASE: "ts-price-mysql"
+      PRICE_MYSQL_USER: "root"
+      PRICE_MYSQL_PASSWORD: "root"
+  ts-route-service:
+    environment:
+      ROUTE_MYSQL_HOST: "mysql"
+      ROUTE_MYSQL_PORT: "3306"
+      ROUTE_MYSQL_DATABASE: "ts-route-mysql"
+      ROUTE_MYSQL_USER: "root"
+      ROUTE_MYSQL_PASSWORD: "root"
+  ts-security-service:
+    environment:
+      SECURITY_MYSQL_HOST: "mysql"
+      SECURITY_MYSQL_PORT: "3306"
+      SECURITY_MYSQL_DATABASE: "ts-security-mysql"
+      SECURITY_MYSQL_USER: "root"
+      SECURITY_MYSQL_PASSWORD: "root"
+  ts-station-service:
+    environment:
+      STATION_MYSQL_HOST: "mysql"
+      STATION_MYSQL_PORT: "3306"
+      STATION_MYSQL_DATABASE: "ts-station-mysql"
+      STATION_MYSQL_USER: "root"
+      STATION_MYSQL_PASSWORD: "root"
+  ts-train-service:
+    environment:
+      TRAIN_MYSQL_HOST: "mysql"
+      TRAIN_MYSQL_PORT: "3306"
+      TRAIN_MYSQL_DATABASE: "ts-train-mysql"
+      TRAIN_MYSQL_USER: "root"
+      TRAIN_MYSQL_PASSWORD: "root"
+  ts-travel-service:
+    environment:
+      TRAVEL_MYSQL_HOST: "mysql"
+      TRAVEL_MYSQL_PORT: "3306"
+      TRAVEL_MYSQL_DATABASE: "ts-travel-mysql"
+      TRAVEL_MYSQL_USER: "root"
+      TRAVEL_MYSQL_PASSWORD: "root"
+  ts-travel2-service:
+    environment:
+      TRAVEL2_MYSQL_HOST: "mysql"
+      TRAVEL2_MYSQL_PORT: "3306"
+      TRAVEL2_MYSQL_DATABASE: "ts-travel2-mysql"
+      TRAVEL2_MYSQL_USER: "root"
+      TRAVEL2_MYSQL_PASSWORD: "root"
+  ts-user-service:
+    environment:
+      USER_MYSQL_HOST: "mysql"
+      USER_MYSQL_PORT: "3306"
+      USER_MYSQL_DATABASE: "ts-user-mysql"
+      USER_MYSQL_USER: "root"
+      USER_MYSQL_PASSWORD: "root"

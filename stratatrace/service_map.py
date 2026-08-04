@@ -48,14 +48,20 @@ _SOCKSHOP_SVC_COMM = {
 }
 
 # Train Ticket (FudanSELab). Compose project name = "trainticket" (COMPOSE_PROJECT_NAME set in
-# the deploy command) + COMPOSE_COMPATIBILITY -> containers "trainticket_<svc>_1". 41 Java
-# Spring Boot services + 24 per-service MongoDB + mysql + redis + the JS ui-dashboard entry.
+# the deploy command) + COMPOSE_COMPATIBILITY -> containers "trainticket_<svc>_1". 40 app
+# services (39 Java Spring Boot ts-*-service incl. the Spring Cloud gateway; the ui-dashboard
+# is JS), one shared MySQL 8, redis, nacos for discovery.
+#
+# NO MongoDB: TT's source migrated every service to MySQL (jdbc:mysql://ts-*-mysql); the compose's
+# 24 ts-*-mongo were dead artifacts (preserve's mongo config is even commented out). Our deploy
+# drops them and runs ONE shared mysql:8 (docker-compose.dbenv.yml) with a per-service database +
+# nacos (docker-compose.nacos.yml). ts-voucher-service (Python) keeps its own ts-voucher-mysql.
 _TT_JAVA = [
     "ts-admin-basic-info-service", "ts-admin-order-service", "ts-admin-route-service",
     "ts-admin-travel-service", "ts-admin-user-service", "ts-assurance-service", "ts-auth-service",
     "ts-basic-service", "ts-cancel-service", "ts-config-service",
     "ts-consign-price-service", "ts-consign-service", "ts-contacts-service", "ts-execute-service",
-    "ts-food-service", "ts-inside-payment-service", "ts-news-service",
+    "ts-food-service", "ts-gateway-service", "ts-inside-payment-service", "ts-news-service",
     "ts-notification-service", "ts-order-other-service", "ts-order-service", "ts-payment-service",
     "ts-preserve-other-service", "ts-preserve-service", "ts-price-service", "ts-rebook-service",
     "ts-route-plan-service", "ts-route-service", "ts-seat-service", "ts-security-service",
@@ -63,25 +69,20 @@ _TT_JAVA = [
     "ts-travel-plan-service", "ts-travel-service", "ts-travel2-service", "ts-user-service",
     "ts-verification-code-service", "ts-voucher-service",
 ]
-_TT_MONGO = [
-    "ts-account-mongo", "ts-assurance-mongo", "ts-auth-mongo", "ts-config-mongo",
-    "ts-consign-mongo", "ts-consign-price-mongo", "ts-contacts-mongo", "ts-food-map-mongo",
-    "ts-food-mongo", "ts-inside-payment-mongo", "ts-news-mongo", "ts-order-mongo",
-    "ts-order-other-mongo", "ts-payment-mongo", "ts-price-mongo", "ts-rebook-mongo",
-    "ts-route-mongo", "ts-security-mongo", "ts-station-mongo", "ts-ticket-office-mongo",
-    "ts-train-mongo", "ts-travel-mongo", "ts-travel2-mongo", "ts-user-mongo",
-]
+# compose-named (project prefix + _1); JS/Python/DB containers off the Java path
 _TT_OTHER = ["ts-ui-dashboard", "ts-voucher-mysql", "redis"]
 _TT_PROJECT = os.environ.get("TT_COMPOSE_PROJECT", "trainticket")
-_TRAINTICKET_CONTAINER = {s: f"{_TT_PROJECT}_{s}" for s in (_TT_JAVA + _TT_MONGO + _TT_OTHER)}
+_TRAINTICKET_CONTAINER = {s: f"{_TT_PROJECT}_{s}" for s in (_TT_JAVA + _TT_OTHER)}
+# our overlay infra sets an explicit container_name (no project prefix / _1 suffix)
+_TRAINTICKET_CONTAINER.update({"mysql": "mysql", "nacos": "nacos"})
 _TRAINTICKET_COMM = {
     "stress-ng": "aggressor", "stress-ng-vm": "aggressor", "stress-ng-cpu": "aggressor",
     "stress-ng-hdd": "aggressor",
 }
 _TRAINTICKET_SVC_COMM = {
     **{s: "java" for s in _TT_JAVA},
-    **{m: "mongod" for m in _TT_MONGO},
-    "ts-voucher-mysql": "mysqld", "ts-ui-dashboard": "node", "redis": "redis-server",
+    "mysql": "mysqld", "ts-voucher-mysql": "mysqld", "nacos": "java",
+    "ts-ui-dashboard": "node", "redis": "redis-server",
 }
 
 _PROFILES = {

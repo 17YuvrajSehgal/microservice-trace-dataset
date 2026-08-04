@@ -1,5 +1,6 @@
 # docker-compose.otel.yml (Train Ticket) - GENERATED from service_map._TT_JAVA.
-# OTel Java agent into all ts-*-service via JAVA_TOOL_OPTIONS + otel-collector -> /otlp-out/spans.jsonl.
+# OTel Java agent into all Java ts-*-service via JAVA_TOOL_OPTIONS + otel-collector -> /otlp-out/spans.jsonl.
+# (a no-op on the 2 non-Java services voucher=Python, ticket-office=Node - they ignore JAVA_TOOL_OPTIONS.)
 # Requires TT_SCRIPTS_DIR. Load AFTER the base.
 services:
   otel-collector:
@@ -103,6 +104,12 @@ services:
     environment:
       JAVA_TOOL_OPTIONS: "-javaagent:/otel/opentelemetry-javaagent.jar -Dotel.javaagent.configuration-file=/otel/otel.properties"
       OTEL_SERVICE_NAME: "ts-food-service"
+  ts-gateway-service:
+    volumes:
+      - ${TT_SCRIPTS_DIR:?}/agents:/otel:ro
+    environment:
+      JAVA_TOOL_OPTIONS: "-javaagent:/otel/opentelemetry-javaagent.jar -Dotel.javaagent.configuration-file=/otel/otel.properties"
+      OTEL_SERVICE_NAME: "ts-gateway-service"
   ts-inside-payment-service:
     volumes:
       - ${TT_SCRIPTS_DIR:?}/agents:/otel:ro
