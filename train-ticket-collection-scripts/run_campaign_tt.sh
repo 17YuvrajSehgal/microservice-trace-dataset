@@ -59,7 +59,7 @@ PXY[error_storm]=mysql; TSVC[error_storm]=mysql; FNAME[error_storm]=error_storm_
 BLAST[error_storm]="$_DB_BLAST"; MODALITY[error_storm]=logs; TRACEVIS[error_storm]=covered
 
 # --- the matrix (46 runs, matching the Sock Shop campaign) ------------------
-CORE_FAULTS=(slow_db error_storm svc_cpu_cap svc_mem_cap dependency_outage svc_net anomaly_cpu anomaly_mem anomaly_net noisy_neighbor)
+CORE_FAULTS=(slow_db error_storm svc_cpu_cap svc_mem_cap dependency_outage svc_net anomaly_cpu anomaly_disk anomaly_mem anomaly_net noisy_neighbor)
 INTENSITY_FAULTS=(noisy_neighbor svc_cpu_cap slow_db)  # subtle variants (RQ5)
 WORKLOAD_FAULTS=(slow_db error_storm)                  # burst variants (RQ5)
 

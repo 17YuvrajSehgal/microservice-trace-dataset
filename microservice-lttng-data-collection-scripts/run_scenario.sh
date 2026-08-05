@@ -40,7 +40,9 @@ if [[ "$RECIPE" == "normal" ]]; then
     NORMAL=1
 else
     RECIPE_SH="$SD/faults/${RECIPE}.sh"
-    [[ -x "$RECIPE_SH" ]] || { echo "no such recipe: $RECIPE_SH"; exit 1; }
+    # -f not -x: recipes are invoked via `bash` below, so a missing +x bit (Windows-authored
+    # scripts lose it, and git reset won't restore it) must NOT silently drop the fault.
+    [[ -f "$RECIPE_SH" ]] || { echo "no such recipe: $RECIPE_SH"; exit 1; }
 fi
 
 # Workload shape passed through to the load generator (steady|burst).
@@ -78,10 +80,10 @@ LOAD_PID=$!
 if [[ "$NORMAL" -eq 0 ]]; then
     sleep "$BASELINE_S"
     echo "[$RUN] injecting $RECIPE ($INTENSITY) at baseline+${BASELINE_S}s"
-    "$RECIPE_SH" inject "$INTENSITY" || echo "[$RUN] WARN: inject returned nonzero"
+    bash "$RECIPE_SH" inject "$INTENSITY" || echo "[$RUN] WARN: inject returned nonzero"
     sleep "$INJECTION_S"
     echo "[$RUN] cleaning up $RECIPE"
-    "$RECIPE_SH" cleanup || echo "[$RUN] WARN: cleanup returned nonzero"
+    bash "$RECIPE_SH" cleanup || echo "[$RUN] WARN: cleanup returned nonzero"
 fi
 
 # recovery window elapses while tracing continues to the end
