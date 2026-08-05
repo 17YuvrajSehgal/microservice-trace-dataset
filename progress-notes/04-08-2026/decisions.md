@@ -341,3 +341,20 @@ now concrete):
   trainticket`), same as the Sock Shop 46-run batch (~15-20 h for TT's bigger traces). VM
   auto-stops after collection; restart for the derive (`/mnt/data` re-mounts via fstab).
 - **TT pipeline is FEATURE-COMPLETE with full OB parity**, every stage validated on real data.
+
+## Mid-campaign bug caught by monitoring: 4 non-executable recipes -> unlabeled runs
+A progress check at run 42/46 found `anomaly_mem`/`anomaly_net`/`svc_net` verifying **n/a** = NO
+ground_truth written. Root cause: those 3 (+ `anomaly_disk`) were committed **100644** (Windows-
+authored, no +x); `run_scenario.sh` gated recipes on `[[ -x ]]` and invoked them directly, so they
+hit "no such recipe" -> exited with no trace, no label (9 unlabeled runs). `anomaly_disk` was also
+MISSING from the TT matrix. `calibrate_tt` didn't catch it (it invokes recipes via `bash`).
+- **QC that DID work (reassuring):** reliable faults verified right — `noisy_neighbor` confirmed
+  x5, `svc_mem_cap` confirmed; metrics-blind faults (slow_db, error_storm, svc_cpu_cap) borderline/
+  unconfirmed exactly per the calibration thesis (kernel/client-latency carry them).
+- **Fix `b6d4cd4`:** `git update-index --chmod=+x` the 4 recipes; `run_scenario.sh` gates on `-f`
+  and invokes recipes via `bash "$RECIPE_SH"` (missing +x can never silently drop a fault again);
+  added `anomaly_disk` to CORE_FAULTS -> **49-run matrix**.
+- **Resumed** (stop -> sudo-clean incomplete dirs -> pull -> relaunch): skipped the **34 good
+  bundles**, now collecting the 15 missing (svc_net/anomaly_disk/anomaly_mem/anomaly_net x3 +
+  slow_db/error_storm burst x2). **Verified svc_net now traces + writes ground_truth.** ~8h left,
+  auto-stop re-armed. LESSON: after any Write-authored `.sh`, `git update-index --chmod=+x` it.
