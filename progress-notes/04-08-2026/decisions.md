@@ -377,3 +377,20 @@ finalize:
   3 TB pd-standard data disk (0 event drops). Bundle sizes ~5-11 GB (kernel 4.7 GB gz + logs).
 - **NEXT:** batch L1/L3 derive across the 49 runs (`STRATATRACE_APP=trainticket`), then release
   packaging. VM currently RUNNING (restarted to verify).
+
+## TT L1/L3 DERIVE COMPLETE (2026-08-06) — 47/49, auto-stopped
+`batch_derive_tt.sh` (systemd-run, concurrency 3 -> raised to **6** after stopping the idle docker
+stack that was eating 4+ cores @ `426% java`; per-derive RAM is tiny so 6 is safe). Ran ~13 h then
+auto-stopped. **BATCH DONE: ok=47 skip=0 fail=2.** 47/49 `kernel_l1.parquet` + `kernel_l3.jsonl`.
+- **Parquet validated:** 43 services, **38 ts-services (java split works)**, kernel+system buckets
+  present -> the TT `service_map` profile derives correctly.
+- **SCALE reality:** TT under CPU/disk stress + full-syscall tracing = **500-700 M events/run** (the
+  anomaly_cpu/disk runs), ~90 min/derive each. A genuinely large-trace dataset characteristic.
+- **2 FAILS = lost kernel traces, NOT a derive bug:** `normal_none_burst_r2` +
+  `slow_db_aggressive_burst_r1` -> "No CTF metadata found" (their kernel CTF files are missing).
+  These 2 are the first-attempt runs interrupted by the disk migration; the botched cross-device
+  `mv` (root-owned `sudo lttng` files -> "permission denied") lost their kernel trace when I
+  `sudo rm`'d the root copy. Other 3 modalities survive. LESSON: after a cross-device `mv` of
+  sudo-owned trace data, VERIFY the kernel CTF copied before deleting the source.
+- Dataset is 47/49 kernel-derived, ALL fault families/intensities/repeats intact (the 2 lost are
+  single burst-workload repeats). Re-collect the 2 for a clean 49/49, or accept 47.
