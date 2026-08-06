@@ -358,3 +358,22 @@ MISSING from the TT matrix. `calibrate_tt` didn't catch it (it invokes recipes v
   bundles**, now collecting the 15 missing (svc_net/anomaly_disk/anomaly_mem/anomaly_net x3 +
   slow_db/error_storm burst x2). **Verified svc_net now traces + writes ground_truth.** ~8h left,
   auto-stop re-armed. LESSON: after any Write-authored `.sh`, `git update-index --chmod=+x` it.
+
+## TT DATASET COLLECTION COMPLETE (2026-08-06 ~01:29 UTC) — 49/49 labeled bundles
+Campaign finished all 49 runs, auto-stopped the VM (no idle billing). Restarted to verify +
+finalize:
+- **49/49 complete + LABELED bundles** on `/mnt/data` (fstab remounts on restart). One run
+  (`slow_db_aggressive_burst_r1`) had its trace but the ground-truth-COPY step never ran (it was
+  in-flight when I stopped for the disk migration; kept because it had runinfo_end.txt) -> copied
+  the GT from fault-state into the bundle + verified. Clean index -> `~/tt_dataset_manifest.csv`.
+- **Verdict distribution TELLS THE THESIS:** reliable resource/host faults CONFIRM (anomaly_mem x3,
+  anomaly_disk x3, noisy_neighbor x5, svc_mem_cap x2) - cAdvisor/node metrics see caps + host
+  stress; the latency/frozen/contention faults go borderline/unconfirmed (slow_db, error_storm,
+  svc_cpu_cap, svc_net, anomaly_net, dependency_outage, anomaly_cpu) - resource metrics MISS them,
+  the kernel + traces + client-latency carry them. ~half the fault families are metrics-blind =
+  the kernel-wins argument, emergent from the QC verdicts themselves.
+- **anomaly_mem CONFIRMED + no OOM** validates the FRAC=35 safety calibration.
+- Full-fidelity "same as OB": full-syscall kernel, all 44 containers, 60/120/60 windows, on the
+  3 TB pd-standard data disk (0 event drops). Bundle sizes ~5-11 GB (kernel 4.7 GB gz + logs).
+- **NEXT:** batch L1/L3 derive across the 49 runs (`STRATATRACE_APP=trainticket`), then release
+  packaging. VM currently RUNNING (restarted to verify).
