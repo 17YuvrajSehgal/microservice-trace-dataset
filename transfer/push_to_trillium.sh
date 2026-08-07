@@ -23,13 +23,28 @@ APP="${APP:?set APP to sockshop|trainticket}"
 PAR="${PAR:-4}"                 # parallel recipe streams (each fills one WAN connection)
 PIGZ_P="${PIGZ_P:-4}"           # cores per pigz worker (PAR*PIGZ_P <= vCPUs)
 SSH_KEY="${SSH_KEY:-}"
-# fast, AES-NI cipher; disable ssh-level compression (pigz already compresses the stream)
-SSH="ssh -o StrictHostKeyChecking=accept-new -o Compression=no -c aes128-gcm@openssh.com ${SSH_KEY:+-i $SSH_KEY}"
 REMOTE="$TRILLIUM_USER@$TRILLIUM_HOST"
+# Both clusters mandate MFA, so we multiplex over ONE interactively-authenticated master
+# connection: every push stream reuses it, no re-auth. Establish the master ONCE (interactive,
+# does the MFA), then run the push:
+#   ssh -fNM -o ControlPath=$HOME/.ssh/cm-strata-<host> -o ControlPersist=12h [-i key] user@host
+CM_PATH="${CM_PATH:-$HOME/.ssh/cm-strata-$TRILLIUM_HOST}"
+# fast, AES-NI cipher; ssh-level compression off (pigz compresses); reuse the master, never prompt
+SSH="ssh -o Compression=no -c aes128-gcm@openssh.com -o ControlMaster=no -o ControlPath=$CM_PATH -o BatchMode=yes ${SSH_KEY:+-i $SSH_KEY}"
+
+if [ "${1:-}" = "--setup-master" ]; then
+  echo "== opening MFA'd master to $REMOTE (persists 12h; do the MFA when prompted) =="
+  exec ssh -fNM -o ControlPath=$CM_PATH -o ControlPersist=12h -o StrictHostKeyChecking=accept-new ${SSH_KEY:+-i $SSH_KEY} "$REMOTE"
+fi
+if ! ssh -o ControlPath=$CM_PATH -O check "$REMOTE" 2>/dev/null; then
+  echo "No live master to $REMOTE. First (interactively, once - does the MFA):"
+  echo "   bash $0 --setup-master        # or: ssh -fNM -o ControlPath=$CM_PATH -o ControlPersist=12h ${SSH_KEY:+-i $SSH_KEY} $REMOTE"
+  echo "Then re-run the push."; exit 1
+fi
 DEST="$DEST_ROOT/$APP"
 COMP="${COMP:-pigz -p $PIGZ_P}"; command -v pigz >/dev/null 2>&1 || { COMP="gzip"; echo "(pigz not found -> gzip; 'sudo apt-get install -y pigz' for parallel speed)"; }
 
-$SSH "$REMOTE" "mkdir -p '$DEST'" || { echo "FATAL: SSH/auth to $REMOTE failed - set up VM->Trillium key auth first"; exit 1; }
+$SSH "$REMOTE" "mkdir -p '$DEST'" || { echo "FATAL: master to $REMOTE not usable"; exit 1; }
 mapfile -t RECIPES < <(cd "$SRC" && ls -d */ 2>/dev/null | sed 's#/##')
 [ "${#RECIPES[@]}" -gt 0 ] || { echo "FATAL: no recipe dirs under $SRC"; exit 1; }
 
