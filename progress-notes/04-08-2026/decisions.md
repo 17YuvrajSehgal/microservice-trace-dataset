@@ -394,3 +394,18 @@ auto-stopped. **BATCH DONE: ok=47 skip=0 fail=2.** 47/49 `kernel_l1.parquet` + `
   sudo-owned trace data, VERIFY the kernel CTF copied before deleting the source.
 - Dataset is 47/49 kernel-derived, ALL fault families/intensities/repeats intact (the 2 lost are
   single burst-workload repeats). Re-collect the 2 for a clean 49/49, or accept 47.
+
+## TT DATASET 49/49 COMPLETE (2026-08-06) — user chose to re-collect the 2
+Restarted the VM, restarted the docker stack (`docker start` all + restart ui-dashboard for the
+gateway DNS; healthy in ~3 min), re-ran the 2 lost scenarios via `run_scenario_tt.sh` (burst/40u;
+slow_db with PROXY=mysql) - both collected FULL kernel traces this time (20-21 GB) + labels
+(slow_db verified borderline, normal n/a). Gzipped + derived them (~55 min each).
+- **FINAL: 49/49 COMPLETE bundles** (4-modality kernel/traces/logs/metrics + L0/L1/L3 ladder +
+  labels), **ZERO gaps**. Verdicts: 13 confirmed / 15 borderline / 15 unconfirmed / 6 n/a(normal).
+  Clean index `~/tt_dataset_manifest.csv`. VM STOPPED (data on both disks; `/mnt/data` fstab-mounts).
+- **Train Ticket = full Sock Shop (OB) parity achieved.** Same methodology (full-syscall kernel,
+  all containers, 60/120/60 windows, toxiproxy DB path, 4 modalities + kernel ladder), 2nd diverse
+  app (shared-MySQL vs per-service-DB; nacos gateway; 500-700 M events/run under stress).
+- **NEXT:** release packaging (datasheet, splits, Zenodo/GHCR) + the modality-ablation study across
+  BOTH apps (the plan's critical path). Optional: prune the redundant OTel span-logs (~6 GB/run) for
+  leaner bundles; move voucher/ticket-office out of _TT_JAVA (non-Java, agent-injection no-op).
