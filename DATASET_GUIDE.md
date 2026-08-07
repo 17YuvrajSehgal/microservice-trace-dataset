@@ -254,6 +254,14 @@ actor) + a collapsed `system` bucket. That 38-way "java split" is the payoff of 
 map — dozens of services all report the process name `java`, but we attribute each event to the
 right service via its container's TGID.
 
+**`kernel_l3.jsonl`** — the LLM-facing digest, one line per `(service, window)`. Real slow_db onset
+window (from the run above):
+> *"kernel @ t=0s: net syscalls NEW (0→13); block sectors 330×; io syscalls 128×; syscall p99
+> latency 47.5× (0.0→0.8 ms); block-I/O ops 42×; block p95 latency 16× (0.1→1.0 ms)."*
+
+It reads like "a slow, disk-backed database" — even though `slow_db` is a **trace blind spot**. The
+whole thesis, in one line.
+
 **`verification.json`** — `{"verification_status": "borderline", ...}` plus the canonical Prometheus
 signal and its baseline-vs-injected values.
 
