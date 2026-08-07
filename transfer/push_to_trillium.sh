@@ -18,8 +18,6 @@ set -uo pipefail
 TRILLIUM_USER="${TRILLIUM_USER:-yuvraj17}"
 TRILLIUM_HOST="${TRILLIUM_HOST:-trillium.scinet.utoronto.ca}"
 DEST_ROOT="${DEST_ROOT:-/scratch/yuvraj17/microservice-trace-dataset}"
-SRC="${SRC:?set SRC to the traces dir (e.g. /mnt/data/traces or \$HOME/traces)}"
-APP="${APP:?set APP to sockshop|trainticket}"
 PAR="${PAR:-4}"                 # parallel recipe streams (each fills one WAN connection)
 PIGZ_P="${PIGZ_P:-4}"           # cores per pigz worker (PAR*PIGZ_P <= vCPUs)
 SSH_KEY="${SSH_KEY:-}"
@@ -41,6 +39,9 @@ if ! ssh -o ControlPath=$CM_PATH -O check "$REMOTE" 2>/dev/null; then
   echo "   bash $0 --setup-master        # or: ssh -fNM -o ControlPath=$CM_PATH -o ControlPersist=12h ${SSH_KEY:+-i $SSH_KEY} $REMOTE"
   echo "Then re-run the push."; exit 1
 fi
+# from here on we actually push, so require SRC/APP
+SRC="${SRC:?set SRC to the traces dir (e.g. /mnt/data/traces or \$HOME/traces)}"
+APP="${APP:?set APP to sockshop|trainticket}"
 DEST="$DEST_ROOT/$APP"
 COMP="${COMP:-pigz -p $PIGZ_P}"; command -v pigz >/dev/null 2>&1 || { COMP="gzip"; echo "(pigz not found -> gzip; 'sudo apt-get install -y pigz' for parallel speed)"; }
 
