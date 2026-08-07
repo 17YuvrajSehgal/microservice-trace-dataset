@@ -20,7 +20,8 @@ TRILLIUM_HOST="${TRILLIUM_HOST:-trillium.scinet.utoronto.ca}"
 DEST_ROOT="${DEST_ROOT:-/scratch/yuvraj17/microservice-trace-dataset}"
 PAR="${PAR:-4}"                 # parallel recipe streams (each fills one WAN connection)
 PIGZ_P="${PIGZ_P:-4}"           # cores per pigz worker (PAR*PIGZ_P <= vCPUs)
-SSH_KEY="${SSH_KEY:-}"
+# default to the per-VM transfer key if present (SciNet/Alliance = key + MFA); override with SSH_KEY=
+SSH_KEY="${SSH_KEY:-$HOME/.ssh/trillium}"; [ -f "$SSH_KEY" ] || SSH_KEY=""
 REMOTE="$TRILLIUM_USER@$TRILLIUM_HOST"
 # Both clusters mandate MFA, so we multiplex over ONE interactively-authenticated master
 # connection: every push stream reuses it, no re-auth. Establish the master ONCE (interactive,
