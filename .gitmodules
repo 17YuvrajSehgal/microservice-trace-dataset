@@ -1,3 +1,7 @@
 [submodule "microservices-demo"]
 	path = microservices-demo
 	url = https://github.com/17YuvrajSehgal/microservices-demo.git
+[submodule "train-ticket"]
+	path = train-ticket
+	url = https://github.com/17YuvrajSehgal/train-ticket.git
+	branch = stratatrace

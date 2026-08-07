@@ -1,0 +1,74 @@
+# Live Session
+
+- Date: 2026-07-29T17:10:52.054Z
+- Platform: live
+- Status: Ended
+
+
+
+
+## Transcript
+
+[2026-07-29T17:10:58.652Z] user: We should decide about the idea.
+[2026-07-29T17:11:13.758Z] user: The analysis type and the output. Though some output needs graphical view, some analysis needs graphical, some analysis, some type of analysis needs just some numbers, some like umm, let's say umm.
+[2026-07-29T17:11:44.358Z] user: Confusion, metrics, accuracy and so on. Some of them needs like cable text explanation different. OK, so let's work like this. You know, in your design, think about it, skill we call it, maybe we can find a better work for it. Let's say we call it the use case. We define some use case based skills is a workflow pretty much right, which defines the events as well, which includes the event.
+[2026-07-29T17:11:58.021Z] user: It's not just after collecting. Defines exactly what kind of trace or what format of trace it needs, what format of logs it needs. This way you can generalize it and it can work with LTTNG with everything.
+[2026-07-29T17:12:03.782Z] user: Right then define the pro like the the chain of analysis.
+[2026-07-29T17:12:26.406Z] user: We need a preprocessing, we need this, we need that, we need the mining, we need thing and also have something about the output, what kind of output it needs, right? So a skill will be, we define a skill based on each use case and each skill has like input, analysis output, I mean the whole workflow or the chain and also codes and everything about each scale. So we package the scale.
+[2026-07-29T17:12:33.058Z] user: Right, so someone says that hey my system, I think my system is slow.
+[2026-07-29T17:12:40.279Z] user: Right. My GP is always like or CP is always 100%, so he said that's fine, get this skill.
+[2026-07-29T17:12:42.630Z] user: Right and run it. That's it.
+[2026-07-29T17:12:51.959Z] user: We give it to your AI and that the AI will know what to collect based on their skill, how to analyze it and what to generate.
+[2026-07-29T17:13:22.759Z] user: What can do root cause analysis and so on suffers, right. So think about the work life you need to design. When I said you was work on the analysis, like the architecture come up with something like this. I will give this to you. Maybe your brain is so many AI more and then you come up with OK, let's let's discuss a bit more. You know, for example, a CNR people they they talked about like some workflows about data collection, yes, but then again, this is not they they just collecting data.
+[2026-07-29T17:13:25.276Z] user: For what reason? Yeah, why they're collecting data.
+[2026-07-29T17:13:42.311Z] user: But but why? Why they collect? If they think about like the problems they have, they can say hey I have this whole thing, but there is a decide, there is a wrapper, there is like a manager on top of that decides on what kind of data to collect, what to do with them and so on.
+[2026-07-29T17:13:47.123Z] user: So it could be differently. There will be data data collection layer which is.
+[2026-07-29T17:13:55.094Z] user: Able to collect in collecting game, which is able to collect game, but what data to collect comes from somewhere comes from that skill.
+[2026-07-29T17:13:59.708Z] user: Right. And what is skill? We can have thousands of skills.
+[2026-07-29T17:14:28.377Z] user: That makes sense, correct? So.
+[2026-07-29T17:14:33.896Z] user: Each one thing uh, so for example, if you wanna make it as a skill, let's say, uh, we build it for CMS, right? But we want to sell it to other customers as well. And let's say we built our skill basically, let's say based on LTTNG traces and all that Yeah. But like another company that said Google came and said that I want to use this skill.
+[2026-07-29T17:14:33.925Z] user: So how exactly they are gonna get these LTTNG traces?
+[2026-07-29T17:14:41.919Z] user: Do they? What do you know? Exchange is open source tool. All AI agents are able to install Lt. engine work with that we don't think about the tool.
+[2026-07-29T17:14:57.724Z] user: Yes, no, I mean like do we make?
+[2026-07-29T17:14:57.861Z] user: Our no, we make making for Sienna only don't think about like having the general. There's no generalized system in the world. There's no we're thinking about just some use cases of.
+[2026-07-29T17:15:05.869Z] user: Siena right and specific to that data set because the analysis is defined based on the data set.
+[2026-07-29T17:15:36.081Z] user: You cannot write, you cannot write to like very generic system like for CPU or not that works on every kind of data. That's not possible pretty much. Or if it's possible, we, we do a bottom up approach. We don't do down like up, down we do, but down button up, right. So you designed first for Sienna later on the next version, next phase we might be able to merge some of them together and so on. You know, you come up with the idea like this and then and share it with me. You know, it needs a very good architecture.
+[2026-07-29T17:15:54.824Z] user: Yes, and also needs to be very beautiful. You just saw how CNR like put like nice grey, grey, graphical things like that and also try to include what Sienna presented last time on that. Yes, they they actually see their problem on that. If you do that then they can patent this much easier and much better.
+[2026-07-29T17:16:20.807Z] user: Exactly. I get a couple of screenshots from there.
+[2026-07-29T17:16:20.884Z] user: OK, so you know it. Nice. Yeah, yeah, yeah. I don't believe you can include tomorrow's presentation. I don't know if you're.
+[2026-07-29T17:16:22.011Z] user: Allowed, but yeah, yeah, that. I'll just take idea from that and build my.
+[2026-07-29T17:16:23.651Z] user: Own. Yeah, no, that's good. Yeah, do that and come up with this. They say, they will say that, hey, you start your presentation. So you give a presentation maybe 2-3 slides.
+[2026-07-29T17:16:23.770Z] user: The first slide you can talk about agent first design.
+[2026-07-29T17:16:27.748Z] user: Right agent 1st and then second.
+[2026-07-29T17:16:47.253Z] user: This is your thing and this is what we presenting today and that will include both the data collection, analysis and output all of them but the skill 1st and it's going to be for that. And even maybe you can, you know, include two examples to two use cases. The first use case can be like doing something with locks.
+[2026-07-29T17:16:54.047Z] user: The same as you'll say, define this log, do this analysis, do that. It's going to be one scale. They can just include it into it.
+[2026-07-29T17:17:17.042Z] user: And another one will be based on let's say LTT and G trace data or LTG and other locks together. OK, OK, work on this. And and in terms of like implementation, I said create a demo, but at least you play with bubble trace. See if we can include a very simple like MCP thing there that AI agent can connect to that.
+[2026-07-29T17:17:29.765Z] user: Right. And then you know, see what you can do. I'm sure with AI you can do that. You can create something that like that actually works and and in that system, what you will, you need to show this level. So you will blow this scale.
+[2026-07-29T17:18:00.016Z] user: That does very simple thing on a trace.
+[2026-07-29T17:18:00.136Z] user: Yeah.
+[2026-07-29T17:18:01.353Z] user: What trades are active in this system? And then it tells you which events to collect. You know what I'm saying? It actually guide the trace collection. We'll do the analysis and we'll generate some graphical and some tabular and some text outputs.
+[2026-07-29T17:18:01.428Z] user: OK, So what? Tell me if I'm correct. So far I have collected this data right? So what I can do is I'll just focus on one skill for demo. So let's say I have introduced.
+[2026-07-29T17:18:30.075Z] user: Uh, database related issues, right? So I will ask my agent that and that skill we will be based on database related.
+[2026-07-29T17:18:30.202Z] user: Very easy problem.
+[2026-07-29T17:18:30.309Z] user: Exactly. Yeah. So I will say my to my agent that you need to, uh, my database is really slow, so you need to find root cause. So it will go and look into logs, traces and whatever it is.
+[2026-07-29T17:18:31.063Z] user: Available next week exactly. Yeah, but the skill again is not just analysis, it also dictates.
+[2026-07-29T17:18:31.092Z] user: The data collection.
+[2026-07-29T17:18:34.996Z] user: What to collect? Even how to save them? Where to save?
+[2026-07-29T17:18:57.870Z] user: Because some data, you know, some, some, some and some roots, some analysis might need, I don't know, Graphena. So you need to, it can dictate the format of the data as well, right. Some of them will be very simple. You collect analysts, that's it. Because of that, it dictates every aspect of it. Yes. All right. Makes sense. Yeah, yeah.
+[2026-07-29T17:19:34.823Z] user: Alright.
+[2026-07-29T17:19:35.053Z] user: And like, uh, for the, for the search part, uh, let's say, if later on we are gonna definitely do it like we use rags and all that. But for now, I can create like a simple operation that can collect related data just like you mentioned right now. So like, uh, the agent itself, the scale, it would require page data, appropriate data for do the analysis, right? Yeah, yeah. So right now we can have like a simple search function based on what we have available, but later on when they approve.
+[2026-07-29T17:19:35.076Z] user: It.
+[2026-07-29T17:20:05.278Z] user: Search of events that we need to collect yeah, no, you can just list it can just list it. It says that we need LTT and G with this events enabled. Mention the events CPU dot X, process dot X, file dot X. It is in a language that LTNG or whoever, whoever, whoever agent, whatever agent uses Ltd will know what events it needs. Also metrics of this and that and that you can mention them in the data set. It needs to be like a Jason format or something so.
+[2026-07-29T17:20:09.306Z] user: Agent can can know what to do with LCNG, what events to.
+[2026-07-29T17:20:34.292Z] user: OK. I see you're saying like one phase, it will be responsible just to give us the requirement. The second phase will use that requirement and make the necessary call?
+[2026-07-29T17:20:34.469Z] user: Analysis, collect data and do the analysis. Exactly. Yeah, yeah, exactly. This is gonna be your skill, right? So you'll have the definition or requirement. Yes, you can call the requirement exactly like packaging, right, Packaging requirements, then workflow.
+[2026-07-29T17:21:04.950Z] user: The first step is to collect data want to collect data the requirements talk about that yes. Then so the the the workflow can have can be very complex like data collection collect this data. What to do do need? Do we need to do any synchronization with the data? Do we need to do any correlation whatever? Then define analysis this we need this data mining, we need these things, this root cause analysis here and then output this analysis will come up with some graphical.
+[2026-07-29T17:21:35.208Z] user: Some this, some that, believe me, if you do that, that's going to be perfect, perfect. And this can also serve sneeze work as well, because he will just implement in trace compass. Yes, I think it's near as some sort of, you know, ADHD or something. He's very smart, but it distracts very quickly, you know.
+[2026-07-29T17:21:35.399Z] user: That's on multiple things.
+[2026-07-29T17:21:35.435Z] user: Yeah. And the problem is this idea, I cannot let it go easily. We need to make it ourselves. You know, we want to make sure that people associate this to us.
+[2026-07-29T17:21:59.320Z] user: They said, hey, these people work on that. Yeah.
+[2026-07-29T17:21:59.465Z] user: Yeah, yeah, sure. All right.
+[2026-07-29T17:21:59.478Z] user: Definitely.
+[2026-07-29T17:22:00.102Z] user: Yes, please. And work on that. Please work on it. It needs a lot of work. OK, Yeah. Thank you. Thank you. Bye.
+[2026-07-29T17:22:00.721Z] user: Yeah, but be very careful about the architectural presentation because tomorrow we want to really force them, make them to use our system. OK, sure. All right. Thank you.
+[2026-07-29T17:22:00.865Z] user: I'll send you the architecture by later tonight.

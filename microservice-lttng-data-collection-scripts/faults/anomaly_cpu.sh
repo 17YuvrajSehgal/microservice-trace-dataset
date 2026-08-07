@@ -18,9 +18,9 @@ FAULT_FAMILY="A_host_resource"
 FAULT_NAME="anomaly_cpu"
 FAULT_SCOPE="host"
 TARGET_SERVICE="host"
-EXPECTED_BLAST_RADIUS='["host", "all services"]'
-EXPECTED_WINNING_MODALITY="kernel"
-TARGET_TRACE_VISIBILITY="n/a"
+EXPECTED_BLAST_RADIUS="${EXPECTED_BLAST_RADIUS:-[\"host\", \"all services\"]}"
+EXPECTED_WINNING_MODALITY="${EXPECTED_WINNING_MODALITY:-kernel}"
+TARGET_TRACE_VISIBILITY="${TARGET_TRACE_VISIBILITY:-n/a}"
 REMEDIATION="kill the stress-ng workers"
 
 STRESS_IMAGE="${STRESS_IMAGE:-alexeiled/stress-ng:latest-ubuntu}"

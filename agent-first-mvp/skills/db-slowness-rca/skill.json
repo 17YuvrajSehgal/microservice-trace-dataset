@@ -1,0 +1,40 @@
+{
+  "skill": "db-slowness-rca",
+  "version": "0.1.0",
+  "title": "Database slowness root-cause analysis",
+  "problem_triggers": ["database is slow", "db is really slow", "db latency", "slow queries", "queries are slow"],
+  "decisive_modality": "kernel+traces",
+  "fault_source": "slow_db",
+  "hypotheses": [
+    {"id": "db_conn_path_latency", "evidence": "service threads blocked in socket recv/read on the DB connection fd"},
+    {"id": "db_disk_io", "evidence": "elevated block-device wait / fsync on the DB host"},
+    {"id": "service_cpu_bound", "evidence": "service threads on-CPU or runnable-waiting, not blocked on the DB"}
+  ],
+  "requirements": {
+    "kernel_lttng": {
+      "events": ["sched_switch", "sched_waking", "sched_wakeup"],
+      "syscalls": ["recvfrom", "sendto", "read", "write", "futex", "epoll_pwait"],
+      "contexts": ["pid", "tid", "procname"],
+      "scope": {"target_services": ["catalogue", "catalogue-db"]},
+      "mode": "snapshot", "max_duration_s": 60,
+      "capture_cmd": "lttng enable-event -k --syscall recvfrom,sendto,read,write,futex,epoll_pwait && lttng enable-event -k sched_switch,sched_waking,sched_wakeup"
+    },
+    "otel": {"services": ["catalogue"], "signals": ["traces"]},
+    "logs": {"services": ["catalogue", "catalogue-db"], "level": "WARN+"},
+    "metrics": ["histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"catalogue\"}[1m])) by (le))"]
+  },
+  "workflow": [
+    {"id": "collect", "op": "scoped_capture_or_replay", "from": "requirements"},
+    {"id": "attribute", "op": "thread_wait_attribution", "inputs": ["collect"]},
+    {"id": "onset", "op": "change_point", "inputs": ["collect"]},
+    {"id": "reason", "op": "llm_rca", "inputs": ["attribute", "onset", "hypotheses"]}
+  ],
+  "output": {
+    "format": "html+json",
+    "contract": {
+      "root_cause": "string", "evidence": "list", "ruled_out": "list",
+      "decisive_modality": "string", "confidence": "float",
+      "recommended_fix": "string", "data_touched_mb": "float"
+    }
+  }
+}

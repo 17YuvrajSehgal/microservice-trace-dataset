@@ -1,0 +1,40 @@
+{
+  "skill": "dependency-outage-rca",
+  "version": "0.1.0",
+  "title": "Dependency-outage root-cause analysis (traces showcase)",
+  "problem_triggers": ["orders are failing", "checkout is broken", "a service is down", "requests time out"],
+  "decisive_modality": "traces+kernel",
+  "fault_source": "dependency_outage",
+  "hypotheses": [
+    {"id": "downstream_dependency_down", "evidence": "spans show a caller hanging/erroring on one downstream service; that service's cgroup is silent (frozen)"},
+    {"id": "caller_bug", "evidence": "the caller errors internally with no downstream call involved"},
+    {"id": "network_partition", "evidence": "connection resets/timeouts across many services, not one dependency"}
+  ],
+  "requirements": {
+    "kernel_lttng": {
+      "events": ["sched_switch", "sched_waking"],
+      "syscalls": ["connect", "recvfrom", "sendto", "read", "write"],
+      "contexts": ["pid", "tid", "procname"],
+      "scope": {"target_services": ["orders", "payment"]},
+      "mode": "snapshot", "max_duration_s": 60,
+      "capture_cmd": "lttng enable-event -k --syscall connect,recvfrom,sendto,read,write && lttng enable-event -k sched_switch,sched_waking"
+    },
+    "otel": {"services": ["orders", "payment", "front-end"], "signals": ["traces"]},
+    "logs": {"services": ["orders", "payment"], "level": "WARN+"},
+    "metrics": ["sum(rate(request_duration_seconds_count{job=\"orders\",status_code=~\"5..\"}[1m]))"]
+  },
+  "workflow": [
+    {"id": "collect", "op": "scoped_capture_or_replay", "from": "requirements"},
+    {"id": "edges", "op": "span_edge_health", "inputs": ["collect"]},
+    {"id": "silence", "op": "cgroup_silence_check", "inputs": ["collect"]},
+    {"id": "reason", "op": "llm_rca", "inputs": ["edges", "silence", "hypotheses"]}
+  ],
+  "output": {
+    "format": "html+json",
+    "contract": {
+      "root_cause": "string", "evidence": "list", "ruled_out": "list",
+      "decisive_modality": "string", "confidence": "float",
+      "recommended_fix": "string", "data_touched_mb": "float"
+    }
+  }
+}

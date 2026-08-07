@@ -40,11 +40,17 @@ if [[ "$RECIPE" == "normal" ]]; then
     NORMAL=1
 else
     RECIPE_SH="$SD/faults/${RECIPE}.sh"
-    [[ -x "$RECIPE_SH" ]] || { echo "no such recipe: $RECIPE_SH"; exit 1; }
+    # -f not -x: recipes are invoked via `bash` below, so a missing +x bit (Windows-authored
+    # scripts lose it, and git reset won't restore it) must NOT silently drop the fault.
+    [[ -f "$RECIPE_SH" ]] || { echo "no such recipe: $RECIPE_SH"; exit 1; }
 fi
 
 # Workload shape passed through to the load generator (steady|burst).
 PROFILE="${PROFILE:-steady}"
+# Load generator (default = the Sock Shop one alongside this script). Another app exports
+# LOAD_GEN=<its load_generator.py> plus the collect_trace app-profile env (TRACE_APP,
+# CONTAINER_REGEX, LOG_CONTAINER_REGEX, OTLP_SRC) and CONTAINER_PREFIX for the fault recipes.
+LOAD_GEN="${LOAD_GEN:-$SD/load_generator.py}"
 
 # Per-run fault-state dir so exactly one ground_truth.json belongs to this run.
 export FAULT_STATE_DIR="$HOME/fault-state/$RUN"
@@ -63,7 +69,7 @@ echo "[$RUN] scenario=$RECIPE intensity=$INTENSITY workload=$PROFILE duration=${
 TRACE_PID=$!
 
 # 2) continuous load for the whole window
-python3 "$SD/load_generator.py" --host "$FRONTEND" --users "$USERS" \
+python3 "$LOAD_GEN" --host "$FRONTEND" --users "$USERS" \
     --duration "$DURATION" --profile "$PROFILE" --think-min 0.1 --think-max 0.3 \
     --output "$HOME/${RUN}_load.csv" > "$HOME/${RUN}_load.log" 2>&1 &
 LOAD_PID=$!
@@ -74,10 +80,10 @@ LOAD_PID=$!
 if [[ "$NORMAL" -eq 0 ]]; then
     sleep "$BASELINE_S"
     echo "[$RUN] injecting $RECIPE ($INTENSITY) at baseline+${BASELINE_S}s"
-    "$RECIPE_SH" inject "$INTENSITY" || echo "[$RUN] WARN: inject returned nonzero"
+    bash "$RECIPE_SH" inject "$INTENSITY" || echo "[$RUN] WARN: inject returned nonzero"
     sleep "$INJECTION_S"
     echo "[$RUN] cleaning up $RECIPE"
-    "$RECIPE_SH" cleanup || echo "[$RUN] WARN: cleanup returned nonzero"
+    bash "$RECIPE_SH" cleanup || echo "[$RUN] WARN: cleanup returned nonzero"
 fi
 
 # recovery window elapses while tracing continues to the end
@@ -97,6 +103,7 @@ if [[ "$NORMAL" -eq 0 ]]; then
     if [[ -n "$GT" ]]; then
         cp "$GT" "$RUN_DIR/ground_truth.json"
         python3 "$SD/verify_injection.py" --ground-truth "$GT" \
+            ${VERIFY_TARGETS:+--targets "$VERIFY_TARGETS"} \
             --prometheus "$PROM" --out "$RUN_DIR/verification.json" \
             --plot "$RUN_DIR/verification.png" || true
     else
