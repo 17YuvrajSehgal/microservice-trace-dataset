@@ -149,52 +149,67 @@ class RunTools:
         return (out.get(service, {"errors": 0}) if service else out), touched
 
     # ---- metrics -------------------------------------------------------------------------
-    def metrics(self, service: str | None = None, top: int = 6):
-        """Per-container resource metrics: baseline→injection mean shift (which containers moved)."""
+    # curated cAdvisor signals: counters (*_total) → per-second RATE; gauges → window mean; display scale
+    _CURATED = {
+        "container_cpu_usage_seconds_total":          ("counter", "cpu_cores", 1.0),
+        "container_cpu_cfs_throttled_seconds_total":  ("counter", "cpu_throttled_s/s", 1.0),
+        "container_memory_working_set_bytes":         ("gauge",   "mem_working_MB", 1e-6),
+        "container_memory_rss":                       ("gauge",   "mem_rss_MB", 1e-6),
+        "container_network_receive_bytes_total":      ("counter", "net_rx_KB/s", 1e-3),
+        "container_network_transmit_bytes_total":     ("counter", "net_tx_KB/s", 1e-3),
+        "container_fs_reads_bytes_total":             ("counter", "fs_read_KB/s", 1e-3),
+        "container_fs_writes_bytes_total":            ("counter", "fs_write_KB/s", 1e-3),
+    }
+
+    def metrics(self, service: str | None = None, top: int = 8):
+        """Per-container resource signals baseline→injection: CPU, throttling, memory, net, fs I/O.
+        Counters (*_total) become per-second RATES; gauges use the window mean. Ranked by movement
+        relative to each signal's own scale so genuine movers beat near-constant noise."""
         df = self._metrics()
         if not hasattr(df, "columns") or len(df) == 0 or "timestamp" not in getattr(df, "columns", []):
             return {"note": "no metrics"}, 0
-        ts = pd.to_numeric(df["timestamp"], errors="coerce")
-        val = pd.to_numeric(df["value"], errors="coerce")
-        cont_col = next((c for c in ("container", "name", "container_label_com_docker_compose_service",
-                                     "pod", "id") if c in df.columns), None)
-        d = df.assign(_ts=ts, _v=val)
-        # restrict to meaningful resource families (cAdvisor emits hundreds of near-constant series)
-        if "metric" in d.columns:
-            fam = d["metric"].astype(str).str.contains("cpu|memory|network|_fs_|blkio|block|_io_", case=False, na=False)
-            d = d[fam]
-        base = d[d["_ts"] < self._t0] if self._t0 else d.iloc[0:0]
-        inj = d[(d["_ts"] >= self._t0) & (d["_ts"] <= self._t1)] if self._t0 else d
-        keycols = [c for c in ("metric", cont_col) if c]
-        if not keycols:
-            return {"top_movers": []}, _df_bytes(d)
-        bmean = base.groupby(keycols)["_v"].mean()
-        imean = inj.groupby(keycols)["_v"].mean()
-        # per-metric scale = max |injection mean| across containers → down-weights negligible series
+        cont_col = next((c for c in ("container", "name",
+                        "container_label_com_docker_compose_service", "pod", "id") if c in df.columns), None)
+        if "metric" not in df.columns or not cont_col:
+            return {"note": "metrics lack metric/container columns"}, 0
+        d = df.assign(_ts=pd.to_numeric(df["timestamp"], errors="coerce"),
+                      _v=pd.to_numeric(df["value"], errors="coerce"))
+        d = d[d["metric"].isin(self._CURATED)]
+        if service:
+            d = d[d[cont_col] == service]
+
+        def winval(g, kind):
+            g = g.dropna(subset=["_v", "_ts"])
+            if len(g) == 0:
+                return None
+            if kind == "gauge":
+                return float(g["_v"].mean())
+            span = float(g["_ts"].max() - g["_ts"].min())
+            return max(0.0, float((g["_v"].max() - g["_v"].min()) / span)) if span > 0 else 0.0
+
+        sigs = []
+        for (met, cont), g in d.groupby(["metric", cont_col]):
+            kind, label, sc = self._CURATED[met]
+            bv = winval(g[g["_ts"] < self._t0], kind) if self._t0 else None
+            gi = g[(g["_ts"] >= self._t0) & (g["_ts"] <= self._t1)] if self._t0 else g
+            iv = winval(gi, kind)
+            if iv is None:
+                continue
+            base_for_rel = bv if bv not in (None, 0) else None
+            rel = (iv - (bv or 0.0)) / (abs(base_for_rel) if base_for_rel else (abs(iv) or 1))
+            sigs.append({"container": cont, "signal": label,
+                         "baseline": None if bv is None else round(bv * sc, 3),
+                         "injection": round(iv * sc, 3), "rel_change": round(float(rel), 3),
+                         "_disp": abs(iv * sc)})
         gmax = {}
-        for key, iv in imean.items():
-            m = key[0] if isinstance(key, tuple) else key
-            gmax[m] = max(gmax.get(m, 0.0), abs(iv) if not pd.isna(iv) else 0.0)
-        movers = []
-        for key, iv in imean.items():
-            if pd.isna(iv):
-                continue
-            m = key[0] if isinstance(key, tuple) else key
-            cont = key[1] if (isinstance(key, tuple) and len(key) > 1) else None
-            if service and cont != service:
-                continue
-            bv = bmean.get(key, float("nan"))
-            delta = iv - (0.0 if pd.isna(bv) else bv)
-            score = abs(delta) / (gmax.get(m, 0.0) + 1e-9)   # movement relative to the metric's own scale
-            denom = abs(bv) if (not pd.isna(bv) and abs(bv) > 1e-9) else (abs(iv) or 1)
-            movers.append({"metric": m, "container": cont,
-                           "baseline": round(float(bv), 4) if not pd.isna(bv) else None,
-                           "injection": round(float(iv), 4),
-                           "rel_change": round(float(delta / denom), 3), "_s": score})
-        movers.sort(key=lambda x: -x["_s"])
-        for x in movers:
-            x.pop("_s", None)
-        return {"top_movers": movers[:top]}, _df_bytes(d)
+        for s in sigs:
+            gmax[s["signal"]] = max(gmax.get(s["signal"], 0.0), s["_disp"])
+        for s in sigs:
+            s["_score"] = abs(s["injection"] - (s["baseline"] or 0)) / (gmax.get(s["signal"], 0.0) + 1e-9)
+        sigs.sort(key=lambda x: -x["_score"])
+        for s in sigs:
+            s.pop("_disp", None); s.pop("_score", None)
+        return {"top_movers": sigs[:top]}, _df_bytes(d)
 
     # ---- kernel --------------------------------------------------------------------------
     def kernel(self, service: str | None = None):
