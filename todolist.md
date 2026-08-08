@@ -17,18 +17,18 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · **(gate)** blocks downs
 - [x] **Data access — DONE on cluster** (no laptop copy): extracted all runs' small modalities to `/scratch/yuvraj17/agentic-runs/{trainticket,sockshop}` via `agentic-rca/extract_working_set.sh` + `extract_job.sbatch` (job 2072606, whole-node debug). **93 loader-enumerable fault incidents** (43 TT + 50 SS) + baseline/normal controls; all modalities validated (kernel_l2 empty for TT — use L1+L3). Raw L0 stays in `/project` archives.
 - [x] Python env — **two**: laptop `.venv` (dev), and **cluster** `.venv` on Trillium (`python/3.11`+`arrow/19.0.1`+venv, `agentic-rca/env.sh`). Both verified importable. **The study runs on the cluster** (login node has Anthropic API access; data is there).
 
-## P1 — Harness foundation (reuse, don't rebuild)
-- [ ] Smoke-test `agent-first-mvp` on one pulled run (`demo_cli.py` / `mcp_server.py` `discover_skills`→`run_skill`).
-- [ ] **Manifest-driven run enumeration** — parse `release/DATASET_MANIFEST.csv` (Sock Shop) + the Train Ticket manifest into records `{run_id, app, fault_family, target_service, expected_winning_modality, verification, dir}`. (`loader.list_runs()` only walks a filesystem.)
-- [ ] Wire the **four telemetry tools** over `stratatrace/loader.py` (clean DataFrames) and/or `agent-first-mvp/engine/modalities.py` (byte-counted): `metrics`, `logs`, `traces` (exist) + **add a `kernel` tool** at parity (wrap L1 parquet + L2 wait-attribution + L3 digest; remember `STRATATRACE_APP`).
-- [ ] Fix known edges: `ground_truth` is nested under `["fault"]`; sibling metrics/load via `<run_id>_metrics`/`_load.csv`; set `STRATATRACE_APP` per app.
-- [ ] Freeze the **agent output contract**: `{root_cause_service, fault_type, evidence, confidence}` — identical for all 3 RCA families + all conditions.
+## P1 — Harness foundation — **BUILT + VALIDATED on the cluster** (agentic-rca/)
+- [x] Built fresh over the loader instead of reusing the MVP's Sock-Shop-coupled `modalities.py` (log-filename + service hardcoding). MVP kept as the interactive/demo face.
+- [x] **Run enumeration + scoring** (`runs.py`): `iter_runs(app)` → 43 TT + 50 SS labeled incidents (+ manifest verification); `score(diagnosis, gt)` with host-fault + container-name tolerance.
+- [x] **Four telemetry tools** (`tools.py`) over `stratatrace/loader.py`, both apps, byte-accounted: `traces` (SERVER-span p50/95/99), `logs` (error sigs), `metrics` (curated cAdvisor, counter→rate, magnitude-ranked), **`kernel`** (L1 lat peaks + L3 deviations + L2 wait-attribution when present). Validated across cpu/mem/noisy/slow_db — culprit surfaces on resource faults; slow_db correctly metrics-blind.
+- [x] Known edges handled: `ground_truth["fault"]`, sibling metrics/load, `STRATATRACE_APP` per app.
+- [x] **Output contract frozen** + agent loop (`agent.py`): tool-using LLM → `{root_cause_service, fault_type, evidence, confidence}` + **trajectory** (RQ2) + tokens/bytes (RQ4). Model via `config.py`.
+- [x] **Evaluation runner** (`evaluate.py`): `(run × method) → predict → score → aggregate` (Top-1 service/fault/both, by-family, tool-calls/tokens). Degradation axis slots in later.
 
-## P2 — Sanity gate **(gate — do before any degradation)**
-- [ ] Select **~20 incidents** (spread across fault families + both apps).
-- [ ] Run the LLM agent at **100% telemetry**; confirm **Top-1 is solid** (if it can't diagnose full data, degradation results are meaningless).
-- [ ] Run the **statistical** + **CARE** baselines on the same 20; record Top-1/3/MRR.
-- [ ] Build the **evaluation runner**: `(run, condition, rca_method) → prediction → score vs ground_truth` → aggregate table.
+## P2 — Sanity gate **(gate — RUN blocked only on ANTHROPIC_API_KEY)**
+- [x] Sample ready: `evaluate._sample(per_family=1)` → **23 incidents** (11 TT + 12 SS, all families).
+- [ ] **Run** `python evaluate.py --app both --per-family 1` at 100% telemetry — **needs `export ANTHROPIC_API_KEY=…` on the Trillium login node** (has internet). Confirm Top-1 is solid.
+- [ ] Run the **statistical** + **CARE** baselines on the same 23 (deferred with P0 baselines).
 
 ## P3 — Degradation module → **RQ1**
 - [ ] Build the **degradation module** (seeded, deterministic, offline): trace sampling {100/50/25/10/5%}, metric resample {5→10/30/60s}, log level {ALL/WARN+/ERROR+}, **service-coverage removal**, whole-modality removal, kernel tier {L0/L1/L2/L3 / critical-only}. Input `(run, spec, seed)` → a degraded view; keep it **before** the reader.
