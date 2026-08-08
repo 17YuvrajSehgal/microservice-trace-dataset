@@ -14,8 +14,8 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · **(gate)** blocks downs
 - [x] **LLM/model**: made **configurable**, default **Claude** (`agentic-rca/config.py` — one `chat()`→`Turn`; swap via `RCA_PROVIDER`/`RCA_MODEL`, adding a model = one adapter). Temp 0 for reproducibility.
 - [~] **Tool interface**: default to **in-process Python tools** for the study runner (fast, deterministic, cheap to sweep thousands of run×condition), keep the **MCP** server (`agent-first-mvp/mcp_server.py`) as the demo/interactive face. Same underlying tool fns behind both. *(Elaboration in this session's note.)*
 - [ ] Pick **RCA baselines** — **DEFERRED (later)**: statistical (reuse `agent-first-mvp/engine/rca.py`) + CARE/RCAEval.
-- [~] **Data access**: `transfer/fetch_dev_sample.sh` written — selects only the small modalities (spans/logs/metrics/L1-L3, NOT raw L0) from the Trillium archives, packs to one tarball. **Awaiting: user runs it on Trillium + downloads to `agentic-rca/dev-runs/`.**
-- [x] Python env: `.venv` (`--system-site-packages` → inherits working pandas 2.3.3 / pyarrow 24) + `anthropic` + `mcp` + `stratatrace` (editable). Verified importable.
+- [x] **Data access — DONE on cluster** (no laptop copy): extracted all runs' small modalities to `/scratch/yuvraj17/agentic-runs/{trainticket,sockshop}` via `agentic-rca/extract_working_set.sh` + `extract_job.sbatch` (job 2072606, whole-node debug). **93 loader-enumerable fault incidents** (43 TT + 50 SS) + baseline/normal controls; all modalities validated (kernel_l2 empty for TT — use L1+L3). Raw L0 stays in `/project` archives.
+- [x] Python env — **two**: laptop `.venv` (dev), and **cluster** `.venv` on Trillium (`python/3.11`+`arrow/19.0.1`+venv, `agentic-rca/env.sh`). Both verified importable. **The study runs on the cluster** (login node has Anthropic API access; data is there).
 
 ## P1 — Harness foundation (reuse, don't rebuild)
 - [ ] Smoke-test `agent-first-mvp` on one pulled run (`demo_cli.py` / `mcp_server.py` `discover_skills`→`run_skill`).
