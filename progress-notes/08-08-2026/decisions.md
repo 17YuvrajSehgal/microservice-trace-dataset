@@ -38,6 +38,31 @@ spans/logs/metrics/kernel L1-L3 (NOT raw L0 — the agent never needs the multi-
 the full archive must be decompressed to reach the small files (~2.5 min/24 GB); whole node does
 all recipes in parallel → minutes. /scratch has 24 TB free; /project archives stay as cold backup.
 
+## Repo reorg (2026-08-08)
+Separated concerns without deleting anything (all `git mv`, history preserved):
+`agentic-rca/` = agent code only; `transfer/` = all dataset staging/derivation/transfer scripts;
+`archive/lmat/` = the LMAT/JSS modeling stack (`microservice/` + vendored `models/`, `dataset/`, JSS
+review docs — nothing current imports them); `archive/progress-snapshots/` = superseded dated updates.
+CLAUDE.md Map + READMEs updated; `archive/README.md` explains the archive. Collection-script dirs +
+submodules left in place (path-referenced everywhere).
+
+## kernel L2 (wait-attribution): NOT derived in the campaign; fixed a UTC-window bug; batch launched
+The campaign only ran L1+L3 (`batch_derive_tt.sh` invokes derive_l1+l3, never l2); the one Sock Shop
+`kernel_l2.jsonl` was a stray Aug-3 test and is almost certainly empty. Deriving L2 needs the raw L0
+CTF (in `/project` archives) + `babeltrace2` — already built on Trillium at `/scratch/yuvraj17/local/`.
+**Hard-won bug:** `derive_kernel_l2.py` fed `injection_start_utc` (UTC) to `babeltrace2 --begin/--end`,
+but bt2 interprets AND renders timestamps in `$TZ` — the collector traces are stamped in the VM's
+**local tz (EDT, UTC-4)**, so the window landed ~4h off the trace → **0 events, n_tids=0** (silent
+empty output). Fix: force `TZ=UTC` on the bt2 subprocess (committed in derive_kernel_l2.py). Validated
+on a compute node: `dependency_outage` → `ts-travel-service` 100% off-CPU-io-wait (blocked on the dead
+`ts-seat-service`), seat 98% — correct dependency-outage kernel signature.
+**Cost facts:** compute node ≫ login node (login throttles long CPU; ~50min→~7min per pass); trace is
+dense (~2.5M events/s → 7.7M events in a 3s slice); `$SLURM_TMPDIR` = `/dev/shm` 566 GB (fast). Batch
+policy: full-node `compute`, `PAR=7`, `MAXSEC=60` (first 60 s of the steady injection — rate-based
+wait % are stable), per-recipe staging. Job **2072784** launched for BOTH apps (~7-8 h); writes
+`kernel_l2.jsonl` next to each run in `/scratch/yuvraj17/agentic-runs/`. This makes TT and SS identical
+(L1+L2+L3) and corrects SS's missing L2 too.
+
 ## P0 status (see todolist.md)
 Done: env, configurable model (`config.py`, default Claude, `RCA_PROVIDER`/`RCA_MODEL`), data
 access (on-cluster extraction). Deferred: MSR dataset paper (2nd priority), baselines (statistical
