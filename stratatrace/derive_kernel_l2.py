@@ -74,7 +74,12 @@ def _bt(ts):
 
 def attribute(ctf_root, target_comm, begin_iso, end_iso, names, target_tgids=None):
     bt = ["babeltrace2", ctf_root, "--begin", _bt(begin_iso), "--end", _bt(end_iso)]
-    p1 = subprocess.Popen(bt, stdout=subprocess.PIPE)
+    # ground_truth injection times are UTC (…Z); babeltrace2 interprets --begin/--end AND renders
+    # timestamps in $TZ. The collector VM traces are stamped in local time (e.g. EDT), so without
+    # forcing UTC the window lands hours off the trace and matches zero events (n_tids=0). Pin the
+    # subprocess to UTC so the window aligns with the UTC ground truth regardless of the host TZ.
+    _env = {**os.environ, "TZ": "UTC"}
+    p1 = subprocess.Popen(bt, stdout=subprocess.PIPE, env=_env)
     p2 = subprocess.Popen(["grep", "-E", "|".join(names)], stdin=p1.stdout,
                           stdout=subprocess.PIPE, text=True, errors="replace")
     p1.stdout.close()

@@ -20,6 +20,8 @@ export PATH="/scratch/yuvraj17/local/bin:$PATH"
 export LD_LIBRARY_PATH="/scratch/yuvraj17/local/lib:${LD_LIBRARY_PATH:-}"
 export STRATATRACE_APP="$APP"
 export PYTHONPATH="$REPO/stratatrace:${PYTHONPATH:-}"
+export TZ=UTC                       # ground_truth is UTC; babeltrace2 must window-match in UTC
+MAXSEC="${MAXSEC:-0}"               # attribution window cap (s); 0 = full injection window
 export TMPDIR="${TMPDIR:-${SLURM_TMPDIR:-/scratch/yuvraj17/tmp_l2}/bt}"; mkdir -p "$TMPDIR"
 L2="$REPO/stratatrace/derive_kernel_l2.py"
 UNZ="pigz -dc"; command -v pigz >/dev/null 2>&1 || UNZ="zcat"
@@ -33,7 +35,7 @@ derive_run() {  # $1 = staged run dir (has kernel/, meta/, ground_truth.json)
   out="$RUNS/$rec/$rid/kernel_l2.jsonl"
   [ -f "$out" ] && { echo "SKIP $rid (L2 exists)"; return; }
   local t0; t0=$(date +%s)
-  if python3 "$L2" "$d" > "$d/derive_l2.log" 2>&1 && [ -s "$d/kernel_l2.jsonl" ]; then
+  if python3 "$L2" "$d" --max-seconds "$MAXSEC" > "$d/derive_l2.log" 2>&1 && [ -s "$d/kernel_l2.jsonl" ]; then
     mkdir -p "$RUNS/$rec/$rid"; cp "$d/kernel_l2.jsonl" "$out"
     echo "OK   $rid ($(( $(date +%s)-t0 ))s, $(wc -l < "$out") svc rows)"
   else
@@ -41,7 +43,7 @@ derive_run() {  # $1 = staged run dir (has kernel/, meta/, ground_truth.json)
   fi
   rm -rf "$d/kernel" 2>/dev/null   # free this run's L0 as soon as it's done
 }
-export -f derive_run; export RUNS L2 TMPDIR STRATATRACE_APP PYTHONPATH
+export -f derive_run; export RUNS L2 TMPDIR STRATATRACE_APP PYTHONPATH MAXSEC TZ
 
 echo "== $APP L2 derive: SRC=$SRC -> $RUNS | PAR=$PAR | STAGE=$STAGE | TMPDIR=$TMPDIR =="
 mapfile -t ARCHIVES < <(ls "$SRC"/*.tar.gz 2>/dev/null | grep -v '_aux_metrics_load.tar.gz')
