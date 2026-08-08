@@ -56,12 +56,10 @@ for a in "${ARCHIVES[@]}"; do
   # build the per-recipe member patterns: <recipe>/<runglob>/<keep>
   pats=(); for k in "${KEEP[@]}"; do pats+=( "${rec}/${RUNGLOB}${k#\*}" ); done
   echo -n "  $rec ... "
-  # --wildcards so the globs match; -T-free positional patterns; ignore 'not found in archive'
-  if $UNZ "$a" | tar --wildcards --ignore-command-error -xf - -C "$STAGE" "${pats[@]}" 2>/dev/null; then
-    echo "ok"
-  else
-    echo "(some patterns matched nothing — fine)"
-  fi
+  # --wildcards so the globs match across '/'; some patterns (e.g. absent kernel_l2, or the
+  # fallback kernel/ layout) match nothing -> tar exits non-zero but still extracts what it found.
+  $UNZ "$a" | tar --wildcards -xf - -C "$STAGE" "${pats[@]}" 2>/dev/null
+  echo "ok"
 done
 
 # aux metrics + load CSVs for the same runs, staged at the tree ROOT so loader._sibling_dir finds them
