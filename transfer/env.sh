@@ -1,4 +1,4 @@
-# Source this each Trillium session:   source agentic-rca/env.sh
+# Source this each Trillium session:   source transfer/env.sh
 # Order matters: python first (sets the compiler tree), then arrow (provides pyarrow via PYTHONPATH).
 REPO="${REPO:-/scratch/yuvraj17/microservice-trace-dataset}"
 module load python/3.11   >/dev/null 2>&1

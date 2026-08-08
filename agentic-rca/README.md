@@ -13,7 +13,14 @@ Reuses `agent-first-mvp/` (skills, deterministic deciders, byte-counted readers)
 | `agent.py` *(todo)* | the LLM RCA agent loop over the 4 telemetry tools + trajectory log | RQ2 |
 | `evaluate.py` *(todo)* | run (run × condition × method) → predict → score vs ground_truth | RQ1 |
 
-## Setup (done once, from repo root)
+> Dataset-prep, extraction, derivation, and transfer scripts live in **`../transfer/`** — this dir
+> is agent code only.
+
+## Setup
+**Cluster (primary — the study runs on Trillium where the dataset lives):** `source ../transfer/env.sh`
+(loads `python/3.11` + `arrow/19.0.1` + the cluster `.venv`). The login node has Anthropic API access.
+
+**Laptop (dev):**
 ```
 python -m venv --system-site-packages .venv        # inherits working pandas/pyarrow
 .venv/Scripts/python -m pip install -e ./stratatrace -r agentic-rca/requirements.txt
@@ -30,6 +37,11 @@ RCA_PROVIDER=ollama RCA_MODEL=llama3.1:8b ...        # local, no key
 Adding a model = adding one `_chat_*` adapter in `config.py`; the agent, tools, degradation,
 and scoring are provider-agnostic, so RQ numbers stay comparable across models.
 
-## Getting dev data
-On Trillium: `transfer/fetch_dev_sample.sh` selects only the small modalities (spans/logs/
-metrics/kernel L1-L3 — never the raw L0 CTF) and packs them. Download and unpack into `dev-runs/`.
+## Getting data
+**On the cluster (primary):** the working set is already extracted at
+`/scratch/yuvraj17/agentic-runs/{trainticket,sockshop}` (small modalities only — no raw L0) by
+`../transfer/extract_working_set.sh` / `extract_job.sbatch`; `../transfer/derive_l2_*` add kernel L2.
+Point the loader there with `list_runs("/scratch/yuvraj17/agentic-runs/<app>")`.
+
+**On a laptop (optional):** `../transfer/fetch_dev_sample.sh` packs a small sample to download and
+unpack into `dev-runs/`.

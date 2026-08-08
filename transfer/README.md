@@ -105,6 +105,20 @@ rsync -aHh --info=progress2 \
 # NOTE: -a (no -z): the archives are already compressed, so skip rsync compression.
 ```
 
+## On-cluster working-set prep (for the agentic-rca study)
+Once the archives are on Trillium (`/project/def-naser2/yuvraj17/microservice-trace-dataset/<app>`),
+these build the loader-ready working tree at `/scratch/yuvraj17/agentic-runs/<app>` — **small
+modalities only** (spans/logs/metrics/kernel L1–L3; never the multi-GB raw L0 CTF). The agent code
+lives in `../agentic-rca/`; these are the dataset-side tools that feed it.
+
+| Script | What |
+|---|---|
+| `env.sh` | `source transfer/env.sh` — loads `python/3.11` + `arrow/19.0.1` + the cluster `.venv` (order matters: python before arrow; pyarrow ships via the module, not pip). |
+| `extract_working_set.sh <app>` | Parallel small-modality extract from the `/project` archives → `/scratch/…/agentic-runs/<app>`. `RUNGLOB='*'` = all runs. |
+| `extract_job.sbatch` | Whole-node `debug` job running the extract for both apps. `sbatch transfer/extract_job.sbatch`. |
+| `derive_l2_working_set.sh <app>` | Derive kernel **L2 wait-attribution** from L0 (needs `babeltrace2`, built at `/scratch/yuvraj17/local/`) → writes `kernel_l2.jsonl` next to each run. Resumable. |
+| `derive_l2_job.sbatch` | Whole-node `compute` job deriving L2 for both apps. `sbatch transfer/derive_l2_job.sbatch`. |
+
 ## Notes
 - The per-run Prometheus **metrics** + client **load CSVs** live in `~` (not inside the trace
   bundles); the push ships them as `_aux_metrics_load.tar.gz` per app.
