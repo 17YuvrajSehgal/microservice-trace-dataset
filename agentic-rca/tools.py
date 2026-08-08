@@ -95,7 +95,8 @@ class RunTools:
         l1 = self._l1()
         if hasattr(l1, "columns") and "service" in getattr(l1, "columns", []):
             svcs |= set(l1["service"].dropna().unique())
-        return sorted(s for s in svcs if s)
+        pseudo = {"kernel", "system", "idle", "swapper", ""}
+        return sorted(s for s in svcs if s and s not in pseudo)
 
     # ---- traces --------------------------------------------------------------------------
     def traces(self, service: str | None = None):
@@ -158,28 +159,41 @@ class RunTools:
         cont_col = next((c for c in ("container", "name", "container_label_com_docker_compose_service",
                                      "pod", "id") if c in df.columns), None)
         d = df.assign(_ts=ts, _v=val)
+        # restrict to meaningful resource families (cAdvisor emits hundreds of near-constant series)
+        if "metric" in d.columns:
+            fam = d["metric"].astype(str).str.contains("cpu|memory|network|_fs_|blkio|block|_io_", case=False, na=False)
+            d = d[fam]
         base = d[d["_ts"] < self._t0] if self._t0 else d.iloc[0:0]
         inj = d[(d["_ts"] >= self._t0) & (d["_ts"] <= self._t1)] if self._t0 else d
-        movers = []
         keycols = [c for c in ("metric", cont_col) if c]
-        if keycols:
-            bmean = base.groupby(keycols)["_v"].mean()
-            imean = inj.groupby(keycols)["_v"].mean()
-            for key in imean.index:
-                b = bmean.get(key, float("nan")); i = imean.get(key)
-                if pd.isna(i):
-                    continue
-                delta = (i - b) if not pd.isna(b) else i
-                denom = abs(b) if (not pd.isna(b) and abs(b) > 1e-9) else (abs(i) or 1)
-                rel = delta / denom
-                metric = key[0] if isinstance(key, tuple) else key
-                cont = key[1] if (isinstance(key, tuple) and len(key) > 1) else None
-                if service and cont != service:
-                    continue
-                movers.append({"metric": metric, "container": cont,
-                               "baseline": round(float(b), 4) if not pd.isna(b) else None,
-                               "injection": round(float(i), 4), "rel_change": round(float(rel), 3)})
-        movers.sort(key=lambda m: -abs(m["rel_change"]))
+        if not keycols:
+            return {"top_movers": []}, _df_bytes(d)
+        bmean = base.groupby(keycols)["_v"].mean()
+        imean = inj.groupby(keycols)["_v"].mean()
+        # per-metric scale = max |injection mean| across containers → down-weights negligible series
+        gmax = {}
+        for key, iv in imean.items():
+            m = key[0] if isinstance(key, tuple) else key
+            gmax[m] = max(gmax.get(m, 0.0), abs(iv) if not pd.isna(iv) else 0.0)
+        movers = []
+        for key, iv in imean.items():
+            if pd.isna(iv):
+                continue
+            m = key[0] if isinstance(key, tuple) else key
+            cont = key[1] if (isinstance(key, tuple) and len(key) > 1) else None
+            if service and cont != service:
+                continue
+            bv = bmean.get(key, float("nan"))
+            delta = iv - (0.0 if pd.isna(bv) else bv)
+            score = abs(delta) / (gmax.get(m, 0.0) + 1e-9)   # movement relative to the metric's own scale
+            denom = abs(bv) if (not pd.isna(bv) and abs(bv) > 1e-9) else (abs(iv) or 1)
+            movers.append({"metric": m, "container": cont,
+                           "baseline": round(float(bv), 4) if not pd.isna(bv) else None,
+                           "injection": round(float(iv), 4),
+                           "rel_change": round(float(delta / denom), 3), "_s": score})
+        movers.sort(key=lambda x: -x["_s"])
+        for x in movers:
+            x.pop("_s", None)
         return {"top_movers": movers[:top]}, _df_bytes(d)
 
     # ---- kernel --------------------------------------------------------------------------
