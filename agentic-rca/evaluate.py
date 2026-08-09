@@ -93,8 +93,10 @@ def run(app, per_family, n, families, out_path, method, grid):
         import agent as _m; label = __import__("config").model_id()
     elif method == "stat":
         import baseline_stat as _m; label = "statistical-baseline"
+    elif method == "mmbaro":
+        import rcaeval_adapter as _m; label = "rcaeval:mmbaro"   # run in .venv-rca (py3.12)
     else:
-        raise SystemExit(f"unknown method {method!r} (agent|stat)")
+        raise SystemExit(f"unknown method {method!r} (agent|stat|mmbaro)")
     conditions = GRIDS[grid]
     recs = _sample(app, per_family, n, families)
     print(f"== {method} ({label}) × grid '{grid}' ({len(conditions)} conds) over {len(recs)} incidents ({app}) ==")
@@ -147,7 +149,7 @@ if __name__ == "__main__":
     ap.add_argument("--per-family", type=int, default=0)
     ap.add_argument("--n", type=int, default=0)
     ap.add_argument("--families", default="")
-    ap.add_argument("--method", default="agent", choices=["agent", "stat"])
+    ap.add_argument("--method", default="agent", choices=["agent", "stat", "mmbaro"])
     ap.add_argument("--grid", default="full", choices=list(GRIDS))
     ap.add_argument("--out", default="")
     a = ap.parse_args()
