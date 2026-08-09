@@ -47,6 +47,32 @@ GRIDS = {
 }
 
 
+class _MemoRun:
+    """Cache a base Run's modality reads so a whole degradation grid costs ONE parse per modality
+    (loader.spans/logs/metrics re-read from disk every call; SS spans are 2.4M rows = ~65s each)."""
+    def __init__(self, run):
+        self._run = run
+        self.run_dir = run.run_dir
+        self.ground_truth = run.ground_truth
+        self.verification = getattr(run, "verification", {})
+        self.clock_anchors = getattr(run, "clock_anchors", {})
+        self._c = {}
+
+    def _get(self, name):
+        if name not in self._c:
+            self._c[name] = getattr(self._run, name)()
+        return self._c[name]
+
+    def spans(self):       return self._get("spans")
+    def logs(self):        return self._get("logs")
+    def metrics(self):     return self._get("metrics")
+    def kernel_l1(self):   return self._get("kernel_l1")
+    def kernel_l2(self):   return self._get("kernel_l2")
+    def kernel_l3(self):   return self._get("kernel_l3")
+    def load(self):        return self._get("load")
+    def has_kernel_l0(self): return self._run.has_kernel_l0()
+
+
 def _sample(app, per_family, n, families):
     recs = list(R.iter_runs(app))
     if families:
@@ -74,7 +100,7 @@ def run(app, per_family, n, families, out_path, method, grid):
     print(f"== {method} ({label}) × grid '{grid}' ({len(conditions)} conds) over {len(recs)} incidents ({app}) ==")
     results, t0 = [], time.time()
     for i, rec in enumerate(recs, 1):
-        base = load_run(rec.dir)                       # load ONCE; conditions wrap the cached frames
+        base = _MemoRun(load_run(rec.dir))             # load ONCE; conditions wrap the cached frames
         for cname, spec in conditions:
             try:
                 out = _m.diagnose(degrade(base, spec), app=rec.app)

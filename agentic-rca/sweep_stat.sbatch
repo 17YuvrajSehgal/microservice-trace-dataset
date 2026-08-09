@@ -21,7 +21,7 @@ TASKS="$OUT/_tasks.txt"; : > "$TASKS"
 for app in trainticket sockshop; do
   for d in /scratch/yuvraj17/agentic-runs/$app/*/; do
     fam=$(basename "$d")
-    case "$fam" in normal|lttng_only) continue;; esac
+    case "$fam" in normal|lttng_only|*_metrics) continue;; esac   # skip baselines + aux metric dirs
     echo "$app $fam" >> "$TASKS"
   done
 done
