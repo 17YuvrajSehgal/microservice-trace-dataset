@@ -122,30 +122,37 @@ class RunTools:
         return (out.get(service, {"n": 0}) if service else out), _df_bytes(d)
 
     # ---- logs ----------------------------------------------------------------------------
+    # error pattern (no catastrophic-backtracking alternations); matched vectorized then refined
+    _ERR_PAT = (r"err=(?!null)\S+|\berror\b|\bpanic\b|reset by peer|connection reset|ECONNRESET|"
+                r"connection refused|broken pipe|timed?\s*out|no such host|exception|\bEOF\b|"
+                r"i/o timeout|\b5\d\d\b")
+
     def logs(self, service: str | None = None, max_sigs: int = 3):
-        """Per-container error counts + top normalized error signatures in the run."""
+        """Per-container error counts + top normalized error signatures. Vectorized: the regex runs
+        once at C-speed over (length-capped) lines; only the matched lines are grouped in Python —
+        Java stack-trace logs can be GBs, so a per-line Python loop is untenable."""
         import re
         df = self._logs()
         if not hasattr(df, "columns") or len(df) == 0:
             return {"note": "no logs"}, 0
-        errre = re.compile(r"(err=(?!null)\S+|\berror\b|\bpanic\b|reset by peer|connection reset|"
-                           r"ECONNRESET|connection refused|broken pipe|\btimed?\s*out\b|no such host|"
-                           r"exception|\bEOF\b|i/o timeout|[^0-9](5\d\d)[^0-9])", re.I)
-        sig = lambda s: re.sub(r"0x[0-9a-f]+|\d+", "N", s)[:110]
         d = df[df["container"] == service] if service else df
-        out, touched = {}, 0
-        for cont, g in d.groupby("container"):
-            counts, sample, nerr = {}, {}, 0
-            for line in g["line"]:
-                touched += len(line) + 1
-                if errre.search(line):
-                    nerr += 1; k = sig(line)
-                    counts[k] = counts.get(k, 0) + 1
-                    sample.setdefault(k, line.strip()[-160:])
-            if nerr:
-                top = sorted(counts.items(), key=lambda x: -x[1])[:max_sigs]
-                out[cont] = {"errors": nerr,
-                             "top": [{"count": c, "sample": sample[k]} for k, c in top]}
+        line = d["line"].astype(str).str.slice(0, 500)     # cap length (speed + anti-backtracking)
+        touched = int(line.str.len().sum())
+        mask = line.str.contains(self._ERR_PAT, case=False, regex=True, na=False)
+        if not mask.any():
+            return ({"errors": 0} if service else {}), touched
+        err = d.loc[mask].assign(_l=line[mask].values)
+        subre = re.compile(r"0x[0-9a-f]+|\d+")
+        out = {}
+        for cont, g in err.groupby("container"):
+            counts, sample = {}, {}
+            for l in g["_l"]:
+                k = subre.sub("N", l)[:110]
+                counts[k] = counts.get(k, 0) + 1
+                sample.setdefault(k, l.strip()[-160:])
+            top = sorted(counts.items(), key=lambda x: -x[1])[:max_sigs]
+            out[cont] = {"errors": int(len(g)),
+                         "top": [{"count": c, "sample": sample[k]} for k, c in top]}
         return (out.get(service, {"errors": 0}) if service else out), touched
 
     # ---- metrics -------------------------------------------------------------------------
