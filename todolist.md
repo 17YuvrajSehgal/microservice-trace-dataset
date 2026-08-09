@@ -33,7 +33,8 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · **(gate)** blocks downs
 ## P3 — Degradation module → **RQ1** — **BUILT + PIPELINE PROVEN (no API)**
 - [x] **Degradation module** (`degrade.py`): seeded `DegradedRun` wrapper — trace sampling, metric resample, log level, service-coverage removal, whole-modality removal, kernel tier. Sits before the reader (agent unchanged = Mahsa's guardrail). All knobs validated (trace_keep 0.25→23.8%, log ERROR 221k→722, etc.).
 - [x] **Grid sweep wired** into `evaluate.py` (`--grid trace|metric|log|kernel|compensate`; loads each run once, sweeps conditions over cached frames). First RQ1 curve produced with the **statistical baseline, no API**.
-- [ ] Scale the sweep to all families/both apps (statistical baseline now; add LLM agent when key available); compute **cliff locations** + AD F1. Add MRR (needs ranked candidates).
+- [x] **Full sweep DONE (no API):** 93 incidents × 15 conditions = 1,395 evals, statistical baseline (job 2074051, 53min). Results + interpretation in `agentic-rca/RESULTS-stat-baseline.md`. Headline: baseline robust to degradation (flat curves), kernel-blind (kNone=full), **0% on slow_db/queue_backlog** — the gap the kernel agent must close.
+- [ ] Add the **LLM agent** as method #3 over the same sweep (needs API key) + **CARE/RCAEval** as method #2. Then cliff locations + AD F1 + MRR (needs ranked candidates).
 
 ## P4 — Trajectory logger → **RQ2**
 - [ ] Persist the agent **trajectory** per diagnosis: `tool → service → time-range → result → next-tool` + tokens (+ per-tool `bytes_touched` from `modalities.py`).
