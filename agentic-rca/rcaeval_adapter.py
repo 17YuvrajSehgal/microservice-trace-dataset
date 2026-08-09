@@ -104,9 +104,13 @@ def _trace_ts(run, step):
     d["svc"] = d["service"].astype(str)
     d = d.dropna(subset=["t"]).set_index("t")
     lat = d.groupby("svc")["dur_ms"].resample(f"{step}s").mean().unstack("svc")
-    sc = pd.to_numeric(d.get("http.response.status_code"), errors="coerce")
-    err_mask = (sc >= 500) | d.get("error.type").notna() if "http.response.status_code" in d.columns else d.get("error.type").notna()
-    d["_err"] = err_mask.astype(int) if err_mask is not None else 0
+    err_mask = pd.Series(False, index=d.index)
+    if "http.response.status_code" in d.columns:
+        sc = pd.to_numeric(d["http.response.status_code"], errors="coerce")
+        err_mask = err_mask | (sc >= 500).fillna(False)
+    if "error.type" in d.columns:
+        err_mask = err_mask | d["error.type"].notna()
+    d["_err"] = err_mask.astype(int)
     err = d.groupby("svc")["_err"].resample(f"{step}s").sum().unstack("svc")
     for f in (lat, err):
         f.insert(0, "time", f.index.astype("int64") // 10**9)
