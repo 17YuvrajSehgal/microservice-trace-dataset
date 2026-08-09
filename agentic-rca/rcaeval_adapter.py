@@ -39,6 +39,15 @@ def _to_unix(iso):
     return dt.datetime.strptime(iso, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=dt.timezone.utc).timestamp()
 
 
+def _unix_col(idx):
+    """DatetimeIndex → int64 unix SECONDS, robust to pandas-3 variable resolution (s/ms/us/ns)
+    and tz-awareness (astype('int64') returns the index's own unit, not always ns)."""
+    idx = pd.DatetimeIndex(idx)
+    if idx.tz is not None:
+        idx = idx.tz_convert("UTC").tz_localize(None)
+    return idx.astype("datetime64[ns]").astype("int64") // 10**9
+
+
 def _metric_frame(run, step):
     m = run.metrics()
     if not hasattr(m, "columns") or len(m) == 0 or "metric" not in m.columns:
@@ -73,7 +82,7 @@ def _metric_frame(run, step):
                 s = g.dropna(subset=["t"]).set_index("t")[latc].sort_index()
                 df = df.join(s.resample(f"{step}s").max().rename(f"{_svc(svc)}_kernlat"), how="outer")
     df = df.sort_index()
-    df.insert(0, "time", df.index.astype("int64") // 10**9)
+    df.insert(0, "time", _unix_col(df.index))
     return df.reset_index(drop=True)
 
 
@@ -88,7 +97,7 @@ def _log_ts(run, step):
         return pd.DataFrame({"time": []})
     d = d.set_index("t")
     counts = d.groupby("svc").resample(f"{step}s").size().unstack("svc", fill_value=0)
-    counts.insert(0, "time", counts.index.astype("int64") // 10**9)
+    counts.insert(0, "time", _unix_col(counts.index))
     return counts.reset_index(drop=True)
 
 
@@ -113,7 +122,7 @@ def _trace_ts(run, step):
     d["_err"] = err_mask.astype(int)
     err = d.groupby("svc")["_err"].resample(f"{step}s").sum().unstack("svc")
     for f in (lat, err):
-        f.insert(0, "time", f.index.astype("int64") // 10**9)
+        f.insert(0, "time", _unix_col(f.index))
     return err.reset_index(drop=True), lat.reset_index(drop=True)
 
 
