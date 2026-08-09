@@ -8,7 +8,7 @@ Reads the {meta, results:[...]} files evaluate.py writes and prints, per conditi
   'MLT_noK' on the kernel-decisive faults is the RQ3 "kernel as safety net" signal.
 """
 from __future__ import annotations
-import glob, json, sys
+import glob, json, os, sys
 from collections import defaultdict
 
 AXES = {
@@ -33,15 +33,20 @@ def _rate(rows, key):
     return sum(r["score"].get(key) for r in rows) / n
 
 
+METRIC = os.environ.get("ANALYZE_METRIC", "service_hit")  # Top-1 service localization (= AC@1),
+#          the metric comparable across ALL methods (RCAEval localizes only). Set 'both' for
+#          statistical/agent service+fault. 'fault_hit' for fault-only.
+
+
 def _cell(rows, cond):
     rs = [r for r in rows if r["condition"] == cond]
     if not rs:
         return "  -  "
-    return f"{_rate(rs, 'both'):4.0%}"
+    return f"{_rate(rs, METRIC):4.0%}"
 
 
 def table(rows, title, subsets):
-    print(f"\n{'='*70}\n{title}   (Top-1 both-hit = service AND fault correct)\n{'='*70}")
+    print(f"\n{'='*70}\n{title}   (cell = {METRIC} rate; service_hit = Top-1 localization = AC@1)\n{'='*70}")
     for axis, conds in AXES.items():
         print(f"\n  [{axis}]")
         header = "    " + f"{'subset':22s}" + "".join(f"{c:>10}" for c in conds)
@@ -62,10 +67,10 @@ def main(paths):
               [("kernel-decisive", kern), ("other-modality", other)]
     n_inc = len(set((r["app"], r["run_id"]) for r in rows))
     print(f"loaded {len(rows)} rows over {n_inc} incidents, {len(set(r['condition'] for r in rows))} conditions")
-    table(rows, f"Degradation sweep — {n_inc} incidents", subsets)
+    table(rows, f"Degradation sweep — {n_inc} incidents [metric={METRIC}]", subsets)
 
     # per-family at 'full' vs kernel-removed (the RQ3 headline)
-    print(f"\n{'='*70}\nRQ3 per-family: full vs kernel-removed (both-hit)\n{'='*70}")
+    print(f"\n{'='*70}\nRQ3 per-family: full vs kernel-removed [{METRIC}]\n{'='*70}")
     fams = sorted(set(r["family"] for r in rows))
     print(f"    {'family':20s}{'full':>8}{'kNone':>8}{'MLT_noK':>10}{'expect':>9}")
     for fam in fams:
