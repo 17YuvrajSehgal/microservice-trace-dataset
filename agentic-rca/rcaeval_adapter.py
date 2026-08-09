@@ -141,11 +141,15 @@ def diagnose(run, app: str | None = None, method: str = "mmbaro", **_) -> dict:
     try:
         out = fn(data, inject)
         ranks = [r for r in out.get("ranks", []) if r != "time"]
+        # drop monitoring/infra + junk candidates (not app services); keep injected stress/neighbor
+        infra = {"cadvisor", "nodeexporter", "node-exporter", "node_exporter", "prometheus",
+                 "grafana", "otel-collector", "toxiproxy", "nan", ""}
         seen, services = set(), []
         for r in ranks:
             s = r.rsplit("_", 1)[0] if "_" in r else r          # <service>_<metric> → service
-            if s not in seen:
-                seen.add(s); services.append(s)
+            if s in infra or s in seen:
+                continue
+            seen.add(s); services.append(s)
         top1 = services[0] if services else None
         diagnosis = {"root_cause_service": top1, "fault_type": None,
                      "evidence": f"mmbaro rank1={ranks[0] if ranks else '-'}", "confidence": None}
