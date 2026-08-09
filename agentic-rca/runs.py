@@ -67,29 +67,28 @@ def _norm(s: str) -> str:
     return (s or "").lower().replace("docker-compose_", "").replace("trainticket_", "").rstrip("_1").strip()
 
 
-def score(diagnosis: dict, gt: dict) -> dict:
-    """Compare a diagnosis to ground_truth['fault']. Returns per-axis hits for aggregation.
-    Service match tolerates container-name decoration and the host-fault case (culprit is the
-    injected stress container, while target_service is labeled 'host')."""
+def score(diagnosis: dict, gt: dict, family: str = "") -> dict:
+    """Compare a diagnosis to ground truth. `family` is the authoritative recipe (dir name, e.g.
+    'anomaly_mem'); ground_truth['fault']['family'] is instead a taxonomy code (A_host_resource…),
+    and ['name'] carries the recipe prefix ('slow_db_mysql'). Service match tolerates container-name
+    decoration and the host-fault case (the culprit is the injected stress container)."""
     if not diagnosis:
         return {"service_hit": False, "fault_hit": False, "both": False, "no_answer": True}
     pred_svc = _norm(diagnosis.get("root_cause_service", ""))
     pred_fault = diagnosis.get("fault_type", "")
     tgt = _norm(gt.get("target_service", ""))
-    fam = gt.get("family", "") or gt.get("name", "")
+    name = str(gt.get("name", "")).lower()
 
     if tgt in ("host", "", "node"):
-        # host-level fault → accept an injected-stress/neighbor container as the culprit
         service_hit = any(k in pred_svc for k in ("stress", "neighbor", "aggressor", "host", "anomaly"))
     else:
         service_hit = bool(pred_svc) and (pred_svc == tgt or tgt in pred_svc or pred_svc in tgt)
 
-    fault_hit = FAULT_TO_FAMILY.get(pred_fault, pred_fault) == (gt.get("family") or gt.get("fault_family"))
-    if not fault_hit:  # fall back to substring on the recipe/name
-        fault_hit = FAULT_TO_FAMILY.get(pred_fault, "___") in (str(fam).lower())
+    recipe = FAULT_TO_FAMILY.get(pred_fault, pred_fault)   # agent fault_type → recipe name
+    fault_hit = bool(recipe) and (recipe == family or name.startswith(recipe) or recipe in name)
     return {"service_hit": bool(service_hit), "fault_hit": bool(fault_hit),
             "both": bool(service_hit and fault_hit), "no_answer": False,
-            "pred_service": pred_svc, "target": tgt, "pred_fault": pred_fault, "family": fam}
+            "pred_service": pred_svc, "target": tgt, "pred_fault": pred_fault, "expected_family": family}
 
 
 if __name__ == "__main__":

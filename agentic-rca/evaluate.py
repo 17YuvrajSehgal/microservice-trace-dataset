@@ -54,7 +54,7 @@ def run(app, per_family, n, families, out_path, method="agent"):
         except Exception as e:
             out = {"diagnosis": None, "error": str(e), "trajectory": [], "n_tool_calls": 0,
                    "bytes_touched": 0, "tokens": {"in": 0, "out": 0}}
-        sc = R.score(out.get("diagnosis"), rec.ground_truth)
+        sc = R.score(out.get("diagnosis"), rec.ground_truth, rec.fault_family)
         row = {"app": rec.app, "run_id": rec.run_id, "family": rec.fault_family,
                "target": rec.target_service, "expected_modality": rec.expected_winning_modality,
                "diagnosis": out.get("diagnosis"), "score": sc,

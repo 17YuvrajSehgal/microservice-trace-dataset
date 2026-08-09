@@ -33,21 +33,23 @@ def _decide(t: RunTools):
     touched = mb + tb + lb + kb
 
     # ---- A. injected stress / neighbor container (host-level resource faults) ------------
-    stress = next((m["container"] for m in movers
-                   if any(k in (m["container"] or "") for k in ("stress", "neighbor", "aggressor"))), None)
-    if stress:
-        sigs = {m["signal"] for m in movers if m["container"] == stress and abs(m.get("rel_change") or 0) >= 0.4}
+    # movers are pre-ranked by magnitude, so the FIRST entry for a stress container is its
+    # dominant signal → classify the fault by that.
+    sm = next((m for m in movers
+               if any(k in (m["container"] or "") for k in ("stress", "neighbor", "aggressor"))), None)
+    if sm:
+        stress, dom = sm["container"], sm.get("signal", "")
         if "neighbor" in stress:
-            ft, ev = "noisy_neighbor", f"co-located '{stress}' burning CPU (metrics-only host signal)"
-        elif any("mem" in s for s in sigs):
-            ft, ev = "memory_pressure", f"'{stress}' memory footprint spikes"
-        elif any("fs" in s for s in sigs):
-            ft, ev = "disk_io", f"'{stress}' fs I/O rate spikes"
-        elif any("net" in s for s in sigs):
-            ft, ev = "network_latency", f"'{stress}' network rate spikes"
+            ft = "noisy_neighbor"
+        elif "mem" in dom:
+            ft = "memory_pressure"
+        elif "fs" in dom:
+            ft = "disk_io"
+        elif "net" in dom:
+            ft = "network_latency"
         else:
-            ft, ev = "cpu_saturation", f"'{stress}' CPU usage spikes"
-        return stress, ft, 0.8, ev, touched
+            ft = "cpu_saturation"
+        return stress, ft, 0.8, f"injected '{stress}' dominant signal '{dom}'", touched
 
     # ---- B. per-service CPU throttling (svc_cpu_cap) --------------------------------------
     thr = _movers_by(movers, "cpu_throttled_s/s")
