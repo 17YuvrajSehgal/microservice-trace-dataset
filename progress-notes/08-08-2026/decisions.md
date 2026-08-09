@@ -63,6 +63,19 @@ wait % are stable), per-recipe staging. Job **2072784** launched for BOTH apps (
 `kernel_l2.jsonl` next to each run in `/scratch/yuvraj17/agentic-runs/`. This makes TT and SS identical
 (L1+L2+L3) and corrects SS's missing L2 too.
 
+## L2 batch outcome (job 2072784, 4h23m): TT done ✅, SS blocked by CTF2 ❌
+- **Train Ticket: 43/43 correct.** slow_db→mysql 100% off-CPU-io-wait, dependency_outage→seat 98% —
+  real wait-attribution; the kernel tool now surfaces `wait_attribution`. The TZ=UTC fix works.
+- **Sock Shop: 49/50 empty (n_tids=0).** Root cause: **SS kernel traces are CTF 2.0** (metadata =
+  RS-separated JSON, first bytes `1e {"type":"preamble"`), while TT is **CTF 1.8** (packetized,
+  `57 1d d1 75`). The locally-built **babeltrace 2.0.4 on Trillium cannot read CTF2** (errors
+  "Invalid metadata version"). The two collector VMs ran different LTTng/babeltrace stacks; SS's
+  newer stack wrote+read CTF2 (that's how SS L1/L3 were derived on the VM). No CTF2 reader on
+  Trillium (no babeltrace module; released bt2 lacks CTF2 read). Deleted the 48 empty SS L2 files so
+  the SS kernel tool cleanly uses L1+L3. **To get SS L2 = restart the SS collector VM
+  (stratatrace-collector, stopped, disk persists) and derive there (CTF2-capable + the TZ fix), then
+  push the ~50 tiny L2 files.** Deferred — SS L1+L3 are functional for now; revisit before RQ3.
+
 ## P0 status (see todolist.md)
 Done: env, configurable model (`config.py`, default Claude, `RCA_PROVIDER`/`RCA_MODEL`), data
 access (on-cluster extraction). Deferred: MSR dataset paper (2nd priority), baselines (statistical
