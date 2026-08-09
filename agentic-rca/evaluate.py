@@ -37,13 +37,20 @@ def _sample(app, per_family, n, families):
 
 
 def run(app, per_family, n, families, out_path, method="agent"):
-    import agent
+    if method == "agent":
+        import agent as _m
+        label = __import__("config").model_id()
+    elif method == "stat":
+        import baseline_stat as _m
+        label = "statistical-baseline"
+    else:
+        raise SystemExit(f"unknown method {method!r} (agent|stat)")
     recs = _sample(app, per_family, n, families)
-    print(f"== sanity gate: {len(recs)} incidents ({app}), method={method}, model={__import__('config').model_id()} ==")
+    print(f"== {method} over {len(recs)} incidents ({app}), model={label} ==")
     results, t0 = [], time.time()
     for i, rec in enumerate(recs, 1):
         try:
-            out = agent.diagnose(load_run(rec.dir), app=rec.app)
+            out = _m.diagnose(load_run(rec.dir), app=rec.app)
         except Exception as e:
             out = {"diagnosis": None, "error": str(e), "trajectory": [], "n_tool_calls": 0,
                    "bytes_touched": 0, "tokens": {"in": 0, "out": 0}}
@@ -95,12 +102,13 @@ if __name__ == "__main__":
     ap.add_argument("--per-family", type=int, default=0, help="take the first K runs of each family")
     ap.add_argument("--n", type=int, default=0, help="cap total incidents")
     ap.add_argument("--families", default="", help="comma list to restrict to")
+    ap.add_argument("--method", default="agent", choices=["agent", "stat"])
     ap.add_argument("--out", default="")
     a = ap.parse_args()
     fams = [x for x in a.families.split(",") if x]
     apps = ["trainticket", "sockshop"] if a.app == "both" else [a.app]
     allres = []
     for app in apps:
-        allres += run(app, a.per_family, a.n, fams, a.out or "", )
+        allres += run(app, a.per_family, a.n, fams, a.out or "", method=a.method)
     if a.app == "both":
         print("\n==== COMBINED ===="); _summarize(allres)
