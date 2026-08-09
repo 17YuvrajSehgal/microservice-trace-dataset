@@ -14,3 +14,6 @@ dev-sample-*.tar.gz
 *.egg-info/
 __pycache__/
 *.pyc
+
+# agentic-rca sweep outputs (regenerable on /scratch)
+agentic-rca/results/

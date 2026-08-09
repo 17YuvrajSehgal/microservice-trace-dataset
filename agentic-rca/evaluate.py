@@ -22,15 +22,28 @@ from stratatrace import load_run
 import runs as R
 from degrade import DegradeSpec, FULL, degrade
 
-# named degradation grids (research-agentic-rca.md §5)
+# named degradation grids (research-agentic-rca.md §5). Condition labels carry an axis prefix so
+# analyze.py can group them; "full" is the shared reference point for every axis.
 GRIDS = {
     "full":   [("full", FULL)],
     "trace":  [(f"trace{int(k*100):03d}", DegradeSpec(trace_keep=k)) for k in (1.0, 0.5, 0.25, 0.1, 0.05)],
     "metric": [(f"metric{s or 5}s", DegradeSpec(metric_step_s=s)) for s in (0, 10, 30, 60)],
     "log":    [("logALL", FULL), ("logWARN", DegradeSpec(log_level="WARN")), ("logERROR", DegradeSpec(log_level="ERROR"))],
     "kernel": [("kAll", FULL), ("kL1", DegradeSpec(kernel_tier="L1")), ("kL3", DegradeSpec(kernel_tier="L3")), ("kNone", DegradeSpec(kernel_tier="none"))],
-    # RQ3 cross-modality compensation: M+L+T (no kernel) vs M+L+T+K (full)
     "compensate": [("MLTK_full", FULL), ("MLT_noK", DegradeSpec(drop_modalities=("kernel",)))],
+    # one-pass union of every axis — load each run ONCE, evaluate all conditions
+    "all": [
+        ("full", FULL),
+        ("trace050", DegradeSpec(trace_keep=0.5)), ("trace025", DegradeSpec(trace_keep=0.25)),
+        ("trace010", DegradeSpec(trace_keep=0.1)), ("trace005", DegradeSpec(trace_keep=0.05)),
+        ("metric10s", DegradeSpec(metric_step_s=10)), ("metric30s", DegradeSpec(metric_step_s=30)),
+        ("metric60s", DegradeSpec(metric_step_s=60)),
+        ("logWARN", DegradeSpec(log_level="WARN")), ("logERROR", DegradeSpec(log_level="ERROR")),
+        ("kL1", DegradeSpec(kernel_tier="L1")), ("kL3", DegradeSpec(kernel_tier="L3")),
+        ("kNone", DegradeSpec(kernel_tier="none")),
+        ("MLT_noK", DegradeSpec(drop_modalities=("kernel",))),
+        ("MLK_noT", DegradeSpec(drop_modalities=("traces",))),
+    ],
 }
 
 
