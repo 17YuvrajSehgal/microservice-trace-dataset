@@ -30,9 +30,10 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · **(gate)** blocks downs
 - [ ] **Run** `python evaluate.py --app both --per-family 1` at 100% telemetry — **needs `export ANTHROPIC_API_KEY=…` on the Trillium login node** (has internet). Confirm Top-1 is solid.
 - [ ] Run the **statistical** + **CARE** baselines on the same 23 (deferred with P0 baselines).
 
-## P3 — Degradation module → **RQ1**
-- [ ] Build the **degradation module** (seeded, deterministic, offline): trace sampling {100/50/25/10/5%}, metric resample {5→10/30/60s}, log level {ALL/WARN+/ERROR+}, **service-coverage removal**, whole-modality removal, kernel tier {L0/L1/L2/L3 / critical-only}. Input `(run, spec, seed)` → a degraded view; keep it **before** the reader.
-- [ ] Sweep the grid; produce **degradation curves + cliff locations** (AD F1 + RCA Top-1/3/MRR per condition).
+## P3 — Degradation module → **RQ1** — **BUILT + PIPELINE PROVEN (no API)**
+- [x] **Degradation module** (`degrade.py`): seeded `DegradedRun` wrapper — trace sampling, metric resample, log level, service-coverage removal, whole-modality removal, kernel tier. Sits before the reader (agent unchanged = Mahsa's guardrail). All knobs validated (trace_keep 0.25→23.8%, log ERROR 221k→722, etc.).
+- [x] **Grid sweep wired** into `evaluate.py` (`--grid trace|metric|log|kernel|compensate`; loads each run once, sweeps conditions over cached frames). First RQ1 curve produced with the **statistical baseline, no API**.
+- [ ] Scale the sweep to all families/both apps (statistical baseline now; add LLM agent when key available); compute **cliff locations** + AD F1. Add MRR (needs ranked candidates).
 
 ## P4 — Trajectory logger → **RQ2**
 - [ ] Persist the agent **trajectory** per diagnosis: `tool → service → time-range → result → next-tool` + tokens (+ per-tool `bytes_touched` from `modalities.py`).
