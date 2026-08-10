@@ -49,5 +49,15 @@ So the "kernel as safety net" claim rests entirely on the **LLM + kernel agent**
 `slow_db` / `queue_backlog` / `noisy_neighbor` via the kernel tool (L2 wait-attribution for TT;
 L1+L3 for SS). That is the study's central test, now cleanly set up by these two references.
 
-*Caveat:* mmbaro's kernel-tier conditions are no-ops (no pyarrow in `.venv-rca` → kernel-fold skipped);
-adding pyarrow enables RQ3-inside-mmbaro. SS uses kernel L1+L3 only (L2 = CTF2, VM-only).
+## RQ3-inside-mmbaro: naive kernel fusion does NOT help the published method (a finding)
+We enabled `pyarrow` in the RCAEval env and **folded discriminative, time-varying kernel L1 KPIs**
+(`sys_lat_p99`, `sys_io`, `sys_futex`, `block_ops`, `net_bytes`) into mmbaro's `metric` frame as extra
+`<svc>_kern_<kpi>` columns (anchored to the metric time axis; `sys_lat_p95` excluded — it saturates at
+a 500 ms cap = no change-point). Result: **localization is unchanged — `full` == `kNone` for every
+family.** BARO's RobustScorer ranks the ~200 cadvisor metric change-points far above the kernel columns
+(first kernel column landed at rank ~195), so adding kernel as more columns doesn't shift the top
+ranks. **Takeaway:** the kernel's diagnostic value is not accessible by naive feature-fusion into a
+metric-change-point method; it requires an agent that *reasons* about kernel wait-attribution (method
+#3). This is a clean motivation for the LLM+kernel agent, not a defect.
+
+*Caveat:* SS uses kernel L1+L3 only (L2 = CTF2, VM-only); TT has L1+L2+L3.
