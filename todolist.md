@@ -27,24 +27,28 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · **(gate)** blocks downs
 
 ## P2 — Sanity gate **(gate — RUN blocked only on ANTHROPIC_API_KEY)**
 - [x] Sample ready: `evaluate._sample(per_family=1)` → **23 incidents** (11 TT + 12 SS, all families).
-- [ ] **Run** `python evaluate.py --app both --per-family 1` at 100% telemetry — **needs `export ANTHROPIC_API_KEY=…` on the Trillium login node** (has internet). Confirm Top-1 is solid.
-- [ ] Run the **statistical** + **CARE** baselines on the same 23 (deferred with P0 baselines).
+- [x] **Both non-LLM baselines swept** over ALL 93 incidents × 15 conditions (not just 23): statistical (job 2074051) + RCAEval/mmbaro (job 2081090). `RESULTS-stat-baseline.md`, `RESULTS-nonllm-baselines.md`.
+- [ ] **Run the LLM-agent sanity gate** `python evaluate.py --app both --per-family 1 --method agent --grid full` at 100% telemetry — **needs `export ANTHROPIC_API_KEY=…` on the Trillium login node** (has internet). Confirm Top-1 is solid before its degradation sweep.
 
 ## P3 — Degradation module → **RQ1** — **BUILT + PIPELINE PROVEN (no API)**
 - [x] **Degradation module** (`degrade.py`): seeded `DegradedRun` wrapper — trace sampling, metric resample, log level, service-coverage removal, whole-modality removal, kernel tier. Sits before the reader (agent unchanged = Mahsa's guardrail). All knobs validated (trace_keep 0.25→23.8%, log ERROR 221k→722, etc.).
 - [x] **Grid sweep wired** into `evaluate.py` (`--grid trace|metric|log|kernel|compensate`; loads each run once, sweeps conditions over cached frames). First RQ1 curve produced with the **statistical baseline, no API**.
 - [x] **Full sweep DONE (no API):** 93 incidents × 15 conditions = 1,395 evals, statistical baseline (job 2074051, 53min). Results + interpretation in `agentic-rca/RESULTS-stat-baseline.md`. Headline: baseline robust to degradation (flat curves), kernel-blind (kNone=full), **0% on slow_db/queue_backlog** — the gap the kernel agent must close.
-- [ ] Add the **LLM agent** as method #3 over the same sweep (needs API key) + **CARE/RCAEval** as method #2. Then cliff locations + AD F1 + MRR (needs ranked candidates).
+- [x] **Method #2 (RCAEval/mmbaro) swept** over the same 93×15 grid (`rcaeval_adapter.py`, job 2081090). Headline: the two non-LLM methods have **complementary blind spots**; both **flat under degradation** (RQ1 cliffs must come from the agent + trace-dependent methods); folding kernel into mmbaro doesn't help (**RQ3-inside-mmbaro finding**). `RESULTS-nonllm-baselines.md`.
+- [ ] **Method #3 (LLM+kernel agent) sweep** over the same grid — **needs `ANTHROPIC_API_KEY`**. Expected to break the complementarity ceiling + expose the degradation cliffs the flat baselines lack.
+- [ ] **(no-API) RQ1 cliff baselines** — wire the deliberately trace-dependent **MicroRank/TraceRCA** (already in RCAEval) so trace-sampling collapse is visible; add **AD F1** + **MRR/AC@3** columns to `analyze.py` (mmbaro already returns `ranked_services`).
 
 ## P4 — Trajectory logger → **RQ2**
-- [ ] Persist the agent **trajectory** per diagnosis: `tool → service → time-range → result → next-tool` + tokens (+ per-tool `bytes_touched` from `modalities.py`).
-- [ ] Compare **full vs degraded** trajectories: #calls, modality order, repeated/failed queries, **strategy change** (escalates to lower-level telemetry vs hammers dead traces).
+- [x] Trajectory logging **built into `agent.py`** (persists every `tool→service→window→result→next-tool` + tokens/bytes per diagnosis, in the evaluation-runner rows).
+- [ ] Compare **full vs degraded** trajectories: #calls, modality order, repeated/failed queries, **strategy change** (escalates to lower-level telemetry vs hammers dead traces). *(needs the API agent runs.)*
 
-## P5 — Cross-modality compensation → **RQ3**
-- [ ] **M+L+T vs M+L+T+K** on the blind-spot faults (`slow_db`, `queue_backlog`, `noisy_neighbor`) + Sock Shop's partial-trace-coverage services.
-- [ ] Measure **recovery rate**: how often adding a modality flips a wrong diagnosis to correct (kernel-as-safety-net evidence).
+## P5 — Cross-modality compensation → **RQ3**  *(setup done; execution = method #3)*
+- [x] **Setup framed by the baselines:** both non-LLM methods are kernel-blind (`kNone`=`full`) and fail `slow_db`/`queue_backlog`; naive kernel-fusion into mmbaro doesn't help → the kernel value must come from an agent that reasons about wait-attribution.
+- [ ] **M+L+T vs M+L+T+K** with the LLM agent on the blind-spot faults + SS partial-trace-coverage (the `compensate` grid already exists). Measure **recovery rate** (adding kernel flips a wrong diagnosis to correct).
+- [ ] **SS kernel L2** (currently L1+L3 only — CTF2/babeltrace): derive on the SS collector VM (CTF2-capable Linux) + push the ~50 tiny L2 files, so SS matches TT for the kernel-compensation test.
 
 ## P6 — Minimum-observability Pareto → **RQ4**
+- [x] **Cost axes wired:** every tool returns `bytes_touched` and the agent/runner records tokens per diagnosis (in the result rows) — the RQ4 x-axis is already captured per run×condition.
 - [ ] Join RCA accuracy to **collection cost** (bytes/CPU/latency from the repo's overhead data + tool `bytes_touched` + agent tokens).
 - [ ] Search configs (e.g. `{metrics 10s, logs ERROR, traces 10%, kernel L1-critical}`); plot **accuracy vs cost**; identify **Pareto-optimal** budgets (cheapest retaining ≥90% of full RCA).
 
@@ -61,7 +65,9 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · **(gate)** blocks downs
 - [ ] **Confound discipline**: degradation = data-only; agent fixed within a sweep (RQ1/3/4). Agent behavior (RQ2) is observed, not co-varied.
 - [ ] **Both apps** (Sock Shop, Train Ticket) in every RQ where feasible — the shared-DB vs per-service-DB contrast is the generality claim.
 
-## Immediate next 3 actions
-1. Settle P0 decisions (Naser confirm, model, tool interface, baselines).
-2. Pull ~20 dev runs' small data locally (`dev-runs/`).
-3. Build the **evaluation runner + degradation module** around the existing MVP (the critical-path new code).
+## Immediate next actions (as of 2026-08-09)
+**Done:** harness (P1–P3), degradation module, both non-LLM baselines swept + documented — all no-API.
+1. **(API-gated — the crux) Method #3, the LLM+kernel agent.** On the Trillium login node: `source transfer/env.sh; export ANTHROPIC_API_KEY=…`, then the P2 sanity gate (`--method agent --grid full`), then the full degradation sweep (`--grid all`). This is the last RCA method and drives RQ2 (trajectories) + RQ3 (kernel safety net).
+2. **(no-API) RQ1 cliff baselines + metrics** — add MicroRank/TraceRCA (trace-dependent → visible cliff) and MRR/AC@3 to `analyze.py`.
+3. **(no-API) SS kernel L2** — derive on the SS collector VM (CTF2-capable) so SS has L1+L2+L3 like TT.
+4. **Confirm the agentic direction with Naser** (the still-open P0 gate) before heavy write-up.
