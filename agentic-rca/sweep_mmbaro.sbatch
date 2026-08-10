@@ -12,7 +12,7 @@
 #SBATCH --output=/scratch/yuvraj17/strata-mmbaro-%j.out
 set -uo pipefail
 cd /scratch/yuvraj17/microservice-trace-dataset
-module load python/3.12 >/dev/null 2>&1
+module load python/3.12 >/dev/null 2>&1; module load arrow/19.0.1 >/dev/null 2>&1  # pyarrow → kernel-fold
 source /scratch/yuvraj17/.venv-rca/bin/activate
 OUT=agentic-rca/results/sweep_mmbaro; mkdir -p "$OUT"
 echo "== mmbaro sweep start $(date) | python=$(python --version 2>&1) =="

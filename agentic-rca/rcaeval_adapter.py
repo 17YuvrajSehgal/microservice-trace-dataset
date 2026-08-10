@@ -68,14 +68,17 @@ def _metric_frame(run, step):
         cols.append(r.rename(f"{svc}_{label}"))
     if not cols:
         return pd.DataFrame({"time": []})
-    df = pd.concat(cols, axis=1)
-    # fold kernel L1 syscall-latency peaks in as extra <svc>_kernlat columns (RQ3-inside-mmbaro)
+    df = pd.concat(cols, axis=1).sort_index()
+    # fold kernel L1 syscall-latency peaks in as extra <svc>_kernlat columns (RQ3-inside-mmbaro).
+    # window_start_s is RELATIVE seconds from the kernel-trace start, not unix — anchor it to the
+    # metric collection start (both begin at collection time) so it aligns with the metric time axis.
     l1 = run.kernel_l1()
-    if hasattr(l1, "columns") and len(l1):
+    if hasattr(l1, "columns") and len(l1) and len(df):
         latc = next((c for c in l1.columns if "p95" in c and "lat" in c), None)
         if latc and "service" in l1.columns and "window_start_s" in l1.columns:
+            anchor = df.index.min()
             k = l1[["service", "window_start_s", latc]].copy()
-            k["t"] = pd.to_datetime(pd.to_numeric(k["window_start_s"], errors="coerce"), unit="s")
+            k["t"] = anchor + pd.to_timedelta(pd.to_numeric(k["window_start_s"], errors="coerce"), unit="s")
             for svc, g in k.groupby("service"):
                 if svc in ("kernel", "system"):
                     continue
