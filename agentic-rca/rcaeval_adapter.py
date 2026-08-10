@@ -19,6 +19,10 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import pandas as pd
 
+# discriminative, time-VARYING kernel L1 KPIs to fold (sys_lat_p95 saturates → excluded):
+# latency tail, io-wait / lock-wait / disk / net syscall activity — the wait-attribution signals.
+_KERN_KPIS = ("sys_lat_p99_ms", "sys_io", "sys_futex", "block_ops", "net_bytes")
+
 _CADV = {  # cadvisor metric -> (short label, is_counter)
     "container_cpu_usage_seconds_total": ("cpu", True),
     "container_memory_working_set_bytes": ("mem", False),
@@ -69,21 +73,23 @@ def _metric_frame(run, step):
     if not cols:
         return pd.DataFrame({"time": []})
     df = pd.concat(cols, axis=1).sort_index()
-    # fold kernel L1 syscall-latency peaks in as extra <svc>_kernlat columns (RQ3-inside-mmbaro).
-    # window_start_s is RELATIVE seconds from the kernel-trace start, not unix — anchor it to the
-    # metric collection start (both begin at collection time) so it aligns with the metric time axis.
+    # fold discriminative kernel L1 KPIs as extra <svc>_kern_<kpi> columns (RQ3-inside-mmbaro).
+    # NOTE sys_lat_p95 saturates (500ms cap) → no change-point; use the *varying* wait/syscall signals.
+    # window_start_s is RELATIVE seconds from the kernel-trace start (not unix) → anchor to metric start.
     l1 = run.kernel_l1()
     if hasattr(l1, "columns") and len(l1) and len(df):
-        latc = next((c for c in l1.columns if "p95" in c and "lat" in c), None)
-        if latc and "service" in l1.columns and "window_start_s" in l1.columns:
+        kpis = [c for c in _KERN_KPIS if c in l1.columns]
+        if kpis and "service" in l1.columns and "window_start_s" in l1.columns:
             anchor = df.index.min()
-            k = l1[["service", "window_start_s", latc]].copy()
-            k["t"] = anchor + pd.to_timedelta(pd.to_numeric(k["window_start_s"], errors="coerce"), unit="s")
-            for svc, g in k.groupby("service"):
+            base = l1[["service", "window_start_s", *kpis]].copy()
+            base["t"] = anchor + pd.to_timedelta(pd.to_numeric(base["window_start_s"], errors="coerce"), unit="s")
+            for svc, g in base.groupby("service"):
                 if svc in ("kernel", "system"):
                     continue
-                s = g.dropna(subset=["t"]).set_index("t")[latc].sort_index()
-                df = df.join(s.resample(f"{step}s").max().rename(f"{_svc(svc)}_kernlat"), how="outer")
+                gi = g.dropna(subset=["t"]).set_index("t").sort_index()
+                for kpi in kpis:
+                    s = pd.to_numeric(gi[kpi], errors="coerce").resample(f"{step}s").max()
+                    df = df.join(s.rename(f"{_svc(svc)}_kern_{kpi}"), how="outer")
     df = df.sort_index()
     df.insert(0, "time", _unix_col(df.index))
     return df.reset_index(drop=True)
