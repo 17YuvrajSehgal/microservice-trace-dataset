@@ -155,6 +155,8 @@ def to_trace_df(run):
         "methodName": sp["name"].astype(str),
         "operationName": sp["name"].astype(str),
         "traceID": sp["trace_id"].astype(str),
+        "spanID": sp["span_id"].astype(str) if "span_id" in sp.columns else "",
+        "parentSpanID": sp["parent_span_id"].astype(str) if "parent_span_id" in sp.columns else "",
         "startTime": st // 1000,        # ns → µs
         "duration": dur * 1000,         # ms → µs
     }).dropna(subset=["startTime", "duration"])
@@ -184,6 +186,11 @@ def diagnose(run, app: str | None = None, method: str = "mmbaro", **_) -> dict:
     if method in ("microrank", "tracerca"):
         data = to_trace_df(run)
         inject = int(inj * 1_000_000) if inj else None   # µs for the Jaeger-format methods
+        if len(data) and inject:                          # RCAEval SLO lookup assumes every anomal
+            data = data.copy()                            # operation exists in baseline → restrict to
+            data["_op"] = data["serviceName"] + "_" + data["methodName"]   # baseline-covered operations
+            base_ops = set(data.loc[data["startTime"] < inject, "_op"])
+            data = data[data["_op"].isin(base_ops)].drop(columns="_op")
         known = set(data["serviceName"].unique()) if len(data) else set()
     elif method == "mmbaro":
         data, inject = to_rcaeval(run), inj
