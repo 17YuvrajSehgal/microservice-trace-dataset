@@ -160,6 +160,13 @@ if __name__ == "__main__":
     apps = ["trainticket", "sockshop"] if a.app == "both" else [a.app]
     allres = []
     for app in apps:
-        allres += run(app, a.per_family, a.n, fams, a.out or "", a.method, a.grid)
+        app_out = a.out
+        if a.out and len(apps) > 1:                    # avoid clobbering: per-app files for --app both
+            app_out = a.out[:-5] + f"_{app}.json" if a.out.endswith(".json") else f"{a.out}.{app}"
+        allres += run(app, a.per_family, a.n, fams, app_out or "", a.method, a.grid)
     if a.app == "both":
         print("\n==== COMBINED ===="); _summarize(allres, GRIDS[a.grid])
+        if a.out:
+            json.dump({"meta": {"apps": apps, "n": len(allres)}, "results": allres},
+                      open(a.out, "w"), indent=2, default=str)
+            print(f"wrote combined {a.out}")
