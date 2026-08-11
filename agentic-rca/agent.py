@@ -77,38 +77,50 @@ def _run_tool(tools: RunTools, name: str, args: dict):
 
 
 def diagnose(run, app: str | None = None, max_steps: int = 14, verbose: bool = False) -> dict:
-    """Run the agent on one incident. Returns diagnosis + trajectory + usage (no ground-truth here)."""
-    import anthropic
-    client = anthropic.Anthropic()
+    """Run the agent on one incident. Returns diagnosis + trajectory + usage (no ground-truth here).
+    Dispatches on the provider's SDK family — Anthropic vs OpenAI-compatible (azure/gemini/openai/
+    ollama) — so the model is a config knob (RCA_PROVIDER/RCA_MODEL); everything else is identical."""
     tools = RunTools(run, app=app)
-    tool_schema = [{"name": t["name"], "description": t["description"], "input_schema": t["parameters"]}
-                   for t in _TOOL_DEFS]
-    messages = [{"role": "user", "content":
-                 f"Incident in run '{os.path.basename(run.run_dir)}'. Services are unknown until you "
-                 f"list them. Diagnose the root cause and call submit_diagnosis."}]
-    trajectory, in_tok, out_tok, bytes_touched = [], 0, 0, 0
-    diagnosis = None
+    user = (f"Incident in run '{os.path.basename(run.run_dir)}'. Services are unknown until you list "
+            f"them. Diagnose the root cause and call submit_diagnosis.")
     t0 = time.time()
+    loop = _loop_anthropic if config.sdk_kind() == "anthropic" else _loop_openai
+    diagnosis, traj, in_tok, out_tok, bytes_touched = loop(tools, user, max_steps, verbose)
+    return {
+        "run_id": os.path.basename(run.run_dir),
+        "diagnosis": diagnosis,                       # {root_cause_service, fault_type, evidence, confidence} or None
+        "trajectory": traj,                           # RQ2
+        "n_tool_calls": len([x for x in traj if x["tool"] != "submit_diagnosis"]),
+        "bytes_touched": bytes_touched,               # RQ4 cost
+        "tokens": {"in": in_tok, "out": out_tok},     # RQ2/RQ4 cost
+        "model": config.model_id(), "wall_s": round(time.time() - t0, 1),
+    }
+
+
+def _loop_anthropic(tools, user, max_steps, verbose):
+    client = config.make_client()
+    schema = [{"name": t["name"], "description": t["description"], "input_schema": t["parameters"]}
+              for t in _TOOL_DEFS]
+    messages = [{"role": "user", "content": user}]
+    traj, itok, otok, bt, diagnosis = [], 0, 0, 0, None
     for step in range(max_steps):
         r = client.messages.create(model=config.model_id(), max_tokens=config.MAX_TOKENS,
-                                    temperature=config.TEMPERATURE, system=SYSTEM,
-                                    messages=messages, tools=tool_schema)
-        in_tok += r.usage.input_tokens; out_tok += r.usage.output_tokens
+                                   temperature=config.TEMPERATURE, system=SYSTEM,
+                                   messages=messages, tools=schema)
+        itok += r.usage.input_tokens; otok += r.usage.output_tokens
         messages.append({"role": "assistant", "content": r.content})
         tool_uses = [b for b in r.content if b.type == "tool_use"]
         if not tool_uses:
-            break  # model stopped without a tool call
+            break
         results = []
         for tu in tool_uses:
             if tu.name == "submit_diagnosis":
                 diagnosis = dict(tu.input)
-                trajectory.append({"step": step, "tool": "submit_diagnosis", "service": None})
+                traj.append({"step": step, "tool": "submit_diagnosis", "service": None})
                 results.append({"type": "tool_result", "tool_use_id": tu.id, "content": "recorded"})
                 continue
-            res, b = _run_tool(tools, tu.name, dict(tu.input))
-            bytes_touched += b
-            trajectory.append({"step": step, "tool": tu.name,
-                               "service": tu.input.get("service"), "result_bytes": b})
+            res, b = _run_tool(tools, tu.name, dict(tu.input)); bt += b
+            traj.append({"step": step, "tool": tu.name, "service": tu.input.get("service"), "result_bytes": b})
             if verbose:
                 print(f"  [{step}] {tu.name}({tu.input.get('service') or ''}) -> {b}B")
             results.append({"type": "tool_result", "tool_use_id": tu.id,
@@ -116,15 +128,49 @@ def diagnose(run, app: str | None = None, max_steps: int = 14, verbose: bool = F
         messages.append({"role": "user", "content": results})
         if diagnosis is not None:
             break
-    return {
-        "run_id": os.path.basename(run.run_dir),
-        "diagnosis": diagnosis,                       # {root_cause_service, fault_type, evidence, confidence} or None
-        "trajectory": trajectory,                     # RQ2
-        "n_tool_calls": len([x for x in trajectory if x["tool"] != "submit_diagnosis"]),
-        "bytes_touched": bytes_touched,               # RQ4 cost
-        "tokens": {"in": in_tok, "out": out_tok},     # RQ2/RQ4 cost
-        "model": config.model_id(), "wall_s": round(time.time() - t0, 1),
-    }
+    return diagnosis, traj, itok, otok, bt
+
+
+def _loop_openai(tools, user, max_steps, verbose):
+    """OpenAI-compatible tool-use loop (Azure / Gemini / OpenAI / Ollama)."""
+    client = config.make_client()
+    schema = [{"type": "function", "function": t} for t in _TOOL_DEFS]
+    messages = [{"role": "system", "content": SYSTEM}, {"role": "user", "content": user}]
+    ck = config.openai_create_kwargs()
+    traj, itok, otok, bt, diagnosis = [], 0, 0, 0, None
+    for step in range(max_steps):
+        r = client.chat.completions.create(model=config.model_id(), messages=messages, tools=schema, **ck)
+        u = r.usage
+        itok += getattr(u, "prompt_tokens", 0); otok += getattr(u, "completion_tokens", 0)
+        m = r.choices[0].message
+        asst = {"role": "assistant", "content": m.content or ""}
+        if m.tool_calls:
+            asst["tool_calls"] = [{"id": c.id, "type": "function",
+                                   "function": {"name": c.function.name, "arguments": c.function.arguments}}
+                                  for c in m.tool_calls]
+        messages.append(asst)
+        if not m.tool_calls:
+            break
+        for c in m.tool_calls:
+            name = c.function.name
+            try:
+                args = json.loads(c.function.arguments or "{}")
+            except Exception:
+                args = {}
+            if name == "submit_diagnosis":
+                diagnosis = args
+                traj.append({"step": step, "tool": "submit_diagnosis", "service": None})
+                messages.append({"role": "tool", "tool_call_id": c.id, "content": "recorded"})
+                continue
+            res, b = _run_tool(tools, name, args); bt += b
+            traj.append({"step": step, "tool": name, "service": args.get("service"), "result_bytes": b})
+            if verbose:
+                print(f"  [{step}] {name}({args.get('service') or ''}) -> {b}B")
+            messages.append({"role": "tool", "tool_call_id": c.id,
+                             "content": json.dumps(res, default=str)[:6000]})
+        if diagnosis is not None:
+            break
+    return diagnosis, traj, itok, otok, bt
 
 
 if __name__ == "__main__":

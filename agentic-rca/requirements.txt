@@ -1,5 +1,5 @@
 # agentic-RCA harness deps. Data stack (pandas, pyarrow) comes from stratatrace (pip install -e ../stratatrace).
-anthropic>=0.40        # default provider (Claude)
+anthropic>=0.40        # RCA_PROVIDER=claude
+openai>=1.40           # RCA_PROVIDER=azure | gemini | openai | ollama (all OpenAI-compatible chat.completions)
 mcp[cli]>=1.2          # only if serving tools over MCP (see config.py / README §tool-interface)
-# openai>=1.40         # uncomment for RCA_PROVIDER=openai
-# ollama: no package needed (HTTP to localhost:11434)
+# ollama: no extra package (OpenAI-compatible HTTP at http://localhost:11434/v1)
