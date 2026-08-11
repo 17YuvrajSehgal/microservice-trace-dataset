@@ -15,6 +15,7 @@ Runs in the RCAEval venv (/scratch/yuvraj17/.venv-rca, py3.12) which also has st
 from __future__ import annotations
 import os, re, sys
 
+os.environ.setdefault("TQDM_DISABLE", "1")   # microrank/tracerca spam tqdm bars over millions of spans
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import pandas as pd
