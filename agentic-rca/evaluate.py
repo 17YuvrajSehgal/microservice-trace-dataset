@@ -117,7 +117,8 @@ def run(app, per_family, n, families, out_path, method, grid):
                             "expected_modality": rec.expected_winning_modality,
                             "diagnosis": out.get("diagnosis"), "ranked_services": out.get("ranked_services"),
                             "score": sc, "n_tool_calls": out.get("n_tool_calls"), "tokens": out.get("tokens"),
-                            "bytes_touched": out.get("bytes_touched"), "error": out.get("error")})
+                            "bytes_touched": out.get("bytes_touched"), "trajectory": out.get("trajectory"),  # RQ2
+                            "error": out.get("error")})
         d0 = results[-len(conditions)]
         print(f"  [{i}/{len(recs)}] {rec.run_id:44s} ({rec.fault_family})")
     _summarize(results, conditions)
