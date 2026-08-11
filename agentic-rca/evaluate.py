@@ -109,12 +109,12 @@ def run(app, per_family, n, families, out_path, method, grid):
             except Exception as e:
                 out = {"diagnosis": None, "error": str(e), "n_tool_calls": 0,
                        "bytes_touched": 0, "tokens": {"in": 0, "out": 0}}
-            sc = R.score(out.get("diagnosis"), rec.ground_truth, rec.fault_family)
+            sc = R.score(out.get("diagnosis"), rec.ground_truth, rec.fault_family, out.get("ranked_services"))
             results.append({"app": rec.app, "run_id": rec.run_id, "family": rec.fault_family,
                             "condition": cname, "target": rec.target_service,
                             "expected_modality": rec.expected_winning_modality,
-                            "diagnosis": out.get("diagnosis"), "score": sc,
-                            "n_tool_calls": out.get("n_tool_calls"), "tokens": out.get("tokens"),
+                            "diagnosis": out.get("diagnosis"), "ranked_services": out.get("ranked_services"),
+                            "score": sc, "n_tool_calls": out.get("n_tool_calls"), "tokens": out.get("tokens"),
                             "bytes_touched": out.get("bytes_touched"), "error": out.get("error")})
         d0 = results[-len(conditions)]
         print(f"  [{i}/{len(recs)}] {rec.run_id:44s} ({rec.fault_family})")

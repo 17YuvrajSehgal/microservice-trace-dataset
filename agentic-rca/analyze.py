@@ -56,6 +56,30 @@ def table(rows, title, subsets):
             print(line)
 
 
+def ac_summary(rows, subsets):
+    """RCAEval-standard localization metrics at full telemetry: AC@1 (Top-1), AC@3 (Top-3), MRR.
+    Falls back gracefully on result files written before service_top3/rr existed."""
+    print(f"\n{'='*70}\nRCAEval-style metrics @ full telemetry\n{'='*70}")
+    print(f"    {'subset':22s}{'AC@1':>8}{'AC@3':>8}{'MRR':>8}")
+    for label, sub in subsets:
+        rs = [r for r in sub if r["condition"] == "full"]
+        n = len(rs) or 1
+        ac1 = sum(r["score"].get("service_hit") for r in rs) / n
+        ac3 = sum(r["score"].get("service_top3", r["score"].get("service_hit")) for r in rs) / n
+        mrr = sum(r["score"].get("rr", 1.0 if r["score"].get("service_hit") else 0.0) for r in rs) / n
+        print(f"    {label:22s}{ac1:7.0%}{ac3:8.0%}{mrr:8.2f}")
+
+
+def _mrr_curve(rows, conds):
+    """mean MRR per condition (for the RQ1 trace/… cliff, once trace-dependent methods are added)."""
+    out = []
+    for c in conds:
+        rs = [r for r in rows if r["condition"] == c]
+        n = len(rs) or 1
+        out.append(sum(r["score"].get("rr", 1.0 if r["score"].get("service_hit") else 0.0) for r in rs) / n)
+    return out
+
+
 def main(paths):
     rows = load(paths)
     if not rows:
@@ -68,6 +92,9 @@ def main(paths):
     n_inc = len(set((r["app"], r["run_id"]) for r in rows))
     print(f"loaded {len(rows)} rows over {n_inc} incidents, {len(set(r['condition'] for r in rows))} conditions")
     table(rows, f"Degradation sweep — {n_inc} incidents [metric={METRIC}]", subsets)
+    ac_summary(rows, subsets)
+    print("\n  MRR by trace-retention (RQ1 cliff):",
+          [f"{v:.2f}" for v in _mrr_curve(rows, AXES['trace'])], "for", AXES['trace'])
 
     # per-family at 'full' vs kernel-removed (the RQ3 headline)
     print(f"\n{'='*70}\nRQ3 per-family: full vs kernel-removed [{METRIC}]\n{'='*70}")
