@@ -30,6 +30,31 @@ victim-vs-culprit** faults (noisy_neighbor, dependency); mmbaro's metric change-
 **subtle single-service** faults the rule-tree misses (**slow_db**, error_storm, svc_mem_cap). This
 complementarity is exactly the motivation for a third, adaptive (LLM + kernel) method.
 
+## RCAEval-standard metrics (mmbaro) — AC@1 / AC@3 / MRR @ full telemetry
+| subset | AC@1 (Top-1) | AC@3 (Top-3) | MRR |
+|---|---|---|---|
+| ALL | 46% | 63% | 0.54 |
+| Sock Shop | 48% | 72% | 0.59 |
+| Train Ticket | 44% | 53% | 0.48 |
+| kernel-decisive faults | 54% | 73% | 0.62 |
+AC@3 ≫ AC@1: mmbaro usually has the target **in its top-3** even when not #1 (MRR 0.54). MRR is
+**flat across trace retention** (0.54 at 100%→5%) — robust, as expected for a metric-change-point method.
+
+## Trace-only "expected-to-break" methods (MicroRank / TraceRCA) — the RQ1 finding
+Integrated MicroRank + TraceRCA (RCAEval, `rcaeval_adapter.to_trace_df` → Jaeger-µs span records)
+and swept the trace-retention grid. **Result — there is no clean cliff, and that is the finding:**
+- **TraceRCA** localizes only the service-latency faults whose target emits spans (svc_cpu_cap 20%,
+  svc_net 33%) and scores **0% on every DB / host / dependency fault** — those targets (mysql,
+  stress containers, a dead dependency) have **no localizable spans**. Overall AC@1 ≈ 5%.
+- **MicroRank** ≈ 0% across the board on our fault set.
+- Because they never work well *at full telemetry* on our fault distribution (heavy on infra/DB/host
+  targets), there is nowhere to fall from — no dramatic trace-sampling cliff, just a low floor.
+
+**Takeaway:** trace-only RCA is **structurally handicapped on exactly the faults where the target is
+not an instrumented service** — the same faults where kernel telemetry is decisive. This reinforces
+the kernel-safety-net thesis (RQ3) from a third angle. (Our full-instrumentation traces — SS 2.6M
+spans — also make these methods very slow, itself an operability point.)
+
 ## RQ1 — both non-LLM methods are essentially FLAT under degradation
 
 | axis | statistical | mmbaro |

@@ -36,7 +36,9 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · **(gate)** blocks downs
 - [x] **Full sweep DONE (no API):** 93 incidents × 15 conditions = 1,395 evals, statistical baseline (job 2074051, 53min). Results + interpretation in `agentic-rca/RESULTS-stat-baseline.md`. Headline: baseline robust to degradation (flat curves), kernel-blind (kNone=full), **0% on slow_db/queue_backlog** — the gap the kernel agent must close.
 - [x] **Method #2 (RCAEval/mmbaro) swept** over the same 93×15 grid (`rcaeval_adapter.py`, job 2081090). Headline: the two non-LLM methods have **complementary blind spots**; both **flat under degradation** (RQ1 cliffs must come from the agent + trace-dependent methods); folding kernel into mmbaro doesn't help (**RQ3-inside-mmbaro finding**). `RESULTS-nonllm-baselines.md`.
 - [ ] **Method #3 (LLM+kernel agent) sweep** over the same grid — **needs `ANTHROPIC_API_KEY`**. Expected to break the complementarity ceiling + expose the degradation cliffs the flat baselines lack.
-- [ ] **(no-API) RQ1 cliff baselines** — wire the deliberately trace-dependent **MicroRank/TraceRCA** (already in RCAEval) so trace-sampling collapse is visible; add **AD F1** + **MRR/AC@3** columns to `analyze.py` (mmbaro already returns `ranked_services`).
+- [x] **(no-API) MRR/AC@3** added (`ranked_services` through the runner → `analyze.py` AC@1/AC@3/MRR). mmbaro: AC@1 46% / AC@3 63% / MRR 0.54.
+- [x] **(no-API) Trace-only methods MicroRank + TraceRCA integrated + swept** (`to_trace_df`, trace grid). Finding: **no cliff** — they floor-out on our fault set (TraceRCA ~5%, MicroRank ~0%) because most targets (DB/host/dead-dependency) emit no localizable spans → reinforces the kernel thesis. `RESULTS-nonllm-baselines.md`.
+- [ ] **AD F1** (anomaly-detection) still open; MRR curves ready for the agent sweep.
 
 ## P4 — Trajectory logger → **RQ2**
 - [x] Trajectory logging **built into `agent.py`** (persists every `tool→service→window→result→next-tool` + tokens/bytes per diagnosis, in the evaluation-runner rows).
@@ -68,6 +70,6 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · **(gate)** blocks downs
 ## Immediate next actions (as of 2026-08-09)
 **Done:** harness (P1–P3), degradation module, both non-LLM baselines swept + documented — all no-API.
 1. **(API-gated — the crux) Method #3, the LLM+kernel agent.** On the Trillium login node: `source transfer/env.sh; export ANTHROPIC_API_KEY=…`, then the P2 sanity gate (`--method agent --grid full`), then the full degradation sweep (`--grid all`). This is the last RCA method and drives RQ2 (trajectories) + RQ3 (kernel safety net).
-2. **(no-API) RQ1 cliff baselines + metrics** — add MicroRank/TraceRCA (trace-dependent → visible cliff) and MRR/AC@3 to `analyze.py`.
+2. ✅ **(done, no-API) MicroRank/TraceRCA + MRR/AC@3** — integrated + swept; trace-only methods floor-out on our fault set (finding, `RESULTS-nonllm-baselines.md`).
 3. **(no-API) SS kernel L2** — derive on the SS collector VM (CTF2-capable) so SS has L1+L2+L3 like TT.
 4. **Confirm the agentic direction with Naser** (the still-open P0 gate) before heavy write-up.
