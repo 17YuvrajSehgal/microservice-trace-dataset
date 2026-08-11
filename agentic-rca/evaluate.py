@@ -89,14 +89,15 @@ def _sample(app, per_family, n, families):
 
 
 def run(app, per_family, n, families, out_path, method, grid):
+    RCAEVAL = {"mmbaro", "microrank", "tracerca", "baro"}
     if method == "agent":
         import agent as _m; label = __import__("config").model_id()
     elif method == "stat":
         import baseline_stat as _m; label = "statistical-baseline"
-    elif method == "mmbaro":
-        import rcaeval_adapter as _m; label = "rcaeval:mmbaro"   # run in .venv-rca (py3.12)
+    elif method in RCAEVAL:
+        import rcaeval_adapter as _m; label = f"rcaeval:{method}"   # run in .venv-rca (py3.12)
     else:
-        raise SystemExit(f"unknown method {method!r} (agent|stat|mmbaro)")
+        raise SystemExit(f"unknown method {method!r}")
     conditions = GRIDS[grid]
     recs = _sample(app, per_family, n, families)
     print(f"== {method} ({label}) × grid '{grid}' ({len(conditions)} conds) over {len(recs)} incidents ({app}) ==")
@@ -105,7 +106,8 @@ def run(app, per_family, n, families, out_path, method, grid):
         base = _MemoRun(load_run(rec.dir))             # load ONCE; conditions wrap the cached frames
         for cname, spec in conditions:
             try:
-                out = _m.diagnose(degrade(base, spec), app=rec.app)
+                kw = {"method": method} if method in RCAEVAL else {}
+                out = _m.diagnose(degrade(base, spec), app=rec.app, **kw)
             except Exception as e:
                 out = {"diagnosis": None, "error": str(e), "n_tool_calls": 0,
                        "bytes_touched": 0, "tokens": {"in": 0, "out": 0}}
@@ -149,7 +151,7 @@ if __name__ == "__main__":
     ap.add_argument("--per-family", type=int, default=0)
     ap.add_argument("--n", type=int, default=0)
     ap.add_argument("--families", default="")
-    ap.add_argument("--method", default="agent", choices=["agent", "stat", "mmbaro"])
+    ap.add_argument("--method", default="agent", choices=["agent", "stat", "mmbaro", "microrank", "tracerca", "baro"])
     ap.add_argument("--grid", default="full", choices=list(GRIDS))
     ap.add_argument("--out", default="")
     a = ap.parse_args()

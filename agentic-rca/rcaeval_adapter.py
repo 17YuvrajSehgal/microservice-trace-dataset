@@ -141,27 +141,66 @@ def to_rcaeval(run, step_s: int = 5) -> dict:
             "tracets_err": err, "tracets_lat": lat}
 
 
+def to_trace_df(run):
+    """RCAEval traces.csv-style span records for the TRACE methods (microrank/tracerca).
+    Jaeger units: startTime + duration in MICROSECONDS. These methods degrade hard under trace
+    sampling → the RQ1 cliff the flat metric methods don't show."""
+    sp = run.spans()
+    if not hasattr(sp, "columns") or len(sp) == 0 or "start_ns" not in sp.columns:
+        return pd.DataFrame()
+    st = pd.to_numeric(sp["start_ns"], errors="coerce")
+    dur = pd.to_numeric(sp.get("dur_ms"), errors="coerce")
+    out = pd.DataFrame({
+        "serviceName": sp["service"].astype(str),
+        "methodName": sp["name"].astype(str),
+        "operationName": sp["name"].astype(str),
+        "traceID": sp["trace_id"].astype(str),
+        "startTime": st // 1000,        # ns → µs
+        "duration": dur * 1000,         # ms → µs
+    }).dropna(subset=["startTime", "duration"])
+    out["startTime"] = out["startTime"].astype("int64")
+    out["duration"] = out["duration"].round().astype("int64")
+    return out
+
+
+_INFRA = {"cadvisor", "nodeexporter", "node-exporter", "node_exporter", "prometheus",
+          "grafana", "otel-collector", "toxiproxy", "nan", ""}
+
+
+def _rank_to_service(r, known):
+    if known:
+        for s in known:                                  # operation "<serviceName>_<method>" → service
+            if r == s or r.startswith(s + "_"):
+                return s
+    return r.rsplit("_", 1)[0] if "_" in r else r        # metric "<service>_<metric>" fallback
+
+
 def diagnose(run, app: str | None = None, method: str = "mmbaro", **_) -> dict:
-    from RCAEval.e2e import mmbaro, baro
-    fn = {"mmbaro": mmbaro, "baro": baro}[method]
+    from RCAEval import e2e
+    fn = getattr(e2e, method)
     gt = run.ground_truth.get("fault", run.ground_truth) or {}
-    inject = _to_unix(gt.get("injection_start_utc")) if gt.get("injection_start_utc") else None
-    data = to_rcaeval(run) if method == "mmbaro" else _metric_frame(run, 5)
+    inj = _to_unix(gt.get("injection_start_utc")) if gt.get("injection_start_utc") else None
+    known = set()
+    if method in ("microrank", "tracerca"):
+        data = to_trace_df(run)
+        inject = int(inj * 1_000_000) if inj else None   # µs for the Jaeger-format methods
+        known = set(data["serviceName"].unique()) if len(data) else set()
+    elif method == "mmbaro":
+        data, inject = to_rcaeval(run), inj
+    else:  # baro (metric-only)
+        data, inject = _metric_frame(run, 5), inj
     try:
         out = fn(data, inject)
         ranks = [r for r in out.get("ranks", []) if r != "time"]
-        # drop monitoring/infra + junk candidates (not app services); keep injected stress/neighbor
-        infra = {"cadvisor", "nodeexporter", "node-exporter", "node_exporter", "prometheus",
-                 "grafana", "otel-collector", "toxiproxy", "nan", ""}
         seen, services = set(), []
         for r in ranks:
-            s = r.rsplit("_", 1)[0] if "_" in r else r          # <service>_<metric> → service
-            if s in infra or s in seen:
+            s = _svc(_rank_to_service(r, known))
+            if s in _INFRA or s in seen:
                 continue
             seen.add(s); services.append(s)
         top1 = services[0] if services else None
         diagnosis = {"root_cause_service": top1, "fault_type": None,
-                     "evidence": f"mmbaro rank1={ranks[0] if ranks else '-'}", "confidence": None}
+                     "evidence": f"{method} rank1={ranks[0] if ranks else '-'}", "confidence": None}
         return {"run_id": os.path.basename(run.run_dir), "diagnosis": diagnosis,
                 "ranked_services": services[:10], "trajectory": [{"tool": method}],
                 "n_tool_calls": 4, "bytes_touched": 0, "tokens": {"in": 0, "out": 0},
