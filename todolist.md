@@ -28,7 +28,7 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · **(gate)** blocks downs
 ## P2 — Sanity gate **(gate — RUN blocked only on ANTHROPIC_API_KEY)**
 - [x] Sample ready: `evaluate._sample(per_family=1)` → **23 incidents** (11 TT + 12 SS, all families).
 - [x] **Both non-LLM baselines swept** over ALL 93 incidents × 15 conditions (not just 23): statistical (job 2074051) + RCAEval/mmbaro (job 2081090). `RESULTS-stat-baseline.md`, `RESULTS-nonllm-baselines.md`.
-- [ ] **Run the LLM-agent sanity gate** `python evaluate.py --app both --per-family 1 --method agent --grid full` at 100% telemetry — **needs `export ANTHROPIC_API_KEY=…` on the Trillium login node** (has internet). Confirm Top-1 is solid before its degradation sweep.
+- [x] **LLM-agent sanity gate PASSED** (Azure **gpt-5.4**): service 73% / fault 73% / both ~60% — **beats both baselines** and **recovers slow_db** (mysql/db_latency) via kernel L2 wait-attribution reasoning. `RESULTS-agent-sanitygate.md`. Constraint: agent = **login-node only** (compute nodes have no internet), run in **short per-family chunks** (login-node watchdog kills long processes).
 
 ## P3 — Degradation module → **RQ1** — **BUILT + PIPELINE PROVEN (no API)**
 - [x] **Degradation module** (`degrade.py`): seeded `DegradedRun` wrapper — trace sampling, metric resample, log level, service-coverage removal, whole-modality removal, kernel tier. Sits before the reader (agent unchanged = Mahsa's guardrail). All knobs validated (trace_keep 0.25→23.8%, log ERROR 221k→722, etc.).
@@ -69,7 +69,7 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · **(gate)** blocks downs
 
 ## Immediate next actions (as of 2026-08-09)
 **Done:** harness (P1–P3), degradation module, both non-LLM baselines swept + documented — all no-API.
-1. **(API-gated — the crux) Method #3, the LLM+kernel agent.** On the Trillium login node: `source transfer/env.sh; export ANTHROPIC_API_KEY=…`, then the P2 sanity gate (`--method agent --grid full`), then the full degradation sweep (`--grid all`). This is the last RCA method and drives RQ2 (trajectories) + RQ3 (kernel safety net).
+1. ✅ **Method #3 validated** (Azure gpt-5.4, `.env`-driven multi-provider). Sanity gate passed, beats baselines, recovers slow_db. **Next: the full agent degradation sweep** (`--method agent --grid all`) — must be **login-node chunked** (compute nodes = no internet) and has a real Azure-credit budget (1,395 agent runs); subsample deliberately (blind-spot families × trace/kernel axes first).
 2. ✅ **(done, no-API) MicroRank/TraceRCA + MRR/AC@3** — integrated + swept; trace-only methods floor-out on our fault set (finding, `RESULTS-nonllm-baselines.md`).
 3. **(no-API) SS kernel L2** — derive on the SS collector VM (CTF2-capable) so SS has L1+L2+L3 like TT.
 4. **Confirm the agentic direction with Naser** (the still-open P0 gate) before heavy write-up.
