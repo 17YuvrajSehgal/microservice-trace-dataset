@@ -14,8 +14,9 @@ all methods) and **both-hit** (service AND fault, agent/statistical only):
 | RCAEval mmbaro (#2) | 44–48% | — (localizer only) | service-only (50%) |
 | **LLM+kernel agent (#3)** | **73%** | **~60%** | ✅ **both (mysql / db_latency)** |
 
-Train Ticket (11 incidents, complete): service 73% · fault 73% · both 55%. Sock Shop (in progress):
-aggressor/resource faults correct (cpu/disk/mem). Combined so far: **73 / 73 / 60%**.
+**Final gate — 23 incidents (TT 11 + SS 12): service 74% · fault 74% · both 61%** (~15 tool-calls/
+incident, ~12k total out-tokens). Misses cluster on network faults (`anomaly_net`, `svc_net`),
+`error_storm` (fault-type confusion), and `dependency_outage` — prompt/tooling refinement targets.
 
 ## Why it wins — it *reasons* over the kernel (the thesis, live)
 On `slow_db` the agent's own evidence:
