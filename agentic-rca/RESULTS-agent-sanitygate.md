@@ -1,5 +1,11 @@
 # Results — LLM+kernel agent sanity gate (RCA method #3)
 
+> **⚠️ RETIRED 2026-08-13 — numbers below are inflated by label leakage.** This gate ran with the
+> run id in the user prompt (`tt_slow_db_…` spells out the fault) and fault-named injection
+> containers visible to the model. The honest, leakage-controlled gate is
+> **`RESULTS-agent-sanitygate-masked.md`** (service 48% / fault 17% / both 9%). Keep this file only
+> as the unmasked ablation datapoint: naming giveaways were worth ~26 pts service / ~57 pts fault.
+
 **P2 sanity gate PASSED.** The tool-using LLM agent (Azure **gpt-5.4**, via the OpenAI-compatible
 config) diagnoses incidents at 100% telemetry — the go/no-go before any degradation sweep. Run:
 `python agentic-rca/evaluate.py --app … --method agent --grid full`.
