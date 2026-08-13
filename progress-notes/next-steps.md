@@ -1,24 +1,22 @@
-# Next steps (updated 13-08-2026)
+# Next steps (updated 13-08-2026, end of day)
 
 ## State in one line
-Agent results are now **leakage-controlled and fully auditable**: masked sanity gate =
-**service 48% / fault 17% / both 9%** (RESULTS-agent-sanitygate-masked.md; 74/74/61 is RETIRED as
-leak-inflated), every diagnosis has a full transcript, `audit_leakage.py` passes 23/23, artifact
-bundle archived on `/project`. Cluster repo is on `master` (agentic-tracing was merged via PR #2).
+**Agent v3 is leak-free, robust, and FROZEN for the sweep: service 83% / fault 48% / both 48%**
+(RESULTS-agent-sanitygate-masked.md §0; leaky 74/74/61 RETIRED; weak-tools masked v2 was 48/17/9).
+Every diagnosis fully transcripted, auditor PASS 23/23, bundles on `/project/…/artifacts/`.
+Cluster repo on `master`. Cost: ~450k in / 9.2k out tokens per 23-incident pass, 13.5 calls/incident.
 
 ## Do next
-1. **Agent refinement (non-leaking), then ONE re-gate, then freeze:**
-   - fault-type DEFINITIONS in the static system prompt (fixes taxonomy confusion: slow_db called
-     "dependency_outage", noisy_neighbor called "cpu_throttling");
-   - window-filter the logs/kernel tools (SS carts' chronic 59k-error storm distracts the agent;
-     pre-existing tools.py issue that now costs accuracy).
-   Do NOT tune per-incident against the gate (overfitting).
-2. **Then the degradation sweep** (RQ1–RQ3), subsampled (blind-spot families × trace/kernel axes),
-   login-node chunked via the `gate_masked_driver.sh` pattern, transcripts + auditor as standard.
-   Budget note: 23 masked incidents ≈ 500k in / 14k out tokens per pass.
-3. **Masking ablation is a result**: RCA_MASK_NAMES=0 vs 1 quantifies naming giveaways
-   (~26 pts service / ~57 pts fault) — write it up for the paper; also note the statistical
-   baseline still keys off stress NAMES (asymmetry favors the baseline → conservative).
+1. **The degradation sweep (RQ1–RQ3) with the frozen v3 agent** — subsample first (blind-spot
+   families × trace/kernel axes: `--grid kernel`, `--grid trace`, `compensate`), login-node chunked
+   via the `gate_v3_driver.sh` pattern (per-family fresh python), transcripts + `audit_leakage.py`
+   as standard practice on every batch.
+2. **RQ2 trajectory analysis** — v3 trajectories are rich (topology-walking visible); compare full
+   vs degraded once sweep data exists.
+3. **Masking ablation writes itself into the paper**: leaky 74/74/61 → masked-weak 48/17/9 →
+   masked-robust 83/48/48. Naming giveaways inflated fault-typing by ~57 pts; robust generic
+   tooling recovered (and exceeded) the loss legitimately. Note the statistical baseline still
+   keys off stress NAMES (asymmetry favors baselines → conservative for our claim).
 4. SS kernel L2 derivation on Trillium (babeltrace 2.1.2 at `/scratch/yuvraj17/local-bt21`,
    remember the LD_LIBRARY_PATH override; update transfer/derive_l2_working_set.sh which still
    points at the old 2.0.4).

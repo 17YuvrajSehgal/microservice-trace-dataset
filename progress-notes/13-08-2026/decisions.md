@@ -44,3 +44,33 @@ static system prompt), (2) distraction by chronic noise (SS carts' standing 59k-
 logs/kernel tools are whole-run, not window-filtered — a pre-existing tools.py issue that now costs
 accuracy). Plan: apply (1)+(2), ONE re-gate, then freeze the agent for the sweep. Do NOT iterate
 per-incident on prompts (overfitting the gate).
+
+## Agent ROBUSTNESS overhaul (Yuvraj: "results not acceptable; agent must find faults without hints")
+Executed the refinement plan as ONE batch of generic, fault-agnostic upgrades, then ONE re-gate:
+- **tools.py**: (a) baseline→incident discipline in EVERY tool — logs now report error-rate change
+  + NEW signatures (chronic noise flagged; the 190-err/min storm reads ×1.1 = background), kernel
+  L1 compared across windows (was whole-run peaks); (b) **query_topology** — caller→callee edges
+  from span parent/child with baseline-vs-incident p95 (victims' slow edges point AT the culprit);
+  (c) **host channel** — node-exporter curated signals as service `host` + host-kernel L1 row
+  (host faults = 9/23 incidents, previously no direct evidence channel); (d) container-name
+  normalization — SS per-service metrics queries were SILENTLY EMPTY (`carts` vs
+  `docker-compose_carts_1`); (e) per-series counter rates (mixing device/cpu label series in one
+  max-min made garbage; pandas groupby-dropna zeroed all host counters — both fixed).
+- **agent.py SYSTEM**: 5-step method (survey CHANGES → blast-radius shape → walk topology
+  downstream → kernel mechanism → submit) + operational definitions of the 13 fault labels
+  (answer-space, static, identical every incident — not a hint).
+
+**Gate v3 (leak-free): service 83% / fault 48% / both 48%** — vs v2 48/17/9 and the RETIRED leaky
+74/74/61 — at LOWER cost (13.5 calls, ~9.2k out-tokens total). All six host anomaly_{cpu,disk,mem}
+fully correct on both apps (aggressor + fault type); SS slow_db fully correct; dependency_outage
+fully correct on both apps. Auditor PASS 23/23 (0 hard, 0 soft). Leak-free agent now clearly beats
+both baselines (stat 38% both, mmbaro 46% AC@1). Bundle:
+`/project/…/artifacts/artifact_gate_v3_robust_20260813.tar.gz`. Updated
+`RESULTS-agent-sanitygate-masked.md` §0.
+
+Remaining misses (documented, NOT iterated on — anti-overfitting): SS anomaly_net, SS
+queue_backlog, SS svc_mem_cap, TT slow_db (victim-named this run; v2 got it — borderline), fault
+labels at taxonomy boundaries (noisy_neighbor↔cpu_saturation; error_storm described accurately as
+connection-resets but labeled dependency_outage). **Decision: FREEZE the agent here for the
+degradation sweep** — v3 is the fixed method; further prompt/tool iteration against the gate would
+overfit the 23 dev incidents.

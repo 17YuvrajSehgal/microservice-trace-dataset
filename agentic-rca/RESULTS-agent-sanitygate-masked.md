@@ -1,16 +1,54 @@
 # Masked sanity gate — the honest agent numbers (2026-08-13)
 
-**TL;DR: the 2026-08-11 gate numbers (74% / 74% / 61%) were inflated by label leakage
-and are retired.** With leakage closed, the honest gate is **service 48% / fault 17% /
-both 9%** (23 incidents, Azure gpt-5.4, 100% telemetry). Service localization is now at
-parity with the non-LLM baselines instead of above them; fault-type classification —
-which the run id used to hand the agent for free — collapsed and is the main
-improvement target. The kernel thesis survives: the masked agent still localizes
-`slow_db`→mysql and finds the hidden aggressor on host faults, purely from evidence.
+**TL;DR (current, gate v3): service 83% / fault 48% / both 48% — leakage-controlled,
+fully transcripted, auditor-clean.** The 2026-08-11 numbers (74/74/61) were inflated by
+label leakage and are retired. Closing the leaks first collapsed the agent to 48/17/9
+(v2) — proving it had been leaning on hints — and then four *generic* robustness
+upgrades (baseline→incident discipline in every tool, a topology tool, a host evidence
+channel, fault-taxonomy definitions in the static prompt) rebuilt it to **83/48/48
+without any crutch**, at LOWER cost (13.5 tool calls, ~400 out-tokens per incident).
+The leak-free agent now clearly beats both non-LLM baselines (statistical: ~48%
+service / 38% both; mmbaro: 46% AC@1) on genuine evidence alone.
 
 Everything here is fully auditable: every diagnosis has a full transcript
-(TRANSCRIPTS.md schema) and `audit_leakage.py` passes over all 23 with **0 hard leaks,
-0 soft warnings**.
+(TRANSCRIPTS.md schema) and `audit_leakage.py` passes each gate's 23 transcripts with
+**0 hard leaks, 0 soft warnings**.
+
+## 0. Gate v3 (the number of record) — robust tools, no hints
+
+| Gate | service | fault | both | avg calls | out-tokens (23 runs) |
+|---|---|---|---|---|---|
+| 08-11 unmasked (**retired**, leaky) | 74% | 74% | 61% | ~15 | ~12k |
+| masked v2 (leak-free, weak tools) | 48% | 17% | 9% | 19.1 | 14.4k |
+| **masked v3 (leak-free, robust tools)** | **83%** | **48%** | **48%** | **13.5** | **9.2k** |
+
+Per-incident (v3): all six host `anomaly_{cpu,disk,mem}` across BOTH apps fully
+correct (finds the pseudonymized aggressor AND the right fault type); SS `slow_db` →
+catalogue-db/db_latency fully correct; `dependency_outage` fully correct on both apps
+(payment; ts-seat-service); SS `svc_cpu_cap` → carts/cpu_throttling; TT `svc_net` →
+ts-basic-service/service_network. `noisy_neighbor`: aggressor found on both apps
+(fault labeled cpu_saturation/throttling — the noisy-neighbor/cpu-saturation boundary
+is thin by design). `error_storm`: service right on both apps, mechanism described
+accurately (connection resets toward the DB) but labeled dependency_outage — a
+taxonomy-boundary miss. Remaining true misses: SS `anomaly_net`, SS `queue_backlog`,
+SS `svc_mem_cap`, TT `slow_db` (named a victim this run — the same incident was
+localized correctly in v2; borderline case, not a systematic gap).
+
+The v3 upgrades are all fault-agnostic (see decisions 13-08-2026):
+1. every tool reports **baseline→incident change** (chronic noise flagged, never
+   decisive); 2. **query_topology** — caller→callee slowdown edges = the
+   victim-vs-culprit instrument; 3. **host channel** — node-exporter signals as
+   service `host` + host-kernel L1; 4. container-name normalization (SS per-service
+   metric queries were silently empty); 5. static system prompt: 5-step RCA method +
+   operational definitions of the 13 fault labels (answer space, identical for every
+   incident — not a hint).
+
+Artifacts: `results/gate_v3/` + transcripts; bundle
+`/project/…/artifacts/artifact_gate_v3_robust_20260813.tar.gz`. Auditor: PASS 23/23.
+
+---
+
+The sections below document the leakage audit and the v1/v2 masked gates that led here.
 
 ## 1. What leaked before (audit of 2026-08-13)
 
