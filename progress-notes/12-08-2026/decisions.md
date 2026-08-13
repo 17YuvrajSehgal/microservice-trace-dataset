@@ -78,3 +78,27 @@ LD_LIBRARY_PATH=/scratch/yuvraj17/local-bt21/lib:$LD_LIBRARY_PATH \
 `anomaly_mem` calibration ×4, `lttng_only` ×4) and, more importantly, **SS L2 wait-attribution** so
 Sock Shop matches Train Ticket for the RQ3 kernel-compensation test. Cost note: each SS run's L0 is
 ~11 GB decompressed, so derivation is a per-run extract → derive → discard batch job.
+
+## Full-fidelity agent transcripts BEFORE the sweep (publishable audit record)
+Decision: the agent's compact trajectory (`{step, tool, service, result_bytes}`) is not publishable
+evidence — it drops the model's reasoning text, tool arguments, tool results (both the full evidence
+and the 6000-char view the model actually saw), prompts, per-call usage and response ids. Since the
+big degradation sweep hasn't run yet, we added capture NOW so every sweep run is auditable from day 1.
+
+Built (all in `agentic-rca/`, offline-tested with fake SDK clients for BOTH loops incl. error paths):
+- `transcript.py` — per-diagnosis JSON: exact system prompt + tool schemas + user msg, every raw API
+  response (`model_dump`, so thinking/reasoning blocks, usage details, ids, fingerprints survive),
+  every tool execution (full untruncated result + `sent_chars`/`truncated` — the sent string is
+  deterministically `json.dumps(result)[:6000]`), provenance (git commit, provider/model, DegradeSpec,
+  UTC times), atomic write. **Deliberately ground-truth-free** — the file itself proves no label leak.
+  **Logging-only**: messages/API kwargs byte-identical, so results stay comparable with the 08-11 gate.
+- `agent.py` — records into both loops; errored diagnoses still write a transcript (stop_reason=error).
+- `evaluate.py` — one transcript per (incident×condition) at `<out>_transcripts/<app>/<run_id>/<cond>.json`,
+  linked from each result row (`transcript`); results meta now carries git_commit/argv/started_utc/full
+  per-condition DegradeSpec. New `--transcripts` flag (`none` disables).
+- `bundle_artifact.py` + `TRANSCRIPTS.md` — one-command shareable tar.gz (results + transcripts +
+  schema + `MANIFEST.sha256`), refuses `.env`, scans every bundled byte against local `.env` VALUES
+  and aborts on a hit (verified).
+
+Caveat recorded in TRANSCRIPTS.md: the 08-11 sanity-gate results predate capture — re-run the 23-incident
+gate (cheap, ~12k out-tokens) if its transcripts should ship in the artifact.

@@ -6,11 +6,12 @@ tool-using LLM and lets it investigate freely, then commit to the output contrac
     { root_cause_service, fault_type, evidence, confidence }
 While it runs it records the **trajectory** (every tool call, target service, result-size, next
 tool) + token usage — that is RQ2's dependent variable, and the byte totals feed RQ4's cost axis.
+It also captures a **full-fidelity transcript** (transcript.py / TRANSCRIPTS.md): every prompt, raw
+API response (including any reasoning text) and full tool result — the publishable audit record.
 
-The loop is intentionally provider-native for Anthropic (tool-use requires provider-specific message
-threading); model id / temperature / max_tokens come from `config.py` so the model is still a config
-knob. (An OpenAI/ollama agent loop is a later extension; the single-turn `config.chat` already is
-multi-provider for the statistical/narration paths.)
+Two provider-native loops (tool-use requires provider-specific message threading): Anthropic and the
+OpenAI-compatible family (azure/gemini/openai/ollama); model id / temperature / max_tokens come from
+`config.py` so the model is still a config knob.
 
 Degradation note: the agent is HELD FIXED. To study telemetry degradation you pass a degraded Run
 (same interface) — the agent code never changes. That keeps Axis A (data) and Axis B (agent) clean.
@@ -21,7 +22,11 @@ import json, os, sys, time
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import config
+import transcript as T
 from tools import RunTools
+
+# tool results sent to the model are capped at this many chars (full result stays in the transcript)
+SENT_CAP = 6000
 
 # fault vocabulary the agent must choose from (aligns with ground_truth families for scoring)
 FAULT_TYPES = [
@@ -76,37 +81,69 @@ def _run_tool(tools: RunTools, name: str, args: dict):
     return {"error": f"unknown tool {name}"}, 0
 
 
-def diagnose(run, app: str | None = None, max_steps: int = 14, verbose: bool = False) -> dict:
+def diagnose(run, app: str | None = None, max_steps: int = 14, verbose: bool = False,
+             transcript_path: str | None = None, condition: str | None = None,
+             meta: dict | None = None) -> dict:
     """Run the agent on one incident. Returns diagnosis + trajectory + usage (no ground-truth here).
     Dispatches on the provider's SDK family — Anthropic vs OpenAI-compatible (azure/gemini/openai/
-    ollama) — so the model is a config knob (RCA_PROVIDER/RCA_MODEL); everything else is identical."""
+    ollama) — so the model is a config knob (RCA_PROVIDER/RCA_MODEL); everything else is identical.
+
+    Transcript capture is logging-only (messages and API kwargs are unchanged): every prompt, raw
+    API response and full tool result is recorded and, if transcript_path is given, written there —
+    including on error, so failed diagnoses are auditable too."""
     tools = RunTools(run, app=app)
-    user = (f"Incident in run '{os.path.basename(run.run_dir)}'. Services are unknown until you list "
+    run_id = os.path.basename(run.run_dir)
+    user = (f"Incident in run '{run_id}'. Services are unknown until you list "
             f"them. Diagnose the root cause and call submit_diagnosis.")
+    tr = T.Transcript(run_id, method="agent", condition=condition, extra=meta)
+    tr.meta["sent_cap_chars"] = SENT_CAP
+    tr.meta["max_steps"] = max_steps
+    tr.event("system_prompt", text=SYSTEM, sha256=T.sha256_text(SYSTEM))
+    tr.event("tools_schema", tools=_TOOL_DEFS)
+    tr.event("user_message", text=user)
     t0 = time.time()
     loop = _loop_anthropic if config.sdk_kind() == "anthropic" else _loop_openai
-    diagnosis, traj, in_tok, out_tok, bytes_touched = loop(tools, user, max_steps, verbose)
-    return {
-        "run_id": os.path.basename(run.run_dir),
+    try:
+        diagnosis, traj, in_tok, out_tok, bytes_touched = loop(tools, user, max_steps, verbose, tr)
+    except Exception as e:
+        tr.event("error", error=repr(e))
+        tr.finalize(None, "error", wall_s=round(time.time() - t0, 1))
+        if transcript_path:
+            tr.write(transcript_path)
+        raise
+    stop = ("submitted" if diagnosis is not None
+            else "max_steps" if tr.count("api_response") >= max_steps else "no_tool_calls")
+    out = {
+        "run_id": run_id,
         "diagnosis": diagnosis,                       # {root_cause_service, fault_type, evidence, confidence} or None
         "trajectory": traj,                           # RQ2
         "n_tool_calls": len([x for x in traj if x["tool"] != "submit_diagnosis"]),
         "bytes_touched": bytes_touched,               # RQ4 cost
         "tokens": {"in": in_tok, "out": out_tok},     # RQ2/RQ4 cost
         "model": config.model_id(), "wall_s": round(time.time() - t0, 1),
+        "transcript_file": transcript_path,
     }
+    tr.finalize(diagnosis, stop, tokens={"in": in_tok, "out": out_tok},
+                bytes_touched=bytes_touched, n_tool_calls=out["n_tool_calls"],
+                wall_s=out["wall_s"])
+    if transcript_path:
+        tr.write(transcript_path)
+    return out
 
 
-def _loop_anthropic(tools, user, max_steps, verbose):
+def _loop_anthropic(tools, user, max_steps, verbose, tr):
     client = config.make_client()
     schema = [{"name": t["name"], "description": t["description"], "input_schema": t["parameters"]}
               for t in _TOOL_DEFS]
     messages = [{"role": "user", "content": user}]
     traj, itok, otok, bt, diagnosis = [], 0, 0, 0, None
     for step in range(max_steps):
+        tc = time.time()
         r = client.messages.create(model=config.model_id(), max_tokens=config.MAX_TOKENS,
                                    temperature=config.TEMPERATURE, system=SYSTEM,
                                    messages=messages, tools=schema)
+        tr.event("api_response", step=step, latency_ms=int((time.time() - tc) * 1000),
+                 response=T.to_jsonable(r))
         itok += r.usage.input_tokens; otok += r.usage.output_tokens
         messages.append({"role": "assistant", "content": r.content})
         tool_uses = [b for b in r.content if b.type == "tool_use"]
@@ -117,21 +154,27 @@ def _loop_anthropic(tools, user, max_steps, verbose):
             if tu.name == "submit_diagnosis":
                 diagnosis = dict(tu.input)
                 traj.append({"step": step, "tool": "submit_diagnosis", "service": None})
+                tr.event("tool_execution", step=step, tool_use_id=tu.id, tool="submit_diagnosis",
+                         arguments=diagnosis, sent="recorded")
                 results.append({"type": "tool_result", "tool_use_id": tu.id, "content": "recorded"})
                 continue
             res, b = _run_tool(tools, tu.name, dict(tu.input)); bt += b
             traj.append({"step": step, "tool": tu.name, "service": tu.input.get("service"), "result_bytes": b})
             if verbose:
                 print(f"  [{step}] {tu.name}({tu.input.get('service') or ''}) -> {b}B")
+            full = json.dumps(res, default=str)
+            tr.event("tool_execution", step=step, tool_use_id=tu.id, tool=tu.name,
+                     arguments=dict(tu.input), result=res, result_bytes=b,
+                     sent_chars=min(len(full), SENT_CAP), truncated=len(full) > SENT_CAP)
             results.append({"type": "tool_result", "tool_use_id": tu.id,
-                            "content": json.dumps(res, default=str)[:6000]})
+                            "content": full[:SENT_CAP]})
         messages.append({"role": "user", "content": results})
         if diagnosis is not None:
             break
     return diagnosis, traj, itok, otok, bt
 
 
-def _loop_openai(tools, user, max_steps, verbose):
+def _loop_openai(tools, user, max_steps, verbose, tr):
     """OpenAI-compatible tool-use loop (Azure / Gemini / OpenAI / Ollama)."""
     client = config.make_client()
     schema = [{"type": "function", "function": t} for t in _TOOL_DEFS]
@@ -139,7 +182,10 @@ def _loop_openai(tools, user, max_steps, verbose):
     ck = config.openai_create_kwargs()
     traj, itok, otok, bt, diagnosis = [], 0, 0, 0, None
     for step in range(max_steps):
+        tc = time.time()
         r = client.chat.completions.create(model=config.model_id(), messages=messages, tools=schema, **ck)
+        tr.event("api_response", step=step, latency_ms=int((time.time() - tc) * 1000),
+                 response=T.to_jsonable(r))
         u = r.usage
         itok += getattr(u, "prompt_tokens", 0); otok += getattr(u, "completion_tokens", 0)
         m = r.choices[0].message
@@ -160,14 +206,20 @@ def _loop_openai(tools, user, max_steps, verbose):
             if name == "submit_diagnosis":
                 diagnosis = args
                 traj.append({"step": step, "tool": "submit_diagnosis", "service": None})
+                tr.event("tool_execution", step=step, tool_use_id=c.id, tool="submit_diagnosis",
+                         arguments=args, raw_arguments=c.function.arguments, sent="recorded")
                 messages.append({"role": "tool", "tool_call_id": c.id, "content": "recorded"})
                 continue
             res, b = _run_tool(tools, name, args); bt += b
             traj.append({"step": step, "tool": name, "service": args.get("service"), "result_bytes": b})
             if verbose:
                 print(f"  [{step}] {name}({args.get('service') or ''}) -> {b}B")
+            full = json.dumps(res, default=str)
+            tr.event("tool_execution", step=step, tool_use_id=c.id, tool=name,
+                     arguments=args, raw_arguments=c.function.arguments, result=res, result_bytes=b,
+                     sent_chars=min(len(full), SENT_CAP), truncated=len(full) > SENT_CAP)
             messages.append({"role": "tool", "tool_call_id": c.id,
-                             "content": json.dumps(res, default=str)[:6000]})
+                             "content": full[:SENT_CAP]})
         if diagnosis is not None:
             break
     return diagnosis, traj, itok, otok, bt
@@ -178,7 +230,9 @@ if __name__ == "__main__":
     from stratatrace import load_run
     rd = sys.argv[1]
     app = os.environ.get("STRATATRACE_APP")
-    out = diagnose(load_run(rd), app=app, verbose=True)
+    tpath = os.environ.get("RCA_TRANSCRIPT",
+                           os.path.join("transcripts", "adhoc", os.path.basename(rd.rstrip('/')) + ".json"))
+    out = diagnose(load_run(rd), app=app, verbose=True, transcript_path=tpath)
     gt = load_run(rd).ground_truth.get("fault", {})
     print(json.dumps(out, indent=2, default=str))
     print("\nGROUND TRUTH:", gt.get("target_service"), "/", gt.get("name"), "/", gt.get("family"))

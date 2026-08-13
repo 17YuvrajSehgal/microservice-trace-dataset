@@ -15,11 +15,14 @@ The agent is HELD FIXED across conditions (Mahsa's guardrail): only the data the
 from __future__ import annotations
 import argparse, json, os, sys, time
 from collections import defaultdict
+from dataclasses import asdict
+from datetime import datetime, timezone
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from stratatrace import load_run
 import runs as R
+import transcript as T
 from degrade import DegradeSpec, FULL, degrade
 
 # named degradation grids (research-agentic-rca.md §5). Condition labels carry an axis prefix so
@@ -88,7 +91,7 @@ def _sample(app, per_family, n, families):
     return recs
 
 
-def run(app, per_family, n, families, out_path, method, grid):
+def run(app, per_family, n, families, out_path, method, grid, transcripts_dir=""):
     RCAEVAL = {"mmbaro", "microrank", "tracerca", "baro"}
     if method == "agent":
         import agent as _m; label = __import__("config").model_id()
@@ -99,14 +102,23 @@ def run(app, per_family, n, families, out_path, method, grid):
     else:
         raise SystemExit(f"unknown method {method!r}")
     conditions = GRIDS[grid]
+    tdir = transcripts_dir if method == "agent" else ""            # transcripts are LLM I/O — agent only
     recs = _sample(app, per_family, n, families)
     print(f"== {method} ({label}) × grid '{grid}' ({len(conditions)} conds) over {len(recs)} incidents ({app}) ==")
+    if tdir:
+        print(f"   transcripts -> {tdir}/{app}/<run_id>/<condition>.json")
     results, t0 = [], time.time()
+    started_utc = datetime.now(timezone.utc).isoformat(timespec="seconds")
     for i, rec in enumerate(recs, 1):
         base = _MemoRun(load_run(rec.dir))             # load ONCE; conditions wrap the cached frames
         for cname, spec in conditions:
+            # transcript path is fixed BEFORE the attempt so errored diagnoses are auditable too
+            trel = os.path.join(app, rec.run_id, f"{cname}.json") if tdir else None
             try:
                 kw = {"method": method} if method in RCAEVAL else {}
+                if tdir:
+                    kw.update(transcript_path=os.path.join(tdir, trel), condition=cname,
+                              meta={"app": rec.app, "grid": grid, "degrade_spec": asdict(spec)})
                 out = _m.diagnose(degrade(base, spec), app=rec.app, **kw)
             except Exception as e:
                 out = {"diagnosis": None, "error": str(e), "n_tool_calls": 0,
@@ -118,15 +130,19 @@ def run(app, per_family, n, families, out_path, method, grid):
                             "diagnosis": out.get("diagnosis"), "ranked_services": out.get("ranked_services"),
                             "score": sc, "n_tool_calls": out.get("n_tool_calls"), "tokens": out.get("tokens"),
                             "bytes_touched": out.get("bytes_touched"), "trajectory": out.get("trajectory"),  # RQ2
+                            "transcript": trel,                     # relative to meta.transcripts_dir
                             "error": out.get("error")})
-        d0 = results[-len(conditions)]
         print(f"  [{i}/{len(recs)}] {rec.run_id:44s} ({rec.fault_family})")
     _summarize(results, conditions)
     if out_path:
         os.makedirs(os.path.dirname(out_path) or ".", exist_ok=True)
-        json.dump({"meta": {"app": app, "method": method, "grid": grid, "model": label,
-                            "n_incidents": len(recs), "wall_s": round(time.time() - t0, 1)},
-                   "results": results}, open(out_path, "w"), indent=2, default=str)
+        meta = {"app": app, "method": method, "grid": grid, "model": label,
+                "n_incidents": len(recs), "wall_s": round(time.time() - t0, 1),
+                # provenance — ties the numbers to the exact code + conditions that produced them
+                "started_utc": started_utc, "argv": sys.argv, "git_commit": T.git_commit(),
+                "transcripts_dir": tdir or None,
+                "conditions": [{"name": c, "spec": asdict(s)} for c, s in conditions]}
+        json.dump({"meta": meta, "results": results}, open(out_path, "w"), indent=2, default=str)
         print(f"\nwrote {out_path}")
     return results
 
@@ -155,15 +171,26 @@ if __name__ == "__main__":
     ap.add_argument("--method", default="agent", choices=["agent", "stat", "mmbaro", "microrank", "tracerca", "baro"])
     ap.add_argument("--grid", default="full", choices=list(GRIDS))
     ap.add_argument("--out", default="")
+    ap.add_argument("--transcripts", default="",
+                    help="dir for full agent transcripts (agent method only; default: <out>_transcripts "
+                         "or ./transcripts; pass 'none' to disable)")
     a = ap.parse_args()
     fams = [x for x in a.families.split(",") if x]
+    if a.transcripts.lower() == "none":
+        tdir = ""
+    elif a.transcripts:
+        tdir = a.transcripts
+    elif a.out:
+        tdir = (a.out[:-5] if a.out.endswith(".json") else a.out) + "_transcripts"
+    else:
+        tdir = "transcripts"
     apps = ["trainticket", "sockshop"] if a.app == "both" else [a.app]
     allres = []
     for app in apps:
         app_out = a.out
         if a.out and len(apps) > 1:                    # avoid clobbering: per-app files for --app both
             app_out = a.out[:-5] + f"_{app}.json" if a.out.endswith(".json") else f"{a.out}.{app}"
-        allres += run(app, a.per_family, a.n, fams, app_out or "", a.method, a.grid)
+        allres += run(app, a.per_family, a.n, fams, app_out or "", a.method, a.grid, transcripts_dir=tdir)
     if a.app == "both":
         print("\n==== COMBINED ===="); _summarize(allres, GRIDS[a.grid])
         if a.out:
