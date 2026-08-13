@@ -121,7 +121,7 @@ class RunTools:
 
     # ---- discovery -----------------------------------------------------------------------
     _PSEUDO = {"kernel", "system", "idle", "swapper", "", "none", "nan",
-               "prometheus", "cadvisor", "node-exporter", "otel-collector", "grafana"}
+               "prometheus", "cadvisor", "node-exporter", "nodeexporter", "otel-collector", "grafana"}
 
     def services(self) -> list:
         """Union of service identifiers visible across ALL modalities (spans, kernel, metrics,
@@ -141,7 +141,8 @@ class RunTools:
         lg = self._logs()
         if hasattr(lg, "columns") and "container" in getattr(lg, "columns", []):
             svcs |= {_norm_container(s) for s in lg["container"].dropna().unique()}
-        listed = sorted(s for s in svcs if s and s.lower() not in self._PSEUDO)
+        listed = sorted(s for s in svcs
+                        if s and s.lower() not in self._PSEUDO and not s.isdigit())
         return ["host"] + listed            # 'host' = the node itself (node metrics / host-kernel)
 
     @staticmethod
