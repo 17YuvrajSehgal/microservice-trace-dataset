@@ -29,16 +29,22 @@ def _sha256(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
+_SECRET_KEY = ("key", "secret", "token", "password", "credential", "endpoint")
+
+
 def _env_secrets() -> list[bytes]:
-    """Values (len>=8) from the repo .env, used as a deny-list scan over bundled bytes."""
+    """Values (len>=8) of secret-bearing .env keys, used as a deny-list scan over bundled
+    bytes. Only keys that look credential-like count — benign config values (e.g.
+    STRATATRACE_APP=trainticket) legitimately appear in transcript metadata."""
     out = []
     for cand in (os.path.join(HERE, "..", ".env"), os.path.join(HERE, ".env"), ".env"):
         if os.path.isfile(cand):
             for line in open(cand, encoding="utf-8", errors="ignore"):
                 line = line.strip()
                 if "=" in line and not line.startswith("#"):
-                    v = line.split("=", 1)[1].strip().strip("'\"")
-                    if len(v) >= 8:
+                    k, v = line.split("=", 1)
+                    v = v.strip().strip("'\"")
+                    if len(v) >= 8 and any(s in k.lower() for s in _SECRET_KEY):
                         out.append(v.encode())
             break
     return out
