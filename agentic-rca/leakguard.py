@@ -54,11 +54,22 @@ class Guard:
         self._fwd: dict[str, str] = {}
         self._rev: dict[str, str] = {}
 
+    @staticmethod
+    def _canon(name: str) -> str:
+        """Canonical class for aliasing. The modalities use DIFFERENT names for the injected
+        workload (kernel L1 says 'aggressor', metrics says 'anomaly-cpu-stress'): hashing raw
+        names would fragment one entity into several pseudonyms and destroy cross-tool identity
+        — information the unmasked names did carry. There is at most one injected workload per
+        run, so the whole vocab class shares one alias; toxiproxy (a permanent proxy, present in
+        normal runs too) is a distinct entity and keeps its own."""
+        return "__proxy__" if "toxiproxy" in name.lower() else "__external_workload__"
+
     def _alias(self, name: str) -> str:
         if name not in self._fwd:
-            a = "container-" + hashlib.sha1(name.lower().encode()).hexdigest()[:6]
+            canon = self._canon(name)
+            a = "container-" + hashlib.sha1(canon.encode()).hexdigest()[:6]
             self._fwd[name] = a
-            self._rev[a] = name
+            self._rev.setdefault(a, name)      # first-seen real name of the class, for unmask
         return self._fwd[name]
 
     def _mask_str(self, s: str) -> str:
