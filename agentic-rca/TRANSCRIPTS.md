@@ -44,14 +44,42 @@ comparable with earlier untranscribed runs.
 | `tools_schema` | the exact tool definitions sent to the model |
 | `user_message` | the exact initial user message |
 | `api_response` | one per API call: `step`, `latency_ms`, and the **raw response dump** — all content blocks (assistant text, thinking/reasoning where the provider returns it, tool calls), per-call usage (incl. reasoning-token details when reported), response id, served model, finish/stop reason, system fingerprint |
-| `tool_execution` | `step`, `tool`, `tool_use_id`, parsed `arguments` (+ `raw_arguments` string on OpenAI-family), the **full untruncated `result`**, `result_bytes` (in-memory frame footprint = the RQ4 cost axis), `sent_chars`, `truncated` |
+| `tool_execution` | `step`, `tool`, `tool_use_id`, parsed `arguments` (+ `raw_arguments` string on OpenAI-family), the **full untruncated `result`** (real names), `result_bytes` (in-memory frame footprint = the RQ4 cost axis), **`sent`** (the exact — masked and truncated — string the model received), `truncated` |
+| `unmask` | if the final diagnosis named a pseudonym: the submitted (alias) form, the unmasked form used for scoring, and the alias→real mapping |
 | `error` | captured exception `repr` if the diagnosis failed (transcript is still written) |
 
-**Reconstructing what the model saw:** the tool-result content sent to the model is,
-verbatim, `json.dumps(result, default=str)[:sent_cap_chars]` of the stored `result`
-— so the transcript stores both the full evidence and (deterministically) the exact
-truncated view the model received. `result_bytes` counts the data the *tool* touched,
-which is larger than what was forwarded to the model; both are recorded.
+**Reconstructing what the model saw:** each `tool_execution` stores it directly in
+`sent` — the pseudonymized, truncated string forwarded verbatim to the model — next to
+the raw `result`, so a reviewer can compare evidence and model view side by side.
+`result_bytes` counts the data the *tool* touched, which is larger than what was
+forwarded; both are recorded.
+
+## Anti-leakage (leakguard.py, `meta.mask_names`)
+
+Injected-fault datasets leak their labels through names: run ids encode the fault
+(`tt_slow_db_aggressive_steady_r1`) and injection containers are named after it
+(`anomaly-cpu-stress`, `noisy-neighbor`). With `RCA_MASK_NAMES=1` (the default, and
+the only setting valid for headline numbers):
+
+- the model is given an opaque `incident-<hash>` alias, never the run id;
+- fault-vocabulary identifiers in tool results are deterministically pseudonymized
+  (`container-<hash>`); real service names (mysql, catalogue, …) are untouched — they
+  are the answer space;
+- the agent answers in alias space and the harness unmasks before scoring (the
+  `unmask` event records the mapping).
+
+Deliberately NOT masked (documented realism boundary): process signatures such as
+`stress-ng` inside log/kernel evidence (seeing a co-tenant's processes is legitimate
+SRE evidence — it reveals a synthetic workload, not which fault was injected), and the
+incident window (the standard "an alert fired at [t0,t1]" RCA assumption, given
+identically to every method including the baselines). The `submit_diagnosis` fault-type
+enum is the closed answer space, identical for every incident, hence non-discriminative.
+
+**Verification is automated:** `python audit_leakage.py <results.json…>` (or
+`--transcripts <dir>`) rescans every model-visible input string for run ids,
+fault-family tokens under any separator style, injection-container names and
+ground-truth vocabulary — exit 1 on any hard hit. Run it after every sweep; ship the
+PASS line with the artifact.
 
 ### `final`
 `diagnosis` (the submitted `{root_cause_service, fault_type, evidence, confidence}`,

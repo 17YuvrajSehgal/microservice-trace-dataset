@@ -25,6 +25,11 @@ MAX_TOKENS = int(os.environ.get("RCA_MAX_TOKENS", "4096"))
 # GPT-5 / reasoning models reject a non-default temperature → for the OpenAI family we omit it unless
 # explicitly opted in with RCA_SEND_TEMPERATURE=1.
 SEND_TEMPERATURE = os.environ.get("RCA_SEND_TEMPERATURE", "0") == "1"
+# Anti-leakage masking (leakguard.py): pseudonymize fault-revealing identifiers (run ids,
+# anomaly-*-stress / noisy-neighbor containers) before the model sees them. ON by default —
+# turn off (RCA_MASK_NAMES=0) only for the explicit "how much do naming giveaways inflate
+# results" ablation, never for headline numbers.
+MASK_NAMES = os.environ.get("RCA_MASK_NAMES", "1") == "1"
 
 _DEFAULT_MODEL = {
     "claude": "claude-opus-4-8",

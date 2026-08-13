@@ -22,6 +22,7 @@ import json, os, sys, time
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import config
+import leakguard
 import transcript as T
 from tools import RunTools
 
@@ -66,8 +67,11 @@ _TOOL_DEFS = [
 ]
 
 
-def _run_tool(tools: RunTools, name: str, args: dict):
+def _run_tool(tools: RunTools, name: str, args: dict, guard=None):
+    # the model queries in alias space (leakguard) — translate back before touching the data
     svc = args.get("service") or None
+    if guard is not None:
+        svc = guard.unmask(svc)
     if name == "list_services":
         return {"services": tools.services()}, 0
     if name == "query_traces":
@@ -93,24 +97,37 @@ def diagnose(run, app: str | None = None, max_steps: int = 14, verbose: bool = F
     including on error, so failed diagnoses are auditable too."""
     tools = RunTools(run, app=app)
     run_id = os.path.basename(run.run_dir)
-    user = (f"Incident in run '{run_id}'. Services are unknown until you list "
+    # anti-leakage (leakguard.py): the model gets an opaque incident alias, never the run id
+    # (run ids literally encode fault/intensity/workload), and fault-revealing container names
+    # are pseudonymized in every tool result. The agent answers in alias space; we unmask after.
+    guard = leakguard.Guard(enabled=config.MASK_NAMES)
+    shown_id = leakguard.alias_run(run_id) if config.MASK_NAMES else run_id
+    user = (f"Incident '{shown_id}'. Services are unknown until you list "
             f"them. Diagnose the root cause and call submit_diagnosis.")
     tr = T.Transcript(run_id, method="agent", condition=condition, extra=meta)
     tr.meta["sent_cap_chars"] = SENT_CAP
     tr.meta["max_steps"] = max_steps
+    tr.meta["mask_names"] = config.MASK_NAMES
+    tr.meta["incident_alias"] = shown_id
     tr.event("system_prompt", text=SYSTEM, sha256=T.sha256_text(SYSTEM))
     tr.event("tools_schema", tools=_TOOL_DEFS)
     tr.event("user_message", text=user)
     t0 = time.time()
     loop = _loop_anthropic if config.sdk_kind() == "anthropic" else _loop_openai
     try:
-        diagnosis, traj, in_tok, out_tok, bytes_touched = loop(tools, user, max_steps, verbose, tr)
+        diagnosis, traj, in_tok, out_tok, bytes_touched = loop(tools, user, max_steps, verbose, tr, guard)
     except Exception as e:
         tr.event("error", error=repr(e))
         tr.finalize(None, "error", wall_s=round(time.time() - t0, 1))
         if transcript_path:
             tr.write(transcript_path)
         raise
+    if diagnosis is not None and config.MASK_NAMES:
+        submitted = dict(diagnosis)
+        diagnosis["root_cause_service"] = guard.unmask(diagnosis.get("root_cause_service"))
+        diagnosis["evidence"] = guard.unmask_text(diagnosis.get("evidence"))
+        if submitted != diagnosis:
+            tr.event("unmask", submitted=submitted, unmasked=diagnosis, mapping=guard.mapping())
     stop = ("submitted" if diagnosis is not None
             else "max_steps" if tr.count("api_response") >= max_steps else "no_tool_calls")
     out = {
@@ -131,7 +148,7 @@ def diagnose(run, app: str | None = None, max_steps: int = 14, verbose: bool = F
     return out
 
 
-def _loop_anthropic(tools, user, max_steps, verbose, tr):
+def _loop_anthropic(tools, user, max_steps, verbose, tr, guard):
     client = config.make_client()
     schema = [{"name": t["name"], "description": t["description"], "input_schema": t["parameters"]}
               for t in _TOOL_DEFS]
@@ -158,23 +175,24 @@ def _loop_anthropic(tools, user, max_steps, verbose, tr):
                          arguments=diagnosis, sent="recorded")
                 results.append({"type": "tool_result", "tool_use_id": tu.id, "content": "recorded"})
                 continue
-            res, b = _run_tool(tools, tu.name, dict(tu.input)); bt += b
-            traj.append({"step": step, "tool": tu.name, "service": tu.input.get("service"), "result_bytes": b})
+            res, b = _run_tool(tools, tu.name, dict(tu.input), guard); bt += b
+            svc_real = guard.unmask(tu.input.get("service"))
+            traj.append({"step": step, "tool": tu.name, "service": svc_real, "result_bytes": b})
             if verbose:
-                print(f"  [{step}] {tu.name}({tu.input.get('service') or ''}) -> {b}B")
-            full = json.dumps(res, default=str)
+                print(f"  [{step}] {tu.name}({svc_real or ''}) -> {b}B")
+            full = json.dumps(guard.mask_obj(res), default=str)
+            sent = full[:SENT_CAP]
             tr.event("tool_execution", step=step, tool_use_id=tu.id, tool=tu.name,
                      arguments=dict(tu.input), result=res, result_bytes=b,
-                     sent_chars=min(len(full), SENT_CAP), truncated=len(full) > SENT_CAP)
-            results.append({"type": "tool_result", "tool_use_id": tu.id,
-                            "content": full[:SENT_CAP]})
+                     sent=sent, truncated=len(full) > SENT_CAP)
+            results.append({"type": "tool_result", "tool_use_id": tu.id, "content": sent})
         messages.append({"role": "user", "content": results})
         if diagnosis is not None:
             break
     return diagnosis, traj, itok, otok, bt
 
 
-def _loop_openai(tools, user, max_steps, verbose, tr):
+def _loop_openai(tools, user, max_steps, verbose, tr, guard):
     """OpenAI-compatible tool-use loop (Azure / Gemini / OpenAI / Ollama)."""
     client = config.make_client()
     schema = [{"type": "function", "function": t} for t in _TOOL_DEFS]
@@ -210,16 +228,17 @@ def _loop_openai(tools, user, max_steps, verbose, tr):
                          arguments=args, raw_arguments=c.function.arguments, sent="recorded")
                 messages.append({"role": "tool", "tool_call_id": c.id, "content": "recorded"})
                 continue
-            res, b = _run_tool(tools, name, args); bt += b
-            traj.append({"step": step, "tool": name, "service": args.get("service"), "result_bytes": b})
+            res, b = _run_tool(tools, name, args, guard); bt += b
+            svc_real = guard.unmask(args.get("service"))
+            traj.append({"step": step, "tool": name, "service": svc_real, "result_bytes": b})
             if verbose:
-                print(f"  [{step}] {name}({args.get('service') or ''}) -> {b}B")
-            full = json.dumps(res, default=str)
+                print(f"  [{step}] {name}({svc_real or ''}) -> {b}B")
+            full = json.dumps(guard.mask_obj(res), default=str)
+            sent = full[:SENT_CAP]
             tr.event("tool_execution", step=step, tool_use_id=c.id, tool=name,
                      arguments=args, raw_arguments=c.function.arguments, result=res, result_bytes=b,
-                     sent_chars=min(len(full), SENT_CAP), truncated=len(full) > SENT_CAP)
-            messages.append({"role": "tool", "tool_call_id": c.id,
-                             "content": full[:SENT_CAP]})
+                     sent=sent, truncated=len(full) > SENT_CAP)
+            messages.append({"role": "tool", "tool_call_id": c.id, "content": sent})
         if diagnosis is not None:
             break
     return diagnosis, traj, itok, otok, bt

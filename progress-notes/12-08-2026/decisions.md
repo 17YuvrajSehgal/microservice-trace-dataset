@@ -102,3 +102,41 @@ Built (all in `agentic-rca/`, offline-tested with fake SDK clients for BOTH loop
 
 Caveat recorded in TRANSCRIPTS.md: the 08-11 sanity-gate results predate capture — re-run the 23-incident
 gate (cheap, ~12k out-tokens) if its transcripts should ship in the artifact.
+
+## Leakage audit + anti-cheating guard (leakguard) — BEFORE any headline agent number
+Question (Yuvraj): are we passing the agent anything that tells it the answer? Audit of every
+model-visible channel found **two real leaks and one latent one**:
+1. **Run id in the user prompt** (`agent.py`) — `tt_slow_db_aggressive_steady_r1` literally spells
+   fault/intensity/workload. The 08-11 sanity gate ran WITH this leak → its 74% may be inflated;
+   treat those numbers as upper bounds until the masked re-run.
+2. **Fault-named injection containers in the data** — `anomaly-{cpu,mem,disk}-stress`,
+   `noisy-neighbor` (+ `toxiproxy`) appear in metrics/logs/kernel; for host faults the culprit
+   container announces the fault type by name.
+3. **Latent:** L2 jsonl rows carry `fault_name`/`fault_target` (deriver QC columns). `tools.kernel()`
+   already whitelists fields so nothing leaks today — added a LEAKAGE GUARD comment forbidding widening.
+
+Fixes (default ON via `RCA_MASK_NAMES=1` in config.py; `0` kept ONLY as the "how many points is the
+naming giveaway worth" ablation):
+- `leakguard.py` — model gets `incident-<sha256[:8]>` instead of the run id; fault-vocabulary
+  identifiers in tool results are deterministically pseudonymized (`container-<sha1[:6]>`); the agent
+  answers in alias space and is unmasked before scoring (mapping recorded in an `unmask` transcript
+  event). Real service names untouched — they ARE the answer space.
+- Transcript events now store `sent` — the exact masked+truncated string the model received —
+  alongside the raw `result` (masking broke the "derivable from result" shortcut).
+- `audit_leakage.py` — automated verifier: rescans every model-visible input (system/user/tool
+  schemas/sent strings) for run ids, family tokens under any separator style, injection-container
+  names, gt vocabulary. Exit 1 on hard hits; run after every sweep, ship the PASS with the artifact.
+  Static inputs (system prompt/tool schemas) are exempted from the closed fault-type taxonomy — the
+  enum is the answer SPACE (same for every incident), not a leak; noisy-neighbor container ≡
+  noisy_neighbor label collision handled explicitly.
+
+Deliberately NOT masked (documented realism boundary, in TRANSCRIPTS.md): `stress-ng` process
+signatures in log/kernel evidence (a real SRE would see the co-tenant's processes; reveals "synthetic
+workload", not which fault) and the exact injection window as alert time (standard RCA-benchmark
+assumption; identical for all methods incl. RCAEval). Also noted: baseline #1 (statistical) keys off
+the stress-container NAMES and stays unmasked — that inflates the BASELINE, which is the conservative
+direction for our "agent beats baselines" claim.
+
+Consequence: the sanity gate MUST be re-run masked before quoting 74/74/61 anywhere. All offline
+tests (fake SDK clients, both loops): masking, arg-unmasking, trajectory realism, auditor PASS on
+masked / FAIL on unmasked — green.

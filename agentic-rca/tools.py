@@ -246,6 +246,9 @@ class RunTools:
         if hasattr(l2, "columns") and len(l2) and "rule_out_pct" in l2.columns:
             touched += _df_bytes(l2)
             d = l2[l2["service"] == service] if service else l2
+            # LEAKAGE GUARD: L2 rows also carry fault_name/fault_target (deriver QC metadata =
+            # the ground-truth label). Only the whitelisted, data-derived fields below may ever
+            # reach the agent — never widen this to row.to_dict()/full columns.
             for _, row in d.iterrows():
                 svc = row.get("service")
                 out.setdefault(svc, {})["wait_attribution"] = {
