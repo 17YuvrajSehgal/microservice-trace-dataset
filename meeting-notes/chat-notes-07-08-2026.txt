@@ -1,0 +1,130 @@
+Please make sure of that before you start, but if it is the plan. We can do this: let me your thoughts. I just write what I 'm thinking of here
+
+How Much Observability Can We Lose Before Diagnosis Breaks?
+How robust are software diagnosis techniques to realistic telemetry degradation, and what telemetry must be preserved to retain diagnostic capability?
+
+RQ1 — How does telemetry degradation affect diagnosis?
+Systematically reduce sampling rate, temporal resolution, and service coverage.
+Measure AD and RCA degradation.
+You might discover nonlinear thresholds.
+For example:
+100% traces → 25% traces:
+
+almost no difference.
+25% → 5%:
+
+RCA collapses.
+That's much more actionable than simply saying traces are useful.
+
+RQ2 — Which faults are resilient to degraded observability?
+Your fault catalog is perfect for this.
+You have CPU, disk, memory, network, DB latency, error storms, CPU throttling, memory limits, dependency outages, queue backlog, noisy neighbor, and service-network faults.
+You can construct something like a:
+Fault × Observability-Degradation Map
+Maybe:
+CPU saturation survives metric downsampling.
+Error storm survives trace loss because logs scream.
+Slow DB survives trace sampling but not kernel removal.
+Dependency outage becomes extremely difficult once the affected service is uninstrumented.
+That becomes a useful empirical contribution.
+
+RQ3 — Can one telemetry layer compensate for another being missing?
+Imagine removing traces from the faulty service.
+Compare:
+Metrics + logs + traces
+versus
+Metrics + logs + partially missing traces + kernel.
+Then ask whether kernel telemetry recovers the lost diagnostic accuracy.
+That's a much stronger practical claim: kernel telemetry acts as an observability safety net.
+
+
+RQ4 — What is the minimum telemetry budget required for reliable diagnosis?
+Conceptually:
+max (C) DiagnosticUtility(C)
+subject to
+CollectionCost(C)≤B
+where configuration C might be:
+10% trace sampling,
+15s metrics,
+WARN+ logs,
+kernel L1 for critical services.
+This produces a Pareto frontier:
+collection cost vs diagnostic capability.
+That is something an operator can actually use.
+
+if you wanna do we need to have like three RCA approaches: one statistical, one well-perceived like (RCAEval-CARE), one LLM-based/Agent based
+
+And if I am not wrong, we are planning on using agentic/skills/mcp techniques that we discussed with professor to answer these RQs right? And evaluate the performance of agentic approaches with respect to these research questions?
+
+Mahsa Panahandeh
+if you wanna do we need to have like three RCA approaches: one statistical, one well-perceived like (RCAEval-CARE), one LLM-based/Agent based
+
+Yes, that’s what i was asking for thanks!!
+
+It is another story!
+Yuvraj Sehgal
+And if I am not wrong, we are planning on using agentic/skills/mcp techniques that we discussed with professor to answer these RQs right? And evaluate the performance of agentic approaches with respe…
+If the question is about the difference of data modalities it is better to keep the rest of pipeline unchanged. I mean we cannot measure the affect of skills and agents at the same time with effect of changes in telemetry data
+
+It is why I think Naser was more into working on Agnetic based observability instead of this MSR idea!
+
+Lets ask him clearly before to do any further efforts
+
+If you want to work on the agentic approach, then, we need an agent with different skills to collect data, analyze it and so
+
+How i was planning to use this dataset is: i was going to use agentic based observability to query this data - for example to see what skills are useful for cpu related loads, db issues etc.
+
+This way we can find what data is required for which skills.
+
+This way we do not have to collect new data everytime.
+
+If we are in a situation where none of the skills are helping with the current collected data- we can either consider that as something novel - and then either collect new data for it or report that this kind of problems are unsolvable with this current dataset/skills.
+
+And we can maybe create a table of what skills uses what type of data, their accuracy, efficiency, etc. to find the root cause.
+
+We can do this one too. let me again look at data to see if we are able to work on them without further data collection
+
+We can develop an agent with  four independent skills: metric_investigation, log, trace, kernel
+Then, tet the agent to choose which to call under degradation and compare something like:
+              Full     25% trace    5% trace Vs Trace skill,  Metrics, Logs, Kernel
+
+We may find "As application-level visibility deteriorates, agents adapt by shifting investigation toward lower-level telemetry." Or perhaps the opposite occurs: Agents continue repeatedly querying degraded traces instead of adapting.
+We should look for these kinds of findings
+
+
+That would beinteresting because it exposes a weakness in current RCA agents.
+
+you can do a simplearchitecture like:
+StrataTrace run   -> Python data layer   -> 4 tool families (metrics, logs ,traces, kernel) -> single LLM agent -> structured answer: {   root_cause_service,   fault_type,   evidence,   confidence }
+but we need to run it on several incidents ( lets say 20) with 100% telemetry and verify that it can actually diagnose them. If so, we can see how it works in telemetry degredation
+
+I share the idea with GPT and these are its 4RQs:
+RQ1 — Robustness to degradation. You already have full traces, logs, metrics, kernel traces, fault ground truth, and aligned timestamps.  Build one agentic RCA system with four telemetry tools/skills. Then create degraded copies offline: e.g. trace retention 100/50/25/10/5%, metrics 5s→10/30/60s, log dropping, service-coverage removal. Run the same agent on every condition and measure RCA Top-1/Top-3/MRR.
+RQ2 — Investigation strategy. No new collection is required. Instrument the agent itself. For every diagnosis save its trajectory: tool called → service queried → time range → result → next tool. Then compare trajectories under full vs degraded telemetry: number of calls, order of modalities, repeated/failed queries, tokens, and whether the agent changes strategy when evidence disappears.
+RQ3 — Cross-modality compensation. Your dataset is particularly suitable because kernel visibility covers services even where application tracing is incomplete; Sock Shop explicitly has partial distributed-trace coverage.  Remove/degrade one modality and compare M+L+T versus M+L+T+K, for example. Especially test the existing blind-spot faults such as slow_db, queue_backlog, and noisy_neighbor, for which the fault catalogue already predicts strong kernel evidence.  Measure how often adding another modality recovers a previously wrong diagnosis.
+RQ4 — Minimum observability configuration. Here you reuse both the degradation results and your existing modality collection-cost measurements—the repository specifically lists measured collection overhead as an asset/contribution.  Search configurations such as {metrics 10s + logs ERROR + traces 10% + kernel L1} and calculate RCA accuracy versus bytes/CPU/latency/tool-token cost. Then identify the Pareto-optimal configurations: the cheapest setups that retain, say, ≥90% of full-observability RCA performance
+
+StrataTrace data reader → 4 deterministic telemetry tools/MCP endpoints → single RCA agent → trajectory logger → degradation module → evaluation runner.
+
+What do you think? I like this one even more!
+
+I like this idea! And it is good because this is exactly what i presented at a presentation with ciena last week. My agent it uses some skills - starts with minimal set of data - and if it is struggling for RCA, it goes into lower level data collection like kernel traces etc.
+
+And I even created an MVP for them, and results were actually good. On all 3 anomalies i injected in system, it found exactly those using it’s skills
+
+I can share the presentation with you.
+
+The same repository i shared with you has code for agent, if you wanna look under agent-first-mvp directory.
+
+Great!
+
+It needs a permission , I think since I'm not from the same domain
+
+Oh wait let me add it as file
+
+So, let's consider it as a plan!
+
+Sounds good, at that time i had a smaller dataset, now i have a bigger one, so i can do more testing. I will get back to you with new results after weekend then 🫡
+
+
+

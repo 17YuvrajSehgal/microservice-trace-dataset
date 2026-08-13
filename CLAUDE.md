@@ -48,8 +48,10 @@ fault→modality predictions are `fault_catalog.md`.
   mechanically verified; VM still owes intensity calibration
   (especially noisy_neighbor's "KPIs barely move" property), the F12
   per-container netem recipe, and `verify_injection.py` automation.
-- Vendored `models/` + `dataset/` (from adaptive_tracer @405e49e) are the
-  authoritative copies (see VENDORED.md in each).
+- The LMAT/JSS modeling stack (`microservice/` + vendored `models/`, `dataset/`) was
+  **archived to `archive/lmat/` on 2026-08-08** (repo reorg) — no current agentic/dataset
+  code imports it; kept intact + reversible for the JSS revision. The vendored copies
+  (from adaptive_tracer @405e49e) remain the authoritative ones (VENDORED.md in each).
 
 ## Key technical facts (hard-won; do not rediscover)
 
@@ -92,9 +94,11 @@ fault→modality predictions are `fault_catalog.md`.
 | `fault_catalog.md` | Pre-registered predictions, scoring rules, H1–H4 |
 | `progress-notes/` | Daily decision log — **read latest day first** |
 | `microservice-lttng-data-collection-scripts/` | All collection tooling: collect_trace.sh, overlays, faults/, audit_alignment.py, download_metrics*.sh, load_generator.py |
-| `microservice/` | LMAT preprocessing/training/eval (imports vendored `models/`, `dataset/`) |
-| `models/`, `dataset/` | Vendored, authoritative (VENDORED.md) |
-| `microservices-demo/` | Submodule: pinned Sock Shop deploy fork |
+| `agentic-rca/` | **Agent research harness** (config.py + agent/tools/degrade/evaluate) — the primary track. Agent code only. |
+| `transfer/` | Dataset staging/derivation/transfer scripts: extract_working_set, derive_l2_*, env.sh (cluster env), push/extract/fetch |
+| `archive/lmat/` | Archived LMAT/JSS modeling stack (microservice/, vendored models/, dataset/, JSS review docs) — not used by current work |
+| `archive/progress-snapshots/` | Superseded dated progress/update files (progress-notes/ is the live log) |
+| `microservices-demo/`, `train-ticket/` | Submodules: pinned Sock Shop + Train Ticket app forks |
 | `DOCS/` | JSS-era docs; some paths reference the old adaptive_tracer workspace (known drift) |
 | `pdf_proofs_of_injection/` | Grafana evidence for the prior 148 GB release |
 

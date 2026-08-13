@@ -3,3 +3,22 @@ traces.zip
 sockshop_sample_dataset_20260612.tar.gz
 .idea
 microservice-lttng-data-collection-scripts/otlp-out/__pycache__/
+
+# agentic-rca harness
+.venv/
+dev-runs/
+agentic-rca/dev-runs/
+*.dev-sample.tar.gz
+dev-sample-*.tar.gz
+# python build artifacts
+*.egg-info/
+__pycache__/
+*.pyc
+
+# agentic-rca sweep outputs (regenerable on /scratch)
+agentic-rca/results/
+
+# secrets — never commit (keep .env.example, ignore real .env)
+.env
+.env.local
+.env.*.local

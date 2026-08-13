@@ -50,13 +50,47 @@ TRILLIUM_USER=yuvraj17 SRC=$HOME/traces APP=sockshop PAR=4 SSH_KEY=~/.ssh/trilli
 ```
 Resumable: re-run anytime — archives already present are skipped.
 
-## Step 2 — extract on Trillium (organized, no mixing)
+## Step 2 — keep the compressed copy SAFE, then extract a working copy
+
+**Extraction is non-destructive:** `tar -x` only reads the archive and writes new files — it never
+deletes or changes the `.tar.gz`. So the compressed copy stays intact automatically; you just need
+to (a) not delete the archives and (b) keep them somewhere durable.
+
+**Two cluster caveats that shape the plan:**
+- **`/scratch` is temporary + not backed up.** On SciNet/Alliance, files unread for ~60 days are
+  **purged**, and scratch is never on backup. So `/scratch` is fine for *working* on the data but
+  NOT for the "safe backup."
+- **Inode (file-count) quotas.** The extracted tree is thousands of small files; `/scratch` and
+  `/project` both cap file counts. Keeping the dataset as ~13-15 archives per app is inode-cheap;
+  a fully-extracted 49-run tree is not.
+
+**Recommended layout — archives = durable cold backup, extract on demand:**
 ```bash
-cd /scratch/yuvraj17/microservice-trace-dataset/trainticket
-bash ~/…/transfer/extract_on_trillium.sh --list      # sanity: run count per archive
-bash ~/…/transfer/extract_on_trillium.sh             # -> <recipe>/<run>/...
-# (or keep them as .tar.gz on /scratch and extract to node-local $SLURM_TMPDIR at compute time)
+# 2a. Move the archives to durable, backed-up storage (adjust to your allocation).
+#     /project is persistent + backed up; /scratch is not. (You also still have the GCP-disk
+#     originals and, once mirrored, the Nibi copy — so you'll have 2-3 independent copies.)
+mkdir -p /project/yuvraj17/microservice-trace-dataset
+mv /scratch/yuvraj17/microservice-trace-dataset/* /project/yuvraj17/microservice-trace-dataset/
+#   (or `cp -a` if you want a copy to remain on /scratch too)
+
+# 2b. Sanity-list without extracting anything (archives stay compressed):
+cd /project/yuvraj17/microservice-trace-dataset/trainticket
+bash <path>/transfer/extract_on_trillium.sh --list
+
+# 2c. Extract a WORKING copy into a SEPARATE dir (archives left untouched):
+OUT=/scratch/yuvraj17/tt-work bash <path>/transfer/extract_on_trillium.sh
+#     -> /scratch/yuvraj17/tt-work/<recipe>/<run>/...   ;  archives still whole in /project
 ```
+
+**HPC best practice (for compute jobs):** don't keep a huge extracted tree lying around — extract
+only what a job needs into fast node-local scratch at run time, e.g. inside a Slurm job:
+```bash
+OUT=$SLURM_TMPDIR/tt bash <path>/transfer/extract_on_trillium.sh   # auto-cleaned when the job ends
+```
+
+**If something ever goes wrong** with the extracted copy, just re-run `extract_on_trillium.sh`
+against the archives — they're the source of truth and were never modified. To spot-check an
+archive is still good: `pigz -dc <recipe>.tar.gz | tar -tf - | head` (lists without extracting).
 
 ## Step 3 — Trillium -> Nibi
 Both are Alliance/SciNet systems, so the robust, fastest option is **Globus** (parallel, checksummed,
@@ -70,6 +104,20 @@ rsync -aHh --info=progress2 \
   yuvraj17@nibi.alliancecan.ca:/scratch/yuvraj17/microservice-trace-dataset/
 # NOTE: -a (no -z): the archives are already compressed, so skip rsync compression.
 ```
+
+## On-cluster working-set prep (for the agentic-rca study)
+Once the archives are on Trillium (`/project/def-naser2/yuvraj17/microservice-trace-dataset/<app>`),
+these build the loader-ready working tree at `/scratch/yuvraj17/agentic-runs/<app>` — **small
+modalities only** (spans/logs/metrics/kernel L1–L3; never the multi-GB raw L0 CTF). The agent code
+lives in `../agentic-rca/`; these are the dataset-side tools that feed it.
+
+| Script | What |
+|---|---|
+| `env.sh` | `source transfer/env.sh` — loads `python/3.11` + `arrow/19.0.1` + the cluster `.venv` (order matters: python before arrow; pyarrow ships via the module, not pip). |
+| `extract_working_set.sh <app>` | Parallel small-modality extract from the `/project` archives → `/scratch/…/agentic-runs/<app>`. `RUNGLOB='*'` = all runs. |
+| `extract_job.sbatch` | Whole-node `debug` job running the extract for both apps. `sbatch transfer/extract_job.sbatch`. |
+| `derive_l2_working_set.sh <app>` | Derive kernel **L2 wait-attribution** from L0 (needs `babeltrace2`, built at `/scratch/yuvraj17/local/`) → writes `kernel_l2.jsonl` next to each run. Resumable. |
+| `derive_l2_job.sbatch` | Whole-node `compute` job deriving L2 for both apps. `sbatch transfer/derive_l2_job.sbatch`. |
 
 ## Notes
 - The per-run Prometheus **metrics** + client **load CSVs** live in `~` (not inside the trace
