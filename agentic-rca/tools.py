@@ -39,6 +39,18 @@ def _df_bytes(df) -> int:
         return 0
 
 
+def _norm_container(name: str) -> str:
+    """One canonical service name across modalities: metrics say 'docker-compose_carts_1',
+    spans/kernel say 'carts' — without this, per-service metric queries silently miss on
+    compose-managed containers and cross-tool identity breaks."""
+    n = str(name).strip().lstrip("/")
+    for pre in ("docker-compose_", "dockercompose_", "compose_", "trainticket_"):
+        if n.startswith(pre):
+            n = n[len(pre):]
+    import re
+    return re.sub(r"_\d+$", "", n)
+
+
 class RunTools:
     def __init__(self, run, app: str | None = None):
         self.run = run
@@ -86,17 +98,36 @@ class RunTools:
         return self.run.kernel_l2()
 
     # ---- discovery -----------------------------------------------------------------------
+    _PSEUDO = {"kernel", "system", "idle", "swapper", "", "none", "nan",
+               "prometheus", "cadvisor", "node-exporter", "otel-collector", "grafana"}
+
     def services(self) -> list:
-        """Union of service identifiers visible across modalities (for the agent to explore)."""
+        """Union of service identifiers visible across ALL modalities (spans, kernel, metrics,
+        logs), normalized to one name per entity. Metrics/logs-only containers matter: entities
+        with no spans (databases, queues, co-tenant workloads) are frequent root causes."""
         svcs = set()
         sp = self._spans()
         if pd is not None and hasattr(sp, "columns") and "service" in getattr(sp, "columns", []):
-            svcs |= set(sp["service"].dropna().unique())
+            svcs |= {_norm_container(s) for s in sp["service"].dropna().unique()}
         l1 = self._l1()
         if hasattr(l1, "columns") and "service" in getattr(l1, "columns", []):
-            svcs |= set(l1["service"].dropna().unique())
-        pseudo = {"kernel", "system", "idle", "swapper", ""}
-        return sorted(s for s in svcs if s and s not in pseudo)
+            svcs |= {_norm_container(s) for s in l1["service"].dropna().unique()}
+        mt = self._metrics()
+        cc = self._metrics_container_col(mt)
+        if cc:
+            svcs |= {_norm_container(s) for s in mt[cc].dropna().unique()}
+        lg = self._logs()
+        if hasattr(lg, "columns") and "container" in getattr(lg, "columns", []):
+            svcs |= {_norm_container(s) for s in lg["container"].dropna().unique()}
+        listed = sorted(s for s in svcs if s and s.lower() not in self._PSEUDO)
+        return ["host"] + listed            # 'host' = the node itself (node metrics / host-kernel)
+
+    @staticmethod
+    def _metrics_container_col(df):
+        if not hasattr(df, "columns"):
+            return None
+        return next((c for c in ("container", "name",
+                    "container_label_com_docker_compose_service", "pod", "id") if c in df.columns), None)
 
     # ---- traces --------------------------------------------------------------------------
     def traces(self, service: str | None = None):
@@ -116,10 +147,46 @@ class RunTools:
         out = {}
         for svc, g in d.groupby("service"):
             dur = pd.to_numeric(g.get("dur_ms"), errors="coerce")
-            out[svc] = {"n": int(len(g)), "p50_ms": _pctl(dur, 0.5),
+            out[_norm_container(svc)] = {"n": int(len(g)), "p50_ms": _pctl(dur, 0.5),
                         "p95_ms": _pctl(dur, 0.95), "p99_ms": _pctl(dur, 0.99),
                         "max_ms": round(float(dur.max()), 2) if len(dur.dropna()) else None}
-        return (out.get(service, {"n": 0}) if service else out), _df_bytes(d)
+        svc_key = _norm_container(service) if service else None
+        return (out.get(svc_key, {"n": 0}) if service else out), _df_bytes(d)
+
+    # ---- topology (victim vs culprit) ----------------------------------------------------
+    def topology(self, service: str | None = None, top: int = 20):
+        """Caller→callee edges from span parent/child links, baseline vs incident latency per
+        edge. THE victim-vs-culprit instrument: victims' slow edges point AT the culprit; the
+        culprit has no slow outgoing edge (or none at all). Optionally filter to edges touching
+        one service."""
+        df = self._spans()
+        need = {"span_id", "parent_span_id", "service", "start_ns", "dur_ms"}
+        if not hasattr(df, "columns") or len(df) == 0 or not need.issubset(set(df.columns)):
+            return {"note": "no spans / no parent links"}, 0
+        d = df[list(need)].copy()
+        d["service"] = d["service"].map(_norm_container)
+        sn = pd.to_numeric(d["start_ns"], errors="coerce")
+        d["_inc"] = (sn >= self._ns0) & (sn <= self._ns1) if self._ns0 else False
+        d["_base"] = (sn < self._ns0) if self._ns0 else True
+        parent_svc = d.set_index("span_id")["service"]
+        ch = d[d["parent_span_id"].notna() & (d["parent_span_id"] != "")].copy()
+        ch["caller"] = ch["parent_span_id"].map(parent_svc)
+        ch = ch[ch["caller"].notna() & (ch["caller"] != ch["service"])]
+        if service:
+            sk = _norm_container(service)
+            ch = ch[(ch["caller"] == sk) | (ch["service"] == sk)]
+        edges = []
+        for (a, b), g in ch.groupby(["caller", "service"]):
+            dur = pd.to_numeric(g["dur_ms"], errors="coerce")
+            bd, idur = dur[g["_base"]], dur[g["_inc"]]
+            if len(idur.dropna()) == 0:
+                continue
+            pb, pi = _pctl(bd, 0.95), _pctl(idur, 0.95)
+            edges.append({"caller": a, "callee": b, "n_incident": int(len(idur)),
+                          "p95_baseline_ms": pb, "p95_incident_ms": pi,
+                          "slowdown_x": round(pi / pb, 1) if pb and pi else None})
+        edges.sort(key=lambda e: -(e["slowdown_x"] or 0))
+        return {"edges": edges[:top]}, _df_bytes(ch)
 
     # ---- logs ----------------------------------------------------------------------------
     # error pattern (no catastrophic-backtracking alternations); matched vectorized then refined
@@ -128,32 +195,76 @@ class RunTools:
                 r"i/o timeout|\b5\d\d\b")
 
     def logs(self, service: str | None = None, max_sigs: int = 3):
-        """Per-container error counts + top normalized error signatures. Vectorized: the regex runs
-        once at C-speed over (length-capped) lines; only the matched lines are grouped in Python —
-        Java stack-trace logs can be GBs, so a per-line Python loop is untenable."""
+        """Per-container error-rate CHANGE baseline→incident + NEW error signatures. The core RCA
+        discipline: chronic noise (signatures equally present before the incident) must not decide
+        anything — what matters is what changed at onset. Docker log lines carry an RFC3339Nano
+        prefix, which windows every line; unparseable lines are counted separately. Vectorized:
+        regex/timestamp parse run once at C-speed (Java stack-trace logs can be huge)."""
         import re
         df = self._logs()
         if not hasattr(df, "columns") or len(df) == 0:
             return {"note": "no logs"}, 0
-        d = df[df["container"] == service] if service else df
-        line = d["line"].astype(str).str.slice(0, 500)     # cap length (speed + anti-backtracking)
+        d = df.assign(_c=df["container"].map(_norm_container))
+        if service:
+            d = d[d["_c"] == _norm_container(service)]
+        if len(d) == 0:
+            return ({"errors": 0} if service else {}), 0
+        line = d["line"].astype(str)
         touched = int(line.str.len().sum())
-        mask = line.str.contains(self._ERR_PAT, case=False, regex=True, na=False)
-        if not mask.any():
-            return ({"errors": 0} if service else {}), touched
-        err = d.loc[mask].assign(_l=line[mask].values)
+        ts = pd.to_datetime(line.str.slice(0, 35).str.split(" ").str[0],
+                            errors="coerce", utc=True)
+        try:
+            tsec = ts.astype("int64") / 1e9
+        except (TypeError, ValueError):
+            tsec = pd.Series(float("nan"), index=d.index)
+        tsec = tsec.where(ts.notna())
+        msg = line.str.replace(r"^\S+\s", "", regex=True).str.slice(0, 400)
+        err = msg.str.contains(self._ERR_PAT, case=False, regex=True, na=False)
+        base = tsec < self._t0 if self._t0 else pd.Series(False, index=d.index)
+        inc = ((tsec >= self._t0) & (tsec <= self._t1)) if self._t0 else pd.Series(True, index=d.index)
+        base_min = float(max((self._t0 - tsec[base].min()) / 60.0, 1 / 60)) if base.any() else 1.0
+        inc_min = float(max((self._t1 - self._t0) / 60.0, 1 / 60)) if self._t0 else 1.0
         subre = re.compile(r"0x[0-9a-f]+|\d+")
+
         out = {}
-        for cont, g in err.groupby("container"):
-            counts, sample = {}, {}
-            for l in g["_l"]:
-                k = subre.sub("N", l)[:110]
-                counts[k] = counts.get(k, 0) + 1
-                sample.setdefault(k, l.strip()[-160:])
-            top = sorted(counts.items(), key=lambda x: -x[1])[:max_sigs]
-            out[cont] = {"errors": int(len(g)),
-                         "top": [{"count": c, "sample": sample[k]} for k, c in top]}
-        return (out.get(service, {"errors": 0}) if service else out), touched
+        for cont, g in d[err & (base | inc)].assign(_m=msg[err & (base | inc)],
+                                                    _b=base[err & (base | inc)]).groupby("_c"):
+            bsig, isig, sample = {}, {}, {}
+            for m, is_b in zip(g["_m"], g["_b"]):
+                k = subre.sub("N", m)[:110]
+                (bsig if is_b else isig)[k] = (bsig if is_b else isig).get(k, 0) + 1
+                sample.setdefault(k, m.strip()[-160:])
+            eb, ei = sum(bsig.values()), sum(isig.values())
+            rb, ri = eb / base_min, ei / inc_min
+            new = [(k, c) for k, c in isig.items() if bsig.get(k, 0) == 0]
+            new.sort(key=lambda kv: -kv[1])
+            chronic = sorted(((k, c) for k, c in isig.items() if bsig.get(k, 0) > 0),
+                             key=lambda kv: -kv[1])
+            rec = {"err_per_min_baseline": round(rb, 1), "err_per_min_incident": round(ri, 1),
+                   "change_x": round(ri / rb, 1) if rb > 0 else ("new" if ri > 0 else None)}
+            if new:
+                rec["new_signatures"] = [{"count": c, "sample": sample[k]} for k, c in new[:max_sigs]]
+            if chronic:
+                rec["chronic_top"] = [{"count_incident": c, "count_baseline": bsig[k],
+                                       "sample": sample[k]} for k, c in chronic[:1]]
+            out[cont] = rec
+        unparsed = int(ts.isna().sum())
+        if service:
+            res = out.get(_norm_container(service), {"errors": 0})
+        else:
+            # rank: NEW signatures and big rate changes first; cap the container list
+            def _key(kv):
+                r = kv[1]
+                cx = r.get("change_x")
+                cxv = 998 if cx == "new" else (cx if isinstance(cx, (int, float)) else 0)
+                return (len(r.get("new_signatures", [])), cxv)
+            ranked = sorted(out.items(), key=_key, reverse=True)
+            res = dict(ranked[:12])
+            if len(ranked) > 12:
+                res["note"] = f"{len(ranked) - 12} more containers with error activity omitted"
+        if unparsed and isinstance(res, dict):
+            res.setdefault("untimed_lines", unparsed)
+        return res, touched
 
     # ---- metrics -------------------------------------------------------------------------
     # curated cAdvisor signals: counters (*_total) → per-second RATE; gauges → window mean; display scale
@@ -168,22 +279,79 @@ class RunTools:
         "container_fs_writes_bytes_total":            ("counter", "fs_write_KB/s", 1e-3),
     }
 
+    # host (node-exporter) signals: name -> (kind, label, scale, sum-group label, exclude values)
+    _NODE_CURATED = {
+        "node_cpu_seconds_total":            ("counter", "host_cpu_busy_cores", 1.0, "mode", ("idle",)),
+        "node_disk_io_time_seconds_total":   ("counter", "host_disk_io_time_s/s", 1.0, "device", ()),
+        "node_disk_written_bytes_total":     ("counter", "host_disk_write_KB/s", 1e-3, "device", ()),
+        "node_disk_read_bytes_total":        ("counter", "host_disk_read_KB/s", 1e-3, "device", ()),
+        "node_network_receive_bytes_total":  ("counter", "host_net_rx_KB/s", 1e-3, "device", ("lo",)),
+        "node_network_transmit_bytes_total": ("counter", "host_net_tx_KB/s", 1e-3, "device", ("lo",)),
+        "node_memory_MemAvailable_bytes":    ("gauge", "host_mem_available_GB", 1e-9, None, ()),
+        "node_load1":                        ("gauge", "host_load1", 1.0, None, ()),
+    }
+
+    def host_metrics(self):
+        """Node-level (whole host) signals baseline→incident — the direct evidence channel for
+        host-scoped causes (CPU/disk/memory/network pressure affecting all services at once)."""
+        df = self._metrics()
+        if not hasattr(df, "columns") or len(df) == 0 or "metric" not in getattr(df, "columns", []):
+            return {"note": "no metrics"}, 0
+        d = df[df["metric"].isin(self._NODE_CURATED)]
+        if len(d) == 0:
+            return {"note": "no node-exporter metrics"}, 0
+        d = d.assign(_ts=pd.to_numeric(d["timestamp"], errors="coerce"),
+                     _v=pd.to_numeric(d["value"], errors="coerce"))
+        out = {}
+        for met, g in d.groupby("metric"):
+            kind, label, sc, grp, excl = self._NODE_CURATED[met]
+            if grp and grp in g.columns and excl:
+                g = g[~g[grp].astype(str).isin(excl)]
+            series_cols = [c for c in ("cpu", "mode", "device") if c in g.columns]
+
+            def agg(win):
+                if len(win) == 0:
+                    return None
+                if kind == "gauge":
+                    return float(win["_v"].mean())
+                tot = 0.0
+                for _, s in (win.groupby(series_cols) if series_cols else [(None, win)]):
+                    s = s.dropna(subset=["_v", "_ts"])
+                    span = float(s["_ts"].max() - s["_ts"].min()) if len(s) > 1 else 0.0
+                    if span > 0:
+                        tot += max(0.0, float((s["_v"].max() - s["_v"].min()) / span))
+                return tot
+
+            bv = agg(g[g["_ts"] < self._t0]) if self._t0 else None
+            iv = agg(g[(g["_ts"] >= self._t0) & (g["_ts"] <= self._t1)] if self._t0 else g)
+            if iv is None:
+                continue
+            rec = {"baseline": None if bv is None else round(bv * sc, 3),
+                   "incident": round(iv * sc, 3)}
+            if bv:
+                rec["change_x"] = round(iv / bv, 2)
+            out[label] = rec
+        return (out or {"note": "no node-exporter metrics"}), _df_bytes(d)
+
     def metrics(self, service: str | None = None, top: int = 8):
-        """Per-container resource signals baseline→injection: CPU, throttling, memory, net, fs I/O.
+        """Per-container resource signals baseline→incident: CPU, throttling, memory, net, fs I/O.
         Counters (*_total) become per-second RATES; gauges use the window mean. Ranked by movement
-        relative to each signal's own scale so genuine movers beat near-constant noise."""
+        relative to each signal's own scale so genuine movers beat near-constant noise.
+        service='host' returns node-level host signals instead."""
+        if service and _norm_container(service) in ("host", "node"):
+            return self.host_metrics()
         df = self._metrics()
         if not hasattr(df, "columns") or len(df) == 0 or "timestamp" not in getattr(df, "columns", []):
             return {"note": "no metrics"}, 0
-        cont_col = next((c for c in ("container", "name",
-                        "container_label_com_docker_compose_service", "pod", "id") if c in df.columns), None)
+        cont_col = self._metrics_container_col(df)
         if "metric" not in df.columns or not cont_col:
             return {"note": "metrics lack metric/container columns"}, 0
         d = df.assign(_ts=pd.to_numeric(df["timestamp"], errors="coerce"),
                       _v=pd.to_numeric(df["value"], errors="coerce"))
         d = d[d["metric"].isin(self._CURATED)]
+        d = d.assign(**{cont_col: d[cont_col].map(_norm_container)})
         if service:
-            d = d[d[cont_col] == service]
+            d = d[d[cont_col] == _norm_container(service)]
 
         def winval(g, kind):
             g = g.dropna(subset=["_v", "_ts"])
@@ -218,46 +386,110 @@ class RunTools:
         sigs.sort(key=lambda x: -x["_score"])
         for s in sigs:
             s.pop("_disp", None); s.pop("_score", None)
-        return {"top_movers": sigs[:top]}, _df_bytes(d)
+        res = {"top_movers": sigs[:top]}
+        bt = _df_bytes(d)
+        if not service:                     # survey call: include host-level signals up front
+            host, hb = self.host_metrics()
+            if "note" not in host:
+                res["host"] = host
+                bt += hb
+        return res, bt
 
     # ---- kernel --------------------------------------------------------------------------
-    def kernel(self, service: str | None = None):
-        """Kernel evidence per service: L1 syscall-latency peaks, L3 NL digest/deviations, and
-        L2 wait-attribution rule-out % when available (the 'why it waited' signal)."""
+    # L1 KPIs compared baseline→incident: latency percentiles (of the per-second windows) and
+    # activity rates. reclaim/writeback/pagefault are the memory-pressure story; block_* the
+    # disk story; sched_wakeup contention; net_* the network story.
+    _L1_LAT = ("sys_lat_p95_ms", "sys_lat_p99_ms", "blk_lat_p95_ms")
+    _L1_RATE = ("sched_wakeup", "block_ops", "block_sectors", "net_events", "net_bytes",
+                "reclaim", "writeback", "pagefault", "sys_io", "sys_net", "sys_futex")
+
+    def kernel(self, service: str | None = None, top_changes: int = 5):
+        """Kernel evidence per service, baseline→incident: changed L1 KPIs (syscall/block latency,
+        disk, net, scheduler, memory-reclaim rates), L3 NL deviations, and L2 wait-attribution
+        ('why it waited') when available. The 'kernel' pseudo-service (unattributed kernel threads)
+        is reported as 'host-kernel' — host-wide kernel activity no container explains."""
         out = {}
         touched = 0
+        want = _norm_container(service) if service else None
+        if want in ("host", "node", "kernel"):
+            want = "host-kernel"
         l1 = self._l1()
-        if hasattr(l1, "columns") and len(l1):
+        if hasattr(l1, "columns") and len(l1) and "window_start_s" in l1.columns:
             touched += _df_bytes(l1)
-            d = l1[l1["service"] == service] if service else l1
-            latcol = next((c for c in l1.columns if "p95" in c and "lat" in c), None)
-            for svc, g in d.groupby("service"):
-                rec = {"windows": int(len(g))}
-                if latcol:
-                    rec["sys_lat_p95_ms_peak"] = round(float(pd.to_numeric(g[latcol], errors="coerce").max()), 2)
-                out.setdefault(svc, {}).update(rec)
+            ws = pd.to_numeric(l1["window_start_s"], errors="coerce")
+            rel = ws - float(ws.min())
+            inj_s = (self._t1 - self._t0) if (self._t0 and self._t1) else 120.0
+            # run protocol: ~60s baseline, then the incident window (same assumption as the alert)
+            base_m = rel < 55
+            inc_m = (rel >= 60) & (rel <= 60 + inj_s)
+            for svc, g in l1.groupby("service"):
+                name = "host-kernel" if svc == "kernel" else _norm_container(svc)
+                if svc in ("system", "idle", "swapper", ""):
+                    continue
+                if want and name != want:
+                    continue
+                gb, gi = g[base_m.loc[g.index]], g[inc_m.loc[g.index]]
+                if len(gi) == 0:
+                    continue
+                changes = []
+                for k in self._L1_LAT:
+                    if k not in g.columns:
+                        continue
+                    b = pd.to_numeric(gb[k], errors="coerce").quantile(0.95) if len(gb) else None
+                    i = pd.to_numeric(gi[k], errors="coerce").quantile(0.95)
+                    if i is None or pd.isna(i) or i < 0.05:
+                        continue
+                    x = round(float(i) / float(b), 1) if b and not pd.isna(b) and b > 0 else None
+                    changes.append({"kpi": k, "baseline": None if b is None or pd.isna(b) else round(float(b), 3),
+                                    "incident": round(float(i), 3), "x": x})
+                for k in self._L1_RATE:
+                    if k not in g.columns:
+                        continue
+                    b = float(pd.to_numeric(gb[k], errors="coerce").mean()) if len(gb) else 0.0
+                    i = float(pd.to_numeric(gi[k], errors="coerce").mean())
+                    if pd.isna(i) or i < 1:
+                        continue
+                    b = 0.0 if pd.isna(b) else b
+                    x = round(i / b, 1) if b > 0 else "new"
+                    changes.append({"kpi": k + "_per_s", "baseline": round(b, 1),
+                                    "incident": round(i, 1), "x": x})
+
+                def _mag(c):
+                    x = c.get("x")
+                    return 999 if x == "new" else (abs(x - 1) if isinstance(x, (int, float)) else 0)
+                changes.sort(key=_mag, reverse=True)
+                changes = [c for c in changes if c.get("x") == "new"
+                           or (isinstance(c.get("x"), (int, float)) and (c["x"] >= 1.5 or c["x"] <= 0.6))]
+                rec = {"windows_incident": int(len(gi))}
+                if changes:
+                    rec["changed"] = changes[:top_changes]
+                out.setdefault(name, {}).update(rec)
         l3 = self._l3()
         if hasattr(l3, "columns") and len(l3) and "deviations" in l3.columns:
             touched += _df_bytes(l3)
-            d = l3[l3["service"] == service] if service else l3
-            for svc, g in d.groupby("service"):
+            for svc, g in l3.groupby("service"):
+                name = "host-kernel" if svc == "kernel" else _norm_container(svc)
+                if want and name != want:
+                    continue
                 devs = [x for x in g["deviations"].tolist() if x]
                 if devs:
-                    out.setdefault(svc, {})["deviations"] = devs[:3]
+                    out.setdefault(name, {})["deviations"] = devs[:3]
         l2 = self._l2()
         if hasattr(l2, "columns") and len(l2) and "rule_out_pct" in l2.columns:
             touched += _df_bytes(l2)
-            d = l2[l2["service"] == service] if service else l2
             # LEAKAGE GUARD: L2 rows also carry fault_name/fault_target (deriver QC metadata =
             # the ground-truth label). Only the whitelisted, data-derived fields below may ever
             # reach the agent — never widen this to row.to_dict()/full columns.
-            for _, row in d.iterrows():
-                svc = row.get("service")
-                out.setdefault(svc, {})["wait_attribution"] = {
+            for _, row in l2.iterrows():
+                name = _norm_container(row.get("service"))
+                if want and name != want:
+                    continue
+                out.setdefault(name, {})["wait_attribution"] = {
                     "rule_out_pct": row.get("rule_out_pct"), "verdict_hint": row.get("verdict_hint")}
         if not out:
-            return {"note": "no kernel L1/L2/L3 present"}, touched
-        return (out.get(service, {"note": "service not in kernel data"}) if service else out), touched
+            return {"note": "no kernel L1/L2/L3 present"
+                    if not want else "service not in kernel data"}, touched
+        return (out.get(want, {"note": "service not in kernel data"}) if want else out), touched
 
 
 # quick manual test:  python tools.py <run_dir>
@@ -267,9 +499,11 @@ if __name__ == "__main__":
     from stratatrace import load_run
     rd = sys.argv[1]
     t = RunTools(load_run(rd), app=os.environ.get("STRATATRACE_APP"))
-    print("services:", t.services()[:20])
-    for name in ("traces", "logs", "metrics", "kernel"):
+    print("services:", t.services()[:25])
+    for name in ("traces", "topology", "logs", "metrics", "kernel"):
         res, b = getattr(t, name)()
         n = len(res) if isinstance(res, dict) else 0
-        print(f"\n== {name}  (bytes_touched≈{b:,}, {n} services) ==")
-        print(json.dumps(res, indent=2, default=str)[:1200])
+        print(f"\n== {name}  (bytes_touched≈{b:,}, {n} keys) ==")
+        print(json.dumps(res, indent=2, default=str)[:1600])
+    res, b = t.metrics("host")
+    print(f"\n== metrics(host) ==\n{json.dumps(res, indent=2, default=str)[:800]}")

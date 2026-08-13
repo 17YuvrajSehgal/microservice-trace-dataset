@@ -37,25 +37,74 @@ FAULT_TYPES = [
 ]
 
 SYSTEM = (
-    "You are a senior SRE doing root-cause analysis of a single incident in a microservice system. "
-    "An anomaly was detected in a known time window. You have four read-only telemetry tools "
-    "(traces, logs, metrics, kernel), each returning compact per-service summaries for that window. "
-    "Investigate efficiently: form hypotheses, query the tools to confirm/refute, localize the ONE "
-    "root-cause service and the fault type. Distinguish victims (services that merely slow/err "
-    "because they depend on the culprit) from the true cause. When confident, call submit_diagnosis. "
-    "Be economical with tool calls but do not guess before you have evidence."
+    "You are a senior SRE doing root-cause analysis of ONE incident in a microservice system. "
+    "An anomaly was detected in a known time window. Your read-only telemetry tools compare the "
+    "pre-incident BASELINE to the incident window.\n"
+    "\n"
+    "METHOD:\n"
+    "1. SURVEY: list_services, then the query tools WITHOUT a service filter, to see what CHANGED "
+    "system-wide. Signals equally present in baseline (chronic errors, standing noise) are "
+    "background — never root cause. High absolute counts mean nothing unless they changed.\n"
+    "2. SHAPE the blast radius: (a) many unrelated services degrade together -> suspect a "
+    "HOST-level cause: check service 'host' (node metrics, host-kernel) and look for an "
+    "unexplained workload/container that appears or spikes at onset; (b) degradation follows a "
+    "call path -> walk it with query_topology; (c) one service (or only its callers) degrades -> "
+    "suspect that service or its resource limits.\n"
+    "3. CULPRIT vs VICTIM: a victim waits on something else (slow edges TOWARD a dependency, "
+    "off-CPU external wait, timeouts). The culprit is the deepest component whose degradation is "
+    "NOT explained by one of ITS dependencies. Follow slow topology edges downstream until they "
+    "stop; verify the endpoint with kernel evidence.\n"
+    "4. WHY: use query_kernel to explain the mechanism — on-CPU saturation vs CPU-starved "
+    "(runnable wait) vs disk wait vs external I/O wait; throttling; memory reclaim. A component "
+    "slow WITHOUT internal saturation is being slowed from outside (dependency, host, or induced "
+    "latency).\n"
+    "5. Only then submit_diagnosis, citing the decisive baseline->incident changes.\n"
+    "\n"
+    "FAULT TYPES (operational definitions — pick the closest):\n"
+    "- cpu_saturation: host-wide CPU pressure; an extra workload or spike consumes host CPU, many "
+    "services see contention.\n"
+    "- noisy_neighbor: a co-tenant workload consumes host resources while user-facing KPIs stay "
+    "near-normal; contention shows mainly in kernel scheduling signals.\n"
+    "- disk_io: host disk saturated (host io_time / block latency up, all disk users affected).\n"
+    "- memory_pressure: host memory exhausted (reclaim/writeback activity, available memory "
+    "collapsing, swap).\n"
+    "- network_latency: host-wide network delay/loss (cross-service calls slow everywhere, no "
+    "single culprit path).\n"
+    "- db_latency: a DATASTORE answers slowly (callers slow on DB calls; the datastore shows "
+    "external/IO wait or induced latency WITHOUT cpu/memory saturation). Prefer this over "
+    "dependency_outage when the slow component is a database and traffic still succeeds.\n"
+    "- dependency_outage: a dependency is DOWN or FROZEN — calls to it hang to timeout or fail "
+    "with connection errors and it produces little/no successful traffic (not merely slow).\n"
+    "- error_storm: a service returns bursts of application errors/5xx; latency only moderately "
+    "affected.\n"
+    "- cpu_throttling: ONE service pinned by its CPU limit (its throttled-seconds jump; only it "
+    "slows).\n"
+    "- memory_limit: ONE service hits its memory cap (GC pressure/OOM kills/restarts at a flat "
+    "memory ceiling).\n"
+    "- service_network: ONE service's network path is degraded (only traffic through it is "
+    "slow/lossy; host network fine).\n"
+    "- queue_backlog: an async queue/consumer silently backs up (producer healthy, consumer "
+    "idle/lagging, backlog grows; few user-visible errors).\n"
+    "- normal: no injected fault evident.\n"
+    "\n"
+    "RULES: root_cause_service is the culprit component as named in telemetry — name the "
+    "unexplained workload/container itself if a co-tenant is the cause, or 'host' for host-wide "
+    "resource causes with no visible aggressor. Distinguish victims from the culprit. Be "
+    "economical with tool calls; never guess before checking baseline->incident evidence."
 )
 
 _TOOL_DEFS = [
     {"name": "list_services", "description": "List the services/containers present in this incident.",
      "parameters": {"type": "object", "properties": {}}},
-    {"name": "query_traces", "description": "SERVER-span latency (p50/p95/p99/count) per service in the window. Omit service for all.",
+    {"name": "query_traces", "description": "SERVER-span latency (p50/p95/p99/count) per service in the incident window. Omit service for all.",
      "parameters": {"type": "object", "properties": {"service": {"type": "string"}}}},
-    {"name": "query_logs", "description": "Error counts + top normalized error signatures per container. Omit service for all.",
+    {"name": "query_topology", "description": "Caller->callee edges from trace parent/child links with baseline vs incident p95 per edge, sorted by slowdown. Victims' slow edges point AT the culprit. Optional service filter = edges touching it.",
      "parameters": {"type": "object", "properties": {"service": {"type": "string"}}}},
-    {"name": "query_metrics", "description": "Resource signals (cpu/throttle/mem/net/fs) baseline vs incident window per container, ranked by movement.",
+    {"name": "query_logs", "description": "Per-container error-rate CHANGE baseline vs incident + NEW error signatures (absent in baseline). Chronic signatures are flagged as such. Omit service for all.",
      "parameters": {"type": "object", "properties": {"service": {"type": "string"}}}},
-    {"name": "query_kernel", "description": "Kernel evidence per service: syscall-latency peaks, L3 deviation digests, L2 wait-attribution (if present).",
+    {"name": "query_metrics", "description": "Resource signals (cpu/throttle/mem/net/fs) baseline vs incident window per container, ranked by movement. service='host' gives node-level host signals (cpu busy cores, disk io_time, mem available, net).",
+     "parameters": {"type": "object", "properties": {"service": {"type": "string"}}}},
+    {"name": "query_kernel", "description": "Kernel evidence per service, baseline vs incident: changed KPIs (syscall/block latency, disk, net, scheduler, memory reclaim), L3 deviation digests, L2 wait-attribution. 'host' = unattributed host-kernel activity.",
      "parameters": {"type": "object", "properties": {"service": {"type": "string"}}}},
     {"name": "submit_diagnosis", "description": "Commit the final root-cause verdict.",
      "parameters": {"type": "object", "properties": {
@@ -95,6 +144,8 @@ def _run_tool(tools: RunTools, name: str, args: dict, guard=None):
         return {"services": tools.services()}, 0
     if name == "query_traces":
         return tools.traces(svc)
+    if name == "query_topology":
+        return tools.topology(svc)
     if name == "query_logs":
         return tools.logs(svc)
     if name == "query_metrics":
