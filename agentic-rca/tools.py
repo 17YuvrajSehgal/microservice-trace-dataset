@@ -204,15 +204,17 @@ class RunTools:
                 continue
             base_for_rel = bv if bv not in (None, 0) else None
             rel = (iv - (bv or 0.0)) / (abs(base_for_rel) if base_for_rel else (abs(iv) or 1))
+            # field is named "incident", not "injection": neutral vocabulary for the agent
+            # (and "injection" matches leakguard's fault vocab, which would mangle the key)
             sigs.append({"container": cont, "signal": label,
                          "baseline": None if bv is None else round(bv * sc, 3),
-                         "injection": round(iv * sc, 3), "rel_change": round(float(rel), 3),
+                         "incident": round(iv * sc, 3), "rel_change": round(float(rel), 3),
                          "_disp": abs(iv * sc)})
         gmax = {}
         for s in sigs:
             gmax[s["signal"]] = max(gmax.get(s["signal"], 0.0), s["_disp"])
         for s in sigs:
-            s["_score"] = abs(s["injection"] - (s["baseline"] or 0)) / (gmax.get(s["signal"], 0.0) + 1e-9)
+            s["_score"] = abs(s["incident"] - (s["baseline"] or 0)) / (gmax.get(s["signal"], 0.0) + 1e-9)
         sigs.sort(key=lambda x: -x["_score"])
         for s in sigs:
             s.pop("_disp", None); s.pop("_score", None)

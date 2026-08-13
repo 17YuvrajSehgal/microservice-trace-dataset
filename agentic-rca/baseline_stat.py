@@ -19,7 +19,7 @@ from tools import RunTools
 
 def _movers_by(movers, signal, min_rel=0.4):
     return [m for m in movers if m.get("signal") == signal
-            and (m.get("injection") or 0) > 0 and abs(m.get("rel_change") or 0) >= min_rel]
+            and (m.get("incident") or 0) > 0 and abs(m.get("rel_change") or 0) >= min_rel]
 
 
 def _decide(t: RunTools):
@@ -55,7 +55,7 @@ def _decide(t: RunTools):
     thr = _movers_by(movers, "cpu_throttled_s/s")
     if thr:
         c = thr[0]["container"]
-        return c, "cpu_throttling", 0.78, f"'{c}' CFS-throttled ({thr[0]['injection']}/s)", touched
+        return c, "cpu_throttling", 0.78, f"'{c}' CFS-throttled ({thr[0]['incident']}/s)", touched
 
     # ---- C. error storm vs dependency outage (both raise errors) -------------------------
     err = sorted(((k, v.get("errors", 0)) for k, v in logs.items() if isinstance(v, dict)),

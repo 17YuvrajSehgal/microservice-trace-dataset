@@ -36,7 +36,7 @@ CONTAINERS = ["anomaly-cpu-stress", "anomaly-mem-stress", "anomaly-disk-stress",
               "noisy-neighbor", "toxiproxy"]
 GT_VOCAB = ["ground_truth", "target_service", "expected_blast_radius", "expected_winning_modality",
             "injection_start_utc", "injection_end_utc", "blind_spot", "fault_family"]
-SOFT = ["aggressive", "subtle", "burst"]
+SOFT = ["aggressive", "subtle", "burst", "injection", "injected"]
 
 
 def _sep_variants(tok: str) -> str:

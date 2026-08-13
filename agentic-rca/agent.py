@@ -53,7 +53,7 @@ _TOOL_DEFS = [
      "parameters": {"type": "object", "properties": {"service": {"type": "string"}}}},
     {"name": "query_logs", "description": "Error counts + top normalized error signatures per container. Omit service for all.",
      "parameters": {"type": "object", "properties": {"service": {"type": "string"}}}},
-    {"name": "query_metrics", "description": "Resource signals (cpu/throttle/mem/net/fs) baseline→injection per container, ranked by movement.",
+    {"name": "query_metrics", "description": "Resource signals (cpu/throttle/mem/net/fs) baseline vs incident window per container, ranked by movement.",
      "parameters": {"type": "object", "properties": {"service": {"type": "string"}}}},
     {"name": "query_kernel", "description": "Kernel evidence per service: syscall-latency peaks, L3 deviation digests, L2 wait-attribution (if present).",
      "parameters": {"type": "object", "properties": {"service": {"type": "string"}}}},
