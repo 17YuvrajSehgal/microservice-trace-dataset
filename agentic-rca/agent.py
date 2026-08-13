@@ -67,6 +67,25 @@ _TOOL_DEFS = [
 ]
 
 
+# transient provider failures worth retrying: rate limits, 5xx, timeouts, and the Azure/OpenAI
+# reasoning-model "invalid_prompt" policy flag (fires intermittently on telemetry-heavy turns —
+# an identical retry usually passes). Persistent failures still raise → recorded as an error row.
+_RETRYABLE = ("429", "rate limit", "rate_limit", "500", "502", "503", "504", "timeout",
+              "overloaded", "invalid_prompt")
+
+
+def _api_call(call, tr, step, tries: int = 4):
+    for attempt in range(tries):
+        try:
+            return call()
+        except Exception as e:
+            msg = repr(e).lower()
+            if attempt == tries - 1 or not any(t in msg for t in _RETRYABLE):
+                raise
+            tr.event("api_retry", step=step, attempt=attempt + 1, error=repr(e)[:300])
+            time.sleep(2 * 2 ** attempt)
+
+
 def _run_tool(tools: RunTools, name: str, args: dict, guard=None):
     # the model queries in alias space (leakguard) — translate back before touching the data
     svc = args.get("service") or None
@@ -156,9 +175,10 @@ def _loop_anthropic(tools, user, max_steps, verbose, tr, guard):
     traj, itok, otok, bt, diagnosis = [], 0, 0, 0, None
     for step in range(max_steps):
         tc = time.time()
-        r = client.messages.create(model=config.model_id(), max_tokens=config.MAX_TOKENS,
-                                   temperature=config.TEMPERATURE, system=SYSTEM,
-                                   messages=messages, tools=schema)
+        r = _api_call(lambda: client.messages.create(
+            model=config.model_id(), max_tokens=config.MAX_TOKENS,
+            temperature=config.TEMPERATURE, system=SYSTEM,
+            messages=messages, tools=schema), tr, step)
         tr.event("api_response", step=step, latency_ms=int((time.time() - tc) * 1000),
                  response=T.to_jsonable(r))
         itok += r.usage.input_tokens; otok += r.usage.output_tokens
@@ -201,7 +221,8 @@ def _loop_openai(tools, user, max_steps, verbose, tr, guard):
     traj, itok, otok, bt, diagnosis = [], 0, 0, 0, None
     for step in range(max_steps):
         tc = time.time()
-        r = client.chat.completions.create(model=config.model_id(), messages=messages, tools=schema, **ck)
+        r = _api_call(lambda: client.chat.completions.create(
+            model=config.model_id(), messages=messages, tools=schema, **ck), tr, step)
         tr.event("api_response", step=step, latency_ms=int((time.time() - tc) * 1000),
                  response=T.to_jsonable(r))
         u = r.usage
