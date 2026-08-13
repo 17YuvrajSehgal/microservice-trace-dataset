@@ -39,6 +39,28 @@ def _df_bytes(df) -> int:
         return 0
 
 
+def _winagg(win, kind):
+    """Windowed value of a metric group: gauges -> mean; counters -> per-second rate computed
+    PER underlying series (device/interface/cpu/mode label combos) then summed — mixing series
+    in one max-min produces garbage rates. groupby(dropna=False): label columns are frame-wide,
+    so they are all-NaN for metrics that lack that label, and the default dropna would silently
+    drop every row (this zeroed all host counters)."""
+    win = win.dropna(subset=["_v", "_ts"])
+    if len(win) == 0:
+        return None
+    if kind == "gauge":
+        return float(win["_v"].mean())
+    scols = [c for c in ("device", "interface", "cpu", "mode")
+             if c in win.columns and win[c].notna().any()]
+    tot = 0.0
+    groups = win.groupby(scols, dropna=False) if scols else [(None, win)]
+    for _, s in groups:
+        span = float(s["_ts"].max() - s["_ts"].min())
+        if span > 0:
+            tot += max(0.0, float((s["_v"].max() - s["_v"].min()) / span))
+    return tot
+
+
 def _norm_container(name: str) -> str:
     """One canonical service name across modalities: metrics say 'docker-compose_carts_1',
     spans/kernel say 'carts' — without this, per-service metric queries silently miss on
@@ -307,23 +329,8 @@ class RunTools:
             kind, label, sc, grp, excl = self._NODE_CURATED[met]
             if grp and grp in g.columns and excl:
                 g = g[~g[grp].astype(str).isin(excl)]
-            series_cols = [c for c in ("cpu", "mode", "device") if c in g.columns]
-
-            def agg(win):
-                if len(win) == 0:
-                    return None
-                if kind == "gauge":
-                    return float(win["_v"].mean())
-                tot = 0.0
-                for _, s in (win.groupby(series_cols) if series_cols else [(None, win)]):
-                    s = s.dropna(subset=["_v", "_ts"])
-                    span = float(s["_ts"].max() - s["_ts"].min()) if len(s) > 1 else 0.0
-                    if span > 0:
-                        tot += max(0.0, float((s["_v"].max() - s["_v"].min()) / span))
-                return tot
-
-            bv = agg(g[g["_ts"] < self._t0]) if self._t0 else None
-            iv = agg(g[(g["_ts"] >= self._t0) & (g["_ts"] <= self._t1)] if self._t0 else g)
+            bv = _winagg(g[g["_ts"] < self._t0], kind) if self._t0 else None
+            iv = _winagg(g[(g["_ts"] >= self._t0) & (g["_ts"] <= self._t1)] if self._t0 else g, kind)
             if iv is None:
                 continue
             rec = {"baseline": None if bv is None else round(bv * sc, 3),
@@ -349,25 +356,17 @@ class RunTools:
         d = df.assign(_ts=pd.to_numeric(df["timestamp"], errors="coerce"),
                       _v=pd.to_numeric(df["value"], errors="coerce"))
         d = d[d["metric"].isin(self._CURATED)]
+        d = d[d[cont_col].notna() & ~d[cont_col].astype(str).isin(("", "nan", "/"))]
         d = d.assign(**{cont_col: d[cont_col].map(_norm_container)})
         if service:
             d = d[d[cont_col] == _norm_container(service)]
 
-        def winval(g, kind):
-            g = g.dropna(subset=["_v", "_ts"])
-            if len(g) == 0:
-                return None
-            if kind == "gauge":
-                return float(g["_v"].mean())
-            span = float(g["_ts"].max() - g["_ts"].min())
-            return max(0.0, float((g["_v"].max() - g["_v"].min()) / span)) if span > 0 else 0.0
-
         sigs = []
         for (met, cont), g in d.groupby(["metric", cont_col]):
             kind, label, sc = self._CURATED[met]
-            bv = winval(g[g["_ts"] < self._t0], kind) if self._t0 else None
+            bv = _winagg(g[g["_ts"] < self._t0], kind) if self._t0 else None
             gi = g[(g["_ts"] >= self._t0) & (g["_ts"] <= self._t1)] if self._t0 else g
-            iv = winval(gi, kind)
+            iv = _winagg(gi, kind)
             if iv is None:
                 continue
             base_for_rel = bv if bv not in (None, 0) else None
