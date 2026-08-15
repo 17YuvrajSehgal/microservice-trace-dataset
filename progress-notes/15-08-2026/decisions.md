@@ -90,6 +90,23 @@ SS queue_backlog regressed to "normal" under S1. Improvement plan A–F in the r
 (topology peer-edges → selector v2 with discriminators → skill-verification preamble → brief
 "survey done" line → skills↔query_source links → queue evidence later). Decision: apply A–D as one
 batch, re-test the same 11-incident set once, THEN bigger runs.
+
+## A–D applied + 13-run re-test (results/v4_test2, auditor PASS) — honest mixed verdict
+**Landmark: TT slow_db → mysql/db_latency BOTH-correct for the first time leak-free** — peer-edge
+topology (A) made DB convergence observable AND the verify-first preamble (C) let the agent
+override a WRONG selected skill to reach it. **D is a clean win** (brief runs 27→10, 18→7 calls,
+no accuracy cost). **B moved nothing** (S1 sel 2/7, LOFO abstain 0/2) — root cause found: decisive
+discriminators (flat memory ceiling, throttled-seconds jump) are not survey-visible because the
+metrics tool ranks by MOVEMENT and a pinned-at-cap flat line doesn't move. **C cuts both ways**:
+it also broke svc_cpu_cap (right skill discarded) via a skill-content precision bug — the agent
+read kernel "off-CPU external wait" as contradicting throttling, but throttled = forcibly
+descheduled = off-CPU wait (the L2 hint vocabulary mislabels throttle wait). **A's side-effect**:
+every TT service reaches the datastore via the proxy, so spanless DB edges now appear in many TT
+surveys and pull toward db stories (anomaly_net→db-latency; LOFO dep_outage lost its override win).
+Next round (NOT applied yet, awaiting go): (1) survey-visible limit-proximity signals in the
+metrics tool (throttle rate + working-set vs cap ceiling detection), (2) skill-content precision
+fixes (throttle↔off-CPU consistency; "db convergence requires OTHER paths healthy"), (3) one more
+re-test, then the full S1/S2 campaign. SS queue_backlog remains known-hard in every mode.
 `source_tool.py` → agent tool `query_source`, one tool with three ops mirroring the Claude Code
 trio: **find_files** (glob, `**/*Order*.java` or basename patterns), **search** (regex/plain text
 → file:line matches, 40-cap with refine note, optional path-glob filter, invalid regex falls back

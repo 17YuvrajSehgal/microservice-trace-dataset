@@ -61,3 +61,48 @@ Then ONE re-test of the same 11-incident set (plus slow_db/anomaly_net S1) befor
 
 See `results/v4_test/` + `v4_report.py` on Trillium. Selection: S1 6/11, LOFO abstain 1/4;
 query_source 2/20; auditor PASS 20/20.
+
+---
+
+# Re-test after improvements A–D (13 runs, `results/v4_test2/`, auditor PASS)
+
+Verdict per improvement (n=1 per cell — directional, not statistical):
+
+- **A (topology peer-edges): the strategic win, with a side-effect.**
+  **TT `slow_db` → mysql/db_latency BOTH-correct — first time in any leak-free
+  configuration** (41 calls; the selector even picked a wrong skill and the agent overrode
+  it to the right answer). Brief-mode slow_db now names toxiproxy (the actual injection
+  proxy on the DB path) instead of a random victim. Side-effect: every TT service talks to
+  the datastore through the proxy, so spanless DB edges now appear in MANY TT surveys and
+  pull selector/agent toward db-flavored stories (anomaly_net S1 → db-latency; LOFO
+  dependency_outage → mysql, losing the previous override win).
+- **B (selector v2): no measurable gain** — S1 selection 2/7, LOFO abstain 0/2. Persistent
+  confusions unchanged (noisy_neighbor→host-cpu, svc_mem_cap→frozen-dependency) plus the
+  new db pull. Root cause identified: several decisive discriminators are NOT
+  survey-visible — a memory working-set pinned at a flat ceiling and a throttled-seconds
+  jump don't rank as "movers", so the selector literally cannot see them.
+- **C (verify-first preamble): cuts both ways.** It enabled the slow_db override (wrong
+  skill → right answer) — and it broke `svc_cpu_cap` (PRE both=✓ → POST miss): the agent
+  SAW the throttle signal but discarded the correct skill because "cpu didn't flatten" and
+  kernel called the wait "off-CPU external I/O" — which is precisely what cgroup
+  throttling looks like (throttled = forcibly descheduled = off-CPU). Skill-content
+  precision bug, not a mechanism bug.
+- **D (brief survey-done line): clean win.** 27→10, 18→7, 18→14 calls with no accuracy
+  cost. query_source usage rose to 4/13 runs.
+
+Net on the hard-case set: both-correct 3→2, but the composition traded two fragile wins
+for the structurally-important one (slow_db), and brief-mode cost dropped sharply.
+SS `queue_backlog` remains unsolved in every mode (known-hard silent fault).
+
+## Next improvement round (proposed, NOT yet applied)
+
+1. **Survey-visible discriminators**: metrics tool (and thus survey/SIC) should report
+   limit-proximity signals — cpu_throttled rate and memory working-set vs its cap (flat
+   ceiling detection) — so the selector can actually see what separates the cap faults.
+2. **Skill-content precision** (from observed confusions, generic mechanism knowledge):
+   service-cpu-throttle: "throttled-seconds jump is decisive even without visible CPU
+   flattening; kernel reports throttle waits as off-CPU wait — that does NOT contradict
+   throttling". db-latency/host-network boundaries: "background datastore edges exist in
+   every incident — db convergence requires OTHER paths healthy AND the datastore wait
+   signature".
+3. Re-test once more, then hold for the full S1/S2 campaign.
