@@ -43,8 +43,18 @@ API-smoke-verified on the cluster:
   agent did NOT exercise its "abandon the skill" permission (worth analyzing in the campaign).
 - Auditor PASS 4/4 including the new skill channels.
 
-## Full S1+S2 campaign LAUNCHED (46 incidents)
-`gate_skills_driver.sh` (resumable, per-family fresh python) running S1 (skills-full) then S2
-(LOFO) over the 23 gate incidents; results → `results/gate_s1/`, `results/gate_s2/`;
-`skills_status.sh` for progress. Compare against S0 = gate v3 (83/48/48). Monitor note: inline
-`$(…)` through `wsl ssh` breaks — always use a status SCRIPT on the cluster (second time this bit).
+## Campaign STOPPED early (Yuvraj: small test only for now; big runs later)
+Killed the S1+S2 driver after 4 S1 incidents. **Small-test verdict over 8 real incidents: the
+skill layer works end-to-end.**
+- S1 with correct selection (4/4 host faults incl. the 3 partials): right skill chosen
+  (conf up to 0.98) → aggressor + correct fault type every time, ~11 calls each —
+  TT anomaly_cpu/disk/mem all BOTH-correct (v3 got these too, but at 12-16 calls).
+- S2 LOFO (SS anomaly_disk): correct ABSTAIN @0.91 among 11 distractors → fallback still fully
+  correct — the never-seen-fault path demonstrated.
+- Known misses to watch at scale: TT slow_db false-matches service-network-path (both modes; its
+  evidence is genuinely path-shaped); TT anomaly_net wrongly abstained (skill present) →
+  fallback got host (svc ✓) but fault ✗. Auditor PASS on every transcript incl. skill channels.
+Partial results kept at `results/gate_s1/` (4 files) + `results/skills_smoke/`; the driver is
+resumable (skip-if-exists), so the full campaign later just re-runs `gate_skills_driver.sh`.
+Monitor note: inline `$(…)` through `wsl ssh` breaks — always use a status SCRIPT on the cluster
+(second time this bit).
