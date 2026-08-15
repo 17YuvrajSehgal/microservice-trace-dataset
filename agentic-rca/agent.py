@@ -24,6 +24,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import config
 import context_builder
 import leakguard
+import shared_context
 import skillreg
 import transcript as T
 from tools import RunTools
@@ -159,7 +160,8 @@ def _run_tool(tools: RunTools, name: str, args: dict, guard=None):
 
 def diagnose(run, app: str | None = None, max_steps: int = 14, verbose: bool = False,
              transcript_path: str | None = None, condition: str | None = None,
-             meta: dict | None = None, skills: list | None = None) -> dict:
+             meta: dict | None = None, skills: list | None = None,
+             inject_brief: bool = False) -> dict:
     """Run the agent on one incident. Returns diagnosis + trajectory + usage (no ground-truth here).
     Dispatches on the provider's SDK family — Anthropic vs OpenAI-compatible (azure/gemini/openai/
     ollama) — so the model is a config knob (RCA_PROVIDER/RCA_MODEL); everything else is identical.
@@ -176,6 +178,7 @@ def diagnose(run, app: str | None = None, max_steps: int = 14, verbose: bool = F
     shown_id = leakguard.alias_run(run_id) if config.MASK_NAMES else run_id
     user = (f"Incident '{shown_id}'. Services are unknown until you list "
             f"them. Diagnose the root cause and call submit_diagnosis.")
+    sic = None
     tr = T.Transcript(run_id, method="agent", condition=condition, extra=meta)
     tr.meta["sent_cap_chars"] = SENT_CAP
     tr.meta["max_steps"] = max_steps
@@ -189,10 +192,20 @@ def diagnose(run, app: str | None = None, max_steps: int = 14, verbose: bool = F
     system_eff, sel = SYSTEM, None
     sel_tokens = {"in": 0, "out": 0}
     survey_bytes = 0
+    masked_digest = None
+    if skills or inject_brief:
+        # Phase 1 runs ONCE; the Shared Investigation Context is the single source both
+        # the selector (digest) and the injected brief render from — masked first.
+        sic, survey_bytes = context_builder.build_context(tools, run_id)
+        masked_digest = guard.mask_obj(sic.digest())
+        tr.event("shared_context", **sic.to_jsonable())
+    if inject_brief:
+        brief = shared_context.format_brief(masked_digest)
+        user = (f"Incident '{shown_id}'. Evidence survey (baseline vs incident):\n{brief}\n\n"
+                f"Investigate further with the tools and call submit_diagnosis.")
     if skills:
-        survey, survey_bytes = context_builder.build_survey(tools)
-        evidence_json = json.dumps(guard.mask_obj(survey), default=str)
-        tr.event("survey", result=survey, sent=evidence_json, result_bytes=survey_bytes)
+        evidence_json = json.dumps(masked_digest, default=str)
+        tr.event("survey", result=sic.digest(), sent=evidence_json, result_bytes=survey_bytes)
         try:
             sel = _api_call(lambda: skillreg.select(evidence_json, skills), tr, step=-1)
         except Exception as e:
@@ -214,6 +227,7 @@ def diagnose(run, app: str | None = None, max_steps: int = 14, verbose: bool = F
                               f"### {sk.name}\n{sk.body}")
                 tr.event("skill_injected", skill_name=sk.name, body=sk.body)
     tr.meta["skill_mode"] = bool(skills)
+    tr.meta["brief_injected"] = inject_brief
     tr.meta["skill_selected"] = sel["skill_name"] if sel else None
     tr.event("system_prompt", text=system_eff, sha256=T.sha256_text(system_eff))
     tr.event("tools_schema", tools=_TOOL_DEFS)
@@ -247,6 +261,8 @@ def diagnose(run, app: str | None = None, max_steps: int = 14, verbose: bool = F
         "transcript_file": transcript_path,
         "skill_selected": (sel or {}).get("skill_name"),
         "skill_confidence": (sel or {}).get("confidence"),
+        "brief_injected": inject_brief,
+        "n_claims": len(sic) if sic is not None else None,
     }
     tr.finalize(diagnosis, stop, tokens={"in": in_tok, "out": out_tok},
                 bytes_touched=bytes_touched, n_tool_calls=out["n_tool_calls"],

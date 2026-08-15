@@ -92,7 +92,7 @@ def _sample(app, per_family, n, families):
 
 
 def run(app, per_family, n, families, out_path, method, grid, transcripts_dir="",
-        skills_mode="off", skills_dir=""):
+        skills_mode="off", skills_dir="", brief=False):
     RCAEVAL = {"mmbaro", "microrank", "tracerca", "baro"}
     if method == "agent":
         import agent as _m; label = __import__("config").model_id()
@@ -131,6 +131,8 @@ def run(app, per_family, n, families, out_path, method, grid, transcripts_dir=""
                 kw = {"method": method} if method in RCAEVAL else {}
                 if inc_skills is not None:
                     kw["skills"] = inc_skills
+                if brief and method == "agent":
+                    kw["inject_brief"] = True
                 if tdir:
                     kw.update(transcript_path=os.path.join(tdir, trel), condition=cname,
                               meta={"app": rec.app, "grid": grid, "degrade_spec": asdict(spec),
@@ -155,7 +157,7 @@ def run(app, per_family, n, families, out_path, method, grid, transcripts_dir=""
                             "bytes_touched": out.get("bytes_touched"), "trajectory": out.get("trajectory"),  # RQ2
                             "skills_mode": skills_mode if inc_skills is not None else "off",
                             "skill_selected": sel_name, "skill_confidence": out.get("skill_confidence"),
-                            "selection_correct": sel_ok,
+                            "selection_correct": sel_ok, "brief": out.get("brief_injected"),
                             "transcript": trel,                     # relative to meta.transcripts_dir
                             "error": out.get("error")})
         print(f"  [{i}/{len(recs)}] {rec.run_id:44s} ({rec.fault_family})")
@@ -167,7 +169,7 @@ def run(app, per_family, n, families, out_path, method, grid, transcripts_dir=""
                 # provenance — ties the numbers to the exact code + conditions that produced them
                 "started_utc": started_utc, "argv": sys.argv, "git_commit": T.git_commit(),
                 "transcripts_dir": tdir or None,
-                "skills_mode": skills_mode,
+                "skills_mode": skills_mode, "brief": brief,
                 "skills": [{"name": s.name, "covers": s.covers, "version": s.version}
                            for s in library] or None,
                 "conditions": [{"name": c, "spec": asdict(s)} for c, s in conditions]}
@@ -207,6 +209,9 @@ if __name__ == "__main__":
                     help="v4 skill library condition (agent only): off = frozen v3 baseline; "
                          "full = every skill; lofo = leave-one-family-out (never-seen-fault test)")
     ap.add_argument("--skills-dir", default="", help="override skill library directory")
+    ap.add_argument("--brief", action="store_true",
+                    help="inject the Context Builder's investigation brief (masked) into the "
+                         "agent's first message (v4 toggle; measured as its own condition)")
     a = ap.parse_args()
     fams = [x for x in a.families.split(",") if x]
     if a.transcripts.lower() == "none":
@@ -224,7 +229,8 @@ if __name__ == "__main__":
         if a.out and len(apps) > 1:                    # avoid clobbering: per-app files for --app both
             app_out = a.out[:-5] + f"_{app}.json" if a.out.endswith(".json") else f"{a.out}.{app}"
         allres += run(app, a.per_family, a.n, fams, app_out or "", a.method, a.grid,
-                      transcripts_dir=tdir, skills_mode=a.skills, skills_dir=a.skills_dir)
+                      transcripts_dir=tdir, skills_mode=a.skills, skills_dir=a.skills_dir,
+                      brief=a.brief)
     if a.app == "both":
         print("\n==== COMBINED ===="); _summarize(allres, GRIDS[a.grid])
         if a.out:
