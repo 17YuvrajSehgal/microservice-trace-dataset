@@ -32,7 +32,7 @@ AI interfaces such as MCP.
 | Shared Investigation Context | **Not built** | Per-diagnosis trajectory/transcript exists; no structured working memory that components (or multiple agents) read/write |
 | JIRA / Related JIRAs | **Not built** | No corpus, no retrieval |
 | Source Code input | **Not built — cheap to build** | Subjects' code is in-repo (`microservices-demo/`, `train-ticket/` submodules); a `query_source` tool (search / read file / function) is small work |
-| Issue Analysis | **Unclear scope** (§5 Q1) | If it means the broader task family (anomaly detection, explanation, repair — the old T1–T4), only RCA exists; AD is an open todo |
+| Issue Analysis | **Unclear scope** (§7 Q1) | If it means the broader task family (anomaly detection, explanation, repair — the old T1–T4), only RCA exists; AD is an open todo |
 | AI Skills (Problem Signature / Resolution Template / Investigation Blueprint) | **Raw material exists; loop not built** | Transcripts *are* investigation blueprints (every tool call, evidence, reasoning); `fault_catalog.md` per-fault cards are hand-authored problem signatures; nothing yet mines RCA outputs into reusable skills or feeds them back |
 | AI Interfaces (MCP) | **Exists, stale** | `agent-first-mvp/mcp_server.py` (demo face); predates the v3 tools — needs rewiring to `RunTools` |
 | Frontend (SherLog / Dashboard / Racoon Miner / Trace Compass) | **Not built (Ciena-side)** | Synergy to exploit: our kernel L0 is LTTng CTF — **Trace Compass's native format**, so that bridge is nearly free; `agent-first-mvp/dashboard/` is a stale per-run inspector |
@@ -72,7 +72,118 @@ measurement. Resolution: make it an explicit switch.
 Versioning discipline: **v3 = frozen sweep agent** (degradation study runs on this, unchanged);
 **v4 = context-builder architecture** developed in parallel on this branch. Never co-vary.
 
-## 5. Open questions for the supervisor
+## 5. Skill-based RCA architecture (v4) — decided 2026-08-15
+
+Decision (Yuvraj): move from one monolithic prompt to a **skill library**, like the MVP — so the
+product can be handed to anyone and they author skills for the problems *they* face — while
+keeping the leak-free evaluation discipline. The MVP's skills prove the concept but cannot be
+reused as-is: they were selected by the user's problem statement (in evaluation, that IS the
+ground-truth label) and their bodies hard-code the answers (`fault_source: slow_db`,
+`target_services: [catalogue, catalogue-db]`, the expected finding spelled out).
+
+### 5.1 The two-phase flow
+
+```
+incident bundle
+   │
+   ▼
+Phase 1 — SURVEY (generic, always the same):
+   Investigation Context Builder runs the baseline→incident survey
+   → evidence signature into the Shared Investigation Context
+   │
+   ▼
+Skill selector: match evidence signature against each skill's problem_signature
+   │  (explicit ABSTAIN option + confidence threshold; selection logged in the transcript)
+   ├─ match → Phase 2a — skill-guided investigation (blueprint steers tool use,
+   │           resolution template sharpens the fault-type verdict)
+   └─ abstain → Phase 2b — first-principles fallback = the frozen v3 method
+```
+
+Key properties:
+- **The generic v3 method is the floor, not a competitor.** Skills are additive guidance on top
+  of the same tools; with an empty library the system IS v3. This is the product story ("works
+  out of the box, gets better as you add skills") and the scientific control.
+- **Two selection modes.** Assistant mode: user's problem statement may drive selection
+  (`user_triggers`, like the MVP). Evaluation mode: selection uses ONLY the Phase-1 evidence
+  signature — nothing states the problem.
+- **Skill authoring = one markdown file.** No code. Customers describe: what the problem looks
+  like in evidence (problem_signature), how to investigate it (investigation_blueprint), how to
+  decide the verdict (resolution_template). Mined-from-transcript skills come later (the diagram's
+  "RCA Output Artifacts → akin to training" loop).
+
+### 5.2 Skill format (draft — example in `agentic-rca/skills/`)
+
+```yaml
+---
+name: db-latency-rca
+version: 1
+authored_by: human            # or: mined:<transcript refs>
+user_triggers: ["database is slow", "db latency"]     # assistant mode ONLY
+problem_signature:            # evidence patterns, matched against the Phase-1 survey
+  - topology: slow edges converge on one service that has no slow outgoing edges
+  - kernel: the converged-on service shows dominant off-CPU external I/O wait, no saturation
+  - metrics: the converged-on service is resource-quiet while its callers degrade
+---
+## Investigation blueprint
+1. Confirm convergence (query_topology): the culprit has slow INCOMING edges only.
+2. query_kernel on it: expect external-I/O wait without CPU/memory/disk saturation.
+3. Rule out alternatives: disk (block latency), CPU cap (throttled seconds), memory (reclaim).
+## Resolution template
+- db_latency: calls SUCCEED but slowly; the datastore waits on external I/O, unsaturated.
+- dependency_outage instead if calls FAIL/hang to timeout and it serves little traffic.
+```
+
+Rules for **evaluation-grade** skills (enforced by an extended `audit_leakage.py`):
+service-agnostic ("the converged-on datastore", never `catalogue-db`), no run/app-specific tokens,
+no injected-container names. Customer skills in assistant mode may of course name their own
+services — that's the product; it's only the benchmark that must stay service-blind.
+
+### 5.3 What changes in code (v4 work items)
+
+1. `skills/` registry + loader (frontmatter parse, validation, leakage lint).
+2. Phase-1 survey extraction into a deterministic step (seed of the Context Builder): run the
+   no-filter tools once, emit the evidence signature into the Shared Investigation Context.
+3. Selector (one LLM call over signature vs skill signatures, abstain-aware; or embedding
+   pre-filter + LLM confirm), logged as a `skill_selection` transcript event.
+4. Phase-2 injection: selected skill body appended to the (otherwise unchanged) system prompt.
+5. `evaluate.py`: `--skills full|lofo|off` conditions; auditor checks for skill-content leaks.
+v3 stays frozen on `master` for the degradation sweep; v4 lives on this branch.
+
+## 6. Evaluating a skill-based system (including never-seen faults)
+
+Three library conditions over the same incidents, same tools, same masking:
+
+| Condition | Library contents | What it measures |
+|---|---|---|
+| **S0 skills-off** | empty | the generic floor — already measured: v3 = 83 / 48 / 48 |
+| **S1 skills-full** | one skill per injected fault family | ceiling: value of a complete library ("skill lift" per family = S1 − S0) |
+| **S2 LOFO** (leave-one-family-out) | per incident: every skill EXCEPT the incident's own family | **the never-seen-fault claim** — 11 present skills act as distractors |
+
+**S2 is the answer to "how do we prove it handles unseen problems":** for every incident, the
+correct skill does not exist, so the system must (a) *abstain* rather than force a wrong skill,
+and (b) fall back to first-principles and still solve it. Report:
+
+- **Selection quality**: precision on S1 (right skill chosen when present), abstention recall on
+  S2 (no skill forced when absent), false-match rate (which wrong skills attract which faults —
+  the confusion structure is itself interesting).
+- **Task accuracy per condition**: the headline plot is S1 vs S0 vs S2 per family. The
+  graceful-degradation claim is **S2 ≈ S0** (unseen fault costs you the skill lift, never more).
+  If S2 < S0, distractor skills actively mislead — an important negative result either way.
+- **Cost**: skills should REDUCE tool calls/tokens on matched families (blueprint replaces
+  exploration); report calls/tokens per condition.
+- Optional diagnostic **S3 forced-wrong-skill**: inject a deliberately wrong skill to quantify
+  worst-case distractor damage (robustness bound for customer-authored bad skills).
+
+Strengthening the claim beyond LOFO (later, no re-collection needed first): compound/novel
+faults — e.g. evaluate Train Ticket incidents with a library authored ONLY from Sock Shop
+transcripts (cross-application transfer: skills written on app A, faults on app B), and
+eventually F13+ faults never injected during library construction.
+
+Integrity rules carried over: masking stays ON; selection in evaluation mode sees only evidence;
+LOFO retrieval excludes the incident's family by construction; every run keeps full transcripts +
+`audit_leakage.py` PASS as shipping criteria.
+
+## 7. Open questions for the supervisor
 
 1. **"Issue Analysis" vs "RCA"** — the broader task family (detection, triage, explanation,
    repair)? A post-RCA drill-down? Its own agent? Determines whether it's a new component or a
