@@ -76,7 +76,20 @@ brief verified in the transcript, auditor PASS. Offline suites green on both SDK
 Next per new_design.md build order: `query_source` tool → related-incidents retrieval (with
 auditor rules first) → skills mining loop; campaign runs when Yuvraj green-lights bigger runs.
 
-## query_source tool BUILT (v4 item 3 — first retrieval source; "like Claude Code")
+## v4 FEATURE TEST (20 audited runs) — machinery works; selector calibration + one tool gap are the levers
+11 new targeted runs (S1 ×5 on v3-miss/edge families, brief ×4 on hard cases, LOFO ×2) + 9 prior
+smokes/partials, all vs the S0=v3 baseline. Full report: `agentic-rca/RESULTS-v4-featuretest.md`.
+Highlights: TT svc_cpu_cap S0✗→S1 both✓ (the skill fixed the fault type); agent OVERRODE a wrong
+skill and still scored both✓ (TT dep_outage LOFO); brief harmless + one svc fix; query_source used
+organically 2/20. Problems: selector S1 precision 6/11, LOFO abstain 1/4 (adjacent-class confusion —
+the discriminators live in Resolution templates the selector never sees; absence-shaped signatures
+wrongly abstain); **topology cannot see span-less datastores** (edges need child spans → mysql/*-db
+never appear as callees → slow_db structurally looks like service_network — root cause of that
+persistent miss; fix = client-span→peer edges from server.address/network.peer.address);
+SS queue_backlog regressed to "normal" under S1. Improvement plan A–F in the results doc
+(topology peer-edges → selector v2 with discriminators → skill-verification preamble → brief
+"survey done" line → skills↔query_source links → queue evidence later). Decision: apply A–D as one
+batch, re-test the same 11-incident set once, THEN bigger runs.
 `source_tool.py` → agent tool `query_source`, one tool with three ops mirroring the Claude Code
 trio: **find_files** (glob, `**/*Order*.java` or basename patterns), **search** (regex/plain text
 → file:line matches, 40-cap with refine note, optional path-glob filter, invalid regex falls back
