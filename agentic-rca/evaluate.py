@@ -158,6 +158,7 @@ def run(app, per_family, n, families, out_path, method, grid, transcripts_dir=""
                             "skills_mode": skills_mode if inc_skills is not None else "off",
                             "skill_selected": sel_name, "skill_confidence": out.get("skill_confidence"),
                             "selection_correct": sel_ok, "brief": out.get("brief_injected"),
+                            "n_claims": out.get("n_claims"),
                             "transcript": trel,                     # relative to meta.transcripts_dir
                             "error": out.get("error")})
         print(f"  [{i}/{len(recs)}] {rec.run_id:44s} ({rec.fault_family})")

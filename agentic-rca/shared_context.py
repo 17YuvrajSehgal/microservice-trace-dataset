@@ -102,7 +102,13 @@ def format_brief(masked_digest: dict, max_lines_per_section: int = 8) -> str:
     d = masked_digest
     if d.get("services"):
         sec("services")
-        L.append(", ".join(map(str, d["services"])))
+        # masking can collapse several raw names onto one pseudonym — dedupe the view
+        seen, svcs = set(), []
+        for s in map(str, d["services"]):
+            if s not in seen:
+                seen.add(s)
+                svcs.append(s)
+        L.append(", ".join(svcs))
     if d.get("topology_slowest_edges"):
         sec("slow edges (caller->callee, p95 baseline->incident)")
         for e in d["topology_slowest_edges"][:max_lines_per_section]:
