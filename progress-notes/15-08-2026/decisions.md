@@ -58,3 +58,20 @@ Partial results kept at `results/gate_s1/` (4 files) + `results/skills_smoke/`; 
 resumable (skip-if-exists), so the full campaign later just re-runs `gate_skills_driver.sh`.
 Monitor note: inline `$(…)` through `wsl ssh` breaks — always use a status SCRIPT on the cluster
 (second time this bit).
+
+## Shared Investigation Context BUILT (v4 item 2) + injectable investigation brief
+`shared_context.py`: per-investigation typed claim store — every Phase-1 finding becomes
+`{kind, subject, predicate, value, text, source}` with provenance (kinds: inventory,
+topology_edge, latency, log_change, metric_mover, host_signal, kernel_change, wait_attribution).
+`context_builder.build_context()` populates it; the selector's digest and the NEW injectable
+brief are both views over the same store (Phase 1 runs ONCE). Masking discipline: views render
+FROM the masked digest (pure function), so no raw name can reach the model through prose; the raw
+claim set is recorded as a `shared_context` transcript event for auditors.
+
+`evaluate.py --brief`: brief injection measured as its own condition; **off keeps every existing
+condition byte-identical** (v3/S0/S1/S2 unchanged). Cluster smoke (1 incident, SS anomaly_mem,
+brief-on skills-off): fully correct (aggressor/memory_pressure, 12 calls), 45 claims, masked
+brief verified in the transcript, auditor PASS. Offline suites green on both SDK families.
+
+Next per new_design.md build order: `query_source` tool → related-incidents retrieval (with
+auditor rules first) → skills mining loop; campaign runs when Yuvraj green-lights bigger runs.

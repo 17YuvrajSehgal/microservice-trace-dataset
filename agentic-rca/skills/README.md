@@ -1,4 +1,5 @@
-# RCA skill library (v4 — wired via skillreg.py; conditions via `evaluate.py --skills`)
+# RCA skill library (v4 — wired via skillreg.py; conditions via `evaluate.py --skills`; the
+# selector routes on the Shared Investigation Context digest — see ../shared_context.py)
 
 One markdown file per skill. A skill is procedural RCA knowledge for one problem class:
 what it looks like in **evidence** (`## Problem signature` — the selector sees only
