@@ -75,3 +75,22 @@ brief verified in the transcript, auditor PASS. Offline suites green on both SDK
 
 Next per new_design.md build order: `query_source` tool → related-incidents retrieval (with
 auditor rules first) → skills mining loop; campaign runs when Yuvraj green-lights bigger runs.
+
+## query_source tool BUILT (v4 item 3 — first retrieval source; "like Claude Code")
+`source_tool.py` → agent tool `query_source`, one tool with three ops mirroring the Claude Code
+trio: **find_files** (glob, `**/*Order*.java` or basename patterns), **search** (regex/plain text
+→ file:line matches, 40-cap with refine note, optional path-glob filter, invalid regex falls back
+to literal), **read** (numbered `cat -n` window, start_line/limit≤400, continuation note,
+traversal-guarded). Pruned cached walk (.git/deps/build/binaries/old-docs), 256KB search cap,
+honest bytes_touched (scanned bytes = the cost of index-free search). Per-app root:
+trainticket→`train-ticket/`, sockshop→`microservices-demo/`, `RCA_SOURCE_ROOT` override; missing
+corpus → clean note, never an error. One-line hint added to SYSTEM step 4.
+
+Cluster: submodules were NOT initialized on Trillium — `git submodule update --init --depth 1`
+(TT 29M, SS 572K). Verified real searches on the TT monorepo (RestTemplate imports,
+ts-order-service file listing). **Known limitation:** SS's microservices-demo is the deployment
+meta-repo — the Tier-1 service source (front-end/catalogue forks) is NOT vendored here, so
+query_source on SS returns little; option later: add the fork repos as extra roots. Leakage:
+source is static per app + fault-agnostic; masking applies to outputs as usual; auditor PASS on
+agent-wiring tests. Offline suite: find/search/read semantics, pruning, caps, traversal guard,
+agent dispatch + transcript + auditor.
