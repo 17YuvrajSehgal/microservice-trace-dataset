@@ -7,8 +7,11 @@ user_triggers: service restarting | oom killed | gc thrashing | memory limit hit
 ---
 ## Problem signature
 - metrics: ONE service's mem_working_MB / mem_rss_MB sits at a FLAT CEILING (the cap)
-  or saw-tooths against it; host_mem_available_GB is fine — the host has memory, the
-  SERVICE does not.
+  or saw-tooths against it; limit_signals may show working-set near a plausible limit
+  or a failcnt rate. CAUTION: live-applied caps often leave the reported spec limit
+  stale, so the ceiling can be invisible in metrics — GC/OOM/restart log evidence plus
+  pagefault/reclaim confined to ONE service is decisive on its own.
+  host_mem_available_GB is fine — the host has memory, the SERVICE does not.
 - logs: NEW signatures on that service: GC pressure, allocation failures, OOM kills,
   restart/reconnect banners; its callers may log timeouts.
 - kernel: pagefault rate elevated on the capped service; possible reclaim confined to

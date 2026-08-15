@@ -31,6 +31,12 @@ user_triggers: database is slow | db latency | queries are slow | slow db
 ## Resolution template
 - fault_type db_latency: calls to the datastore SUCCEED but slowly; the datastore waits
   on external I/O while unsaturated.
+- CAUTION — background datastore edges: in a shared-datastore system EVERY service has
+  edges toward the datastore/proxy in every incident. db_latency requires the
+  datastore-path slowdown to DOMINATE while non-datastore service-to-service hops stay
+  comparatively healthy, AND the datastore wait signature to be present. If ALL hops
+  (including service-to-service) slow by similar factors, prefer network_latency; if
+  only one service's edges slow, prefer service_network or that service's own fault.
 - dependency_outage instead when calls FAIL or hang to timeout and the component serves
   little/no successful traffic.
 - disk_io instead when the whole host's disk is saturated (other disk users degrade too).

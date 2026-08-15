@@ -6,27 +6,31 @@ covers: svc_cpu_cap
 user_triggers: one service slow | service pegged | cpu limit | throttled
 ---
 ## Problem signature
-- metrics: ONE service's cpu_throttled_s/s jumps from ~0 to sustained positive — the
-  single most diagnostic signal; its cpu_cores flattens at a ceiling; host_cpu overall
-  is NOT saturated.
+- metrics: ONE service's cpu_throttled_s/s jumps from ~0 to sustained positive (see
+  limit_signals) — DECISIVE on its own, even when cpu_cores does NOT visibly flatten
+  (moderate caps throttle bursts without pinning average usage); host_cpu overall is
+  NOT saturated.
 - topology: that service's SERVER latency inflates and the slowdown radiates only to
   its callers (edges INTO it slow; unrelated paths healthy).
-- kernel: the service shows runnable/CPU-starved waits (waiting for CPU, not for I/O);
-  sched contention on it, not host-wide.
+- kernel: throttling forcibly deschedules threads, so wait attribution reports it as
+  runnable OR off-CPU/external wait — a high off-CPU wait share does NOT contradict
+  throttling when throttled-seconds are positive.
 - logs: little NEW error activity; possible timeout complaints from its callers only.
 
 ## Investigation blueprint
 1. query_metrics (no filter): scan for any container with a cpu_throttled_s/s jump —
    if found, that is the prime suspect.
 2. query_topology: confirm the blast radius is exactly that service's caller subtree.
-3. query_kernel on the suspect: runnable-wait flavored delay, no external I/O wait
-   dominance, no disk/memory fingerprints.
+3. query_kernel on the suspect: expect wait-flavored delay WITHOUT disk/memory
+   fingerprints. Do not discard the throttle hypothesis because waits read as
+   off-CPU/external — that is what throttle-wait looks like from the kernel.
 4. query_metrics with service 'host': confirm the HOST is not CPU-saturated (rules out
    host-wide pressure).
 
 ## Resolution template
-- fault_type cpu_throttling: one service pinned by its CPU limit (throttled-seconds
-  positive and sustained), only its subtree degrades.
+- fault_type cpu_throttling: one service's throttled-seconds are positive and sustained
+  and only its subtree degrades — decisive even without visible CPU flattening and even
+  when kernel waits read as off-CPU/external (throttle-wait looks like that).
 - cpu_saturation instead when host_cpu_busy_cores is exhausted and many unrelated
   services degrade.
 - db_latency instead when the slow component is a datastore waiting on external I/O

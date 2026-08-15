@@ -344,6 +344,55 @@ class RunTools:
         "node_load1":                        ("gauge", "host_load1", 1.0, None, ()),
     }
 
+    # limit-proximity evidence: decisive for cap faults but invisible to movement ranking
+    # (a working set pinned flat at its cap does not "move"; a modest throttle rate never
+    # outranks big absolute movers). Surfaced unconditionally so selector/agent can see it.
+    _LIMIT_METS = ("container_cpu_cfs_throttled_seconds_total", "container_memory_failcnt",
+                   "container_spec_memory_limit_bytes", "container_memory_working_set_bytes")
+
+    def _limit_signals(self, df, cont_col, service=None):
+        d = df[df["metric"].isin(self._LIMIT_METS)]
+        if len(d) == 0:
+            return []
+        d = d[d[cont_col].notna() & ~d[cont_col].astype(str).isin(("", "nan", "/"))]
+        d = d.assign(**{cont_col: d[cont_col].map(_norm_container)},
+                     _ts=pd.to_numeric(d["timestamp"], errors="coerce"),
+                     _v=pd.to_numeric(d["value"], errors="coerce"))
+        if service:
+            d = d[d[cont_col] == _norm_container(service)]
+        out = []
+        for cont, g in d.groupby(cont_col):
+            def win(met, kind, base=False):
+                gg = g[g["metric"] == met]
+                if self._t0:
+                    gg = gg[gg["_ts"] < self._t0] if base else \
+                         gg[(gg["_ts"] >= self._t0) & (gg["_ts"] <= self._t1)]
+                elif base:
+                    return None
+                return _winagg(gg, kind)
+
+            thr = win("container_cpu_cfs_throttled_seconds_total", "counter")
+            if thr and thr > 0.01:
+                out.append({"container": cont, "signal": "cpu_throttled_s/s",
+                            "baseline": round(win("container_cpu_cfs_throttled_seconds_total",
+                                                  "counter", base=True) or 0, 3),
+                            "incident": round(thr, 3)})
+            fc = win("container_memory_failcnt", "counter")
+            if fc and fc > 0:
+                out.append({"container": cont, "signal": "mem_failcnt/s",
+                            "baseline": round(win("container_memory_failcnt", "counter",
+                                                  base=True) or 0, 2),
+                            "incident": round(fc, 2)})
+            lim = win("container_spec_memory_limit_bytes", "gauge")
+            ws = win("container_memory_working_set_bytes", "gauge")
+            # spec limits can be stale/unset (docker-update does not refresh cadvisor spec;
+            # unset reads as ~host memory) — only trust plausible, actually-binding limits
+            if lim and ws and 0 < lim < 32e9 and ws / lim >= 0.6:
+                out.append({"container": cont, "signal": "mem_working_set_vs_limit",
+                            "limit_MB": round(lim / 1e6), "working_set_MB": round(ws / 1e6),
+                            "pct_of_limit": round(100 * ws / lim)})
+        return out
+
     def host_metrics(self):
         """Node-level (whole host) signals baseline→incident — the direct evidence channel for
         host-scoped causes (CPU/disk/memory/network pressure affecting all services at once)."""
@@ -418,6 +467,9 @@ class RunTools:
             s.pop("_disp", None); s.pop("_score", None)
         res = {"top_movers": sigs[:top]}
         bt = _df_bytes(d)
+        ls_ = self._limit_signals(df, cont_col, service)
+        if ls_:
+            res["limit_signals"] = ls_
         if not service:                     # survey call: include host-level signals up front
             host, hb = self.host_metrics()
             if "note" not in host:

@@ -77,6 +77,9 @@ class SharedInvestigationContext:
         movers = [c["value"] for c in self.claims(kind="metric_mover")]
         if movers:
             d["metric_top_movers"] = movers
+        limits = [c["value"] for c in self.claims(kind="limit_signal")]
+        if limits:
+            d["limit_signals"] = limits
         host = {c["predicate"]: c["value"] for c in self.claims(kind="host_signal")}
         if host:
             d["host"] = host
@@ -135,6 +138,15 @@ def format_brief(masked_digest: dict, max_lines_per_section: int = 8) -> str:
         for m in d["metric_top_movers"][:max_lines_per_section]:
             L.append(f"{m.get('container')}: {m.get('signal')} "
                      f"{m.get('baseline')}->{m.get('incident')}")
+    if d.get("limit_signals"):
+        sec("limit-proximity signals (throttle / memory cap)")
+        for m in d["limit_signals"][:max_lines_per_section]:
+            if "pct_of_limit" in m:
+                L.append(f"{m.get('container')}: working set {m.get('working_set_MB')}MB = "
+                         f"{m.get('pct_of_limit')}% of {m.get('limit_MB')}MB limit")
+            else:
+                L.append(f"{m.get('container')}: {m.get('signal')} "
+                         f"{m.get('baseline')}->{m.get('incident')}")
     if d.get("host"):
         sec("host signals")
         for k, v in d["host"].items():

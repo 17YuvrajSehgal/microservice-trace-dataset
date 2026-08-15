@@ -65,6 +65,13 @@ def build_context(tools, run_id: str = "") -> tuple[SharedInvestigationContext, 
                     f"{m.get('container')} {m.get('signal')} "
                     f"{m.get('baseline')}->{m.get('incident')}",
                     {"tool": "metrics", "modality": "metrics"})
+        for m in (mt.get("limit_signals") or []):
+            sic.add("limit_signal", str(m.get("container")), str(m.get("signal")), m,
+                    f"{m.get('container')} {m.get('signal')}: " +
+                    (f"{m.get('pct_of_limit')}% of {m.get('limit_MB')}MB limit"
+                     if "pct_of_limit" in m else
+                     f"{m.get('baseline')}->{m.get('incident')}"),
+                    {"tool": "metrics", "modality": "metrics"})
         for k, v in (mt.get("host") or {}).items():
             sic.add("host_signal", "host", str(k), v,
                     f"host {k} {v.get('baseline')}->{v.get('incident')}"

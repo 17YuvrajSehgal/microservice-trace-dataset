@@ -28,6 +28,8 @@ user_triggers: network is slow | packet loss | latency everywhere | network degr
 - fault_type network_latency: host-wide network delay/loss — every cross-service hop
   pays the tax, nothing is saturated, no single culprit component.
 - service_network instead when only edges touching ONE component are slow/lossy.
-- db_latency instead when slow edges converge on one datastore.
+- db_latency instead only when datastore-path edges are DISPROPORTIONATELY slower than
+  ordinary service-to-service hops (datastore edges exist in every incident as
+  background — their mere presence proves nothing).
 Root cause service = 'host' (the shared network layer), not any single application
 service — they are all victims.
