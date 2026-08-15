@@ -61,15 +61,26 @@ _SOFT = re.compile(r"\b(" + "|".join(SOFT) + r")\b", re.IGNORECASE)
 
 
 def model_visible_input(doc: dict) -> list[tuple[str, str, bool]]:
-    """(where, text, is_static) triples for everything the model was GIVEN."""
+    """(where, text, is_static) triples for everything the model was GIVEN.
+    Static = identical for every incident in a condition (prompts, tool schemas, skill
+    library content) → scanned for run-specific vocabulary but not the fault taxonomy.
+    Skill-library text additionally gets the service-name lint (skills must be
+    service-agnostic; see skillreg.lint)."""
     out = []
     for e in doc.get("events", []):
-        if e["type"] == "system_prompt":
+        if e["type"] == "system_prompt":       # may embed an injected skill body
             out.append(("system_prompt", e.get("text", ""), True))
         elif e["type"] == "user_message":
             out.append(("user_message", e.get("text", ""), False))
         elif e["type"] == "tools_schema":
             out.append(("tools_schema", json.dumps(e.get("tools", "")), True))
+        elif e["type"] == "survey":            # masked evidence digest shown to the selector
+            out.append(("survey", str(e.get("sent", "")), False))
+        elif e["type"] == "skill_selection":
+            out.append(("skill_selection.evidence", str(e.get("evidence_sent", "")), False))
+            out.append(("skill_selection.skills", json.dumps(e.get("skills_shown", "")), True))
+        elif e["type"] == "skill_injected":
+            out.append(("skill_injected", str(e.get("body", "")), True))
         elif e["type"] == "tool_execution":
             sent = e.get("sent")
             if sent is None:  # schema v1 pre-masking: sent was derivable from result
@@ -83,11 +94,18 @@ def audit_one(path: str) -> tuple[list[str], list[str]]:
     hard, soft = [], []
     run_id = (doc.get("meta") or {}).get("run_id", "")
     run_pat = re.compile(re.escape(run_id), re.IGNORECASE) if run_id else None
+    try:
+        from skillreg import _FORBIDDEN_RE as _SVC_RE   # benchmark service names etc.
+    except ImportError:
+        _SVC_RE = None
     for where, text, is_static in model_visible_input(doc):
         if run_pat and run_pat.search(text):
             hard.append(f"{where}: contains the run id {run_id!r}")
         pat = _HARD_STATIC if is_static else _HARD_FULL
-        for m in {mm.group(0) for mm in pat.finditer(text)}:
+        hits = {mm.group(0) for mm in pat.finditer(text)}
+        if is_static and _SVC_RE is not None:           # skills/prompts must be service-agnostic
+            hits |= {mm.group(0) for mm in _SVC_RE.finditer(text)}
+        for m in hits:
             hard.append(f"{where}: leak token {m!r}")
         if not is_static:
             for m in {mm.group(0).lower() for mm in _SOFT.finditer(text)}:

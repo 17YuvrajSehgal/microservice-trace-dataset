@@ -1,9 +1,29 @@
-# RCA skill library (v4 — DRAFT, not yet wired into the harness)
+# RCA skill library (v4 — wired via skillreg.py; conditions via `evaluate.py --skills`)
 
 One markdown file per skill. A skill is procedural RCA knowledge for one problem class:
-what it looks like in **evidence** (problem_signature), how to **investigate** it
-(blueprint), and how to **decide** the verdict (resolution template). Design and
-evaluation protocol: `../../new_design.md` §5–§6.
+what it looks like in **evidence** (`## Problem signature` — the selector sees only
+this), how to **investigate** it (`## Investigation blueprint`), and how to **decide**
+the verdict (`## Resolution template`). On selection the full body is appended to the
+system prompt with an explicit "abandon it if evidence contradicts it" instruction.
+Design and evaluation protocol: `../../new_design.md` §5–§6.
+
+File format (parsed by `skillreg.py` — no YAML dependency):
+
+```
+---
+name: db-latency-rca
+version: 1
+authored_by: human
+covers: slow_db                       # harness metadata: LOFO + selection scoring; NEVER shown to the model
+user_triggers: database is slow | db latency    # '|'-separated; assistant mode only
+---
+## Problem signature
+- topology: ...
+## Investigation blueprint
+1. ...
+## Resolution template
+- fault_type X when ...
+```
 
 Two ways a skill is selected:
 - **Assistant mode**: the user's problem statement may match `user_triggers` (MVP-style).

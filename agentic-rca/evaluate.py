@@ -91,7 +91,8 @@ def _sample(app, per_family, n, families):
     return recs
 
 
-def run(app, per_family, n, families, out_path, method, grid, transcripts_dir=""):
+def run(app, per_family, n, families, out_path, method, grid, transcripts_dir="",
+        skills_mode="off", skills_dir=""):
     RCAEVAL = {"mmbaro", "microrank", "tracerca", "baro"}
     if method == "agent":
         import agent as _m; label = __import__("config").model_id()
@@ -103,6 +104,14 @@ def run(app, per_family, n, families, out_path, method, grid, transcripts_dir=""
         raise SystemExit(f"unknown method {method!r}")
     conditions = GRIDS[grid]
     tdir = transcripts_dir if method == "agent" else ""            # transcripts are LLM I/O — agent only
+    # v4 skill library (agent only). off = empty library = exactly the frozen v3 path.
+    # full = every skill; lofo = per incident, every skill EXCEPT the incident's own family
+    # (the never-seen-fault condition — 11 distractors, correct behavior is ABSTAIN + fallback).
+    library = []
+    if method == "agent" and skills_mode != "off":
+        import skillreg
+        library = skillreg.load_skills(skills_dir or None, strict=True)
+        print(f"   skills[{skills_mode}]: {len(library)} loaded ({', '.join(s.name for s in library)})")
     recs = _sample(app, per_family, n, families)
     print(f"== {method} ({label}) × grid '{grid}' ({len(conditions)} conds) over {len(recs)} incidents ({app}) ==")
     if tdir:
@@ -114,22 +123,39 @@ def run(app, per_family, n, families, out_path, method, grid, transcripts_dir=""
         for cname, spec in conditions:
             # transcript path is fixed BEFORE the attempt so errored diagnoses are auditable too
             trel = os.path.join(app, rec.run_id, f"{cname}.json") if tdir else None
+            inc_skills = None
+            if library:
+                inc_skills = (library if skills_mode == "full"
+                              else [s for s in library if s.covers != rec.fault_family])
             try:
                 kw = {"method": method} if method in RCAEVAL else {}
+                if inc_skills is not None:
+                    kw["skills"] = inc_skills
                 if tdir:
                     kw.update(transcript_path=os.path.join(tdir, trel), condition=cname,
-                              meta={"app": rec.app, "grid": grid, "degrade_spec": asdict(spec)})
+                              meta={"app": rec.app, "grid": grid, "degrade_spec": asdict(spec),
+                                    "skills_mode": skills_mode})
                 out = _m.diagnose(degrade(base, spec), app=rec.app, **kw)
             except Exception as e:
                 out = {"diagnosis": None, "error": str(e), "n_tool_calls": 0,
                        "bytes_touched": 0, "tokens": {"in": 0, "out": 0}}
             sc = R.score(out.get("diagnosis"), rec.ground_truth, rec.fault_family, out.get("ranked_services"))
+            # harness-side selection scoring (covers is never shown to the model):
+            # full -> correct = picked the skill covering this family; lofo -> correct = abstained
+            sel_name, sel_ok = out.get("skill_selected"), None
+            if inc_skills is not None and sel_name is not None:
+                covers = {s.name: s.covers for s in inc_skills}
+                sel_ok = (covers.get(sel_name) == rec.fault_family if skills_mode == "full"
+                          else sel_name == "none")
             results.append({"app": rec.app, "run_id": rec.run_id, "family": rec.fault_family,
                             "condition": cname, "target": rec.target_service,
                             "expected_modality": rec.expected_winning_modality,
                             "diagnosis": out.get("diagnosis"), "ranked_services": out.get("ranked_services"),
                             "score": sc, "n_tool_calls": out.get("n_tool_calls"), "tokens": out.get("tokens"),
                             "bytes_touched": out.get("bytes_touched"), "trajectory": out.get("trajectory"),  # RQ2
+                            "skills_mode": skills_mode if inc_skills is not None else "off",
+                            "skill_selected": sel_name, "skill_confidence": out.get("skill_confidence"),
+                            "selection_correct": sel_ok,
                             "transcript": trel,                     # relative to meta.transcripts_dir
                             "error": out.get("error")})
         print(f"  [{i}/{len(recs)}] {rec.run_id:44s} ({rec.fault_family})")
@@ -141,6 +167,9 @@ def run(app, per_family, n, families, out_path, method, grid, transcripts_dir=""
                 # provenance — ties the numbers to the exact code + conditions that produced them
                 "started_utc": started_utc, "argv": sys.argv, "git_commit": T.git_commit(),
                 "transcripts_dir": tdir or None,
+                "skills_mode": skills_mode,
+                "skills": [{"name": s.name, "covers": s.covers, "version": s.version}
+                           for s in library] or None,
                 "conditions": [{"name": c, "spec": asdict(s)} for c, s in conditions]}
         json.dump({"meta": meta, "results": results}, open(out_path, "w"), indent=2, default=str)
         print(f"\nwrote {out_path}")
@@ -174,6 +203,10 @@ if __name__ == "__main__":
     ap.add_argument("--transcripts", default="",
                     help="dir for full agent transcripts (agent method only; default: <out>_transcripts "
                          "or ./transcripts; pass 'none' to disable)")
+    ap.add_argument("--skills", default="off", choices=["off", "full", "lofo"],
+                    help="v4 skill library condition (agent only): off = frozen v3 baseline; "
+                         "full = every skill; lofo = leave-one-family-out (never-seen-fault test)")
+    ap.add_argument("--skills-dir", default="", help="override skill library directory")
     a = ap.parse_args()
     fams = [x for x in a.families.split(",") if x]
     if a.transcripts.lower() == "none":
@@ -190,7 +223,8 @@ if __name__ == "__main__":
         app_out = a.out
         if a.out and len(apps) > 1:                    # avoid clobbering: per-app files for --app both
             app_out = a.out[:-5] + f"_{app}.json" if a.out.endswith(".json") else f"{a.out}.{app}"
-        allres += run(app, a.per_family, a.n, fams, app_out or "", a.method, a.grid, transcripts_dir=tdir)
+        allres += run(app, a.per_family, a.n, fams, app_out or "", a.method, a.grid,
+                      transcripts_dir=tdir, skills_mode=a.skills, skills_dir=a.skills_dir)
     if a.app == "both":
         print("\n==== COMBINED ===="); _summarize(allres, GRIDS[a.grid])
         if a.out:

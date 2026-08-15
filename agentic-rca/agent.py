@@ -22,7 +22,9 @@ import json, os, sys, time
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import config
+import context_builder
 import leakguard
+import skillreg
 import transcript as T
 from tools import RunTools
 
@@ -89,7 +91,7 @@ SYSTEM = (
     "\n"
     "RULES: root_cause_service is the culprit component as named in telemetry — name the "
     "unexplained workload/container itself if a co-tenant is the cause, or 'host' for host-wide "
-    "resource causes with no visible aggressor. Distinguish victims from the culprit. Be "
+    "resource causes with no visible culprit workload. Distinguish victims from the culprit. Be "
     "economical with tool calls; never guess before checking baseline->incident evidence."
 )
 
@@ -157,7 +159,7 @@ def _run_tool(tools: RunTools, name: str, args: dict, guard=None):
 
 def diagnose(run, app: str | None = None, max_steps: int = 14, verbose: bool = False,
              transcript_path: str | None = None, condition: str | None = None,
-             meta: dict | None = None) -> dict:
+             meta: dict | None = None, skills: list | None = None) -> dict:
     """Run the agent on one incident. Returns diagnosis + trajectory + usage (no ground-truth here).
     Dispatches on the provider's SDK family — Anthropic vs OpenAI-compatible (azure/gemini/openai/
     ollama) — so the model is a config knob (RCA_PROVIDER/RCA_MODEL); everything else is identical.
@@ -179,13 +181,47 @@ def diagnose(run, app: str | None = None, max_steps: int = 14, verbose: bool = F
     tr.meta["max_steps"] = max_steps
     tr.meta["mask_names"] = config.MASK_NAMES
     tr.meta["incident_alias"] = shown_id
-    tr.event("system_prompt", text=SYSTEM, sha256=T.sha256_text(SYSTEM))
+    t0 = time.time()
+    # ---- v4 skill layer (skills mode only; empty/None library = exactly the frozen v3 path) ----
+    # Phase 1: deterministic evidence survey -> masked -> evidence-only skill selection with
+    # ABSTAIN. On a match the skill body is appended to the system prompt; on abstain the agent
+    # proceeds first-principles. Selection sees ONLY masked evidence — nothing states the problem.
+    system_eff, sel = SYSTEM, None
+    sel_tokens = {"in": 0, "out": 0}
+    survey_bytes = 0
+    if skills:
+        survey, survey_bytes = context_builder.build_survey(tools)
+        evidence_json = json.dumps(guard.mask_obj(survey), default=str)
+        tr.event("survey", result=survey, sent=evidence_json, result_bytes=survey_bytes)
+        try:
+            sel = _api_call(lambda: skillreg.select(evidence_json, skills), tr, step=-1)
+        except Exception as e:
+            tr.event("skill_selection", error=repr(e), skill_name="none",
+                     note="selector failed -> first-principles fallback")
+            sel = None
+        if sel:
+            sel_tokens = sel.get("tokens") or sel_tokens
+            tr.event("skill_selection", skill_name=sel["skill_name"],
+                     confidence=sel.get("confidence"), reason=sel.get("reason"),
+                     evidence_sent=evidence_json,
+                     skills_shown=[{"name": s.name, "signature": s.signature} for s in skills],
+                     tokens=sel_tokens)
+            if sel.get("skill") is not None:
+                sk = sel["skill"]
+                system_eff = (SYSTEM +
+                              "\n\nACTIVE SKILL (matched by evidence — verify it fits; abandon it "
+                              "and use the general method if the evidence contradicts it):\n"
+                              f"### {sk.name}\n{sk.body}")
+                tr.event("skill_injected", skill_name=sk.name, body=sk.body)
+    tr.meta["skill_mode"] = bool(skills)
+    tr.meta["skill_selected"] = sel["skill_name"] if sel else None
+    tr.event("system_prompt", text=system_eff, sha256=T.sha256_text(system_eff))
     tr.event("tools_schema", tools=_TOOL_DEFS)
     tr.event("user_message", text=user)
-    t0 = time.time()
     loop = _loop_anthropic if config.sdk_kind() == "anthropic" else _loop_openai
     try:
-        diagnosis, traj, in_tok, out_tok, bytes_touched = loop(tools, user, max_steps, verbose, tr, guard)
+        diagnosis, traj, in_tok, out_tok, bytes_touched = loop(tools, user, max_steps, verbose, tr,
+                                                              guard, system_eff)
     except Exception as e:
         tr.event("error", error=repr(e))
         tr.finalize(None, "error", wall_s=round(time.time() - t0, 1))
@@ -205,10 +241,12 @@ def diagnose(run, app: str | None = None, max_steps: int = 14, verbose: bool = F
         "diagnosis": diagnosis,                       # {root_cause_service, fault_type, evidence, confidence} or None
         "trajectory": traj,                           # RQ2
         "n_tool_calls": len([x for x in traj if x["tool"] != "submit_diagnosis"]),
-        "bytes_touched": bytes_touched,               # RQ4 cost
-        "tokens": {"in": in_tok, "out": out_tok},     # RQ2/RQ4 cost
+        "bytes_touched": bytes_touched + survey_bytes,  # RQ4 cost (survey included in skills mode)
+        "tokens": {"in": in_tok + sel_tokens["in"], "out": out_tok + sel_tokens["out"]},
         "model": config.model_id(), "wall_s": round(time.time() - t0, 1),
         "transcript_file": transcript_path,
+        "skill_selected": (sel or {}).get("skill_name"),
+        "skill_confidence": (sel or {}).get("confidence"),
     }
     tr.finalize(diagnosis, stop, tokens={"in": in_tok, "out": out_tok},
                 bytes_touched=bytes_touched, n_tool_calls=out["n_tool_calls"],
@@ -218,7 +256,7 @@ def diagnose(run, app: str | None = None, max_steps: int = 14, verbose: bool = F
     return out
 
 
-def _loop_anthropic(tools, user, max_steps, verbose, tr, guard):
+def _loop_anthropic(tools, user, max_steps, verbose, tr, guard, system=SYSTEM):
     client = config.make_client()
     schema = [{"name": t["name"], "description": t["description"], "input_schema": t["parameters"]}
               for t in _TOOL_DEFS]
@@ -228,7 +266,7 @@ def _loop_anthropic(tools, user, max_steps, verbose, tr, guard):
         tc = time.time()
         r = _api_call(lambda: client.messages.create(
             model=config.model_id(), max_tokens=config.MAX_TOKENS,
-            temperature=config.TEMPERATURE, system=SYSTEM,
+            temperature=config.TEMPERATURE, system=system,
             messages=messages, tools=schema), tr, step)
         tr.event("api_response", step=step, latency_ms=int((time.time() - tc) * 1000),
                  response=T.to_jsonable(r))
@@ -263,11 +301,11 @@ def _loop_anthropic(tools, user, max_steps, verbose, tr, guard):
     return diagnosis, traj, itok, otok, bt
 
 
-def _loop_openai(tools, user, max_steps, verbose, tr, guard):
+def _loop_openai(tools, user, max_steps, verbose, tr, guard, system=SYSTEM):
     """OpenAI-compatible tool-use loop (Azure / Gemini / OpenAI / Ollama)."""
     client = config.make_client()
     schema = [{"type": "function", "function": t} for t in _TOOL_DEFS]
-    messages = [{"role": "system", "content": SYSTEM}, {"role": "user", "content": user}]
+    messages = [{"role": "system", "content": system}, {"role": "user", "content": user}]
     ck = config.openai_create_kwargs()
     traj, itok, otok, bt, diagnosis = [], 0, 0, 0, None
     for step in range(max_steps):
