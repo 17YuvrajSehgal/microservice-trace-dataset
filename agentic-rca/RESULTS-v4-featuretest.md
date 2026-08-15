@@ -94,15 +94,37 @@ Net on the hard-case set: both-correct 3→2, but the composition traded two fra
 for the structurally-important one (slow_db), and brief-mode cost dropped sharply.
 SS `queue_backlog` remains unsolved in every mode (known-hard silent fault).
 
-## Next improvement round (proposed, NOT yet applied)
+## Round 2 (applied 2026-08-15): survey-visible limit signals + skill precision
 
-1. **Survey-visible discriminators**: metrics tool (and thus survey/SIC) should report
-   limit-proximity signals — cpu_throttled rate and memory working-set vs its cap (flat
-   ceiling detection) — so the selector can actually see what separates the cap faults.
-2. **Skill-content precision** (from observed confusions, generic mechanism knowledge):
-   service-cpu-throttle: "throttled-seconds jump is decisive even without visible CPU
-   flattening; kernel reports throttle waits as off-CPU wait — that does NOT contradict
-   throttling". db-latency/host-network boundaries: "background datastore edges exist in
-   every incident — db convergence requires OTHER paths healthy AND the datastore wait
-   signature".
-3. Re-test once more, then hold for the full S1/S2 campaign.
+Changes: metrics `limit_signals` section (throttle rate always surfaced — verified it
+exposes the ground-truth target directly on the real run; memory failcnt; working-set vs
+*plausible* spec limit, stale/unset limits filtered) flowing into SIC/selector/brief;
+skill-content fixes (throttle↔off-CPU consistency; memory-cap stale-limit caution;
+db/network "background datastore edges" boundaries).
+
+### Round-2 re-test (v4_test3 vs v4_test2, 13 runs, auditor PASS)
+
+Targets hit:
+- **svc_cpu_cap FIXED**: ts-travel-service/cpu_throttling both=✓ in 10 calls (the
+  round-1 regression, repaired exactly by limit_signals + the throttle precision fix).
+- **queue_backlog selector breakthrough**: async-queue-backlog-rca correctly selected
+  for the FIRST time (absence-aware prompt working); agent now names queue-master
+  (service ✓; fault still labeled dependency_outage).
+- **brief svc_mem_cap: carts/memory_limit both=✓** (was service-only).
+- **LOFO dependency_outage recovered both=✓** — wrong skill selected, agent overrode it
+  using the new background-edges caution.
+- Costs down where it matters (anomaly_net 21→11, svc_cpu_cap 27→10 calls).
+
+Losses, both consistent with single-run variance on borderline incidents: TT slow_db
+lost its round-1 both=✓ (across 5 leak-free runs of this incident: mysql✓ once, victim
+4×SPAN — genuinely borderline); TT dependency_outage S1 slipped to fault-only.
+
+Net: svc 7→8, both 2→3, S1 selection 2/7→3/7, src_used 4→5.
+
+## Where this leaves v4 (recommendation)
+
+Every engineered improvement has now demonstrably worked at least once; the remaining
+misses are dominated by run-to-run variance on borderline incidents. Further prompt/skill
+tuning against these 13 incidents would be overfitting. **Freeze v4 here; the next
+information comes from the full S1/S2 campaign (with S0 re-measured on the v4 toolset),
+where repeats and 23 incidents per condition give variance its denominator.**

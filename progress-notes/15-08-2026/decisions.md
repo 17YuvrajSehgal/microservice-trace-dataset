@@ -107,6 +107,22 @@ Next round (NOT applied yet, awaiting go): (1) survey-visible limit-proximity si
 metrics tool (throttle rate + working-set vs cap ceiling detection), (2) skill-content precision
 fixes (throttle↔off-CPU consistency; "db convergence requires OTHER paths healthy"), (3) one more
 re-test, then the full S1/S2 campaign. SS queue_backlog remains known-hard in every mode.
+
+## Round 2 APPLIED + re-tested (v4_test3, auditor PASS) — targets hit, v4 FROZEN for the campaign
+Built: metrics `limit_signals` (throttle rate / failcnt / working-set-vs-plausible-limit; stale
+docker-update spec limits filtered — TT probe showed spec=67GB while the real cap was ~1GB) →
+SIC claim kind `limit_signal` → selector digest + brief section. Skill precision: throttle skill
+(throttled-seconds decisive; kernel reports throttle-wait as off-CPU — not a contradiction),
+memory-cap (stale-limit caution; GC/OOM+pagefault decisive), db-latency/host-network (background
+datastore edges prove nothing; db needs disproportion). Validated no-API on real runs: limit_signals
+surfaces ts-travel-service 0→0.04 throttled-s/s (the ground truth) on svc_cpu_cap.
+
+Re-test 13 runs: **svc_cpu_cap regression FIXED (both=✓, 10 calls); queue_backlog selector selects
+the right skill for the FIRST time (agent → queue-master, svc=✓); brief svc_mem_cap both=✓; LOFO
+dep_outage override recovered**. Net svc 7→8, both 2→3, S1 sel 2/7→3/7. TT slow_db lost its
+round-1 both=✓ this run (1 of 5 leak-free attempts succeed on that borderline incident — variance).
+**Decision: STOP tuning against these 13 incidents (overfitting risk); v4 frozen at e720f73.
+Next information = full S1/S2 campaign with S0 re-measured on the v4 toolset.**
 `source_tool.py` → agent tool `query_source`, one tool with three ops mirroring the Claude Code
 trio: **find_files** (glob, `**/*Order*.java` or basename patterns), **search** (regex/plain text
 → file:line matches, 40-cap with refine note, optional path-glob filter, invalid regex falls back
