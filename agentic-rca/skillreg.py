@@ -55,6 +55,7 @@ class Skill:
     authored_by: str = "human"
     user_triggers: list = field(default_factory=list)   # assistant mode only
     signature: str = ""              # '## Problem signature' section (selector sees this)
+    boundaries: str = ""             # '## Resolution template' — the look-alike discriminators
     body: str = ""                   # full markdown body (injected on selection)
 
 
@@ -84,7 +85,8 @@ def _parse(path: str) -> Skill:
     trig = [t.strip() for t in meta.get("user_triggers", "").split("|") if t.strip()]
     return Skill(name=meta["name"], covers=meta["covers"], path=path,
                  version=meta.get("version", "1"), authored_by=meta.get("authored_by", "human"),
-                 user_triggers=trig, signature=sig, body=body)
+                 user_triggers=trig, signature=sig,
+                 boundaries=sections.get("resolution template", ""), body=body)
 
 
 def lint(skill: Skill) -> list:
@@ -115,9 +117,18 @@ def load_skills(skills_dir: str | None = None, strict: bool = True) -> list:
 _SELECT_SYSTEM = (
     "You route incidents to investigation skills. You are given (1) an evidence survey of an "
     "incident — baseline vs incident-window changes across traces, topology, logs, metrics and "
-    "kernel — and (2) the problem signatures of the available skills. Choose the SINGLE skill "
-    "whose signature the evidence clearly matches, or abstain. Abstain when no signature clearly "
-    "fits: a wrong skill misleads the investigation and is worse than none."
+    "kernel — and (2) each available skill's problem signature plus its DECISION BOUNDARIES "
+    "(when a look-alike skill applies instead).\n"
+    "Method: shortlist the TWO best-matching signatures, then check each candidate's decision "
+    "boundaries against the evidence — neighboring problem classes are easy to confuse, and the "
+    "boundaries state exactly which evidence separates them. Commit to the candidate whose "
+    "boundaries the evidence satisfies.\n"
+    "Some problems are ABSENCE-shaped: their signature is that user-facing symptoms stay "
+    "near-normal while something quieter changes (an idle consumer, a co-tenant workload). "
+    "Before abstaining because 'nothing dramatic changed', explicitly check whether an "
+    "absence-shaped signature fits.\n"
+    "Abstain only when no candidate's boundaries fit — a wrong skill misleads the investigation "
+    "and is worse than none."
 )
 
 _SELECT_TOOL = {
@@ -126,8 +137,11 @@ _SELECT_TOOL = {
     "parameters": {"type": "object", "properties": {
         "skill_name": {"type": "string",
                        "description": "exact name of the chosen skill, or 'none' to abstain"},
+        "runner_up": {"type": "string",
+                      "description": "the second-best candidate you compared against (or 'none')"},
         "confidence": {"type": "number", "description": "0..1"},
-        "reason": {"type": "string", "description": "one sentence: the decisive evidence match"}},
+        "reason": {"type": "string",
+                   "description": "one sentence: the boundary check that decided it"}},
         "required": ["skill_name", "confidence", "reason"]}}
 
 
@@ -135,11 +149,18 @@ def select(evidence_json: str, skills: list) -> dict:
     """Pick a skill (or abstain) from MASKED evidence only. Returns
     {skill: Skill|None, skill_name, confidence, reason, tokens{in,out}, prompt}."""
     import config
-    listing = "\n\n".join(
-        f"[{i + 1}] {s.name}\n{s.signature}" for i, s in enumerate(skills))
+
+    def block(i, s):
+        b = f"[{i + 1}] {s.name}\n{s.signature}"
+        if s.boundaries:
+            b += f"\nDECISION BOUNDARIES:\n{s.boundaries}"
+        return b
+
+    listing = "\n\n".join(block(i, s) for i, s in enumerate(skills))
     user = (f"INCIDENT EVIDENCE (baseline vs incident survey):\n{evidence_json}\n\n"
             f"AVAILABLE SKILLS:\n{listing}\n\n"
-            f"Call select_skill with the best-matching skill name, or 'none' to abstain.")
+            f"Shortlist your top two candidates, check their decision boundaries against the "
+            f"evidence, then call select_skill (skill_name = winner or 'none').")
     turn = config.chat(_SELECT_SYSTEM, [{"role": "user", "content": user}], tools=[_SELECT_TOOL])
     args = {}
     if turn.tool_calls:
@@ -150,6 +171,7 @@ def select(evidence_json: str, skills: list) -> dict:
     name = str(args.get("skill_name", "none")).strip()
     chosen = next((s for s in skills if s.name == name), None)
     return {"skill": chosen, "skill_name": chosen.name if chosen else "none",
+            "runner_up": args.get("runner_up"),
             "confidence": args.get("confidence"), "reason": args.get("reason"),
             "tokens": {"in": turn.input_tokens, "out": turn.output_tokens},
             "prompt": {"system": _SELECT_SYSTEM, "user": user}}

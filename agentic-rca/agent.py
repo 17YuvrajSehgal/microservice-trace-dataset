@@ -217,7 +217,9 @@ def diagnose(run, app: str | None = None, max_steps: int = 14, verbose: bool = F
     if inject_brief:
         brief = shared_context.format_brief(masked_digest)
         user = (f"Incident '{shown_id}'. Evidence survey (baseline vs incident):\n{brief}\n\n"
-                f"Investigate further with the tools and call submit_diagnosis.")
+                f"This survey already covers the no-filter overview of every tool — do not repeat "
+                f"broad survey calls; go directly to targeted per-service and topology queries, "
+                f"then call submit_diagnosis.")
     if skills:
         evidence_json = json.dumps(masked_digest, default=str)
         tr.event("survey", result=sic.digest(), sent=evidence_json, result_bytes=survey_bytes)
@@ -230,16 +232,23 @@ def diagnose(run, app: str | None = None, max_steps: int = 14, verbose: bool = F
         if sel:
             sel_tokens = sel.get("tokens") or sel_tokens
             tr.event("skill_selection", skill_name=sel["skill_name"],
+                     runner_up=sel.get("runner_up"),
                      confidence=sel.get("confidence"), reason=sel.get("reason"),
                      evidence_sent=evidence_json,
-                     skills_shown=[{"name": s.name, "signature": s.signature} for s in skills],
+                     skills_shown=[{"name": s.name, "signature": s.signature,
+                                    "boundaries": s.boundaries} for s in skills],
                      tokens=sel_tokens)
             if sel.get("skill") is not None:
                 sk = sel["skill"]
                 system_eff = (SYSTEM +
-                              "\n\nACTIVE SKILL (matched by evidence — verify it fits; abandon it "
-                              "and use the general method if the evidence contradicts it):\n"
-                              f"### {sk.name}\n{sk.body}")
+                              "\n\nACTIVE SKILL (matched by evidence, possibly wrongly): "
+                              f"{sk.name}\n"
+                              "Before following its blueprint, VERIFY its problem signature with "
+                              "your own tool queries — especially the discriminating checks in its "
+                              "resolution template. If any discriminating check FAILS, state that "
+                              "explicitly and revert to the general method above; never force the "
+                              "skill's conclusion onto contradicting evidence.\n"
+                              f"{sk.body}")
                 tr.event("skill_injected", skill_name=sk.name, body=sk.body)
     tr.meta["skill_mode"] = bool(skills)
     tr.meta["brief_injected"] = inject_brief

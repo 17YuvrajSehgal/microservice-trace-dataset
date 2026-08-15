@@ -177,16 +177,23 @@ class RunTools:
         return (out.get(svc_key, {"n": 0}) if service else out), _df_bytes(d)
 
     # ---- topology (victim vs culprit) ----------------------------------------------------
+    _PEER_COLS = ("server.address", "network.peer.address", "peer.service")
+
     def topology(self, service: str | None = None, top: int = 20):
-        """Caller→callee edges from span parent/child links, baseline vs incident latency per
-        edge. THE victim-vs-culprit instrument: victims' slow edges point AT the culprit; the
-        culprit has no slow outgoing edge (or none at all). Optionally filter to edges touching
-        one service."""
+        """Caller→callee edges, baseline vs incident latency per edge. THE victim-vs-culprit
+        instrument: victims' slow edges point AT the culprit; the culprit has no slow outgoing
+        edge (or none at all). Two edge sources:
+          * span parent/child links (both sides emit spans);
+          * terminal CLIENT spans → their peer address (callee emits NO spans — databases,
+            queues, proxies). Without these, a span-less datastore can never appear as a
+            callee and 'edges converge on the datastore' is structurally unobservable.
+        Peer-edge callees are flagged spanless_callee=true. Optional service filter."""
         df = self._spans()
         need = {"span_id", "parent_span_id", "service", "start_ns", "dur_ms"}
         if not hasattr(df, "columns") or len(df) == 0 or not need.issubset(set(df.columns)):
             return {"note": "no spans / no parent links"}, 0
-        d = df[list(need)].copy()
+        cols = list(need) + [c for c in ("kind", *self._PEER_COLS) if c in df.columns]
+        d = df[cols].copy()
         d["service"] = d["service"].map(_norm_container)
         sn = pd.to_numeric(d["start_ns"], errors="coerce")
         d["_inc"] = (sn >= self._ns0) & (sn <= self._ns1) if self._ns0 else False
@@ -195,19 +202,42 @@ class RunTools:
         ch = d[d["parent_span_id"].notna() & (d["parent_span_id"] != "")].copy()
         ch["caller"] = ch["parent_span_id"].map(parent_svc)
         ch = ch[ch["caller"].notna() & (ch["caller"] != ch["service"])]
-        if service:
-            sk = _norm_container(service)
-            ch = ch[(ch["caller"] == sk) | (ch["service"] == sk)]
-        edges = []
-        for (a, b), g in ch.groupby(["caller", "service"]):
+
+        def _p95s(g):
             dur = pd.to_numeric(g["dur_ms"], errors="coerce")
             bd, idur = dur[g["_base"]], dur[g["_inc"]]
             if len(idur.dropna()) == 0:
-                continue
+                return None
             pb, pi = _pctl(bd, 0.95), _pctl(idur, 0.95)
-            edges.append({"caller": a, "callee": b, "n_incident": int(len(idur)),
-                          "p95_baseline_ms": pb, "p95_incident_ms": pi,
-                          "slowdown_x": round(pi / pb, 1) if pb and pi else None})
+            return {"n_incident": int(len(idur)), "p95_baseline_ms": pb, "p95_incident_ms": pi,
+                    "slowdown_x": round(pi / pb, 1) if pb and pi else None}
+
+        edges = []
+        for (a, b), g in ch.groupby(["caller", "service"]):
+            rec = _p95s(g)
+            if rec:
+                edges.append({"caller": a, "callee": b, **rec})
+
+        # terminal CLIENT spans -> peer edges (callee emits no spans)
+        peer_cols = [c for c in self._PEER_COLS if c in d.columns]
+        if peer_cols and "kind" in d.columns:
+            cl = d[d["kind"].isin([3, "3", "SPAN_KIND_CLIENT"])].copy()
+            has_child = set(d.loc[d["parent_span_id"].notna(), "parent_span_id"].unique())
+            cl = cl[~cl["span_id"].isin(has_child)]          # no child span -> external call
+            peer = None
+            for c in peer_cols:
+                col = cl[c] if peer is None else peer.fillna(cl[c])
+                peer = col
+            cl["_peer"] = peer.map(lambda v: _norm_container(v) if isinstance(v, str) and v else None)
+            cl = cl[cl["_peer"].notna() & (cl["_peer"] != cl["service"])]
+            for (a, b), g in cl.groupby(["service", "_peer"]):
+                rec = _p95s(g)
+                if rec:
+                    edges.append({"caller": a, "callee": b, "spanless_callee": True, **rec})
+
+        if service:
+            sk = _norm_container(service)
+            edges = [e for e in edges if sk in (e["caller"], e["callee"])]
         edges.sort(key=lambda e: -(e["slowdown_x"] or 0))
         return {"edges": edges[:top]}, _df_bytes(ch)
 
