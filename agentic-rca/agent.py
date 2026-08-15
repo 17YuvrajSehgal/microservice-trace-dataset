@@ -26,6 +26,7 @@ import context_builder
 import leakguard
 import shared_context
 import skillreg
+import source_tool
 import transcript as T
 from tools import RunTools
 
@@ -60,7 +61,8 @@ SYSTEM = (
     "4. WHY: use query_kernel to explain the mechanism — on-CPU saturation vs CPU-starved "
     "(runnable wait) vs disk wait vs external I/O wait; throttling; memory reclaim. A component "
     "slow WITHOUT internal saturation is being slowed from outside (dependency, host, or induced "
-    "latency).\n"
+    "latency). When code-level confirmation helps (what a timeout, retry policy, or error string "
+    "actually does), query_source can search and read the application's source.\n"
     "5. Only then submit_diagnosis, citing the decisive baseline->incident changes.\n"
     "\n"
     "FAULT TYPES (operational definitions — pick the closest):\n"
@@ -109,6 +111,14 @@ _TOOL_DEFS = [
      "parameters": {"type": "object", "properties": {"service": {"type": "string"}}}},
     {"name": "query_kernel", "description": "Kernel evidence per service, baseline vs incident: changed KPIs (syscall/block latency, disk, net, scheduler, memory reclaim), L3 deviation digests, L2 wait-attribution. 'host' = unattributed host-kernel activity.",
      "parameters": {"type": "object", "properties": {"service": {"type": "string"}}}},
+    {"name": "query_source", "description": "Search/read the application's source code (grep/glob/cat style). op='find_files': pattern is a glob, e.g. '**/*Order*.java'. op='search': pattern is regex or plain text, returns file:line matches (optional 'path' glob narrows it). op='read': 'path' + optional start_line/limit returns numbered lines. Use it to verify how a suspect service, endpoint, timeout, retry or error message is implemented.",
+     "parameters": {"type": "object", "properties": {
+         "op": {"type": "string", "enum": ["find_files", "search", "read"]},
+         "pattern": {"type": "string", "description": "glob for find_files; regex/text for search"},
+         "path": {"type": "string", "description": "file path for read; optional path glob filter for search"},
+         "start_line": {"type": "integer"},
+         "limit": {"type": "integer", "description": "lines to read (default 120, max 400)"}},
+         "required": ["op"]}},
     {"name": "submit_diagnosis", "description": "Commit the final root-cause verdict.",
      "parameters": {"type": "object", "properties": {
          "root_cause_service": {"type": "string", "description": "the single culprit service/container"},
@@ -155,6 +165,11 @@ def _run_tool(tools: RunTools, name: str, args: dict, guard=None):
         return tools.metrics(svc)
     if name == "query_kernel":
         return tools.kernel(svc)
+    if name == "query_source":
+        return source_tool.query(tools.app, args.get("op", ""), pattern=args.get("pattern"),
+                                 path=args.get("path"),
+                                 start_line=args.get("start_line") or 1,
+                                 limit=args.get("limit") or 120)
     return {"error": f"unknown tool {name}"}, 0
 
 
