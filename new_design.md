@@ -138,16 +138,23 @@ service-agnostic ("the converged-on datastore", never `catalogue-db`), no run/ap
 no injected-container names. Customer skills in assistant mode may of course name their own
 services — that's the product; it's only the benchmark that must stay service-blind.
 
-### 5.3 What changes in code (v4 work items)
+### 5.3 What changes in code (v4 work items) — BUILT 2026-08-15
 
-1. `skills/` registry + loader (frontmatter parse, validation, leakage lint).
-2. Phase-1 survey extraction into a deterministic step (seed of the Context Builder): run the
-   no-filter tools once, emit the evidence signature into the Shared Investigation Context.
-3. Selector (one LLM call over signature vs skill signatures, abstain-aware; or embedding
-   pre-filter + LLM confirm), logged as a `skill_selection` transcript event.
-4. Phase-2 injection: selected skill body appended to the (otherwise unchanged) system prompt.
-5. `evaluate.py`: `--skills full|lofo|off` conditions; auditor checks for skill-content leaks.
+1. ✅ `skillreg.py` — registry/loader (markdown frontmatter + 3 sections, no YAML dep),
+   service-agnostic lint, abstain-aware one-call selector (evidence-only input).
+2. ✅ `context_builder.py` — deterministic Phase-1 survey digest (Context Builder seed).
+3. ✅ Selection logged as `skill_selection` transcript events (plus `survey`, `skill_injected`).
+4. ✅ Phase-2 injection into the system prompt with an explicit "abandon the skill if evidence
+   contradicts it" instruction; abstain → frozen v3 first-principles fallback.
+5. ✅ `evaluate.py --skills off|full|lofo` (+`--skills-dir`); harness-side selection scoring via
+   `covers`; `audit_leakage.py` audits the new channels (survey/selector = per-incident scan;
+   skill text = static scan + service-name lint).
+6. ✅ 12 evaluation-grade skills authored (one per injected family), all lint-clean.
 v3 stays frozen on `master` for the degradation sweep; v4 lives on this branch.
+Smoke (2026-08-15): S1 SS anomaly_disk = right skill @0.98 → fully correct in 11 calls;
+S2 (LOFO) same incident = correct ABSTAIN @0.91 → fallback still fully correct — the
+never-seen-fault path works. TT slow_db false-matches service-network-path in both modes
+(its evidence is genuinely path-shaped) → the selection-confusion data the campaign measures.
 
 ## 6. Evaluating a skill-based system (including never-seen faults)
 
