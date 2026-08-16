@@ -15,9 +15,12 @@ SRC="$DATASET_ROOT/$APP"
 RUNS="${RUNS_ROOT:-/scratch/yuvraj17/agentic-runs}/$APP"     # where kernel_l2.jsonl lands
 STAGE="${STAGE:-${SLURM_TMPDIR:-/scratch/yuvraj17/tmp_l2}/$APP}"   # node-local L0 staging
 PAR="${PAR:-8}"
-# babeltrace2 (local build) + big temp for prepare_ctf's gunzip (route OFF the small node /tmp)
-export PATH="/scratch/yuvraj17/local/bin:$PATH"
-export LD_LIBRARY_PATH="/scratch/yuvraj17/local/lib:${LD_LIBRARY_PATH:-}"
+# babeltrace2: prefer the CTF2-capable 2.1.2 build — Sock Shop L0 metadata is CTF 2, which
+# 2.0.4 cannot read. ORDER MATTERS: local-bt21 must precede the old local/ install, whose lib
+# otherwise SHADOWS the new one (symptom: undefined symbol bt_get_greatest_operative_mip_...).
+# Big temp for prepare_ctf's gunzip is routed OFF the small node /tmp below.
+export PATH="/scratch/yuvraj17/local-bt21/bin:/scratch/yuvraj17/local/bin:$PATH"
+export LD_LIBRARY_PATH="/scratch/yuvraj17/local-bt21/lib:/scratch/yuvraj17/local/lib:${LD_LIBRARY_PATH:-}"
 export STRATATRACE_APP="$APP"
 export PYTHONPATH="$REPO/stratatrace:${PYTHONPATH:-}"
 export TZ=UTC                       # ground_truth is UTC; babeltrace2 must window-match in UTC
@@ -32,6 +35,9 @@ derive_run() {  # $1 = staged run dir (has kernel/, meta/, ground_truth.json)
   local d="$1"; local rid rec out
   rid="$(basename "$d")"; rec="$(basename "$(dirname "$d")")"
   [ -f "$d/ground_truth.json" ] || { echo "SKIP $rid (no ground_truth)"; return; }
+  # only derive for runs present in the working set (archives also hold calibration/overhead
+  # bundles; deriving those would create orphan L2-only dirs and waste hours)
+  [ -d "$RUNS/$rec/$rid" ] || { echo "SKIP $rid (not in working set)"; return; }
   out="$RUNS/$rec/$rid/kernel_l2.jsonl"
   [ -f "$out" ] && { echo "SKIP $rid (L2 exists)"; return; }
   local t0; t0=$(date +%s)
