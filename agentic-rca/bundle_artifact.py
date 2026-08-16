@@ -56,8 +56,10 @@ def collect(results_paths: list[str]) -> dict[str, bytes]:
     missing = 0
     for rp in results_paths:
         doc = json.load(open(rp, encoding="utf-8"))
-        stem = os.path.splitext(os.path.basename(rp))[0]
-        files[f"results/{os.path.basename(rp)}"] = open(rp, "rb").read()
+        # include the parent dir: files named alike across condition dirs must not collide
+        parent = os.path.basename(os.path.dirname(os.path.abspath(rp)))
+        stem = f"{parent}_{os.path.splitext(os.path.basename(rp))[0]}"
+        files[f"results/{parent}/{os.path.basename(rp)}"] = open(rp, "rb").read()
         tdir = (doc.get("meta") or {}).get("transcripts_dir")
         for row in doc.get("results", []):
             rel = row.get("transcript")
