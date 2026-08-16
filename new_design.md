@@ -37,6 +37,109 @@ AI interfaces such as MCP.
 | AI Interfaces (MCP) | **Exists, stale** | `agent-first-mvp/mcp_server.py` (demo face); predates the v3 tools — needs rewiring to `RunTools` |
 | Frontend (SherLog / Dashboard / Racoon Miner / Trace Compass) | **Not built (Ciena-side)** | Synergy to exploit: our kernel L0 is LTTng CTF — **Trace Compass's native format**, so that bridge is nearly free; `agent-first-mvp/dashboard/` is a stale per-run inspector |
 
+## 2b. As-built system diagram (2026-08-16)
+
+What actually exists today on `new-agentic-architecture` and how it interacts — only built
+components (no JIRA retrieval, no skills-mining loop, no MCP/frontends yet). Color code mirrors
+the requirements diagram: blue = inputs, green = analysis backend, orange = AI skills,
+violet = integrity/evaluation, grey = external.
+
+```mermaid
+flowchart TB
+    subgraph INPUTS["Inputs"]
+        direction TB
+        BUNDLE["Observability Bundle<br/>(StrataTrace run, tarball)<br/>logs / OTLP spans / Prometheus metrics<br/>kernel L0-L3 / meta + clock anchors"]
+        SRC["Source Code<br/>(app submodules:<br/>train-ticket, microservices-demo)"]
+    end
+
+    subgraph SKILLS["AI Skills (Collection) — skills/*.md"]
+        direction TB
+        LIB["12 evaluation-grade skills<br/>Problem Signature<br/>Investigation Blueprint<br/>Resolution Template"]
+    end
+
+    subgraph BACKEND["Analysis Backend — agentic-rca/"]
+        direction TB
+        subgraph DATA["Bundle Extraction & Telemetry Tools"]
+            LOADER["stratatrace loader<br/>load_run: per-modality frames"]
+            DEG["degrade.py<br/>(evaluation-only telemetry degradation)"]
+            TOOLS["tools.py — baseline vs incident<br/>query_traces / query_topology (+peer edges)<br/>query_logs / query_metrics (+host, +limit_signals)<br/>query_kernel (L1 KPIs, L3 digests, L2 wait)"]
+            SRCT["source_tool.py<br/>query_source: find_files / search / read"]
+        end
+        subgraph CTX["Context layer"]
+            CB["Investigation Context Builder<br/>context_builder.build_context()"]
+            SIC["Shared Investigation Context<br/>typed claims + provenance"]
+        end
+        subgraph SKL["Skill layer"]
+            REG["skillreg.py<br/>registry + service-agnostic lint"]
+            SEL["Skill selector (one LLM call)<br/>evidence-only, boundary-aware, may ABSTAIN"]
+        end
+        subgraph AG["RCA agent — agent.py"]
+            GUARD["leakguard<br/>masks every model-visible string;<br/>unmasks the final diagnosis"]
+            LOOP["tool-use loop (multi-provider)<br/>verify-skill-first, retries<br/>output: service / fault_type / evidence / confidence"]
+        end
+        subgraph EVAL["Integrity & evaluation harness"]
+            EV["evaluate.py — conditions:<br/>degradation grid x skills off|full|lofo x brief"]
+            SCORE["runs.py score<br/>vs ground truth (harness-side only)"]
+            TRN["transcript.py<br/>full audit record per diagnosis"]
+            AUD["audit_leakage.py<br/>leak scan, PASS required"]
+            BND["bundle_artifact.py<br/>sha256-manifested artifact"]
+            BASE["non-LLM baselines<br/>baseline_stat / RCAEval adapters"]
+        end
+    end
+
+    LLM["LLM providers via config.py<br/>Azure gpt-5.4 / Claude / Gemini / Ollama"]
+
+    BUNDLE --> LOADER --> DEG --> TOOLS
+    BUNDLE -. "incident window only<br/>(the 'alert fired' assumption)" .-> TOOLS
+    SRC --> SRCT
+    TOOLS -- "Phase-1 survey" --> CB --> SIC
+    SIC -- "digest (masked)" --> SEL
+    LIB --> REG -- "signatures + boundaries" --> SEL
+    SEL -- "skill body injected, or abstain = first-principles" --> LOOP
+    SIC -. "investigation brief (masked, --brief)" .-> LOOP
+    LOOP <-- "tool calls / masked results" --> GUARD
+    GUARD <--> TOOLS
+    GUARD <--> SRCT
+    LOOP <--> LLM
+    LOOP -- "unmasked diagnosis" --> SCORE
+    BUNDLE -. "ground-truth label (never shown to any model)" .-> SCORE
+    EV -- "orchestrates incident x condition" --> LOOP
+    EV --> DEG
+    BASE --> SCORE
+    LOOP --> TRN --> AUD
+    TRN --> BND
+    SCORE --> RES["results JSON + analyze.py<br/>AC@1 / AC@3 / MRR, per-family tables"]
+
+    classDef input fill:#9fc5e8,stroke:#2b78b5,color:#0b2e4f
+    classDef backend fill:#b6d7a8,stroke:#4c8c3f,color:#173a10
+    classDef skill fill:#f9cb9c,stroke:#c97b2d,color:#4d2a05
+    classDef integ fill:#d9d2e9,stroke:#7a5fa8,color:#2c1a4d
+    classDef ext fill:#efefef,stroke:#888,color:#333
+    class BUNDLE,SRC input
+    class LOADER,DEG,TOOLS,SRCT,CB,SIC,LOOP,GUARD backend
+    class LIB,REG,SEL skill
+    class EV,SCORE,TRN,AUD,BND,BASE,RES integ
+    class LLM ext
+```
+
+How to read it against the requirements diagram (§ image above):
+- **Bundle Extraction & Inventorying** → loader + tools (with the evaluation-only degradation
+  stage between them). **Timeline Reconstruction** exists as the baseline→incident windowing
+  inside every tool, not yet as a standalone artifact. **Correlation Engine** exists as the
+  deterministic pieces inside tools (topology edges, cross-modality deltas, wait attribution) +
+  the LLM's reasoning.
+- **Investigation Context Builder / Shared Investigation Context / RCA** map 1:1 to
+  `context_builder.py` / `shared_context.py` / `agent.py`.
+- **AI Skills (Collection)** is the markdown library feeding the selector; today it is
+  human-authored — transcripts are the raw material for the future mining loop
+  ("akin to training"), which is not built.
+- Two components the requirements diagram does not show, which our research setting requires:
+  **leakguard** (the masking boundary that keeps evaluation honest) and the **integrity &
+  evaluation harness** (transcripts, leak auditor, scoring, artifact bundling).
+- Not built yet (deliberately absent here): JIRA / Related-JIRAs retrieval, skills-mining
+  feedback loop, unified-timeline artifact, standalone correlation engine, MCP interface,
+  frontends (SherLog / dashboards / Racoon Miner / Trace Compass).
+
 ## 3. Build plan (proposed order)
 
 1. **Investigation Context Builder** — the headline gap. A deterministic module that runs the
