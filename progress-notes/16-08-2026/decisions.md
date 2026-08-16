@@ -30,7 +30,29 @@ bottleneck); more agent observability = capture already 100% (and Azure chat com
 zero hidden-CoT — Responses API not worth the behavior risk); MCP = interface, zero accuracy
 effect, defer.
 
-## Campaign design (ready after these fixes)
+## CAMPAIGN RUN + ANALYZED (102 runs, $1.80 proxy-rate total, auditor PASS 102/102)
+Pre-flight: archived the ENTIRE old results tree (433 files) to
+`/project/…/artifacts/results_pre_campaign_20260816.tar.gz` (md5-verified) then cleaned
+`results/` → `results/campaign/{s0,s0b,s1,s2}`. Added `cost_report.py` (post-hoc $ per incident
+from transcript usage incl. cache split; configurable rates) + `campaign_driver.sh` (committed).
+
+**Headline (RESULTS-v4-campaign.md):** S0 83/57/57 @15.2 calls · **S0b 87/61/57 @9.0 calls,
+58% less input — the winner** · S1 (skills+brief) 78/43/43 · S2 (LOFO) 70/39/39.
+Findings: (1) **Context Builder validated** — best accuracy at lowest cost; ship S0b.
+(2) **Skills net-negative as selected** — entirely TT (shared-datastore db-edge pull: 5/8
+misselections = db-latency-rca); skill content works where selection is right (SS noisy_neighbor
+fixed ONLY by skill; TT dep_outage stable-Y 3/3) → the selector is the single blocking component.
+(3) **S2 negative result**: abstention 3/23; agent override limits damage to −18 pts vs floor —
+distractor skills actively mislead; honest deployment advice = S0b for unknown faults.
+(4) Fault-gap concentrates on 3 label boundaries (error_storm→dep_outage ×7 with accurate
+reset-mechanism descriptions; noisy_neighbor→cpu_* ×6; svc_net→db_latency ×4) → mechanism-correct
+secondary metric would credit most. (5) Repeats: TT slow_db stable-WRONG under S1 (0/3; earlier
+one-off not reproduced); TT dep_outage stable-right in S1+S2.
+Artifacts: `artifact_campaign_20260816.tar.gz` on /project (102+102, sha256, md5-verified).
+Also fixed bundle_artifact arcname collisions across condition dirs (first bundle silently
+deduplicated same-named files — 31/102; refuse-worthy trap, now parent-dir-prefixed).
+
+## Campaign design (as executed)
 - **Primary skill condition = skills+brief** (never tested together; brief removes the re-survey
   the verify-first step forces → expect ~40% cost cut in skills mode and same/better accuracy).
 - Repeats r=3 ONLY on the 5 flip-prone incidents found by the variance audit (tt_slow_db,
