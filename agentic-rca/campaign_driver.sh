@@ -12,7 +12,7 @@ set -a; source .env; set +a
 cd agentic-rca
 TT="anomaly_cpu anomaly_disk anomaly_mem anomaly_net slow_db error_storm svc_cpu_cap svc_mem_cap dependency_outage noisy_neighbor svc_net"
 SS="anomaly_cpu anomaly_disk anomaly_mem anomaly_net slow_db error_storm svc_cpu_cap svc_mem_cap dependency_outage queue_backlog noisy_neighbor svc_net"
-D=results/campaign
+D="${CAMPAIGN_DIR:-results/campaign}"    # override for re-runs, e.g. CAMPAIGN_DIR=results/campaign2
 
 flags() {  # condition -> evaluate.py flags
   case "$1" in
