@@ -31,6 +31,10 @@ user_triggers: one service slow | service pegged | cpu limit | throttled
 - fault_type cpu_throttling: one service's throttled-seconds are positive and sustained
   and only its subtree degrades — decisive even without visible CPU flattening and even
   when kernel waits read as off-CPU/external (throttle-wait looks like that).
+- noisy_neighbor instead when the THROTTLED container has no call-path role
+  (query_topology: no edges touch it): a capped co-tenant workload throttling against
+  its own limit is a noisy neighbor — the throttle signal locates the co-tenant, it
+  does not make this a service-cap fault.
 - cpu_saturation instead when host_cpu_busy_cores is exhausted and many unrelated
   services degrade.
 - db_latency instead when the slow component is a datastore waiting on external I/O

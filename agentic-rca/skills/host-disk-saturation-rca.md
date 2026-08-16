@@ -27,8 +27,10 @@ user_triggers: disk is slow | io saturated | storage slow | high disk latency
    queue victims, not the source.
 
 ## Resolution template
-- fault_type disk_io: host disk saturated by an extra/unexplained disk-heavy workload;
-  all disk users see elevated block latency.
+- fault_type disk_io REQUIRES throughput evidence: host_disk_io_time_s/s and/or disk
+  KB/s must RISE substantially. Block-LATENCY percentiles alone can wobble under other
+  faults (network stalls, memory writeback) — never conclude disk saturation from
+  latency percentiles without a throughput/io_time rise.
 - db_latency instead when only ONE datastore's callers are slow and host disk io_time
   is NOT saturated.
 - memory_pressure instead when writeback/reclaim drive the disk activity (check reclaim

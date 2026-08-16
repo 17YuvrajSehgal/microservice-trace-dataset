@@ -26,8 +26,13 @@ user_triggers: service down | dependency dead | requests hanging | timeouts to o
    do not blame the loudest logger; the culprit is the quiet one.
 
 ## Resolution template
+- DIRECTION-OF-SILENCE CHECK (decisive): frozen means its CALLERS KEEP TRYING — they
+  hang toward it and log timeouts/connection failures naming it. If the callers went
+  quiet TOO (they simply stopped sending; no timeouts toward the silent component),
+  the silent component is a STARVED VICTIM of an upstream problem — investigate the
+  caller that stopped calling instead (its resource caps, its own fault).
 - fault_type dependency_outage: a dependency is down/frozen — calls hang or fail,
-  the component produces almost nothing.
+  the component produces almost nothing, and callers demonstrably keep trying.
 - db_latency instead when calls SUCCEED slowly and the component is still active.
 - error_storm instead when requests FAIL FAST with error bursts rather than hanging.
 Root cause service = the frozen/dead component itself (often the QUIETEST party),

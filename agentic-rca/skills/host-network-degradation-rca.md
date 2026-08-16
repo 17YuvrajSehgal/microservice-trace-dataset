@@ -8,7 +8,9 @@ user_triggers: network is slow | packet loss | latency everywhere | network degr
 ## Problem signature
 - topology: MANY caller->callee edges slow down TOGETHER by similar factors, across
   unrelated paths — the inflation is per-hop and system-wide, with no single component
-  the edges converge on.
+  the edges converge on. Host-kernel block-LATENCY wobble WITHOUT a disk
+  throughput/io_time rise does not contradict this signature (it is a common
+  side-effect of stalled I/O paths, not disk saturation).
 - metrics: NO resource mover explains it — cpu, memory, disk quiet on every container;
   host_net throughput may dip (fewer completed requests) but the host is not saturated.
 - kernel: services show off-CPU external waits on NETWORK syscalls (sys_net, net_events)

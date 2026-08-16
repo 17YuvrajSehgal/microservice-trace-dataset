@@ -11,7 +11,9 @@ user_triggers: intermittent slowness | jitter | something stealing cpu | neighbo
   is severe and broad, prefer the host-CPU-pressure reading.
 - metrics: a container with NO call-path role consumes steady CPU (cpu_cores appears
   from nothing, often capped at a modest share); host_cpu_busy_cores rises but is NOT
-  exhausted; host_load1 up moderately.
+  exhausted; host_load1 up moderately. The co-tenant is often itself CPU-capped, so
+  limit_signals may show ITS cpu_throttled_s/s — a throttle signal on a non-call-path
+  container points HERE, not to cpu_throttling.
 - kernel: contention fingerprints WITHOUT app saturation — sched_wakeup churn from the
   extra workload, mild runnable waits on app services; no external I/O wait story.
 - topology/traces/logs: little to no change — the ABSENCE of app-level symptoms while a
