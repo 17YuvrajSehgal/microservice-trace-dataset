@@ -66,6 +66,41 @@ S1 (0/3 — frozen-dependency selection consistently steers it; the earlier one-
 not reproduce). TT svc_cpu_cap S1: 2/3. SS svc_mem_cap brief: 2/3. Overall: repeats confirm
 the flip-prone set is small and now quantified.
 
+---
+
+# Campaign 2 — identical design, Sock Shop kernel L2 added (2026-08-17)
+
+After deriving SS `kernel_l2.jsonl` for all 50 working-set runs on Trillium (babeltrace 2.1.2,
+no VM — job 2132315, 1h36m), the full 102-run campaign was repeated with the agent code
+byte-identical to campaign 1: a pure **data-only comparison** (what is L2 wait-attribution
+worth on SS?), with Train Ticket — whose data did not change — as a built-in **A/A variance
+control**. Auditor PASS 102/102; $1.81; artifact `artifact_campaign2_20260817.tar.gz`.
+
+| Condition | Campaign 1 (no SS L2) | Campaign 2 (SS L2) |
+|---|---|---|
+| s0 | 83 / 57 / 57 | 74 / 61 / 57 |
+| s0b | 87 / 61 / 57 | 83 / 48 / 48 |
+| s1 | 78 / 43 / 43 | 74 / 57 / 57 |
+| s2 | 70 / 39 / 39 | 83 / 43 / 43 |
+
+## Finding 5 — SS L2 reaches the agent but does not measurably move aggregate accuracy;
+## run-to-run variance is the dominant noise source (now quantified)
+
+- L2 demonstrably flows: `wait_attribution` appears in **48/48** SS campaign-2 transcripts.
+- Paired per-(condition, incident) flips: **SS 5/48 (3 up, 2 down)** vs the A/A control
+  **TT 9/44 (5 up, 4 down)** — the SS flip rate sits *below* the noise floor measured on
+  unchanged data. Conclusion: on the per-service-datastore app, the robust L1+L3+topology
+  evidence already suffices (SS slow_db was solved without L2); L2's unique value was
+  demonstrated on the shared-datastore app, which always had it. Both apps now at L1+L2+L3
+  parity — which RQ3's kernel-tier degradation conditions need regardless.
+- Suggestive (not conclusive): 2 of the 3 SS up-flips are `noisy_neighbor` (s0 and s2) —
+  wait-profiles may help the co-tenant fault-typing; worth watching in the RQ3 sweep.
+- The methodological headline: **TT's A/A flip rate of ~20% of condition-cells** is the
+  measured single-run noise at these settings. Condition-level aggregates carry ±~9 pts;
+  no single-run per-condition delta below that should ever be quoted. This retroactively
+  explains the campaign-1 S1 slump on TT (partly variance) and mandates repeats for any
+  headline claim in the paper.
+
 ## Deployment recommendation (as of this campaign)
 
 **Ship S0b** (Context Builder brief, no skills) as the default: best accuracy, lowest cost,
