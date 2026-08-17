@@ -52,6 +52,20 @@ Artifacts: `artifact_campaign_20260816.tar.gz` on /project (102+102, sha256, md5
 Also fixed bundle_artifact arcname collisions across condition dirs (first bundle silently
 deduplicated same-named files — 31/102; refuse-worthy trap, now parent-dir-prefixed).
 
+## SS kernel L2 DERIVED — dataset gap closed, NO VM (job 2132315, 1h36m, 50/50)
+Ran the fixed `transfer/derive_l2_working_set.sh` (babeltrace 2.1.2 first in PATH/LD_LIBRARY_PATH —
+the old 2.0.4 lib otherwise shadows it; plus new working-set-only guard) as a compute-node Slurm
+job. All 50 SS working-set fault runs now have `kernel_l2.jsonl`. Spot-check is textbook:
+SS slow_db → catalogue-db (mysqld, 517 TIDs) off_cpu_io_wait **100%**, verdict external — the
+same signature that cracked TT slow_db. **Both apps now L1+L2+L3**; the RQ3 SS-side data gap is
+closed. (L2 rows still carry fault_name/fault_target QC columns — tools whitelist unchanged.)
+
+## Campaign 2 LAUNCHED (Yuvraj): identical 102-run design, SS L2 included
+Same code (agent untouched since campaign 1 — only bundler/L2-script/driver-env commits), same
+conditions/repeats, out → `results/campaign2/`. This is a clean **data-only (Axis A) comparison**:
+campaign2 vs campaign1 SS side = the value of L2 wait-attribution; TT side (data unchanged) =
+a free A/A run-to-run variance measurement at n=23×4.
+
 ## Campaign design (as executed)
 - **Primary skill condition = skills+brief** (never tested together; brief removes the re-survey
   the verify-first step forces → expect ~40% cost cut in skills mode and same/better accuracy).
