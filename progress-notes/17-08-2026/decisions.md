@@ -16,3 +16,18 @@ campaign-1's TT S1 slump.
 
 Dataset milestone stands regardless: both apps at L1+L2+L3 parity — RQ3's kernel-tier
 degradation conditions are now runnable symmetrically.
+
+## KERNEL-TIER SWEEP ON THE AGENT RUN + ANALYZED (RQ3; 92 diagnoses, $0.82, auditor PASS 92/92)
+First agent-side kernel ablation (config of record: brief on, skills off; kAll/kL1/kL3/kNone × 23).
+Results: kAll 83/61/61 @9.1 calls · kL1 74/48/43 · kL3 78/57/57 · kNone 78/57/57 @12.2 calls.
+`RESULTS-agent-kernel-sweep.md`; artifact on /project. Four findings:
+**K1** with v4's cross-modality tools, full kernel removal costs only ~4 pts (within noise) at
+FULL telemetry but +34% tool calls — kernel's robust value here = EFFICIENCY, not rescue (contrast:
+baselines can't use kernel at all). **K2** the one stable kAll→kNone loss is SS slow_db Y→svc-only:
+wait attribution is what supplies the db_latency TYPING (the pre-registered mechanism, in miniature).
+**K3 (surprise)** kL1-only is WORSE than kNone (−14 both; loses 4 families, gains 0): raw KPIs
+without L3 framing / L2 waits pull the agent into kernel-noise chases — representation quality >
+kernel presence. **K4** kernel-decisive families hold 85% svc in every tier — v4's limit_signals/
+peer-edges/host tools absorbed the blind-spot signal ⇒ **H2 not confirmed at full telemetry in v4**
+(record via fault_catalog §7 amendment; re-test under the kernel × degraded-traces interaction,
+where kernel value should grow — that interaction is the remaining RQ1×RQ3 experiment).
