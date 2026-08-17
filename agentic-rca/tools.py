@@ -221,6 +221,26 @@ class RunTools:
         # terminal CLIENT spans -> peer edges (callee emits no spans)
         peer_cols = [c for c in self._PEER_COLS if c in d.columns]
         if peer_cols and "kind" in d.columns:
+            # IP -> service reverse map from SERVER spans' own local address, so a peer that
+            # is a bare IP resolves to the service living at that address instead of the IP
+            import re as _re
+            ip_re = _re.compile(r"^\d{1,3}(\.\d{1,3}){3}$")
+            ip_map = {}
+            if "network.local.address" in df.columns:
+                srv = df[df["kind"].isin([2, "2", "SPAN_KIND_SERVER"])
+                         & df["network.local.address"].notna()]
+                for ip, g in srv.groupby("network.local.address"):
+                    svcs = g["service"].dropna().unique()
+                    if len(svcs) == 1:
+                        ip_map[str(ip)] = _norm_container(svcs[0])
+
+            def _peer_name(v):
+                if not isinstance(v, str) or not v:
+                    return None
+                n = _norm_container(v)
+                base = n.split(":")[0]
+                return ip_map.get(base, n) if ip_re.match(base) else n
+
             cl = d[d["kind"].isin([3, "3", "SPAN_KIND_CLIENT"])].copy()
             has_child = set(d.loc[d["parent_span_id"].notna(), "parent_span_id"].unique())
             cl = cl[~cl["span_id"].isin(has_child)]          # no child span -> external call
@@ -228,7 +248,7 @@ class RunTools:
             for c in peer_cols:
                 col = cl[c] if peer is None else peer.fillna(cl[c])
                 peer = col
-            cl["_peer"] = peer.map(lambda v: _norm_container(v) if isinstance(v, str) and v else None)
+            cl["_peer"] = peer.map(_peer_name)
             cl = cl[cl["_peer"].notna() & (cl["_peer"] != cl["service"])]
             for (a, b), g in cl.groupby(["service", "_peer"]):
                 rec = _p95s(g)
@@ -495,7 +515,14 @@ class RunTools:
         want = _norm_container(service) if service else None
         if want in ("host", "node", "kernel"):
             want = "host-kernel"
-        l1 = self._l1()
+        # definitive global answer when the modality is entirely absent — a per-service
+        # "not in kernel data" note invites the agent to re-probe every service (measured:
+        # ~30% wasted calls under kernel-none conditions)
+        _l1, _l3, _l2 = self._l1(), self._l3(), self._l2()
+        if len(_l1) == 0 and len(_l3) == 0 and len(_l2) == 0:
+            return {"note": "kernel telemetry is UNAVAILABLE for this incident (no data for any "
+                            "service) — do not call query_kernel again"}, 0
+        l1 = _l1
         if hasattr(l1, "columns") and len(l1) and "window_start_s" in l1.columns:
             touched += _df_bytes(l1)
             ws = pd.to_numeric(l1["window_start_s"], errors="coerce")
