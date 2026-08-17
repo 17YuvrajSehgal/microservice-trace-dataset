@@ -61,6 +61,33 @@ absorbed the signal), and re-tested under the trace/metric degradation interacti
 (kernel value should grow as other modalities thin — that interaction sweep is the
 remaining RQ1×RQ3 experiment).
 
+## RQ2 layer — how the investigation changes as kernel evidence is removed
+
+Tool-call totals across the 23 incidents (`ksweep_rq2.py`):
+
+| tier | kernel | metrics | topology | logs | traces | source | total |
+|---|---|---|---|---|---|---|---|
+| kAll | 59 | 68 | 37 | 24 | 8 | 13 | 209 |
+| kL1 | 72 | 74 | 43 | 33 | 4 | 7 | 233 |
+| kL3 | 72 | 68 | 35 | 33 | 11 | 12 | 231 |
+| kNone | 83 | 83 | 49 | 40 | 9 | 17 | 281 |
+
+- **Compensation is broad-front, not a single substitute**: under kNone every other tool
+  rises (metrics +22%, topology +32%, logs +67%, source +31%).
+- **The agent partially "hammers dead telemetry"** — the exact RQ2 failure mode: 83 calls
+  to the EMPTY kernel tool under kNone (~30% of all calls; 17/23 incidents probe it >2×).
+  It retries per-service instead of concluding once that the modality is gone. It still
+  recovers via other tools, but this is measurable wasted work — and an obvious cheap fix
+  (tool could answer once, globally, "kernel telemetry unavailable").
+- **Label-shift mechanics confirm WHERE the typing signal lives**: on SS slow_db and SS
+  anomaly_net, tiers WITH L1 say `catalogue-db/db_latency`; L3-only/none shift to
+  `catalogue/dependency_outage` — locus-precision and fault-typing ride on L1's numbers
+  (+L2's wait profile), not the L3 narrative. Evidence quotes: kAll cites "98.4% off-CPU
+  external I/O wait, no saturation"; kNone argues only from edge latency + absence of
+  saturation and lands service-only.
+- Curio: under kL3 one diagnosis named a raw IP (`172.18.0.34`, from a peer edge) as root
+  cause — peer-edge callees should get IP→service reverse-mapping eventually (cosmetic).
+
 ## Status of the degradation program after this sweep
 
 Done: kernel axis on the agent (this), all axes on both non-LLM baselines (flat).
