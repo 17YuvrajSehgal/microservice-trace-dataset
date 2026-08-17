@@ -31,3 +31,13 @@ kernel presence. **K4** kernel-decisive families hold 85% svc in every tier — 
 peer-edges/host tools absorbed the blind-spot signal ⇒ **H2 not confirmed at full telemetry in v4**
 (record via fault_catalog §7 amendment; re-test under the kernel × degraded-traces interaction,
 where kernel value should grow — that interaction is the remaining RQ1×RQ3 experiment).
+
+## Trace axis (RQ1) RUN + ANALYZED (115 diagnoses, $1.15, auditor PASS 115/115)
+NO cliff: both stays 43-57% (noise band) from 100% down to 5% span retention; 18/23 incidents
+identical at every level; flips = the known borderline five. Mechanism (RQ2): the agent consumes
+spans as AGGREGATES (brief latency tops + topology edge p95s survive whole-trace sampling);
+query_traces nearly unused (1-5 calls/condition); no escalation because nothing relied-upon was
+lost. Same flat curve as the baselines, OPPOSITE reason. RQ4 headline: 5% sampling => ~20x trace
+collection-cost cut with no diagnostic loss. Caveats + follow-ups (MLK_noT, per-span drops,
+kernel x trace interaction) in RESULTS-agent-trace-sweep.md. Fixes shipped first: definitive
+kernel-unavailable answer + peer-IP reverse map (partial - spanless IPs unresolvable by design).
