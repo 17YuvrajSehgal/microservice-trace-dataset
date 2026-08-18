@@ -47,6 +47,13 @@ GRIDS = {
         ("MLT_noK", DegradeSpec(drop_modalities=("kernel",))),
         ("MLK_noT", DegradeSpec(drop_modalities=("traces",))),
     ],
+    # RQ4 minimum observability budget: every cheap setting AT ONCE (each was individually
+    # free of accuracy cost) — does the combination hold? 'minimal' additionally drops kernel.
+    "budget": [
+        ("lean", DegradeSpec(trace_keep=0.05, metric_step_s=60, log_level="ERROR")),
+        ("minimal", DegradeSpec(trace_keep=0.05, metric_step_s=60, log_level="ERROR",
+                                kernel_tier="none")),
+    ],
     # one-pass union of every axis — load each run ONCE, evaluate all conditions
     "all": [
         ("full", FULL),
