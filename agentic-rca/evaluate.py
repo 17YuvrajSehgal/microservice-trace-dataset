@@ -34,6 +34,19 @@ GRIDS = {
     "log":    [("logALL", FULL), ("logWARN", DegradeSpec(log_level="WARN")), ("logERROR", DegradeSpec(log_level="ERROR"))],
     "kernel": [("kAll", FULL), ("kL1", DegradeSpec(kernel_tier="L1")), ("kL3", DegradeSpec(kernel_tier="L3")), ("kNone", DegradeSpec(kernel_tier="none"))],
     "compensate": [("MLTK_full", FULL), ("MLT_noK", DegradeSpec(drop_modalities=("kernel",)))],
+    # kernel x degraded-traces interaction (H2's sharpened test): does kernel's value grow
+    # as traces thin? Difference-in-differences within this grid.
+    "interact": [
+        ("t025_kAll", DegradeSpec(trace_keep=0.25)),
+        ("t025_kNone", DegradeSpec(trace_keep=0.25, kernel_tier="none")),
+        ("t010_kAll", DegradeSpec(trace_keep=0.10)),
+        ("t010_kNone", DegradeSpec(trace_keep=0.10, kernel_tier="none")),
+    ],
+    # whole-modality removal (RQ3 compensation): no kernel at all / no traces at all
+    "removal": [
+        ("MLT_noK", DegradeSpec(drop_modalities=("kernel",))),
+        ("MLK_noT", DegradeSpec(drop_modalities=("traces",))),
+    ],
     # one-pass union of every axis — load each run ONCE, evaluate all conditions
     "all": [
         ("full", FULL),
