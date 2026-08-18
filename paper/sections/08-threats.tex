@@ -12,7 +12,8 @@ architectural contrast); injected rather than organic faults; agent sweeps use t
 23-incident gate (93 incidents available) for cost control.
 
 \paragraph{Construct.} The closed fault taxonomy penalizes mechanism-correct
-diagnoses at label boundaries (\S\ref{sec:discussion}); trace degradation so far uses
-uniform whole-trace sampling, the gentlest regime --- cliffs may exist under harsher
-transforms. Masking asymmetry favors the \emph{baselines} (the statistical baseline
+diagnoses at label boundaries (\S\ref{sec:discussion}); all degradation axes so far
+use gentle regimes (uniform whole-trace sampling, scrape coarsening, level filtering)
+--- cliffs may exist under harsher transforms (whole-modality removal, per-span
+drops, axis interactions). Masking asymmetry favors the \emph{baselines} (the statistical baseline
 still exploits container names), making our agent-vs-baseline comparison conservative.

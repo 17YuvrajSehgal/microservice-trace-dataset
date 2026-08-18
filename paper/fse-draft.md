@@ -303,7 +303,10 @@ Zenodo DOI, anonymized review artifact.)*
 ---
 
 # Appendix / TODO tracker for the draft
-- [ ] Metric & log axes results (sweep running) + kernel×trace interaction (H2's test)
+- [x] Metric & log axes results — DONE 2026-08-18, both flat within noise (metric
+      43–52% both across 5→60s; log 57/43/52 with ERROR>WARN); consolidated four-axis
+      RQ-D table now in 06-results.tex; source RESULTS-agent-metric-log-sweeps.md
+- [ ] kernel×trace interaction grid (H2's sharpened test)
 - [ ] RQ4 Pareto figure; mechanism-correct secondary metric
 - [ ] Related-work citations (RCAEval/BARO, HolmesGPT etc., contamination literature,
       Nezha/AIOps datasets, LTTng/eBPF)

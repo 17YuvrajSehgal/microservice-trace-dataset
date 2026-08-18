@@ -21,8 +21,17 @@ per-diagnosis tool calls, bytes touched, tokens (with cache split), and dollar c
 before the tool layer; the agent is held fixed within any sweep. Axes: trace retention
 (100/50/25/10/5\% whole-trace sampling), metric resolution (5/10/30/60\,s), log level
 (ALL/WARN/ERROR), kernel tier (all / L1-only / L3-only / none), whole-modality
-removal. \todo{metric/log axis numbers; kernel$\times$trace interaction grid}
+removal. All four per-axis sweeps are reported in \S\ref{sec:results-trace} and
+\S\ref{sec:results-kernel}. \todo{kernel$\times$trace interaction grid}
+
+\paragraph{Model and infrastructure.} All agent runs use one hosted reasoning model
+(Azure OpenAI \texttt{gpt-5.4}; no temperature parameter accepted by the model class;
+max 14 tool-use rounds; transient failures retried with logged backoff). The
+multi-provider harness (Anthropic/OpenAI-compatible) exists but cross-model
+replication is future work (\S\ref{sec:threats}). Sweeps execute sequentially on a
+cluster login node at ${\sim}2$--$2.5$\,min per diagnosis; a per-axis sweep costs
+\$1--2 at GPT-5-family list prices with 50--73\% of input tokens served from the
+provider prompt cache. \todo{pin exact API/model version string for camera-ready}
 
 \paragraph{Reproducibility.} Every result row is keyed by (run, condition spec, seed,
 method) and linked to its transcript; artifacts ship as sha256-manifested bundles.
-\todo{model/version/hardware box}

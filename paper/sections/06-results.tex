@@ -86,19 +86,59 @@ kernel$\times$degraded-traces interaction \todo{run and report}. Behaviorally, t
 kernel-blind agent wastes ${\sim}30\%$ of calls re-probing the empty modality unless
 the tool answers definitively once --- an agent-design lesson in its own right.
 
-\subsection{RQ-D: Trace degradation --- no cliff}
+\subsection{RQ-D: Telemetry degradation --- no cliff on any axis}
 \label{sec:results-trace}
 
-Across 100/50/25/10/5\% whole-trace retention (115 diagnoses), both-correct stays
-within 43--57\% (the noise band; 10\% retention scores best), 18/23 incidents produce
-identical outcomes at every level, and the tool mix is constant. Mechanism: the agent
-consumes spans as \emph{aggregates} --- brief latency tops and topology edge
-percentiles --- which survive uniform sampling; direct raw-trace reads are nearly
-absent. The baselines were flat because they never extracted trace value; the agent is
-flat because its trace use is statistical and redundantly backed --- the same curve
-for the opposite reason. \emph{Implication: ${\sim}20\times$ trace collection-cost
-reduction without diagnostic loss} at otherwise-full telemetry.
-\todo{metric and log axes; harsher regimes (whole-modality removal, per-span drops)}
+\begin{table}[t]
+\caption{Degradation axes on the agent (23 incidents per condition; both-correct;
+single-run noise band ${\pm}9$ points). Full per-condition tables in the artifact.}
+\label{tab:degradation}
+\begin{tabular}{llll}
+\toprule
+Axis & Range tested & Both-correct span & Verdict \\
+\midrule
+Traces & 100\%$\to$5\% retention & 43--57\% & flat (10\% scores best) \\
+Metrics & 5\,s$\to$60\,s scrape & 43--52\% & flat (30\,s scores best) \\
+Logs & ALL$\to$ERROR-only & 43--57\% & flat (ERROR beats WARN) \\
+Kernel & full ladder$\to$none & 43--61\% & $-4$ pts, $+34\%$ calls; L1-only worst \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Traces.} Across 100/50/25/10/5\% whole-trace retention (115 diagnoses),
+both-correct stays within 43--57\% (the noise band; 10\% retention scores best), 18/23
+incidents produce identical outcomes at every level, and the tool mix is constant.
+Mechanism: the agent consumes spans as \emph{aggregates} --- brief latency tops and
+topology edge percentiles --- which survive uniform sampling; direct raw-trace reads
+are nearly absent. The baselines were flat because they never extracted trace value;
+the agent is flat because its trace use is statistical and redundantly backed --- the
+same curve for the opposite reason. \emph{Implication: ${\sim}20\times$ trace
+collection-cost reduction without diagnostic loss} at otherwise-full telemetry.
+
+\paragraph{Metrics.} Coarsening scrape resolution 5$\to$60\,s (92 diagnoses) moves
+both-correct 43/48/52/48\% --- non-monotonic, with 30\,s scoring best, and per-family
+flips balanced in both directions (pure churn). The tools compute window-level rates
+and means over 60--120\,s windows; a counter needs only two samples per window, so
+even 60\,s scrape preserves every delta the agent reads.
+
+\paragraph{Logs.} Filtering ALL$\to$WARN$\to$ERROR-only (69 diagnoses) gives
+57/43/52\% --- ERROR-only \emph{beats} WARN, confirming non-signal: the log tool keys
+on error-class signature \emph{changes}, which survive the harshest filter by
+construction. The one incident recurring in loss lists across both axes (Sock~Shop
+memory-cap) is also in the A/A flip-prone set, so we make no per-family claim.
+
+\paragraph{Consolidated RQ-D answer.} There is no degradation cliff at standard
+operational ranges (Table~\ref{tab:degradation}). The pre-registered cliff expectation
+resolves as a \emph{robustness} result with one structural cause: the agent consumes
+every modality at the aggregate level, with evidence redundant across modalities ---
+when one channel thins, the fault signature usually survives in another. The one real
+hazard is qualitative, not quantitative: a \emph{badly represented} modality (raw
+kernel KPIs alone, \S\ref{sec:results-kernel}) hurts more than an absent one.
+Practically: 5\% traces $+$ 60\,s metrics $+$ ERROR-only logs cost an agentic-RCA
+consumer nothing measurable, while kernel telemetry pays via investigation efficiency
+and induced-DB-latency typing.
+\todo{harsher regimes: whole-modality removal, per-span drops,
+kernel$\times$trace interaction}
 
 \subsection{RQ-E: Does an experience (skills) layer help?}
 \label{sec:results-skills}

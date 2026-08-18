@@ -16,5 +16,6 @@ strip before submission.
 
 Numbers trace to: `../agentic-rca/RESULTS-v4-campaign.md`,
 `RESULTS-agent-kernel-sweep.md`, `RESULTS-agent-trace-sweep.md`,
-`RESULTS-agent-sanitygate-masked.md`, `RESULTS-nonllm-baselines.md`; transcripts +
-sha256 bundles on `/project/def-naser2/yuvraj17/microservice-trace-dataset/artifacts/`.
+`RESULTS-agent-metric-log-sweeps.md`, `RESULTS-agent-sanitygate-masked.md`,
+`RESULTS-nonllm-baselines.md`; transcripts + sha256 bundles on
+`/project/def-naser2/yuvraj17/microservice-trace-dataset/artifacts/`.
