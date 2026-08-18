@@ -36,3 +36,14 @@ generalize the definitive-unavailable answer to all modality tools (post-program
 Docs: RESULTS-agent-interact-removal.md; paper 05/06/09 + tracker updated; artifact on /project.
 Cross-model replication remains blocked on a non-Azure API key (.env has Azure only).
 Program totals: ~600 audited diagnoses, ~$6.
+
+## RQ4 BUDGET SWEEP + all remaining analyses DONE (46 diagnoses $0.40; frees the paper)
+lean (5%tr+60s+ERROR): 78/48/43 @7.6 calls, 24.5MB touched = **57x less telemetry, >=90% of full
+localization; fault typing is the budget-sensitive component**. minimal (lean-kernel): 83/43/39 @
+12.1MB (115x) - localization INTACT without kernel at 1/115th the data. Curio: TT slow_db fully
+correct under lean (thin traces reduce distraction). Mechanism-adjacent metric (conservative 4-pair
+map): 52->65% (n=46) / kAll 61->70%. Paper: RQ-G budget section+table, RQ-E behavior section,
+honesty-arc + degradation pgfplots figures, data-generated per-family appendix (7 conds x 23),
+mechanism metric in Discussion; trackers updated. Auditor PASS 46/46; artifact on /project.
+Cross-model gate: skipped per Yuvraj. Remaining paper work = citations, 2 figures (selector
+heatmap, architecture vector), venue call, amendments, repeats-if-quoted.

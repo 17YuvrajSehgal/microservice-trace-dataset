@@ -5,6 +5,8 @@
 
 \usepackage{booktabs}
 \usepackage{xspace}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.17}
 
 %% ---- draft helpers (strip before submission) ----------------------------------------
 \newcommand{\todo}[1]{\textcolor{red}{\textbf{[TODO: #1]}}}
@@ -44,6 +46,9 @@ Leakage-Controlled Root-Cause Analysis over Four Telemetry Modalities}
 \input{sections/07-discussion}
 \input{sections/08-threats}
 \input{sections/09-conclusion}
+
+\appendix
+\input{sections/10-appendix}
 
 \bibliographystyle{ACM-Reference-Format}
 \bibliography{references}

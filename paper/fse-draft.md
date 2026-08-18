@@ -312,12 +312,23 @@ Zenodo DOI, anonymized review artifact.)*
       first modality loss that hurts (−14 both, +74% calls, TT path faults);
       MLT_noK replicates kNone (A/A). Source RESULTS-agent-interact-removal.md;
       H2 refined: compensation under loss, not thinning
-- [ ] RQ4 Pareto figure; mechanism-correct secondary metric
+- [x] RQ4 budget sweep + Pareto — DONE 2026-08-18: lean (5% traces+60s+ERROR) = 57×
+      less telemetry at ≥90% localization; minimal = 115× with localization intact;
+      fault typing is the budget-sensitive component; RQ-G section + table in
+      06-results. Source RESULTS-agent-budget-sweep.md
+- [x] Mechanism-correct secondary metric — DONE: conservative 4-pair adjacency,
+      52%→65% (n=46) / 61%→70%; in 07-discussion; mechanism_metric.py
 - [ ] Related-work citations (RCAEval/BARO, HolmesGPT etc., contamination literature,
       Nezha/AIOps datasets, LTTng/eBPF)
-- [ ] Reconcile §6.2 table footnote; per-family appendix tables from RESULTS-*.md
+- [x] Per-family appendix table — DONE (data-generated, 10-appendix.tex; 7 headline
+      conditions × 23 families)
+- [ ] Reconcile §6.2 table footnote
 - [ ] Venue check: FSE 2027 submission deadline (verify — likely Sep 2026; MSR 2027
       abstract Nov 5 remains the fallback/dataset-track pairing)
 - [ ] Decide single paper vs (dataset paper + study paper) split
-- [ ] Figures: honesty-arc bar chart; tier/retention curves with noise band; selector
-      confusion heatmap; as-built architecture (new_design.md §2b mermaid → vector)
+- [x] Figures (partial): honesty-arc bar chart + degradation curves with noise band —
+      DONE as pgfplots in 06-results
+- [ ] Figures remaining: selector confusion heatmap; as-built architecture
+      (new_design.md §2b mermaid → vector)
+- [x] RQ-E behavior section (no-escalation / broad-front / effort-as-leading-indicator /
+      dead-modality thrashing) — DONE in 06-results

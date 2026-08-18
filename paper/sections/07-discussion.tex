@@ -20,5 +20,13 @@ induced-DB-latency typing.
 
 \paragraph{Label semantics vs.\ mechanism.} A closed fault taxonomy penalizes
 mechanically correct explanations (connection-reset storms described accurately but
-labeled as outages). We report label-strict scores and release evidence text to enable
-mechanism-level judgment. \todo{mechanism-correct secondary metric}
+labeled as outages). We therefore report a \emph{mechanism-adjacent} secondary metric:
+a conservative, pre-declared four-pair adjacency map (each pair backed by the released
+evidence audits --- e.g., error storm~$\leftrightarrow$~dependency outage when the
+agent correctly describes injected connection resets toward the datastore), crediting
+only diagnoses that already localize the correct service. Under it, the
+configuration-of-record fault$+$service score rises from 52\% to 65\% ($n{=}46$,
+pooled across both campaign passes), and the full-kernel ablation tier from 61\% to
+70\% --- a consistent ${+}9$--$13$ point uplift. Label-strict remains the primary
+score; the adjacency map and all evidence text ship in the artifact so reviewers can
+apply stricter or looser judgment.

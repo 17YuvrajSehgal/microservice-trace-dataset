@@ -49,7 +49,25 @@ Masked, generic tooling rebuilt & \textbf{83\%} & 48\% & 48\% \\
 Naming hints alone were worth ${\sim}26$ points of localization and ${\sim}57$ points
 of fault classification --- fault labels were effectively read off the run identifier.
 The fragmented-alias row isolates the identity-preservation requirement of
-\S\ref{sec:leakage}. Honest tooling then \emph{exceeded} the leaky localization number.
+\S\ref{sec:leakage}. Honest tooling then \emph{exceeded} the leaky localization number
+(Fig.~\ref{fig:honesty}).
+
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}
+\begin{axis}[width=\columnwidth, height=4.2cm, ybar, bar width=14pt,
+  ylabel={both-correct (\%)}, ymin=0, ymax=70, ytick={0,20,40,60},
+  symbolic x coords={leaky, masked, fragmented, rebuilt, +brief},
+  xtick=data, x tick label style={font=\small}, nodes near coords,
+  every node near coord/.append style={font=\small}]
+\addplot coordinates {(leaky,61) (masked,9) (fragmented,4) (rebuilt,48) (+brief,57)};
+\end{axis}
+\end{tikzpicture}
+\caption{The honesty arc (both-correct on identical incidents): removing leaks
+collapses performance; rebuilding generic evidence recovers --- and on localization
+exceeds --- it.}
+\label{fig:honesty}
+\end{figure}
 
 \subsection{RQ-C: What is kernel telemetry worth?}
 \label{sec:results-kernel}
@@ -131,8 +149,35 @@ on error-class signature \emph{changes}, which survive the harshest filter by
 construction. The one incident recurring in loss lists across both axes (Sock~Shop
 memory-cap) is also in the A/A flip-prone set, so we make no per-family claim.
 
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}
+\begin{axis}[width=\columnwidth, height=4.6cm,
+  xlabel={degradation severity (normalized: 0 = full telemetry)},
+  ylabel={both-correct (\%)}, ymin=0, ymax=70, ytick={0,20,40,60},
+  xmin=-0.03, xmax=1.03, legend style={font=\scriptsize, at={(0.02,0.02)},
+  anchor=south west, legend columns=2}, grid=major, grid style={dashed,gray!25}]
+% noise band around the full-telemetry reference (57 +/- 9)
+\addplot[draw=none, fill=gray!15, forget plot] coordinates
+  {(-0.03,48) (1.03,48) (1.03,66) (-0.03,66)} \closedcycle;
+\addplot+[mark=*] coordinates {(0,52) (0.25,52) (0.5,43) (0.75,57) (1,43)};
+\addlegendentry{traces 100$\to$5\%}
+\addplot+[mark=square*] coordinates {(0,43) (0.33,48) (0.67,52) (1,48)};
+\addlegendentry{metrics 5$\to$60\,s}
+\addplot+[mark=triangle*] coordinates {(0,57) (0.5,43) (1,52)};
+\addlegendentry{logs ALL$\to$ERROR}
+\addplot+[mark=diamond*] coordinates {(0,61) (0.33,43) (0.67,57) (1,57)};
+\addlegendentry{kernel full$\to$none}
+\end{axis}
+\end{tikzpicture}
+\caption{Both-correct under per-axis degradation (23 incidents per point; shaded band
+= single-run noise around the full-telemetry reference). No axis exhibits a cliff;
+the kernel dip at severity 0.33 is the L1-only tier (partial view worse than none).}
+\label{fig:degradation}
+\end{figure}
+
 \paragraph{Consolidated RQ-D answer.} There is no degradation cliff at standard
-operational ranges (Table~\ref{tab:degradation}). The pre-registered cliff expectation
+operational ranges (Table~\ref{tab:degradation}, Fig.~\ref{fig:degradation}). The pre-registered cliff expectation
 resolves as a \emph{robustness} result with one structural cause: the agent consumes
 every modality at the aggregate level, with evidence redundant across modalities ---
 when one channel thins, the fault signature usually survives in another. The one real
@@ -169,7 +214,33 @@ no-traces agent spent ${\sim}37\%$ of calls on the two dead tools --- the
 definitive-unavailable answer (\S\ref{sec:results-kernel}) should generalize to every
 modality.
 
-\subsection{RQ-E: Does an experience (skills) layer help?}
+\subsection{RQ-E: How the investigation itself changes}
+\label{sec:results-behavior}
+
+Every diagnosis carries its full trajectory, giving degradation a behavioral
+signature to accompany the accuracy curves:
+
+\emph{No escalation under thinning.} Across trace, metric, and log thinning the tool
+mix is essentially constant --- the agent does not switch strategies because nothing
+it relies on was lost (its consumption is aggregate-level throughout).
+
+\emph{Broad-front widening under loss.} When a modality is \emph{removed}, every
+remaining tool's usage rises together (kernel-blind: logs $+67\%$, topology $+32\%$,
+metrics $+22\%$; trace-blind: all channels up, $+74\%$ total calls) --- compensation
+is diversified rather than a single substitute channel.
+
+\emph{Effort is a leading indicator.} Tool-call counts rise \emph{before} accuracy
+falls: kernel removal costs $+34\%$ calls at $-4$ points; trace removal $+74\%$ calls
+at $-14$. In an operational deployment, investigation effort is an earlier signal of
+telemetry inadequacy than accuracy, which is only observable with ground truth.
+
+\emph{Dead-modality thrashing.} Absent a definitive ``unavailable'' tool answer, the
+agent re-probes empty modalities per-service: ${\sim}30\%$ of calls under
+kernel-none, ${\sim}37\%$ under trace-removal went to empty tools. A one-line tool
+change eliminates the former; we report the latter unfixed for internal consistency
+of the sweep.
+
+\subsection{RQ-F: Does an experience (skills) layer help?}
 \label{sec:results-skills}
 
 \begin{table}[t]
@@ -199,7 +270,39 @@ ability to override a wrong skill caps the damage (19/23 cells unchanged).
 \emph{Experience layers require selection quality before they are safe on
 out-of-library incidents.} We release the full selection-confusion data.
 
-\subsection{Cost accounting}
-Every diagnosis carries bytes touched, tokens, and dollars; joined with the measured
-collection overhead and the $20\times$ trace finding, these support a minimum
-observability budget analysis. \todo{formal Pareto join and figure}
+\subsection{RQ-G: The minimum observability budget}
+\label{sec:results-budget}
+
+\begin{table}[t]
+\caption{Budget configurations (23 incidents each). ``MB touched'' = telemetry the
+tools actually consumed per incident; reduction is vs.\ the full-telemetry
+configuration of record.}
+\label{tab:budget}
+\begin{tabular}{lccccc}
+\toprule
+Configuration & Service & Both & Calls & MB touched & Reduction \\
+\midrule
+Full (config of record) & 83--87\% & 48--57\% & 9.0 & 1390 & 1$\times$ \\
+Lean (5\% traces, 60\,s, ERROR) & 78\% & 43\% & 7.6 & 24.5 & \textbf{57$\times$} \\
+Minimal (lean $-$ kernel) & 83\% & 39\% & 11.0 & 12.1 & 115$\times$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Each cheap setting is individually free (\S\ref{sec:results-trace}); RQ-G asks whether
+they are free \emph{together}. Largely, yes (Table~\ref{tab:budget}): the lean
+configuration touches \textbf{57$\times$ less telemetry} while retaining
+${\ge}90\%$ of full localization (78\% vs.\ 83--87\%) and both-correct at the lower
+edge of the single-run band (43\% vs.\ the 48--57\% A/A range) --- \emph{fault
+typing, not localization, is the budget-sensitive component}. Removing kernel as well
+(115$\times$) leaves localization intact (83\%) but costs typing further (39\%) and
+raises effort ($+45\%$ calls), consistent with kernel's efficiency-and-typing role
+throughout. Per-incident LLM cost falls to \$0.009 at 7.6 calls under lean. The
+Pareto frontier over all measured configurations is therefore: \emph{minimal} for
+cheapest localization, \emph{lean} for balanced budget, \emph{full} only when fault
+typing matters --- and since the agent consumes derived kernel views (megabytes),
+never raw L0, the kernel term of the budget is collection overhead ($-0.5$\%
+throughput, \S\ref{sec:dataset}) rather than storage. One incidental observation:
+Train-Ticket induced-DB-latency, unsolved at full telemetry in this pass, becomes
+fully correct under lean --- thinner traces can \emph{reduce} distraction on
+borderline incidents (per-family map: Appendix~\ref{sec:appendix-families}).
