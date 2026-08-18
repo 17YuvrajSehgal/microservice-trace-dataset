@@ -161,13 +161,13 @@ memory-cap) is also in the A/A flip-prone set, so we make no per-family claim.
 \addplot[draw=none, fill=gray!15, forget plot] coordinates
   {(-0.03,48) (1.03,48) (1.03,66) (-0.03,66)} \closedcycle;
 \addplot+[mark=*] coordinates {(0,52) (0.25,52) (0.5,43) (0.75,57) (1,43)};
-\addlegendentry{traces 100$\to$5\%}
+\addlegendentry{traces 100--5\%}
 \addplot+[mark=square*] coordinates {(0,43) (0.33,48) (0.67,52) (1,48)};
-\addlegendentry{metrics 5$\to$60\,s}
+\addlegendentry{metrics 5--60\,s}
 \addplot+[mark=triangle*] coordinates {(0,57) (0.5,43) (1,52)};
-\addlegendentry{logs ALL$\to$ERROR}
+\addlegendentry{logs ALL--ERROR}
 \addplot+[mark=diamond*] coordinates {(0,61) (0.33,43) (0.67,57) (1,57)};
-\addlegendentry{kernel full$\to$none}
+\addlegendentry{kernel full--none}
 \end{axis}
 \end{tikzpicture}
 \caption{Both-correct under per-axis degradation (23 incidents per point; shaded band
