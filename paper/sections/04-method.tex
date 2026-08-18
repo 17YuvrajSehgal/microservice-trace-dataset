@@ -1,0 +1,34 @@
+\section{How we ran the experiments}
+\label{sec:method}
+
+\paragraph{Test set.} All comparisons use a fixed set of 23 incidents: one per fault
+type per application (Train Ticket lacks one fault type). The wider corpus of 93
+labelled incidents backs the larger baseline sweeps.
+
+\paragraph{What we score.} Two things per diagnosis: did the agent name the right
+component (\emph{localization}), and did it also pick the right fault type from the
+menu (\emph{fully correct})? We report both throughout; localization alone is what
+existing tools can be compared on.
+
+\paragraph{What we compare against.} (1) A hand-written statistical method using the
+same tools; (2) a published, peer-reviewed academic method (multi-source BARO from the
+RCAEval project) run via its own released code; (3) two trace-only academic methods.
+All see the same incident windows.
+
+\paragraph{Degrading the data.} To ask ``how much observability is enough'', we
+re-run the \emph{same} agent on deterministically thinned copies of the same
+recordings: keeping 100/50/25/10/5\% of traces; sampling metrics every 5/10/30/60
+seconds; keeping all logs, warnings-and-up, or errors-only; and giving the kernel
+layer in full, in reduced forms, or not at all. The agent never changes within a
+comparison --- only the data does.
+
+\paragraph{Repeatability and noise.} LLM outputs vary between runs. By re-running
+identical experiments we measured that any single condition's headline number carries
+roughly a $\pm 9$-point band. We therefore repeat borderline incidents three times,
+prefer per-fault-type flip evidence over small aggregate deltas, and never quote a
+difference inside the band as a finding.
+
+\paragraph{Cost.} A diagnosis costs about one cent of LLM usage (roughly 25k input
+tokens, half to two-thirds served from the provider's cache, and $\sim$500 output
+tokens); a full 23-incident experiment costs \$1--2. The entire experimental program
+--- about 650 diagnoses --- cost under \$10.

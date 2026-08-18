@@ -1,0 +1,28 @@
+\section{What we take away from this}
+\label{sec:takeaways}
+
+\paragraph{For the research story.} The interesting result is not ``LLM beats
+baselines'' --- it is the shape of the robustness: no cliffs under thinning, real
+costs only under outright loss or bad representation, and a deep data layer whose
+value shows up as investigation speed and explanation quality rather than headline
+accuracy. Those are claims none of the existing automated methods could even
+express, because they cannot use the kernel layer at all and their accuracy is flat
+for the uninteresting reason that it is low.
+
+\paragraph{For system builders.} Three transferable design lessons: represent deep
+data before showing it to a model (interpretation beats access); make tools answer
+definitively when a data source is absent, or the agent wastes a third of its steps;
+and a deterministic evidence briefing bought more accuracy-per-dollar than any
+prompt engineering we tried.
+
+\paragraph{For observability practice.} Teams over-collect for this use case.
+Five-percent trace sampling, one-minute metrics and error-only logs kept over 90\%
+of localization ability in our setting; the kernel layer is cheap to record
+($-0.5\%$ throughput) and repays itself in faster, better-explained diagnoses.
+
+\paragraph{For evaluation practice.} Rigour changed our conclusions twice: hiding
+answer-revealing identifiers collapsed early (inflated) results and forced us to
+build genuinely better tools; and measuring run-to-run noise stopped us from
+over-reading single-run differences. Both disciplines --- plus full recording of
+every diagnosis --- are what make the numbers in this report trustworthy enough to
+discuss.

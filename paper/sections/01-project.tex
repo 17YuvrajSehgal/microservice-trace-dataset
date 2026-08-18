@@ -1,0 +1,35 @@
+\section{What this project is about}
+\label{sec:project}
+
+Modern applications are built from dozens of small services calling each other. When
+something goes wrong --- a database slows down, a service runs out of memory, a
+co-tenant steals CPU --- the symptoms spread: many services get slow at once, and the
+on-call engineer must work out \emph{which component is the culprit} and \emph{what
+kind of fault it is}. That activity is called root-cause analysis (RCA).
+
+Engineers do RCA by reading \emph{observability data}: numeric metrics (CPU, memory,
+network per container), application logs, and distributed traces (records of each
+user request as it hops between services). Our project adds a fourth, unusual source:
+\emph{kernel traces} --- a complete record from the operating system of every system
+call, scheduling decision, disk and network event, for every service, with no code
+changes required. Kernel data can see things the other sources cannot (for example,
+\emph{why} a process was waiting), but it is enormous and hard to read, which is
+exactly where an LLM might help.
+
+The project asks four questions:
+\begin{enumerate}
+  \item \textbf{Capability.} Can an LLM agent, given tools to query this data, match
+  or beat existing automated RCA methods?
+  \item \textbf{Robustness.} How much can the monitoring data be thinned --- fewer
+  traces, coarser metrics, filtered logs --- before diagnosis quality breaks?
+  \item \textbf{The value of kernel data.} What does the deep kernel layer actually
+  contribute, and in what form is it useful?
+  \item \textbf{Minimum budget.} What is the cheapest monitoring setup that still
+  supports accurate diagnosis? (Observability is expensive to collect and store; if
+  5\% of it is enough, that matters in practice.)
+\end{enumerate}
+
+A companion engineering track builds the agent itself as a product-shaped system ---
+with a context builder that prepares an evidence briefing, and a library of reusable
+investigation guides (``skills'') that anyone can extend --- aligned with the
+industrial architecture our collaborators use.

@@ -1,0 +1,24 @@
+\section{Honest limitations}
+\label{sec:limitations}
+
+\begin{itemize}
+  \item \textbf{One model.} All results use a single LLM (GPT-5.4). The harness
+  supports other providers; replicating on a second model is planned but needs a
+  second API key.
+  \item \textbf{Single-run noise.} Condition-level numbers carry a measured $\pm 9$
+  point band; we repeat borderline incidents and lean on per-fault-type evidence,
+  but any figure we later headline should get dedicated repeats.
+  \item \textbf{Two systems, injected faults.} Both subjects are open-source demo
+  applications, and faults are injected rather than organic. The two systems were
+  chosen to differ architecturally, but production diversity is wider.
+  \item \textbf{Gentle degradation only.} Our thinning transforms are the kind
+  operators actually use (sampling, coarsening, filtering). Harsher regimes ---
+  dropping parts of individual traces, sub-1\% retention --- remain untested.
+  \item \textbf{The fault-type menu.} A fixed 13-label menu forces some verdicts to
+  be ``wrong'' at label boundaries even when the mechanism is described correctly;
+  we quantify this with a conservative secondary score (52\%$\to$65\%).
+  \item \textbf{Known unsolved cases.} Two fault types resist every configuration:
+  the silent queue backlog (its evidence barely surfaces in any summary) and the
+  host-network fault's exact type (its symptoms mimic disk trouble). Both are
+  documented targets rather than hidden failures.
+\end{itemize}

@@ -1,27 +1,19 @@
-# FSE 2027 draft — build notes
+# Supervisor progress report — build notes
 
-- `main.tex` — ACM `acmart` (sigconf). For double-blind submission switch the
-  documentclass line to `\documentclass[sigconf,review,anonymous]{acmart}`.
-- `sections/00-abstract.tex … 09-conclusion.tex` — one file per section.
-- `references.bib` — entries marked `TODO-verify` need checking; several families of
-  citations still to add (see file tail).
-- `fse-draft.md` — the original markdown draft; the TODO tracker at its end is the
-  authoritative list of pending experiments/figures.
-
-Build: `latexmk -pdf main.tex` (TeX Live with acmart; not compiled on the Windows dev
-box — verify on Overleaf or the cluster).
-
-Red `[TODO: …]` markers in the PDF come from the `\todo{}` helper in `main.tex`;
-strip before submission.
+- `main.tex` — plain `article` class; a readable progress report (approach, methods,
+  results), NOT a venue paper. Build: `latexmk -pdf main.tex` (verified on the cluster's
+  base TeX Live; no special classes needed).
+- `sections/00-summary … 08-next, 10-appendix` — one file per report section, written
+  for a reader with no prior context: no run identifiers, no condition codes, fault
+  types in plain English.
+- `fse-draft.md` — the archived research-paper draft + its TODO tracker (kept for the
+  eventual paper; the paper-form LaTeX sections live in git history before 2026-08-18).
+- `acmart.cls` / `ACM-Reference-Format.bst` — vendored for the future paper build;
+  unused by the report.
 
 Numbers trace to: `../agentic-rca/RESULTS-v4-campaign.md`,
 `RESULTS-agent-kernel-sweep.md`, `RESULTS-agent-trace-sweep.md`,
 `RESULTS-agent-metric-log-sweeps.md`, `RESULTS-agent-interact-removal.md`,
-`RESULTS-agent-sanitygate-masked.md`,
-`RESULTS-nonllm-baselines.md`; transcripts + sha256 bundles on
+`RESULTS-agent-budget-sweep.md`, `RESULTS-agent-sanitygate-masked.md`,
+`RESULTS-nonllm-baselines.md`; every diagnosis record + sha256 bundles on
 `/project/def-naser2/yuvraj17/microservice-trace-dataset/artifacts/`.
-
-Build verified 2026-08-18 on Trillium (base pdflatex/latexmk): 7-page PDF, zero errors.
-acmart.cls + ACM-Reference-Format.bst are vendored (generated from CTAN acmart.ins) so the
-paper builds on any TeX Live without the acmart package. main.pdf is a build artifact (not
-tracked); latest copy at paper/main.pdf locally and on the cluster.

@@ -1,0 +1,39 @@
+\section*{Executive summary}
+
+When a microservice system breaks, an engineer looks at monitoring data --- metrics,
+logs, request traces --- and works out which component failed and why. We are testing
+whether an \emph{LLM agent} can do this job, how much monitoring data it actually
+needs, and whether deep operating-system (kernel) data --- which our dataset uniquely
+provides --- makes it better.
+
+To find out, we built a labelled dataset of 95 recorded failures across two demo
+applications, gave an LLM agent a set of investigation tools over that data, and ran
+about 650 fully-logged diagnosis experiments. The five main findings:
+
+\begin{enumerate}
+  \item \textbf{The agent roughly doubles existing automated methods.} It names the
+  right failing component in 83--87\% of incidents, versus about 48\% for both a
+  hand-written statistical method and a published state-of-the-art tool --- at about
+  one cent of LLM cost per diagnosis.
+  \item \textbf{It degrades gracefully.} Thinning any one data source --- keeping only
+  5\% of traces, sampling metrics 12$\times$ less often, keeping only error-level logs
+  --- has no measurable effect on accuracy. There is no ``cliff''.
+  \item \textbf{Very little telemetry is enough.} Applying all the cheap settings at
+  once cuts the data the agent reads by \textbf{57$\times$} while keeping over 90\% of
+  its localization accuracy. Identifying the \emph{type} of fault is what suffers
+  first on a tight data budget.
+  \item \textbf{Kernel data pays in speed and explanations, not raw accuracy.}
+  With good tools over ordinary telemetry, removing kernel data barely moves accuracy
+  --- but investigations take a third more steps, and one class of faults (an
+  artificially slowed database) loses its explanation without it. Surprisingly,
+  a \emph{partial} kernel view (raw numbers without interpretation) is worse than
+  none at all.
+  \item \textbf{A library of reusable ``experience'' helps only if the right entry is
+  chosen.} Pre-written investigation guides fix specific fault types, but a wrong
+  guide misleads more than no guide --- selection quality is the missing piece, not
+  the guides themselves.
+\end{enumerate}
+
+Every number in this report comes from experiments where the agent could not see
+anything that gives the answer away, and every diagnosis is fully recorded and
+machine-checked, so the results can be audited end to end.

@@ -1,0 +1,38 @@
+\section{The dataset: 95 recorded failures}
+\label{sec:dataset}
+
+We could not study any of this on real production outages (no ground truth), so we
+built our own corpus, called \sys.
+
+\paragraph{Two test applications, chosen to be different.} \emph{Sock Shop} is a
+small online store (14 services, each with its own database). \emph{Train Ticket} is
+a much larger booking system ($\sim$40 Java services) in which \emph{all} services
+share one MySQL database --- a choke point that request traces cannot see inside,
+which makes it the perfect stress test for the kernel layer.
+
+\paragraph{Twelve fault types, injected on purpose.} For each recording we
+deliberately broke the system in one known way, in five groups: overloading the whole
+host (CPU, disk, memory, or network); capping one service's CPU or memory;
+application-level faults (an artificially slowed database; a burst of connection
+errors); dependency faults (freezing a service mid-flight; silently backing up a
+message queue); and infrastructure faults (a ``noisy neighbour'' container stealing
+CPU; degrading one service's network). Each recording stores the true answer ---
+which component, what fault, when --- in a machine-readable label, plus an
+independent check that the fault actually fired.
+
+\paragraph{What one recording looks like.} Each is a four-minute session: one minute
+healthy, two minutes with the fault active, one minute of recovery --- with all four
+data sources recorded continuously against a single clock (aligned to about a
+microsecond). In total: 95 labelled recordings, roughly 2.7\,TB raw.
+
+\paragraph{Making kernel data usable.} Raw kernel traces are 2--13\,GB per recording
+--- far too big to hand to any model. We derive three progressively smaller views:
+per-second activity summaries for each service (latencies, disk, network, scheduling,
+memory pressure); a \emph{wait explanation} per service (was it computing, waiting
+for CPU, waiting for disk, or blocked on something external?); and short plain-English
+digests of what changed. The agent only ever reads these derived views (megabytes);
+the raw data stays archived.
+
+\paragraph{Measured collection cost.} Recording the kernel layer costs about half a
+percent of application throughput and ${\sim}13\%$ on tail latency at 200 concurrent
+users --- numbers we measured ourselves rather than quoting from folklore.

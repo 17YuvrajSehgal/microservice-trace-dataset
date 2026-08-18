@@ -1,0 +1,50 @@
+\section{The agent: how a diagnosis happens}
+\label{sec:agent}
+
+The agent is an LLM (GPT-5.4, hosted on Azure) in a loop with seven read-only
+investigation tools over one recorded incident. It is told only that ``an anomaly was
+detected'' in a known time window --- nothing about what or where --- and it must end
+by committing to a verdict: \emph{which component} is the root cause, \emph{what kind
+of fault} it is (from a fixed menu of 13 types), the evidence, and a confidence.
+
+\paragraph{The tools.} Each tool compares the healthy baseline window against the
+incident window and returns a compact summary --- never raw data:
+\begin{itemize}
+  \item \textbf{traces}: per-service request latency percentiles;
+  \item \textbf{topology}: which service calls which, and which of those hops slowed
+  down --- including calls into components that emit no traces of their own
+  (databases, queues), recovered from the callers' side;
+  \item \textbf{logs}: how each service's \emph{error rate changed}, plus error
+  messages that are new since the incident began (long-standing noise is flagged as
+  such, so it cannot masquerade as a cause);
+  \item \textbf{metrics}: resource signals per container ranked by how much they
+  moved, host-wide signals, and ``limit'' evidence (a container throttled by its CPU
+  cap, or pinned at a memory ceiling);
+  \item \textbf{kernel}: the derived kernel views described above --- changed activity,
+  plain-English digests, and the wait explanation;
+  \item \textbf{source code}: search and read the application's own code (useful for
+  checking what a timeout or error message actually does);
+  \item plus a service list for orientation.
+\end{itemize}
+
+\paragraph{The context builder.} Before the agent starts, a deterministic component
+runs the survey pass itself --- what changed, where, on every data source --- and
+hands the agent a one-page evidence briefing. This ``brief'' turned out to be the
+single best accuracy-per-dollar improvement we made: same or better accuracy at
+roughly half the tokens and 40\% fewer investigation steps.
+
+\paragraph{The skill library.} On top of the generic method, we wrote one short
+investigation guide per fault type --- what that problem looks like in evidence, how
+to confirm it, and how to tell it apart from look-alikes. A selector reads the
+evidence briefing and either picks the best-matching guide or abstains, in which case
+the agent proceeds from first principles. Guides are single text files, deliberately
+written so that anyone can add one for a problem they care about.
+
+\paragraph{Keeping the evaluation honest.} Injected-fault datasets can quietly hand
+the model the answer: recording names that contain the fault type, containers named
+after the fault, label files. We strip or pseudonymise everything of that kind before
+the model sees it, and an automated checker re-scans every experiment's full record to
+certify nothing leaked. This mattered: with the giveaways present, the agent looked
+far better than it really was (it was effectively reading the answer off identifiers).
+All numbers in this report are from the honest setup, and every diagnosis ships with
+its complete, replayable record.

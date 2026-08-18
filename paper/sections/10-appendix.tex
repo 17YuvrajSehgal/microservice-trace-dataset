@@ -1,48 +1,46 @@
-\section{Per-family results across headline conditions}
+\section*{Appendix: outcome per fault type across key setups}
 \label{sec:appendix-families}
 
 \newcommand{\Yes}{$\bullet$}
 \newcommand{\Svc}{$\circ$}
 \newcommand{\No}{--}
 
-Table~\ref{tab:families} gives the per-family outcome map across the headline
-conditions ($\bullet$ = service and fault correct, $\circ$ = service only,
--- = miss). Columns: configuration of record (s0b), kernel tiers (full / L1-only /
-none), trace removal (noT), and the two budget configurations (lean = 5\% traces
-$+$ 60\,s metrics $+$ ERROR logs; min = lean without kernel). Generated directly
-from the released result rows by the artifact's analysis scripts.
+$\bullet$ = component and fault type both right; $\circ$ = right component only;
+-- = miss. Columns: our standard setup (with the evidence briefing); kernel given in
+full / as raw numbers only / absent; traces removed entirely; the lean and minimal
+budget setups. S = Sock Shop, T = Train Ticket. Generated directly from the recorded
+results by the released analysis scripts.
 
 \begin{table}[h]
-\caption{Per-family outcomes (S = Sock~Shop, T = Train-Ticket).}
-\label{tab:families}
+\centering
 \small
 \begin{tabular}{lccccccc}
 \toprule
-Family & s0b & kAll & kL1 & kNone & noT & lean & min \\
+Fault (application) & standard & kernel full & kernel raw & no kernel & no traces & lean & minimal \\
 \midrule
-S: anomaly\_cpu & \Yes & \Yes & \Yes & \Yes & \Yes & \Yes & \Yes \\
-S: anomaly\_disk & \Yes & \Yes & \Yes & \Yes & \Yes & \Yes & \Yes \\
-S: anomaly\_mem & \Yes & \Yes & \Yes & \Yes & \Yes & \Svc & \Svc \\
-S: anomaly\_net & \No & \No & \No & \No & \No & \No & \No \\
-S: dependency\_outage & \Yes & \Yes & \Yes & \Yes & \Yes & \Yes & \Yes \\
-S: error\_storm & \Svc & \Svc & \Svc & \Svc & \Svc & \Svc & \Svc \\
-S: noisy\_neighbor & \Svc & \Yes & \Svc & \Yes & \Svc & \Svc & \Yes \\
-S: queue\_backlog & \No & \No & \No & \No & \No & \Svc & \No \\
-S: slow\_db & \Yes & \Yes & \Yes & \Svc & \Yes & \Yes & \Svc \\
-S: svc\_cpu\_cap & \Yes & \Yes & \Yes & \Yes & \Yes & \Yes & \Yes \\
-S: svc\_mem\_cap & \Svc & \Yes & \Svc & \Yes & \Svc & \No & \No \\
-S: svc\_net & \Svc & \Svc & \No & \Svc & \No & \Svc & \Svc \\
-T: anomaly\_cpu & \Yes & \Yes & \Yes & \Yes & \Yes & \Yes & \Yes \\
-T: anomaly\_disk & \Yes & \Yes & \Yes & \Yes & \Yes & \Yes & \Yes \\
-T: anomaly\_mem & \Yes & \Yes & \Yes & \Yes & \Yes & \Yes & \Yes \\
-T: anomaly\_net & \Svc & \Svc & \Svc & \No & \Svc & \Svc & \Svc \\
-T: dependency\_outage & \Yes & \Yes & \No & \Yes & \No & \No & \No \\
-T: error\_storm & \Svc & \Svc & \Svc & \Svc & \Svc & \Svc & \Svc \\
-T: noisy\_neighbor & \Svc & \Svc & \Svc & \Svc & \Yes & \Yes & \Svc \\
-T: slow\_db & \No & \No & \No & \No & \No & \Yes & \Svc \\
-T: svc\_cpu\_cap & \Yes & \Yes & \Yes & \Yes & \No & \No & \Yes \\
-T: svc\_mem\_cap & \Svc & \No & \Svc & \No & \Svc & \Svc & \Svc \\
-T: svc\_net & \No & \Yes & \No & \Yes & \No & \No & \Svc \\
+Host CPU overload (S) & \Yes & \Yes & \Yes & \Yes & \Yes & \Yes & \Yes \\
+Host disk overload (S) & \Yes & \Yes & \Yes & \Yes & \Yes & \Yes & \Yes \\
+Host memory exhaustion (S) & \Yes & \Yes & \Yes & \Yes & \Yes & \Svc & \Svc \\
+Host network degradation (S) & \No & \No & \No & \No & \No & \No & \No \\
+Frozen dependency (S) & \Yes & \Yes & \Yes & \Yes & \Yes & \Yes & \Yes \\
+Error burst (S) & \Svc & \Svc & \Svc & \Svc & \Svc & \Svc & \Svc \\
+Noisy neighbour (S) & \Svc & \Yes & \Svc & \Yes & \Svc & \Svc & \Yes \\
+Silent queue backlog (S) & \No & \No & \No & \No & \No & \Svc & \No \\
+Slow database (S) & \Yes & \Yes & \Yes & \Svc & \Yes & \Yes & \Svc \\
+Service CPU limit (S) & \Yes & \Yes & \Yes & \Yes & \Yes & \Yes & \Yes \\
+Service memory cap (S) & \Svc & \Yes & \Svc & \Yes & \Svc & \No & \No \\
+Single-service network fault (S) & \Svc & \Svc & \No & \Svc & \No & \Svc & \Svc \\
+Host CPU overload (T) & \Yes & \Yes & \Yes & \Yes & \Yes & \Yes & \Yes \\
+Host disk overload (T) & \Yes & \Yes & \Yes & \Yes & \Yes & \Yes & \Yes \\
+Host memory exhaustion (T) & \Yes & \Yes & \Yes & \Yes & \Yes & \Yes & \Yes \\
+Host network degradation (T) & \Svc & \Svc & \Svc & \No & \Svc & \Svc & \Svc \\
+Frozen dependency (T) & \Yes & \Yes & \No & \Yes & \No & \No & \No \\
+Error burst (T) & \Svc & \Svc & \Svc & \Svc & \Svc & \Svc & \Svc \\
+Noisy neighbour (T) & \Svc & \Svc & \Svc & \Svc & \Yes & \Yes & \Svc \\
+Slow database (T) & \No & \No & \No & \No & \No & \Yes & \Svc \\
+Service CPU limit (T) & \Yes & \Yes & \Yes & \Yes & \No & \No & \Yes \\
+Service memory cap (T) & \Svc & \No & \Svc & \No & \Svc & \Svc & \Svc \\
+Single-service network fault (T) & \No & \Yes & \No & \Yes & \No & \No & \Svc \\
 \bottomrule
 \end{tabular}
 \end{table}
