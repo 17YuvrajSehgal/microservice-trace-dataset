@@ -20,3 +20,8 @@ Numbers trace to: `../agentic-rca/RESULTS-v4-campaign.md`,
 `RESULTS-agent-sanitygate-masked.md`,
 `RESULTS-nonllm-baselines.md`; transcripts + sha256 bundles on
 `/project/def-naser2/yuvraj17/microservice-trace-dataset/artifacts/`.
+
+Build verified 2026-08-18 on Trillium (base pdflatex/latexmk): 7-page PDF, zero errors.
+acmart.cls + ACM-Reference-Format.bst are vendored (generated from CTAN acmart.ins) so the
+paper builds on any TeX Live without the acmart package. main.pdf is a build artifact (not
+tracked); latest copy at paper/main.pdf locally and on the cluster.
