@@ -5,11 +5,14 @@ We asked how much an LLM RCA agent's reported skill survives honest evaluation, 
 how much observability it actually needs. The answers: naming leaks alone were worth
 57~points of fault-classification accuracy; with leaks closed, generic cross-modality
 tooling still roughly doubles non-LLM baselines on localization at a cent per
-incident; traces are ${\sim}20\times$ over-collected for this task; kernel telemetry
-is an efficiency multiplier and the sole source of induced-DB-latency typing, but only
-in \emph{interpreted} form --- raw kernel numbers are worse than none; and experience
-layers help only as far as their selection is reliable. All claims ship with
-machine-checkable no-leakage certificates over 500+ transcripts.
+incident; traces are ${\sim}20\times$ over-collected for this task --- degradation by
+\emph{thinning} costs nothing on any axis, while degradation by \emph{loss} is where
+modalities earn their keep (removing traces costs 14~points and 74\% more effort;
+kernel then steps in as the compensating channel, alone recovering induced-DB-latency
+end to end); kernel telemetry is otherwise an efficiency multiplier and the sole
+source of induced-DB-latency typing, but only in \emph{interpreted} form --- raw
+kernel numbers are worse than none; and experience layers help only as far as their
+selection is reliable. All claims ship with machine-checkable no-leakage certificates
+over 600+ transcripts.
 
-\todo{close with the interaction-sweep result once run; final data-availability
-sentence with DOI}
+\todo{final data-availability sentence with DOI}

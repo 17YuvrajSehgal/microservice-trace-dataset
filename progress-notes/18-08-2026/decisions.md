@@ -21,3 +21,18 @@ and a nohup redirect into a not-yet-created directory (mkdir now precedes launch
 
 Remaining: modality-removal conditions (MLT_noK/MLK_noT), kernel × trace interaction grid,
 RQ4 Pareto join, repeats for paper figures.
+
+## FINAL SWEEPS: interact + removal (138 diagnoses, $1.35, auditor PASS 138/138) - DEGRADATION PROGRAM CLOSED
+Interact (kernel x thinned traces): NO kernel compensation under thinning - DiD +4 (full) -> -18
+(t025) -> 0 (t010); kernel-decisive families show no kernel edge at any retention; kernel-blind
+costs +1.5-2 calls at every level. t025 weak in EVERY sweep containing it: deterministic sampler
+keeps the same spans per run -> one unlucky sample recurs (seeding artifact, reported not averaged).
+Removal: MLT_noK 78/48/48 replicates kNone (free A/A through a different code path);
+**MLK_noT (no traces) = FIRST modality loss that hurts: 70/48/43, +74% calls, losses concentrated
+on TT path-shaped faults; SS slow_db stays FULLY correct on kernel wait-attribution alone ->
+kernel compensation demonstrated in its pre-registered direction under LOSS, not thinning.**
+H2 refined accordingly. Dead-tool thrashing repeats (~37% calls to empty traces/topology) ->
+generalize the definitive-unavailable answer to all modality tools (post-program engineering).
+Docs: RESULTS-agent-interact-removal.md; paper 05/06/09 + tracker updated; artifact on /project.
+Cross-model replication remains blocked on a non-Azure API key (.env has Azure only).
+Program totals: ~600 audited diagnoses, ~$6.

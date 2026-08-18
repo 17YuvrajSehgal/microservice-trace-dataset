@@ -21,8 +21,8 @@ per-diagnosis tool calls, bytes touched, tokens (with cache split), and dollar c
 before the tool layer; the agent is held fixed within any sweep. Axes: trace retention
 (100/50/25/10/5\% whole-trace sampling), metric resolution (5/10/30/60\,s), log level
 (ALL/WARN/ERROR), kernel tier (all / L1-only / L3-only / none), whole-modality
-removal. All four per-axis sweeps are reported in \S\ref{sec:results-trace} and
-\S\ref{sec:results-kernel}. \todo{kernel$\times$trace interaction grid}
+removal, and a kernel$\times$trace interaction grid. All axes, the interaction, and
+whole-modality removal are reported in \S\ref{sec:results-trace}--\S\ref{sec:results-interact}.
 
 \paragraph{Model and infrastructure.} All agent runs use one hosted reasoning model
 (Azure OpenAI \texttt{gpt-5.4}; no temperature parameter accepted by the model class;

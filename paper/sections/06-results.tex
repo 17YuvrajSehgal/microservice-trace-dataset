@@ -80,11 +80,15 @@ kernel-blind; four families lost, none gained) --- representation quality domina
 kernel presence. \textbf{K4.} The pre-registered hypothesis that removing kernel
 causes the largest drop on blind-spot faults is \emph{not confirmed at full
 telemetry}: kernel-decisive families hold 85\% service in every tier because our
-limit-signal/topology/host tools absorbed the signal; this is recorded in the
-pre-registration amendment log, and the hypothesis's remaining test is the
-kernel$\times$degraded-traces interaction \todo{run and report}. Behaviorally, the
-kernel-blind agent wastes ${\sim}30\%$ of calls re-probing the empty modality unless
-the tool answers definitively once --- an agent-design lesson in its own right.
+limit-signal/topology/host tools absorbed the signal (recorded in the
+pre-registration amendment log). The interaction test sharpens this
+(\S\ref{sec:results-interact}): the kernel advantage does not grow under trace
+\emph{thinning} either --- but kernel \emph{does} compensate under complete trace
+\emph{removal}, restoring both locus and typing on induced DB latency. H2 is thereby
+refined rather than merely refuted: kernel is a compensating channel under modality
+loss, not under modality thinning. Behaviorally, the kernel-blind agent wastes
+${\sim}30\%$ of calls re-probing the empty modality unless the tool answers
+definitively once --- an agent-design lesson in its own right.
 
 \subsection{RQ-D: Telemetry degradation --- no cliff on any axis}
 \label{sec:results-trace}
@@ -137,8 +141,33 @@ kernel KPIs alone, \S\ref{sec:results-kernel}) hurts more than an absent one.
 Practically: 5\% traces $+$ 60\,s metrics $+$ ERROR-only logs cost an agentic-RCA
 consumer nothing measurable, while kernel telemetry pays via investigation efficiency
 and induced-DB-latency typing.
-\todo{harsher regimes: whole-modality removal, per-span drops,
-kernel$\times$trace interaction}
+
+\subsection{RQ-D$'$: Interaction and whole-modality removal}
+\label{sec:results-interact}
+
+\paragraph{Kernel $\times$ thinned traces.} At 25\% and 10\% trace retention the
+kernel-blind agent matches or exceeds the kernel-full agent (both-correct 48 vs.\ 30\%
+at 25\%; 57 vs.\ 57\% at 10\%; kernel-decisive families show no kernel edge at any
+retention), while kernel-blindness costs $+1.5$--$2$ calls at every level. The kernel
+advantage is retention-\emph{invariant} in accuracy and constant in efficiency ---
+there is no compensation effect under thinning. (The 25\%-retention cell is weak in
+every sweep containing it: deterministic seeding keeps the same span sample per run,
+so one unlucky sample recurs --- a seeding artifact we report rather than average
+away.)
+
+\paragraph{Whole-modality removal.} Dropping kernel entirely (78/48/48) replicates
+the kernel-none tier through a different code path --- a free A/A check. Dropping
+\emph{traces} entirely is the first modality loss that visibly hurts: 70/48/43
+($-14$ both) at $+74\%$ investigation effort, with losses concentrated on the
+path-shaped Train-Ticket faults whose evidence is topological. The trace no-cliff
+result is therefore threshold-like: \emph{aggregates survive any sampling; presence
+matters}. And with traces gone, kernel compensation finally appears in its
+pre-registered direction: Sock~Shop induced-DB-latency stays fully correct on kernel
+wait-attribution alone. Either modality suffices to localize the datastore; kernel is
+required for typing; only losing both would break the case. Behaviorally, the
+no-traces agent spent ${\sim}37\%$ of calls on the two dead tools --- the
+definitive-unavailable answer (\S\ref{sec:results-kernel}) should generalize to every
+modality.
 
 \subsection{RQ-E: Does an experience (skills) layer help?}
 \label{sec:results-skills}

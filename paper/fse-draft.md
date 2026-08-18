@@ -306,7 +306,12 @@ Zenodo DOI, anonymized review artifact.)*
 - [x] Metric & log axes results — DONE 2026-08-18, both flat within noise (metric
       43–52% both across 5→60s; log 57/43/52 with ERROR>WARN); consolidated four-axis
       RQ-D table now in 06-results.tex; source RESULTS-agent-metric-log-sweeps.md
-- [ ] kernel×trace interaction grid (H2's sharpened test)
+- [x] kernel×trace interaction + whole-modality removal — DONE 2026-08-18: no kernel
+      compensation under trace THINNING (DiD +4→−18→0), but kernel DOES compensate
+      under trace REMOVAL (SS slow_db fully correct with zero traces); trace removal =
+      first modality loss that hurts (−14 both, +74% calls, TT path faults);
+      MLT_noK replicates kNone (A/A). Source RESULTS-agent-interact-removal.md;
+      H2 refined: compensation under loss, not thinning
 - [ ] RQ4 Pareto figure; mechanism-correct secondary metric
 - [ ] Related-work citations (RCAEval/BARO, HolmesGPT etc., contamination literature,
       Nezha/AIOps datasets, LTTng/eBPF)
