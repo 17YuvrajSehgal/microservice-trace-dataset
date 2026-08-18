@@ -47,3 +47,16 @@ honesty-arc + degradation pgfplots figures, data-generated per-family appendix (
 mechanism metric in Discussion; trackers updated. Auditor PASS 46/46; artifact on /project.
 Cross-model gate: skipped per Yuvraj. Remaining paper work = citations, 2 figures (selector
 heatmap, architecture vector), venue call, amendments, repeats-if-quoted.
+
+## Paper reframed as supervisor progress report (per Yuvraj)
+Decision: the paper/ directory is now a plain-language progress report for the supervisor,
+NOT a venue paper. Why: purpose right now is discussing results/approach/methodology; the
+research story is LLM agents for RCA over multi-modal observability -- leakage control is
+evaluation hygiene, not a contribution, so it was cut to one paragraph ("Keeping the
+evaluation honest" in the agent section) + one takeaway bullet. Removed: abstract/intro/
+background/related-work/threats/conclusion apparatus + references.bib (FSE draft preserved
+in git history @58e7d58 and paper/fse-draft.md). New structure: article class, sections
+00-summary..08-next + 10-appendix; zero run IDs/condition codes anywhere -- plain names
+only ("Slow database (T)", "kernel raw", lean/minimal). Compiled clean on cluster (7 pp,
+0 errors), PDF md5-verified local==cluster, committed (ac37479, 28426f7) + pushed.
+Report-quality bar: readable by someone with zero project context.
