@@ -41,3 +41,12 @@ lost. Same flat curve as the baselines, OPPOSITE reason. RQ4 headline: 5% sampli
 collection-cost cut with no diagnostic loss. Caveats + follow-ups (MLK_noT, per-span drops,
 kernel x trace interaction) in RESULTS-agent-trace-sweep.md. Fixes shipped first: definitive
 kernel-unavailable answer + peer-IP reverse map (partial - spanless IPs unresolvable by design).
+
+## FSE first draft started (paper/fse-draft.md)
+Unified narrative: leakage-controlled LLM-agent RCA over the 4-modality dataset. Contributions:
+(1) leakage-control methodology (masking w/ identity preservation, transcripts, auditor, A/A
+variance protocol); (2) StrataTrace + open harness + baselines; (3) empirical: 2x baselines
+leak-free; no trace cliff (20x over-collection); kernel = efficiency + db-typing, partial kernel
+worse than none, H2 amended; skills need selection quality (LOFO -18). RQ-A..E structure with
+real numbers; TODO tracker embedded (metric/log axes, interaction, Pareto, citations, venue
+deadline check FSE vs MSR).
