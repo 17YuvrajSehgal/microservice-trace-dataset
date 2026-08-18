@@ -1,0 +1,28 @@
+\section{Experimental Setup}
+\label{sec:setup}
+
+\paragraph{Corpus.} 93 labeled incidents (43 Train-Ticket, 50 Sock~Shop) form the
+working set; a 23-incident \emph{gate} (one per fault family per application) bounds
+agent-cost sweeps. Non-LLM baselines are additionally swept over the full
+$93\times15$ condition grid.
+
+\paragraph{Methods.} (1)~a statistical rule tree over the same tools; (2)~RCAEval
+multi-source BARO~\cite{pham2024baro,pham2025rcaeval} via its published artifact;
+(3)~MicroRank~\cite{yu2021microrank} and TraceRCA~\cite{li2021tracerca} (trace-only);
+(4)~\agent. All methods receive identical incident windows; only the agent is subject
+to masking (which, if anything, disadvantages it --- the statistical baseline still
+exploits container names).
+
+\paragraph{Metrics.} Top-1 service (AC@1), fault-type accuracy against a closed
+13-label taxonomy, their conjunction (\emph{both}); AC@3/MRR for ranking baselines;
+per-diagnosis tool calls, bytes touched, tokens (with cache split), and dollar cost.
+
+\paragraph{Degradation conditions.} Seeded, deterministic, offline transforms applied
+before the tool layer; the agent is held fixed within any sweep. Axes: trace retention
+(100/50/25/10/5\% whole-trace sampling), metric resolution (5/10/30/60\,s), log level
+(ALL/WARN/ERROR), kernel tier (all / L1-only / L3-only / none), whole-modality
+removal. \todo{metric/log axis numbers; kernel$\times$trace interaction grid}
+
+\paragraph{Reproducibility.} Every result row is keyed by (run, condition spec, seed,
+method) and linked to its transcript; artifacts ship as sha256-manifested bundles.
+\todo{model/version/hardware box}

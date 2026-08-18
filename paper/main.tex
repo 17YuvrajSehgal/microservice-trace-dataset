@@ -1,0 +1,51 @@
+%% FSE 2027 draft — leakage-controlled agentic RCA over four telemetry modalities
+%% Build: latexmk -pdf main.tex   (requires ACM acmart class)
+%% For submission switch to:  \documentclass[sigconf,review,anonymous]{acmart}
+\documentclass[sigconf]{acmart}
+
+\usepackage{booktabs}
+\usepackage{xspace}
+
+%% ---- draft helpers (strip before submission) ----------------------------------------
+\newcommand{\todo}[1]{\textcolor{red}{\textbf{[TODO: #1]}}}
+\newcommand{\sys}{StrataTrace\xspace}
+\newcommand{\agent}{the agent\xspace}
+
+%% ---- ACM metadata (TODO before submission) ------------------------------------------
+\setcopyright{none}
+\acmConference[FSE 2027]{ACM International Conference on the Foundations of Software
+Engineering}{TBD 2027}{TBD}
+\acmDOI{}
+\acmISBN{}
+
+\begin{document}
+
+\title{How Much Observability Does an LLM Agent Need?\\
+Leakage-Controlled Root-Cause Analysis over Four Telemetry Modalities}
+%% Alt titles:
+%% Honest Agents: Quantifying and Eliminating Evaluation Leakage in LLM-Based RCA
+%% Kernel Deep, Trace Thin: Stress-Testing an LLM RCA Agent's Observability Diet
+
+\author{Yuvraj Sehgal}
+\affiliation{\institution{\todo{affiliation}}\country{Canada}}
+\email{17yuvraj.sehgal@gmail.com}
+%% \author{...} \todo{co-authors, order}
+
+\input{sections/00-abstract}
+
+\maketitle
+
+\input{sections/01-introduction}
+\input{sections/02-background}
+\input{sections/03-dataset}
+\input{sections/04-system}
+\input{sections/05-setup}
+\input{sections/06-results}
+\input{sections/07-discussion}
+\input{sections/08-threats}
+\input{sections/09-conclusion}
+
+\bibliographystyle{ACM-Reference-Format}
+\bibliography{references}
+
+\end{document}

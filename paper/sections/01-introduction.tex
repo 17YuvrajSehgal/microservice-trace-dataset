@@ -1,0 +1,55 @@
+\section{Introduction}
+\label{sec:intro}
+
+Automated root-cause analysis (RCA) for microservice incidents directly affects
+time-to-mitigation, and LLM-based agents are the current frontier: they read
+heterogeneous telemetry, form hypotheses, drive diagnostic tools, and explain their
+conclusions. But an uncomfortable question precedes any accuracy claim for such agents:
+\emph{did the agent diagnose the fault, or read the answer off the benchmark?}
+Injected-fault datasets --- including ours, initially --- encode their labels
+everywhere: run identifiers such as \texttt{tt\_slow\_db\_aggressive\_steady\_r1},
+injection containers named \texttt{noisy-neighbor}, metric fields named
+\texttt{injection}. A language model that sees any of these needs no telemetry at all.
+
+\paragraph{What we did.} We built (i) \sys, a two-application, four-modality incident
+dataset whose kernel-trace layer no existing public dataset provides; (ii) a tool-using
+LLM RCA agent operating over deterministic, byte-accounted telemetry tools; and (iii) a
+leakage-control harness --- masking, full-fidelity transcripts, and an automated audit
+--- that lets us report, to our knowledge for the first time, \emph{certified
+hint-free} agent RCA numbers, together with the exact price of the hints we removed.
+
+\paragraph{The evaluation arc is itself a finding.} Our agent initially scored
+74/74/61 (service / fault-type / both correct). Closing the leaks collapsed it to
+48/17/9 --- proof that it had been leaning on names. Rebuilding the agent with strictly
+generic tooling (baseline-vs-incident discipline in every tool, call-graph topology
+with peer edges, host and limit-proximity channels, fault-taxonomy definitions)
+recovered 83/48/48 --- \emph{above} the leaky number on localization, with every crutch
+removed. The sequence quantifies both the contamination risk (26~points of service
+accuracy, 57~points of fault classification) and its recoverability by honest means.
+
+\paragraph{Contributions.}
+\begin{enumerate}
+  \item \textbf{Methodology.} Leakage-controlled agent evaluation: evidence-preserving
+  identifier masking (with a cross-tool identity requirement --- masking must not
+  fragment one entity into several pseudonyms), ground-truth-free audit transcripts, an
+  automated leak auditor, and an A/A variance protocol that bounds single-run claims
+  ($\pm$9 points in our setting).
+  \item \textbf{Dataset and system.} \sys: 95 labeled runs over Sock~Shop and
+  Train-Ticket, four time-aligned modalities (${\sim}0.001$\,ms clock skew), a kernel
+  representation ladder (raw CTF $\rightarrow$ per-second KPIs $\rightarrow$ wait
+  attribution $\rightarrow$ natural-language digests), pre-registered
+  fault$\rightarrow$modality predictions; plus an open agentic-RCA harness with two
+  non-LLM baselines and a published state-of-the-art adapter.
+  \item \textbf{Empirical results.} (a)~The leak-free agent roughly doubles non-LLM
+  baselines on top-1 service localization; (b)~accuracy shows \emph{no cliff} down to
+  5\% trace sampling --- traces are ${\sim}20\times$ over-collected for this task;
+  (c)~kernel telemetry buys efficiency ($-25$\% agent effort) and induced-DB-latency
+  \emph{typing}, while its accuracy-rescue role is absorbed by good cross-modality
+  tooling; (d)~\emph{interpreted} kernel summaries beat raw KPIs --- a partial kernel
+  view degrades below kernel-blind; (e)~an experience/skill layer is net-negative
+  without reliable evidence-based skill selection; unseen-fault incidents under a full
+  skill library cost ${\sim}18$ points (a quantified distractor effect, via
+  leave-one-family-out).
+\end{enumerate}
+
+\todo{one-paragraph roadmap of the paper}

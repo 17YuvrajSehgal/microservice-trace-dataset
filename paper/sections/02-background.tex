@@ -1,0 +1,29 @@
+\section{Background and Related Work}
+\label{sec:background}
+
+\paragraph{Non-LLM RCA.} Statistical and spectrum-based localization over metrics and
+traces is well studied; we compare against a hand-built statistical rule tree and the
+RCAEval/BARO family~\cite{pham2024baro,pham2025rcaeval}, whose artifacts we run
+directly, plus the trace-only methods MicroRank~\cite{yu2021microrank} and
+TraceRCA~\cite{li2021tracerca}. \todo{verify citations; add spectrum-based and
+causal-discovery lines}
+
+\paragraph{LLM and agentic AIOps.} Recent systems apply LLMs to incident triage and
+RCA \todo{cite RCACopilot, HolmesGPT, mABC, and 2025--2026 agentic RCA papers}. To our
+knowledge none report leakage-controlled numbers; evaluations typically expose
+dataset-native identifiers to the model.
+
+\paragraph{Benchmark contamination.} Label leakage and contamination are recognized
+threats in ML evaluation \todo{cite contamination literature}; we bring this discipline
+to agentic AIOps, where the leak channels are structural (identifiers in telemetry)
+rather than train/test overlap.
+
+\paragraph{Observability datasets.} Public microservice incident datasets
+\todo{cite Train-Ticket fault studies \cite{zhou2018trainticket}, RCAEval datasets,
+Nezha, AIOps challenge corpora} provide metrics/logs/traces; none include synchronized
+kernel traces, and none pre-register per-fault modality predictions.
+
+\paragraph{Kernel tracing.} LTTng~\cite{desnoyers2006lttng} provides low-overhead
+full-syscall tracing; eBPF-based diagnosis is adjacent \todo{cite}. Our measured
+collection overhead is $-0.5$\% throughput and $+12.6$\% P95 latency at 200 concurrent
+users.

@@ -1,0 +1,136 @@
+\section{Results}
+\label{sec:results}
+
+\subsection{RQ-A: Honest agent vs.\ baselines}
+\label{sec:results-baselines}
+
+\begin{table}[t]
+\caption{Leak-free agent vs.\ non-LLM baselines (top-1 service; both = service and
+fault type correct).}
+\label{tab:baselines}
+\begin{tabular}{lccl}
+\toprule
+Method & Service & Both & Degradation behavior \\
+\midrule
+Statistical rule tree & ${\sim}48\%$ & 38\% & flat; kernel-blind \\
+RCAEval/mmbaro & 46\% (AC@3 63\%) & --- & flat, 100$\to$5\% traces \\
+MicroRank / TraceRCA & ${\sim}0\%$ / ${\sim}5\%$ & --- & floor, no cliff \\
+\textbf{Agent (leak-free)} & \textbf{83--87\%} & \textbf{57\%} & \S\ref{sec:results-trace} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The leak-free agent roughly doubles both baselines on localization
+(Table~\ref{tab:baselines}) at ${\sim}25$k input tokens (50--73\% served from prompt
+cache) and ${\sim}\$0.01$ per incident. Naive kernel-feature fusion into mmbaro changes
+nothing (kernel columns rank ${\sim}195$th among its change points), and the two
+non-LLM baselines fail on \emph{different} faults --- both observations motivate an
+agent that reasons across modalities rather than a wider feature table.
+
+\subsection{RQ-B: The price of leakage}
+\label{sec:results-leak}
+
+\begin{table}[t]
+\caption{The honesty arc: identical incidents, progressively honest evaluation.}
+\label{tab:leak}
+\begin{tabular}{lccc}
+\toprule
+Configuration & Service & Fault & Both \\
+\midrule
+Leaky (run IDs, fault-named containers visible) & 74\% & 74\% & 61\% \\
+Masked, original tools & 48\% & 17\% & 9\% \\
+Masked, fragmented aliases (identity broken) & 26\% & 17\% & 4\% \\
+Masked, generic tooling rebuilt & \textbf{83\%} & 48\% & 48\% \\
+\quad + deterministic context brief (config of record) & \textbf{87\%} & \textbf{61\%} & \textbf{57\%} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Naming hints alone were worth ${\sim}26$ points of localization and ${\sim}57$ points
+of fault classification --- fault labels were effectively read off the run identifier.
+The fragmented-alias row isolates the identity-preservation requirement of
+\S\ref{sec:leakage}. Honest tooling then \emph{exceeded} the leaky localization number.
+
+\subsection{RQ-C: What is kernel telemetry worth?}
+\label{sec:results-kernel}
+
+\begin{table}[t]
+\caption{Kernel-tier ablation (23 incidents $\times$ 4 tiers; brief on, skills off).}
+\label{tab:kernel}
+\begin{tabular}{lcccc}
+\toprule
+Kernel view & Service & Fault & Both & Agent calls \\
+\midrule
+L1+L2+L3 & 83\% & 61\% & 61\% & \textbf{9.1} \\
+L1 only & 74\% & 48\% & \textbf{43\%} & 10.1 \\
+L3 only & 78\% & 57\% & 57\% & 10.0 \\
+none & 78\% & 57\% & 57\% & 12.2 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{K1.} Removing kernel telemetry entirely costs $\le$4 points (within the noise
+band) but $+34\%$ investigation effort: with strong cross-modality tooling, kernel's
+robust value at full telemetry is \emph{efficiency}, not rescue. \textbf{K2.} The one
+stable loss is induced-DB-latency \emph{typing}: wait attribution converts ``the
+datastore is the locus'' into ``induced latency, not an application bug''.
+\textbf{K3.} \emph{A partial kernel view is worse than none}: raw KPIs without
+interpretive framing send the agent chasing kernel noise ($-14$ points vs.\
+kernel-blind; four families lost, none gained) --- representation quality dominates
+kernel presence. \textbf{K4.} The pre-registered hypothesis that removing kernel
+causes the largest drop on blind-spot faults is \emph{not confirmed at full
+telemetry}: kernel-decisive families hold 85\% service in every tier because our
+limit-signal/topology/host tools absorbed the signal; this is recorded in the
+pre-registration amendment log, and the hypothesis's remaining test is the
+kernel$\times$degraded-traces interaction \todo{run and report}. Behaviorally, the
+kernel-blind agent wastes ${\sim}30\%$ of calls re-probing the empty modality unless
+the tool answers definitively once --- an agent-design lesson in its own right.
+
+\subsection{RQ-D: Trace degradation --- no cliff}
+\label{sec:results-trace}
+
+Across 100/50/25/10/5\% whole-trace retention (115 diagnoses), both-correct stays
+within 43--57\% (the noise band; 10\% retention scores best), 18/23 incidents produce
+identical outcomes at every level, and the tool mix is constant. Mechanism: the agent
+consumes spans as \emph{aggregates} --- brief latency tops and topology edge
+percentiles --- which survive uniform sampling; direct raw-trace reads are nearly
+absent. The baselines were flat because they never extracted trace value; the agent is
+flat because its trace use is statistical and redundantly backed --- the same curve
+for the opposite reason. \emph{Implication: ${\sim}20\times$ trace collection-cost
+reduction without diagnostic loss} at otherwise-full telemetry.
+\todo{metric and log axes; harsher regimes (whole-modality removal, per-span drops)}
+
+\subsection{RQ-E: Does an experience (skills) layer help?}
+\label{sec:results-skills}
+
+\begin{table}[t]
+\caption{Skill-library conditions (23 incidents each; masked; selector sees only the
+evidence digest and may abstain).}
+\label{tab:skills}
+\begin{tabular}{lccc}
+\toprule
+Condition & Service & Fault & Both \\
+\midrule
+No skills (floor) & 83\% & 57\% & 57\% \\
++ context brief (config of record) & \textbf{87\%} & \textbf{61\%} & 57\% \\
++ full skill library & 78\% & 43\% & 43\% \\
+Leave-one-family-out (unseen fault) & 70\% & 39\% & 39\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The deterministic Context Builder is the clear win: equal-or-better accuracy at
+$-41\%$ calls and $-58\%$ input tokens. Skills lift individual families (co-tenant
+contention is solved \emph{only} with its skill; cap-fault typing improves) but
+mis-selection --- concentrated on the shared-datastore application, where background
+DB edges attract db-flavored skills --- costs more than skills contribute (selection
+15/23). Under leave-one-family-out the selector almost never abstains (1--3/23);
+distractor skills cost ${\sim}18$ points vs.\ the skill-free floor, though the agent's
+ability to override a wrong skill caps the damage (19/23 cells unchanged).
+\emph{Experience layers require selection quality before they are safe on
+out-of-library incidents.} We release the full selection-confusion data.
+
+\subsection{Cost accounting}
+Every diagnosis carries bytes touched, tokens, and dollars; joined with the measured
+collection overhead and the $20\times$ trace finding, these support a minimum
+observability budget analysis. \todo{formal Pareto join and figure}

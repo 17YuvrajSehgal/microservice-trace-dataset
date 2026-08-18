@@ -1,0 +1,34 @@
+\begin{abstract}
+LLM agents are rapidly being adopted for root-cause analysis (RCA) in microservice
+systems, but their reported accuracy is difficult to trust: benchmark artifacts ---
+fault-encoding run identifiers, injection containers named after their faults --- hand
+the agent the answer. We present a leakage-controlled evaluation methodology (identifier
+masking with cross-tool identity preservation, full-fidelity audit transcripts, and an
+automated leak auditor) and apply it to a new dataset: 95 labeled fault injections
+across two architecturally distinct microservice systems, recorded simultaneously in
+\emph{four} time-aligned telemetry modalities --- metrics, logs, distributed traces,
+and \emph{kernel traces} --- with pre-registered fault$\rightarrow$modality predictions.
+We find that naming leaks alone inflate an agent's fault-classification accuracy by
+57~percentage points; after closing them, a tool-using agent with generic
+cross-modality tooling still reaches 83--87\% top-1 service localization, roughly
+double two non-LLM baselines including published state of the art, at ${\sim}\$0.01$
+per incident. Degradation experiments yield three counter-intuitive results: accuracy
+survives $20\times$ trace sampling unchanged; removing kernel telemetry entirely costs
+little accuracy but 34\% more investigation effort; and a \emph{partial} kernel view
+(raw KPIs without interpretive framing) is \emph{worse than none}. An experience layer
+of reusable ``skills'' helps only when skill selection is reliable --- mis-selected
+skills cost more than they contribute. All 500+ diagnoses ship with machine-checkable
+no-leakage certificates. \todo{tighten to venue word limit}
+\end{abstract}
+
+%% TODO: CCS concepts + keywords (required by acmart)
+\begin{CCSXML}
+<ccs2012>
+<concept><concept_id>10011007.10011074.10011099</concept_id>
+<concept_desc>Software and its engineering~Software verification and validation</concept_desc>
+<concept_significance>500</concept_significance></concept>
+</ccs2012>
+\end{CCSXML}
+\ccsdesc[500]{Software and its engineering~Software verification and validation}
+\keywords{root-cause analysis, LLM agents, observability, kernel tracing, benchmark
+leakage, microservices, AIOps}
