@@ -10,6 +10,13 @@ Data & Tool Showcase (abstract **Nov 5, 2026**, paper Nov 10) + a study
 paper. The full research plan is `msr-research.md`; the pre-registered
 fault→modality predictions are `fault_catalog.md`.
 
+## How to write (required)
+
+**Use simple, plain English. Keep it short.** No complicated words, no long
+walls of text. Short sentences, one idea each. Answer first, then a few
+supporting points. Prefer bullets and small tables over paragraphs. This
+applies to chat replies AND to any document/report written for the user.
+
 ## Session habits (required, every session)
 
 1. **Log research/method decisions** (with the *why*, selectively — not an
