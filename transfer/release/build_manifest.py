@@ -37,7 +37,8 @@ for app in sorted(os.listdir(LITE)):
             has = lambda n: int(os.path.exists(os.path.join(rd, n)))
             rows.append(dict(
                 app=app, family=fam, fault_plain=PLAIN.get(fam, fam), run_id=run,
-                run_type=("fault" if gt else "control" if fam == "normal" else "overhead"),
+                run_type=("fault" if gt else "smoke-test" if run.startswith("gate")
+                          else "control" if fam == "normal" else "overhead"),
                 target=gt.get("target_service", ""), scope=gt.get("scope", ""),
                 intensity=gt.get("intensity", ""),
                 fault_start_utc=gt.get("injection_start_utc", ""),
@@ -57,10 +58,15 @@ print(f"manifest.csv: {len(rows)} runs")
 for app in sorted({r["app"] for r in rows}):
     rs = [r for r in rows if r["app"] == app]
     fams = collections.Counter(r["family"] for r in rs)
+    def n(t, sing, plur=None):
+        c = sum(1 for r in rs if r["run_type"] == t)
+        return "" if not c else f"{c} {sing if c == 1 else (plur or sing + 's')}"
+    parts = [x for x in (n("fault", "run with a fault", "runs with a fault"),
+                         n("control", "healthy control"),
+                         n("overhead", "tracing-overhead run"),
+                         n("smoke-test", "pipeline smoke-test run")) if x]
     lines = [f"# {app} runs", "",
-             f"{len(rs)} runs: {sum(1 for r in rs if r['run_type']=='fault')} with a fault, "
-             f"{sum(1 for r in rs if r['run_type']=='control')} healthy controls, "
-             f"{sum(1 for r in rs if r['run_type']=='overhead')} tracing-overhead runs.", "",
+             f"{len(rs)} runs in total: " + ", ".join(parts) + ".", "",
              "One archive per fault type. Download only the ones you need.", "",
              "| archive | what was broken | runs | broken on |", "|---|---|---|---|"]
     for fam in sorted(fams):
