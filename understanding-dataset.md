@@ -1,7 +1,8 @@
 # Understanding the StrataTrace dataset
 
 A guide for someone opening this data for the first time.
-Example used here: `data-sample/anomaly_cpu_aggressive_steady_r1/`
+Example used here: `data-sample/anomaly_cpu/` — one complete fault family,
+recorded 3 times. **13 GB for 3 runs.**
 
 ---
 
@@ -40,21 +41,40 @@ So this run is: *host CPU overload, hard version, steady traffic, first try.*
 
 ## 3. What is in the folder
 
+The family folder holds the 3 repeats:
+
 ```
-anomaly_cpu_aggressive_steady_r1/
-├── ground_truth.json      614 B     the answer
-├── verification.json      876 B     proof the fault really happened
-├── otlp/spans.jsonl       1.3 GB    traces  (requests moving between services)
-├── logs/                  15 files  logs    (one file per container)
-├── kernel_l1.parquet      288 KB    kernel, level 1
-├── kernel_l2.jsonl        2 KB      kernel, level 2
-├── kernel_l3.jsonl        1.2 MB    kernel, level 3
-└── meta/                  1000+     bookkeeping (clocks, container→process map)
+data-sample/anomaly_cpu/
+├── anomaly_cpu_aggressive_steady_r1/     4.0 GB
+├── anomaly_cpu_aggressive_steady_r2/     4.0 GB
+└── anomaly_cpu_aggressive_steady_r3/     4.0 GB
 ```
 
-Metrics live *next to* the run folder, not inside it, as
-`<run_name>_metrics/` (Prometheus files) and `<run_name>_load.csv`.
-They are not in this sample.
+Each run has the same 1085 files:
+
+```
+anomaly_cpu_aggressive_steady_r1/          4.0 GB total
+├── ground_truth.json       614 B     the answer
+├── verification.json       876 B     proof the fault really happened
+├── verification.png       18 KB      a picture of that proof
+├── kernel/                 2.2 GB    RAW kernel recording  (this is "L0")
+├── ust/                    188 MB    raw span events, kernel-side copy
+├── otlp/spans.jsonl        1.3 GB    traces (requests moving between services)
+├── logs/                   409 MB    logs (one file per container)
+├── kernel_l1.parquet       288 KB    kernel, level 1
+├── kernel_l3.jsonl         1.2 MB    kernel, level 3
+└── meta/                    16 MB    bookkeeping (clocks, container→process map)
+```
+
+**Two things are missing on purpose, and you should know why:**
+
+- **`kernel_l2.jsonl` is not here.** L2 was derived later, on our compute
+  cluster, because it needs a newer version of the trace reader than the
+  recording machine had. This folder is the original recording. You can build
+  L2 yourself from `kernel/` — see section 5.
+- **Metrics and load results are not here.** They are written *next to* the run
+  folder, not inside it, as `<run_name>_metrics/` (Prometheus data) and
+  `<run_name>_load.csv`. They were not part of this download.
 
 ---
 
@@ -102,6 +122,52 @@ Injecting a fault does not guarantee anything actually broke. So we check.
 for that fault type, compares baseline vs fault, and needs the change to be
 big (in standard deviations), in the right direction, and to last. If a run
 fails this check, it is marked and not used as a clean example.
+
+### `verification.png` — the same proof, as a picture
+
+The same check drawn as a graph. The pink band is the injection window. You can
+see host CPU climb to 100% inside the band and fall away after it.
+
+Open this first. It takes one second and tells you whether the run is any good.
+
+### `kernel/` — the raw kernel recording (L0)
+
+This is the biggest thing in the folder (2.2 GB) and the most important.
+
+```
+kernel/kernel/
+├── metadata               describes the format of the events
+├── channel0_0.gz  …  channel0_11.gz     12 files, ~190 MB each
+└── index/                 lets a reader jump around without reading it all
+```
+
+**How we got it:** LTTng recorded every system call, every scheduler switch,
+and every disk and network event on the machine for the whole 4 minutes. One
+file per CPU core, gzipped.
+
+The format is **CTF** (Common Trace Format) — binary, not text. You need
+`babeltrace2` to read it. Do not try to open it in an editor.
+
+You will almost never read this directly. It is here for two reasons: it proves
+the summaries are real, and it lets anyone rebuild L1, L2 and L3 from scratch
+with different settings.
+
+### `ust/` — span events, recorded kernel-side
+
+188 MB, same CTF format, and easy to mistake for a duplicate of the traces. It
+is not.
+
+**How we got it:** each instrumented service prints its spans to its own log.
+A small relay (`agents/otel-to-lttng.py`) reads those lines as they appear and
+re-emits them as LTTng events, so they land in the *same recording* as the
+kernel events.
+
+**Why bother:** it is a **clock bridge**. Application traces and kernel events
+normally use different clocks, so lining them up is guesswork. By writing the
+spans into the kernel recording too, we get the same span stamped by both
+clocks, which pins the offset exactly. That is how we get ~0.001 ms alignment.
+
+Spans for analysis come from `otlp/spans.jsonl`, not from here.
 
 ### `otlp/spans.jsonl` — traces
 
@@ -206,24 +272,47 @@ as proof, but you cannot read it, and you certainly cannot hand it to an AI
 model. So we boil it down in three steps. Each step is made by a **fixed
 script** — no AI, no judgement calls, so it is reproducible.
 
-```
-L0  raw kernel recording   2–13 GB    archived, nobody reads it directly
- |
- |  derive_kernel_l1.py  (count and bucket events into 1-second rows)
- +----------------------------> L1  kernel_l1.parquet  288 KB   numbers table
- |                                   |
- |                                   |  derive_kernel_l3.py  (compare to baseline,
- |                                   |                        write a sentence)
- |                                   v
- |                                  L3  kernel_l3.jsonl  1.2 MB  English summaries
- |
- |  derive_kernel_l2.py  (replay the scheduler, add up waiting time)
- +----------------------------> L2  kernel_l2.jsonl     2 KB    what it WAITED for
+```mermaid
+flowchart TD
+    L0["<b>L0 — kernel/</b><br/>raw LTTng recording (CTF)<br/><b>2.2 GB</b><br/><i>every syscall, scheduler switch, disk + net event</i>"]
+    META["<b>meta/</b><br/>container name → process ID"]
+    MAP["service_map.py<br/><i>gives every event an owner</i>"]
+
+    S1["derive_kernel_l1.py<br/><i>count events, bucket into 1-second rows</i>"]
+    S2["derive_kernel_l2.py<br/><i>replay the scheduler, add up waiting time</i>"]
+    S3["derive_kernel_l3.py<br/><i>compare each second to baseline, write a sentence</i>"]
+
+    L1["<b>L1 — kernel_l1.parquet</b><br/><b>288 KB</b><br/>numbers table<br/>4003 rows x 26 columns"]
+    L2["<b>L2 — kernel_l2.jsonl</b><br/><b>2 KB</b><br/>what each service WAITED for"]
+    L3["<b>L3 — kernel_l3.jsonl</b><br/><b>1.2 MB</b><br/>plain-English summaries"]
+
+    META --> MAP
+    MAP -.->|used by| S1
+    MAP -.->|used by| S2
+
+    L0 --> S1 --> L1
+    L0 --> S2 --> L2
+    L1 --> S3 --> L3
+
+    style L0 fill:#ffe0e0,stroke:#c00
+    style L1 fill:#e0f0ff,stroke:#06c
+    style L2 fill:#e0ffe0,stroke:#0a0
+    style L3 fill:#fff4d0,stroke:#e90
+    style MAP fill:#f0e0ff,stroke:#80c
 ```
 
-**Note:** L2 is built from L0 directly, not from L1. L1 only counts events, and
-counting cannot tell you *why* a thread stopped running. L2 needs the raw
-scheduler events for that, so it goes back to the source.
+Three things to notice in that diagram:
+
+**1. L2 comes from L0, not from L1.** This surprises people. L1 only *counts*
+events, and counting can never tell you *why* a thread stopped running. L2
+needs the raw scheduler events for that, so it goes back to the source.
+
+**2. Each step shrinks the data enormously.** 2.2 GB becomes 288 KB becomes
+2 KB. The 2 KB file is the one that usually solves the case.
+
+**3. Nothing here uses AI.** Every arrow is a fixed script. Run it twice, get
+the same answer. That matters because these files are then used to *test* AI
+models — the input has to be trustworthy.
 
 ### L1 — the numbers table
 
@@ -246,6 +335,11 @@ Three "services" in here are not app services:
 ### L2 — what the service was waiting for
 
 The most useful file, and the smallest (2 KB, 3 records).
+
+> **Not in this download.** Build it yourself from `kernel/`:
+> `python3 stratatrace/derive_kernel_l2.py <run_dir>`
+> (needs babeltrace2 version 2.1 or newer). The example below is from the same
+> fault family on our cluster.
 
 L1 tells you a service was slow. L2 tells you **why**. It splits each
 service's time into four buckets:
@@ -306,10 +400,14 @@ So it uses the container's main process ID from `meta/` instead, which is exact.
 Run them one run at a time:
 
 ```bash
-python3 stratatrace/derive_kernel_l1.py <run_dir>
-python3 stratatrace/derive_kernel_l2.py <run_dir>
-python3 stratatrace/derive_kernel_l3.py <run_dir>     # needs L1 to exist first
+RUN=data-sample/anomaly_cpu/anomaly_cpu_aggressive_steady_r1
+
+python3 stratatrace/derive_kernel_l1.py $RUN
+python3 stratatrace/derive_kernel_l2.py $RUN
+python3 stratatrace/derive_kernel_l3.py $RUN     # needs L1 to exist first
 ```
+
+L1 and L3 are already in the download, so only L2 needs building.
 
 Or in bulk: `transfer/derive_l2_working_set.sh` (Sock Shop) and
 `train-ticket-collection-scripts/batch_derive_tt.sh` (Train Ticket).
@@ -343,27 +441,71 @@ dependencies, queue backlogs, and network problems.
 | Source | Size here | Question it answers | Weakness |
 |---|---|---|---|
 | Metrics | (separate folder) | Is CPU/memory/network unusual? | Says *what*, never *why* |
-| Logs | 15 files | What did the app report? | Only what someone bothered to log |
+| Logs | 409 MB | What did the app report? | Only what someone bothered to log |
 | Traces | 1.3 GB | Which call in the chain got slow? | Blind to uninstrumented parts (databases, queues) |
-| Kernel | 288 KB + 2 KB + 1.2 MB | What was the machine actually doing, and what was it waiting for? | Needs the container→PID map to be usable |
+| Kernel | 2.2 GB raw → 1.5 MB summarised | What was the machine really doing, and what was it waiting for? | Needs the container→PID map to be usable |
 
 They are all recorded at the same time, on one clock, so you can look at the
 same second across all four. That is the point of the dataset.
+
+```mermaid
+flowchart LR
+    APP["Sock Shop<br/>14 containers"]
+
+    APP --> P["Prometheus<br/>+ cAdvisor"] --> M["<b>Metrics</b><br/>separate folder"]
+    APP --> D["docker logs"] --> LG["<b>Logs</b><br/>logs/"]
+    APP --> O["OpenTelemetry<br/>collector"] --> TR["<b>Traces</b><br/>otlp/spans.jsonl"]
+    APP --> K["LTTng<br/>kernel tracer"] --> KR["<b>Kernel</b><br/>kernel/ → L1, L2, L3"]
+
+    O -.->|relay| K
+
+    CLK["meta/ clock anchors<br/><i>lines all four up to ~0.001 ms</i>"]
+    M -.-> CLK
+    LG -.-> CLK
+    TR -.-> CLK
+    KR -.-> CLK
+
+    style CLK fill:#f0e0ff,stroke:#80c
+    style KR fill:#ffe0e0,stroke:#c00
+```
+
+The dotted relay arrow is the `ust/` trick from section 4: spans are copied into
+the kernel recording so both clocks stamp the same event.
 
 ---
 
 ## 8. Quick start
 
+Look at `verification.png` first — one second, and you know if the run is good.
+Then:
+
 ```python
 import pandas as pd, json
 
-run = "data-sample/anomaly_cpu_aggressive_steady_r1"
+run = "data-sample/anomaly_cpu/anomaly_cpu_aggressive_steady_r1"
 
-truth = json.load(open(f"{run}/ground_truth.json"))          # the answer
-l1    = pd.read_parquet(f"{run}/kernel_l1.parquet")          # numbers table
-l2    = [json.loads(l) for l in open(f"{run}/kernel_l2.jsonl")]   # wait analysis
+truth = json.load(open(f"{run}/ground_truth.json"))               # the answer
+l1    = pd.read_parquet(f"{run}/kernel_l1.parquet")               # numbers table
 l3    = [json.loads(l) for l in open(f"{run}/kernel_l3.jsonl")]   # English summaries
+
+# What did the CPU overload actually do? Compare baseline vs fault window.
+before = l1[l1.window_start_s <  60].groupby("service").sys_lat_p95_ms.mean()
+during = l1[(l1.window_start_s >= 60) & (l1.window_start_s < 180)] \
+            .groupby("service").sys_lat_p95_ms.mean()
+print((during / before).sort_values(ascending=False).head())
 ```
+
+Reading the raw kernel recording needs babeltrace2 — and the channels are
+gzipped, which babeltrace2 cannot read directly. Unzip a copy first:
+
+```bash
+RUN=data-sample/anomaly_cpu/anomaly_cpu_aggressive_steady_r1
+cp -r $RUN/kernel/kernel /tmp/ctf && gunzip /tmp/ctf/*.gz
+babeltrace2 /tmp/ctf | head -20
+```
+
+The deriver scripts do this unzip-to-temp step for you, and clean up afterwards.
+Expect roughly 8 GB unzipped, so do not do this on a small disk.
 
 To see it the way our AI agent sees it (raw files turned into short summaries):
 
