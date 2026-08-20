@@ -26,6 +26,18 @@ The baseline matters a lot. Almost every number in this dataset is
 **"fault compared to baseline"**, not a raw value. A number like "5 ms" means
 nothing on its own. "5 ms, was 0.5 ms before" means something.
 
+## 1b. How the dataset is packaged
+
+You do not have to download everything. The full set is about 330 GB.
+
+| Download | Size | Use it when |
+|---|---|---|
+| `stratatrace-lite.tar.gz` | ~1 GB | You want to look at every run, but only the small files: the answer, the verification, metrics, load results, and all three kernel summary levels. **Start here.** |
+| `<app>/<fault>.tar.gz` | 2–25 GB | You are working on one kind of failure and need the raw traces, logs and kernel recording too. |
+
+`manifest.csv` at the top lists every run with its label, target, timing and which
+files it has, so you can pick without downloading anything.
+
 ## 2. Reading the run name
 
 ```
@@ -50,31 +62,30 @@ data-sample/anomaly_cpu/
 └── anomaly_cpu_aggressive_steady_r3/     4.0 GB
 ```
 
-Each run has the same 1085 files:
+Each run holds everything about that run — you never need to look elsewhere:
 
 ```
 anomaly_cpu_aggressive_steady_r1/          4.0 GB total
+├── RUN-INFO.txt                      start here: what broke, when, what is here
 ├── ground_truth.json       614 B     the answer
 ├── verification.json       876 B     proof the fault really happened
 ├── verification.png       18 KB      a picture of that proof
+├── metrics/               900 KB     Prometheus metrics
+├── load.csv                11 MB     per-request results from the load generator
 ├── kernel/                 2.2 GB    RAW kernel recording  (this is "L0")
 ├── ust/                    188 MB    raw span events, kernel-side copy
 ├── otlp/spans.jsonl        1.3 GB    traces (requests moving between services)
 ├── logs/                   409 MB    logs (one file per container)
 ├── kernel_l1.parquet       288 KB    kernel, level 1
+├── kernel_l2.jsonl          2 KB     kernel, level 2
 ├── kernel_l3.jsonl         1.2 MB    kernel, level 3
 └── meta/                    16 MB    bookkeeping (clocks, container→process map)
 ```
 
-**Two things are missing on purpose, and you should know why:**
-
-- **`kernel_l2.jsonl` is not here.** L2 was derived later, on our compute
-  cluster, because it needs a newer version of the trace reader than the
-  recording machine had. This folder is the original recording. You can build
-  L2 yourself from `kernel/` — see section 5.
-- **Metrics and load results are not here.** They are written *next to* the run
-  folder, not inside it, as `<run_name>_metrics/` (Prometheus data) and
-  `<run_name>_load.csv`. They were not part of this download.
+> **If your copy looks different**, it is an older download. Before August 2026
+> the metrics and load results sat *beside* the run folder as `<run>_metrics/`
+> and `<run>_load.csv`, and `kernel_l2.jsonl` was not shipped at all. Everything
+> now lives inside the run. You can rebuild L2 from `kernel/` — see section 5.
 
 ---
 
