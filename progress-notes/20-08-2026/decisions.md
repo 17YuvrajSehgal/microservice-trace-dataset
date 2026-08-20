@@ -32,3 +32,22 @@ Execution: SLURM whole-node job (2167926), 26 families, PAR=8, pigz -p 20, stagi
 letting it run). Resumable: repack_family.sh skips families that already have a
 .sha256. Scripts in /scratch/yuvraj17/reorg/. A separate verify job proves each new
 archive is a strict SUPERSET of the old one (every original path still present).
+
+### Result (same day)
+Repack job 2167926 COMPLETED in 24m33s: 26/26 families, 0 failures. Verify job 2168499
+(after a first submit was silently killed by SIGPIPE from `sbatch | head -1` — never pipe
+sbatch): **26/26 PASS, 0 paths lost** — 195,914 original paths all present, +51,548 added
+(L2 + metrics/ + load.csv + RUN-INFO.txt per run). Release = 316 GB, 27 archives, 110 runs
+at /scratch/yuvraj17/stratatrace-v1/, plus stratatrace-lite.tar.gz at only **196 MB** for
+all 110 runs (the bundle to attach to a paper).
+
+Two data findings worth remembering:
+- **Train Ticket has no verification.png at all** (Sock Shop 27/27, TT 0/49). verify_injection.py
+  queries a LIVE Prometheus, so plots cannot be regenerated from the archived metrics without a
+  new script. verification.json (the actual pass/fail check) exists for both apps. README states
+  the gap; manifest has has_verif_png.
+- **`gate01`** — a Phase-0 smoke test — sits inside sockshop/normal.tar.gz and was being counted
+  as a healthy control. Reclassified run_type=smoke-test (not deleted). Honest counts:
+  **93 fault runs**, 12 controls, 4 overhead, 1 smoke test = 110.
+Originals in /project untouched (read-only inputs). Packaging scripts committed to
+transfer/release/ so this is reproducible, not a one-off.
