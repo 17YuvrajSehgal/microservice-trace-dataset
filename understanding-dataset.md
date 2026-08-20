@@ -154,7 +154,7 @@ file — that is normal, not a bug. Databases are quiet unless something is wron
 
 ### `meta/` — the bookkeeping folder
 
-Looks boring, is essential. Snapshots taken at start, at end, and every ~11
+Snapshots taken at start, at end, and every ~11
 seconds during the run.
 
 | File | What it holds |
@@ -208,14 +208,22 @@ script** — no AI, no judgement calls, so it is reproducible.
 
 ```
 L0  raw kernel recording   2–13 GB    archived, nobody reads it directly
- |    attribute events to services (using proc_* map), bucket into 1-second rows
- v
-L1  kernel_l1.parquet      288 KB     numbers table
  |
- |--> L2  kernel_l2.jsonl  2 KB       what each service was WAITING for
+ |  derive_kernel_l1.py  (count and bucket events into 1-second rows)
+ +----------------------------> L1  kernel_l1.parquet  288 KB   numbers table
+ |                                   |
+ |                                   |  derive_kernel_l3.py  (compare to baseline,
+ |                                   |                        write a sentence)
+ |                                   v
+ |                                  L3  kernel_l3.jsonl  1.2 MB  English summaries
  |
- `--> L3  kernel_l3.jsonl  1.2 MB     one-sentence summaries in English
+ |  derive_kernel_l2.py  (replay the scheduler, add up waiting time)
+ +----------------------------> L2  kernel_l2.jsonl     2 KB    what it WAITED for
 ```
+
+**Note:** L2 is built from L0 directly, not from L1. L1 only counts events, and
+counting cannot tell you *why* a thread stopped running. L2 needs the raw
+scheduler events for that, so it goes back to the source.
 
 ### L1 — the numbers table
 
@@ -277,6 +285,37 @@ included in the sentence.
 
 Because a template writes it and not a language model, it **cannot make things
 up**. Every claim traces back to a number in L1.
+
+### The scripts that build all this
+
+All four live in `stratatrace/`:
+
+| Script | Reads | Writes | What it does |
+|---|---|---|---|
+| `derive_kernel_l1.py` | L0 + `meta/` | `kernel_l1.parquet` | Counts events per service per second |
+| `derive_kernel_l2.py` | L0 + `meta/` | `kernel_l2.jsonl` | Replays the scheduler to find waiting time |
+| `derive_kernel_l3.py` | `kernel_l1.parquet` | `kernel_l3.jsonl` | Compares to baseline, writes sentences |
+| `service_map.py` | `meta/` | (helper) | Maps process ID → service name |
+
+`service_map.py` is not a level, but nothing works without it. Kernel events
+only carry a process name, and that name is a bad label: three Sock Shop
+services are all called `app`, and the Train Ticket services are all called
+`java`. Keying on the name alone produced **229 fake "services"** on a real run.
+So it uses the container's main process ID from `meta/` instead, which is exact.
+
+Run them one run at a time:
+
+```bash
+python3 stratatrace/derive_kernel_l1.py <run_dir>
+python3 stratatrace/derive_kernel_l2.py <run_dir>
+python3 stratatrace/derive_kernel_l3.py <run_dir>     # needs L1 to exist first
+```
+
+Or in bulk: `transfer/derive_l2_working_set.sh` (Sock Shop) and
+`train-ticket-collection-scripts/batch_derive_tt.sh` (Train Ticket).
+
+L1 and L2 need **babeltrace2** to read the raw recording. L3 does not — it only
+reads the L1 table, so it runs anywhere.
 
 ---
 
