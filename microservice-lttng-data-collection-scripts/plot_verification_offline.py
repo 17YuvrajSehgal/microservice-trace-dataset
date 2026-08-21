@@ -217,7 +217,13 @@ def _series_list(expr, metrics_dir):
 
 # ------------------------------------------------------------------ plotting --
 
-def plot(out_png, series_by_name, t_start, t_end):
+def plot(out_png, series_by_name, t_start, t_end, warmup_s=0):
+    """Same look as verify_injection.try_plot, plus an honesty marker.
+
+    `warmup_s` greys the leading region where rate() had less than a full lookback
+    window of archived history — those points read high and are not comparable to a
+    plot drawn from a live Prometheus.
+    """
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
@@ -230,10 +236,18 @@ def plot(out_png, series_by_name, t_start, t_end):
                 [v for _, v in samples], lw=1.2)
         ax.axvspan(dt.datetime.fromtimestamp(t_start, UTC),
                    dt.datetime.fromtimestamp(t_end, UTC), alpha=0.15, color="red")
+        if warmup_s and samples:
+            t0 = samples[0][0]
+            ax.axvspan(dt.datetime.fromtimestamp(t0, UTC),
+                       dt.datetime.fromtimestamp(t0 + warmup_s, UTC), alpha=0.10, color="grey")
         ax.set_ylabel(name, fontsize=8)
         ax.xaxis.set_major_formatter(mdates.DateFormatter("%H:%M:%S"))
-    axes[-1, 0].set_xlabel("time (injection window shaded)")
-    fig.tight_layout()
+    axes[-1, 0].set_xlabel("time (injection window shaded red)")
+    fig.text(0.005, 0.005,
+             "Redrawn from this run's archived metrics, not from a live Prometheus. "
+             f"Grey = first {int(warmup_s)}s, where the rate window is only partly filled and reads high.",
+             fontsize=6, color="0.35")
+    fig.tight_layout(rect=(0, 0.02, 1, 1))
     fig.savefig(out_png, dpi=90)
     plt.close(fig)
     return out_png
@@ -315,8 +329,12 @@ def main():
     if not series:
         print(f"FAIL {run}: no series evaluated" + (f" ({problems[0]})" if problems else "")); return 1
 
-    plot(out_png, series, t0, t1)
+    warmup = max([int(n) * UNIT_S[u]
+                  for n, u in re.findall(r'\[(\d+)([smh])\]', json.dumps(v.get("checks", [])))] or [0])
+    plot(out_png, series, t0, t1, warmup_s=warmup)
+    # stored means stay exactly as real Prometheus computed them — only record the picture
     v["impact_plot"] = out_png
+    v["impact_plot_source"] = "regenerated offline from archived metrics (plot_verification_offline.py)"
     json.dump(v, open(vj, "w"), indent=2)
     extra = f"  (skipped: {len(problems)})" if problems else ""
     print(f"OK   {run}: {len(series)} check(s) plotted{extra}")
