@@ -51,3 +51,41 @@ Two data findings worth remembering:
   **93 fault runs**, 12 controls, 4 overhead, 1 smoke test = 110.
 Originals in /project untouched (read-only inputs). Packaging scripts committed to
 transfer/release/ so this is reproducible, not a one-off.
+
+## Train Ticket verification plots regenerated offline (2026-08-20)
+Yuvraj asked whether the missing TT verification.png could be made. Yes — the blocker was
+only that `verify_injection.py` queries a LIVE Prometheus; the underlying data was never
+missing (each run archives 543 metric files). Wrote
+`microservice-lttng-data-collection-scripts/plot_verification_offline.py`: a small evaluator
+for the exact PromQL subset the catalog uses (rate/increase/min/avg, scalar arithmetic,
+`=`/`=~` matchers — only 12 distinct check shapes across all 43 TT runs), reusing the original
+plot styling.
+
+**Validated against Sock Shop runs that were plotted from real Prometheus.** Shape matches
+closely, but this exposed a genuine limit worth recording: **the archives contain no pre-run
+history**, so `rate()`'s 1-minute lookback is truncated at the start and the first ~60 s reads
+high (e.g. anomaly_cpu baseline 42.7 computed vs 27.8 stored). Handled by shading that region
+grey + a footnote on every plot, and by NEVER recomputing the stored means — verification.json
+keeps its original Prometheus numbers; only `impact_plot` + `impact_plot_source` are added.
+
+**Refused 3 plots on purpose.** For tt_svc_mem_cap the *canonical* check is
+`min(container_spec_memory_limit_bytes{...})` and that metric file was never archived; the only
+surviving check (`order_oom_kills`) is flat zero, which would read as "nothing happened". The
+tool now skips when the canonical check is unreproducible (`--allow-noncanonical` overrides).
+Result: 40/43 TT runs plotted; every labeled fault run in the dataset now has a plot except
+those 3. TT archives repacked (job 2170750, 12/12 OK) so the plots ship inside each run.
+
+## Why sockshop has 4 extra anomaly_mem runs and TT has none (asked by Yuvraj)
+Not a gap — calibration debris. On 2026-07-31 host-memory exhaustion took four attempts in one
+evening, each saved as a run: swap_r1 (3 workers, `--vm-bytes %`) and fix_r1 (4 capped workers)
+both FAILED the MemAvailable gate (verification_status=unconfirmed, 0.63/0.76 vs the 0.15 gate);
+bigheap_r1 passed metrics but the cgroup `--memory` cap trapped reclaim inside the memcg → ZERO
+`mm_vmscan_*`, losing the kernel signature that is this fault's winning modality; vmhang_r1
+(single UNCAPPED worker, 88% RAM) fired both signals. The winner went into `anomaly_mem.sh`, and
+the real 3 repeats were collected next morning with identical params. Train Ticket was ported
+five days later (runs 2026-08-05) and simply called the calibrated recipe — same
+`vm-hang(single,uncapped)` stressor, resized to 22.5 GB/35% because 40 Java services already
+hold a lot of RAM. The search only had to happen once.
+**Open question for Yuvraj:** fix_r1 and swap_r1 are verified FAILURES but carry ground_truth,
+so the manifest counts them as fault runs (93). Reclassifying them `calibration` (as was done
+for gate01 → smoke-test) would give an honest 91. NOT done — awaiting his call.
