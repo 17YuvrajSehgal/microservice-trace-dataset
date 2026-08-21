@@ -131,15 +131,32 @@ def _split_top(expr, ops):
     return None
 
 
+def _strip_parens(expr):
+    """Drop a fully-enclosing pair of parentheses, repeatedly. '(a)*(b)' is left alone."""
+    while expr.startswith("(") and expr.endswith(")"):
+        depth = quote = 0
+        encloses = True
+        for i, ch in enumerate(expr):
+            if ch == '"':
+                quote ^= 1
+            if quote:
+                continue
+            if ch == "(":
+                depth += 1
+            elif ch == ")":
+                depth -= 1
+                if depth == 0 and i < len(expr) - 1:
+                    encloses = False
+                    break
+        if not (encloses and depth == 0):
+            break
+        expr = expr[1:-1].strip()
+    return expr
+
+
 def evaluate(expr, metrics_dir):
     """PromQL subset -> [(ts, value)] (a single series)."""
-    expr = expr.strip()
-    while expr.startswith("(") and expr.endswith(")") and _split_top(expr[1:-1], "+-*/") is None:
-        inner = expr[1:-1].strip()
-        if inner.count("(") == inner.count(")"):
-            expr = inner
-        else:
-            break
+    expr = _strip_parens(expr.strip())
 
     for ops in (("+", "-"), ("*", "/")):
         sp = _split_top(expr, ops)
