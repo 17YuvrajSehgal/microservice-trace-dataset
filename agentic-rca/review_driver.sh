@@ -1,38 +1,42 @@
 #!/bin/bash
-# Review-response experiments (answers.md items 3, 6, 8). Login-node, resumable:
-# each output file is written once and skipped if present.
+# Review-response experiments (answers.md items 3, 6, 8). Login-node, resumable.
+# NOTE: every step below uses grid=full, so the transcript filename (<app>/<run>/full.json)
+# is the SAME for all of them — each step therefore gets its OWN transcripts dir, or later
+# steps silently overwrite earlier ones and most diagnoses become unauditable.
 set -uo pipefail
 cd /scratch/yuvraj17/microservice-trace-dataset || exit 1
 source transfer/env.sh >/dev/null 2>&1
 set -a; source .env; set +a
 cd agentic-rca || exit 1
-R=results/review; T=transcripts/review
-mkdir -p "$R" "$T"
+R=results/review
+mkdir -p "$R"
 
-step () {  # step <out.json> <args...>
-  local out="$1"; shift
-  if [ -s "$R/$out" ]; then echo "SKIP $out (exists)"; return 0; fi
-  echo "RUN  $out :: $*"
-  if python evaluate.py "$@" --out "$R/$out" --transcripts "$T" >> "$R/${out%.json}.log" 2>&1; then
-    echo "OK   $out"
+step () {  # step <name> <args...>
+  local name="$1"; shift
+  local out="$R/$name.json"
+  if [ -s "$out" ]; then echo "SKIP $name (exists)"; return 0; fi
+  echo "RUN  $name :: $*"
+  if python evaluate.py "$@" --out "$out" --transcripts "transcripts/review/$name" >> "$R/$name.log" 2>&1; then
+    echo "OK   $name"
   else
-    echo "FAIL $out (see $R/${out%.json}.log)"
+    echo "FAIL $name (see $R/$name.log)"
   fi
 }
 
-# --- item 3: model-only control (no tools), both apps, one incident per family -----------
-step llmonly_ss.json  --app sockshop    --per-family 1 --method llmonly --grid full
-step llmonly_tt.json  --app trainticket --per-family 1 --method llmonly --grid full
-# cruder lower bound: raw survey dump instead of the briefing
-step llmraw_ss.json   --app sockshop    --per-family 1 --method llmonly_raw --grid full
-step llmraw_tt.json   --app trainticket --per-family 1 --method llmonly_raw --grid full
+# --- item 3: model-only control (no tools) ------------------------------------------------
+step llmonly_ss  --app sockshop    --per-family 1 --method llmonly --grid full
+step llmonly_tt  --app trainticket --per-family 1 --method llmonly --grid full
+step llmraw_ss   --app sockshop    --per-family 1 --method llmonly_raw --grid full
+step llmraw_tt   --app trainticket --per-family 1 --method llmonly_raw --grid full
 
-# --- item 8: ranked answers from the full agent (same v4-s0b config + rank list) ---------
-step ranked_ss.json   --app sockshop    --per-family 1 --method agent --grid full --brief --rank-k 5
-step ranked_tt.json   --app trainticket --per-family 1 --method agent --grid full --brief --rank-k 5
-# ranked answers for the model-only control too, so the comparison is like-for-like
-step ranked_llmonly_ss.json --app sockshop    --per-family 1 --method llmonly --grid full --rank-k 5
-step ranked_llmonly_tt.json --app trainticket --per-family 1 --method llmonly --grid full --rank-k 5
+# --- item 8: ranked answers ---------------------------------------------------------------
+step ranked_ss   --app sockshop    --per-family 1 --method agent --grid full --brief --rank-k 5
+step ranked_tt   --app trainticket --per-family 1 --method agent --grid full --brief --rank-k 5
+step ranked_llmonly_ss --app sockshop    --per-family 1 --method llmonly --grid full --rank-k 5
+step ranked_llmonly_tt --app trainticket --per-family 1 --method llmonly --grid full --rank-k 5
+
+# --- reference: the frozen agent config, same 23 incidents, single verdict ----------------
+step agent_ref_ss --app sockshop    --per-family 1 --method agent --grid full --brief
+step agent_ref_tt --app trainticket --per-family 1 --method agent --grid full --brief
 
 echo "== review driver done $(date -u +%FT%TZ) =="
-ls -la "$R"/*.json 2>/dev/null | awk '{print "   ", $5, $9}'
