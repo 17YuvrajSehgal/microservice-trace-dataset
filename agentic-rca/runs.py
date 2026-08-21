@@ -93,11 +93,42 @@ def score(diagnosis: dict, gt: dict, family: str = "", ranked=None) -> dict:
     rank = next((i for i, s in enumerate(cand, 1) if _svc_match(s, tgt)), None)
 
     recipe = FAULT_TO_FAMILY.get(pred_fault, pred_fault)   # agent fault_type → recipe name
-    fault_hit = bool(recipe) and (recipe == family or name.startswith(recipe) or recipe in name)
-    return {"service_hit": bool(service_hit), "fault_hit": bool(fault_hit),
-            "both": bool(service_hit and fault_hit), "no_answer": False,
-            "service_top3": bool(rank and rank <= 3), "rr": (1.0 / rank if rank else 0.0), "rank": rank,
-            "pred_service": _norm(pred_svc), "target": tgt, "pred_fault": pred_fault, "expected_family": family}
+    fault_hit = _fault_match(recipe, family, name)
+    out = {"service_hit": bool(service_hit), "fault_hit": bool(fault_hit),
+           "both": bool(service_hit and fault_hit), "no_answer": False,
+           "service_top3": bool(rank and rank <= 3), "rr": (1.0 / rank if rank else 0.0), "rank": rank,
+           "pred_service": _norm(pred_svc), "target": tgt, "pred_fault": pred_fault,
+           "expected_family": family}
+
+    # --- ranked-answer metrics (only when the agent was asked for a list) -------------------
+    # `candidates` is [{service, fault_type}, ...] evidence-ranked. Reported per axis:
+    # localization (right component), typing (right fault), and both-correct.
+    cands = diagnosis.get("_candidates") or []
+    if cands:
+        def _ranks(pred):
+            return [i for i, c in enumerate(cands, 1) if pred(c)]
+        r_svc = _ranks(lambda c: _svc_match(c.get("service", ""), tgt))
+        r_ft = _ranks(lambda c: _fault_match(FAULT_TO_FAMILY.get(c.get("fault_type"), c.get("fault_type")),
+                                             family, name))
+        r_both = _ranks(lambda c: _svc_match(c.get("service", ""), tgt)
+                        and _fault_match(FAULT_TO_FAMILY.get(c.get("fault_type"), c.get("fault_type")),
+                                         family, name))
+        for tag, rs in (("svc", r_svc), ("fault", r_ft), ("both", r_both)):
+            first = rs[0] if rs else None
+            out[f"{tag}_hit@1"] = bool(first == 1)
+            out[f"{tag}_hit@3"] = bool(first and first <= 3)
+            out[f"{tag}_hit@5"] = bool(first and first <= 5)
+            out[f"{tag}_mrr"] = (1.0 / first) if first else 0.0
+            # single-relevant-item case: P@k = hits/k, AP = the reciprocal rank
+            for k in (3, 5):
+                out[f"{tag}_p@{k}"] = len([r for r in rs if r <= k]) / float(k)
+            out[f"{tag}_ap"] = (1.0 / first) if first else 0.0
+        out["n_candidates"] = len(cands)
+    return out
+
+
+def _fault_match(recipe: str, family: str, name: str) -> bool:
+    return bool(recipe) and (recipe == family or name.startswith(recipe) or recipe in name)
 
 
 if __name__ == "__main__":

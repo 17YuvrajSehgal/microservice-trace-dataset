@@ -112,10 +112,18 @@ def _sample(app, per_family, n, families):
 
 
 def run(app, per_family, n, families, out_path, method, grid, transcripts_dir="",
-        skills_mode="off", skills_dir="", brief=False):
+        skills_mode="off", skills_dir="", brief=False, rank_k=0, force_skill=""):
     RCAEVAL = {"mmbaro", "microrank", "tracerca", "baro"}
     if method == "agent":
         import agent as _m; label = __import__("config").model_id()
+    elif method in ("llmonly", "llmonly_raw"):
+        # model-only control: same model, same briefing, NO tool loop (answers #3)
+        import agent as _agent; label = __import__("config").model_id() + f" [{method}]"
+        class _m:                                                   # noqa: N801
+            @staticmethod
+            def diagnose(run, **kw):
+                kw.pop("skills", None); kw.pop("inject_brief", None)
+                return _agent.diagnose_oneshot(run, raw_dump=(method == "llmonly_raw"), **kw)
     elif method == "stat":
         import baseline_stat as _m; label = "statistical-baseline"
     elif method in RCAEVAL:
@@ -123,7 +131,7 @@ def run(app, per_family, n, families, out_path, method, grid, transcripts_dir=""
     else:
         raise SystemExit(f"unknown method {method!r}")
     conditions = GRIDS[grid]
-    tdir = transcripts_dir if method == "agent" else ""            # transcripts are LLM I/O — agent only
+    tdir = transcripts_dir if method in ("agent", "llmonly", "llmonly_raw") else ""            # transcripts are LLM I/O — agent only
     # v4 skill library (agent only). off = empty library = exactly the frozen v3 path.
     # full = every skill; lofo = per incident, every skill EXCEPT the incident's own family
     # (the never-seen-fault condition — 11 distractors, correct behavior is ABSTAIN + fallback).
@@ -145,14 +153,23 @@ def run(app, per_family, n, families, out_path, method, grid, transcripts_dir=""
             trel = os.path.join(app, rec.run_id, f"{cname}.json") if tdir else None
             inc_skills = None
             if library:
-                inc_skills = (library if skills_mode == "full"
-                              else [s for s in library if s.covers != rec.fault_family])
+                if force_skill:
+                    # cross-matrix: bypass the selector and hand the agent exactly ONE guide,
+                    # whether or not it matches this fault (answers the specificity question)
+                    inc_skills = [s for s in library if s.name == force_skill]
+                    if not inc_skills:
+                        raise SystemExit(f"--force-skill {force_skill!r} not in library")
+                else:
+                    inc_skills = (library if skills_mode == "full"
+                                  else [s for s in library if s.covers != rec.fault_family])
             try:
                 kw = {"method": method} if method in RCAEVAL else {}
                 if inc_skills is not None:
                     kw["skills"] = inc_skills
                 if brief and method == "agent":
                     kw["inject_brief"] = True
+                if rank_k and method in ("agent", "llmonly", "llmonly_raw"):
+                    kw["rank_k"] = rank_k
                 if tdir:
                     kw.update(transcript_path=os.path.join(tdir, trel), condition=cname,
                               meta={"app": rec.app, "grid": grid, "degrade_spec": asdict(spec),
@@ -161,7 +178,10 @@ def run(app, per_family, n, families, out_path, method, grid, transcripts_dir=""
             except Exception as e:
                 out = {"diagnosis": None, "error": str(e), "n_tool_calls": 0,
                        "bytes_touched": 0, "tokens": {"in": 0, "out": 0}}
-            sc = R.score(out.get("diagnosis"), rec.ground_truth, rec.fault_family, out.get("ranked_services"))
+            _d = out.get("diagnosis")
+            if _d is not None and out.get("ranked_candidates"):
+                _d = {**_d, "_candidates": out["ranked_candidates"]}   # ranking metrics (#8)
+            sc = R.score(_d, rec.ground_truth, rec.fault_family, out.get("ranked_services"))
             # harness-side selection scoring (covers is never shown to the model):
             # full -> correct = picked the skill covering this family; lofo -> correct = abstained
             sel_name, sel_ok = out.get("skill_selected"), None
@@ -220,7 +240,9 @@ if __name__ == "__main__":
     ap.add_argument("--per-family", type=int, default=0)
     ap.add_argument("--n", type=int, default=0)
     ap.add_argument("--families", default="")
-    ap.add_argument("--method", default="agent", choices=["agent", "stat", "mmbaro", "microrank", "tracerca", "baro"])
+    ap.add_argument("--method", default="agent",
+                    choices=["agent", "stat", "mmbaro", "microrank", "tracerca", "baro",
+                             "llmonly", "llmonly_raw"])
     ap.add_argument("--grid", default="full", choices=list(GRIDS))
     ap.add_argument("--out", default="")
     ap.add_argument("--transcripts", default="",
@@ -230,6 +252,10 @@ if __name__ == "__main__":
                     help="v4 skill library condition (agent only): off = frozen v3 baseline; "
                          "full = every skill; lofo = leave-one-family-out (never-seen-fault test)")
     ap.add_argument("--skills-dir", default="", help="override skill library directory")
+    ap.add_argument("--rank-k", type=int, default=0,
+                    help="ask for a ranked list of up to K candidates (0 = single verdict, frozen default)")
+    ap.add_argument("--force-skill", default="",
+                    help="bypass the selector and force this guide on every incident (cross-matrix)")
     ap.add_argument("--brief", action="store_true",
                     help="inject the Context Builder's investigation brief (masked) into the "
                          "agent's first message (v4 toggle; measured as its own condition)")
@@ -251,6 +277,7 @@ if __name__ == "__main__":
             app_out = a.out[:-5] + f"_{app}.json" if a.out.endswith(".json") else f"{a.out}.{app}"
         allres += run(app, a.per_family, a.n, fams, app_out or "", a.method, a.grid,
                       transcripts_dir=tdir, skills_mode=a.skills, skills_dir=a.skills_dir,
+                      rank_k=a.rank_k, force_skill=a.force_skill,
                       brief=a.brief)
     if a.app == "both":
         print("\n==== COMBINED ===="); _summarize(allres, GRIDS[a.grid])

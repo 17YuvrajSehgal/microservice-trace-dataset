@@ -128,6 +128,77 @@ _TOOL_DEFS = [
          "required": ["root_cause_service", "fault_type", "evidence", "confidence"]}},
 ]
 
+# Optional ranked-answer mode (RQ: hit@k / MRR / MAP, comparable to the ranked-list baselines).
+# OFF by default so the frozen single-verdict configuration is untouched: passing rank_k=0
+# yields byte-identical tool schemas. When on, alternatives are EVIDENCE-ranked — a candidate
+# without its own supporting evidence is dropped by the harness, so the list is not merely the
+# model's next-most-likely tokens.
+_ALTERNATIVES_PROP = {
+    "type": "array",
+    "description": ("Other candidates your evidence genuinely left open, most likely FIRST. "
+                    "Do not pad: include a candidate only if you can cite evidence for it that "
+                    "does not merely repeat the primary verdict. Omit entirely if the primary "
+                    "verdict is the only one the evidence supports."),
+    "items": {"type": "object", "properties": {
+        "service": {"type": "string", "description": "candidate culprit service/container"},
+        "fault_type": {"type": "string", "enum": FAULT_TYPES},
+        "evidence": {"type": "string", "description": "the signal that keeps THIS candidate open"}},
+        "required": ["service", "fault_type", "evidence"]},
+}
+
+
+def _tool_defs(rank_k: int = 0, only_submit: bool = False):
+    """Tool schemas. rank_k>0 adds the ranked `alternatives` field; only_submit drops the
+    query tools (the no-tools baseline)."""
+    defs = [dict(t) for t in _TOOL_DEFS]
+    if rank_k > 0:
+        for t in defs:
+            if t["name"] == "submit_diagnosis":
+                props = dict(t["parameters"]["properties"])
+                alt = dict(_ALTERNATIVES_PROP)
+                alt["maxItems"] = max(0, rank_k - 1)
+                props["alternatives"] = alt
+                t["parameters"] = {**t["parameters"], "properties": props}
+    if only_submit:
+        defs = [t for t in defs if t["name"] == "submit_diagnosis"]
+    return defs
+
+
+def _unmask_diagnosis(diagnosis, guard, tr=None):
+    """Bring a submitted verdict back to real names — primary AND ranked alternatives."""
+    if diagnosis is None or not config.MASK_NAMES:
+        return diagnosis
+    submitted = json.loads(json.dumps(diagnosis, default=str))
+    diagnosis["root_cause_service"] = guard.unmask(diagnosis.get("root_cause_service"))
+    diagnosis["evidence"] = guard.unmask_text(diagnosis.get("evidence"))
+    for alt in (diagnosis.get("alternatives") or []):
+        if isinstance(alt, dict):
+            alt["service"] = guard.unmask(alt.get("service"))
+            alt["evidence"] = guard.unmask_text(alt.get("evidence"))
+    if tr is not None and submitted != diagnosis:
+        tr.event("unmask", submitted=submitted, unmasked=diagnosis, mapping=guard.mapping())
+    return diagnosis
+
+
+def _ranked_from(diagnosis: dict, rank_k: int):
+    """Evidence-ranked candidate list: primary first, then alternatives that carry their own
+    evidence. Duplicates and unsupported entries are dropped."""
+    if not diagnosis:
+        return None
+    out, seen = [], set()
+    for svc, fault in [(diagnosis.get("root_cause_service"), diagnosis.get("fault_type"))] + [
+            (a.get("service"), a.get("fault_type"))
+            for a in (diagnosis.get("alternatives") or [])
+            if isinstance(a, dict) and str(a.get("evidence", "")).strip()]:
+        key = str(svc or "").strip().lower()
+        if not key or key in seen:
+            continue
+        seen.add(key)
+        out.append({"service": svc, "fault_type": fault})
+        if rank_k and len(out) >= rank_k:
+            break
+    return out or None
+
 
 # transient provider failures worth retrying: rate limits, 5xx, timeouts, and the Azure/OpenAI
 # reasoning-model "invalid_prompt" policy flag (fires intermittently on telemetry-heavy turns —
@@ -176,7 +247,7 @@ def _run_tool(tools: RunTools, name: str, args: dict, guard=None):
 def diagnose(run, app: str | None = None, max_steps: int = 14, verbose: bool = False,
              transcript_path: str | None = None, condition: str | None = None,
              meta: dict | None = None, skills: list | None = None,
-             inject_brief: bool = False) -> dict:
+             inject_brief: bool = False, rank_k: int = 0) -> dict:
     """Run the agent on one incident. Returns diagnosis + trajectory + usage (no ground-truth here).
     Dispatches on the provider's SDK family — Anthropic vs OpenAI-compatible (azure/gemini/openai/
     ollama) — so the model is a config knob (RCA_PROVIDER/RCA_MODEL); everything else is identical.
@@ -254,29 +325,26 @@ def diagnose(run, app: str | None = None, max_steps: int = 14, verbose: bool = F
     tr.meta["brief_injected"] = inject_brief
     tr.meta["skill_selected"] = sel["skill_name"] if sel else None
     tr.event("system_prompt", text=system_eff, sha256=T.sha256_text(system_eff))
-    tr.event("tools_schema", tools=_TOOL_DEFS)
+    tr.event("tools_schema", tools=_tool_defs(rank_k))
     tr.event("user_message", text=user)
     loop = _loop_anthropic if config.sdk_kind() == "anthropic" else _loop_openai
     try:
         diagnosis, traj, in_tok, out_tok, bytes_touched = loop(tools, user, max_steps, verbose, tr,
-                                                              guard, system_eff)
+                                                              guard, system_eff, rank_k)
     except Exception as e:
         tr.event("error", error=repr(e))
         tr.finalize(None, "error", wall_s=round(time.time() - t0, 1))
         if transcript_path:
             tr.write(transcript_path)
         raise
-    if diagnosis is not None and config.MASK_NAMES:
-        submitted = dict(diagnosis)
-        diagnosis["root_cause_service"] = guard.unmask(diagnosis.get("root_cause_service"))
-        diagnosis["evidence"] = guard.unmask_text(diagnosis.get("evidence"))
-        if submitted != diagnosis:
-            tr.event("unmask", submitted=submitted, unmasked=diagnosis, mapping=guard.mapping())
+    diagnosis = _unmask_diagnosis(diagnosis, guard, tr)
     stop = ("submitted" if diagnosis is not None
             else "max_steps" if tr.count("api_response") >= max_steps else "no_tool_calls")
     out = {
         "run_id": run_id,
         "diagnosis": diagnosis,                       # {root_cause_service, fault_type, evidence, confidence} or None
+        "ranked_services": [c["service"] for c in (_ranked_from(diagnosis, rank_k) or [])] or None,
+        "ranked_candidates": _ranked_from(diagnosis, rank_k),   # (service, fault_type) pairs, evidence-ranked
         "trajectory": traj,                           # RQ2
         "n_tool_calls": len([x for x in traj if x["tool"] != "submit_diagnosis"]),
         "bytes_touched": bytes_touched + survey_bytes,  # RQ4 cost (survey included in skills mode)
@@ -296,10 +364,110 @@ def diagnose(run, app: str | None = None, max_steps: int = 14, verbose: bool = F
     return out
 
 
-def _loop_anthropic(tools, user, max_steps, verbose, tr, guard, system=SYSTEM):
+def diagnose_oneshot(run, app: str | None = None, transcript_path: str | None = None,
+                     condition: str | None = None, meta: dict | None = None,
+                     rank_k: int = 0, raw_dump: bool = False, **_ignored) -> dict:
+    """Model-only baseline: the SAME model, no tool loop, one call.
+
+    Isolates the question "is the result the agent loop, or just the model?". The model sees
+    only the deterministic evidence briefing (identical to what the agent is given, same
+    masking) and must answer in the same schema. It cannot ask follow-up questions, so any
+    gap against the full agent is attributable to iterative investigation rather than to the
+    model or to the briefing.
+
+    `raw_dump=True` swaps the briefing for a plain dump of the same survey — the cruder lower
+    bound ("just paste telemetry at it").
+    """
+    t0 = time.time()
+    tools = RunTools(run, app=app)
+    run_id = os.path.basename(run.run_dir)
+    guard = leakguard.Guard(enabled=config.MASK_NAMES)
+    shown_id = leakguard.alias_run(run_id) if config.MASK_NAMES else run_id
+
+    method = "llmonly-raw" if raw_dump else "llmonly"
+    tr = T.Transcript(run_id, method=method, condition=condition or method, extra=meta)
+    tr.meta["mask_names"] = config.MASK_NAMES
+    tr.meta["incident_alias"] = shown_id
+
+    sic, survey_bytes = context_builder.build_context(tools, run_id)
+    masked_digest = guard.mask_obj(sic.digest())
+    tr.event("shared_context", **sic.to_jsonable())
+    body = (json.dumps(masked_digest, indent=2, default=str) if raw_dump
+            else shared_context.format_brief(masked_digest))
+
+    user = (f"Incident '{shown_id}'. You have NO investigation tools — this is the complete "
+            f"evidence available, a baseline-vs-incident survey of every telemetry source:\n\n"
+            f"{body}\n\n"
+            f"Decide the root cause from this alone and call submit_diagnosis. If the evidence "
+            f"is ambiguous, still commit to the best-supported verdict and say why in evidence.")
+    tr.event("user_message", text=user)
+
+    defs = _tool_defs(rank_k, only_submit=True)
+    tr.event("tools_schema", tools=defs)
+    diagnosis, itok, otok = None, 0, 0
+    try:
+        client = config.make_client()
+        tc = time.time()
+        if config.sdk_kind() == "anthropic":
+            schema = [{"name": t["name"], "description": t["description"],
+                       "input_schema": t["parameters"]} for t in defs]
+            r = _api_call(lambda: client.messages.create(
+                model=config.model_id(), max_tokens=config.MAX_TOKENS,
+                temperature=config.TEMPERATURE, system=SYSTEM, messages=[{"role": "user", "content": user}],
+                tools=schema, tool_choice={"type": "tool", "name": "submit_diagnosis"}), tr, 0)
+            tr.event("api_response", step=0, latency_ms=int((time.time() - tc) * 1000),
+                     response=T.to_jsonable(r))
+            itok, otok = r.usage.input_tokens, r.usage.output_tokens
+            tu = next((b for b in r.content if b.type == "tool_use"), None)
+            if tu is not None:
+                diagnosis = _unmask_diagnosis(dict(tu.input), guard, tr)
+        else:
+            schema = [{"type": "function", "function": t} for t in defs]
+            r = _api_call(lambda: client.chat.completions.create(
+                model=config.model_id(),
+                messages=[{"role": "system", "content": SYSTEM}, {"role": "user", "content": user}],
+                tools=schema,
+                tool_choice={"type": "function", "function": {"name": "submit_diagnosis"}},
+                **config.openai_create_kwargs()), tr, 0)
+            tr.event("api_response", step=0, latency_ms=int((time.time() - tc) * 1000),
+                     response=T.to_jsonable(r))
+            u = r.usage
+            itok, otok = getattr(u, "prompt_tokens", 0), getattr(u, "completion_tokens", 0)
+            m = r.choices[0].message
+            if m.tool_calls:
+                diagnosis = _unmask_diagnosis(
+                    json.loads(m.tool_calls[0].function.arguments), guard, tr)
+    except Exception as e:                                              # noqa: BLE001
+        tr.event("error", error=repr(e))
+        tr.finalize(None, "error", wall_s=round(time.time() - t0, 1))
+        if transcript_path:
+            tr.write(transcript_path)
+        raise
+
+    out = {
+        "run_id": run_id, "diagnosis": diagnosis,
+        "ranked_services": [c["service"] for c in (_ranked_from(diagnosis, rank_k) or [])] or None,
+        "ranked_candidates": _ranked_from(diagnosis, rank_k),
+        "trajectory": [], "n_tool_calls": 0,
+        "bytes_touched": survey_bytes,
+        "tokens": {"in": itok, "out": otok},
+        "model": config.model_id(), "wall_s": round(time.time() - t0, 1),
+        "transcript_file": transcript_path,
+        "skill_selected": None, "skill_confidence": None,
+        "brief_injected": not raw_dump, "n_claims": len(sic),
+    }
+    tr.finalize(diagnosis, "submitted" if diagnosis else "no_tool_calls",
+                tokens={"in": itok, "out": otok}, bytes_touched=survey_bytes,
+                n_tool_calls=0, wall_s=out["wall_s"])
+    if transcript_path:
+        tr.write(transcript_path)
+    return out
+
+
+def _loop_anthropic(tools, user, max_steps, verbose, tr, guard, system=SYSTEM, rank_k=0):
     client = config.make_client()
     schema = [{"name": t["name"], "description": t["description"], "input_schema": t["parameters"]}
-              for t in _TOOL_DEFS]
+              for t in _tool_defs(rank_k)]
     messages = [{"role": "user", "content": user}]
     traj, itok, otok, bt, diagnosis = [], 0, 0, 0, None
     for step in range(max_steps):
@@ -341,10 +509,10 @@ def _loop_anthropic(tools, user, max_steps, verbose, tr, guard, system=SYSTEM):
     return diagnosis, traj, itok, otok, bt
 
 
-def _loop_openai(tools, user, max_steps, verbose, tr, guard, system=SYSTEM):
+def _loop_openai(tools, user, max_steps, verbose, tr, guard, system=SYSTEM, rank_k=0):
     """OpenAI-compatible tool-use loop (Azure / Gemini / OpenAI / Ollama)."""
     client = config.make_client()
-    schema = [{"type": "function", "function": t} for t in _TOOL_DEFS]
+    schema = [{"type": "function", "function": t} for t in _tool_defs(rank_k)]
     messages = [{"role": "system", "content": system}, {"role": "user", "content": user}]
     ck = config.openai_create_kwargs()
     traj, itok, otok, bt, diagnosis = [], 0, 0, 0, None
