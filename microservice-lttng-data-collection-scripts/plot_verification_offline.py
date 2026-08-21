@@ -244,8 +244,9 @@ def plot(out_png, series_by_name, t_start, t_end, warmup_s=0):
         ax.xaxis.set_major_formatter(mdates.DateFormatter("%H:%M:%S"))
     axes[-1, 0].set_xlabel("time (injection window shaded red)")
     fig.text(0.005, 0.005,
-             "Redrawn from this run's archived metrics, not from a live Prometheus. "
-             f"Grey = first {int(warmup_s)}s, where the rate window is only partly filled and reads high.",
+             "Redrawn from this run's own archived metrics, not from a live Prometheus. "
+             f"Grey = first {int(warmup_s)}s: no pre-run history is archived, so rate() there is averaged "
+             "over a partial window and will not match baseline_mean in verification.json.",
              fontsize=6, color="0.35")
     fig.tight_layout(rect=(0, 0.02, 1, 1))
     fig.savefig(out_png, dpi=90)
