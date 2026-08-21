@@ -23,7 +23,7 @@ spans; TT 46/36. **Every datastore in both apps is span-less; the kernel layer s
 
 **Engineering trap worth remembering:** all steps use grid=full, so they share the transcript
 filename `<app>/<run>/full.json`; a shared --transcripts dir silently overwrote 69 of 92 audit
-records on the first attempt (numbers survived, audit trail did not). Driver now gives每 step
+records on the first attempt (numbers survived, audit trail did not). Driver now gives each step
 its own transcripts dir. Same class of bug as the earlier bundle_artifact arcname collision.
 
 **Framing implication (flagged to Yuvraj, awaiting his call):** the agent is the instrument,
