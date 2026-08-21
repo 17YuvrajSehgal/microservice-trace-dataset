@@ -280,6 +280,8 @@ def main():
     ap.add_argument("--force", action="store_true", help="overwrite an existing verification.png")
     ap.add_argument("--check", action="store_true",
                     help="recompute stored means instead of plotting (validates the evaluator)")
+    ap.add_argument("--allow-noncanonical", action="store_true",
+                    help="plot even when the canonical check's metric is missing from the archive")
     a = ap.parse_args()
 
     rd = a.run_dir.rstrip("/")
@@ -301,9 +303,10 @@ def main():
         print(f"SKIP {run}: no injection window"); return 1
     t0, t1 = parse_utc(win[0]).timestamp(), parse_utc(win[1]).timestamp()
 
-    series, problems = {}, []
+    series, problems, canon_ok, canon_any = {}, [], False, False
     for c in v.get("checks", []):
         q = c.get("promql", "")
+        canon_any |= bool(c.get("canonical"))
         try:
             s = evaluate(q, md)
         except Exception as e:                                        # noqa: BLE001
@@ -311,6 +314,7 @@ def main():
         if not s:
             problems.append(f"{c.get('name')}: no data for {q}"); continue
         series[c.get("name", "check")] = s
+        canon_ok |= bool(c.get("canonical"))
 
         if a.check:
             base = [val for ts, val in s if ts < t0]
@@ -329,6 +333,11 @@ def main():
         return 0
     if not series:
         print(f"FAIL {run}: no series evaluated" + (f" ({problems[0]})" if problems else "")); return 1
+    if canon_any and not canon_ok and not a.allow_noncanonical:
+        # the deciding metric is missing from the archive; the remaining series would
+        # draw a flat line that reads as "nothing happened". Refuse rather than mislead.
+        print(f"SKIP {run}: canonical check not reproducible ({problems[0] if problems else '?'})")
+        return 0
 
     warmup = max([int(n) * UNIT_S[u]
                   for n, u in re.findall(r'\[(\d+)([smh])\]', json.dumps(v.get("checks", [])))] or [0])
