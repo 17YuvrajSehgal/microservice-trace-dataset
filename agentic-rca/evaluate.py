@@ -193,6 +193,7 @@ def run(app, per_family, n, families, out_path, method, grid, transcripts_dir=""
                             "condition": cname, "target": rec.target_service,
                             "expected_modality": rec.expected_winning_modality,
                             "diagnosis": out.get("diagnosis"), "ranked_services": out.get("ranked_services"),
+                            "ranked_candidates": out.get("ranked_candidates"),
                             "score": sc, "n_tool_calls": out.get("n_tool_calls"), "tokens": out.get("tokens"),
                             "bytes_touched": out.get("bytes_touched"), "trajectory": out.get("trajectory"),  # RQ2
                             "skills_mode": skills_mode if inc_skills is not None else "off",

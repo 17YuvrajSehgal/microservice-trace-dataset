@@ -119,9 +119,11 @@ def score(diagnosis: dict, gt: dict, family: str = "", ranked=None) -> dict:
             out[f"{tag}_hit@3"] = bool(first and first <= 3)
             out[f"{tag}_hit@5"] = bool(first and first <= 5)
             out[f"{tag}_mrr"] = (1.0 / first) if first else 0.0
-            # single-relevant-item case: P@k = hits/k, AP = the reciprocal rank
+            # exactly ONE relevant item per incident today (single injected fault), so a
+            # second candidate that also matches is the SAME truth, not extra credit:
+            # count only the first hit. Multi-fault runs would relax this.
             for k in (3, 5):
-                out[f"{tag}_p@{k}"] = len([r for r in rs if r <= k]) / float(k)
+                out[f"{tag}_p@{k}"] = (1.0 / k) if (first and first <= k) else 0.0
             out[f"{tag}_ap"] = (1.0 / first) if first else 0.0
         out["n_candidates"] = len(cands)
     return out
