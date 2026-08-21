@@ -1,0 +1,109 @@
+\section{Answers to review questions}
+\label{sec:questions}
+
+Twelve questions were raised on an earlier draft. Six can be answered from the runs we
+already have; the rest are proposed work, with what each depends on.
+
+\subsection{Answered from the data we have}
+
+\paragraph{Why are there more components than services?}
+One service does run in one container, but a deployment also contains databases, a
+message broker, a cache, a service registry and a proxy. The small shop is 14
+containers: 8 business services, 4 databases, a broker and an ingress. The large
+booking system is about 67 containers: roughly 39 services plus a shared database, a
+second database, a cache, a registry and a dashboard. The extra components matter
+because they are exactly the ones that emit no request traces --- they appear only as
+something a caller waited on.
+
+\paragraph{Are faults in services found more easily than faults in other components?}
+Yes, and by a wide margin.
+
+\begin{table}[h]
+\centering\small
+\begin{tabular}{lccc}
+\toprule
+Where the fault was injected & Cases & Right component & Fully correct \\
+\midrule
+The whole machine            & 8  & 7/8  & 6/8 \\
+A business service           & 10 & 9/10 & 4/10 \\
+A non-service component      & 3  & 1/3  & 1/3 \\
+A rogue container            & 2  & 2/2  & 0/2 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\noindent
+Faults in services are localized 9 times in 10; faults in databases and queues only 1
+in 3. This is the blind spot we predicted before running anything: those components
+produce no traces, so ordinary telemetry points \emph{near} them, never \emph{at}
+them. The one success in that row is the slow database, and it is carried by the
+kernel wait analysis --- it stays correct even with traces removed entirely.
+
+\paragraph{What does the per-fault table look like?}
+It is already in the appendix: 23 faults $\times$ 7 setups, generated from the
+recorded results.
+
+\paragraph{Are the investigation guides specific to one root cause?}
+Indirectly, yes. When we hide the matching guide, the selector picks a wrong one and
+that costs about 18 points versus using no guide at all. A wrong guide actively
+misleads, which only happens if guides are specific.
+
+\paragraph{How do the other methods behave when data is reduced?}
+We measured this: the statistical method falls from 38\% to 34\% as traces are
+thinned; the academic multi-modal method stays flat at 48\%. Flat sounds robust but
+is not --- each leans on a single data source and is already low, and neither can use
+the kernel layer at all. Feeding kernel data into the academic method changed nothing.
+
+\paragraph{Is the agent only better because it sees more data?}
+No, and we can show it. Given \emph{115 times less data and no kernel layer at all},
+the agent still names the right component 83\% of the time. The other methods, given
+\emph{everything}, reach 46--48\%. The advantage survives when the data advantage is
+reversed, so what is left is the iterative questioning, not the volume.
+
+\subsection{Proposed next, on data we already hold}
+
+\paragraph{A language-model-only baseline.} Same model, no tools, one shot: it sees
+only the evidence briefing and must answer in the same format. This closes the
+question of whether the result comes from the agent loop or from the model alone. We
+will follow a published prompt design for one-shot incident diagnosis so the
+comparison is defensible. Under \$1.
+
+\paragraph{A guide cross-matrix.} Force every guide onto every fault instead of
+letting the selector choose. If guides are specific we should see a strong diagonal
+and a depressed off-diagonal. That single figure is the specificity claim. About \$5.
+
+\paragraph{Ranked answers and ranking metrics.} The agent currently gives one verdict.
+We will let it return up to five candidates, each carrying its own evidence, and
+report hit rate at 1/3/5 along with mean reciprocal rank, precision and average
+precision --- directly comparable to the other methods, which already produce ranked
+lists. One caveat we will state plainly: a language model's list is ordered by what
+its reasoning found plausible next, not by calibrated probability. We reduce that by
+dropping any candidate without its own evidence, and can compare against a variant
+that ranks by how often repeated runs agree. Roughly \$1--2.
+
+\subsection{Proposed next, but blocked on new recordings}
+
+\paragraph{Faults injected into source code.} The agent has a code-search tool that
+today's faults never exercise, because all twelve are operational. The mutations have
+to be ones that actually show up in telemetry --- removing a downstream call, removing
+a logged statement, changing a database query --- not something invisible like
+flipping a condition. Our two instrumented services can be rebuilt from a branch, so
+the mechanism is ready.
+
+\paragraph{More than one fault at a time.} Every recording currently has exactly one
+injected fault, which is what makes the labels unambiguous. Adding pairs --- some
+overlapping in symptoms, some independent --- would need the set-aware metrics above,
+because three guesses covering two true faults is not the same as three guesses for
+one.
+
+\noindent
+Both need the collection machine, which is currently switched off. Everything up to
+that point can be prepared now.
+
+\subsection{Noted, not pursued}
+
+Mapping data sources to fault types is a related but different direction from ours
+(we map fault types to investigation guides), and is already being published
+elsewhere; we will cite it rather than enter it. A pipeline diagram of the whole
+system, and a table showing that each guide encodes a signature written down before
+any experiment, are both write-up work for the paper version.
