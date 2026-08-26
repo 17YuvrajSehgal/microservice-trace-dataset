@@ -5,6 +5,70 @@ something new is needed, a concrete experiment design with its dependencies.
 
 ---
 
+---
+
+## 0. The dataset at a glance
+
+### Runs
+
+| Run type | Sock Shop | Train Ticket | Total |
+|---|---|---|---|
+| **Fault injections (labelled)** | 50 | 43 | **93** |
+| Healthy controls (no fault) | 6 | 6 | 12 |
+| Tracing-overhead runs | 4 | — | 4 |
+| Pipeline smoke test | 1 | — | 1 |
+| **All runs in the release** | 61 | 49 | **110** |
+
+Of the 93 labelled injections, **89 are the canonical set** (46 Sock Shop from the v1
+freeze + 43 Train Ticket). The other 4 are Sock Shop `anomaly_mem` calibration attempts
+from one evening of tuning the memory stressor; **2 of those 4 are verified failures**
+(the fault did not fire) and are kept for provenance, not for scoring.
+
+Every run is 4 minutes: 60 s healthy, 120 s fault, 60 s recovery. Raw kernel data alone
+is 109 GB for Sock Shop.
+
+### Fault families
+
+**12 families.** Sock Shop has all 12; Train Ticket has 11 (it has no message-queue
+consumer, so `queue_backlog` does not apply). Both apps share the same recipes — only
+the target and sizing differ.
+
+| # | Family | Scope | Sock Shop target | runs | Train Ticket target | Expected winning modality |
+|---|---|---|---|---|---|---|
+| 1 | `anomaly_cpu` | host | host | 3 | host | kernel |
+| 2 | `anomaly_disk` | host | host | 3 | host | kernel |
+| 3 | `anomaly_mem` | host | host | 3 | host | kernel |
+| 4 | `anomaly_net` | host | host | 3 | host | traces |
+| 5 | `noisy_neighbor` | host (co-tenant) | host | 5 | host | kernel |
+| 6 | `svc_cpu_cap` | service | carts | 5 | ts-travel-service | kernel |
+| 7 | `svc_mem_cap` | service | carts | 3 | ts-order-service | logs |
+| 8 | `svc_net` | service | carts | 3 | ts-basic-service | traces |
+| 9 | `slow_db` | datastore | catalogue-db | 7 | **mysql (shared)** | kernel |
+| 10 | `dependency_outage` | service | payment | 3 | ts-seat-service | traces |
+| 11 | `error_storm` | service | catalogue | 5 | ts-order-service | logs |
+| 12 | `queue_backlog` | broker | queue-master | 3 | — (n/a) | kernel |
+
+Sock Shop counts are the v1 freeze (46 runs). Train Ticket totals 43 runs over its 11
+families; the per-family split is in the release `manifest.csv`.
+
+Verification status (Sock Shop): 43 of 46 `confirmed`, 3 `borderline` (all
+`dependency_outage` — it degrades by hanging rather than erroring, so the metric gate is
+weak by design). Every run carries a machine check that the fault actually fired.
+
+### Components
+
+Measured from each run's own container roster, not from deployment notes:
+
+| | Components observed | Emit request traces | **Span-less** | Kernel-visible |
+|---|---|---|---|---|
+| Sock Shop | 16 (14 app + 2 injected) | 6 | **10** | 15 |
+| Train Ticket | 46 (44 app + 2 injected) | 36 | **10** | 42 |
+
+Span-less components are the databases, message broker, cache, service registry, proxies
+and the injected fault containers. **Every datastore in both applications is span-less**
+(0 of 4 and 0 of 3), while the kernel layer sees 4 of 4 and 2 of 3 — which is the whole
+reason the kernel modality is in this dataset.
+
 ## 1. Total number of components — why more components than services?
 
 "One service per container" holds for *business logic*, but a running deployment
@@ -32,9 +96,11 @@ registry, proxy) are precisely the ones that emit **no request spans** — they 
 appear in traces as callees, in container metrics, and in the kernel layer. That is
 why they matter for the study (see #2).
 
-*Action:* a per-app component census table (name, kind, emits spans?, emits logs?,
-kernel-visible?) is easy to generate from the recorded topology inventories — will
-add to the report appendix.
+*Done:* the census is now measured, not estimated — see the component table in §0. It is
+generated from each run's own container roster (`component_census.py`), because the
+telemetry-derived service list also picks up metric labels that are not containers at all
+(os-version strings, scrape-job names) and inflated a first draft to 17/50. Per-component
+detail: `agentic-rca/results/review/component_census.json`.
 
 ## 2. Faults injected into services vs. components — which are detected better?
 
