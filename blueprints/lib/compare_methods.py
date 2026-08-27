@@ -43,6 +43,20 @@ def load_blueprint(d, runs_index):
     return out
 
 
+def _transcript_seconds(doc, row):
+    """Older result files did not persist per-incident wall time; recover it from the
+    transcript that was written alongside."""
+    tdir = (doc.get("meta") or {}).get("transcripts_dir")
+    rel = row.get("transcript")
+    if not tdir or not rel:
+        return None
+    try:
+        t = json.load(open(os.path.join(tdir, rel), encoding="utf-8"))
+        return (t.get("meta") or {}).get("wall_s") or (t.get("summary") or {}).get("wall_s")
+    except Exception:                                                  # noqa: BLE001
+        return None
+
+
 def load_eval(path, method_label):
     """evaluate.py result file -> rows"""
     if not os.path.exists(path):
@@ -56,7 +70,7 @@ def load_eval(path, method_label):
         rows.append({"run_id": r["run_id"], "method": method_label,
                      "pred_service": dg.get("root_cause_service"),
                      "pred_fault": dg.get("fault_type"),
-                     "seconds": r.get("wall_s"),
+                     "seconds": r.get("wall_s") or _transcript_seconds(d, r),
                      "tokens": tin + tout,
                      "usd": round(tin / 1e6 * 1.25 + tout / 1e6 * 10, 4),
                      "note": r.get("error") or ""})
@@ -117,6 +131,9 @@ def main():
         types_faults = any(r.get("pred_fault") for r in graded)
         both = sum(r["score"]["both"] for r in graded) if types_faults else None
         answered = sum(1 for r in graded if r["pred_service"])
+        # A method that abstains is not the same as one that answers wrongly. Precision is
+        # scored over the answers actually given; recall over every incident.
+        precision = (round(100 * svc / answered) if answered else None)
         secs = [r["seconds"] for r in graded if r.get("seconds")]
         summary.append({
             "method": m, "n": n,
@@ -124,6 +141,7 @@ def main():
             "fully_correct_pct": (round(both / n * 100) if both is not None else None),
             "does_fault_typing": types_faults,
             "answered_pct": round(answered / n * 100),
+            "precision_when_answered_pct": precision,
             "median_seconds": round(statistics.median(secs), 1) if secs else None,
             "usd_per_incident": round(sum(r["usd"] for r in graded) / n, 4),
             "per_family": {f: {
@@ -143,8 +161,11 @@ def main():
           f"{'median s':>9s} {'$/incident':>11s}")
     for s in summary:
         fc = f"{s['fully_correct_pct']:6d}%" if s["fully_correct_pct"] is not None else "   n/a"
+        pr = (f"{s['precision_when_answered_pct']:9d}%"
+              if s.get("precision_when_answered_pct") is not None else "      n/a")
         print(f"{s['method']:13s} {s['n']:3d} {s['component_pct']:9d}% {fc} "
-              f"{s['answered_pct']:8d}% {str(s['median_seconds']):>9s} {s['usd_per_incident']:11.4f}")
+              f"{s['answered_pct']:8d}% {pr} {str(s['median_seconds']):>9s} "
+              f"{s['usd_per_incident']:11.4f}")
     print(f"\nwrote {a.out}")
     return 0
 

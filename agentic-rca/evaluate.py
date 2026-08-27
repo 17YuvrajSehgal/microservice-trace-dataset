@@ -199,7 +199,7 @@ def run(app, per_family, n, families, out_path, method, grid, transcripts_dir=""
                             "diagnosis": out.get("diagnosis"), "ranked_services": out.get("ranked_services"),
                             "ranked_candidates": out.get("ranked_candidates"),
                             "score": sc, "n_tool_calls": out.get("n_tool_calls"), "tokens": out.get("tokens"),
-                            "bytes_touched": out.get("bytes_touched"), "trajectory": out.get("trajectory"),  # RQ2
+                            "bytes_touched": out.get("bytes_touched"), "wall_s": out.get("wall_s"), "trajectory": out.get("trajectory"),  # RQ2
                             "skills_mode": skills_mode if inc_skills is not None else "off",
                             "skill_selected": sel_name, "skill_confidence": out.get("skill_confidence"),
                             "selection_correct": sel_ok, "brief": out.get("brief_injected"),
