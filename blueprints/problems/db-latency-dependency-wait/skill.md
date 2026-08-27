@@ -1,6 +1,6 @@
 ---
 name: db-latency-dependency-wait
-version: 4
+version: 5
 authored_by: human
 generated_from: blueprints/db-latency-dependency-wait.json
 covers: slow_db                       # harness metadata: scoring + LOFO; NEVER shown to the model
@@ -62,11 +62,16 @@ Each step names the capability it needs. The command shown is the binding resolv
    needs: `verdict.dependency_wait`
    run [local]: `python3 blueprints/problems/db-latency-dependency-wait/scripts/dependency_verdict.py --convergence <out>/convergence.json --blocking <out>/blocking.json --rq <out>/rq.json --out <out>/verdict.json --chart <out>/blocking.svg --text <out>/explanation.txt`
    expect: a named component, the syscall it blocked in, its inflation factor, and the flat runqueue delay that rules out CPU starvation
+6. State the recommended action alongside the diagnosis
+   needs: `verdict.dependency_wait`
+   run [local]: `python3 blueprints/problems/db-latency-dependency-wait/scripts/dependency_verdict.py --convergence <out>/convergence.json --blocking <out>/blocking.json --rq <out>/rq.json --out <out>/verdict.json --chart <out>/blocking.svg --text <out>/explanation.txt`
+   expect: an action aimed at the blocked component or its dependency, explicitly not at the victims named by the call graph
 
 ## What to produce
 - json: the blocked component, the syscall and its inflation, the convergence point, and the runqueue-delay control
 - xy_chart: syscall duration p95 baseline vs incident, per component and syscall
 - text: what was waiting, on what, and why its callers are victims
+- text: what to do about it: investigate the named component's own downstream dependency or the path between it and its callers, not the callers themselves
 
 ## Resolution template
 Conclude this problem when ALL of:
@@ -87,6 +92,19 @@ Root cause is: the converged-on datastore component itself, never its callers, w
 - Stop and switch: runqueue delay is broadly inflated instead -> use the CPU-contention blueprint
 - Evidence insufficient: the suspect emits no spans AND no kernel trace is available for it -> the culprit cannot be identified from the traced layer alone; request kernel collection for that component
 - Do not exceed 2 rounds of gathering more evidence before reporting what is missing.
+
+## Constraints you must respect
+- Use evidence that already exists before enabling any new collection. Escalate a tier only when the cheaper tier leaves a candidate cause unresolved, and record why.
+- Keep total added collection overhead under 8%.
+- do not collect request payloads
+- do not retain personally identifiable data
+- preserve request identifiers only where permitted
+- These need human approval before you do them: active collection estimated above 3% overhead; widening the host scope or time window; any change to production configuration; any remediation action.
+
+## If you are not confident enough
+- Do not report a diagnosis below 0.7 confidence.
+- name the unresolved question, pick the ONE additional capability that would settle it, check it against the overhead budget, and request it. Do not broaden collection generally.
+- if the floor is still not met after the allowed rounds, report the best-supported hypothesis, its confidence, and precisely what evidence is missing - never present a guess as a diagnosis
 
 ## If the evidence does not fit
 - If convergence names a component that itself has slow outgoing edges, then it is a pass-through victim: follow its slow edge and re-run convergence one hop deeper.

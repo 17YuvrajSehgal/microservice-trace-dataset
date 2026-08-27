@@ -221,6 +221,31 @@ def to_skill(bp: dict) -> str:
             res.append(f"- Do not exceed {stop['max_evidence_rounds']} rounds of gathering "
                        "more evidence before reporting what is missing.")
 
+    pol = bp.get("policies") or {}
+    if pol:
+        res += ["", "## Constraints you must respect"]
+        if pol.get("collection_order_rule"):
+            res.append(f"- {pol['collection_order_rule']}")
+        if pol.get("max_collection_overhead_pct"):
+            res.append(f"- Keep total added collection overhead under "
+                       f"{pol['max_collection_overhead_pct']}%.")
+        for x in pol.get("privacy", []):
+            res.append(f"- {x}")
+        appr = pol.get("approval") or {}
+        if appr.get("requires_approval"):
+            res.append("- These need human approval before you do them: "
+                       + "; ".join(appr["requires_approval"]) + ".")
+
+    suf = bp.get("evidence_sufficiency") or {}
+    if suf:
+        res += ["", "## If you are not confident enough"]
+        if suf.get("confidence_floor"):
+            res.append(f"- Do not report a diagnosis below {suf['confidence_floor']} confidence.")
+        if suf.get("if_below_floor"):
+            res.append(f"- {suf['if_below_floor']}")
+        if suf.get("report_when_stuck"):
+            res.append(f"- {suf['report_when_stuck']}")
+
     adapt = bp.get("adaptation_rules") or []
     if adapt:
         res += ["", "## If the evidence does not fit"]

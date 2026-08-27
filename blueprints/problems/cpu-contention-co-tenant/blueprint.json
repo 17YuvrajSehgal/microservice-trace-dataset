@@ -1,6 +1,6 @@
 {
   "id": "cpu-contention-co-tenant",
-  "version": 4,
+  "version": 5,
   "title": "A co-tenant workload steals host CPU: services wait on the runqueue, not on I/O",
   "problem": {
     "summary": "An unrelated workload sharing the host consumes CPU. Application services are never themselves busy, but each time they become ready to run they wait measurably longer before a CPU actually runs them. User-facing latency moves only slightly, so dashboards look nearly normal; the delay is only visible in the scheduler.",
@@ -135,6 +135,12 @@
         "<run_dir>/metrics",
         "<run_dir>/otlp"
       ]
+    },
+    {
+      "step": "State the recommended action alongside the diagnosis",
+      "capability": "metrics.container.cpu_attribution",
+      "produces": "<out>/recommended_action.txt",
+      "expect": "a concrete action naming the container to constrain, not a generic suggestion"
     }
   ],
   "outputs": [
@@ -152,6 +158,11 @@
       "kind": "text",
       "path": "<out>/explanation.txt",
       "contains": "which container took the CPU, which services waited, and why this is contention rather than saturation"
+    },
+    {
+      "kind": "text",
+      "path": "<out>/recommended_action.txt",
+      "contains": "what to do about it: identify and reschedule or cap the co-tenant workload, or move the affected services to a less contended host"
     }
   ],
   "decision": {
@@ -258,5 +269,67 @@
       "if": "the trace covers less than the full incident window",
       "then": "widen the window before comparing, since short windows exaggerate percentiles"
     }
-  ]
+  ],
+  "selection": {
+    "supported_goals": [
+      "diagnose_throughput_degradation",
+      "diagnose_cpu_contention",
+      "diagnose_intermittent_latency"
+    ],
+    "supported_environments": [
+      "linux",
+      "container",
+      "virtual_machine"
+    ],
+    "applicable_symptoms": [
+      "mild_latency_jitter_across_services",
+      "low_cpu_utilisation_with_poor_performance",
+      "throughput_drop_without_errors"
+    ],
+    "preconditions": [
+      "kernel scheduler events are collectable or already collected",
+      "container-to-process attribution is available"
+    ],
+    "estimated_overhead_pct": {
+      "min": 0,
+      "max": 5
+    },
+    "historical_effectiveness": {
+      "runs_validated": 1,
+      "note": "one labelled run so far; effect size large (7.12x vs 0.97x control) but repeats owed"
+    }
+  },
+  "policies": {
+    "collection_order_rule": "Use evidence that already exists before enabling any new collection. Escalate a tier only when the cheaper tier leaves a candidate cause unresolved, and record why.",
+    "max_collection_overhead_pct": 5,
+    "scope": {
+      "restrict_to": "the hosts and time window named in the intent",
+      "never_widen_without": "explicit approval"
+    },
+    "privacy": [
+      "do not collect request payloads",
+      "do not retain personally identifiable data",
+      "preserve request identifiers only where permitted"
+    ],
+    "approval": {
+      "automatic": [
+        "query evidence that already exists",
+        "read-only analysis of collected evidence",
+        "active collection estimated below 3% overhead"
+      ],
+      "requires_approval": [
+        "active collection estimated above 3% overhead",
+        "widening the host scope or time window",
+        "any change to production configuration",
+        "any remediation action"
+      ]
+    },
+    "autonomy_level": 2,
+    "autonomy_note": "Level 2 = policy-controlled automation: select and execute low-risk plans inside the stated constraints. Level 3 (adaptive escalation within the allowed action space) is the next target; closed-loop remediation is explicitly out of scope."
+  },
+  "evidence_sufficiency": {
+    "confidence_floor": 0.7,
+    "if_below_floor": "name the unresolved question, pick the ONE additional capability that would settle it, check it against the overhead budget, and request it. Do not broaden collection generally.",
+    "report_when_stuck": "if the floor is still not met after the allowed rounds, report the best-supported hypothesis, its confidence, and precisely what evidence is missing - never present a guess as a diagnosis"
+  }
 }

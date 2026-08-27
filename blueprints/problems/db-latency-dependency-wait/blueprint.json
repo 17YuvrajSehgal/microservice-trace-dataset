@@ -1,6 +1,6 @@
 {
   "id": "db-latency-dependency-wait",
-  "version": 4,
+  "version": 5,
   "title": "A datastore blocks in its socket while idle; its callers converge on it",
   "problem": {
     "summary": "Several services slow down and their slow call paths all end at the same downstream component. That component is not busy and is not short of CPU - it is blocked inside a single socket-waiting syscall for far longer than usual. Because it emits no request traces of its own, the call graph can only point at its nearest traced caller, so the traces accuse a victim and only the kernel identifies the real culprit.",
@@ -142,6 +142,12 @@
         "<out>/blocking.json",
         "<out>/rq.json"
       ]
+    },
+    {
+      "step": "State the recommended action alongside the diagnosis",
+      "capability": "verdict.dependency_wait",
+      "produces": "<out>/recommended_action.txt",
+      "expect": "an action aimed at the blocked component or its dependency, explicitly not at the victims named by the call graph"
     }
   ],
   "outputs": [
@@ -159,6 +165,11 @@
       "kind": "text",
       "path": "<out>/explanation.txt",
       "contains": "what was waiting, on what, and why its callers are victims"
+    },
+    {
+      "kind": "text",
+      "path": "<out>/recommended_action.txt",
+      "contains": "what to do about it: investigate the named component's own downstream dependency or the path between it and its callers, not the callers themselves"
     }
   ],
   "decision": {
@@ -269,5 +280,68 @@
       "if": "no component emits spans on the suspected path",
       "then": "fall back to kernel evidence alone and identify the blocked component by syscall duration, accepting that the call graph cannot confirm it"
     }
-  ]
+  ],
+  "selection": {
+    "supported_goals": [
+      "diagnose_latency_degradation",
+      "diagnose_dependency_bottleneck",
+      "diagnose_datastore_slowdown"
+    ],
+    "supported_environments": [
+      "linux",
+      "container",
+      "virtual_machine"
+    ],
+    "applicable_symptoms": [
+      "sharp_caller_latency_increase_without_errors",
+      "slow_paths_converge_on_one_component",
+      "suspect_component_is_resource_quiet"
+    ],
+    "preconditions": [
+      "distributed traces with parent links, or kernel events for the suspect",
+      "syscall entry and exit are collectable for the suspect process"
+    ],
+    "estimated_overhead_pct": {
+      "min": 0,
+      "max": 8
+    },
+    "historical_effectiveness": {
+      "runs_validated": 1,
+      "note": "one labelled run so far; effect size very large (36.8x vs 1.12x control) but repeats owed"
+    }
+  },
+  "policies": {
+    "collection_order_rule": "Use evidence that already exists before enabling any new collection. Escalate a tier only when the cheaper tier leaves a candidate cause unresolved, and record why.",
+    "max_collection_overhead_pct": 8,
+    "scope": {
+      "restrict_to": "the hosts and time window named in the intent",
+      "never_widen_without": "explicit approval"
+    },
+    "privacy": [
+      "do not collect request payloads",
+      "do not retain personally identifiable data",
+      "preserve request identifiers only where permitted"
+    ],
+    "approval": {
+      "automatic": [
+        "query evidence that already exists",
+        "read-only analysis of collected evidence",
+        "active collection estimated below 3% overhead"
+      ],
+      "requires_approval": [
+        "active collection estimated above 3% overhead",
+        "widening the host scope or time window",
+        "any change to production configuration",
+        "any remediation action"
+      ]
+    },
+    "autonomy_level": 2,
+    "autonomy_note": "Level 2 = policy-controlled automation: select and execute low-risk plans inside the stated constraints. Level 3 (adaptive escalation within the allowed action space) is the next target; closed-loop remediation is explicitly out of scope.",
+    "overhead_note": "Syscall entry+exit tracing is the expensive step here, so this blueprint carries a higher ceiling than the CPU-contention one AND must scope collection to the suspect processes rather than the whole host."
+  },
+  "evidence_sufficiency": {
+    "confidence_floor": 0.7,
+    "if_below_floor": "name the unresolved question, pick the ONE additional capability that would settle it, check it against the overhead budget, and request it. Do not broaden collection generally.",
+    "report_when_stuck": "if the floor is still not met after the allowed rounds, report the best-supported hypothesis, its confidence, and precisely what evidence is missing - never present a guess as a diagnosis"
+  }
 }

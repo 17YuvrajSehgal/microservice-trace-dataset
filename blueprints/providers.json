@@ -13,70 +13,154 @@
     "",
     "Mahsa's finding still holds: what finally reaches the agent is an EXACT callable, not a",
     "description. The difference is that the exact callable is produced by binding, not",
-    "hard-coded into the portable knowledge object."
+    "hard-coded into the portable knowledge object.",
+    "Provider entries carry the metadata the binder needs to choose between alternatives: estimated overhead, platform, fidelity, permissions and tier. Escalation policy is cheapest-adequate-first: use evidence that already exists, then low-overhead active collection, and only escalate to high-fidelity tracing when the cheaper tier leaves the question open."
   ],
-
   "capabilities": {
     "kernel.scheduler.runqueue_delay": {
       "what": "For each wakeup, the delay between a thread becoming runnable and a CPU actually running it. Reported per process, baseline window vs incident window.",
-      "requires_events": ["sched_waking", "sched_switch"],
+      "requires_events": [
+        "sched_waking",
+        "sched_switch"
+      ],
       "providers": [
         {
           "id": "babeltrace2-cli",
           "status": "implemented",
           "available_when": "babeltrace2 >= 2.1 on PATH and a CTF trace directory",
           "run": "python3 blueprints/problems/cpu-contention-co-tenant/scripts/runqueue_delay.py --ctf <ctf> --gt <ground_truth> --out <out>/rq.json",
-          "notes": "Our traces carry CTF 2 metadata (JSON preamble). babeltrace 2.0.x rejects it; use the 2.1 wrapper so its lib directory precedes the system one."
+          "notes": "Our traces carry CTF 2 metadata (JSON preamble). babeltrace 2.0.x rejects it; use the 2.1 wrapper so its lib directory precedes the system one.",
+          "tier": "high_fidelity_active",
+          "platform": [
+            "linux"
+          ],
+          "estimated_overhead_pct": {
+            "min": 2,
+            "max": 5
+          },
+          "fidelity": "high",
+          "requires_permissions": [
+            "root or CAP_SYS_ADMIN for kernel tracing"
+          ],
+          "produces_contract": "per-process p50/p95/p99 runqueue delay, baseline vs incident"
         },
         {
           "id": "trace-compass",
           "status": "not implemented here",
           "available_when": "Trace Compass with the kernel analysis module",
           "run": null,
-          "notes": "Trace Compass exposes the same scheduler analysis through its Critical Path / CPU usage views. Left unbound deliberately: it is Sneh's area, and the point of this registry is that binding it later requires no blueprint change."
+          "notes": "Trace Compass exposes the same scheduler analysis through its Critical Path / CPU usage views. Left unbound deliberately: it is Sneh's area, and the point of this registry is that binding it later requires no blueprint change.",
+          "tier": "high_fidelity_active",
+          "platform": [
+            "linux"
+          ],
+          "estimated_overhead_pct": {
+            "min": 2,
+            "max": 5
+          },
+          "fidelity": "high"
+        },
+        {
+          "id": "ebpf-runqlat",
+          "status": "not implemented here",
+          "tier": "low_overhead_active",
+          "platform": [
+            "linux"
+          ],
+          "estimated_overhead_pct": {
+            "min": 1,
+            "max": 3
+          },
+          "fidelity": "medium-high",
+          "requires_permissions": [
+            "root or CAP_BPF"
+          ],
+          "available_when": "a BPF runqueue-latency collector is installed",
+          "run": null,
+          "notes": "Cheaper than full kernel tracing and sufficient to detect contention, but it gives a histogram rather than per-event data, so it cannot be re-attributed to services afterwards. The binder should prefer this tier first and escalate to the tracer only if attribution is actually needed."
         }
       ]
     },
-
     "kernel.syscall.blocking_duration": {
       "what": "How long a process stays inside each syscall between entry and exit, per (process, syscall), baseline vs incident.",
-      "requires_events": ["syscall_entry_*", "syscall_exit_*"],
+      "requires_events": [
+        "syscall_entry_*",
+        "syscall_exit_*"
+      ],
       "providers": [
         {
           "id": "babeltrace2-cli",
           "status": "implemented",
           "available_when": "babeltrace2 >= 2.1 on PATH and a CTF trace directory",
-          "run": "python3 blueprints/problems/db-latency-dependency-wait/scripts/blocking_syscall.py --ctf <ctf> --gt <ground_truth> --comms <comms> --out <out>/blocking.json"
+          "run": "python3 blueprints/problems/db-latency-dependency-wait/scripts/blocking_syscall.py --ctf <ctf> --gt <ground_truth> --comms <comms> --out <out>/blocking.json",
+          "tier": "high_fidelity_active",
+          "platform": [
+            "linux"
+          ],
+          "estimated_overhead_pct": {
+            "min": 3,
+            "max": 8
+          },
+          "fidelity": "high",
+          "requires_permissions": [
+            "root or CAP_SYS_ADMIN for kernel tracing"
+          ],
+          "produces_contract": "per (process, syscall) duration percentiles, baseline vs incident",
+          "notes": "Syscall entry+exit is the most expensive collection in these blueprints, because every syscall generates two events. Scope it to the suspect processes."
         }
       ]
     },
-
     "traces.call_graph.convergence": {
       "what": "Caller-to-callee edge latency change, and which component the slow edges converge on without having slow outgoing edges of its own.",
-      "requires_events": ["distributed trace spans with parent links"],
+      "requires_events": [
+        "distributed trace spans with parent links"
+      ],
       "providers": [
         {
           "id": "otlp-spans",
           "status": "implemented",
           "available_when": "the run carries OTLP spans",
-          "run": "python3 blueprints/problems/db-latency-dependency-wait/scripts/edge_convergence.py --run <run_dir> --app <app> --out <out>/convergence.json"
+          "run": "python3 blueprints/problems/db-latency-dependency-wait/scripts/edge_convergence.py --run <run_dir> --app <app> --out <out>/convergence.json",
+          "tier": "existing_evidence",
+          "platform": [
+            "any"
+          ],
+          "estimated_overhead_pct": {
+            "min": 0,
+            "max": 0
+          },
+          "fidelity": "medium",
+          "requires_permissions": [],
+          "produces_contract": "ranked convergence candidates with incoming/outgoing slowdown",
+          "notes": "Reads spans that were already collected, so it costs nothing extra. This is why it runs first in both blueprints."
         }
       ]
     },
-
     "metrics.container.cpu_attribution": {
       "what": "CPU consumed per container, baseline vs incident, cross-referenced against which containers appear in the call graph.",
-      "requires_events": ["container CPU metrics", "call-graph edges"],
+      "requires_events": [
+        "container CPU metrics",
+        "call-graph edges"
+      ],
       "providers": [
         {
           "id": "prometheus-cadvisor",
           "status": "implemented",
           "available_when": "the run carries container metrics",
-          "run": "python3 blueprints/problems/cpu-contention-co-tenant/scripts/cpu_attribution.py --run <run_dir> --out <out>/verdict.json --chart <out>/runqueue.svg --text <out>/explanation.txt"
+          "run": "python3 blueprints/problems/cpu-contention-co-tenant/scripts/cpu_attribution.py --run <run_dir> --out <out>/verdict.json --chart <out>/runqueue.svg --text <out>/explanation.txt",
+          "tier": "existing_evidence",
+          "platform": [
+            "any"
+          ],
+          "estimated_overhead_pct": {
+            "min": 0,
+            "max": 0
+          },
+          "fidelity": "medium",
+          "requires_permissions": []
         }
       ]
     },
-
     "verdict.dependency_wait": {
       "what": "Combine convergence, blocking duration and the runqueue control into a single verdict, including a refusal plus redirect when the evidence points elsewhere.",
       "requires_events": [],
@@ -85,11 +169,18 @@
           "id": "local",
           "status": "implemented",
           "available_when": "always",
-          "run": "python3 blueprints/problems/db-latency-dependency-wait/scripts/dependency_verdict.py --convergence <out>/convergence.json --blocking <out>/blocking.json --rq <out>/rq.json --out <out>/verdict.json --chart <out>/blocking.svg --text <out>/explanation.txt"
+          "run": "python3 blueprints/problems/db-latency-dependency-wait/scripts/dependency_verdict.py --convergence <out>/convergence.json --blocking <out>/blocking.json --rq <out>/rq.json --out <out>/verdict.json --chart <out>/blocking.svg --text <out>/explanation.txt",
+          "tier": "existing_evidence",
+          "platform": [
+            "any"
+          ],
+          "estimated_overhead_pct": {
+            "min": 0,
+            "max": 0
+          }
         }
       ]
     },
-
     "trace.stage_ctf": {
       "what": "Make a stored kernel trace readable by a CTF reader.",
       "requires_events": [],
@@ -98,9 +189,26 @@
           "id": "local",
           "status": "implemented",
           "available_when": "the run carries a raw kernel trace",
-          "run": "cp -r <run_dir>/kernel/kernel <tmp>/ctf && gunzip -f <tmp>/ctf/*.gz"
+          "run": "cp -r <run_dir>/kernel/kernel <tmp>/ctf && gunzip -f <tmp>/ctf/*.gz",
+          "tier": "existing_evidence",
+          "platform": [
+            "any"
+          ],
+          "estimated_overhead_pct": {
+            "min": 0,
+            "max": 0
+          }
         }
       ]
     }
+  },
+  "escalation_policy": {
+    "order": [
+      "existing_evidence",
+      "low_overhead_active",
+      "high_fidelity_active"
+    ],
+    "rule": "Never start at the most expensive tier. Escalate only when the evidence sufficiency check leaves a candidate cause unresolved, and record why.",
+    "source": "architecture note: use existing telemetry before enabling additional tracing; request deeper telemetry only when basic evidence is inconclusive"
   }
 }

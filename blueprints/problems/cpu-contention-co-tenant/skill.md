@@ -1,6 +1,6 @@
 ---
 name: cpu-contention-co-tenant
-version: 4
+version: 5
 authored_by: human
 generated_from: blueprints/cpu-contention-co-tenant.json
 covers: noisy_neighbor                       # harness metadata: scoring + LOFO; NEVER shown to the model
@@ -58,11 +58,16 @@ Each step names the capability it needs. The command shown is the binding resolv
    needs: `metrics.container.cpu_attribution`
    run [prometheus-cadvisor]: `python3 blueprints/problems/cpu-contention-co-tenant/scripts/cpu_attribution.py --run <run_dir> --out <out>/verdict.json --chart <out>/runqueue.svg --text <out>/explanation.txt`
    expect: the top CPU consumer has no call-graph edges and was absent in the baseline
+5. State the recommended action alongside the diagnosis
+   needs: `metrics.container.cpu_attribution`
+   run [prometheus-cadvisor]: `python3 blueprints/problems/cpu-contention-co-tenant/scripts/cpu_attribution.py --run <run_dir> --out <out>/verdict.json --chart <out>/runqueue.svg --text <out>/explanation.txt`
+   expect: a concrete action naming the container to constrain, not a generic suggestion
 
 ## What to produce
 - json: culprit container, per-service runnable-wait share baseline versus incident, host CPU headroom
 - xy_chart: runnable-wait share per service over time, with the incident window shaded
 - text: which container took the CPU, which services waited, and why this is contention rather than saturation
+- text: what to do about it: identify and reschedule or cap the co-tenant workload, or move the affected services to a less contended host
 
 ## Resolution template
 Conclude this problem when ALL of:
@@ -83,6 +88,19 @@ Root cause is: the co-tenant workload container itself, not any application serv
 - Stop and switch: a single component's blocking syscall inflates by an order of magnitude while runqueue delay stays flat -> use the dependency-wait blueprint
 - Evidence insufficient: runqueue delay cannot be computed because the scheduler events were not recorded -> request them and re-run; do not guess from utilisation alone
 - Do not exceed 2 rounds of gathering more evidence before reporting what is missing.
+
+## Constraints you must respect
+- Use evidence that already exists before enabling any new collection. Escalate a tier only when the cheaper tier leaves a candidate cause unresolved, and record why.
+- Keep total added collection overhead under 5%.
+- do not collect request payloads
+- do not retain personally identifiable data
+- preserve request identifiers only where permitted
+- These need human approval before you do them: active collection estimated above 3% overhead; widening the host scope or time window; any change to production configuration; any remediation action.
+
+## If you are not confident enough
+- Do not report a diagnosis below 0.7 confidence.
+- name the unresolved question, pick the ONE additional capability that would settle it, check it against the overhead budget, and request it. Do not broaden collection generally.
+- if the floor is still not met after the allowed rounds, report the best-supported hypothesis, its confidence, and precisely what evidence is missing - never present a guess as a diagnosis
 
 ## If the evidence does not fit
 - If the runqueue signal is present but no off-call-path container is found, then the contention is internal: re-check whether an on-call-path service is consuming the CPU, which points at a service-level cause instead.
