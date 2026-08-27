@@ -1,0 +1,95 @@
+{
+  "supports_dependency_wait": false,
+  "blocked_component": null,
+  "blocking_call": null,
+  "blocking_inflation_x": null,
+  "trace_convergence": null,
+  "runqueue_control": {
+    "max_x": 7.12,
+    "median_x": 1.78,
+    "flat": false
+  },
+  "thresholds": {
+    "blocking_x": 5.0,
+    "runqueue_flat_x": 2.0,
+    "basis": "measured: 36.8x vs 1.12x blocking, 1.09x vs 7.12x runqueue"
+  },
+  "reasons": [
+    "no socket-waiting syscall inflated by 5.0x or more (largest inflation of any syscall was 3.95x) - this does not look like a component blocked on a dependency",
+    "runqueue delay inflated up to 7.12x (median 1.78x) - the processes are short of CPU. Use the CPU-contention blueprint"
+  ],
+  "top_inflated_calls": [
+    {
+      "comm_syscall": "app|sched_yield",
+      "n_incident": 6418,
+      "p95_baseline_ms": 0.122,
+      "p95_incident_ms": 0.482,
+      "p95_x": 3.95,
+      "total_s_baseline": 0.1,
+      "total_s_incident": 0.58
+    },
+    {
+      "comm_syscall": "node|poll",
+      "n_incident": 152,
+      "p95_baseline_ms": 0.402,
+      "p95_incident_ms": 0.85,
+      "p95_x": 2.11,
+      "total_s_baseline": 0.02,
+      "total_s_incident": 0.03
+    },
+    {
+      "comm_syscall": "app|newstat",
+      "n_incident": 24,
+      "p95_baseline_ms": 0.015,
+      "p95_incident_ms": 0.027,
+      "p95_x": 1.8,
+      "total_s_baseline": 0.0,
+      "total_s_incident": 0.0
+    },
+    {
+      "comm_syscall": "app|nanosleep",
+      "n_incident": 120197,
+      "p95_baseline_ms": 0.116,
+      "p95_incident_ms": 0.193,
+      "p95_x": 1.66,
+      "total_s_baseline": 9.48,
+      "total_s_incident": 12.2
+    },
+    {
+      "comm_syscall": "app|openat",
+      "n_incident": 96,
+      "p95_baseline_ms": 0.019,
+      "p95_incident_ms": 0.029,
+      "p95_x": 1.53,
+      "total_s_baseline": 0.0,
+      "total_s_incident": 0.0
+    },
+    {
+      "comm_syscall": "app|select",
+      "n_incident": 4962,
+      "p95_baseline_ms": 0.111,
+      "p95_incident_ms": 0.17,
+      "p95_x": 1.53,
+      "total_s_baseline": 0.38,
+      "total_s_incident": 0.49
+    },
+    {
+      "comm_syscall": "app|close",
+      "n_incident": 7627,
+      "p95_baseline_ms": 0.025,
+      "p95_incident_ms": 0.032,
+      "p95_x": 1.28,
+      "total_s_baseline": 0.07,
+      "total_s_incident": 0.13
+    },
+    {
+      "comm_syscall": "mysqld|open",
+      "n_incident": 3096,
+      "p95_baseline_ms": 0.022,
+      "p95_incident_ms": 0.028,
+      "p95_x": 1.27,
+      "total_s_baseline": 0.03,
+      "total_s_incident": 0.06
+    }
+  ]
+}

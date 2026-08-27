@@ -1,0 +1,97 @@
+{
+  "supports_dependency_wait": true,
+  "blocked_component": "mysqld",
+  "blocking_call": "poll",
+  "blocking_inflation_x": 36.83,
+  "trace_convergence": "catalogue",
+  "runqueue_control": {
+    "max_x": 1.59,
+    "median_x": 0.84,
+    "flat": true
+  },
+  "thresholds": {
+    "blocking_x": 5.0,
+    "runqueue_flat_x": 2.0,
+    "basis": "measured: 36.8x vs 1.12x blocking, 1.09x vs 7.12x runqueue"
+  },
+  "reasons": [
+    "mysqld blocked in poll for 36.83x its baseline (p95 15.959 -> 587.698 ms, n=17245)",
+    "runqueue delay stayed flat (max 1.59x, median 0.84x), so the component is not short of CPU - it is waiting for a reply",
+    "slow call edges converge on catalogue",
+    "NOTE: traces name catalogue but the kernel shows mysqld is the one blocked - catalogue is a victim, and mysqld emits no spans"
+  ],
+  "top_inflated_calls": [
+    {
+      "comm_syscall": "mysqld|poll",
+      "n_incident": 17245,
+      "p95_baseline_ms": 15.959,
+      "p95_incident_ms": 587.698,
+      "p95_x": 36.83,
+      "total_s_baseline": 160.71,
+      "total_s_incident": 6360.73
+    },
+    {
+      "comm_syscall": "app|epoll_wait",
+      "n_incident": 707,
+      "p95_baseline_ms": 139.2,
+      "p95_incident_ms": 431.364,
+      "p95_x": 3.1,
+      "total_s_baseline": 54.65,
+      "total_s_incident": 59.9
+    },
+    {
+      "comm_syscall": "app|epoll_pwait",
+      "n_incident": 76834,
+      "p95_baseline_ms": 1.716,
+      "p95_incident_ms": 5.058,
+      "p95_x": 2.95,
+      "total_s_baseline": 50.04,
+      "total_s_incident": 57.46
+    },
+    {
+      "comm_syscall": "mysqld|madvise",
+      "n_incident": 1131,
+      "p95_baseline_ms": 0.015,
+      "p95_incident_ms": 0.025,
+      "p95_x": 1.67,
+      "total_s_baseline": 0.03,
+      "total_s_incident": 0.02
+    },
+    {
+      "comm_syscall": "app|futex",
+      "n_incident": 98403,
+      "p95_baseline_ms": 8.525,
+      "p95_incident_ms": 13.655,
+      "p95_x": 1.6,
+      "total_s_baseline": 1370.76,
+      "total_s_incident": 1489.84
+    },
+    {
+      "comm_syscall": "app|madvise",
+      "n_incident": 513,
+      "p95_baseline_ms": 0.019,
+      "p95_incident_ms": 0.029,
+      "p95_x": 1.53,
+      "total_s_baseline": 0.03,
+      "total_s_incident": 0.01
+    },
+    {
+      "comm_syscall": "app|tgkill",
+      "n_incident": 256,
+      "p95_baseline_ms": 0.019,
+      "p95_incident_ms": 0.028,
+      "p95_x": 1.47,
+      "total_s_baseline": 0.02,
+      "total_s_incident": 0.0
+    },
+    {
+      "comm_syscall": "app|read",
+      "n_incident": 54338,
+      "p95_baseline_ms": 0.005,
+      "p95_incident_ms": 0.007,
+      "p95_x": 1.4,
+      "total_s_baseline": 0.4,
+      "total_s_incident": 0.18
+    }
+  ]
+}

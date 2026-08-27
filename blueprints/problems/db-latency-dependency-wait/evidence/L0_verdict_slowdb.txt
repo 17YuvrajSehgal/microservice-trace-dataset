@@ -1,0 +1,6 @@
+Does the evidence support a component blocked on a dependency? YES
+
+- mysqld blocked in poll for 36.83x its baseline (p95 15.959 -> 587.698 ms, n=17245)
+- runqueue delay stayed flat (max 1.59x, median 0.84x), so the component is not short of CPU - it is waiting for a reply
+- slow call edges converge on catalogue
+- NOTE: traces name catalogue but the kernel shows mysqld is the one blocked - catalogue is a victim, and mysqld emits no spans

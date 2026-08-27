@@ -1,0 +1,4 @@
+Does the evidence support a component blocked on a dependency? NO
+
+- no socket-waiting syscall inflated by 5.0x or more (largest inflation of any syscall was 3.95x) - this does not look like a component blocked on a dependency
+- runqueue delay inflated up to 7.12x (median 1.78x) - the processes are short of CPU. Use the CPU-contention blueprint

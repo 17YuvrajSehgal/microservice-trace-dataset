@@ -131,7 +131,9 @@
       "step": "Identify the off-call-path CPU consumer and emit the verdict",
       "run": "python3 blueprints/problems/cpu-contention-co-tenant/scripts/cpu_attribution.py --run <run_dir> --out <out>/verdict.json --chart <out>/runqueue.svg --text <out>/explanation.txt",
       "reads": [
-        "<out>/rq.json"
+        "<run_dir>/metrics",
+        "<run_dir>/meta",
+        "<run_dir>/otlp"
       ],
       "produces": "<out>/verdict.json, <out>/runqueue.svg, <out>/explanation.txt",
       "expect": "the top CPU consumer has no call-graph edges and was absent in the baseline"
