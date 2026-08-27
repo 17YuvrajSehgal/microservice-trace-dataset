@@ -52,7 +52,8 @@ def _transcript_seconds(doc, row):
         return None
     try:
         t = json.load(open(os.path.join(tdir, rel), encoding="utf-8"))
-        return (t.get("meta") or {}).get("wall_s") or (t.get("summary") or {}).get("wall_s")
+        return ((t.get("final") or {}).get("wall_s")
+                or (t.get("meta") or {}).get("wall_s"))
     except Exception:                                                  # noqa: BLE001
         return None
 
