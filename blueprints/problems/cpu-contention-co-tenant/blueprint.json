@@ -1,6 +1,6 @@
 {
   "id": "cpu-contention-co-tenant",
-  "version": 5,
+  "version": 6,
   "title": "A co-tenant workload steals host CPU: services wait on the runqueue, not on I/O",
   "problem": {
     "summary": "An unrelated workload sharing the host consumes CPU. Application services are never themselves busy, but each time they become ready to run they wait measurably longer before a CPU actually runs them. User-facing latency moves only slightly, so dashboards look nearly normal; the delay is only visible in the scheduler.",
@@ -21,13 +21,13 @@
         "evidence": "MEASURED from raw L0 via babeltrace2. Co-tenant run: node p95 0.034 -> 0.242 ms = 7.12x (n=48,886); median 1.78x across 52 high-volume processes. CONTROL, slow-datastore run: max 1.59x, median 0.84x, and node 0.97x. See evidence/L0_runqueue_delay_cotenant.json and evidence/L0_runqueue_delay_CONTROL_slowdb.json"
       },
       {
-        "signal": "blocking-syscall duration of the same processes",
-        "this_problem": "syscall durations stay flat: nothing is blocking longer, the threads simply cannot get a CPU",
-        "not_this_problem": "one component's blocking syscall inflates by an order of magnitude",
+        "signal": "blocking duration of socket-WAITING syscalls (poll, epoll_wait, recvfrom, read, select)",
+        "this_problem": "socket-waiting durations stay flat: nothing is blocking longer, the threads simply cannot get a CPU",
+        "not_this_problem": "one component's socket-waiting syscall inflates by an order of magnitude",
         "confused_with": [
           "db-latency-dependency-wait"
         ],
-        "evidence": "MEASURED: on the co-tenant run the datastore's poll p95 went 16.6 -> 18.7 ms = 1.12x (n=45,337) and the largest inflation of ANY syscall was 1.8x. On the slow-datastore run the same syscall on the same component was 36.83x. See evidence/L0_blocking_syscall_CONTROL_cotenant.json"
+        "evidence": "MEASURED on 5 co-tenant runs: max socket-waiting inflation is 1.5-2.99x, versus 36.83x for the datastore fault. IMPORTANT refinement found while testing: general syscalls DO lengthen under CPU starvation because the thread is descheduled inside them - connect() reached 5.3x - so only socket-WAITING calls may be used to rule this problem out. See evidence/L0_blocking_syscall_CONTROL_cotenant.json and the 5-run comparison."
       },
       {
         "signal": "call-graph convergence",
@@ -206,7 +206,7 @@
     "authored_by": "human",
     "verified_by": "PENDING - Naser to sign off",
     "authored_utc": "2026-08-27",
-    "notes": "v3: rebuilt on the raw kernel trace read with babeltrace2, after the derived wait-share record was measured to be non-discriminative. Every discriminator now cites a measurement with its control. The decisive pair: runqueue delay 7.12x here vs 0.97x on the datastore fault, and the datastore's poll syscall 1.12x here vs 36.83x there - same signals, opposite directions."
+    "notes": "v3: rebuilt on the raw kernel trace read with babeltrace2, after the derived wait-share record was measured to be non-discriminative. Every discriminator now cites a measurement with its control. The decisive pair: runqueue delay 7.12x here vs 0.97x on the datastore fault, and the datastore's poll syscall 1.12x here vs 36.83x there - same signals, opposite directions. v6: discriminator narrowed from 'syscall durations' to 'socket-waiting syscall durations' after 5-run testing showed connect() inflating 5.3x under CPU starvation and wrongly vetoing the verdict on 2 of 5 runs."
   },
   "taxonomy": {
     "domain": "Performance",

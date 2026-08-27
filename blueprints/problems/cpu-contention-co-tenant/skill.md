@@ -1,6 +1,6 @@
 ---
 name: cpu-contention-co-tenant
-version: 5
+version: 6
 authored_by: human
 generated_from: blueprints/cpu-contention-co-tenant.json
 covers: noisy_neighbor                       # harness metadata: scoring + LOFO; NEVER shown to the model
@@ -26,7 +26,7 @@ Cheapest check first: host CPU rose but retains headroom, and no container on th
 
 Telling it apart from its look-alikes:
 - **runqueue delay: time from sched_waking to the sched_switch that runs the thread** — this problem: p95 runqueue delay inflates several-fold across MANY unrelated processes at once, with the busiest application process among the worst. Not this problem: runqueue delay is flat or falls; the median across processes stays at or below 1x.
-- **blocking-syscall duration of the same processes** — this problem: syscall durations stay flat: nothing is blocking longer, the threads simply cannot get a CPU. Not this problem: one component's blocking syscall inflates by an order of magnitude.
+- **blocking duration of socket-WAITING syscalls (poll, epoll_wait, recvfrom, read, select)** — this problem: socket-waiting durations stay flat: nothing is blocking longer, the threads simply cannot get a CPU. Not this problem: one component's socket-waiting syscall inflates by an order of magnitude.
 - **call-graph convergence** — this problem: no component has slow incoming edges; the slowdown does not converge anywhere. Not this problem: slow edges converge on one component.
 - **where the CPU went** — this problem: a container consumes steady CPU it did not consume in the baseline and has NO call-graph edges. Not this problem: the extra CPU belongs to a service that appears in the call graph.
 
