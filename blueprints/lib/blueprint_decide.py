@@ -42,7 +42,15 @@ def cpu_rule(pack):
     top = max(xs)
     median = sorted(xs)[len(xs) // 2]
     n_inflated = sum(1 for x in xs if x >= RQ_X)
-    max_blk = max([r["p95_x"] for r in blk if r.get("p95_x")] or [0])
+    # MEASURED REFINEMENT: under CPU starvation *every* syscall lengthens a little, because
+    # the thread is descheduled inside it. connect() reached 5.3x on two co-tenant runs and
+    # wrongly vetoed this rule. The datastore signature is specifically a socket-WAITING call
+    # inflating hugely, so the veto must use that same set. Across all five co-tenant runs the
+    # max socket-wait inflation is 1.5-2.99x, against 36.8x on the datastore fault.
+    sock = [r["p95_x"] for r in blk
+            if r.get("p95_x") and r["comm_syscall"].split("|")[-1] in SOCKET_CALLS]
+    max_blk = max(sock or [0])
+    max_any = max([r["p95_x"] for r in blk if r.get("p95_x")] or [0])
 
     fires = top >= RQ_X and n_inflated >= 3 and max_blk < BLOCK_X
     # the culprit is the workload that took the CPU, which the call graph does not contain.
@@ -53,12 +61,13 @@ def cpu_rule(pack):
     return {
         "fires": fires,
         "max_runqueue_x": top, "median_runqueue_x": median,
-        "n_processes_inflated": n_inflated, "max_blocking_x": max_blk,
+        "n_processes_inflated": n_inflated,
+        "max_socket_wait_x": max_blk, "max_any_syscall_x": max_any,
         "most_delayed_app_process": worst_app,
         "why": (f"runqueue delay up to {top}x across {n_inflated} processes "
-                f"(median {median}x) while no syscall inflated past {max_blk}x"
+                f"(median {median}x) while no socket-waiting syscall inflated past {max_blk}x"
                 if fires else
-                f"runqueue top {top}x over {n_inflated} processes, max syscall {max_blk}x "
+                f"runqueue top {top}x over {n_inflated} processes, max socket-wait {max_blk}x "
                 f"- does not match broad CPU starvation"),
     }
 
