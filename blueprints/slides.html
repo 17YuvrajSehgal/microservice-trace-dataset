@@ -1,0 +1,434 @@
+<title>Observability Blueprints — progress</title>
+<style>
+  :root {
+    --ground: #FBFBFD;
+    --panel: #F2F4F8;
+    --ink: #14202E;
+    --muted: #5C6B7F;
+    --rule: #DDE3EB;
+    --signal: #0B6E6E;
+    --signal-soft: #E2F0EF;
+    --retract: #A63D2F;
+    --retract-soft: #F7E8E5;
+
+    --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #0E1620;
+      --panel: #17212D;
+      --ink: #E8EDF3;
+      --muted: #93A3B5;
+      --rule: #26333F;
+      --signal: #3FB0A6;
+      --signal-soft: #13312F;
+      --retract: #E08670;
+      --retract-soft: #33201B;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground: #0E1620;
+    --panel: #17212D;
+    --ink: #E8EDF3;
+    --muted: #93A3B5;
+    --rule: #26333F;
+    --signal: #3FB0A6;
+    --signal-soft: #13312F;
+    --retract: #E08670;
+    --retract-soft: #33201B;
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-snap-type: y mandatory; scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 17px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .slide {
+    min-height: 100vh;
+    scroll-snap-align: start;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 1.6rem;
+    padding: 4.5rem clamp(1.5rem, 6vw, 6rem) 5rem;
+    border-bottom: 1px solid var(--rule);
+    position: relative;
+  }
+
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--signal);
+    display: flex;
+    gap: 0.9rem;
+    align-items: center;
+  }
+  .eyebrow span.num { color: var(--muted); }
+
+  h1 {
+    font-size: clamp(1.9rem, 4.4vw, 3.1rem);
+    line-height: 1.08;
+    letter-spacing: -0.022em;
+    font-weight: 700;
+    margin: 0;
+    text-wrap: balance;
+    max-width: 20ch;
+  }
+  h1 em { font-style: normal; color: var(--signal); }
+
+  .lede {
+    font-size: clamp(1rem, 1.7vw, 1.22rem);
+    color: var(--muted);
+    max-width: 60ch;
+    margin: 0;
+    text-wrap: pretty;
+  }
+
+  .cols { display: grid; gap: 1.5rem; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    padding: 1.1rem 1.25rem;
+  }
+  .card h3 {
+    margin: 0 0 0.45rem;
+    font-size: 0.94rem;
+    letter-spacing: 0.01em;
+  }
+  .card p { margin: 0; color: var(--muted); font-size: 0.92rem; }
+
+  .scroller { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; font-size: 0.93rem; }
+  th, td {
+    text-align: left;
+    padding: 0.6rem 0.9rem;
+    border-bottom: 1px solid var(--rule);
+    vertical-align: top;
+  }
+  th {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  td.num { font-family: var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .hit { color: var(--signal); font-weight: 700; }
+  .flat { color: var(--muted); }
+  .dead { color: var(--retract); font-weight: 700; }
+
+  .quote {
+    font-family: var(--mono);
+    font-size: 0.88rem;
+    line-height: 1.65;
+    background: var(--panel);
+    border-left: 3px solid var(--signal);
+    padding: 1rem 1.15rem;
+    border-radius: 0 4px 4px 0;
+    overflow-x: auto;
+    white-space: pre-wrap;
+  }
+  .quote.no { border-left-color: var(--retract); }
+
+  ul { margin: 0; padding-left: 1.1rem; }
+  li { margin-bottom: 0.4rem; }
+  li::marker { color: var(--signal); }
+
+  .tag {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 0.18rem 0.5rem;
+    border-radius: 3px;
+    background: var(--signal-soft);
+    color: var(--signal);
+    border: 1px solid color-mix(in srgb, var(--signal) 30%, transparent);
+  }
+  .tag.warn { background: var(--retract-soft); color: var(--retract);
+              border-color: color-mix(in srgb, var(--retract) 30%, transparent); }
+
+  .pager {
+    position: fixed;
+    right: clamp(1rem, 3vw, 2rem);
+    bottom: clamp(1rem, 3vw, 1.6rem);
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    background: color-mix(in srgb, var(--ground) 88%, transparent);
+    border: 1px solid var(--rule);
+    border-radius: 999px;
+    padding: 0.3rem 0.75rem;
+    backdrop-filter: blur(6px);
+  }
+  .foot {
+    position: absolute;
+    left: clamp(1.5rem, 6vw, 6rem);
+    bottom: 1.8rem;
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.06em;
+    color: var(--muted);
+  }
+  :focus-visible { outline: 2px solid var(--signal); outline-offset: 3px; }
+</style>
+
+<main>
+  <!-- 1 ─────────────────────────────────────────────────────────── -->
+  <section class="slide">
+    <p class="eyebrow"><span class="num">01</span> The idea</p>
+    <h1>Trace analysis should <em>accumulate</em>, not restart</h1>
+    <p class="lede">
+      Every investigation decides what data to collect, what analysis to run, and what the
+      answer is. Today all of that is discarded when the ticket closes — the knowledge stays
+      in one engineer's head.
+    </p>
+    <div class="cols">
+      <div class="card">
+        <h3>A blueprint</h3>
+        <p>Writes one solved investigation down so it can be <strong>re-executed</strong> —
+           by a person or an agent. Blueprints build into a library.</p>
+      </div>
+      <div class="card">
+        <h3>Not a runbook</h3>
+        <p>Exact event names, runnable steps, an output specification, and machine-checkable
+           stopping conditions. Written to run without a human.</p>
+      </div>
+      <div class="card">
+        <h3>Not the agent</h3>
+        <p>The agent is the instrument. The contribution is the reusable knowledge object
+           and the evidence that it works again.</p>
+      </div>
+    </div>
+    <p class="foot">Observability Blueprints · progress report · 27 Aug 2026</p>
+  </section>
+
+  <!-- 2 ─────────────────────────────────────────────────────────── -->
+  <section class="slide">
+    <p class="eyebrow"><span class="num">02</span> What we built</p>
+    <h1>Two problems, chosen to be opposites</h1>
+    <p class="lede">
+      Both look identical from outside: things are slow, nothing is obviously broken. If the
+      method can separate these two, it is worth something.
+    </p>
+    <div class="cols">
+      <div class="card">
+        <h3>CPU contention</h3>
+        <p>Another workload on the same machine steals CPU. Services are not busy — they are
+           waiting for a turn on the processor.</p>
+      </div>
+      <div class="card">
+        <h3>Datastore wait</h3>
+        <p>A database answers slowly. It is not busy either — it is blocked waiting on
+           something below the traced layer.</p>
+      </div>
+    </div>
+    <div class="scroller">
+      <table>
+        <thead><tr>
+          <th>A blueprint carries</th><th>Which means</th>
+        </tr></thead>
+        <tbody>
+          <tr><td>When it applies</td><td>the symptoms that select it — and when <em>not</em> to use it</td></tr>
+          <tr><td>What to collect</td><td>exact tracepoint names, not “kernel data”</td></tr>
+          <tr><td>What to run</td><td>a capability per step, bound to a real tool at run time</td></tr>
+          <tr><td>How to decide</td><td>what makes the verdict true, and what beats it</td></tr>
+          <tr><td>When to stop</td><td>conclude, switch blueprint, or report what is missing</td></tr>
+          <tr><td>What does <em>not</em> work</td><td>signals we tested and killed, so nobody retries them</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- 3 ─────────────────────────────────────────────────────────── -->
+  <section class="slide">
+    <p class="eyebrow"><span class="num">03</span> The discipline <span class="tag warn">caught us</span></p>
+    <h1>Our first draft was wrong — measurement killed three claims</h1>
+    <p class="lede">
+      Rule: nothing enters a blueprint until it is measured on our own data. We wrote v1 from
+      what we believed, then measured <strong>93 runs / 310 records</strong>.
+    </p>
+    <div class="scroller">
+      <table>
+        <thead><tr><th>We had written</th><th>What the data showed</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>services show raised <em>runnable-wait</em></td>
+            <td class="dead">never exceeds 4% in any fault — and was 1.6% on the very run it described</td>
+          </tr>
+          <tr>
+            <td>the culprit’s wait breakdown identifies it</td>
+            <td class="dead">no culprit record exists at all for host-level faults — 5 families</td>
+          </tr>
+          <tr>
+            <td>the datastore shows dominant external-I/O wait</td>
+            <td class="dead">true — and 98–99% for <em>every</em> fault type. Identifies nothing</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="cols">
+      <div class="card">
+        <h3>Why they failed</h3>
+        <p>The derived summaries report <strong>shares of time</strong>, and idle waiting swamps
+           them. Every service looks the same.</p>
+      </div>
+      <div class="card">
+        <h3>What we changed</h3>
+        <p>Read the <strong>raw LTTng trace</strong> with Babeltrace2 instead. Per-event
+           latencies, not shares — and the signal appeared.</p>
+      </div>
+      <div class="card">
+        <h3>Killed claims are kept</h3>
+        <p>Retracted signals stay in the blueprint with the measurement that killed them, and
+           reach the agent as “do not reason from this”.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4 ─────────────────────────────────────────────────────────── -->
+  <section class="slide">
+    <p class="eyebrow"><span class="num">04</span> The result <span class="tag">measured</span></p>
+    <h1>The same measurement, opposite answers</h1>
+    <div class="scroller">
+      <table>
+        <thead><tr>
+          <th>Signal, from the raw kernel trace</th>
+          <th>CPU contention</th>
+          <th>Datastore wait</th>
+        </tr></thead>
+        <tbody>
+          <tr>
+            <td>Runqueue delay — busiest service, p95</td>
+            <td class="num hit">7.12×</td>
+            <td class="num flat">0.97×</td>
+          </tr>
+          <tr>
+            <td>Runqueue delay — median across processes</td>
+            <td class="num hit">1.78×</td>
+            <td class="num flat">0.84×</td>
+          </tr>
+          <tr>
+            <td><strong>Database <code>poll</code> wait, p95</strong></td>
+            <td class="num flat">1.12×</td>
+            <td class="num hit">36.83×</td>
+          </tr>
+          <tr>
+            <td>Trace convergence on one component</td>
+            <td class="num flat">none</td>
+            <td class="num hit">717.7×</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="lede">
+      Read row three. <strong>Same measurement, same component — 1.12× against 36.83×.</strong>
+      That is what makes the two blueprints genuinely separable.
+    </p>
+    <div class="quote no">Datastore blueprint, run on the CPU fault:
+
+  NO — no socket-waiting syscall inflated by 5× or more (largest 3.95×).
+  Runqueue delay inflated up to 7.12× — the processes are short of CPU.
+  <strong>Use the CPU-contention blueprint.</strong></div>
+    <p class="lede">
+      It refuses to answer and routes to the right blueprint. On the datastore fault it also
+      reports, unprompted: <em>“traces name catalogue, but the kernel shows mysqld is the one
+      blocked — catalogue is a victim.”</em> That is our blind-spot argument, found by the tool.
+    </p>
+  </section>
+
+  <!-- 5 ─────────────────────────────────────────────────────────── -->
+  <section class="slide">
+    <p class="eyebrow"><span class="num">05</span> Where we are</p>
+    <h1>The knowledge is built and proven. The runtime is next.</h1>
+    <div class="cols">
+      <div class="card">
+        <h3><span class="tag">Built</span></h3>
+        <ul>
+          <li>Blueprint format + validator that enforces the rules</li>
+          <li>Two blueprints, fully measured, evidence stored</li>
+          <li>Five analysis scripts on the raw kernel trace</li>
+          <li>Blueprint → agent-skill generator</li>
+          <li>Capability → tool registry with cost metadata</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3><span class="tag warn">Not built</span></h3>
+        <ul>
+          <li>The runtime: intent → selection → binding → execution</li>
+          <li>The with/without-blueprint experiment</li>
+          <li>Mining blueprints from past tickets</li>
+          <li>Selection is <strong>manual</strong> today</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>Not claiming</h3>
+        <ul>
+          <li><strong>One run per fault</strong> — repeats owed</li>
+          <li>Two problems, not the five eventually wanted</li>
+          <li>Process-name attribution is ambiguous on Java services</li>
+        </ul>
+      </div>
+    </div>
+    <div class="quote">A blueprint never names a tool. It declares a capability;
+the registry binds whatever exists in that environment.
+
+  needs:  kernel.scheduler.runqueue_delay
+  binds:  babeltrace2 · eBPF · Trace Compass · your own collector</div>
+    <p class="foot">Branch <code>blueprints</code> · full write-up in blueprint-report.md</p>
+  </section>
+</main>
+
+<div class="pager" id="pager">01 / 05</div>
+
+<script>
+  const slides = [...document.querySelectorAll('.slide')];
+  const pager = document.getElementById('pager');
+  const pad = n => String(n).padStart(2, '0');
+
+  const io = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        const i = slides.indexOf(e.target) + 1;
+        pager.textContent = `${pad(i)} / ${pad(slides.length)}`;
+      }
+    });
+  }, { threshold: 0.55 });
+  slides.forEach(s => io.observe(s));
+
+  function current() {
+    const mid = window.innerHeight / 2;
+    return slides.findIndex(s => {
+      const r = s.getBoundingClientRect();
+      return r.top <= mid && r.bottom >= mid;
+    });
+  }
+  addEventListener('keydown', e => {
+    const keysNext = ['ArrowRight', 'ArrowDown', 'PageDown', ' '];
+    const keysPrev = ['ArrowLeft', 'ArrowUp', 'PageUp'];
+    if (![...keysNext, ...keysPrev].includes(e.key)) return;
+    e.preventDefault();
+    const i = current();
+    if (i < 0) return;
+    const to = keysNext.includes(e.key) ? Math.min(i + 1, slides.length - 1) : Math.max(i - 1, 0);
+    slides[to].scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+  });
+</script>
