@@ -32,6 +32,42 @@ contention only needs to know *that* a thread stopped running; the datastore cas
 know *which syscall it stopped in*. A blueprint that says "collect kernel data" would be
 useless for both.
 
+## Capability-first: the blueprint never names a tool
+
+This is the structural rule from Naser's architecture, and it is what separates a blueprint
+from a script wrapper. A blueprint declares the **capability** it needs:
+
+```
+needs: kernel.scheduler.runqueue_delay
+```
+
+`providers.json` binds that capability to whatever tool is actually available — our
+babeltrace2 script here, Trace Compass or a vendor's own analyser elsewhere. **Swap the
+tool and the blueprint does not change.** That is what makes the knowledge portable, and
+what makes the architecture tool-agnostic and model-agnostic rather than one more telemetry
+pipeline.
+
+The two supervisor constraints looked contradictory and are reconciled by this split:
+
+| | |
+|---|---|
+| Naser: a blueprint must not name tools, only requirements | satisfied by `capability` |
+| Mahsa: the exact callable must reach the model, or accuracy drops | satisfied by binding, which resolves to a real command before the agent sees it |
+
+The validator enforces both: it rejects a capability with no *implemented* provider, so a
+blueprint can never claim to be executable in an environment where it is not.
+
+## A blueprint covers a class, not one incident
+
+Each blueprint is placed in a problem taxonomy (domain → category → subcategory) with its
+sibling causes listed, because many historical problems should collapse into one reusable
+blueprint. It also carries:
+
+- **applicability** — when to use it, when *not* to, and the cheapest check to run first
+- **stopping conditions** — when to conclude, when to stop and switch to another blueprint,
+  and what to say when the evidence is insufficient
+- **adaptation rules** — what to do when the evidence does not fit the expected shape
+
 ## The rule: measure first, then write
 
 **No claim goes into a blueprint until it has been measured on our own data.** Not one

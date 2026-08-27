@@ -26,6 +26,30 @@ LEAK_TOKENS = ["noisy_neighbor", "slow_db", "anomaly_cpu", "anomaly_mem", "anoma
 REQUIRED = ["id", "version", "problem", "reproduction", "collection_order",
             "processing", "outputs", "decision", "provenance"]
 
+PROVIDERS = os.path.join(os.path.dirname(HERE), "providers.json")
+
+
+def load_providers():
+    """capability id -> registry entry. A blueprint declares capabilities; this file binds
+    them to whatever tool is actually available. Keeping that split is what makes the
+    blueprint portable across tools instead of being a script wrapper."""
+    try:
+        with open(PROVIDERS, encoding="utf-8") as fh:
+            return json.load(fh).get("capabilities", {})
+    except (OSError, json.JSONDecodeError):
+        return {}
+
+
+def bind(cap_id, providers):
+    """Resolve a capability to the first implemented provider. Returns (run, provider_id)."""
+    cap = providers.get(cap_id)
+    if not cap:
+        return None, None
+    for pr in cap.get("providers", []):
+        if pr.get("status") == "implemented" and pr.get("run"):
+            return pr["run"], pr["id"]
+    return None, None
+
 
 def validate(bp: dict, path: str) -> list:
     """Structural checks the schema cannot express, plus the ones that actually bite."""
@@ -57,18 +81,38 @@ def validate(bp: dict, path: str) -> list:
             errs.append(f"discriminator[{i}] evidence does not reference a measurement or an "
                         "evidence/ results/ artifact: " + d["evidence"][:70])
 
-    # Mahsa's rule: every processing step carries an exact callable, not prose.
+    # A step declares a CAPABILITY, never a tool — that is what keeps the blueprint portable
+    # (Naser's architecture). Binding must still resolve to a real command, so Mahsa's rule
+    # holds where it matters: what reaches the agent is an exact callable, not a description.
+    providers = load_providers()
     for i, s in enumerate(bp.get("processing", [])):
-        run = s.get("run", "")
-        if not run:
-            errs.append(f"processing[{i}] has no `run` - steps must be executable, not described")
+        cap, run = s.get("capability"), s.get("run", "")
+        if not cap and not run:
+            errs.append(f"processing[{i}] declares neither a `capability` nor a `run`")
+        elif cap:
+            if cap not in providers:
+                errs.append(f"processing[{i}] needs capability {cap!r}, absent from providers.json")
+            elif not bind(cap, providers)[0]:
+                errs.append(f"processing[{i}] capability {cap!r} has no IMPLEMENTED provider — "
+                            "the blueprint cannot execute in this environment")
         elif not re.match(r"^(python3?|bash|sh|babeltrace2|TZ=\S+|cp|grep|awk|\./|\S+\.sh)\b", run):
             errs.append(f"processing[{i}].run does not look like a command: {run[:60]!r}")
         if not s.get("produces"):
             errs.append(f"processing[{i}] does not say what it produces")
 
+    for c in bp.get("capabilities_required", []):
+        if c.get("id") not in providers:
+            errs.append(f"capabilities_required lists {c.get('id')!r}, absent from providers.json")
+
+    if not (bp.get("applicability") or {}).get("apply_when"):
+        errs.append("no `applicability.apply_when` — a blueprint must say when it applies, or "
+                    "a selector cannot choose it")
+    if not (bp.get("stopping_conditions") or {}).get("conclude"):
+        errs.append("no `stopping_conditions.conclude` — a blueprint must say when the "
+                    "investigation is finished")
+
     # Every declared output should be produced by some step.
-    produced = " ".join(s.get("produces", "") for s in bp.get("processing", []))
+    produced = " ".join(str(s.get("produces", "")) for s in bp.get("processing", []))
     for o in bp.get("outputs", []):
         if o["path"] not in produced:
             errs.append(f"output {o['path']} is declared but no processing step produces it")
@@ -96,7 +140,19 @@ def to_skill(bp: dict) -> str:
     """Render the agent-facing skill. Answer-bearing fields are deliberately excluded."""
     p, c, d = bp["problem"], bp["collection_order"], bp["decision"]
 
-    sig = ["## Problem signature"]
+    app = bp.get("applicability", {})
+    sig = ["## When this applies"]
+    for x in app.get("apply_when", []):
+        sig.append(f"- {x}")
+    if app.get("do_not_apply_when"):
+        sig.append("")
+        sig.append("Do NOT use this blueprint when:")
+        for x in app["do_not_apply_when"]:
+            sig.append(f"- {x}")
+    if app.get("cheap_precheck"):
+        sig += ["", f"Cheapest check first: {app['cheap_precheck']}"]
+
+    sig += ["", "## Problem signature"]
     for s in p["symptoms"]:
         sig.append(f"- {s}")
     sig.append("")
@@ -120,10 +176,23 @@ def to_skill(bp: dict) -> str:
     if c.get("why_these"):
         order += ["", f"Why this set: {c['why_these']}"]
 
-    steps = ["## Investigation blueprint"]
+    providers = load_providers()
+    steps = ["## Investigation blueprint",
+             "Each step names the capability it needs. The command shown is the binding "
+             "resolved for THIS environment; another environment may bind a different tool "
+             "to the same capability without changing the procedure.", ""]
     for i, s in enumerate(bp["processing"], 1):
         steps.append(f"{i}. {s['step']}")
-        steps.append(f"   run: `{s['run']}`")
+        cap = s.get("capability")
+        run = s.get("run")
+        if cap:
+            bound, prov = bind(cap, providers)
+            steps.append(f"   needs: `{cap}`")
+            if bound:
+                steps.append(f"   run [{prov}]: `{bound}`")
+            run = run or bound
+        elif run:
+            steps.append(f"   run: `{run}`")
         if s.get("expect"):
             steps.append(f"   expect: {s['expect']}")
 
@@ -138,6 +207,25 @@ def to_skill(bp: dict) -> str:
     for r in d["rule_out"]:
         res.append(f"- {r['instead']} — {r['when']}")
     res += ["", f"Root cause is: {d['root_cause_is']}"]
+
+    stop = bp.get("stopping_conditions") or {}
+    if stop:
+        res += ["", "## When to stop"]
+        if stop.get("conclude"):
+            res.append(f"- Conclude when: {stop['conclude']}")
+        if stop.get("stop_and_switch"):
+            res.append(f"- Stop and switch: {stop['stop_and_switch']}")
+        if stop.get("stop_insufficient"):
+            res.append(f"- Evidence insufficient: {stop['stop_insufficient']}")
+        if stop.get("max_evidence_rounds"):
+            res.append(f"- Do not exceed {stop['max_evidence_rounds']} rounds of gathering "
+                       "more evidence before reporting what is missing.")
+
+    adapt = bp.get("adaptation_rules") or []
+    if adapt:
+        res += ["", "## If the evidence does not fit"]
+        for r in adapt:
+            res.append(f"- If {r['if']}, then {r['then']}.")
 
     warn = []
     if retracted:

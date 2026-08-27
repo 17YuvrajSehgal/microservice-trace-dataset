@@ -1,6 +1,6 @@
 {
   "id": "cpu-contention-co-tenant",
-  "version": 3,
+  "version": 4,
   "title": "A co-tenant workload steals host CPU: services wait on the runqueue, not on I/O",
   "problem": {
     "summary": "An unrelated workload sharing the host consumes CPU. Application services are never themselves busy, but each time they become ready to run they wait measurably longer before a CPU actually runs them. User-facing latency moves only slightly, so dashboards look nearly normal; the delay is only visible in the scheduler.",
@@ -103,40 +103,38 @@
   },
   "processing": [
     {
-      "step": "Stage the raw kernel trace (channels are stored gzipped)",
-      "run": "cp -r <run_dir>/kernel/kernel <tmp>/ctf && gunzip -f <tmp>/ctf/*.gz",
+      "step": "Make the kernel trace readable",
+      "capability": "trace.stage_ctf",
       "produces": "<tmp>/ctf",
-      "expect": "a CTF directory with metadata plus channel0_* streams. The metadata is CTF 2 (JSON preamble), so babeltrace 2.1 or newer is required; 2.0.x fails with an invalid-metadata error"
+      "expect": "a CTF directory with metadata and channel streams"
     },
     {
-      "step": "Measure runqueue delay per process, baseline window vs incident window",
-      "run": "python3 blueprints/problems/cpu-contention-co-tenant/scripts/runqueue_delay.py --ctf <tmp>/ctf --gt <run_dir>/ground_truth.json --out <out>/rq.json",
-      "reads": [
-        "<tmp>/ctf",
-        "<run_dir>/ground_truth.json"
-      ],
+      "step": "Measure runqueue delay per process, baseline vs incident",
+      "capability": "kernel.scheduler.runqueue_delay",
       "produces": "<out>/rq.json",
-      "expect": "millions of wake->run pairs per window; a broad multi-process inflation of p95 indicates contention"
-    },
-    {
-      "step": "NEGATIVE CONTROL: confirm blocking-syscall durations did NOT inflate",
-      "run": "python3 blueprints/problems/db-latency-dependency-wait/scripts/blocking_syscall.py --ctf <tmp>/ctf --gt <run_dir>/ground_truth.json --out <out>/blocking.json",
+      "expect": "a broad multi-process inflation of p95 indicates contention",
       "reads": [
         "<tmp>/ctf"
-      ],
+      ]
+    },
+    {
+      "step": "NEGATIVE CONTROL: confirm blocking-syscall durations did not inflate",
+      "capability": "kernel.syscall.blocking_duration",
       "produces": "<out>/blocking.json",
-      "expect": "no syscall inflates by more than about 2x; a 10x or larger inflation on one component means this is NOT the right blueprint"
+      "expect": "no syscall inflates much; a large single-component inflation means this is the wrong blueprint",
+      "reads": [
+        "<tmp>/ctf"
+      ]
     },
     {
       "step": "Identify the off-call-path CPU consumer and emit the verdict",
-      "run": "python3 blueprints/problems/cpu-contention-co-tenant/scripts/cpu_attribution.py --run <run_dir> --out <out>/verdict.json --chart <out>/runqueue.svg --text <out>/explanation.txt",
+      "capability": "metrics.container.cpu_attribution",
+      "produces": "<out>/verdict.json, <out>/runqueue.svg, <out>/explanation.txt",
+      "expect": "the top CPU consumer has no call-graph edges and was absent in the baseline",
       "reads": [
         "<run_dir>/metrics",
-        "<run_dir>/meta",
         "<run_dir>/otlp"
-      ],
-      "produces": "<out>/verdict.json, <out>/runqueue.svg, <out>/explanation.txt",
-      "expect": "the top CPU consumer has no call-graph edges and was absent in the baseline"
+      ]
     }
   ],
   "outputs": [
@@ -198,5 +196,67 @@
     "verified_by": "PENDING - Naser to sign off",
     "authored_utc": "2026-08-27",
     "notes": "v3: rebuilt on the raw kernel trace read with babeltrace2, after the derived wait-share record was measured to be non-discriminative. Every discriminator now cites a measurement with its control. The decisive pair: runqueue delay 7.12x here vs 0.97x on the datastore fault, and the datastore's poll syscall 1.12x here vs 36.83x there - same signals, opposite directions."
-  }
+  },
+  "taxonomy": {
+    "domain": "Performance",
+    "category": "Throughput / latency degradation",
+    "subcategory": "CPU contention",
+    "sibling_causes": [
+      "scheduler delay",
+      "lock contention",
+      "application blocking"
+    ],
+    "note": "A blueprint covers this whole subcategory, not one incident. It was authored from labelled co-tenant runs but is written to apply to any case where ready threads cannot get a CPU."
+  },
+  "applicability": {
+    "apply_when": [
+      "several unrelated services degrade mildly at the same time",
+      "no single component is saturated",
+      "error rates are unchanged and requests still succeed"
+    ],
+    "do_not_apply_when": [
+      "one component alone is slow while the rest are healthy",
+      "requests are failing or timing out rather than merely slowing",
+      "the host is fully exhausted and latency collapses rather than jitters"
+    ],
+    "cheap_precheck": "host CPU rose but retains headroom, and no container on the call graph accounts for the extra CPU"
+  },
+  "capabilities_required": [
+    {
+      "id": "trace.stage_ctf",
+      "why": "the stored kernel trace must be readable"
+    },
+    {
+      "id": "kernel.scheduler.runqueue_delay",
+      "why": "the decisive signal: how long ready threads waited for a CPU"
+    },
+    {
+      "id": "kernel.syscall.blocking_duration",
+      "why": "negative control: showing syscall durations stayed flat rules out I/O waiting"
+    },
+    {
+      "id": "metrics.container.cpu_attribution",
+      "why": "identify which container consumed the CPU and whether it is on the call graph"
+    }
+  ],
+  "stopping_conditions": {
+    "conclude": "runqueue delay is broadly inflated, syscall durations are flat, and an off-call-path container accounts for the CPU",
+    "stop_and_switch": "a single component's blocking syscall inflates by an order of magnitude while runqueue delay stays flat -> use the dependency-wait blueprint",
+    "stop_insufficient": "runqueue delay cannot be computed because the scheduler events were not recorded -> request them and re-run; do not guess from utilisation alone",
+    "max_evidence_rounds": 2
+  },
+  "adaptation_rules": [
+    {
+      "if": "the runqueue signal is present but no off-call-path container is found",
+      "then": "the contention is internal: re-check whether an on-call-path service is consuming the CPU, which points at a service-level cause instead"
+    },
+    {
+      "if": "only one process shows inflated runqueue delay",
+      "then": "this is not host-wide contention; consider a per-service CPU limit"
+    },
+    {
+      "if": "the trace covers less than the full incident window",
+      "then": "widen the window before comparing, since short windows exaggerate percentiles"
+    }
+  ]
 }

@@ -1,11 +1,23 @@
 ---
 name: cpu-contention-co-tenant
-version: 3
+version: 4
 authored_by: human
 generated_from: blueprints/cpu-contention-co-tenant.json
 covers: noisy_neighbor                       # harness metadata: scoring + LOFO; NEVER shown to the model
 mutually_exclusive_with: db-latency-dependency-wait
 ---
+## When this applies
+- several unrelated services degrade mildly at the same time
+- no single component is saturated
+- error rates are unchanged and requests still succeed
+
+Do NOT use this blueprint when:
+- one component alone is slow while the rest are healthy
+- requests are failing or timing out rather than merely slowing
+- the host is fully exhausted and latency collapses rather than jitters
+
+Cheapest check first: host CPU rose but retains headroom, and no container on the call graph accounts for the extra CPU
+
 ## Problem signature
 - mild, intermittent latency jitter across several unrelated services at once
 - no service is itself busy: per-container CPU is flat or falling
@@ -28,17 +40,23 @@ The signals below are sufficient for this problem; you do not need everything.
 Why this set: MEASURED BASIS. Runqueue delay needs exactly two tracepoints: sched_waking gives the moment a thread became runnable, and sched_switch (next_tid) gives the moment a CPU actually ran it. The difference is the delay. Syscall events are collected only as the NEGATIVE control - showing durations stay flat is what separates this from a component blocked on I/O. Nothing else in the kernel trace is required.
 
 ## Investigation blueprint
-1. Stage the raw kernel trace (channels are stored gzipped)
-   run: `cp -r <run_dir>/kernel/kernel <tmp>/ctf && gunzip -f <tmp>/ctf/*.gz`
-   expect: a CTF directory with metadata plus channel0_* streams. The metadata is CTF 2 (JSON preamble), so babeltrace 2.1 or newer is required; 2.0.x fails with an invalid-metadata error
-2. Measure runqueue delay per process, baseline window vs incident window
-   run: `python3 blueprints/problems/cpu-contention-co-tenant/scripts/runqueue_delay.py --ctf <tmp>/ctf --gt <run_dir>/ground_truth.json --out <out>/rq.json`
-   expect: millions of wake->run pairs per window; a broad multi-process inflation of p95 indicates contention
-3. NEGATIVE CONTROL: confirm blocking-syscall durations did NOT inflate
-   run: `python3 blueprints/problems/db-latency-dependency-wait/scripts/blocking_syscall.py --ctf <tmp>/ctf --gt <run_dir>/ground_truth.json --out <out>/blocking.json`
-   expect: no syscall inflates by more than about 2x; a 10x or larger inflation on one component means this is NOT the right blueprint
+Each step names the capability it needs. The command shown is the binding resolved for THIS environment; another environment may bind a different tool to the same capability without changing the procedure.
+
+1. Make the kernel trace readable
+   needs: `trace.stage_ctf`
+   run [local]: `cp -r <run_dir>/kernel/kernel <tmp>/ctf && gunzip -f <tmp>/ctf/*.gz`
+   expect: a CTF directory with metadata and channel streams
+2. Measure runqueue delay per process, baseline vs incident
+   needs: `kernel.scheduler.runqueue_delay`
+   run [babeltrace2-cli]: `python3 blueprints/problems/cpu-contention-co-tenant/scripts/runqueue_delay.py --ctf <ctf> --gt <ground_truth> --out <out>/rq.json`
+   expect: a broad multi-process inflation of p95 indicates contention
+3. NEGATIVE CONTROL: confirm blocking-syscall durations did not inflate
+   needs: `kernel.syscall.blocking_duration`
+   run [babeltrace2-cli]: `python3 blueprints/problems/db-latency-dependency-wait/scripts/blocking_syscall.py --ctf <ctf> --gt <ground_truth> --comms <comms> --out <out>/blocking.json`
+   expect: no syscall inflates much; a large single-component inflation means this is the wrong blueprint
 4. Identify the off-call-path CPU consumer and emit the verdict
-   run: `python3 blueprints/problems/cpu-contention-co-tenant/scripts/cpu_attribution.py --run <run_dir> --out <out>/verdict.json --chart <out>/runqueue.svg --text <out>/explanation.txt`
+   needs: `metrics.container.cpu_attribution`
+   run [prometheus-cadvisor]: `python3 blueprints/problems/cpu-contention-co-tenant/scripts/cpu_attribution.py --run <run_dir> --out <out>/verdict.json --chart <out>/runqueue.svg --text <out>/explanation.txt`
    expect: the top CPU consumer has no call-graph edges and was absent in the baseline
 
 ## What to produce
@@ -59,6 +77,17 @@ Prefer a different explanation when:
 - a service pinned by its own CPU limit — only ONE service is delayed and it is on the call path
 
 Root cause is: the co-tenant workload container itself, not any application service it delays
+
+## When to stop
+- Conclude when: runqueue delay is broadly inflated, syscall durations are flat, and an off-call-path container accounts for the CPU
+- Stop and switch: a single component's blocking syscall inflates by an order of magnitude while runqueue delay stays flat -> use the dependency-wait blueprint
+- Evidence insufficient: runqueue delay cannot be computed because the scheduler events were not recorded -> request them and re-run; do not guess from utilisation alone
+- Do not exceed 2 rounds of gathering more evidence before reporting what is missing.
+
+## If the evidence does not fit
+- If the runqueue signal is present but no off-call-path container is found, then the contention is internal: re-check whether an on-call-path service is consuming the CPU, which points at a service-level cause instead.
+- If only one process shows inflated runqueue delay, then this is not host-wide contention; consider a per-service CPU limit.
+- If the trace covers less than the full incident window, then widen the window before comparing, since short windows exaggerate percentiles.
 
 ## Signals that do NOT work for this problem
 Each of these was measured on our own data and found unusable. Do not reason

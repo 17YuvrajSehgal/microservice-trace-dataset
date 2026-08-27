@@ -1,0 +1,482 @@
+This is a copy of a shared ChatGPT chat. It won't be added to memory.
+
+Report conversation
+
+Yes. I would actually make one important change to your idea.
+
+I would not say we "collect intents over time." Intents are runtime requests. What you really collect and curate over time is observability knowledge, which is packaged as reusable Observability Blueprints.
+
+Think of it like this:
+
+Jira Issues / Incidents → examples of real problems
+Designers / Observability experts → analyze many similar problems
+Knowledge Engineering → create reusable blueprints
+Runtime → automatically maps a new intent to one or more blueprints
+
+So the architecture has an offline knowledge engineering phase and an online execution phase.
+
+Phase 1 — Offline (Knowledge Engineering)
+                    Historical Knowledge
+
++-------------------+      +---------------------+
+| Jira Issues       |      | Incident Reports    |
++-------------------+      +---------------------+
+            \                  /
+             \                /
+              +--------------+
+              | Domain Experts|
+              | (Designers)   |
+              +--------------+
+                     |
+                     | Analyze recurring problems
+                     v
+         +----------------------------+
+         | Problem Categorization      |
+         | (Intent Taxonomy)           |
+         +----------------------------+
+                     |
+                     v
+      +--------------------------------------+
+      | Observability Blueprint Authoring    |
+      |                                      |
+      | • Required evidence                  |
+      | • Analysis procedure                 |
+      | • Capability requirements            |
+      | • Policies                           |
+      | • Outputs                            |
+      +--------------------------------------+
+                     |
+                     v
+      +--------------------------------------+
+      | Blueprint Repository                 |
+      +--------------------------------------+
+
+Notice that designers are not creating workflows.
+
+They are creating reusable knowledge objects.
+
+Phase 2 — Online (Runtime)
+Customer
+or AI Agent
+      |
+      v
++-------------------------+
+| Problem / Jira Issue    |
++-------------------------+
+      |
+      v
++-------------------------+
+| Intent Extraction       |
++-------------------------+
+      |
+      v
++-------------------------+
+| Blueprint Retrieval     |
++-------------------------+
+      |
+      v
++-------------------------+
+| Capability Resolution   |
++-------------------------+
+      |
+      v
++-------------------------+
+| Tool Binding            |
++-------------------------+
+      |
+      v
++-------------------------+
+| Execution Plan          |
++-------------------------+
+      |
+      v
++-------------------------+
+| Evidence Collection     |
++-------------------------+
+      |
+      v
++-------------------------+
+| Analysis               |
++-------------------------+
+      |
+      v
++-------------------------+
+| Diagnosis & Actions     |
++-------------------------+
+The complete picture
+                OFFLINE                                ONLINE
+────────────────────────────────────────────────────────────────────
+
+Historical Jira Issues
+Customer Incidents
+Support Tickets
+Monitoring Alerts
+        │
+        ▼
++------------------------+
+| Domain Experts         |
+| (Blueprint Designers)  |
++------------------------+
+        │
+        ▼
++------------------------+
+| Intent Taxonomy        |
+| Problem Categories     |
++------------------------+
+        │
+        ▼
++------------------------+
+| Blueprint Repository   |
++------------------------+
+               │
+               │
+───────────────┼──────────────────────────────────────────────────
+
+        New Customer Problem
+               │
+               ▼
++------------------------+
+| Intent Extraction      |
++------------------------+
+               │
+               ▼
++------------------------+
+| Retrieve Matching      |
+| Blueprint(s)           |
++------------------------+
+               │
+               ▼
++------------------------+
+| Capability & Policy    |
+| Resolution             |
++------------------------+
+               │
+               ▼
++------------------------+
+| Tool Binding           |
++------------------------+
+               │
+               ▼
++------------------------+
+| Execution Plan         |
++------------------------+
+               │
+               ▼
++------------------------+
+| Collect Evidence       |
++------------------------+
+               │
+               ▼
++------------------------+
+| Analyze Evidence       |
++------------------------+
+               │
+               ▼
++------------------------+
+| Diagnosis              |
+| Recommendation         |
++------------------------+
+One suggestion
+
+I would avoid calling the offline categories "Intent Categories." That can be confusing because an intent is generated at runtime.
+
+Instead, I would use:
+
+Problem Taxonomy
+Diagnostic Taxonomy
+Observability Knowledge Base
+Observability Blueprint Repository
+
+Then the flow becomes:
+
+Historical Problems
+        ↓
+Problem Taxonomy
+        ↓
+Observability Blueprints
+        ↓
+---------------- Runtime ----------------
+        ↓
+New Problem
+        ↓
+Intent
+        ↓
+Blueprint Selection
+        ↓
+Execution
+
+I think this separation between knowledge engineering (offline) and intent-driven execution (online) is one of the strongest aspects of your architecture. It clearly distinguishes who creates the diagnostic knowledge (designers and experts) from how that knowledge is automatically applied to new problems at runtime.
+
+Then the flow becomes:
+
+this is g ood. also saw something like this for Observability Blueprints
+
+Yes. For Observability Blueprints, I would show a similar lifecycle that explains how they are created, stored, selected, executed, and improved.
+
+Historical Problems and Incidents
+        ↓
+Problem Classification
+        ↓
+Diagnostic Knowledge Extraction
+        ↓
+Observability Blueprint Authoring
+        ↓
+Blueprint Validation and Testing
+        ↓
+Blueprint Repository
+        ↓
+──────────── Runtime ────────────
+        ↓
+New Problem or Intent
+        ↓
+Blueprint Retrieval and Selection
+        ↓
+Blueprint Parameterization or Composition
+        ↓
+Capability and Policy Resolution
+        ↓
+Tool-Specific Execution Plan
+        ↓
+Evidence Collection and Analysis
+        ↓
+Diagnosis and Recommended Action
+        ↓
+Execution Feedback and Blueprint Improvement
+        ↺
+
+A more detailed version is:
+
++-------------------------------+
+| Historical Jira Issues       |
+| Incidents, alerts, and traces |
++-------------------------------+
+                |
+                v
++-------------------------------+
+| Problem Taxonomy              |
+|                               |
+| • Latency degradation         |
+| • Throughput degradation      |
+| • Memory leak                 |
+| • Scheduler contention        |
+| • Network delay               |
++-------------------------------+
+                |
+                v
++-------------------------------+
+| Diagnostic Knowledge          |
+| Extraction                    |
+|                               |
+| • Required evidence           |
+| • Candidate causes            |
+| • Analysis logic              |
+| • Decision criteria           |
+| • Recommended actions         |
++-------------------------------+
+                |
+                v
++-------------------------------+
+| Observability Blueprint       |
+|                               |
+| • Applicability conditions    |
+| • Required capabilities       |
+| • Required data               |
+| • Derived information         |
+| • Analysis steps              |
+| • Adaptation rules            |
+| • Outputs                     |
+| • Stopping conditions         |
++-------------------------------+
+                |
+                v
++-------------------------------+
+| Blueprint Repository          |
+|                               |
+| Versioned, searchable, tested |
++-------------------------------+
+                |
+                v
+============= RUNTIME =================
+                |
+                v
++-------------------------------+
+| New Customer Problem          |
+| or Normalized Intent          |
++-------------------------------+
+                |
+                v
++-------------------------------+
+| Blueprint Selector            |
+|                               |
+| Select, rank, or compose      |
++-------------------------------+
+                |
+                v
++-------------------------------+
+| Blueprint Instance            |
+|                               |
+| Target, hosts, time window,   |
+| overhead and policy limits    |
++-------------------------------+
+                |
+                v
++-------------------------------+
+| Execution Runtime             |
+|                               |
+| Capability resolution         |
+| Provider binding              |
+| Execution planning            |
++-------------------------------+
+                |
+                v
++-------------------------------+
+| Collection and Analysis       |
+| Providers                     |
++-------------------------------+
+                |
+                v
++-------------------------------+
+| Evidence and Findings         |
++-------------------------------+
+                |
+        +-------+-------+
+        |               |
+        v               v
+ Evidence sufficient   Evidence insufficient
+        |               |
+        v               v
+ Diagnosis and       Adaptive replanning
+ recommendation          |
+        |                 |
+        +-----------------+
+                |
+                v
++-------------------------------+
+| Blueprint Performance         |
+| and Improvement Feedback      |
++-------------------------------+
+
+The key idea is that an Observability Blueprint is produced from repeated diagnostic knowledge, rather than directly from one Jira issue.
+
+One Jira issue may contribute evidence for creating or improving a blueprint, but the blueprint represents the generalized procedure applicable to a class of problems.
+
+A concise formulation is:
+
+Many Historical Problems
+        ↓
+Generalized Diagnostic Knowledge
+        ↓
+Reusable Observability Blueprint
+        ↓
+Applied to New Intents
+        ↓
+Concrete Execution and Diagnosis
+        ↓
+Feedback Improves the Blueprint
+give simeple example of this: Historical Problems
+        ↓
+Problem Taxonomy
+        ↓
+Observability Blueprints
+
+Here are a few concrete examples.
+
+Example 1: Throughput degradation
+Historical Problems
+────────────────────────────────────────
+• Jira #1023: Throughput dropped after deployment
+• Jira #1488: Service A processes fewer requests
+• Jira #2315: Low throughput, CPU only 45%
+• Jira #2874: Periodic throughput degradation
+
+                ↓
+
+Problem Taxonomy
+────────────────────────────────────────
+Performance
+   └── Throughput Degradation
+           ├── CPU contention
+           ├── Scheduler delay
+           ├── Lock contention
+           └── Application blocking
+
+                ↓
+
+Observability Blueprint
+────────────────────────────────────────
+CPU and Scheduler Bottleneck
+Diagnosis Blueprint
+Example 2: Latency
+Historical Problems
+────────────────────────────────────────
+• Checkout latency increased
+• API response time became unstable
+• p99 latency doubled after release
+• Requests occasionally take 5 seconds
+
+                ↓
+
+Problem Taxonomy
+────────────────────────────────────────
+Performance
+   └── Latency Degradation
+           ├── Network latency
+           ├── Queueing delay
+           ├── Database bottleneck
+           └── Thread starvation
+
+                ↓
+
+Observability Blueprint
+────────────────────────────────────────
+End-to-End Latency
+Diagnosis Blueprint
+Example 3: Memory
+Historical Problems
+────────────────────────────────────────
+• Service crashes after 48 hours
+• Memory usage continuously increases
+• Frequent OutOfMemory errors
+• Container killed by OOM
+
+                ↓
+
+Problem Taxonomy
+────────────────────────────────────────
+Memory
+   └── Memory Leak
+           ├── Heap leak
+           ├── Native memory leak
+           ├── Cache growth
+           └── Object retention
+
+                ↓
+
+Observability Blueprint
+────────────────────────────────────────
+Memory Leak
+Diagnosis Blueprint
+Even better (what I would use in a paper)
+
+Instead of showing one chain, show that many historical issues contribute to one blueprint.
+
+Jira #1023  ─┐
+Jira #1488  ─┤
+Jira #2315  ─┤
+Jira #2874  ─┘
+             │
+             ▼
+     Throughput Degradation
+      (Problem Category)
+             │
+             ▼
+CPU & Scheduler Bottleneck
+Observability Blueprint
+
+This figure communicates a stronger message:
+
+Historical problems are individual incidents.
+Problem taxonomy organizes them into reusable categories.
+Observability blueprints capture the expert diagnostic knowledge for an entire category, rather than a single incident.
+
+That is much closer to how an experienced observability engineer thinks and how your architecture would likely evolve in practice.

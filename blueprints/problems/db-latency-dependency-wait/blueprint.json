@@ -1,6 +1,6 @@
 {
   "id": "db-latency-dependency-wait",
-  "version": 3,
+  "version": 4,
   "title": "A datastore blocks in its socket while idle; its callers converge on it",
   "problem": {
     "summary": "Several services slow down and their slow call paths all end at the same downstream component. That component is not busy and is not short of CPU - it is blocked inside a single socket-waiting syscall for far longer than usual. Because it emits no request traces of its own, the call graph can only point at its nearest traced caller, so the traces accuse a victim and only the kernel identifies the real culprit.",
@@ -100,48 +100,48 @@
   },
   "processing": [
     {
-      "step": "Stage the raw kernel trace (channels are stored gzipped)",
-      "run": "cp -r <run_dir>/kernel/kernel <tmp>/ctf && gunzip -f <tmp>/ctf/*.gz",
+      "step": "Make the kernel trace readable",
+      "capability": "trace.stage_ctf",
       "produces": "<tmp>/ctf",
-      "expect": "CTF 2 metadata plus channel0_* streams; needs babeltrace 2.1 or newer"
+      "expect": "a CTF directory with metadata and channel streams"
     },
     {
       "step": "Find which component the slow call paths converge on",
-      "run": "python3 blueprints/problems/db-latency-dependency-wait/scripts/edge_convergence.py --run <run_dir> --app <app> --out <out>/convergence.json",
+      "capability": "traces.call_graph.convergence",
+      "produces": "<out>/convergence.json",
+      "expect": "one component with slow incoming and no slow outgoing edges; it may be the CALLER of the culprit if the culprit emits no spans",
       "reads": [
         "<run_dir>/otlp"
-      ],
-      "produces": "<out>/convergence.json",
-      "expect": "one component with slow incoming and no slow outgoing edges. Remember it may be the CALLER of the culprit if the culprit emits no spans"
+      ]
     },
     {
-      "step": "Measure how long the suspect and its neighbours block inside each syscall",
-      "run": "python3 blueprints/problems/db-latency-dependency-wait/scripts/blocking_syscall.py --ctf <tmp>/ctf --gt <run_dir>/ground_truth.json --comms <suspect_comm>,<caller_comm> --out <out>/blocking.json",
+      "step": "Measure how long the suspect blocks inside each syscall",
+      "capability": "kernel.syscall.blocking_duration",
+      "produces": "<out>/blocking.json",
+      "expect": "one socket-waiting syscall inflated by roughly an order of magnitude",
       "reads": [
         "<tmp>/ctf"
-      ],
-      "produces": "<out>/blocking.json",
-      "expect": "one socket-waiting syscall inflated by roughly an order of magnitude; everything else near 1x"
+      ]
     },
     {
       "step": "NEGATIVE CONTROL: confirm the suspect is not merely CPU-starved",
-      "run": "python3 blueprints/problems/cpu-contention-co-tenant/scripts/runqueue_delay.py --ctf <tmp>/ctf --gt <run_dir>/ground_truth.json --out <out>/rq.json",
+      "capability": "kernel.scheduler.runqueue_delay",
+      "produces": "<out>/rq.json",
+      "expect": "runqueue delay flat; if it inflates broadly this is the CPU-contention blueprint instead",
       "reads": [
         "<tmp>/ctf"
-      ],
-      "produces": "<out>/rq.json",
-      "expect": "runqueue delay flat, about 1x. If it inflates broadly, this is the CPU-contention blueprint instead"
+      ]
     },
     {
       "step": "Combine into the verdict and its artifacts",
-      "run": "python3 blueprints/problems/db-latency-dependency-wait/scripts/dependency_verdict.py --convergence <out>/convergence.json --blocking <out>/blocking.json --rq <out>/rq.json --out <out>/verdict.json --chart <out>/blocking.svg --text <out>/explanation.txt",
+      "capability": "verdict.dependency_wait",
+      "produces": "<out>/verdict.json, <out>/blocking.svg, <out>/explanation.txt",
+      "expect": "a named component, the syscall it blocked in, its inflation factor, and the flat runqueue delay that rules out CPU starvation",
       "reads": [
         "<out>/convergence.json",
         "<out>/blocking.json",
         "<out>/rq.json"
-      ],
-      "produces": "<out>/verdict.json, <out>/blocking.svg, <out>/explanation.txt",
-      "expect": "a named component, the syscall it blocked in, its inflation factor, and the flat runqueue delay that rules out CPU starvation"
+      ]
     }
   ],
   "outputs": [
@@ -203,5 +203,71 @@
     "verified_by": "PENDING - Naser to sign off",
     "authored_utc": "2026-08-27",
     "notes": "v3: rebuilt on the raw kernel trace. The decisive measurement is a single syscall duration - 36.83x here versus 1.12x for the same syscall on the same component under the CPU fault. Also records the honest limitation that the call graph names the victim, because the culprit emits no spans."
-  }
+  },
+  "taxonomy": {
+    "domain": "Performance",
+    "category": "Latency degradation",
+    "subcategory": "Downstream dependency / datastore bottleneck",
+    "sibling_causes": [
+      "network latency",
+      "queueing delay",
+      "thread starvation"
+    ],
+    "note": "Authored from labelled slow-datastore runs, but written for any case where a component is blocked waiting on something below the traced layer."
+  },
+  "applicability": {
+    "apply_when": [
+      "caller latency inflates sharply while error rates stay flat",
+      "the slow call paths all end at the same downstream component",
+      "that component is not busy"
+    ],
+    "do_not_apply_when": [
+      "calls fail or hang to timeout rather than returning slowly",
+      "every hop slows by a similar factor, which points at the network",
+      "many unrelated processes are delayed together, which points at CPU contention"
+    ],
+    "cheap_precheck": "one component has slow incoming edges and no slow outgoing edges"
+  },
+  "capabilities_required": [
+    {
+      "id": "trace.stage_ctf",
+      "why": "the stored kernel trace must be readable"
+    },
+    {
+      "id": "traces.call_graph.convergence",
+      "why": "locate the component the slow paths converge on"
+    },
+    {
+      "id": "kernel.syscall.blocking_duration",
+      "why": "the decisive signal: which syscall the suspect blocks in, and for how long"
+    },
+    {
+      "id": "kernel.scheduler.runqueue_delay",
+      "why": "negative control: showing runqueue delay is flat rules out CPU starvation"
+    },
+    {
+      "id": "verdict.dependency_wait",
+      "why": "combine the three into one verdict"
+    }
+  ],
+  "stopping_conditions": {
+    "conclude": "one component's socket-waiting syscall is inflated by roughly an order of magnitude while its runqueue delay stays flat",
+    "stop_and_switch": "runqueue delay is broadly inflated instead -> use the CPU-contention blueprint",
+    "stop_insufficient": "the suspect emits no spans AND no kernel trace is available for it -> the culprit cannot be identified from the traced layer alone; request kernel collection for that component",
+    "max_evidence_rounds": 2
+  },
+  "adaptation_rules": [
+    {
+      "if": "convergence names a component that itself has slow outgoing edges",
+      "then": "it is a pass-through victim: follow its slow edge and re-run convergence one hop deeper"
+    },
+    {
+      "if": "the inflated wait is a disk syscall rather than a socket syscall",
+      "then": "this is storage, not a downstream dependency; check whether other disk users degraded too"
+    },
+    {
+      "if": "no component emits spans on the suspected path",
+      "then": "fall back to kernel evidence alone and identify the blocked component by syscall duration, accepting that the call graph cannot confirm it"
+    }
+  ]
 }
