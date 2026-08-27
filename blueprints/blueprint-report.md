@@ -210,6 +210,47 @@ one instead** of forcing a verdict.
 
 ---
 
+## 6b. How it compares to everything else
+
+Six methods, 12 incidents (5 co-tenant + 7 slow-datastore), same runs, one scorer. Where the
+blueprint reads the raw trace, every model arm was handed the **identical measurements**, so
+the comparison is about method rather than access.
+
+| Method | Fully correct | Precision | Time | Cost each |
+|---|---|---|---|---|
+| **Blueprint** — rules, no model | **83%** | **100%** | 508 s | **$0** |
+| LLM agent + kernel data | 58% | 100% | 128 s | $0.021 |
+| LLM agent, no kernel data | 58% | 100% | 118 s | $0.014 |
+| LLM, one shot, no tools | 58% | 100% | 103 s | $0.009 |
+| Statistical rule-tree | 42% | 42% | — | $0 |
+| BARO (published) | 0% | n/a | — | $0 |
+
+**The important row is the split by fault, not the total:**
+
+| Fully correct | Co-tenant (5) | Datastore (7) |
+|---|---|---|
+| **Blueprint** | **5/5** | 5/7 |
+| Every LLM setup | **0/5** | **7/7** |
+| Statistical | **5/5** | **0/7** |
+
+Everyone else is strong on one fault and blind on the other. The blueprint is the only method
+above chance on both.
+
+Three findings worth stating carefully:
+
+1. **No model arm ever types co-tenant contention correctly.** It localizes the culprit
+   perfectly every time, then calls it CPU saturation or throttling — plausible, both wrong.
+   It has no rule separating "cannot get a CPU" from "capped". That rule is the blueprint.
+
+2. **Giving the model our kernel data changed nothing.** 12/12 identical components,
+   +61% tokens, zero accuracy gain. So the advantage is not privileged data — it is knowing
+   which number settles the question.
+
+3. **The tool loop adds nothing here either.** One model call with no tools scores the same
+   as the full seven-tool agent, cheaper and faster.
+
+Full detail and per-incident rows: `RESULTS-comparison.md`.
+
 ## 7. A bonus finding
 
 The datastore verdict discovered our blind-spot argument by itself:
@@ -291,13 +332,22 @@ an output specification, machine-checkable stopping conditions, and a record of 
 *not* work. It is written to be executed without a human.
 
 **"Why not just let the AI figure it out?"**
-Two reasons. Without written-down knowledge the agent reinvents the procedure every time —
-Naser's own experience with AI tools. And we measured that a good deterministic evidence
-summary already matches a tool-using agent, so structure is what helps, not more autonomy.
+Because we measured it and it does not work as well. Across 12 incidents every model setup —
+tools with kernel data, tools without, one shot with no tools — scored the same 58% against
+the blueprint's 83%, and **none of them ever typed co-tenant contention correctly**. Giving
+the model our kernel measurements changed nothing except a 61% token bill.
 
 **"How do you know your signals are real?"**
 Every claim cites a measurement file, and the validator rejects a claim without one. We can
-show three claims from our own first draft that the measurement killed.
+show three claims from our own first draft that measurement killed, plus a fourth found when
+we went from 1 run to 5 (a syscall that lengthens under CPU starvation was wrongly vetoing
+the verdict).
+
+**"What happens when it is not sure?"**
+It abstains. It answered 10 of 12 and was right on all 10 — 100% precision. The two it
+declined were weak-signal runs at 4.4x against a 5x threshold. We deliberately did NOT lower
+the threshold to score 12/12, because that would be fitting to the test set. Compare BARO,
+which answers every incident and is right on none.
 
 **"What if we use different tools?"**
 The blueprint names capabilities, never tools. Point the registry at your collector and the
