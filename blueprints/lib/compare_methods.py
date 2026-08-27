@@ -82,20 +82,23 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--blueprint-dir", default="/scratch/yuvraj17/comparison/blueprint")
     ap.add_argument("--results-dir", default="/scratch/yuvraj17/comparison")
-    ap.add_argument("--runs-root", default="/scratch/yuvraj17/agentic-runs/sockshop")
+    ap.add_argument("--app", default="sockshop", choices=["sockshop", "trainticket"])
+    ap.add_argument("--runs-root", default="")
     ap.add_argument("--families", default="noisy_neighbor,slow_db")
     ap.add_argument("--out", default="/scratch/yuvraj17/comparison/comparison.json")
     a = ap.parse_args()
 
     import runs as R
 
+    if not a.runs_root:
+        a.runs_root = f"/scratch/yuvraj17/agentic-runs/{a.app}"
     fams = a.families.split(",")
     index = {}
     for fam in fams:
         for d in sorted(glob.glob(os.path.join(a.runs_root, fam, "*/"))):
             rid = os.path.basename(d.rstrip("/"))
             index[rid] = {"dir": d.rstrip("/"), "family": fam, "gt": ground_truth(d)}
-    print(f"incidents under test: {len(index)}")
+    print(f"app: {a.app}   incidents under test: {len(index)}")
 
     rows = load_blueprint(a.blueprint_dir, index)
     for label, fname in (("agent+L0", "agent_l0.json"), ("agent", "agent_nol0.json"),
