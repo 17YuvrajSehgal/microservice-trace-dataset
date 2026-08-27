@@ -112,13 +112,17 @@ def main():
         if not n:
             continue
         svc = sum(r["score"]["service_hit"] for r in graded)
-        both = sum(r["score"]["both"] for r in graded)
+        # RCAEval-family methods localize only - they emit a ranked service list and no fault
+        # type. Scoring them 0% on fault typing would misreport them, so it is marked n/a.
+        types_faults = any(r.get("pred_fault") for r in graded)
+        both = sum(r["score"]["both"] for r in graded) if types_faults else None
         answered = sum(1 for r in graded if r["pred_service"])
         secs = [r["seconds"] for r in graded if r.get("seconds")]
         summary.append({
             "method": m, "n": n,
             "component_pct": round(svc / n * 100),
-            "fully_correct_pct": round(both / n * 100),
+            "fully_correct_pct": (round(both / n * 100) if both is not None else None),
+            "does_fault_typing": types_faults,
             "answered_pct": round(answered / n * 100),
             "median_seconds": round(statistics.median(secs), 1) if secs else None,
             "usd_per_incident": round(sum(r["usd"] for r in graded) / n, 4),
@@ -138,7 +142,8 @@ def main():
     print(f"\n{'method':13s} {'n':>3s} {'component':>10s} {'fully':>7s} {'answered':>9s} "
           f"{'median s':>9s} {'$/incident':>11s}")
     for s in summary:
-        print(f"{s['method']:13s} {s['n']:3d} {s['component_pct']:9d}% {s['fully_correct_pct']:6d}% "
+        fc = f"{s['fully_correct_pct']:6d}%" if s["fully_correct_pct"] is not None else "   n/a"
+        print(f"{s['method']:13s} {s['n']:3d} {s['component_pct']:9d}% {fc} "
               f"{s['answered_pct']:8d}% {str(s['median_seconds']):>9s} {s['usd_per_incident']:11.4f}")
     print(f"\nwrote {a.out}")
     return 0
