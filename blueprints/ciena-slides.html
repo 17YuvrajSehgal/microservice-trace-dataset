@@ -22,7 +22,7 @@
   h1{font-size:clamp(2rem,4.6vw,3.2rem);line-height:1.06;letter-spacing:-.025em;font-weight:650;
      margin:0;max-width:19ch;text-wrap:balance}
   h1 .q{color:var(--accent)}
-  .sub{font-size:clamp(1rem,1.6vw,1.2rem);color:var(--mid);max-width:56ch;margin:0;text-wrap:pretty}
+  .sub{font-size:clamp(1rem,1.6vw,1.2rem);color:var(--mid);max-width:64ch;margin:0;text-wrap:pretty}
 
   /* three-part flow */
   .flow{display:flex;align-items:stretch;gap:0;flex-wrap:wrap}
@@ -46,23 +46,25 @@
   .panel p{margin:0;color:var(--mid);font-size:.93rem}
   .same{text-align:center;color:var(--mid);font-size:.95rem;margin:0}
 
-  table{border-collapse:collapse;width:100%;font-size:1rem}
+  table{border-collapse:collapse;width:100%;max-width:920px;font-size:1rem}
   th,td{text-align:left;padding:.75rem .9rem;border-bottom:1px solid var(--line)}
   th{font-family:var(--mono);font-size:.68rem;letter-spacing:.1em;text-transform:uppercase;
      color:var(--mid);font-weight:600}
+  /* numeric columns: fixed width, right-aligned, so values sit under their headers */
+  th:not(:first-child),td:not(:first-child){text-align:right;width:8.5rem;white-space:nowrap}
   td.n{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:1.05rem}
   .big{color:var(--accent);font-weight:700}
   .dim{color:var(--mid)}
 
-  .stat{display:flex;gap:2.5rem;flex-wrap:wrap;align-items:flex-end}
-  .stat div{min-width:150px}
+  .stat{display:flex;gap:3rem;flex-wrap:wrap;align-items:flex-start}
+  .stat > div{min-width:170px;max-width:19rem}
   .stat .v{font-family:var(--mono);font-size:clamp(2.1rem,4.6vw,3rem);line-height:1;
            font-weight:700;letter-spacing:-.02em}
   .stat .v.up{color:var(--accent)} .stat .v.down{color:var(--warm)}
-  .stat .k{color:var(--mid);font-size:.9rem;margin-top:.45rem;max-width:22ch}
+  .stat .k{color:var(--mid);font-size:.9rem;margin-top:.5rem}
 
   .note{border-left:3px solid var(--accent);background:var(--accent-soft);
-        padding:1rem 1.2rem;border-radius:0 6px 6px 0;font-size:.98rem}
+        padding:1rem 1.2rem;border-radius:0 6px 6px 0;font-size:.98rem;max-width:920px}
   .note.warm{border-left-color:var(--warm);background:var(--warm-soft)}
   .note b{color:var(--ink)}
 
