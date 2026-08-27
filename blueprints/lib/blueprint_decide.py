@@ -103,8 +103,17 @@ def db_rule(pack):
     }
 
 
-# process name -> the component a scorer will recognise
-COMM_TO_COMPONENT = {"mysqld": "catalogue-db", "mariadbd": "catalogue-db", "mysql": "mysql"}
+# Process name -> the component name the ground truth uses. This is per-application: the
+# same `mysqld` process is the per-service datastore on one app and the single shared
+# datastore on the other, so the mapping cannot be global.
+COMM_TO_COMPONENT = {
+    "sockshop":    {"mysqld": "catalogue-db", "mariadbd": "catalogue-db"},
+    "trainticket": {"mysqld": "mysql", "mariadbd": "mysql"},
+}
+
+
+def comm_to_component(comm, app):
+    return COMM_TO_COMPONENT.get(app, {}).get(comm, comm)
 
 
 def decide(pack):
@@ -125,7 +134,7 @@ def decide(pack):
     elif len(fired) == 1:
         comm = db["blocked_process"]
         verdict.update(selected="datastore-wait",
-                       root_cause_service=COMM_TO_COMPONENT.get(comm, comm),
+                       root_cause_service=comm_to_component(comm, pack.get("app", "sockshop")),
                        fault_type="db_latency",
                        confidence=0.85,
                        evidence=db["why"])

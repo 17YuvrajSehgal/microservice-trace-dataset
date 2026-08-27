@@ -50,10 +50,16 @@ def main():
     ap.add_argument("--run-id", required=True)
     ap.add_argument("--app", default="sockshop")
     ap.add_argument("--out", default="/scratch/yuvraj17/evidence_packs")
-    ap.add_argument("--comms", default="mysqld,app,node,java",
-                    help="processes to profile for blocking duration")
+    ap.add_argument("--comms", default="",
+                    help="processes to profile for blocking duration; empty = per-app default")
     ap.add_argument("--force", action="store_true")
     a = ap.parse_args()
+
+    # Per-app process set. Train Ticket reports EVERY Java service as `java`, so that one
+    # comm covers ~39 services; the datastore is still distinguishable as `mysqld`.
+    if not a.comms:
+        a.comms = {"sockshop": "mysqld,app,node,java",
+                   "trainticket": "mysqld,java,node,redis-server"}.get(a.app, "mysqld,java")
 
     run_dir, fam = find_run_dir(a.app, a.run_id)
     if not run_dir:
