@@ -112,7 +112,7 @@ def _sample(app, per_family, n, families):
 
 
 def run(app, per_family, n, families, out_path, method, grid, transcripts_dir="",
-        skills_mode="off", skills_dir="", brief=False, rank_k=0, force_skill=""):
+        skills_mode="off", skills_dir="", brief=False, rank_k=0, force_skill="", l0_pack_dir=""):
     RCAEVAL = {"mmbaro", "microrank", "tracerca", "baro"}
     if method == "agent":
         import agent as _m; label = __import__("config").model_id()
@@ -170,6 +170,10 @@ def run(app, per_family, n, families, out_path, method, grid, transcripts_dir=""
                     kw["inject_brief"] = True
                 if rank_k and method in ("agent", "llmonly", "llmonly_raw"):
                     kw["rank_k"] = rank_k
+                if l0_pack_dir and method in ("agent", "llmonly", "llmonly_raw"):
+                    # fairness: the model arms see the same kernel measurements the
+                    # blueprint arm reasons from
+                    kw["l0_pack"] = os.path.join(l0_pack_dir, rec.run_id + ".json")
                 if tdir:
                     kw.update(transcript_path=os.path.join(tdir, trel), condition=cname,
                               meta={"app": rec.app, "grid": grid, "degrade_spec": asdict(spec),
@@ -255,6 +259,9 @@ if __name__ == "__main__":
     ap.add_argument("--skills-dir", default="", help="override skill library directory")
     ap.add_argument("--rank-k", type=int, default=0,
                     help="ask for a ranked list of up to K candidates (0 = single verdict, frozen default)")
+    ap.add_argument("--l0-pack-dir", default="",
+                    help="directory of per-run L0 evidence packs; gives the model the same "
+                         "kernel measurements the blueprint arm uses")
     ap.add_argument("--force-skill", default="",
                     help="bypass the selector and force this guide on every incident (cross-matrix)")
     ap.add_argument("--brief", action="store_true",
@@ -278,7 +285,7 @@ if __name__ == "__main__":
             app_out = a.out[:-5] + f"_{app}.json" if a.out.endswith(".json") else f"{a.out}.{app}"
         allres += run(app, a.per_family, a.n, fams, app_out or "", a.method, a.grid,
                       transcripts_dir=tdir, skills_mode=a.skills, skills_dir=a.skills_dir,
-                      rank_k=a.rank_k, force_skill=a.force_skill,
+                      rank_k=a.rank_k, force_skill=a.force_skill, l0_pack_dir=a.l0_pack_dir,
                       brief=a.brief)
     if a.app == "both":
         print("\n==== COMBINED ===="); _summarize(allres, GRIDS[a.grid])

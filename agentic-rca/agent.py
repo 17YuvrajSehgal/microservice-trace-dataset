@@ -247,7 +247,8 @@ def _run_tool(tools: RunTools, name: str, args: dict, guard=None):
 def diagnose(run, app: str | None = None, max_steps: int = 14, verbose: bool = False,
              transcript_path: str | None = None, condition: str | None = None,
              meta: dict | None = None, skills: list | None = None,
-             inject_brief: bool = False, rank_k: int = 0) -> dict:
+             inject_brief: bool = False, rank_k: int = 0,
+             l0_pack: str | None = None) -> dict:
     """Run the agent on one incident. Returns diagnosis + trajectory + usage (no ground-truth here).
     Dispatches on the provider's SDK family — Anthropic vs OpenAI-compatible (azure/gemini/openai/
     ollama) — so the model is a config knob (RCA_PROVIDER/RCA_MODEL); everything else is identical.
@@ -291,6 +292,21 @@ def diagnose(run, app: str | None = None, max_steps: int = 14, verbose: bool = F
                 f"This survey already covers the no-filter overview of every tool — do not repeat "
                 f"broad survey calls; go directly to targeted per-service and topology queries, "
                 f"then call submit_diagnosis.")
+    # FAIRNESS: when the comparison gives the blueprint arm the raw kernel trace, the model
+    # arms are handed the SAME measurements. The pack contains measurements only - no fault
+    # name, no culprit - so it informs without answering.
+    if l0_pack and os.path.exists(l0_pack):
+        try:
+            pk = json.load(open(l0_pack, encoding="utf-8"))
+            for k in ("run_id", "family_dir"):
+                pk.pop(k, None)
+            user += ("\n\nKernel-trace measurements for this incident (from the raw LTTng "
+                     "trace, baseline vs incident window):\n"
+                     + json.dumps(guard.mask_obj(pk), indent=2, default=str)[:9000])
+            tr.event("l0_pack", path=l0_pack, keys=sorted(pk.keys()))
+        except Exception as e:                                         # noqa: BLE001
+            tr.event("l0_pack_error", error=repr(e))
+
     if skills:
         evidence_json = json.dumps(masked_digest, default=str)
         tr.event("survey", result=sic.digest(), sent=evidence_json, result_bytes=survey_bytes)
@@ -323,6 +339,7 @@ def diagnose(run, app: str | None = None, max_steps: int = 14, verbose: bool = F
                 tr.event("skill_injected", skill_name=sk.name, body=sk.body)
     tr.meta["skill_mode"] = bool(skills)
     tr.meta["brief_injected"] = inject_brief
+    tr.meta["l0_pack"] = l0_pack or None
     tr.meta["skill_selected"] = sel["skill_name"] if sel else None
     tr.event("system_prompt", text=system_eff, sha256=T.sha256_text(system_eff))
     tr.event("tools_schema", tools=_tool_defs(rank_k))
@@ -366,7 +383,8 @@ def diagnose(run, app: str | None = None, max_steps: int = 14, verbose: bool = F
 
 def diagnose_oneshot(run, app: str | None = None, transcript_path: str | None = None,
                      condition: str | None = None, meta: dict | None = None,
-                     rank_k: int = 0, raw_dump: bool = False, **_ignored) -> dict:
+                     rank_k: int = 0, raw_dump: bool = False,
+                     l0_pack: str | None = None, **_ignored) -> dict:
     """Model-only baseline: the SAME model, no tool loop, one call.
 
     Isolates the question "is the result the agent loop, or just the model?". The model sees
@@ -400,6 +418,15 @@ def diagnose_oneshot(run, app: str | None = None, transcript_path: str | None = 
             f"{body}\n\n"
             f"Decide the root cause from this alone and call submit_diagnosis. If the evidence "
             f"is ambiguous, still commit to the best-supported verdict and say why in evidence.")
+    if l0_pack and os.path.exists(l0_pack):
+        try:
+            pk = json.load(open(l0_pack, encoding="utf-8"))
+            for k in ("run_id", "family_dir"):
+                pk.pop(k, None)
+            user += ("\n\nKernel-trace measurements (raw LTTng trace, baseline vs incident):\n"
+                     + json.dumps(guard.mask_obj(pk), indent=2, default=str)[:9000])
+        except Exception:                                              # noqa: BLE001
+            pass
     tr.event("user_message", text=user)
 
     defs = _tool_defs(rank_k, only_submit=True)
