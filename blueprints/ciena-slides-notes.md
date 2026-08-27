@@ -18,11 +18,11 @@ things according to the planned document.
 
 ## Slide 2 — One file. Six questions answered.
 
-Each blueprint is a Json file → with fields that force real content → for ex. Event names,
-runnable steps, an output spec, and rules for when not to conclude etc.
+Each blueprint is a Json file → with fields that force real content → for ex. Event names that we need to collect, how to interpret them
+runnable steps, an output spec, and other rules etc.
 
 Each blueprint has keys such as evidence sufficient --confidence floor -> that means if the
-confidence is below the given number – then more effort is required.
+confidence is below the given number, then more effort is required.
 
 Approval request – where you can define what is allowed automatically and what is not. For
 example, if agents wants to query already existing evidence – it can do so automatically but
@@ -97,6 +97,26 @@ able to find all the database related issues – so
 
 And then again doing the research → we found new facts from the second dataset – which will
 improvise the system further.
+
+*[added] The comparison table is now on this slide. What it shows, in your terms:*
+
+| Found the right component and the right cause | Shop app | Booking app |
+|---|---|---|
+| Blueprint | 83% | 33% |
+| AI agent reading everything | 58% | 0% |
+| Classic metrics analysis | 42% | 100% |
+
+*[added] Three things to say off this table:*
+
+*1. The two strong methods are opposites. On the shop app's database fault, metrics found
+none of them and the kernel found most. On the booking app it reverses. So the kernel earns
+its place exactly where metrics go quiet — and the other way round.*
+
+*2. The AI agent is beaten by both. Across all 10 CPU-contention failures on both systems it
+named the cause correctly zero times. The blueprint got 9.*
+
+*3. Knowing which method fits which problem is the valuable part — and that is what a
+blueprint stores. This is the answer if someone says "so metrics won on the second app".*
 
 ---
 

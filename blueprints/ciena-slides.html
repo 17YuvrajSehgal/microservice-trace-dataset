@@ -216,22 +216,37 @@
 
 <!-- 5 -->
 <section class="slide">
-  <p class="kicker">Does it travel?</p>
-  <h1>We moved it to a <span class="q">completely different system</span></h1>
-  <p class="sub">Second application: ~40 Java services sharing one database, instead of 14
-     services with a database each.</p>
+  <p class="kicker">Tested on a second, completely different system</p>
+  <h1>It travels — and no single method wins <span class="q">everywhere</span></h1>
   <div class="stat">
     <div><div class="v up">4 of 5</div>
-      <div class="k">CPU-contention failures found on the new system — same blueprint, no changes</div></div>
+      <div class="k">CPU-contention failures found on the new system — same blueprint, no changes, seconds</div></div>
     <div><div class="v down">100% → 44%</div>
-      <div class="k">the datastore blueprint’s reliability dropped</div></div>
+      <div class="k">the datastore blueprint’s reliability dropped on that same system</div></div>
   </div>
-  <div class="note warm"><b>Why it dropped — and this is the useful part.</b>
-     On the first system the database polls constantly, so a delay showed up straight away.
-     On the second, long-lived pooled connections mean it sits idle instead — the same signal
-     is silent. <b>One feature can’t catch every database problem.</b></div>
-  <p class="sub">We didn’t discover that by reasoning about it. We discovered it by running the
-     blueprint somewhere new — which is exactly what the blueprint is for.</p>
+  <table>
+    <thead><tr>
+      <th>Found the right component <em>and</em> the right cause</th>
+      <th>Shop app</th><th>Booking app</th>
+    </tr></thead>
+    <tbody>
+      <tr><td><strong>Blueprint</strong> — rules proven on kernel traces</td>
+          <td class="n big">83%</td><td class="n dim">33%</td></tr>
+      <tr><td>AI agent, reading everything available</td>
+          <td class="n dim">58%</td><td class="n dim">0%</td></tr>
+      <tr><td>Classic metrics analysis</td>
+          <td class="n dim">42%</td><td class="n big">100%</td></tr>
+    </tbody>
+  </table>
+  <div class="note warm"><b>Why ours dropped, and why that is useful.</b>
+     On the shop app the database polls constantly, so a delay showed up straight away. On the
+     booking app, long-lived pooled connections mean it sits idle instead and the same signal
+     goes quiet. <b>One feature cannot catch every database problem</b> — and the two strong
+     methods turn out to be opposites: the kernel finds what metrics cannot, and the reverse.</div>
+  <p class="sub">The AI agent is beaten by both. Across all 10 CPU-contention failures on both
+     systems it named the cause correctly <b>zero</b> times; the blueprint got <b>9</b>.
+     <b>Knowing which method fits which problem is the valuable part</b> — and that is what a
+     blueprint stores.</p>
 </section>
 
 <!-- 6 -->
