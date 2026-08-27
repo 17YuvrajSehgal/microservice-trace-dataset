@@ -77,6 +77,22 @@
   .pager{position:fixed;right:1.5rem;bottom:1.2rem;font-family:var(--mono);font-size:.7rem;
          letter-spacing:.1em;color:var(--mid);background:#fff;border:1px solid var(--line);
          border-radius:99px;padding:.28rem .7rem}
+
+  /* blueprint anatomy */
+  .anat{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,.85fr);gap:2rem;align-items:start}
+  @media(max-width:900px){.anat{grid-template-columns:1fr}}
+  .code{background:var(--soft);border:1px solid var(--line);border-radius:6px;
+        font-family:var(--mono);font-size:.78rem;line-height:1.65;padding:1.1rem 1.2rem;
+        overflow-x:auto;white-space:pre}
+  .code .k{color:var(--accent)}
+  .code .s{color:#1F6B44}
+  .code .c{color:var(--mid);font-style:italic}
+  .legend{display:flex;flex-direction:column;gap:.85rem}
+  .leg{display:flex;gap:.8rem;align-items:flex-start}
+  .leg .dot{flex:0 0 auto;width:9px;height:9px;border-radius:99px;background:var(--accent);
+            margin-top:.45rem}
+  .leg b{display:block;font-size:.95rem}
+  .leg span{color:var(--mid);font-size:.88rem}
   :focus-visible{outline:2px solid var(--accent);outline-offset:3px}
 </style>
 
@@ -103,6 +119,57 @@
 
 <!-- 2 -->
 <section class="slide">
+  <p class="kicker">What one looks like</p>
+  <h1>One file. <span class="q">Six questions</span> answered.</h1>
+  <div class="anat">
+    <div class="code"><span class="c">// cpu-contention-co-tenant.json  (shortened)</span>
+
+<span class="k">"applicability"</span>: {
+  <span class="k">"apply_when"</span>: [<span class="s">"several unrelated services slow down together"</span>],
+  <span class="k">"do_not_apply_when"</span>: [<span class="s">"only one service is affected"</span>]
+}
+<span class="k">"collection_order"</span>: {
+  <span class="k">"kernel_events"</span>: [<span class="s">"sched_waking"</span>, <span class="s">"sched_switch"</span>],
+  <span class="k">"window"</span>: { <span class="k">"baseline_s"</span>: 60, <span class="k">"incident_s"</span>: 120 }
+}
+<span class="k">"processing"</span>: [
+  { <span class="k">"step"</span>: <span class="s">"measure how long threads waited for a CPU"</span>,
+    <span class="k">"capability"</span>: <span class="s">"kernel.scheduler.runqueue_delay"</span> }
+]
+<span class="k">"decision"</span>: {
+  <span class="k">"verdict_when"</span>: [<span class="s">"wait time up several-fold, many processes"</span>],
+  <span class="k">"rule_out"</span>: [{ <span class="k">"instead"</span>: <span class="s">"waiting on a dependency"</span> }]
+}
+<span class="k">"stopping_conditions"</span>: {
+  <span class="k">"stop_and_switch"</span>: <span class="s">"one component blocked 10x -> other blueprint"</span>
+}
+<span class="k">"policies"</span>: {
+  <span class="k">"max_collection_overhead_pct"</span>: 5,
+  <span class="k">"requires_approval"</span>: [<span class="s">"tracing above 3% overhead"</span>]
+}
+<span class="k">"evidence_sufficiency"</span>: { <span class="k">"confidence_floor"</span>: 0.7 }</div>
+
+    <div class="legend">
+      <div class="leg"><span class="dot"></span><div>
+        <b>When does this apply?</b><span>and just as important, when it does not</span></div></div>
+      <div class="leg"><span class="dot"></span><div>
+        <b>What do I collect?</b><span>exact event names — two, not “kernel data”</span></div></div>
+      <div class="leg"><span class="dot"></span><div>
+        <b>What do I run?</b><span>a capability, bound to whichever tool you already have</span></div></div>
+      <div class="leg"><span class="dot"></span><div>
+        <b>How do I decide?</b><span>what makes it true — and what to prefer instead</span></div></div>
+      <div class="leg"><span class="dot"></span><div>
+        <b>When do I stop?</b><span>including “this is the wrong blueprint, use that one”</span></div></div>
+      <div class="leg"><span class="dot"></span><div>
+        <b>What am I allowed to do?</b><span>your overhead budget and approval rules</span></div></div>
+    </div>
+  </div>
+  <p class="sub">Every claim in the file carries the measurement that proved it. Signals we
+     tested and found useless stay in, marked <b>“does not work”</b>.</p>
+</section>
+
+<!-- 3 -->
+<section class="slide">
   <p class="kicker">The test we set ourselves</p>
   <h1>Two problems that look <span class="q">identical from outside</span></h1>
   <div class="pair">
@@ -127,7 +194,7 @@
      problems separable — and what the blueprint encodes.</p>
 </section>
 
-<!-- 3 -->
+<!-- 4 -->
 <section class="slide">
   <p class="kicker">How a blueprint is built</p>
   <h1>Signals are <span class="q">measured</span>, never guessed</h1>
@@ -147,7 +214,7 @@
      “does not work”, so nobody tries them again.</div>
 </section>
 
-<!-- 4 -->
+<!-- 5 -->
 <section class="slide">
   <p class="kicker">Does it travel?</p>
   <h1>We moved it to a <span class="q">completely different system</span></h1>
@@ -167,7 +234,7 @@
      blueprint somewhere new — which is exactly what the blueprint is for.</p>
 </section>
 
-<!-- 5 -->
+<!-- 6 -->
 <section class="slide">
   <p class="kicker">Why it gets better</p>
   <h1>Every investigation makes the <span class="q">next one faster</span></h1>
