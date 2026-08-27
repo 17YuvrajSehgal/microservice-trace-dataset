@@ -107,12 +107,12 @@ detail: `agentic-rca/results/review/component_census.json`.
 Of the 12 fault types, by what the *culprit object* is (per app; 23 scored cases in
 the standard setup):
 
-| Target of injection | Fault types | Cases | Right component | Fully correct |
-|---|---|---|---|---|
-| Host resource (whole machine) | CPU, disk, memory, network stress | 8 | 7/8 | 6/8 |
-| A business **service** container | error burst, frozen dependency, CPU cap, memory cap, per-service network | 10 | 9/10 | 4/10 |
-| A **non-service component** | slow database (Toxiproxy on the DB path), silent queue backlog (RabbitMQ) | 3 | 1/3 | 1/3 |
-| A **rogue container** outside the app | noisy neighbour | 2 | 2/2 | 0/2 |
+| Target of injection                   | Fault types                                                               | Cases |
+|---------------------------------------|---------------------------------------------------------------------------|-------|
+| Host resource (whole machine)         | CPU, disk, memory, network stress                                         | 8     |
+| A business **service** container      | error burst, frozen dependency, CPU cap, memory cap, per-service network  | 10    |
+| A **non-service component**           | slow database (Toxiproxy on the DB path), silent queue backlog (RabbitMQ) | 3     |
+| A **rogue container** outside the app | noisy neighbour                                                           | 2     |
 
 Answer to the "vice versa" question: **faults injected into services are localized
 far better (9/10) than faults injected into non-service components (1/3).** This is

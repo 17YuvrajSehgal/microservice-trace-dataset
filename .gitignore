@@ -22,3 +22,7 @@ agentic-rca/results/
 .env
 .env.local
 .env.*.local
+/data-sample/
+/stratatrace-v1/
+
+DOCS/reading-papers

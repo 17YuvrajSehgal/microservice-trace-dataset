@@ -1,0 +1,56 @@
+Now before we move forward, we need to improvise our system design. My supervisor has made some design suggestions. Right now, we are working on the agentic part of this big system that will be responsible for different analysis.
+
+Our agentic solution right now is RCA using logs, metrics, traces.
+
+We have different skills for this RCA
+
+But a lot of parts that give our agent the brain to simplify things for it are missing - for example, an investigation context builder that give the agent the required context for the problem - there are a lot of things that it needs and do not need - this component can help the agent to get required context.
+
+
+The source/inputs form of data we have are okay for now - similar to Ciena - it can have multiple sources, they already have this as observability bundle. - this part is least concerning.
+
+Our analysis agent can have multiple sources of context as well ->
+
+Source Code -> for the repository (in case if agent needs to read code and see how things are coded.
+JIRAs from past -> this can help our agent to find the relevant JIRA issues from the past that are related to the current given problem an agent is trying to solve. And this can help agents to build the context further.
+
+Later on this agnetic interface will interact with the existing AI solution of Ciena that includes their existing solutions like Racoon Miner, dashboard, Trace compass etc.
+
+Based on the diagram and our current code, tell me what is already built, what needs to be built, and what are the things that are not clear to you.
+
+
+
+We have 95 recorded failures :: 12 fault types :: 5 groups
+
+see how the data looks -> faults, machine-readable labels, independent check htat the fault actually fired -> and plot everything paper
+
+Look at l0,l1,etc. data
+
+Right now we tell the agent that an anomaly was detected in a know time window:
+and it tells us what component is the root cause & what kind of fault it is -> from a fixed menue of 13 types
+
+tell me what exactly are we trying to output? RCA -> do we suggest a solution? or what?
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+create a way to get context better -> knowledge graph of spans/logs/metrics/traces etc
+
+
+
+
+
+
+

@@ -161,17 +161,93 @@ Yuvraj Sehgal
 Yuvraj Sehgal 4 minutes 40 seconds
 Yes.
 
-Naser Ezzati-Jivan
-4 minutes 54 seconds4:54
-Naser Ezzati-Jivan 4 minutes 54 seconds
-or metrics or trace. For analysis, you can only focus on some specific parts, okay? And in terms of AI interface, you can only use trace compass or whether Babel trace or other tools, you know? But you do all of this and then...
+
+Naser Ezzati-Jivan 5 minutes 38 seconds
+Because I want to show the CNN that, look, this is the observative template or blueprint that I was talking about.
+Naser Ezzati-Jivan 5 minutes 46 seconds
+OK, that blueprint will have it will be a full documentation of the problem.
+Naser Ezzati-Jivan 5 minutes 51 seconds
+We will turn it to skills later on, but for now we just need a template. Template will have full explanation of the problem, solution, steps, what data we need, what analysis we need to do or we did, what outputs we will generate or we need to generate or regenerate, right?
 
 Yuvraj Sehgal
-5 minutes 12 seconds5:12
-Yuvraj Sehgal 5 minutes 12 seconds
-Ke.
+6 minutes 13 seconds6:13
+Yuvraj Sehgal 6 minutes 13 seconds
+So.
 
+Naser Ezzati-Jivan
+6 minutes 13 seconds6:13
+Naser Ezzati-Jivan 6 minutes 13 seconds
+And that document will link to the code and data and everything else.
 
+Yuvraj Sehgal
+6 minutes 19 seconds6:19
+Yuvraj Sehgal 6 minutes 19 seconds
+Makes sense.
+
+Naser Ezzati-Jivan
+6 minutes 22 seconds6:22
+Naser Ezzati-Jivan 6 minutes 22 seconds
+Clear now? But now, going back to your Jira work, your Jira work is also fits on this.
+
+Yuvraj Sehgal
+6 minutes 23 seconds6:23
+Yuvraj Sehgal 6 minutes 23 seconds
+Yeah.
+
+Naser Ezzati-Jivan
+6 minutes 29 seconds6:29
+Naser Ezzati-Jivan 6 minutes 29 seconds
+Right, because if you look at here, we see something like, do you see any history or thing like that? You know, yeah, no, that's Jira for sure, but it's not historical Jira, it's that Jira for that issue, you know, so we have, let's say, logs collected for an issue.
+
+Yuvraj Sehgal
+6 minutes 36 seconds6:36
+Yuvraj Sehgal 6 minutes 36 seconds
+Like that.
+Yuvraj Sehgal 6 minutes 40 seconds
+Yeah.
+Yuvraj Sehgal 6 minutes 45 seconds
+Yes, yes.
+
+Naser Ezzati-Jivan
+6 minutes 48 seconds6:48
+Naser Ezzati-Jivan 6 minutes 48 seconds
+For an issue, then we have Jira for that issue, but timeline in the shared investigation context or investigation context builder. OK, related Jiras, you see that blue under the Jira, which is Jira. OK, so...
+
+Yuvraj Sehgal
+7 minutes 5 seconds7:05
+Yuvraj Sehgal 7 minutes 5 seconds
+Yeah.
+
+Naser Ezzati-Jivan
+7 minutes 7 seconds7:07
+Naser Ezzati-Jivan 7 minutes 7 seconds
+This, that work also fits here. But the one thing is missing from there is the blueprint, the template. We have not turned it to any blueprint.
+Naser Ezzati-Jivan 7 minutes 18 seconds
+I mean, a skill, right? A template, so solve the problem. I remember you injected four or five problems before, and your system were able to detect them, right? Your system was able to detect them, so do that, but then say that, look, I now I turn the whole experience.
+
+Yuvraj Sehgal
+7 minutes 21 seconds7:21
+Yuvraj Sehgal 7 minutes 21 seconds
+Yeah.
+Yuvraj Sehgal 7 minutes 26 seconds
+Yes, yes.
+
+Naser Ezzati-Jivan
+7 minutes 34 seconds7:34
+Naser Ezzati-Jivan 7 minutes 34 seconds
+Of detecting a problem, I document it in a template or as a template or something.
+
+Yuvraj Sehgal
+7 minutes 36 seconds7:36
+Yuvraj Sehgal 7 minutes 36 seconds
+Mhm.
+Yuvraj Sehgal 7 minutes 39 seconds
+Yes.
+
+Naser Ezzati-Jivan
+7 minutes 42 seconds7:42
+Naser Ezzati-Jivan 7 minutes 42 seconds
+Mm.
 
 Yuvraj Sehgal
 7 minutes 43 seconds7:43
@@ -259,101 +335,7 @@ Mahsa Panahandeh
 Mahsa Panahandeh 10 minutes 36 seconds
 Yes.
 
-Yuvraj Sehgal
-10 minutes 37 seconds10:37
-Yuvraj Sehgal 10 minutes 37 seconds
-Mhm.
 
-Naser Ezzati-Jivan
-10 minutes 38 seconds10:38
-Naser Ezzati-Jivan 10 minutes 38 seconds
-It's not going to be very generic contention problem that will be, you know, usable in every very, very specific situation scenario. OK, you can talk about it as like, like how to regenerate this problem, exactly like bug documentation. You see, if you look for Bugzilla, they explain the bug, but the Bugzilla only explains the bug itself, no solution.
-
-Yuvraj Sehgal
-10 minutes 52 seconds10:52
-Yuvraj Sehgal 10 minutes 52 seconds
-Yeah.
-Yuvraj Sehgal 10 minutes 59 seconds
-Mhm.
-
-Naser Ezzati-Jivan
-11 minutes11:00
-Naser Ezzati-Jivan 11 minutes
-So you explained the bug how to generate them, how to regenerate it, which systems, what computers, operating system, what we need to generate that. This is going to be a whole expansion of the problem. Then the solution part.
-Naser Ezzati-Jivan 11 minutes 12 seconds
-How to solve them? So to solve them, you will have data requirements.
-
-Yuvraj Sehgal
-11 minutes 12 seconds11:12
-Yuvraj Sehgal 11 minutes 12 seconds
-Okay.
-
-Naser Ezzati-Jivan
-11 minutes 18 seconds11:18
-Naser Ezzati-Jivan 11 minutes 18 seconds
-What data do we need to for that? We need trace, LTTNG trace or kernel trace of system calls. We need trace of processing. You need to even list the events, all the details. It cannot be general, it can't be very detailed. Data required, then processing steps. So what was the pipeline?
-
-Yuvraj Sehgal
-11 minutes 25 seconds11:25
-Yuvraj Sehgal 11 minutes 25 seconds
-Mhm.
-
-Naser Ezzati-Jivan
-11 minutes 38 seconds11:38
-Naser Ezzati-Jivan 11 minutes 38 seconds
-You pre-process the data to do this. Second, you did this and that. You did machine learning on that. You did different. It's going to be a list, and for each step, you might want to link it to a code, to a folder, to a library, to a system.
-Naser Ezzati-Jivan 11 minutes 53 seconds
-Right? And then output part will say that, you know, for this problem, we need to generate a report or XY chart or the JSON folder file or something. This is going to be the whole pilot. And then for each of them, you can link to a file. This will make a full template of the problem and the solution.
-
-Yuvraj Sehgal
-11 minutes 54 seconds11:54
-Yuvraj Sehgal 11 minutes 54 seconds
-Yes.
-Yuvraj Sehgal 12 minutes 11 seconds
-Okay, I see.
-
-
-Naser Ezzati-Jivan
-12 minutes 12 seconds12:12
-Naser Ezzati-Jivan 12 minutes 12 seconds
-Right? This is going to be the first step. Now, next time, try to regenerate something similar, not exactly that one, but something similar, and pass that template to AI and see if AI can redo the whole thing without your help.
-MP
-Mahsa Panahandeh
-12 minutes 18 seconds12:18
-Mahsa Panahandeh 12 minutes 18 seconds
-Yes.
-
-Yuvraj Sehgal
-12 minutes 25 seconds12:25
-Yuvraj Sehgal 12 minutes 25 seconds
-Mhm.
-
-Naser Ezzati-Jivan
-12 minutes 28 seconds12:28
-Naser Ezzati-Jivan 12 minutes 28 seconds
-Right? If you do this next time, if you do this second time or third time, you might see that a skill that that AI using that skill, that template is able to do like 80% of that, but 20% are missing. So you try to improve that template.
-
-Yuvraj Sehgal
-12 minutes 29 seconds12:29
-Yuvraj Sehgal 12 minutes 29 seconds
-Okay.
-Yuvraj Sehgal 12 minutes 44 seconds
-Mm-hmm.
-
-Naser Ezzati-Jivan
-12 minutes 44 seconds12:44
-Naser Ezzati-Jivan 12 minutes 44 seconds
-Or add an extension, hey, for latency problem, if this happens, I would go with the second skill. So I will need help from a second skill. So it's about template, right? So you say that for this problem, we need one template or two templates or two templates together.
-
-Yuvraj Sehgal
-13 minutes 1 second13:01
-Yuvraj Sehgal 13 minutes 1 second
-Okay, okay, yeah.
-
-Naser Ezzati-Jivan
-13 minutes 2 seconds13:02
-Naser Ezzati-Jivan 13 minutes 2 seconds
-Right, that, you know, adding that template, so at the end of the, let's say you do this for six months, for one year, I mean the company does this for over the time, they will have a big list of templates or blueprints, right? So this is fully, they're actually documenting their, the, the, in their like.
 Naser Ezzati-Jivan 13 minutes 22 seconds
 Trace, tracing, trace analysis thing.
 
@@ -431,7 +413,6 @@ Mhm.
 Naser Ezzati-Jivan 15 minutes 50 seconds
 Yes.
 
-
 Yuvraj Sehgal
 15 minutes 52 seconds15:52
 Yuvraj Sehgal 15 minutes 52 seconds
@@ -441,6 +422,488 @@ Naser Ezzati-Jivan
 16 minutes 2 seconds16:02
 Naser Ezzati-Jivan 16 minutes 2 seconds
 Yeah, you know, you know, TML, right?
+
+Yuvraj Sehgal
+16 minutes 5 seconds16:05
+Yuvraj Sehgal 16 minutes 5 seconds
+Yes, yeah.
+
+Naser Ezzati-Jivan
+16 minutes 6 seconds16:06
+Naser Ezzati-Jivan 16 minutes 6 seconds
+For TMLL, now what Sneh is doing, you know, there are data sources like views and so on.
+
+Yuvraj Sehgal
+16 minutes 13 seconds16:13
+Yuvraj Sehgal 16 minutes 13 seconds
+Yeah.
+
+Naser Ezzati-Jivan
+16 minutes 14 seconds16:14
+Naser Ezzati-Jivan 16 minutes 14 seconds
+People can ask questions, hey, what, why this is slow?
+
+Yuvraj Sehgal
+16 minutes 19 seconds16:19
+Yuvraj Sehgal 16 minutes 19 seconds
+Yes, yeah.
+
+Naser Ezzati-Jivan
+16 minutes 19 seconds16:19
+Naser Ezzati-Jivan 16 minutes 19 seconds
+And the TMNL will go through the views, right? And using rag and other things, then we try to analyse the trace data, we'll try to find problem for you.
+
+Yuvraj Sehgal
+16 minutes 32 seconds16:32
+Yuvraj Sehgal 16 minutes 32 seconds
+Okay.
+
+Naser Ezzati-Jivan
+16 minutes 32 seconds16:32
+Naser Ezzati-Jivan 16 minutes 32 seconds
+Right? But there's a big thing missing here. The intelligence, the skill, the expertise on trace analysis. TMLL every time needs to understand, hey, what is this trace? What's that event? Right? But if you have a set of skills, that TMLL say, look, there are like 5 examples of...
+
+Yuvraj Sehgal
+16 minutes 37 seconds16:37
+Yuvraj Sehgal 16 minutes 37 seconds
+Mm-hmm.
+
+Naser Ezzati-Jivan
+16 minutes 53 seconds16:53
+Naser Ezzati-Jivan 16 minutes 53 seconds
+These problems in my template history and my blueprints.
+
+Yuvraj Sehgal
+16 minutes 59 seconds16:59
+Yuvraj Sehgal 16 minutes 59 seconds
+Yeah.
+
+Naser Ezzati-Jivan
+16 minutes 59 seconds16:59
+Naser Ezzati-Jivan 16 minutes 59 seconds
+Let me see how they have solved.
+Naser Ezzati-Jivan 17 minutes 3 seconds
+No, it's liking is like asking, like giving a like some expert expertise or injecting some expertise to TMLL. So TMLL won't need to analyse everything from scratch. There are examples, there are successful examples there, which is created by humans.
+
+Yuvraj Sehgal
+17 minutes 19 seconds17:19
+Yuvraj Sehgal 17 minutes 19 seconds
+Mhm, mhm.
+
+Naser Ezzati-Jivan
+17 minutes 20 seconds17:20
+Naser Ezzati-Jivan 17 minutes 20 seconds
+It's good for human analyzers. So next time if you ask TMLL, without, so TMLL will have a good history. We'll go and look at those scales and we'll try to, it can be much easier and faster and much more accurate this time.
+Naser Ezzati-Jivan 17 minutes 35 seconds
+Right.
+
+Yuvraj Sehgal
+17 minutes 36 seconds17:36
+Yuvraj Sehgal 17 minutes 36 seconds
+Okay, so can we do it like this? So for example, if I come across this paper and it says that it is 100% sure that if you use this, their approach, you can find the CPU contention 90% of the time. I will test.
+
+Naser Ezzati-Jivan
+17 minutes 53 seconds17:53
+Naser Ezzati-Jivan 17 minutes 53 seconds
+Yes.
+
+
+Yuvraj Sehgal 18 minutes 18 seconds
+At a time.
+Yuvraj Sehgal 18 minutes 22 seconds
+Okay, makes sense.
+
+Naser Ezzati-Jivan
+18 minutes 23 seconds18:23
+Naser Ezzati-Jivan 18 minutes 23 seconds
+This is the part that we are selling to CNN, the blueprint part. You know, many companies have trace analysis pipeline. Everyone has this. Even if you, if I work on a problem myself, if there's a problem, I collect data, log, analyse it, and that's it, done. But we're saying there's not enough. Let's create a database. But why we need this database? We always, companies,
+Naser Ezzati-Jivan 18 minutes 45 seconds
+You know, most companies have a list of like JIRA histories, but now we are enriching that, we're adding more details to those histories. We include problems, solution, and everything else, because I believe that AI agents will be able to use this, that AI agent part and feeding those things to AI agent.
+
+Yuvraj Sehgal
+18 minutes 54 seconds18:54
+Yuvraj Sehgal 18 minutes 54 seconds
+Mhm.
+
+Naser Ezzati-Jivan
+19 minutes 3 seconds19:03
+Naser Ezzati-Jivan 19 minutes 3 seconds
+or making this AI agent friendly was not there. This is what we are adding to our architecture.
+
+Yuvraj Sehgal
+19 minutes 11 seconds19:11
+Yuvraj Sehgal 19 minutes 11 seconds
+Okay, makes sense.
+
+Naser Ezzati-Jivan
+19 minutes 11 seconds19:11
+Naser Ezzati-Jivan 19 minutes 11 seconds
+Right, so any place analysis pipeline, we are saying that we now documenting or creating templates, but we use better term like blueprint something instead of just simple saying template, and then we use, we fit it, we make a database of it, like history of it or database of it, set of it, and then we give it to AI, and then we show that AI now is able to.
+Naser Ezzati-Jivan 19 minutes 32 seconds
+find much better or act more accurately.
+
+Yuvraj Sehgal
+19 minutes 36 seconds19:36
+Yuvraj Sehgal 19 minutes 36 seconds
+Mhm.
+
+Naser Ezzati-Jivan
+19 minutes 37 seconds19:37
+Naser Ezzati-Jivan 19 minutes 37 seconds
+So we can compare it with and without, compare trace and like AI, AI trace analysis, AI agents, with and without those blueprints. And you should be able to see a huge difference.
+
+Yuvraj Sehgal
+19 minutes 46 seconds19:46
+Yuvraj Sehgal 19 minutes 46 seconds
+Ombuki.
+Yuvraj Sehgal 19 minutes 49 seconds
+Yeah, like time-wise, if it can do the root cause analysis quickly or better.
+Yuvraj Sehgal 19 minutes 58 seconds
+Yeah, no.
+Yuvraj Sehgal 20 minutes 4 seconds
+Mmh.
+Yuvraj Sehgal 20 minutes 8 seconds
+Mhm.
+
+Naser Ezzati-Jivan
+20 minutes 9 seconds20:09
+Naser Ezzati-Jivan 20 minutes 9 seconds
+Every time AI does, every time it tries to invent something.
+Naser Ezzati-Jivan 20 minutes 15 seconds
+I have the workflow and everything, but it does not use it. But once I ask it, hey, you know, don't create anything new, just document we have what we have done for this project.
+Naser Ezzati-Jivan 20 minutes 27 seconds
+So we fully documented the whole thing. I checked the documentation myself, made sure everything is there. Next time when I create a video, I say, hey, first read that document, digest it, and then these are the inputs and let's create the video.
+Naser Ezzati-Jivan 20 minutes 43 seconds
+This time it does it much, much better, faster, more accurate, better quality, better output.
+Naser Ezzati-Jivan 20 minutes 50 seconds
+Sometime I forget to mention that document. Again, same, tries to download the huge like 50 gigabytes model from Hugging Face, try to reinvent workflow.
+Naser Ezzati-Jivan 21 minutes 4 seconds
+You know, so I see the difference myself. This is the idea that we are using in trace analysis. We document and next time we will give the dimension the problem for it, but eventually we'll have a part like an AI agent part that will try to look into the history or the templates. We try to link the current problem, current issue to those problems.
+
+Yuvraj Sehgal
+21 minutes 8 seconds21:08
+Yuvraj Sehgal 21 minutes 8 seconds
+Yes.
+Yuvraj Sehgal 21 minutes 21 seconds
+Mhm.
+
+Naser Ezzati-Jivan
+21 minutes 25 seconds21:25
+Naser Ezzati-Jivan 21 minutes 25 seconds
+The.
+Naser Ezzati-Jivan 21 minutes 26 seconds
+And then find the relevant skill and use it for the detection and other things.
+
+Yuvraj Sehgal
+21 minutes 31 seconds21:31
+Yuvraj Sehgal 21 minutes 31 seconds
+Okay.
+
+Naser Ezzati-Jivan
+21 minutes 33 seconds21:33
+Naser Ezzati-Jivan 21 minutes 33 seconds
+Makes sense.
+
+Yuvraj Sehgal
+21 minutes 34 seconds21:34
+Yuvraj Sehgal 21 minutes 34 seconds
+Yeah, yeah, now it makes sense, and like...
+
+Naser Ezzati-Jivan
+21 minutes 36 seconds21:36
+Naser Ezzati-Jivan 21 minutes 36 seconds
+This is this is a this is a great this is a great.
+Naser Ezzati-Jivan 21 minutes 43 seconds
+This is a great achievement, you know, I mean, architecture or change. This, you know, compared to the paper we discussed before, the guy, Cave, or other person, other people had the paper I said that why we did in this paper ourselves, you know? They don't have this history part. They're missing this part. So we can, we are actually coming up with a new architecture.
+
+Yuvraj Sehgal
+21 minutes 58 seconds21:58
+Yuvraj Sehgal 21 minutes 58 seconds
+S.
+Yuvraj Sehgal 21 minutes 59 seconds
+Yeah.
+
+Naser Ezzati-Jivan
+22 minutes 4 seconds22:04
+Naser Ezzati-Jivan 22 minutes 4 seconds
+that has those learning from the experiments, learning from the experience, and model them as a skill.
+
+Yuvraj Sehgal
+22 minutes 13 seconds22:13
+Yuvraj Sehgal 22 minutes 13 seconds
+Yes.
+
+Naser Ezzati-Jivan
+22 minutes 14 seconds22:14
+Naser Ezzati-Jivan 22 minutes 14 seconds
+So, it's gonna be agentic AI agent friend like trace analysis framework, agent friendly trace analysis framework, something like that.
+
+Yuvraj Sehgal
+22 minutes 22 seconds22:22
+Yuvraj Sehgal 22 minutes 22 seconds
+And like when we are testing, so for example, if we are working on our CPU contention problem, we do not give it multiple skills, right? Only one skill at a time, which is...
+
+Naser Ezzati-Jivan
+22 minutes 32 seconds22:32
+Naser Ezzati-Jivan 22 minutes 32 seconds
+We can give one main and a couple of others, like similar ones. Or, you know, that part we don't need to, we will do it manually, but later we don't need to even do it manually. AI will choose the best or more relevant skill.
+
+Yuvraj Sehgal
+22 minutes 35 seconds22:35
+Yuvraj Sehgal 22 minutes 35 seconds
+Okay, okay.
+Yuvraj Sehgal 22 minutes 41 seconds
+Mhm.
+Yuvraj Sehgal 22 minutes 43 seconds
+Best skill.
+Yuvraj Sehgal 22 minutes 46 seconds
+Leila.
+
+Naser Ezzati-Jivan
+22 minutes 47 seconds22:47
+Naser Ezzati-Jivan 22 minutes 47 seconds
+the most relevant skill for that given problem. But if you have a good database, right? But we want to make sure that our framework feeds that database now, feeds that template, let's sit now. For now, we just need to do that, and we need to implement this correctly at Sienna.
+
+Yuvraj Sehgal
+22 minutes 52 seconds22:52
+Yuvraj Sehgal 22 minutes 52 seconds
+Yeah, yeah.
+
+Naser Ezzati-Jivan
+23 minutes 7 seconds23:07
+Naser Ezzati-Jivan 23 minutes 7 seconds
+Like after a year. Now, if you go to see now, for example, the tool, Francois, Mohammed teams, they do a lot of great problems. They solve a lot of huge and great candle level problems. They're amazing. Each of them can be turned to a paper. But they don't have a history. History is on Muhammad's brain. Hey, Mohammed.
+
+Yuvraj Sehgal
+23 minutes 20 seconds23:20
+Yuvraj Sehgal 23 minutes 20 seconds
+Mhm.
+
+Naser Ezzati-Jivan
+23 minutes 26 seconds23:26
+Naser Ezzati-Jivan 23 minutes 26 seconds
+How do you resolve this? Oh, let me cheque this. Oh, I remember I had this problem, but I had to remove it because I didn't have enough space, disc space. So they remove the part of the X history from their system. But if you can document this well, over the time, over the years or months or something, they will have a big history of all of those knowledge. And that knowledge can be used by.
+Naser Ezzati-Jivan 23 minutes 48 seconds
+AI to solve real similar real problems.
+
+Yuvraj Sehgal
+23 minutes 53 seconds23:53
+Yuvraj Sehgal 23 minutes 53 seconds
+Ombuki.
+
+Naser Ezzati-Jivan
+23 minutes 56 seconds23:56
+Naser Ezzati-Jivan 23 minutes 56 seconds
+So we are training another expert like Mohammed with this framework, with this system. Not only Mohammed, but all of them together, because Jason works on problem, Mohammed works on the problem, Alex works on a different problem. We try to collect all of them together. So the expert that we're training now will have all the knowledge of all.
+Naser Ezzati-Jivan 24 minutes 15 seconds
+All of those engineers.
+Naser Ezzati-Jivan 24 minutes 18 seconds
+Eventually.
+
+Yuvraj Sehgal
+24 minutes 19 seconds24:19
+Yuvraj Sehgal 24 minutes 19 seconds
+Yeah, yeah, yeah.
+
+Naser Ezzati-Jivan
+24 minutes 22 seconds24:22
+Naser Ezzati-Jivan 24 minutes 22 seconds
+Excellent. So we are actually giving a new pipeline, new trace analysis pipeline.
+
+Yuvraj Sehgal
+24 minutes 23 seconds24:23
+Yuvraj Sehgal 24 minutes 23 seconds
+Yes.
+
+Naser Ezzati-Jivan
+24 minutes 29 seconds24:29
+Naser Ezzati-Jivan 24 minutes 29 seconds
+that has that skill and blueprint and so on part. But then later on.
+Naser Ezzati-Jivan 24 minutes 36 seconds
+After we have it, we make it, we collect and we create a good database of like templates, we will add it to the analysis. So the analysis will be two parts, human or AI analysis. So the whole framework will run by an AI eventually, because AI will have enough skills to do everything.
+
+Yuvraj Sehgal
+24 minutes 58 seconds24:58
+Yuvraj Sehgal 24 minutes 58 seconds
+Okay, yeah.
+
+Naser Ezzati-Jivan
+24 minutes 59 seconds24:59
+Naser Ezzati-Jivan 24 minutes 59 seconds
+Right? For example, there's one question here. Most of the time, let's say someone comes to me, hey, there is a problem in this part of the system. So I ask them, we need data. But what data? I don't know. That template, those templates can tell me, hey, for this, this looks like a latency problem or stipulates problem.
+Naser Ezzati-Jivan 25 minutes 19 seconds
+We have a skills that say that we have a skills that say, for this problem, we need like 5 kernel events, 3 telemetry data, so we will even give them that those skill, those template, those can even dictate what data to collect, and then after we've got the data, now what analysis we don't need to.
+
+Yuvraj Sehgal
+25 minutes 35 seconds25:35
+Yuvraj Sehgal 25 minutes 35 seconds
+Yes.
+
+Naser Ezzati-Jivan
+25 minutes 38 seconds25:38
+Naser Ezzati-Jivan 25 minutes 38 seconds
+You know, think about 100 different analysis. We already have a good pipeline and list in those blueprints.
+
+Yuvraj Sehgal
+25 minutes 46 seconds25:46
+Yuvraj Sehgal 25 minutes 46 seconds
+Yeah, no.
+Yuvraj Sehgal 25 minutes 50 seconds
+Makes sense.
+
+Naser Ezzati-Jivan
+25 minutes 52 seconds25:52
+Naser Ezzati-Jivan 25 minutes 52 seconds
+Yeah, again, we are not fully replacing analysis. They're going to be, the tool will be helping the analyzers to do that. But every time they run this, they will add to the template. They will improve the templates, the blueprints. But eventually we'll have something that would do most of the work.
+
+Yuvraj Sehgal
+26 minutes 7 seconds26:07
+Yuvraj Sehgal 26 minutes 7 seconds
+Yeah.
+Yuvraj Sehgal 26 minutes 12 seconds
+Yeah, got it.
+
+Naser Ezzati-Jivan
+26 minutes 15 seconds26:15
+Naser Ezzati-Jivan 26 minutes 15 seconds
+Good.
+
+Yuvraj Sehgal
+26 minutes 18 seconds26:18
+Yuvraj Sehgal 26 minutes 18 seconds
+And like for this, the data set that I have created, we are going to use that at only right because none of the other data sets have kernel traces. They have this.
+
+Naser Ezzati-Jivan
+26 minutes 31 seconds26:31
+Naser Ezzati-Jivan 26 minutes 31 seconds
+Yeah, yeah, yeah, we will use all of them, exactly. But now this time, it's going to be problem focused. So choose one problem, one fault, one issue, collect the data related to that issue, analyse them, and then put them into a blueprint. We don't have any blueprint yet. You know, Tina doesn't know it yet because this is my contribution.
+
+Yuvraj Sehgal
+26 minutes 34 seconds26:34
+Yuvraj Sehgal 26 minutes 34 seconds
+Okay.
+Yuvraj Sehgal 26 minutes 48 seconds
+Yes.
+
+Naser Ezzati-Jivan
+26 minutes 52 seconds26:52
+Naser Ezzati-Jivan 26 minutes 52 seconds
+This is our contribution, broad contribution. But we need to show them, maybe not tomorrow, but next time, we need to show them, hey, this is the example of the blueprint that we have designed for this five problems, for example.
+Naser Ezzati-Jivan 27 minutes 4 seconds
+You know, so your work now will be like finding issues.
+Naser Ezzati-Jivan 27 minutes 11 seconds
+that you can detect. It can be detection, it can be root cause analysis, it can be other kind of analysis too.
+
+Yuvraj Sehgal
+27 minutes 18 seconds27:18
+Yuvraj Sehgal 27 minutes 18 seconds
+Sure, yeah.
+
+Naser Ezzati-Jivan
+27 minutes 18 seconds27:18
+Naser Ezzati-Jivan 27 minutes 18 seconds
+Yeah, so work issue-based, so find one issue, one problem.
+Naser Ezzati-Jivan 27 minutes 24 seconds
+collect data, do analysis and everything, then write it down in the template and the blueprint, and then cheque it with me. I will tell you if this is good enough or, but I'm saying that you need to come up with a structure, with a format for the blueprint.
+
+Yuvraj Sehgal
+27 minutes 38 seconds27:38
+Yuvraj Sehgal 27 minutes 38 seconds
+Yeah, got got it.
+
+Naser Ezzati-Jivan
+27 minutes 39 seconds27:39
+Naser Ezzati-Jivan 27 minutes 39 seconds
+I did some analysis with the AI before myself. I can send it to you.
+
+Yuvraj Sehgal
+27 minutes 43 seconds27:43
+Yuvraj Sehgal 27 minutes 43 seconds
+Mhm.
+
+Naser Ezzati-Jivan
+27 minutes 44 seconds27:44
+Naser Ezzati-Jivan 27 minutes 44 seconds
+No, I can send it as a big JSON format, JSON file. I can send it to you, but you should change it because I just did it with the discussing with AI. I did not use any like actual problem for that. I just use my experience on creating that blueprint. I needed that for a meeting with Sina.
+Naser Ezzati-Jivan 28 minutes 3 seconds
+But now we're in the implementation stage. We might want to customise it, change it, add to it, and so on.
+
+Yuvraj Sehgal
+28 minutes 9 seconds28:09
+Yuvraj Sehgal 28 minutes 9 seconds
+Okay, okay, sure. Yeah, you can share it with me. I can have a look into it.
+
+Naser Ezzati-Jivan
+28 minutes 14 seconds28:14
+Naser Ezzati-Jivan 28 minutes 14 seconds
+Yeah, makes sense now.
+
+Yuvraj Sehgal
+28 minutes 16 seconds28:16
+Yuvraj Sehgal 28 minutes 16 seconds
+Yeah, it makes sense now.
+
+Naser Ezzati-Jivan
+28 minutes 16 seconds28:16
+Naser Ezzati-Jivan 28 minutes 16 seconds
+Yeah, so by tomorrow, if you can do a simple problem, you know, and if we can show this blueprint by tomorrow, that will be great. At the very end of the draught of that.
+
+Yuvraj Sehgal
+28 minutes 20 seconds28:20
+Yuvraj Sehgal 28 minutes 20 seconds
+Mhm.
+Yuvraj Sehgal 28 minutes 24 seconds
+Sure, I can create at least one.
+Yuvraj Sehgal 28 minutes 28 seconds
+I can create at least one or two of such blueprints and evaluate them.
+
+Naser Ezzati-Jivan
+28 minutes 31 seconds28:31
+Naser Ezzati-Jivan 28 minutes 31 seconds
+Let me see if I can find it. Let me see if Mahsa has any comments, and then I will also look for that.
+
+Yuvraj Sehgal
+28 minutes 38 seconds28:38
+Yuvraj Sehgal 28 minutes 38 seconds
+Qiu.
+MP
+Mahsa Panahandeh
+28 minutes 38 seconds28:38
+Mahsa Panahandeh 28 minutes 38 seconds
+Yeah, I just, yeah, you know, when you're looking for the two things that when you were talking, I just wanted to share that maybe it helped is that in another project we find out that even in the SQL you could add some parts of the codes of the analyzer if they do have any, or as you Yuvraj mentioned that you can go through the papers and extract
+
+Yuvraj Sehgal
+28 minutes 55 seconds28:55
+Yuvraj Sehgal 28 minutes 55 seconds
+Mhm.
+MP
+Mahsa Panahandeh
+29 minutes 1 second29:01
+Mahsa Panahandeh 29 minutes 1 second
+That, but it should be tested on your own data to make sure that it's generalised to, you know, the scope of or the domain of your project, but even referring to that coding data skill, it increase the accuracy and also decrease the, you know, indeterministic.
+
+Yuvraj Sehgal
+29 minutes 15 seconds29:15
+Yuvraj Sehgal 29 minutes 15 seconds
+Mhm.
+MP
+Mahsa Panahandeh
+29 minutes 20 seconds29:20
+Mahsa Panahandeh 29 minutes 20 seconds
+level of the AI or LLM. Since when you say that I have, for instance, let's say this RCA code, and if you see these evidences or symptom, go for it and run this one, it has a level of indeterministicness in that. But if you put that code exactly that the function,
+
+Yuvraj Sehgal
+29 minutes 23 seconds29:23
+Yuvraj Sehgal 29 minutes 23 seconds
+Mhm.
+
+Mahsa Panahandeh 29 minutes 59 seconds
+You need an orchestrator to also, you know, in that part also you need to define a template too. Since otherwise, yeah, since otherwise the skills, that autonomousness level that it's been claimed a lot and right now in, you know, the community and their researchers and so that it's really good in selecting them.
+
+Mahsa Panahandeh
+29 minutes 39 seconds29:39
+Mahsa Panahandeh 29 minutes 39 seconds
+in the skill, it reduced that and increased the accuracy A lot. We did it with, you know, three different kind of domains in industry and it worked A lot. And another thing was that it's not about now, but for later when you want to switch everything to be, you know, to be decided by AI.
 Mahsa Panahandeh 29 minutes 59 seconds
 You need an orchestrator to also, you know, in that part also you need to define a template too. Since otherwise, yeah, since otherwise the skills, that autonomousness level that it's been claimed a lot and right now in, you know, the community and their researchers and so that it's really good in selecting them.
 
