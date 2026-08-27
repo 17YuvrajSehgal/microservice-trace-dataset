@@ -159,7 +159,7 @@ def main():
     json.dump({"summary": summary, "rows": rows}, open(a.out, "w"), indent=2, default=str)
 
     print(f"\n{'method':13s} {'n':>3s} {'component':>10s} {'fully':>7s} {'answered':>9s} "
-          f"{'median s':>9s} {'$/incident':>11s}")
+          f"{'precision':>10s} {'median s':>9s} {'$/incident':>11s}")
     for s in summary:
         fc = f"{s['fully_correct_pct']:6d}%" if s["fully_correct_pct"] is not None else "   n/a"
         pr = (f"{s['precision_when_answered_pct']:9d}%"
