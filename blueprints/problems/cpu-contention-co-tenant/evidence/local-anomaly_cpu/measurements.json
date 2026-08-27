@@ -1,0 +1,1201 @@
+[
+  {
+    "run_id": "anomaly_cpu_aggressive_steady_r1",
+    "app": "sockshop",
+    "family": "anomaly_cpu",
+    "run_dir": "data-sample/anomaly_cpu/anomaly_cpu_aggressive_steady_r1",
+    "gaps": [
+      "kernel_l2.jsonl not present - derive it before claiming any wait-share signature"
+    ],
+    "target_service": "host",
+    "l2_wait_shares": {},
+    "l1_movement": {
+      "aggressor": {
+        "sys_lat_p95_ms": {
+          "baseline": 0.0052,
+          "incident": 1008.8969,
+          "x": 195902.32
+        },
+        "sys_lat_p99_ms": {
+          "baseline": 0.039,
+          "incident": 1008.8969,
+          "x": 25869.15
+        },
+        "blk_lat_p95_ms": {
+          "baseline": 0.0978,
+          "incident": 1.3474,
+          "x": 13.77
+        },
+        "sched_switch": {
+          "baseline": 12811.0,
+          "incident": 16241.7983,
+          "x": 1.27
+        },
+        "sched_wakeup": {
+          "baseline": 6963.5,
+          "incident": 9495.916,
+          "x": 1.36
+        },
+        "block_ops": {
+          "baseline": 8.5,
+          "incident": 0.0,
+          "x": 0.0
+        },
+        "net_bytes": {
+          "baseline": 13770.5,
+          "incident": 16065.4034,
+          "x": 1.17
+        },
+        "sys_io": {
+          "baseline": 586.5,
+          "incident": 0.0,
+          "x": 0.0
+        },
+        "sys_futex": {
+          "baseline": 0.0,
+          "incident": 0.0,
+          "x": null
+        },
+        "sys_poll": {
+          "baseline": 0.0,
+          "incident": 0.0,
+          "x": null
+        },
+        "reclaim": {
+          "baseline": 0.0,
+          "incident": 0.0,
+          "x": null
+        },
+        "pagefault": {
+          "baseline": 0.0,
+          "incident": 0.0,
+          "x": null
+        }
+      },
+      "carts": {
+        "sys_lat_p95_ms": {
+          "baseline": 3.0414,
+          "incident": 2.7332,
+          "x": 0.9
+        },
+        "sys_lat_p99_ms": {
+          "baseline": 79.9736,
+          "incident": 80.9578,
+          "x": 1.01
+        },
+        "blk_lat_p95_ms": {
+          "baseline": 0.9202,
+          "incident": 0.2,
+          "x": 0.22
+        },
+        "sched_switch": {
+          "baseline": 2870.2667,
+          "incident": 5239.7917,
+          "x": 1.83
+        },
+        "sched_wakeup": {
+          "baseline": 829.7167,
+          "incident": 4592.775,
+          "x": 5.54
+        },
+        "block_ops": {
+          "baseline": 0.0,
+          "incident": 0.0,
+          "x": null
+        },
+        "net_bytes": {
+          "baseline": 2455908.5833,
+          "incident": 2468234.5833,
+          "x": 1.01
+        },
+        "sys_io": {
+          "baseline": 5362.4667,
+          "incident": 5444.5167,
+          "x": 1.02
+        },
+        "sys_futex": {
+          "baseline": 968.3833,
+          "incident": 1844.1,
+          "x": 1.9
+        },
+        "sys_poll": {
+          "baseline": 425.65,
+          "incident": 352.55,
+          "x": 0.83
+        },
+        "reclaim": {
+          "baseline": 0.0,
+          "incident": 0.0,
+          "x": null
+        },
+        "pagefault": {
+          "baseline": 0.0,
+          "incident": 0.0,
+          "x": null
+        }
+      },
+      "carts-db": {
+        "sys_lat_p95_ms": {
+          "baseline": 3.0402,
+          "incident": 3.1666,
+          "x": 1.04
+        },
+        "sys_lat_p99_ms": {
+          "baseline": 61.3395,
+          "incident": 59.5145,
+          "x": 0.97
+        },
+        "blk_lat_p95_ms": {
+          "baseline": 0.911,
+          "incident": 0.339,
+          "x": 0.37
+        },
+        "sched_switch": {
+          "baseline": 2039.0167,
+          "incident": 3745.7833,
+          "x": 1.84
+        },
+        "sched_wakeup": {
+          "baseline": 438.8833,
+          "incident": 2661.9167,
+          "x": 6.07
+        },
+        "block_ops": {
+          "baseline": 10.2333,
+          "incident": 10.15,
+          "x": 0.99
+        },
+        "net_bytes": {
+          "baseline": 1085324.5167,
+          "incident": 1340874.9333,
+          "x": 1.24
+        },
+        "sys_io": {
+          "baseline": 62.7833,
+          "incident": 57.8667,
+          "x": 0.92
+        },
+        "sys_futex": {
+          "baseline": 602.6,
+          "incident": 599.3667,
+          "x": 0.99
+        },
+        "sys_poll": {
+          "baseline": 3.9833,
+          "incident": 4.0083,
+          "x": 1.01
+        },
+        "reclaim": {
+          "baseline": 0.0,
+          "incident": 0.0,
+          "x": null
+        },
+        "pagefault": {
+          "baseline": 0.0,
+          "incident": 0.0,
+          "x": null
+        }
+      },
+      "catalogue": {
+        "sys_lat_p95_ms": {
+          "baseline": 1.2916,
+          "incident": 1.4223,
+          "x": 1.1
+        },
+        "sys_lat_p99_ms": {
+          "baseline": 12.2494,
+          "incident": 26.8397,
+          "x": 2.19
+        },
+        "blk_lat_p95_ms": {
+          "baseline": 0.2191,
+          "incident": 0.0704,
+          "x": 0.32
+        },
+        "sched_switch": {
+          "baseline": 4685.4,
+          "incident": 4696.8333,
+          "x": 1.0
+        },
+        "sched_wakeup": {
+          "baseline": 618.6667,
+          "incident": 2650.1583,
+          "x": 4.28
+        },
+        "block_ops": {
+          "baseline": 0.0,
+          "incident": 0.0,
+          "x": null
+        },
+        "net_bytes": {
+          "baseline": 574864.8833,
+          "incident": 528176.0167,
+          "x": 0.92
+        },
+        "sys_io": {
+          "baseline": 3838.6,
+          "incident": 3303.8083,
+          "x": 0.86
+        },
+        "sys_futex": {
+          "baseline": 3504.05,
+          "incident": 2761.0167,
+          "x": 0.79
+        },
+        "sys_poll": {
+          "baseline": 2547.2833,
+          "incident": 1754.25,
+          "x": 0.69
+        },
+        "reclaim": {
+          "baseline": 0.0,
+          "incident": 0.0,
+          "x": null
+        },
+        "pagefault": {
+          "baseline": 0.0,
+          "incident": 0.0,
+          "x": null
+        }
+      },
+      "catalogue-db": {
+        "sys_lat_p95_ms": {
+          "baseline": 4.4211,
+          "incident": 4.2923,
+          "x": 0.97
+        },
+        "sys_lat_p99_ms": {
+          "baseline": 139.1409,
+          "incident": 124.552,
+          "x": 0.9
+        },
+        "blk_lat_p95_ms": {
+          "baseline": 1.4097,
+          "incident": 0.0635,
+          "x": 0.05
+        },
+        "sched_switch": {
+          "baseline": 920.6,
+          "incident": 1175.7917,
+          "x": 1.28
+        },
+        "sched_wakeup": {
+          "baseline": 154.3333,
+          "incident": 821.9833,
+          "x": 5.33
+        },
+        "block_ops": {
+          "baseline": 0.0,
+          "incident": 0.0,
+          "x": null
+        },
+        "net_bytes": {
+          "baseline": 574881.3333,
+          "incident": 484884.225,
+          "x": 0.84
+        },
+        "sys_io": {
+          "baseline": 177.0,
+          "incident": 361.3667,
+          "x": 2.04
+        },
+        "sys_futex": {
+          "baseline": 567.9667,
+          "incident": 710.0417,
+          "x": 1.25
+        },
+        "sys_poll": {
+          "baseline": 758.6167,
+          "incident": 704.425,
+          "x": 0.93
+        },
+        "reclaim": {
+          "baseline": 0.0,
+          "incident": 0.0,
+          "x": null
+        },
+        "pagefault": {
+          "baseline": 0.0,
+          "incident": 0.0,
+          "x": null
+        }
+      },
+      "edge-router": {
+        "sys_lat_p95_ms": {
+          "baseline": 1.8722,
+          "incident": 3.7012,
+          "x": 1.98
+        },
+        "sys_lat_p99_ms": {
+          "baseline": 5.6588,
+          "incident": 30.9494,
+          "x": 5.47
+        },
+        "blk_lat_p95_ms": {
+          "baseline": 0.2799,
+          "incident": 0.0932,
+          "x": 0.33
+        },
+        "sched_switch": {
+          "baseline": 5963.0,
+          "incident": 4590.1583,
+          "x": 0.77
+        },
+        "sched_wakeup": {
+          "baseline": 496.2167,
+          "incident": 2002.0917,
+          "x": 4.03
+        },
+        "block_ops": {
+          "baseline": 0.0,
+          "incident": 0.0,
+          "x": null
+        },
+        "net_bytes": {
+          "baseline": 1129550.5333,
+          "incident": 905547.55,
+          "x": 0.8
+        },
+        "sys_io": {
+          "baseline": 3098.2833,
+          "incident": 2278.7083,
+          "x": 0.74
+        },
+        "sys_futex": {
+          "baseline": 5267.7167,
+          "incident": 2771.5167,
+          "x": 0.53
+        },
+        "sys_poll": {
+          "baseline": 4351.9167,
+          "incident": 3670.7917,
+          "x": 0.84
+        },
+        "reclaim": {
+          "baseline": 0.0,
+          "incident": 0.0,
+          "x": null
+        },
+        "pagefault": {
+          "baseline": 0.0,
+          "incident": 0.0,
+          "x": null
+        }
+      },
+      "front-end": {
+        "sys_lat_p95_ms": {
+          "baseline": 1.1963,
+          "incident": 0.3448,
+          "x": 0.29
+        },
+        "sys_lat_p99_ms": {
+          "baseline": 14.2646,
+          "incident": 17.32,
+          "x": 1.21
+        },
+        "blk_lat_p95_ms": {
+          "baseline": 0.2811,
+          "incident": 0.0151,
+          "x": 0.05
+        },
+        "sched_switch": {
+          "baseline": 1086.8667,
+          "incident": 2524.9917,
+          "x": 2.32
+        },
+        "sched_wakeup": {
+          "baseline": 283.0167,
+          "incident": 2151.1083,
+          "x": 7.6
+        },
+        "block_ops": {
+          "baseline": 0.0,
+          "incident": 0.0,
+          "x": null
+        },
+        "net_bytes": {
+          "baseline": 4496634.55,
+          "incident": 3499249.3917,
+          "x": 0.78
+        },
+        "sys_io": {
+          "baseline": 3365.5333,
+          "incident": 2445.3,
+          "x": 0.73
+        },
+        "sys_futex": {
+          "baseline": 4788.7,
+          "incident": 7516.65,
+          "x": 1.57
+        },
+        "sys_poll": {
+          "baseline": 286.3167,
+          "incident": 68.1417,
+          "x": 0.24
+        },
+        "reclaim": {
+          "baseline": 0.0,
+          "incident": 0.0,
+          "x": null
+        },
+        "pagefault": {
+          "baseline": 0.0,
+          "incident": 0.0,
+          "x": null
+        }
+      },
+      "kernel": {
+        "sys_lat_p95_ms": {
+          "baseline": 1.7958,
+          "incident": 44.8044,
+          "x": 24.95
+        },
+        "sys_lat_p99_ms": {
+          "baseline": 13.7772,
+          "incident": 159.9284,
+          "x": 11.61
+        },
+        "blk_lat_p95_ms": {
+          "baseline": 0.8011,
+          "incident": 0.6826,
+          "x": 0.85
+        },
+        "sched_switch": {
+          "baseline": 55087.5333,
+          "incident": 1989.275,
+          "x": 0.04
+        },
+        "sched_wakeup": {
+          "baseline": 55654.5333,
+          "incident": 748.775,
+          "x": 0.01
+        },
+        "block_ops": {
+          "baseline": 93.25,
+          "incident": 57.7667,
+          "x": 0.62
+        },
+        "net_bytes": {
+          "baseline": 22863.4333,
+          "incident": 12881.2417,
+          "x": 0.56
+        },
+        "sys_io": {
+          "baseline": 20.5667,
+          "incident": 15.4167,
+          "x": 0.75
+        },
+        "sys_futex": {
+          "baseline": 0.0,
+          "incident": 0.0,
+          "x": null
+        },
+        "sys_poll": {
+          "baseline": 3.6,
+          "incident": 3.975,
+          "x": 1.1
+        },
+        "reclaim": {
+          "baseline": 0.0,
+          "incident": 0.0,
+          "x": null
+        },
+        "pagefault": {
+          "baseline": 0.0,
+          "incident": 0.0,
+          "x": null
+        }
+      },
+      "orders": {
+        "sys_lat_p95_ms": {
+          "baseline": 8.3592,
+          "incident": 16.3532,
+          "x": 1.96
+        },
+        "sys_lat_p99_ms": {
+          "baseline": 399.2998,
+          "incident": 490.5231,
+          "x": 1.23
+        },
+        "blk_lat_p95_ms": {
+          "baseline": 0.2296,
+          "incident": 0.521,
+          "x": 2.27
+        },
+        "sched_switch": {
+          "baseline": 712.5833,
+          "incident": 1076.7917,
+          "x": 1.51
+        },
+        "sched_wakeup": {
+          "baseline": 249.0333,
+          "incident": 833.1583,
+          "x": 3.35
+        },
+        "block_ops": {
+          "baseline": 0.0,
+          "incident": 0.0,
+          "x": null
+        },
+        "net_bytes": {
+          "baseline": 257742.3667,
+          "incident": 172809.4083,
+          "x": 0.67
+        },
+        "sys_io": {
+          "baseline": 653.85,
+          "incident": 517.8917,
+          "x": 0.79
+        },
+        "sys_futex": {
+          "baseline": 547.9667,
+          "incident": 609.6583,
+          "x": 1.11
+        },
+        "sys_poll": {
+          "baseline": 122.85,
+          "incident": 103.1833,
+          "x": 0.84
+        },
+        "reclaim": {
+          "baseline": 0.0,
+          "incident": 0.0,
+          "x": null
+        },
+        "pagefault": {
+          "baseline": 0.0,
+          "incident": 0.0,
+          "x": null
+        }
+      },
+      "orders-db": {
+        "sys_lat_p95_ms": {
+          "baseline": 217.2372,
+          "incident": 263.3627,
+          "x": 1.21
+        },
+        "sys_lat_p99_ms": {
+          "baseline": 974.8982,
+          "incident": 1149.7978,
+          "x": 1.18
+        },
+        "blk_lat_p95_ms": {
+          "baseline": 0.0711,
+          "incident": 0.0265,
+          "x": 0.37
+        },
+        "sched_switch": {
+          "baseline": 126.6167,
+          "incident": 167.5083,
+          "x": 1.32
+        },
+        "sched_wakeup": {
+          "baseline": 15.6167,
+          "incident": 78.825,
+          "x": 5.05
+        },
+        "block_ops": {
+          "baseline": 2.7333,
+          "incident": 0.25,
+          "x": 0.09
+        },
+        "net_bytes": {
+          "baseline": 30688.3667,
+          "incident": 27973.5583,
+          "x": 0.91
+        },
+        "sys_io": {
+          "baseline": 37.6167,
+          "incident": 33.5667,
+          "x": 0.89
+        },
+        "sys_futex": {
+          "baseline": 176.1833,
+          "incident": 152.0167,
+          "x": 0.86
+        },
+        "sys_poll": {
+          "baseline": 4.0,
+          "incident": 3.9917,
+          "x": 1.0
+        },
+        "reclaim": {
+          "baseline": 0.0,
+          "incident": 0.0,
+          "x": null
+        },
+        "pagefault": {
+          "baseline": 0.0,
+          "incident": 0.0,
+          "x": null
+        }
+      },
+      "payment": {
+        "sys_lat_p95_ms": {
+          "baseline": 112.588,
+          "incident": 152.1413,
+          "x": 1.35
+        },
+        "sys_lat_p99_ms": {
+          "baseline": 1060.3637,
+          "incident": 1357.7876,
+          "x": 1.28
+        },
+        "blk_lat_p95_ms": {
+          "baseline": 0.0026,
+          "incident": 0.0115,
+          "x": 4.49
+        },
+        "sched_switch": {
+          "baseline": 132.1,
+          "incident": 157.2583,
+          "x": 1.19
+        },
+        "sched_wakeup": {
+          "baseline": 15.7167,
+          "incident": 75.725,
+          "x": 4.82
+        },
+        "block_ops": {
+          "baseline": 0.0,
+          "incident": 0.0,
+          "x": null
+        },
+        "net_bytes": {
+          "baseline": 10076.9667,
+          "incident": 8115.1917,
+          "x": 0.81
+        },
+        "sys_io": {
+          "baseline": 62.4167,
+          "incident": 57.2167,
+          "x": 0.92
+        },
+        "sys_futex": {
+          "baseline": 75.5167,
+          "incident": 73.1583,
+          "x": 0.97
+        },
+        "sys_poll": {
+          "baseline": 107.2333,
+          "incident": 114.7417,
+          "x": 1.07
+        },
+        "reclaim": {
+          "baseline": 0.0,
+          "incident": 0.0,
+          "x": null
+        },
+        "pagefault": {
+          "baseline": 0.0,
+          "incident": 0.0,
+          "x": null
+        }
+      },
+      "queue-master": {
+        "sys_lat_p95_ms": {
+          "baseline": 2287.2535,
+          "incident": 2697.3917,
+          "x": 1.18
+        },
+        "sys_lat_p99_ms": {
+          "baseline": 5605.1569,
+          "incident": 10165.6473,
+          "x": 1.81
+        },
+        "blk_lat_p95_ms": {
+          "baseline": 0.0116,
+          "incident": 0.0004,
+          "x": 0.03
+        },
+        "sched_switch": {
+          "baseline": 47.5667,
+          "incident": 36.4,
+          "x": 0.77
+        },
+        "sched_wakeup": {
+          "baseline": 10.3167,
+          "incident": 5.425,
+          "x": 0.53
+        },
+        "block_ops": {
+          "baseline": 0.0,
+          "incident": 0.0,
+          "x": null
+        },
+        "net_bytes": {
+          "baseline": 5195.4333,
+          "incident": 1191.4667,
+          "x": 0.23
+        },
+        "sys_io": {
+          "baseline": 33.6333,
+          "incident": 2.6167,
+          "x": 0.08
+        },
+        "sys_futex": {
+          "baseline": 46.2667,
+          "incident": 33.175,
+          "x": 0.72
+        },
+        "sys_poll": {
+          "baseline": 7.0,
+          "incident": 3.4417,
+          "x": 0.49
+        },
+        "reclaim": {
+          "baseline": 0.0,
+          "incident": 0.0,
+          "x": null
+        },
+        "pagefault": {
+          "baseline": 0.0,
+          "incident": 0.0,
+          "x": null
+        }
+      },
+      "rabbitmq": {
+        "sys_lat_p95_ms": {
+          "baseline": 0.0052,
+          "incident": 0.0031,
+          "x": 0.58
+        },
+        "sys_lat_p99_ms": {
+          "baseline": 3.3176,
+          "incident": 1.1201,
+          "x": 0.34
+        },
+        "blk_lat_p95_ms": {
+          "baseline": 0.0108,
+          "incident": 0.0074,
+          "x": 0.68
+        },
+        "sched_switch": {
+          "baseline": 109.4667,
+          "incident": 99.8667,
+          "x": 0.91
+        },
+        "sched_wakeup": {
+          "baseline": 39.2333,
+          "incident": 74.0083,
+          "x": 1.89
+        },
+        "block_ops": {
+          "baseline": 0.0,
+          "incident": 0.0,
+          "x": null
+        },
+        "net_bytes": {
+          "baseline": 3001.95,
+          "incident": 49.8667,
+          "x": 0.02
+        },
+        "sys_io": {
+          "baseline": 65.45,
+          "incident": 70.4583,
+          "x": 1.08
+        },
+        "sys_futex": {
+          "baseline": 85.1,
+          "incident": 90.1,
+          "x": 1.06
+        },
+        "sys_poll": {
+          "baseline": 152.0,
+          "incident": 89.7833,
+          "x": 0.59
+        },
+        "reclaim": {
+          "baseline": 0.0,
+          "incident": 0.0,
+          "x": null
+        },
+        "pagefault": {
+          "baseline": 0.0,
+          "incident": 0.0,
+          "x": null
+        }
+      },
+      "shipping": {
+        "sys_lat_p95_ms": {
+          "baseline": 1742.1953,
+          "incident": 2599.5147,
+          "x": 1.49
+        },
+        "sys_lat_p99_ms": {
+          "baseline": 3675.1637,
+          "incident": 5335.9234,
+          "x": 1.45
+        },
+        "blk_lat_p95_ms": {
+          "baseline": 0.0019,
+          "incident": 0.0,
+          "x": 0.0
+        },
+        "sched_switch": {
+          "baseline": 53.7333,
+          "incident": 37.8833,
+          "x": 0.71
+        },
+        "sched_wakeup": {
+          "baseline": 10.5167,
+          "incident": 7.125,
+          "x": 0.68
+        },
+        "block_ops": {
+          "baseline": 0.0,
+          "incident": 0.0,
+          "x": null
+        },
+        "net_bytes": {
+          "baseline": 14061.7667,
+          "incident": 5040.5667,
+          "x": 0.36
+        },
+        "sys_io": {
+          "baseline": 63.3833,
+          "incident": 4.1667,
+          "x": 0.07
+        },
+        "sys_futex": {
+          "baseline": 40.2833,
+          "incident": 34.075,
+          "x": 0.85
+        },
+        "sys_poll": {
+          "baseline": 16.7,
+          "incident": 3.5,
+          "x": 0.21
+        },
+        "reclaim": {
+          "baseline": 0.0,
+          "incident": 0.0,
+          "x": null
+        },
+        "pagefault": {
+          "baseline": 0.0,
+          "incident": 0.0,
+          "x": null
+        }
+      },
+      "system": {
+        "sys_lat_p95_ms": {
+          "baseline": 0.7578,
+          "incident": 0.9865,
+          "x": 1.3
+        },
+        "sys_lat_p99_ms": {
+          "baseline": 27.9412,
+          "incident": 50.4439,
+          "x": 1.81
+        },
+        "blk_lat_p95_ms": {
+          "baseline": 0.2845,
+          "incident": 0.4685,
+          "x": 1.65
+        },
+        "sched_switch": {
+          "baseline": 45934.1,
+          "incident": 43902.4583,
+          "x": 0.96
+        },
+        "sched_wakeup": {
+          "baseline": 5470.1833,
+          "incident": 23909.1833,
+          "x": 4.37
+        },
+        "block_ops": {
+          "baseline": 980.4833,
+          "incident": 860.6917,
+          "x": 0.88
+        },
+        "net_bytes": {
+          "baseline": 2434799.2333,
+          "incident": 2355555.3667,
+          "x": 0.97
+        },
+        "sys_io": {
+          "baseline": 47299.8,
+          "incident": 38853.4167,
+          "x": 0.82
+        },
+        "sys_futex": {
+          "baseline": 38238.2833,
+          "incident": 25257.5167,
+          "x": 0.66
+        },
+        "sys_poll": {
+          "baseline": 29444.25,
+          "incident": 22880.0833,
+          "x": 0.78
+        },
+        "reclaim": {
+          "baseline": 0.0,
+          "incident": 0.0,
+          "x": null
+        },
+        "pagefault": {
+          "baseline": 0.0,
+          "incident": 0.0,
+          "x": null
+        }
+      },
+      "user": {
+        "sys_lat_p95_ms": {
+          "baseline": 3.0515,
+          "incident": 2.9794,
+          "x": 0.98
+        },
+        "sys_lat_p99_ms": {
+          "baseline": 36.9528,
+          "incident": 52.5389,
+          "x": 1.42
+        },
+        "blk_lat_p95_ms": {
+          "baseline": 0.85,
+          "incident": 0.0399,
+          "x": 0.05
+        },
+        "sched_switch": {
+          "baseline": 1827.3667,
+          "incident": 1808.0083,
+          "x": 0.99
+        },
+        "sched_wakeup": {
+          "baseline": 272.0333,
+          "incident": 1038.05,
+          "x": 3.82
+        },
+        "block_ops": {
+          "baseline": 0.0,
+          "incident": 0.0,
+          "x": null
+        },
+        "net_bytes": {
+          "baseline": 248462.95,
+          "incident": 188975.85,
+          "x": 0.76
+        },
+        "sys_io": {
+          "baseline": 2028.4,
+          "incident": 1512.9833,
+          "x": 0.75
+        },
+        "sys_futex": {
+          "baseline": 1229.5833,
+          "incident": 848.7833,
+          "x": 0.69
+        },
+        "sys_poll": {
+          "baseline": 1533.5167,
+          "incident": 1601.9,
+          "x": 1.04
+        },
+        "reclaim": {
+          "baseline": 0.0,
+          "incident": 0.0,
+          "x": null
+        },
+        "pagefault": {
+          "baseline": 0.0,
+          "incident": 0.0,
+          "x": null
+        }
+      },
+      "user-db": {
+        "sys_lat_p95_ms": {
+          "baseline": 32.2958,
+          "incident": 64.9612,
+          "x": 2.01
+        },
+        "sys_lat_p99_ms": {
+          "baseline": 204.886,
+          "incident": 280.6895,
+          "x": 1.37
+        },
+        "blk_lat_p95_ms": {
+          "baseline": 0.067,
+          "incident": 0.3749,
+          "x": 5.6
+        },
+        "sched_switch": {
+          "baseline": 472.1833,
+          "incident": 437.15,
+          "x": 0.93
+        },
+        "sched_wakeup": {
+          "baseline": 76.9,
+          "incident": 280.125,
+          "x": 3.64
+        },
+        "block_ops": {
+          "baseline": 1.1167,
+          "incident": 0.1833,
+          "x": 0.16
+        },
+        "net_bytes": {
+          "baseline": 212370.5333,
+          "incident": 160884.275,
+          "x": 0.76
+        },
+        "sys_io": {
+          "baseline": 26.7667,
+          "incident": 25.45,
+          "x": 0.95
+        },
+        "sys_futex": {
+          "baseline": 253.05,
+          "incident": 245.9833,
+          "x": 0.97
+        },
+        "sys_poll": {
+          "baseline": 4.0,
+          "incident": 3.9917,
+          "x": 1.0
+        },
+        "reclaim": {
+          "baseline": 0.0,
+          "incident": 0.0,
+          "x": null
+        },
+        "pagefault": {
+          "baseline": 0.0,
+          "incident": 0.0,
+          "x": null
+        }
+      }
+    },
+    "topology": {
+      "edges": [
+        {
+          "caller": "front-end",
+          "callee": "catalogue",
+          "n_incident": 22839,
+          "p95_baseline_ms": 3.499,
+          "p95_incident_ms": 40.647,
+          "slowdown_x": 11.6
+        },
+        {
+          "caller": "orders",
+          "callee": "user",
+          "spanless_callee": true,
+          "n_incident": 4020,
+          "p95_baseline_ms": 1.8927,
+          "p95_incident_ms": 14.6071,
+          "slowdown_x": 7.7
+        },
+        {
+          "caller": "orders",
+          "callee": "carts",
+          "n_incident": 1340,
+          "p95_baseline_ms": 8.0176,
+          "p95_incident_ms": 37.284,
+          "slowdown_x": 4.7
+        },
+        {
+          "caller": "front-end",
+          "callee": "carts",
+          "n_incident": 9400,
+          "p95_baseline_ms": 31.5972,
+          "p95_incident_ms": 121.3012,
+          "slowdown_x": 3.8
+        },
+        {
+          "caller": "front-end",
+          "callee": "orders",
+          "n_incident": 2477,
+          "p95_baseline_ms": 15.3917,
+          "p95_incident_ms": 56.4752,
+          "slowdown_x": 3.7
+        },
+        {
+          "caller": "front-end",
+          "callee": "user",
+          "spanless_callee": true,
+          "n_incident": 6939,
+          "p95_baseline_ms": 19.0143,
+          "p95_incident_ms": 52.625,
+          "slowdown_x": 2.8
+        },
+        {
+          "caller": "orders",
+          "callee": "orders-db",
+          "spanless_callee": true,
+          "n_incident": 1137,
+          "p95_baseline_ms": 6.4577,
+          "p95_incident_ms": 14.0276,
+          "slowdown_x": 2.2
+        },
+        {
+          "caller": "carts",
+          "callee": "carts-db",
+          "spanless_callee": true,
+          "n_incident": 225510,
+          "p95_baseline_ms": 3.645,
+          "p95_incident_ms": 7.6529,
+          "slowdown_x": 2.1
+        },
+        {
+          "caller": "orders",
+          "callee": "payment",
+          "spanless_callee": true,
+          "n_incident": 1340,
+          "p95_baseline_ms": 1.9264,
+          "p95_incident_ms": 4.0802,
+          "slowdown_x": 2.1
+        }
+      ],
+      "convergence": [
+        {
+          "component": "catalogue",
+          "max_incoming_slowdown_x": 11.6,
+          "n_incoming_slow_edges": 1,
+          "max_outgoing_slowdown_x": null,
+          "emits_spans": false
+        },
+        {
+          "component": "user",
+          "max_incoming_slowdown_x": 7.7,
+          "n_incoming_slow_edges": 2,
+          "max_outgoing_slowdown_x": null,
+          "emits_spans": false
+        },
+        {
+          "component": "carts",
+          "max_incoming_slowdown_x": 4.7,
+          "n_incoming_slow_edges": 2,
+          "max_outgoing_slowdown_x": 2.1,
+          "emits_spans": true
+        },
+        {
+          "component": "orders",
+          "max_incoming_slowdown_x": 3.7,
+          "n_incoming_slow_edges": 1,
+          "max_outgoing_slowdown_x": 7.7,
+          "emits_spans": true
+        },
+        {
+          "component": "orders-db",
+          "max_incoming_slowdown_x": 2.2,
+          "n_incoming_slow_edges": 1,
+          "max_outgoing_slowdown_x": null,
+          "emits_spans": false
+        },
+        {
+          "component": "carts-db",
+          "max_incoming_slowdown_x": 2.1,
+          "n_incoming_slow_edges": 1,
+          "max_outgoing_slowdown_x": null,
+          "emits_spans": false
+        },
+        {
+          "component": "payment",
+          "max_incoming_slowdown_x": 2.1,
+          "n_incoming_slow_edges": 1,
+          "max_outgoing_slowdown_x": null,
+          "emits_spans": false
+        }
+      ]
+    }
+  }
+]
