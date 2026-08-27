@@ -1,0 +1,230 @@
+<title>Observability Blueprints</title>
+<style>
+  :root{
+    --bg:#FFFFFF; --ink:#16191D; --mid:#5B646E; --line:#E3E7EC; --soft:#F6F8FA;
+    --accent:#1B5FA8; --accent-soft:#EAF2FB;
+    --warm:#B4531A; --warm-soft:#FDF1E8;
+    --sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  html{scroll-snap-type:y mandatory;scroll-behavior:smooth}
+  @media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);
+       font-size:18px;line-height:1.5;-webkit-font-smoothing:antialiased}
+
+  .slide{min-height:100vh;scroll-snap-align:start;display:flex;flex-direction:column;
+         justify-content:center;gap:2rem;padding:5rem clamp(1.5rem,7vw,7rem) 5rem;position:relative}
+  .slide + .slide{border-top:1px solid var(--line)}
+
+  .kicker{font-family:var(--mono);font-size:.7rem;letter-spacing:.18em;text-transform:uppercase;
+          color:var(--accent);margin:0}
+  h1{font-size:clamp(2rem,4.6vw,3.2rem);line-height:1.06;letter-spacing:-.025em;font-weight:650;
+     margin:0;max-width:19ch;text-wrap:balance}
+  h1 .q{color:var(--accent)}
+  .sub{font-size:clamp(1rem,1.6vw,1.2rem);color:var(--mid);max-width:56ch;margin:0;text-wrap:pretty}
+
+  /* three-part flow */
+  .flow{display:flex;align-items:stretch;gap:0;flex-wrap:wrap}
+  .step{flex:1 1 190px;background:var(--soft);border:1px solid var(--line);
+        border-radius:6px;padding:1.4rem 1.3rem}
+  .step b{display:block;font-size:1.02rem;margin-bottom:.3rem}
+  .step span{color:var(--mid);font-size:.92rem}
+  .arrow{display:flex;align-items:center;padding:0 .7rem;color:var(--line);font-size:1.6rem}
+  @media(max-width:720px){.arrow{display:none}}
+
+  .into{display:flex;align-items:center;gap:1rem;margin-top:.4rem}
+  .doc{border:2px solid var(--accent);border-radius:6px;background:var(--accent-soft);
+       padding:1rem 1.4rem;font-weight:600}
+  .doc small{display:block;font-weight:400;color:var(--mid);font-size:.85rem;margin-top:.15rem}
+
+  /* two panels */
+  .pair{display:grid;grid-template-columns:1fr 1fr;gap:1.4rem}
+  @media(max-width:720px){.pair{grid-template-columns:1fr}}
+  .panel{border:1px solid var(--line);border-radius:6px;padding:1.3rem}
+  .panel h3{margin:0 0 .3rem;font-size:1.05rem}
+  .panel p{margin:0;color:var(--mid);font-size:.93rem}
+  .same{text-align:center;color:var(--mid);font-size:.95rem;margin:0}
+
+  table{border-collapse:collapse;width:100%;font-size:1rem}
+  th,td{text-align:left;padding:.75rem .9rem;border-bottom:1px solid var(--line)}
+  th{font-family:var(--mono);font-size:.68rem;letter-spacing:.1em;text-transform:uppercase;
+     color:var(--mid);font-weight:600}
+  td.n{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:1.05rem}
+  .big{color:var(--accent);font-weight:700}
+  .dim{color:var(--mid)}
+
+  .stat{display:flex;gap:2.5rem;flex-wrap:wrap;align-items:flex-end}
+  .stat div{min-width:150px}
+  .stat .v{font-family:var(--mono);font-size:clamp(2.1rem,4.6vw,3rem);line-height:1;
+           font-weight:700;letter-spacing:-.02em}
+  .stat .v.up{color:var(--accent)} .stat .v.down{color:var(--warm)}
+  .stat .k{color:var(--mid);font-size:.9rem;margin-top:.45rem;max-width:22ch}
+
+  .note{border-left:3px solid var(--accent);background:var(--accent-soft);
+        padding:1rem 1.2rem;border-radius:0 6px 6px 0;font-size:.98rem}
+  .note.warm{border-left-color:var(--warm);background:var(--warm-soft)}
+  .note b{color:var(--ink)}
+
+  /* loop */
+  .loop{display:flex;gap:0;align-items:stretch;flex-wrap:wrap}
+  .lp{flex:1 1 165px;border:1px solid var(--line);border-radius:6px;padding:1.1rem 1.1rem;
+      background:var(--bg)}
+  .lp b{display:block;font-size:.98rem;margin-bottom:.25rem}
+  .lp span{color:var(--mid);font-size:.88rem}
+  .lp.hi{border-color:var(--accent);background:var(--accent-soft)}
+
+  .pager{position:fixed;right:1.5rem;bottom:1.2rem;font-family:var(--mono);font-size:.7rem;
+         letter-spacing:.1em;color:var(--mid);background:#fff;border:1px solid var(--line);
+         border-radius:99px;padding:.28rem .7rem}
+  :focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+</style>
+
+<main>
+<!-- 1 -->
+<section class="slide">
+  <p class="kicker">The idea</p>
+  <h1>A finished investigation, written down so it can be <span class="q">run again</span></h1>
+  <p class="sub">Today an engineer solves a hard problem and the knowledge leaves with them.
+     A blueprint captures the whole investigation as one document.</p>
+  <div class="flow">
+    <div class="step"><b>What to collect</b><span>the exact events needed — named, not described</span></div>
+    <div class="arrow">→</div>
+    <div class="step"><b>What to run</b><span>the analysis steps, as runnable commands</span></div>
+    <div class="arrow">→</div>
+    <div class="step"><b>What the answer is</b><span>how to decide, and when to stop</span></div>
+  </div>
+  <div class="into">
+    <span class="arrow" style="color:var(--accent)">⇒</span>
+    <div class="doc">One JSON document
+      <small>a person or an agent can execute it — next time the problem appears</small></div>
+  </div>
+</section>
+
+<!-- 2 -->
+<section class="slide">
+  <p class="kicker">The test we set ourselves</p>
+  <h1>Two problems that look <span class="q">identical from outside</span></h1>
+  <div class="pair">
+    <div class="panel"><h3>CPU contention</h3>
+      <p>Another workload on the same machine steals CPU. Your services aren’t busy — they’re
+         waiting for a turn.</p></div>
+    <div class="panel"><h3>Slow datastore</h3>
+      <p>The database answers slowly. It isn’t busy either — it’s blocked waiting on something
+         else.</p></div>
+  </div>
+  <p class="same">Both look the same on a dashboard: <b>things are slow, nothing is obviously broken.</b></p>
+  <table>
+    <thead><tr><th>Measurement from the kernel trace</th><th>CPU contention</th><th>Slow datastore</th></tr></thead>
+    <tbody>
+      <tr><td>How long threads waited for a CPU</td>
+          <td class="n big">7.1×</td><td class="n dim">1.0×</td></tr>
+      <tr><td>How long the database sat blocked</td>
+          <td class="n dim">1.1×</td><td class="n big">36.8×</td></tr>
+    </tbody>
+  </table>
+  <p class="sub"><b>Same two measurements. Opposite answers.</b> That is what makes the two
+     problems separable — and what the blueprint encodes.</p>
+</section>
+
+<!-- 3 -->
+<section class="slide">
+  <p class="kicker">How a blueprint is built</p>
+  <h1>Signals are <span class="q">measured</span>, never guessed</h1>
+  <p class="sub">We don’t write these from intuition, and we don’t let a model invent them.
+     Every signal in a blueprint has been proven on real, labelled failures first.</p>
+  <div class="flow">
+    <div class="step"><b>Labelled failures</b><span>faults we injected on purpose, plus published RCA datasets</span></div>
+    <div class="arrow">→</div>
+    <div class="step"><b>Mining scripts</b><span>search for signals that are specific to one problem</span></div>
+    <div class="arrow">→</div>
+    <div class="step"><b>Proven signal</b><span>only what separates this problem from its look-alikes</span></div>
+    <div class="arrow">→</div>
+    <div class="step"><b>Blueprint</b><span>with the evidence attached</span></div>
+  </div>
+  <div class="note">Our own first draft had <b>three signals that sounded obviously right</b>.
+     Measuring 93 real failures killed all three. They are kept in the blueprint, marked as
+     “does not work”, so nobody tries them again.</div>
+</section>
+
+<!-- 4 -->
+<section class="slide">
+  <p class="kicker">Does it travel?</p>
+  <h1>We moved it to a <span class="q">completely different system</span></h1>
+  <p class="sub">Second application: ~40 Java services sharing one database, instead of 14
+     services with a database each.</p>
+  <div class="stat">
+    <div><div class="v up">4 of 5</div>
+      <div class="k">CPU-contention failures found on the new system — same blueprint, no changes</div></div>
+    <div><div class="v down">100% → 44%</div>
+      <div class="k">the datastore blueprint’s reliability dropped</div></div>
+  </div>
+  <div class="note warm"><b>Why it dropped — and this is the useful part.</b>
+     On the first system the database polls constantly, so a delay showed up straight away.
+     On the second, long-lived pooled connections mean it sits idle instead — the same signal
+     is silent. <b>One feature can’t catch every database problem.</b></div>
+  <p class="sub">We didn’t discover that by reasoning about it. We discovered it by running the
+     blueprint somewhere new — which is exactly what the blueprint is for.</p>
+</section>
+
+<!-- 5 -->
+<section class="slide">
+  <p class="kicker">Why it gets better</p>
+  <h1>Every investigation makes the <span class="q">next one faster</span></h1>
+  <div class="loop">
+    <div class="lp"><b>Use it</b><span>agent runs the blueprint on a new incident</span></div>
+    <div class="arrow">→</div>
+    <div class="lp hi"><b>Find the gap</b><span>where it was unsure, or wrong</span></div>
+    <div class="arrow">→</div>
+    <div class="lp"><b>Add what you learned</b><span>your engineer’s better method goes in the document</span></div>
+    <div class="arrow">→</div>
+    <div class="lp"><b>Next time</b><span>same problem solved in seconds, more precisely</span></div>
+  </div>
+  <div class="pair">
+    <div class="panel"><h3>You stay in control</h3>
+      <p>Set a confidence floor — below it, the agent asks for more evidence instead of guessing.
+         Set approval rules — reading existing data is automatic; switching on tracing that
+         costs more than 3% overhead needs your sign-off.</p></div>
+    <div class="panel"><h3>Knowledge stops walking out</h3>
+      <p>What your best engineers know becomes an executable document instead of something in
+         one person’s head. The library grows with every incident you solve.</p></div>
+  </div>
+</section>
+</main>
+
+<div class="pager" id="pager">1 / 5</div>
+
+<script>
+  const slides = [...document.querySelectorAll('.slide')];
+  const pager  = document.getElementById('pager');
+
+  const io = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        pager.textContent = `${slides.indexOf(e.target) + 1} / ${slides.length}`;
+      }
+    });
+  }, { threshold: 0.55 });
+  slides.forEach(s => io.observe(s));
+
+  function currentIndex() {
+    const mid = window.innerHeight / 2;
+    return slides.findIndex(s => {
+      const r = s.getBoundingClientRect();
+      return r.top <= mid && r.bottom >= mid;
+    });
+  }
+
+  addEventListener('keydown', e => {
+    const next = ['ArrowRight', 'ArrowDown', 'PageDown', ' '];
+    const prev = ['ArrowLeft', 'ArrowUp', 'PageUp'];
+    if (![...next, ...prev].includes(e.key)) return;
+    e.preventDefault();
+    const i = currentIndex();
+    if (i < 0) return;
+    const to = next.includes(e.key) ? Math.min(i + 1, slides.length - 1)
+                                    : Math.max(i - 1, 0);
+    const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    slides[to].scrollIntoView({ behavior: reduce ? 'auto' : 'smooth' });
+  });
+</script>

@@ -357,66 +357,50 @@
 
   <!-- 5 ─────────────────────────────────────────────────────────── -->
   <section class="slide">
-    <p class="eyebrow"><span class="num">05</span> Against the alternatives <span class="tag">12 incidents</span></p>
-    <h1>Only method that handles <em>both</em> faults</h1>
+    <p class="eyebrow"><span class="num">05</span> Against the alternatives <span class="tag">2 apps · 24 incidents</span></p>
+    <h1>No method wins everywhere — and the failures are <em>complementary</em></h1>
     <div class="scroller">
       <table>
         <thead><tr>
-          <th>Method</th><th>Fully correct</th><th>Precision</th><th>Time</th><th>Cost each</th>
+          <th>Right component AND right cause</th><th>Shop app</th><th>Booking app</th><th>Combined</th>
         </tr></thead>
         <tbody>
-          <tr>
-            <td><strong>Blueprint</strong> — rules, no model</td>
-            <td class="num hit">83%</td><td class="num hit">100%</td>
-            <td class="num flat">508 s</td><td class="num hit">$0</td>
-          </tr>
-          <tr>
-            <td>LLM agent, with kernel data</td>
-            <td class="num flat">58%</td><td class="num flat">100%</td>
-            <td class="num">128 s</td><td class="num">$0.021</td>
-          </tr>
-          <tr>
-            <td>LLM, one shot, no tools</td>
-            <td class="num flat">58%</td><td class="num flat">100%</td>
-            <td class="num">103 s</td><td class="num">$0.009</td>
-          </tr>
-          <tr>
-            <td>Statistical rule-tree</td>
-            <td class="num flat">42%</td><td class="num dead">42%</td>
-            <td class="num">—</td><td class="num">$0</td>
-          </tr>
-          <tr>
-            <td>BARO — published method</td>
-            <td class="num dead">0%</td><td class="num dead">0%</td>
-            <td class="num">—</td><td class="num">$0</td>
-          </tr>
+          <tr><td>Statistical rule-tree (metrics only)</td>
+              <td class="num flat">42%</td><td class="num hit">100%</td><td class="num hit">71%</td></tr>
+          <tr><td><strong>Blueprint</strong> — rules on kernel traces</td>
+              <td class="num hit">83%</td><td class="num flat">33%</td><td class="num">58%</td></tr>
+          <tr><td>LLM, one shot</td>
+              <td class="num flat">58%</td><td class="num dead">8%</td><td class="num flat">33%</td></tr>
+          <tr><td>LLM agent with tools</td>
+              <td class="num flat">58%</td><td class="num dead">0%</td><td class="num flat">29%</td></tr>
         </tbody>
       </table>
     </div>
     <div class="cols">
       <div class="card">
-        <h3>Everyone else is blind on one side</h3>
-        <p>Co-tenant / datastore, fully correct:<br>
-           <strong class="hit">blueprint 5/5 · 5/7</strong><br>
-           LLM arms <span class="dead">0/5</span> · 7/7<br>
-           statistical 5/5 · <span class="dead">0/7</span></p>
+        <h3>The slow-database case, both ways</h3>
+        <p>Shop app: metrics <span class="dead">0/7</span>, kernel <span class="hit">5/7</span> —
+           the database goes <em>idle</em> while blocked, so metrics see nothing.<br>
+           Booking app: metrics <span class="hit">7/7</span>, kernel <span class="dead">0/7</span> —
+           pooled connections silence the kernel signal instead.</p>
       </div>
       <div class="card">
-        <h3>Same data didn’t help the model</h3>
-        <p>Handed the LLM the identical kernel measurements: <strong>12/12 identical</strong>
-           components, <strong>+61% tokens</strong>, zero accuracy gain. The rule is the
-           advantage, not the data.</p>
+        <h3>What actually holds</h3>
+        <p><strong>The kernel layer earns its place exactly where metrics go quiet.</strong>
+           Not "kernel beats metrics" — they are near-perfectly complementary, and now we can
+           say which to use when.</p>
       </div>
       <div class="card">
-        <h3>Where we lose</h3>
-        <p><strong>4× slower</strong> — 508 s against 128 s. Decoding a raw kernel trace is
-           expensive. Free and more accurate, but not fast.</p>
+        <h3>Unchanged across both apps</h3>
+        <p>No LLM setup <strong>ever</strong> named the cause of CPU contention correctly —
+           <span class="dead">0 of 10</span>. It finds the right component, then calls it
+           saturation or throttling. The blueprint got <span class="hit">9 of 10</span>.</p>
       </div>
     </div>
     <p class="lede">
-      No model arm <em>ever</em> types co-tenant contention correctly. It localizes perfectly,
-      then calls it CPU saturation or throttling — plausible, both wrong. It has no rule
-      separating “cannot get a CPU” from “capped”. That rule is what a blueprint is.
+      A simple statistical baseline beats us overall, 71% to 58%. Reporting that is the point:
+      the two approaches fail in different places, which is knowledge a blueprint library
+      should encode — not something to hide.
     </p>
   </section>
 
