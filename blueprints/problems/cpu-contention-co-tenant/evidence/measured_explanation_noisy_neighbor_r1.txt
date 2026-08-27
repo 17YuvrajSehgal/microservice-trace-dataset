@@ -1,0 +1,8 @@
+Run: noisy_neighbor_aggressive_steady_r1
+
+Does the evidence support co-tenant CPU contention? YES
+
+- noisy-neighbor consumed 2.00 cores during the incident (baseline 0.00) and has no call-path edges
+- noisy-neighbor was absent in the baseline and appeared mid-run
+- highest runnable-wait share: catalogue at 1.6% (on_cpu 1.5%)
+- host CPU busy cores 5.31 -> 7.956 (x1.5)

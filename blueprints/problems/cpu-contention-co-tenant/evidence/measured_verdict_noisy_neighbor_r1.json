@@ -1,0 +1,61 @@
+{
+  "run": "noisy_neighbor_aggressive_steady_r1",
+  "supports_co_tenant_contention": true,
+  "suspected_culprit": "noisy-neighbor",
+  "cpu_by_container": [
+    {
+      "container": "noisy-neighbor",
+      "cpu_baseline": 0.0,
+      "cpu_incident": 2.005,
+      "appeared": true,
+      "on_call_path": false
+    }
+  ],
+  "off_call_path_consumers": [
+    {
+      "container": "noisy-neighbor",
+      "cpu_baseline": 0.0,
+      "cpu_incident": 2.005,
+      "appeared": true,
+      "on_call_path": false
+    }
+  ],
+  "wait_shares": [
+    {
+      "service": "catalogue",
+      "on_cpu": 1.5,
+      "runnable_wait": 1.6,
+      "disk_wait": 0.0,
+      "off_cpu_io_wait": 96.9,
+      "verdict_hint": "external_io_or_dependency_wait"
+    },
+    {
+      "service": "front-end",
+      "on_cpu": 11.6,
+      "runnable_wait": 1.1,
+      "disk_wait": 0.0,
+      "off_cpu_io_wait": 87.2,
+      "verdict_hint": "external_io_or_dependency_wait"
+    },
+    {
+      "service": "carts",
+      "on_cpu": 1.4,
+      "runnable_wait": 0.5,
+      "disk_wait": 0.0,
+      "off_cpu_io_wait": 98.0,
+      "verdict_hint": "external_io_or_dependency_wait"
+    }
+  ],
+  "host_cpu": {
+    "baseline": 5.31,
+    "incident": 7.956,
+    "change_x": 1.5
+  },
+  "reasons": [
+    "noisy-neighbor consumed 2.00 cores during the incident (baseline 0.00) and has no call-path edges",
+    "noisy-neighbor was absent in the baseline and appeared mid-run",
+    "highest runnable-wait share: catalogue at 1.6% (on_cpu 1.5%)",
+    "host CPU busy cores 5.31 -> 7.956 (x1.5)"
+  ],
+  "evidence_gaps": []
+}

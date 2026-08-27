@@ -47,6 +47,15 @@ def validate(bp: dict, path: str) -> list:
         for f in ("signal", "this_problem", "not_this_problem"):
             if not d.get(f):
                 errs.append(f"discriminator[{i}] missing {f}")
+        # EVIDENCE-FIRST RULE: a discriminator is a research claim. It may only be stated
+        # if it was measured on our data, and the measurement must be pointed at.
+        if not d.get("evidence"):
+            errs.append(f"discriminator[{i}] ({d.get('signal','?')}) has no `evidence` - "
+                        "every discriminator must cite the measurement that proved it. "
+                        "Measure first (lib/measure_wait_signature.py), then author.")
+        elif not any(t in d["evidence"].upper() for t in ("MEASURED", "EVIDENCE/", "RESULTS/")):
+            errs.append(f"discriminator[{i}] evidence does not reference a measurement or an "
+                        "evidence/ results/ artifact: " + d["evidence"][:70])
 
     # Mahsa's rule: every processing step carries an exact callable, not prose.
     for i, s in enumerate(bp.get("processing", [])):
@@ -96,6 +105,8 @@ def to_skill(bp: dict) -> str:
         sig.append(f"- **{disc['signal']}** — this problem: {disc['this_problem']}. "
                    f"Not this problem: {disc['not_this_problem']}.")
 
+    retracted = p.get("unverified_do_not_claim") or []
+
     order = ["## What to look at first",
              "The signals below are sufficient for this problem; you do not need everything.",
              ""]
@@ -128,7 +139,19 @@ def to_skill(bp: dict) -> str:
         res.append(f"- {r['instead']} — {r['when']}")
     res += ["", f"Root cause is: {d['root_cause_is']}"]
 
-    body = "\n".join(sig + [""] + order + [""] + steps + [""] + outs + [""] + res)
+    warn = []
+    if retracted:
+        warn = ["## Signals that do NOT work for this problem",
+                "Each of these was measured on our own data and found unusable. Do not reason",
+                "from them, and do not let their absence argue against this problem:"]
+        for r in retracted:
+            # `measurement` names fault families and is for the human record only; the skill
+            # gets `agent_note`, which says the same thing without the answer vocabulary.
+            warn.append(f"- {r['claim']} — **{r['status']}**. "
+                        f"{r.get('agent_note') or ''}")
+
+    body = "\n".join(sig + [""] + order + [""] + steps + [""] + outs + [""] + res
+                     + ([""] + warn if warn else []))
 
     fm = [
         "---",

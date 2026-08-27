@@ -1,6 +1,6 @@
 ---
 name: db-latency-dependency-wait
-version: 1
+version: 2
 authored_by: human
 generated_from: blueprints/db-latency-dependency-wait.json
 covers: slow_db                       # harness metadata: scoring + LOFO; NEVER shown to the model
@@ -13,10 +13,8 @@ mutually_exclusive_with: cpu-contention-co-tenant
 - requests still succeed, so error rates barely move
 
 Telling it apart from its look-alikes:
-- **kernel wait decomposition of the converged-on component** — this problem: off_cpu_io_wait dominates while on_cpu stays near zero: it is blocked waiting on something external, not working. Not this problem: runnable_wait rises, which means it is ready to run but starved of CPU.
-- **direction of the slow edges** — this problem: the suspect has slow INCOMING edges only; its own outgoing edges are normal, or it emits no spans at all. Not this problem: its outgoing edges are also slow, in which case the real cause is further downstream and you should keep walking.
-- **whether calls succeed** — this problem: traffic continues and succeeds, just slowly. Not this problem: calls fail or hang to timeout and the component serves little successful traffic.
-- **breadth of the slowdown** — this problem: the datastore path dominates while service-to-service hops stay comparatively healthy. Not this problem: every hop slows by a similar factor, which points at the network rather than the datastore.
+- **direction of the slow call edges** — this problem: the suspect has slow INCOMING edges while its own outgoing edges are normal, or it emits no spans at all. Not this problem: its outgoing edges are also slow, meaning the real cause is further downstream.
+- **how the off-CPU time splits (family_seconds), not the coarse wait shares** — this problem: idle_epoll is the largest single share, averaging 42.9% for this family. Not this problem: blocked_futex dominates and idle_epoll is small, e.g. 3.9% for a service pinned by its own CPU limit.
 
 ## What to look at first
 The signals below are sufficient for this problem; you do not need everything.
@@ -64,3 +62,8 @@ Prefer a different explanation when:
 - network degradation — every hop slows by a similar factor, not just the datastore path
 
 Root cause is: the converged-on datastore component itself, never its callers, which are victims
+
+## Signals that do NOT work for this problem
+Each of these was measured on our own data and found unusable. Do not reason
+from them, and do not let their absence argue against this problem:
+- the converged-on component shows dominant off-CPU external I/O wait, and that is what identifies it — **TRUE BUT NOT DISCRIMINATIVE**. A dominant off-CPU external-I/O share on the suspect. Measured at 98-99% for EVERY fault type we have labelled, because the coarse buckets are dominated by ordinary idle waiting. It is true here and equally true everywhere, so it identifies nothing.

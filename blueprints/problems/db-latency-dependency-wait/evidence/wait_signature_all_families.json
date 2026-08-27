@@ -1,0 +1,197 @@
+{
+  "summary": {
+    "dependency_outage": {
+      "n_records": 5,
+      "n_runs": 5,
+      "mean_pct": {
+        "blocked_futex": 65.71,
+        "idle_epoll": 23.22,
+        "on_cpu": 0.87,
+        "blocked_other": 0.38,
+        "runnable_wait": 0.7,
+        "blocked_read_net": 15.42,
+        "blocked_write_net": 0.03
+      },
+      "stdev_pct": {
+        "blocked_futex": 6.21,
+        "idle_epoll": 8.2,
+        "on_cpu": 0.65,
+        "blocked_other": 0.15,
+        "runnable_wait": 1.13,
+        "blocked_read_net": 1.57,
+        "blocked_write_net": 0.01
+      }
+    },
+    "error_storm": {
+      "n_records": 10,
+      "n_runs": 10,
+      "mean_pct": {
+        "blocked_futex": 75.18,
+        "idle_epoll": 6.26,
+        "on_cpu": 0.37,
+        "idle_sleep": 1.75,
+        "runnable_wait": 0.13,
+        "blocked_read_net": 0.0,
+        "blocked_write_net": 0.0,
+        "blocked_other": 32.62,
+        "blocked_disk": 0.0
+      },
+      "stdev_pct": {
+        "blocked_futex": 16.9,
+        "idle_epoll": 1.32,
+        "on_cpu": 0.37,
+        "idle_sleep": 1.26,
+        "runnable_wait": 0.13,
+        "blocked_read_net": 0.0,
+        "blocked_write_net": 0.0,
+        "blocked_other": 1.21,
+        "blocked_disk": 0.0
+      }
+    },
+    "queue_backlog": {
+      "n_records": 3,
+      "n_runs": 3,
+      "mean_pct": {
+        "blocked_futex": 83.67,
+        "runnable_wait": 0.02,
+        "on_cpu": 0.01,
+        "idle_epoll": 24.45
+      },
+      "stdev_pct": {
+        "blocked_futex": 17.41,
+        "runnable_wait": 0.03,
+        "on_cpu": 0.02,
+        "idle_epoll": 14.52
+      }
+    },
+    "slow_db": {
+      "n_records": 21,
+      "n_runs": 14,
+      "mean_pct": {
+        "idle_epoll": 42.91,
+        "blocked_other": 12.54,
+        "blocked_futex": 43.27,
+        "idle_sleep": 1.34,
+        "on_cpu": 0.43,
+        "runnable_wait": 0.11,
+        "blocked_read_net": 0.0,
+        "blocked_write_net": 0.0,
+        "blocked_disk": 0.0
+      },
+      "stdev_pct": {
+        "idle_epoll": 30.82,
+        "blocked_other": 11.25,
+        "blocked_futex": 35.66,
+        "idle_sleep": 0.79,
+        "on_cpu": 0.53,
+        "runnable_wait": 0.19,
+        "blocked_read_net": 0.0,
+        "blocked_write_net": 0.0,
+        "blocked_disk": 0.0
+      }
+    },
+    "svc_cpu_cap": {
+      "n_records": 10,
+      "n_runs": 10,
+      "mean_pct": {
+        "blocked_futex": 86.55,
+        "runnable_wait": 2.64,
+        "idle_epoll": 3.87,
+        "blocked_read_net": 5.7,
+        "blocked_other": 1.07,
+        "on_cpu": 0.17,
+        "blocked_write_net": 0.0,
+        "idle_sleep": 0.0
+      },
+      "stdev_pct": {
+        "blocked_futex": 5.9,
+        "runnable_wait": 2.98,
+        "idle_epoll": 2.67,
+        "blocked_read_net": 4.89,
+        "blocked_other": 0.54,
+        "on_cpu": 0.12,
+        "blocked_write_net": 0.0,
+        "idle_sleep": 0.0
+      }
+    },
+    "svc_mem_cap": {
+      "n_records": 6,
+      "n_runs": 6,
+      "mean_pct": {
+        "blocked_futex": 72.49,
+        "blocked_read_net": 6.31,
+        "idle_epoll": 7.22,
+        "blocked_other": 1.18,
+        "on_cpu": 8.77,
+        "runnable_wait": 4.03,
+        "blocked_write_net": 0.01
+      },
+      "stdev_pct": {
+        "blocked_futex": 3.07,
+        "blocked_read_net": 5.41,
+        "idle_epoll": 3.79,
+        "blocked_other": 1.38,
+        "on_cpu": 5.85,
+        "runnable_wait": 2.1,
+        "blocked_write_net": 0.01
+      }
+    },
+    "svc_net": {
+      "n_records": 6,
+      "n_runs": 6,
+      "mean_pct": {
+        "blocked_futex": 64.41,
+        "blocked_read_net": 27.79,
+        "idle_epoll": 6.28,
+        "blocked_other": 1.42,
+        "on_cpu": 0.09,
+        "runnable_wait": 0.01,
+        "blocked_write_net": 0.0
+      },
+      "stdev_pct": {
+        "blocked_futex": 14.39,
+        "blocked_read_net": 20.73,
+        "idle_epoll": 5.33,
+        "blocked_other": 1.06,
+        "on_cpu": 0.04,
+        "runnable_wait": 0.0,
+        "blocked_write_net": 0.0
+      }
+    }
+  },
+  "discriminative": [
+    {
+      "signal": "blocked_futex",
+      "family": "slow_db",
+      "direction": "LOWEST",
+      "value_pct": 43.27,
+      "next_lowest_pct": 64.41,
+      "gap_points": 21.1
+    },
+    {
+      "signal": "blocked_other",
+      "family": "error_storm",
+      "direction": "HIGHEST",
+      "value_pct": 32.62,
+      "next_best_pct": 12.54,
+      "gap_points": 20.1
+    },
+    {
+      "signal": "idle_epoll",
+      "family": "slow_db",
+      "direction": "HIGHEST",
+      "value_pct": 42.91,
+      "next_best_pct": 24.45,
+      "gap_points": 18.5
+    }
+  ],
+  "families_without_culprit_l2": [
+    "anomaly_cpu",
+    "anomaly_disk",
+    "anomaly_mem",
+    "anomaly_net",
+    "noisy_neighbor"
+  ],
+  "min_gap_points": 15.0,
+  "n_records": 310
+}

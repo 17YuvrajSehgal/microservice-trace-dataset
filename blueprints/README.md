@@ -32,14 +32,56 @@ contention only needs to know *that* a thread stopped running; the datastore cas
 know *which syscall it stopped in*. A blueprint that says "collect kernel data" would be
 useless for both.
 
+## The rule: measure first, then write
+
+**No claim goes into a blueprint until it has been measured on our own data.** Not one
+discriminator, not one threshold. Confidence is not evidence.
+
+The order is always: write the measurement script -> run it on labelled incidents -> read
+the numbers -> author the blueprint from what was observed. `lib/measure_wait_signature.py`
+and `lib/measure_signature.py` exist for exactly this, and the validator **rejects** any
+discriminator that does not cite the measurement that proved it.
+
+This is not theoretical. Both blueprints here reached v2 because measurement contradicted
+the first draft:
+
+| Draft claim | What 93 runs actually showed |
+|---|---|
+| "the delayed services show raised runnable-wait" | runnable-wait never exceeds **4%** in any fault family, and was **1.6%** on the co-tenant case. Unusable. |
+| "the culprit's wait decomposition identifies it" | host-attributed faults have **no culprit-side L2 record at all** (5 families). Unmeasurable. |
+| "the suspect shows dominant off-CPU external I/O wait" | true — and **equally true of every family** (98-99%). Identifies nothing. |
+
+Retracted claims are not deleted. They stay in the blueprint under
+`problem.unverified_do_not_claim`, with the measurement that killed them, and they are
+rendered into the skill so the agent is warned off them too.
+
+Note the split: `measurement` names fault families and is for our record; `agent_note` says
+the same thing without the answer vocabulary, and that is what reaches the model.
+
+## Layout — one folder per problem
+
+Everything for one anomaly lives together, so this holds up at hundreds of blueprints:
+
+```
+blueprints/
+├── schema/blueprint.schema.json
+├── lib/                                shared: generator, validator, measurement
+└── problems/<problem-id>/
+    ├── blueprint.json                  the record
+    ├── skill.md                        GENERATED - never hand-edit
+    ├── scripts/                        this problem's analysis code
+    ├── evidence/                       the measurements that justify every claim
+    └── results/                        per-run outputs
+```
+
 ## Using it
 
 ```bash
 # validate only
-python3 blueprints/lib/blueprint_to_skill.py "blueprints/*.json"
+python3 blueprints/lib/blueprint_to_skill.py "blueprints/problems/*/blueprint.json"
 
 # validate and generate the agent-facing skills
-python3 blueprints/lib/blueprint_to_skill.py --out agentic-rca/skills-generated "blueprints/*.json"
+python3 blueprints/lib/measure_wait_signature.py --out evidence/wait_signature.json   # ALWAYS FIRST
 ```
 
 The generator is why the blueprint is the artifact we maintain: the skill is derived, so the
