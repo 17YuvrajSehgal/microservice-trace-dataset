@@ -1,0 +1,1113 @@
+{
+  "ctf": "/scratch/yuvraj17/l0/sockshop/slow_db_aggressive_steady_r1/ctf",
+  "target_service": "catalogue-db",
+  "fault_window_utc": [
+    "2026-07-28T18:09:35Z",
+    "2026-07-28T18:11:35Z"
+  ],
+  "comms_filter": [
+    "mysqld",
+    "app"
+  ],
+  "windows": {
+    "baseline": {
+      "range": [
+        "18:08:40",
+        "18:09:35"
+      ],
+      "per_call": {
+        "app|futex": {
+          "n": 199663,
+          "p50_ms": 0.01,
+          "p95_ms": 8.525,
+          "p99_ms": 69.779,
+          "total_s": 1370.76,
+          "mean_ms": 6.865
+        },
+        "app|read": {
+          "n": 128626,
+          "p50_ms": 0.003,
+          "p95_ms": 0.005,
+          "p99_ms": 0.017,
+          "total_s": 0.4,
+          "mean_ms": 0.003
+        },
+        "app|epoll_pwait": {
+          "n": 138439,
+          "p50_ms": 0.001,
+          "p95_ms": 1.716,
+          "p99_ms": 8.221,
+          "total_s": 50.04,
+          "mean_ms": 0.361
+        },
+        "app|madvise": {
+          "n": 3891,
+          "p50_ms": 0.006,
+          "p95_ms": 0.019,
+          "p99_ms": 0.032,
+          "total_s": 0.03,
+          "mean_ms": 0.008
+        },
+        "app|nanosleep": {
+          "n": 106036,
+          "p50_ms": 0.084,
+          "p95_ms": 0.111,
+          "p99_ms": 0.244,
+          "total_s": 9.19,
+          "mean_ms": 0.087
+        },
+        "app|write": {
+          "n": 79850,
+          "p50_ms": 0.022,
+          "p95_ms": 0.038,
+          "p99_ms": 0.047,
+          "total_s": 1.69,
+          "mean_ms": 0.021
+        },
+        "mysqld|recvfrom": {
+          "n": 121597,
+          "p50_ms": 0.002,
+          "p95_ms": 0.02,
+          "p99_ms": 0.029,
+          "total_s": 0.46,
+          "mean_ms": 0.004
+        },
+        "mysqld|sendto": {
+          "n": 29201,
+          "p50_ms": 0.026,
+          "p95_ms": 0.039,
+          "p99_ms": 0.048,
+          "total_s": 0.78,
+          "mean_ms": 0.027
+        },
+        "mysqld|poll": {
+          "n": 41271,
+          "p50_ms": 0.238,
+          "p95_ms": 15.959,
+          "p99_ms": 54.681,
+          "total_s": 160.71,
+          "mean_ms": 3.894
+        },
+        "app|sched_yield": {
+          "n": 3379,
+          "p50_ms": 0.002,
+          "p95_ms": 0.058,
+          "p99_ms": 0.433,
+          "total_s": 0.06,
+          "mean_ms": 0.017
+        },
+        "app|socket": {
+          "n": 4447,
+          "p50_ms": 0.012,
+          "p95_ms": 0.019,
+          "p99_ms": 0.032,
+          "total_s": 0.06,
+          "mean_ms": 0.013
+        },
+        "app|setsockopt": {
+          "n": 13163,
+          "p50_ms": 0.001,
+          "p95_ms": 0.004,
+          "p99_ms": 0.005,
+          "total_s": 0.02,
+          "mean_ms": 0.002
+        },
+        "app|connect": {
+          "n": 4447,
+          "p50_ms": 0.011,
+          "p95_ms": 0.09,
+          "p99_ms": 0.103,
+          "total_s": 0.16,
+          "mean_ms": 0.036
+        },
+        "app|epoll_ctl": {
+          "n": 8989,
+          "p50_ms": 0.004,
+          "p95_ms": 0.011,
+          "p99_ms": 0.016,
+          "total_s": 0.05,
+          "mean_ms": 0.005
+        },
+        "app|getsockname": {
+          "n": 4460,
+          "p50_ms": 0.002,
+          "p95_ms": 0.002,
+          "p99_ms": 0.003,
+          "total_s": 0.01,
+          "mean_ms": 0.002
+        },
+        "app|getpeername": {
+          "n": 4447,
+          "p50_ms": 0.001,
+          "p95_ms": 0.002,
+          "p99_ms": 0.002,
+          "total_s": 0.01,
+          "mean_ms": 0.002
+        },
+        "app|close": {
+          "n": 4551,
+          "p50_ms": 0.011,
+          "p95_ms": 0.025,
+          "p99_ms": 0.045,
+          "total_s": 0.06,
+          "mean_ms": 0.013
+        },
+        "app|getsockopt": {
+          "n": 1731,
+          "p50_ms": 0.003,
+          "p95_ms": 0.004,
+          "p99_ms": 0.009,
+          "total_s": 0.0,
+          "mean_ms": 0.003
+        },
+        "mysqld|accept": {
+          "n": 1731,
+          "p50_ms": 0.01,
+          "p95_ms": 0.019,
+          "p99_ms": 0.026,
+          "total_s": 0.02,
+          "mean_ms": 0.012
+        },
+        "mysqld|futex": {
+          "n": 5953,
+          "p50_ms": 0.007,
+          "p95_ms": 574.938,
+          "p99_ms": 1000.077,
+          "total_s": 803.04,
+          "mean_ms": 134.897
+        },
+        "mysqld|setsockopt": {
+          "n": 3462,
+          "p50_ms": 0.002,
+          "p95_ms": 0.003,
+          "p99_ms": 0.012,
+          "total_s": 0.01,
+          "mean_ms": 0.002
+        },
+        "mysqld|gettid": {
+          "n": 1731,
+          "p50_ms": 0.001,
+          "p95_ms": 0.002,
+          "p99_ms": 0.002,
+          "total_s": 0.0,
+          "mean_ms": 0.001
+        },
+        "mysqld|getpeername": {
+          "n": 1731,
+          "p50_ms": 0.002,
+          "p95_ms": 0.002,
+          "p99_ms": 0.004,
+          "total_s": 0.0,
+          "mean_ms": 0.002
+        },
+        "mysqld|open": {
+          "n": 1731,
+          "p50_ms": 0.017,
+          "p95_ms": 0.024,
+          "p99_ms": 0.038,
+          "total_s": 0.03,
+          "mean_ms": 0.017
+        },
+        "mysqld|read": {
+          "n": 1731,
+          "p50_ms": 0.002,
+          "p95_ms": 0.002,
+          "p99_ms": 0.003,
+          "total_s": 0.0,
+          "mean_ms": 0.002
+        },
+        "mysqld|close": {
+          "n": 3462,
+          "p50_ms": 0.004,
+          "p95_ms": 0.01,
+          "p99_ms": 0.018,
+          "total_s": 0.02,
+          "mean_ms": 0.005
+        },
+        "mysqld|access": {
+          "n": 1731,
+          "p50_ms": 0.004,
+          "p95_ms": 0.006,
+          "p99_ms": 0.021,
+          "total_s": 0.01,
+          "mean_ms": 0.005
+        },
+        "mysqld|madvise": {
+          "n": 4041,
+          "p50_ms": 0.007,
+          "p95_ms": 0.015,
+          "p99_ms": 0.028,
+          "total_s": 0.03,
+          "mean_ms": 0.008
+        },
+        "mysqld|shutdown": {
+          "n": 1731,
+          "p50_ms": 0.039,
+          "p95_ms": 0.06,
+          "p99_ms": 0.072,
+          "total_s": 0.07,
+          "mean_ms": 0.04
+        },
+        "app|select": {
+          "n": 3878,
+          "p50_ms": 0.085,
+          "p95_ms": 0.107,
+          "p99_ms": 0.215,
+          "total_s": 0.33,
+          "mean_ms": 0.085
+        },
+        "app|epoll_wait": {
+          "n": 1931,
+          "p50_ms": 0.003,
+          "p95_ms": 139.2,
+          "p99_ms": 227.39,
+          "total_s": 54.65,
+          "mean_ms": 28.299
+        },
+        "app|getpid": {
+          "n": 1848,
+          "p50_ms": 0.001,
+          "p95_ms": 0.001,
+          "p99_ms": 0.002,
+          "total_s": 0.0,
+          "mean_ms": 0.001
+        },
+        "app|tgkill": {
+          "n": 1848,
+          "p50_ms": 0.008,
+          "p95_ms": 0.019,
+          "p99_ms": 0.026,
+          "total_s": 0.02,
+          "mean_ms": 0.009
+        },
+        "mysqld|io_getevents": {
+          "n": 1090,
+          "p50_ms": 500.073,
+          "p95_ms": 500.099,
+          "p99_ms": 500.237,
+          "total_s": 545.08,
+          "mean_ms": 500.078
+        },
+        "app|newfstatat": {
+          "n": 66,
+          "p50_ms": 0.005,
+          "p95_ms": 0.016,
+          "p99_ms": 0.027,
+          "total_s": 0.0,
+          "mean_ms": 0.008
+        },
+        "mysqld|nanosleep": {
+          "n": 54,
+          "p50_ms": 1000.073,
+          "p95_ms": 1000.098,
+          "p99_ms": 1000.102,
+          "total_s": 54.0,
+          "mean_ms": 1000.073
+        },
+        "app|statfs": {
+          "n": 11,
+          "p50_ms": 0.003,
+          "p95_ms": 0.004,
+          "p99_ms": 0.004,
+          "total_s": 0.0,
+          "mean_ms": 0.003
+        },
+        "app|openat": {
+          "n": 88,
+          "p50_ms": 0.008,
+          "p95_ms": 0.016,
+          "p99_ms": 0.019,
+          "total_s": 0.0,
+          "mean_ms": 0.009
+        },
+        "app|fcntl": {
+          "n": 132,
+          "p50_ms": 0.0,
+          "p95_ms": 0.001,
+          "p99_ms": 0.002,
+          "total_s": 0.0,
+          "mean_ms": 0.001
+        },
+        "app|newstat": {
+          "n": 22,
+          "p50_ms": 0.01,
+          "p95_ms": 0.016,
+          "p99_ms": 0.022,
+          "total_s": 0.0,
+          "mean_ms": 0.009
+        },
+        "app|getdents64": {
+          "n": 22,
+          "p50_ms": 0.009,
+          "p95_ms": 0.011,
+          "p99_ms": 0.012,
+          "total_s": 0.0,
+          "mean_ms": 0.005
+        },
+        "app|accept4": {
+          "n": 26,
+          "p50_ms": 0.006,
+          "p95_ms": 0.015,
+          "p99_ms": 0.017,
+          "total_s": 0.0,
+          "mean_ms": 0.007
+        }
+      }
+    },
+    "incident": {
+      "range": [
+        "18:09:35",
+        "18:10:35"
+      ],
+      "per_call": {
+        "app|futex": {
+          "n": 98403,
+          "p50_ms": 0.011,
+          "p95_ms": 13.655,
+          "p99_ms": 80.17,
+          "total_s": 1489.84,
+          "mean_ms": 15.14
+        },
+        "app|read": {
+          "n": 54338,
+          "p50_ms": 0.003,
+          "p95_ms": 0.007,
+          "p99_ms": 0.013,
+          "total_s": 0.18,
+          "mean_ms": 0.003
+        },
+        "app|epoll_pwait": {
+          "n": 76834,
+          "p50_ms": 0.001,
+          "p95_ms": 5.058,
+          "p99_ms": 10.641,
+          "total_s": 57.46,
+          "mean_ms": 0.748
+        },
+        "mysqld|sendto": {
+          "n": 12774,
+          "p50_ms": 0.036,
+          "p95_ms": 0.05,
+          "p99_ms": 0.062,
+          "total_s": 0.47,
+          "mean_ms": 0.036
+        },
+        "mysqld|recvfrom": {
+          "n": 49335,
+          "p50_ms": 0.002,
+          "p95_ms": 0.015,
+          "p99_ms": 0.026,
+          "total_s": 0.16,
+          "mean_ms": 0.003
+        },
+        "app|socket": {
+          "n": 5346,
+          "p50_ms": 0.011,
+          "p95_ms": 0.018,
+          "p99_ms": 0.025,
+          "total_s": 0.06,
+          "mean_ms": 0.012
+        },
+        "app|setsockopt": {
+          "n": 15374,
+          "p50_ms": 0.001,
+          "p95_ms": 0.004,
+          "p99_ms": 0.005,
+          "total_s": 0.02,
+          "mean_ms": 0.002
+        },
+        "app|connect": {
+          "n": 5346,
+          "p50_ms": 0.009,
+          "p95_ms": 0.089,
+          "p99_ms": 0.101,
+          "total_s": 0.16,
+          "mean_ms": 0.031
+        },
+        "app|epoll_ctl": {
+          "n": 10888,
+          "p50_ms": 0.005,
+          "p95_ms": 0.011,
+          "p99_ms": 0.016,
+          "total_s": 0.06,
+          "mean_ms": 0.006
+        },
+        "app|getsockname": {
+          "n": 5520,
+          "p50_ms": 0.001,
+          "p95_ms": 0.002,
+          "p99_ms": 0.003,
+          "total_s": 0.01,
+          "mean_ms": 0.001
+        },
+        "app|getpeername": {
+          "n": 5346,
+          "p50_ms": 0.001,
+          "p95_ms": 0.002,
+          "p99_ms": 0.002,
+          "total_s": 0.01,
+          "mean_ms": 0.001
+        },
+        "app|nanosleep": {
+          "n": 52204,
+          "p50_ms": 0.085,
+          "p95_ms": 0.104,
+          "p99_ms": 0.13,
+          "total_s": 4.42,
+          "mean_ms": 0.085
+        },
+        "app|write": {
+          "n": 32957,
+          "p50_ms": 0.03,
+          "p95_ms": 0.049,
+          "p99_ms": 0.06,
+          "total_s": 0.93,
+          "mean_ms": 0.028
+        },
+        "app|close": {
+          "n": 5392,
+          "p50_ms": 0.009,
+          "p95_ms": 0.029,
+          "p99_ms": 0.048,
+          "total_s": 0.07,
+          "mean_ms": 0.012
+        },
+        "app|getsockopt": {
+          "n": 1832,
+          "p50_ms": 0.002,
+          "p95_ms": 0.004,
+          "p99_ms": 0.004,
+          "total_s": 0.0,
+          "mean_ms": 0.003
+        },
+        "mysqld|poll": {
+          "n": 17245,
+          "p50_ms": 462.163,
+          "p95_ms": 587.698,
+          "p99_ms": 598.255,
+          "total_s": 6360.73,
+          "mean_ms": 368.845
+        },
+        "mysqld|accept": {
+          "n": 1832,
+          "p50_ms": 0.01,
+          "p95_ms": 0.014,
+          "p99_ms": 0.024,
+          "total_s": 0.02,
+          "mean_ms": 0.01
+        },
+        "mysqld|futex": {
+          "n": 8714,
+          "p50_ms": 0.001,
+          "p95_ms": 326.978,
+          "p99_ms": 1000.077,
+          "total_s": 606.04,
+          "mean_ms": 69.548
+        },
+        "mysqld|setsockopt": {
+          "n": 3664,
+          "p50_ms": 0.002,
+          "p95_ms": 0.004,
+          "p99_ms": 0.004,
+          "total_s": 0.01,
+          "mean_ms": 0.002
+        },
+        "mysqld|gettid": {
+          "n": 1832,
+          "p50_ms": 0.001,
+          "p95_ms": 0.002,
+          "p99_ms": 0.002,
+          "total_s": 0.0,
+          "mean_ms": 0.001
+        },
+        "mysqld|getpeername": {
+          "n": 1832,
+          "p50_ms": 0.001,
+          "p95_ms": 0.002,
+          "p99_ms": 0.002,
+          "total_s": 0.0,
+          "mean_ms": 0.001
+        },
+        "mysqld|open": {
+          "n": 1832,
+          "p50_ms": 0.017,
+          "p95_ms": 0.022,
+          "p99_ms": 0.034,
+          "total_s": 0.03,
+          "mean_ms": 0.017
+        },
+        "mysqld|read": {
+          "n": 1832,
+          "p50_ms": 0.002,
+          "p95_ms": 0.002,
+          "p99_ms": 0.002,
+          "total_s": 0.0,
+          "mean_ms": 0.002
+        },
+        "mysqld|close": {
+          "n": 3553,
+          "p50_ms": 0.002,
+          "p95_ms": 0.012,
+          "p99_ms": 0.02,
+          "total_s": 0.02,
+          "mean_ms": 0.006
+        },
+        "mysqld|access": {
+          "n": 1814,
+          "p50_ms": 0.006,
+          "p95_ms": 0.008,
+          "p99_ms": 0.017,
+          "total_s": 0.01,
+          "mean_ms": 0.006
+        },
+        "mysqld|shutdown": {
+          "n": 1721,
+          "p50_ms": 0.047,
+          "p95_ms": 0.064,
+          "p99_ms": 0.076,
+          "total_s": 0.08,
+          "mean_ms": 0.047
+        },
+        "app|select": {
+          "n": 1519,
+          "p50_ms": 0.084,
+          "p95_ms": 0.107,
+          "p99_ms": 0.169,
+          "total_s": 0.13,
+          "mean_ms": 0.084
+        },
+        "app|epoll_wait": {
+          "n": 707,
+          "p50_ms": 0.003,
+          "p95_ms": 431.364,
+          "p99_ms": 723.557,
+          "total_s": 59.9,
+          "mean_ms": 84.729
+        },
+        "app|sched_yield": {
+          "n": 968,
+          "p50_ms": 0.001,
+          "p95_ms": 0.004,
+          "p99_ms": 0.23,
+          "total_s": 0.01,
+          "mean_ms": 0.007
+        },
+        "mysqld|madvise": {
+          "n": 1131,
+          "p50_ms": 0.01,
+          "p95_ms": 0.025,
+          "p99_ms": 0.042,
+          "total_s": 0.02,
+          "mean_ms": 0.016
+        },
+        "app|getpid": {
+          "n": 256,
+          "p50_ms": 0.001,
+          "p95_ms": 0.001,
+          "p99_ms": 0.002,
+          "total_s": 0.0,
+          "mean_ms": 0.001
+        },
+        "app|tgkill": {
+          "n": 256,
+          "p50_ms": 0.01,
+          "p95_ms": 0.028,
+          "p99_ms": 0.035,
+          "total_s": 0.0,
+          "mean_ms": 0.011
+        },
+        "app|madvise": {
+          "n": 513,
+          "p50_ms": 0.011,
+          "p95_ms": 0.029,
+          "p99_ms": 0.044,
+          "total_s": 0.01,
+          "mean_ms": 0.012
+        },
+        "app|accept4": {
+          "n": 334,
+          "p50_ms": 0.006,
+          "p95_ms": 0.012,
+          "p99_ms": 0.015,
+          "total_s": 0.0,
+          "mean_ms": 0.007
+        },
+        "mysqld|clone": {
+          "n": 488,
+          "p50_ms": 0.043,
+          "p95_ms": 0.061,
+          "p99_ms": 0.076,
+          "total_s": 0.02,
+          "mean_ms": 0.044
+        },
+        "mysqld|set_robust_list": {
+          "n": 488,
+          "p50_ms": 0.001,
+          "p95_ms": 0.001,
+          "p99_ms": 0.001,
+          "total_s": 0.0,
+          "mean_ms": 0.001
+        },
+        "mysqld|mprotect": {
+          "n": 1038,
+          "p50_ms": 0.001,
+          "p95_ms": 0.01,
+          "p99_ms": 0.015,
+          "total_s": 0.0,
+          "mean_ms": 0.003
+        },
+        "mysqld|io_getevents": {
+          "n": 1190,
+          "p50_ms": 500.074,
+          "p95_ms": 500.097,
+          "p99_ms": 500.113,
+          "total_s": 595.09,
+          "mean_ms": 500.076
+        },
+        "mysqld|mmap": {
+          "n": 30,
+          "p50_ms": 0.011,
+          "p95_ms": 0.022,
+          "p99_ms": 0.025,
+          "total_s": 0.0,
+          "mean_ms": 0.012
+        },
+        "mysqld|nanosleep": {
+          "n": 59,
+          "p50_ms": 1000.073,
+          "p95_ms": 1000.089,
+          "p99_ms": 1000.1,
+          "total_s": 59.0,
+          "mean_ms": 1000.073
+        },
+        "app|newfstatat": {
+          "n": 72,
+          "p50_ms": 0.005,
+          "p95_ms": 0.017,
+          "p99_ms": 0.041,
+          "total_s": 0.0,
+          "mean_ms": 0.008
+        },
+        "app|statfs": {
+          "n": 12,
+          "p50_ms": 0.003,
+          "p95_ms": 0.004,
+          "p99_ms": 0.004,
+          "total_s": 0.0,
+          "mean_ms": 0.003
+        },
+        "app|openat": {
+          "n": 96,
+          "p50_ms": 0.008,
+          "p95_ms": 0.015,
+          "p99_ms": 0.016,
+          "total_s": 0.0,
+          "mean_ms": 0.008
+        },
+        "app|fcntl": {
+          "n": 144,
+          "p50_ms": 0.0,
+          "p95_ms": 0.001,
+          "p99_ms": 0.002,
+          "total_s": 0.0,
+          "mean_ms": 0.0
+        },
+        "app|newstat": {
+          "n": 24,
+          "p50_ms": 0.011,
+          "p95_ms": 0.016,
+          "p99_ms": 0.017,
+          "total_s": 0.0,
+          "mean_ms": 0.009
+        },
+        "app|getdents64": {
+          "n": 24,
+          "p50_ms": 0.007,
+          "p95_ms": 0.011,
+          "p99_ms": 0.011,
+          "total_s": 0.0,
+          "mean_ms": 0.005
+        },
+        "app|mmap": {
+          "n": 1,
+          "p50_ms": 0.024,
+          "p95_ms": 0.024,
+          "p99_ms": 0.024,
+          "total_s": 0.0,
+          "mean_ms": 0.024
+        }
+      }
+    }
+  },
+  "comparison": [
+    {
+      "comm_syscall": "mysqld|poll",
+      "n_incident": 17245,
+      "p95_baseline_ms": 15.959,
+      "p95_incident_ms": 587.698,
+      "p95_x": 36.83,
+      "total_s_baseline": 160.71,
+      "total_s_incident": 6360.73
+    },
+    {
+      "comm_syscall": "app|epoll_wait",
+      "n_incident": 707,
+      "p95_baseline_ms": 139.2,
+      "p95_incident_ms": 431.364,
+      "p95_x": 3.1,
+      "total_s_baseline": 54.65,
+      "total_s_incident": 59.9
+    },
+    {
+      "comm_syscall": "app|epoll_pwait",
+      "n_incident": 76834,
+      "p95_baseline_ms": 1.716,
+      "p95_incident_ms": 5.058,
+      "p95_x": 2.95,
+      "total_s_baseline": 50.04,
+      "total_s_incident": 57.46
+    },
+    {
+      "comm_syscall": "mysqld|madvise",
+      "n_incident": 1131,
+      "p95_baseline_ms": 0.015,
+      "p95_incident_ms": 0.025,
+      "p95_x": 1.67,
+      "total_s_baseline": 0.03,
+      "total_s_incident": 0.02
+    },
+    {
+      "comm_syscall": "app|futex",
+      "n_incident": 98403,
+      "p95_baseline_ms": 8.525,
+      "p95_incident_ms": 13.655,
+      "p95_x": 1.6,
+      "total_s_baseline": 1370.76,
+      "total_s_incident": 1489.84
+    },
+    {
+      "comm_syscall": "app|madvise",
+      "n_incident": 513,
+      "p95_baseline_ms": 0.019,
+      "p95_incident_ms": 0.029,
+      "p95_x": 1.53,
+      "total_s_baseline": 0.03,
+      "total_s_incident": 0.01
+    },
+    {
+      "comm_syscall": "app|tgkill",
+      "n_incident": 256,
+      "p95_baseline_ms": 0.019,
+      "p95_incident_ms": 0.028,
+      "p95_x": 1.47,
+      "total_s_baseline": 0.02,
+      "total_s_incident": 0.0
+    },
+    {
+      "comm_syscall": "app|read",
+      "n_incident": 54338,
+      "p95_baseline_ms": 0.005,
+      "p95_incident_ms": 0.007,
+      "p95_x": 1.4,
+      "total_s_baseline": 0.4,
+      "total_s_incident": 0.18
+    },
+    {
+      "comm_syscall": "mysqld|access",
+      "n_incident": 1814,
+      "p95_baseline_ms": 0.006,
+      "p95_incident_ms": 0.008,
+      "p95_x": 1.33,
+      "total_s_baseline": 0.01,
+      "total_s_incident": 0.01
+    },
+    {
+      "comm_syscall": "mysqld|setsockopt",
+      "n_incident": 3664,
+      "p95_baseline_ms": 0.003,
+      "p95_incident_ms": 0.004,
+      "p95_x": 1.33,
+      "total_s_baseline": 0.01,
+      "total_s_incident": 0.01
+    },
+    {
+      "comm_syscall": "app|write",
+      "n_incident": 32957,
+      "p95_baseline_ms": 0.038,
+      "p95_incident_ms": 0.049,
+      "p95_x": 1.29,
+      "total_s_baseline": 1.69,
+      "total_s_incident": 0.93
+    },
+    {
+      "comm_syscall": "mysqld|sendto",
+      "n_incident": 12774,
+      "p95_baseline_ms": 0.039,
+      "p95_incident_ms": 0.05,
+      "p95_x": 1.28,
+      "total_s_baseline": 0.78,
+      "total_s_incident": 0.47
+    },
+    {
+      "comm_syscall": "mysqld|close",
+      "n_incident": 3553,
+      "p95_baseline_ms": 0.01,
+      "p95_incident_ms": 0.012,
+      "p95_x": 1.2,
+      "total_s_baseline": 0.02,
+      "total_s_incident": 0.02
+    },
+    {
+      "comm_syscall": "app|close",
+      "n_incident": 5392,
+      "p95_baseline_ms": 0.025,
+      "p95_incident_ms": 0.029,
+      "p95_x": 1.16,
+      "total_s_baseline": 0.06,
+      "total_s_incident": 0.07
+    },
+    {
+      "comm_syscall": "mysqld|shutdown",
+      "n_incident": 1721,
+      "p95_baseline_ms": 0.06,
+      "p95_incident_ms": 0.064,
+      "p95_x": 1.07,
+      "total_s_baseline": 0.07,
+      "total_s_incident": 0.08
+    },
+    {
+      "comm_syscall": "app|newfstatat",
+      "n_incident": 72,
+      "p95_baseline_ms": 0.016,
+      "p95_incident_ms": 0.017,
+      "p95_x": 1.06,
+      "total_s_baseline": 0.0,
+      "total_s_incident": 0.0
+    },
+    {
+      "comm_syscall": "app|epoll_ctl",
+      "n_incident": 10888,
+      "p95_baseline_ms": 0.011,
+      "p95_incident_ms": 0.011,
+      "p95_x": 1.0,
+      "total_s_baseline": 0.05,
+      "total_s_incident": 0.06
+    },
+    {
+      "comm_syscall": "app|fcntl",
+      "n_incident": 144,
+      "p95_baseline_ms": 0.001,
+      "p95_incident_ms": 0.001,
+      "p95_x": 1.0,
+      "total_s_baseline": 0.0,
+      "total_s_incident": 0.0
+    },
+    {
+      "comm_syscall": "app|getdents64",
+      "n_incident": 24,
+      "p95_baseline_ms": 0.011,
+      "p95_incident_ms": 0.011,
+      "p95_x": 1.0,
+      "total_s_baseline": 0.0,
+      "total_s_incident": 0.0
+    },
+    {
+      "comm_syscall": "app|getpeername",
+      "n_incident": 5346,
+      "p95_baseline_ms": 0.002,
+      "p95_incident_ms": 0.002,
+      "p95_x": 1.0,
+      "total_s_baseline": 0.01,
+      "total_s_incident": 0.01
+    },
+    {
+      "comm_syscall": "app|getpid",
+      "n_incident": 256,
+      "p95_baseline_ms": 0.001,
+      "p95_incident_ms": 0.001,
+      "p95_x": 1.0,
+      "total_s_baseline": 0.0,
+      "total_s_incident": 0.0
+    },
+    {
+      "comm_syscall": "app|getsockname",
+      "n_incident": 5520,
+      "p95_baseline_ms": 0.002,
+      "p95_incident_ms": 0.002,
+      "p95_x": 1.0,
+      "total_s_baseline": 0.01,
+      "total_s_incident": 0.01
+    },
+    {
+      "comm_syscall": "app|getsockopt",
+      "n_incident": 1832,
+      "p95_baseline_ms": 0.004,
+      "p95_incident_ms": 0.004,
+      "p95_x": 1.0,
+      "total_s_baseline": 0.0,
+      "total_s_incident": 0.0
+    },
+    {
+      "comm_syscall": "app|newstat",
+      "n_incident": 24,
+      "p95_baseline_ms": 0.016,
+      "p95_incident_ms": 0.016,
+      "p95_x": 1.0,
+      "total_s_baseline": 0.0,
+      "total_s_incident": 0.0
+    },
+    {
+      "comm_syscall": "app|select",
+      "n_incident": 1519,
+      "p95_baseline_ms": 0.107,
+      "p95_incident_ms": 0.107,
+      "p95_x": 1.0,
+      "total_s_baseline": 0.33,
+      "total_s_incident": 0.13
+    },
+    {
+      "comm_syscall": "app|setsockopt",
+      "n_incident": 15374,
+      "p95_baseline_ms": 0.004,
+      "p95_incident_ms": 0.004,
+      "p95_x": 1.0,
+      "total_s_baseline": 0.02,
+      "total_s_incident": 0.02
+    },
+    {
+      "comm_syscall": "mysqld|getpeername",
+      "n_incident": 1832,
+      "p95_baseline_ms": 0.002,
+      "p95_incident_ms": 0.002,
+      "p95_x": 1.0,
+      "total_s_baseline": 0.0,
+      "total_s_incident": 0.0
+    },
+    {
+      "comm_syscall": "mysqld|gettid",
+      "n_incident": 1832,
+      "p95_baseline_ms": 0.002,
+      "p95_incident_ms": 0.002,
+      "p95_x": 1.0,
+      "total_s_baseline": 0.0,
+      "total_s_incident": 0.0
+    },
+    {
+      "comm_syscall": "mysqld|io_getevents",
+      "n_incident": 1190,
+      "p95_baseline_ms": 500.099,
+      "p95_incident_ms": 500.097,
+      "p95_x": 1.0,
+      "total_s_baseline": 545.08,
+      "total_s_incident": 595.09
+    },
+    {
+      "comm_syscall": "mysqld|nanosleep",
+      "n_incident": 59,
+      "p95_baseline_ms": 1000.098,
+      "p95_incident_ms": 1000.089,
+      "p95_x": 1.0,
+      "total_s_baseline": 54.0,
+      "total_s_incident": 59.0
+    },
+    {
+      "comm_syscall": "mysqld|read",
+      "n_incident": 1832,
+      "p95_baseline_ms": 0.002,
+      "p95_incident_ms": 0.002,
+      "p95_x": 1.0,
+      "total_s_baseline": 0.0,
+      "total_s_incident": 0.0
+    },
+    {
+      "comm_syscall": "app|connect",
+      "n_incident": 5346,
+      "p95_baseline_ms": 0.09,
+      "p95_incident_ms": 0.089,
+      "p95_x": 0.99,
+      "total_s_baseline": 0.16,
+      "total_s_incident": 0.16
+    },
+    {
+      "comm_syscall": "app|socket",
+      "n_incident": 5346,
+      "p95_baseline_ms": 0.019,
+      "p95_incident_ms": 0.018,
+      "p95_x": 0.95,
+      "total_s_baseline": 0.06,
+      "total_s_incident": 0.06
+    },
+    {
+      "comm_syscall": "app|nanosleep",
+      "n_incident": 52204,
+      "p95_baseline_ms": 0.111,
+      "p95_incident_ms": 0.104,
+      "p95_x": 0.94,
+      "total_s_baseline": 9.19,
+      "total_s_incident": 4.42
+    },
+    {
+      "comm_syscall": "app|openat",
+      "n_incident": 96,
+      "p95_baseline_ms": 0.016,
+      "p95_incident_ms": 0.015,
+      "p95_x": 0.94,
+      "total_s_baseline": 0.0,
+      "total_s_incident": 0.0
+    },
+    {
+      "comm_syscall": "mysqld|open",
+      "n_incident": 1832,
+      "p95_baseline_ms": 0.024,
+      "p95_incident_ms": 0.022,
+      "p95_x": 0.92,
+      "total_s_baseline": 0.03,
+      "total_s_incident": 0.03
+    },
+    {
+      "comm_syscall": "app|accept4",
+      "n_incident": 334,
+      "p95_baseline_ms": 0.015,
+      "p95_incident_ms": 0.012,
+      "p95_x": 0.8,
+      "total_s_baseline": 0.0,
+      "total_s_incident": 0.0
+    },
+    {
+      "comm_syscall": "mysqld|recvfrom",
+      "n_incident": 49335,
+      "p95_baseline_ms": 0.02,
+      "p95_incident_ms": 0.015,
+      "p95_x": 0.75,
+      "total_s_baseline": 0.46,
+      "total_s_incident": 0.16
+    },
+    {
+      "comm_syscall": "mysqld|accept",
+      "n_incident": 1832,
+      "p95_baseline_ms": 0.019,
+      "p95_incident_ms": 0.014,
+      "p95_x": 0.74,
+      "total_s_baseline": 0.02,
+      "total_s_incident": 0.02
+    },
+    {
+      "comm_syscall": "mysqld|futex",
+      "n_incident": 8714,
+      "p95_baseline_ms": 574.938,
+      "p95_incident_ms": 326.978,
+      "p95_x": 0.57,
+      "total_s_baseline": 803.04,
+      "total_s_incident": 606.04
+    },
+    {
+      "comm_syscall": "app|sched_yield",
+      "n_incident": 968,
+      "p95_baseline_ms": 0.058,
+      "p95_incident_ms": 0.004,
+      "p95_x": 0.07,
+      "total_s_baseline": 0.06,
+      "total_s_incident": 0.01
+    }
+  ]
+}

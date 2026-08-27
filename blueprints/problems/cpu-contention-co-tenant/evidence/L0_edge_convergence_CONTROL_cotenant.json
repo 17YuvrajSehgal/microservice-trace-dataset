@@ -1,0 +1,78 @@
+{
+  "run": "noisy_neighbor_aggressive_steady_r1",
+  "slow_threshold_x": 2.0,
+  "candidates": [
+    {
+      "component": "catalogue",
+      "max_incoming_x": 1.7,
+      "n_slow_incoming": 0,
+      "slow_callers": [],
+      "emits_own_spans": false,
+      "n_slow_outgoing": 0,
+      "max_outgoing_x": 0,
+      "is_terminal": true
+    },
+    {
+      "component": "carts",
+      "max_incoming_x": 1.6,
+      "n_slow_incoming": 0,
+      "slow_callers": [],
+      "emits_own_spans": true,
+      "n_slow_outgoing": 0,
+      "max_outgoing_x": 1.0,
+      "is_terminal": true
+    },
+    {
+      "component": "user",
+      "max_incoming_x": 1.5,
+      "n_slow_incoming": 0,
+      "slow_callers": [],
+      "emits_own_spans": false,
+      "n_slow_outgoing": 0,
+      "max_outgoing_x": 0,
+      "is_terminal": true
+    },
+    {
+      "component": "orders",
+      "max_incoming_x": 1.4,
+      "n_slow_incoming": 0,
+      "slow_callers": [],
+      "emits_own_spans": true,
+      "n_slow_outgoing": 0,
+      "max_outgoing_x": 1.6,
+      "is_terminal": true
+    },
+    {
+      "component": "orders-db",
+      "max_incoming_x": 1.4,
+      "n_slow_incoming": 0,
+      "slow_callers": [],
+      "emits_own_spans": false,
+      "n_slow_outgoing": 0,
+      "max_outgoing_x": 0,
+      "is_terminal": true
+    },
+    {
+      "component": "payment",
+      "max_incoming_x": 1.3,
+      "n_slow_incoming": 0,
+      "slow_callers": [],
+      "emits_own_spans": false,
+      "n_slow_outgoing": 0,
+      "max_outgoing_x": 0,
+      "is_terminal": true
+    },
+    {
+      "component": "carts-db",
+      "max_incoming_x": 1.0,
+      "n_slow_incoming": 0,
+      "slow_callers": [],
+      "emits_own_spans": false,
+      "n_slow_outgoing": 0,
+      "max_outgoing_x": 0,
+      "is_terminal": true
+    }
+  ],
+  "converged_on": null,
+  "reasoning": "no component has slow incoming edges without also having slow outgoing edges - either the cause is not on the traced path, or every hop slowed together"
+}

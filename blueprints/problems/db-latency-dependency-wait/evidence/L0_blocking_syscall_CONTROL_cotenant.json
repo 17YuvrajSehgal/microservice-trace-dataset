@@ -1,0 +1,1806 @@
+{
+  "ctf": "/scratch/yuvraj17/l0/sockshop/noisy_neighbor_aggressive_steady_r1/ctf",
+  "target_service": "host",
+  "fault_window_utc": [
+    "2026-07-28T22:04:49Z",
+    "2026-07-28T22:06:49Z"
+  ],
+  "comms_filter": [
+    "mysqld",
+    "app",
+    "node"
+  ],
+  "windows": {
+    "baseline": {
+      "range": [
+        "22:03:54",
+        "22:04:49"
+      ],
+      "per_call": {
+        "node|write": {
+          "n": 100703,
+          "p50_ms": 0.009,
+          "p95_ms": 0.038,
+          "p99_ms": 0.047,
+          "total_s": 1.63,
+          "mean_ms": 0.016
+        },
+        "app|futex": {
+          "n": 197926,
+          "p50_ms": 0.011,
+          "p95_ms": 9.015,
+          "p99_ms": 68.525,
+          "total_s": 1341.26,
+          "mean_ms": 6.777
+        },
+        "app|read": {
+          "n": 128152,
+          "p50_ms": 0.003,
+          "p95_ms": 0.005,
+          "p99_ms": 0.018,
+          "total_s": 0.41,
+          "mean_ms": 0.003
+        },
+        "app|epoll_pwait": {
+          "n": 138662,
+          "p50_ms": 0.001,
+          "p95_ms": 1.395,
+          "p99_ms": 8.409,
+          "total_s": 49.98,
+          "mean_ms": 0.36
+        },
+        "app|nanosleep": {
+          "n": 107603,
+          "p50_ms": 0.084,
+          "p95_ms": 0.116,
+          "p99_ms": 0.288,
+          "total_s": 9.48,
+          "mean_ms": 0.088
+        },
+        "app|write": {
+          "n": 79557,
+          "p50_ms": 0.023,
+          "p95_ms": 0.039,
+          "p99_ms": 0.048,
+          "total_s": 1.7,
+          "mean_ms": 0.021
+        },
+        "mysqld|recvfrom": {
+          "n": 121332,
+          "p50_ms": 0.002,
+          "p95_ms": 0.019,
+          "p99_ms": 0.028,
+          "total_s": 0.46,
+          "mean_ms": 0.004
+        },
+        "mysqld|sendto": {
+          "n": 29279,
+          "p50_ms": 0.026,
+          "p95_ms": 0.039,
+          "p99_ms": 0.049,
+          "total_s": 0.79,
+          "mean_ms": 0.027
+        },
+        "node|getpid": {
+          "n": 26131,
+          "p50_ms": 0.001,
+          "p95_ms": 0.001,
+          "p99_ms": 0.002,
+          "total_s": 0.02,
+          "mean_ms": 0.001
+        },
+        "mysqld|poll": {
+          "n": 41244,
+          "p50_ms": 0.242,
+          "p95_ms": 16.644,
+          "p99_ms": 49.96,
+          "total_s": 160.92,
+          "mean_ms": 3.902
+        },
+        "node|writev": {
+          "n": 24710,
+          "p50_ms": 0.035,
+          "p95_ms": 0.056,
+          "p99_ms": 0.079,
+          "total_s": 0.92,
+          "mean_ms": 0.037
+        },
+        "node|epoll_pwait": {
+          "n": 21015,
+          "p50_ms": 0.005,
+          "p95_ms": 0.763,
+          "p99_ms": 2.525,
+          "total_s": 2.43,
+          "mean_ms": 0.115
+        },
+        "node|read": {
+          "n": 60523,
+          "p50_ms": 0.006,
+          "p95_ms": 0.028,
+          "p99_ms": 0.035,
+          "total_s": 0.51,
+          "mean_ms": 0.008
+        },
+        "node|futex": {
+          "n": 273037,
+          "p50_ms": 0.001,
+          "p95_ms": 8.511,
+          "p99_ms": 27.121,
+          "total_s": 430.72,
+          "mean_ms": 1.578
+        },
+        "node|statx": {
+          "n": 18921,
+          "p50_ms": 0.008,
+          "p95_ms": 0.018,
+          "p99_ms": 0.024,
+          "total_s": 0.18,
+          "mean_ms": 0.009
+        },
+        "node|mmap": {
+          "n": 50711,
+          "p50_ms": 0.007,
+          "p95_ms": 0.016,
+          "p99_ms": 0.028,
+          "total_s": 0.4,
+          "mean_ms": 0.008
+        },
+        "node|munmap": {
+          "n": 50944,
+          "p50_ms": 0.012,
+          "p95_ms": 0.028,
+          "p99_ms": 0.049,
+          "total_s": 0.72,
+          "mean_ms": 0.014
+        },
+        "mysqld|futex": {
+          "n": 26000,
+          "p50_ms": 0.001,
+          "p95_ms": 128.736,
+          "p99_ms": 467.175,
+          "total_s": 683.01,
+          "mean_ms": 26.269
+        },
+        "node|open": {
+          "n": 2662,
+          "p50_ms": 0.021,
+          "p95_ms": 0.033,
+          "p99_ms": 0.042,
+          "total_s": 0.06,
+          "mean_ms": 0.021
+        },
+        "node|fcntl": {
+          "n": 2656,
+          "p50_ms": 0.001,
+          "p95_ms": 0.002,
+          "p99_ms": 0.006,
+          "total_s": 0.0,
+          "mean_ms": 0.001
+        },
+        "node|pread64": {
+          "n": 2450,
+          "p50_ms": 0.007,
+          "p95_ms": 0.009,
+          "p99_ms": 0.018,
+          "total_s": 0.02,
+          "mean_ms": 0.007
+        },
+        "node|close": {
+          "n": 3163,
+          "p50_ms": 0.007,
+          "p95_ms": 0.016,
+          "p99_ms": 0.039,
+          "total_s": 0.02,
+          "mean_ms": 0.008
+        },
+        "app|select": {
+          "n": 4312,
+          "p50_ms": 0.084,
+          "p95_ms": 0.111,
+          "p99_ms": 0.253,
+          "total_s": 0.38,
+          "mean_ms": 0.087
+        },
+        "app|epoll_wait": {
+          "n": 2051,
+          "p50_ms": 0.003,
+          "p95_ms": 131.213,
+          "p99_ms": 246.918,
+          "total_s": 54.73,
+          "mean_ms": 26.683
+        },
+        "app|socket": {
+          "n": 4963,
+          "p50_ms": 0.012,
+          "p95_ms": 0.02,
+          "p99_ms": 0.034,
+          "total_s": 0.07,
+          "mean_ms": 0.013
+        },
+        "app|setsockopt": {
+          "n": 14650,
+          "p50_ms": 0.001,
+          "p95_ms": 0.004,
+          "p99_ms": 0.005,
+          "total_s": 0.03,
+          "mean_ms": 0.002
+        },
+        "app|connect": {
+          "n": 4963,
+          "p50_ms": 0.011,
+          "p95_ms": 0.091,
+          "p99_ms": 0.108,
+          "total_s": 0.18,
+          "mean_ms": 0.036
+        },
+        "app|epoll_ctl": {
+          "n": 10026,
+          "p50_ms": 0.004,
+          "p95_ms": 0.011,
+          "p99_ms": 0.016,
+          "total_s": 0.05,
+          "mean_ms": 0.005
+        },
+        "app|getsockname": {
+          "n": 4978,
+          "p50_ms": 0.002,
+          "p95_ms": 0.002,
+          "p99_ms": 0.003,
+          "total_s": 0.01,
+          "mean_ms": 0.002
+        },
+        "app|getpeername": {
+          "n": 4963,
+          "p50_ms": 0.001,
+          "p95_ms": 0.002,
+          "p99_ms": 0.002,
+          "total_s": 0.01,
+          "mean_ms": 0.002
+        },
+        "app|close": {
+          "n": 5070,
+          "p50_ms": 0.011,
+          "p95_ms": 0.025,
+          "p99_ms": 0.05,
+          "total_s": 0.07,
+          "mean_ms": 0.013
+        },
+        "app|getsockopt": {
+          "n": 1923,
+          "p50_ms": 0.003,
+          "p95_ms": 0.004,
+          "p99_ms": 0.012,
+          "total_s": 0.01,
+          "mean_ms": 0.003
+        },
+        "mysqld|accept": {
+          "n": 1923,
+          "p50_ms": 0.01,
+          "p95_ms": 0.019,
+          "p99_ms": 0.028,
+          "total_s": 0.02,
+          "mean_ms": 0.011
+        },
+        "mysqld|setsockopt": {
+          "n": 3846,
+          "p50_ms": 0.002,
+          "p95_ms": 0.004,
+          "p99_ms": 0.013,
+          "total_s": 0.01,
+          "mean_ms": 0.002
+        },
+        "mysqld|gettid": {
+          "n": 1923,
+          "p50_ms": 0.001,
+          "p95_ms": 0.002,
+          "p99_ms": 0.002,
+          "total_s": 0.0,
+          "mean_ms": 0.001
+        },
+        "mysqld|getpeername": {
+          "n": 1923,
+          "p50_ms": 0.002,
+          "p95_ms": 0.002,
+          "p99_ms": 0.003,
+          "total_s": 0.0,
+          "mean_ms": 0.002
+        },
+        "mysqld|open": {
+          "n": 1923,
+          "p50_ms": 0.017,
+          "p95_ms": 0.022,
+          "p99_ms": 0.035,
+          "total_s": 0.03,
+          "mean_ms": 0.017
+        },
+        "mysqld|read": {
+          "n": 1923,
+          "p50_ms": 0.002,
+          "p95_ms": 0.002,
+          "p99_ms": 0.003,
+          "total_s": 0.0,
+          "mean_ms": 0.002
+        },
+        "mysqld|close": {
+          "n": 3846,
+          "p50_ms": 0.004,
+          "p95_ms": 0.01,
+          "p99_ms": 0.02,
+          "total_s": 0.02,
+          "mean_ms": 0.005
+        },
+        "mysqld|access": {
+          "n": 1923,
+          "p50_ms": 0.004,
+          "p95_ms": 0.006,
+          "p99_ms": 0.016,
+          "total_s": 0.01,
+          "mean_ms": 0.005
+        },
+        "mysqld|shutdown": {
+          "n": 1923,
+          "p50_ms": 0.039,
+          "p95_ms": 0.059,
+          "p99_ms": 0.069,
+          "total_s": 0.08,
+          "mean_ms": 0.039
+        },
+        "mysqld|madvise": {
+          "n": 1531,
+          "p50_ms": 0.008,
+          "p95_ms": 0.019,
+          "p99_ms": 0.032,
+          "total_s": 0.02,
+          "mean_ms": 0.01
+        },
+        "app|sched_yield": {
+          "n": 3993,
+          "p50_ms": 0.002,
+          "p95_ms": 0.122,
+          "p99_ms": 0.531,
+          "total_s": 0.1,
+          "mean_ms": 0.025
+        },
+        "app|getpid": {
+          "n": 1827,
+          "p50_ms": 0.001,
+          "p95_ms": 0.001,
+          "p99_ms": 0.001,
+          "total_s": 0.0,
+          "mean_ms": 0.001
+        },
+        "app|tgkill": {
+          "n": 1827,
+          "p50_ms": 0.007,
+          "p95_ms": 0.019,
+          "p99_ms": 0.028,
+          "total_s": 0.02,
+          "mean_ms": 0.009
+        },
+        "app|madvise": {
+          "n": 6251,
+          "p50_ms": 0.006,
+          "p95_ms": 0.016,
+          "p99_ms": 0.029,
+          "total_s": 0.05,
+          "mean_ms": 0.007
+        },
+        "node|epoll_ctl": {
+          "n": 536,
+          "p50_ms": 0.003,
+          "p95_ms": 0.007,
+          "p99_ms": 0.008,
+          "total_s": 0.0,
+          "mean_ms": 0.004
+        },
+        "node|madvise": {
+          "n": 251,
+          "p50_ms": 0.002,
+          "p95_ms": 0.01,
+          "p99_ms": 0.022,
+          "total_s": 0.0,
+          "mean_ms": 0.004
+        },
+        "node|mprotect": {
+          "n": 266,
+          "p50_ms": 0.002,
+          "p95_ms": 0.011,
+          "p99_ms": 0.043,
+          "total_s": 0.0,
+          "mean_ms": 0.004
+        },
+        "app|newfstatat": {
+          "n": 66,
+          "p50_ms": 0.005,
+          "p95_ms": 0.016,
+          "p99_ms": 0.031,
+          "total_s": 0.0,
+          "mean_ms": 0.008
+        },
+        "app|statfs": {
+          "n": 11,
+          "p50_ms": 0.003,
+          "p95_ms": 0.004,
+          "p99_ms": 0.004,
+          "total_s": 0.0,
+          "mean_ms": 0.003
+        },
+        "app|openat": {
+          "n": 88,
+          "p50_ms": 0.008,
+          "p95_ms": 0.019,
+          "p99_ms": 0.196,
+          "total_s": 0.0,
+          "mean_ms": 0.011
+        },
+        "app|fcntl": {
+          "n": 132,
+          "p50_ms": 0.0,
+          "p95_ms": 0.001,
+          "p99_ms": 0.002,
+          "total_s": 0.0,
+          "mean_ms": 0.001
+        },
+        "app|newstat": {
+          "n": 22,
+          "p50_ms": 0.01,
+          "p95_ms": 0.015,
+          "p99_ms": 0.018,
+          "total_s": 0.0,
+          "mean_ms": 0.009
+        },
+        "app|getdents64": {
+          "n": 22,
+          "p50_ms": 0.012,
+          "p95_ms": 0.014,
+          "p99_ms": 0.015,
+          "total_s": 0.0,
+          "mean_ms": 0.007
+        },
+        "node|shutdown": {
+          "n": 75,
+          "p50_ms": 0.044,
+          "p95_ms": 0.062,
+          "p99_ms": 0.08,
+          "total_s": 0.0,
+          "mean_ms": 0.046
+        },
+        "mysqld|io_getevents": {
+          "n": 1089,
+          "p50_ms": 500.073,
+          "p95_ms": 500.113,
+          "p99_ms": 500.508,
+          "total_s": 544.59,
+          "mean_ms": 500.085
+        },
+        "mysqld|nanosleep": {
+          "n": 54,
+          "p50_ms": 1000.069,
+          "p95_ms": 1000.263,
+          "p99_ms": 1000.335,
+          "total_s": 54.0,
+          "mean_ms": 1000.083
+        },
+        "node|socket": {
+          "n": 388,
+          "p50_ms": 0.007,
+          "p95_ms": 0.018,
+          "p99_ms": 0.027,
+          "total_s": 0.0,
+          "mean_ms": 0.009
+        },
+        "node|connect": {
+          "n": 291,
+          "p50_ms": 0.012,
+          "p95_ms": 0.098,
+          "p99_ms": 0.11,
+          "total_s": 0.01,
+          "mean_ms": 0.035
+        },
+        "node|bind": {
+          "n": 97,
+          "p50_ms": 0.003,
+          "p95_ms": 0.004,
+          "p99_ms": 0.005,
+          "total_s": 0.0,
+          "mean_ms": 0.003
+        },
+        "node|sendto": {
+          "n": 194,
+          "p50_ms": 0.017,
+          "p95_ms": 0.041,
+          "p99_ms": 0.051,
+          "total_s": 0.0,
+          "mean_ms": 0.02
+        },
+        "node|poll": {
+          "n": 162,
+          "p50_ms": 0.127,
+          "p95_ms": 0.402,
+          "p99_ms": 1.36,
+          "total_s": 0.02,
+          "mean_ms": 0.15
+        },
+        "node|recvmsg": {
+          "n": 259,
+          "p50_ms": 0.002,
+          "p95_ms": 0.005,
+          "p99_ms": 0.01,
+          "total_s": 0.0,
+          "mean_ms": 0.003
+        },
+        "node|getsockopt": {
+          "n": 97,
+          "p50_ms": 0.004,
+          "p95_ms": 0.005,
+          "p99_ms": 0.024,
+          "total_s": 0.0,
+          "mean_ms": 0.004
+        },
+        "node|setsockopt": {
+          "n": 520,
+          "p50_ms": 0.001,
+          "p95_ms": 0.004,
+          "p99_ms": 0.004,
+          "total_s": 0.0,
+          "mean_ms": 0.002
+        },
+        "node|getpeername": {
+          "n": 132,
+          "p50_ms": 0.002,
+          "p95_ms": 0.003,
+          "p99_ms": 0.006,
+          "total_s": 0.0,
+          "mean_ms": 0.002
+        },
+        "node|getsockname": {
+          "n": 97,
+          "p50_ms": 0.002,
+          "p95_ms": 0.002,
+          "p99_ms": 0.003,
+          "total_s": 0.0,
+          "mean_ms": 0.002
+        },
+        "node|getrusage": {
+          "n": 6,
+          "p50_ms": 0.006,
+          "p95_ms": 0.007,
+          "p99_ms": 0.007,
+          "total_s": 0.0,
+          "mean_ms": 0.006
+        },
+        "node|getdents64": {
+          "n": 17,
+          "p50_ms": 0.01,
+          "p95_ms": 0.117,
+          "p99_ms": 0.117,
+          "total_s": 0.0,
+          "mean_ms": 0.028
+        },
+        "app|accept4": {
+          "n": 29,
+          "p50_ms": 0.005,
+          "p95_ms": 0.014,
+          "p99_ms": 0.015,
+          "total_s": 0.0,
+          "mean_ms": 0.007
+        },
+        "node|accept4": {
+          "n": 35,
+          "p50_ms": 0.015,
+          "p95_ms": 0.027,
+          "p99_ms": 0.042,
+          "total_s": 0.0,
+          "mean_ms": 0.016
+        }
+      }
+    },
+    "incident": {
+      "range": [
+        "22:04:49",
+        "22:05:49"
+      ],
+      "per_call": {
+        "node|getpid": {
+          "n": 26949,
+          "p50_ms": 0.001,
+          "p95_ms": 0.001,
+          "p99_ms": 0.002,
+          "total_s": 0.02,
+          "mean_ms": 0.001
+        },
+        "node|write": {
+          "n": 100472,
+          "p50_ms": 0.01,
+          "p95_ms": 0.039,
+          "p99_ms": 0.048,
+          "total_s": 1.71,
+          "mean_ms": 0.017
+        },
+        "node|writev": {
+          "n": 25680,
+          "p50_ms": 0.036,
+          "p95_ms": 0.057,
+          "p99_ms": 0.084,
+          "total_s": 0.98,
+          "mean_ms": 0.038
+        },
+        "node|epoll_pwait": {
+          "n": 12912,
+          "p50_ms": 0.006,
+          "p95_ms": 0.505,
+          "p99_ms": 2.069,
+          "total_s": 1.18,
+          "mean_ms": 0.092
+        },
+        "node|read": {
+          "n": 59125,
+          "p50_ms": 0.006,
+          "p95_ms": 0.029,
+          "p99_ms": 0.036,
+          "total_s": 0.55,
+          "mean_ms": 0.009
+        },
+        "node|mmap": {
+          "n": 48905,
+          "p50_ms": 0.007,
+          "p95_ms": 0.017,
+          "p99_ms": 0.03,
+          "total_s": 0.42,
+          "mean_ms": 0.009
+        },
+        "node|munmap": {
+          "n": 49142,
+          "p50_ms": 0.012,
+          "p95_ms": 0.029,
+          "p99_ms": 0.061,
+          "total_s": 0.76,
+          "mean_ms": 0.016
+        },
+        "node|futex": {
+          "n": 394818,
+          "p50_ms": 0.0,
+          "p95_ms": 6.256,
+          "p99_ms": 19.629,
+          "total_s": 469.73,
+          "mean_ms": 1.19
+        },
+        "node|statx": {
+          "n": 19802,
+          "p50_ms": 0.008,
+          "p95_ms": 0.018,
+          "p99_ms": 0.025,
+          "total_s": 0.19,
+          "mean_ms": 0.009
+        },
+        "app|futex": {
+          "n": 205073,
+          "p50_ms": 0.011,
+          "p95_ms": 11.093,
+          "p99_ms": 76.885,
+          "total_s": 1455.27,
+          "mean_ms": 7.096
+        },
+        "app|read": {
+          "n": 139249,
+          "p50_ms": 0.003,
+          "p95_ms": 0.005,
+          "p99_ms": 0.019,
+          "total_s": 0.48,
+          "mean_ms": 0.003
+        },
+        "app|nanosleep": {
+          "n": 120197,
+          "p50_ms": 0.085,
+          "p95_ms": 0.193,
+          "p99_ms": 0.494,
+          "total_s": 12.2,
+          "mean_ms": 0.101
+        },
+        "app|write": {
+          "n": 86166,
+          "p50_ms": 0.022,
+          "p95_ms": 0.04,
+          "p99_ms": 0.052,
+          "total_s": 1.91,
+          "mean_ms": 0.022
+        },
+        "app|epoll_pwait": {
+          "n": 144942,
+          "p50_ms": 0.001,
+          "p95_ms": 0.963,
+          "p99_ms": 9.655,
+          "total_s": 53.79,
+          "mean_ms": 0.371
+        },
+        "mysqld|recvfrom": {
+          "n": 132704,
+          "p50_ms": 0.002,
+          "p95_ms": 0.018,
+          "p99_ms": 0.028,
+          "total_s": 0.48,
+          "mean_ms": 0.004
+        },
+        "mysqld|sendto": {
+          "n": 32888,
+          "p50_ms": 0.026,
+          "p95_ms": 0.041,
+          "p99_ms": 0.052,
+          "total_s": 0.91,
+          "mean_ms": 0.028
+        },
+        "mysqld|poll": {
+          "n": 45337,
+          "p50_ms": 0.309,
+          "p95_ms": 18.724,
+          "p99_ms": 43.481,
+          "total_s": 177.55,
+          "mean_ms": 3.916
+        },
+        "mysqld|madvise": {
+          "n": 1572,
+          "p50_ms": 0.009,
+          "p95_ms": 0.023,
+          "p99_ms": 0.038,
+          "total_s": 0.02,
+          "mean_ms": 0.012
+        },
+        "node|open": {
+          "n": 2791,
+          "p50_ms": 0.021,
+          "p95_ms": 0.033,
+          "p99_ms": 0.058,
+          "total_s": 0.06,
+          "mean_ms": 0.023
+        },
+        "node|fcntl": {
+          "n": 2785,
+          "p50_ms": 0.001,
+          "p95_ms": 0.002,
+          "p99_ms": 0.007,
+          "total_s": 0.0,
+          "mean_ms": 0.002
+        },
+        "app|socket": {
+          "n": 7518,
+          "p50_ms": 0.011,
+          "p95_ms": 0.021,
+          "p99_ms": 0.103,
+          "total_s": 0.11,
+          "mean_ms": 0.015
+        },
+        "app|setsockopt": {
+          "n": 23060,
+          "p50_ms": 0.001,
+          "p95_ms": 0.004,
+          "p99_ms": 0.005,
+          "total_s": 0.04,
+          "mean_ms": 0.002
+        },
+        "app|connect": {
+          "n": 7518,
+          "p50_ms": 0.011,
+          "p95_ms": 0.097,
+          "p99_ms": 0.136,
+          "total_s": 0.3,
+          "mean_ms": 0.04
+        },
+        "app|epoll_ctl": {
+          "n": 15134,
+          "p50_ms": 0.004,
+          "p95_ms": 0.011,
+          "p99_ms": 0.019,
+          "total_s": 0.08,
+          "mean_ms": 0.005
+        },
+        "app|getsockname": {
+          "n": 7531,
+          "p50_ms": 0.001,
+          "p95_ms": 0.002,
+          "p99_ms": 0.003,
+          "total_s": 0.01,
+          "mean_ms": 0.002
+        },
+        "app|getpeername": {
+          "n": 7518,
+          "p50_ms": 0.001,
+          "p95_ms": 0.002,
+          "p99_ms": 0.002,
+          "total_s": 0.01,
+          "mean_ms": 0.002
+        },
+        "mysqld|futex": {
+          "n": 31732,
+          "p50_ms": 0.001,
+          "p95_ms": 115.985,
+          "p99_ms": 331.576,
+          "total_s": 749.33,
+          "mean_ms": 23.614
+        },
+        "app|close": {
+          "n": 7627,
+          "p50_ms": 0.011,
+          "p95_ms": 0.032,
+          "p99_ms": 0.185,
+          "total_s": 0.13,
+          "mean_ms": 0.017
+        },
+        "app|getsockopt": {
+          "n": 3096,
+          "p50_ms": 0.003,
+          "p95_ms": 0.004,
+          "p99_ms": 0.012,
+          "total_s": 0.01,
+          "mean_ms": 0.003
+        },
+        "mysqld|accept": {
+          "n": 3096,
+          "p50_ms": 0.01,
+          "p95_ms": 0.019,
+          "p99_ms": 0.031,
+          "total_s": 0.03,
+          "mean_ms": 0.011
+        },
+        "mysqld|setsockopt": {
+          "n": 6192,
+          "p50_ms": 0.002,
+          "p95_ms": 0.004,
+          "p99_ms": 0.011,
+          "total_s": 0.02,
+          "mean_ms": 0.002
+        },
+        "mysqld|gettid": {
+          "n": 3096,
+          "p50_ms": 0.001,
+          "p95_ms": 0.002,
+          "p99_ms": 0.002,
+          "total_s": 0.0,
+          "mean_ms": 0.001
+        },
+        "mysqld|getpeername": {
+          "n": 3096,
+          "p50_ms": 0.002,
+          "p95_ms": 0.002,
+          "p99_ms": 0.011,
+          "total_s": 0.01,
+          "mean_ms": 0.002
+        },
+        "mysqld|open": {
+          "n": 3096,
+          "p50_ms": 0.017,
+          "p95_ms": 0.028,
+          "p99_ms": 0.063,
+          "total_s": 0.06,
+          "mean_ms": 0.018
+        },
+        "mysqld|read": {
+          "n": 3096,
+          "p50_ms": 0.002,
+          "p95_ms": 0.002,
+          "p99_ms": 0.003,
+          "total_s": 0.01,
+          "mean_ms": 0.002
+        },
+        "mysqld|close": {
+          "n": 6192,
+          "p50_ms": 0.004,
+          "p95_ms": 0.01,
+          "p99_ms": 0.02,
+          "total_s": 0.03,
+          "mean_ms": 0.005
+        },
+        "mysqld|access": {
+          "n": 3096,
+          "p50_ms": 0.005,
+          "p95_ms": 0.006,
+          "p99_ms": 0.02,
+          "total_s": 0.02,
+          "mean_ms": 0.006
+        },
+        "mysqld|shutdown": {
+          "n": 3096,
+          "p50_ms": 0.036,
+          "p95_ms": 0.057,
+          "p99_ms": 0.069,
+          "total_s": 0.11,
+          "mean_ms": 0.036
+        },
+        "node|pread64": {
+          "n": 2594,
+          "p50_ms": 0.007,
+          "p95_ms": 0.01,
+          "p99_ms": 0.02,
+          "total_s": 0.02,
+          "mean_ms": 0.008
+        },
+        "app|select": {
+          "n": 4962,
+          "p50_ms": 0.084,
+          "p95_ms": 0.17,
+          "p99_ms": 0.439,
+          "total_s": 0.49,
+          "mean_ms": 0.099
+        },
+        "app|epoll_wait": {
+          "n": 2358,
+          "p50_ms": 0.003,
+          "p95_ms": 130.28,
+          "p99_ms": 236.642,
+          "total_s": 59.68,
+          "mean_ms": 25.308
+        },
+        "app|sched_yield": {
+          "n": 6418,
+          "p50_ms": 0.002,
+          "p95_ms": 0.482,
+          "p99_ms": 1.567,
+          "total_s": 0.58,
+          "mean_ms": 0.091
+        },
+        "app|getpid": {
+          "n": 2206,
+          "p50_ms": 0.001,
+          "p95_ms": 0.001,
+          "p99_ms": 0.001,
+          "total_s": 0.0,
+          "mean_ms": 0.001
+        },
+        "app|tgkill": {
+          "n": 2206,
+          "p50_ms": 0.007,
+          "p95_ms": 0.016,
+          "p99_ms": 0.024,
+          "total_s": 0.02,
+          "mean_ms": 0.008
+        },
+        "app|madvise": {
+          "n": 7963,
+          "p50_ms": 0.006,
+          "p95_ms": 0.019,
+          "p99_ms": 0.037,
+          "total_s": 0.07,
+          "mean_ms": 0.008
+        },
+        "node|close": {
+          "n": 3200,
+          "p50_ms": 0.007,
+          "p95_ms": 0.014,
+          "p99_ms": 0.038,
+          "total_s": 0.02,
+          "mean_ms": 0.008
+        },
+        "node|accept4": {
+          "n": 51,
+          "p50_ms": 0.015,
+          "p95_ms": 0.024,
+          "p99_ms": 0.041,
+          "total_s": 0.0,
+          "mean_ms": 0.016
+        },
+        "node|setsockopt": {
+          "n": 496,
+          "p50_ms": 0.001,
+          "p95_ms": 0.004,
+          "p99_ms": 0.005,
+          "total_s": 0.0,
+          "mean_ms": 0.002
+        },
+        "node|epoll_ctl": {
+          "n": 461,
+          "p50_ms": 0.004,
+          "p95_ms": 0.007,
+          "p99_ms": 0.012,
+          "total_s": 0.0,
+          "mean_ms": 0.004
+        },
+        "node|getpeername": {
+          "n": 140,
+          "p50_ms": 0.002,
+          "p95_ms": 0.003,
+          "p99_ms": 0.004,
+          "total_s": 0.0,
+          "mean_ms": 0.002
+        },
+        "app|newfstatat": {
+          "n": 72,
+          "p50_ms": 0.005,
+          "p95_ms": 0.015,
+          "p99_ms": 1.184,
+          "total_s": 0.0,
+          "mean_ms": 0.024
+        },
+        "app|statfs": {
+          "n": 12,
+          "p50_ms": 0.003,
+          "p95_ms": 0.004,
+          "p99_ms": 0.004,
+          "total_s": 0.0,
+          "mean_ms": 0.003
+        },
+        "app|openat": {
+          "n": 96,
+          "p50_ms": 0.008,
+          "p95_ms": 0.029,
+          "p99_ms": 0.154,
+          "total_s": 0.0,
+          "mean_ms": 0.014
+        },
+        "app|fcntl": {
+          "n": 144,
+          "p50_ms": 0.0,
+          "p95_ms": 0.001,
+          "p99_ms": 0.002,
+          "total_s": 0.0,
+          "mean_ms": 0.001
+        },
+        "app|newstat": {
+          "n": 24,
+          "p50_ms": 0.011,
+          "p95_ms": 0.027,
+          "p99_ms": 0.113,
+          "total_s": 0.0,
+          "mean_ms": 0.015
+        },
+        "app|getdents64": {
+          "n": 24,
+          "p50_ms": 0.012,
+          "p95_ms": 0.015,
+          "p99_ms": 0.033,
+          "total_s": 0.0,
+          "mean_ms": 0.008
+        },
+        "mysqld|io_getevents": {
+          "n": 1190,
+          "p50_ms": 500.073,
+          "p95_ms": 500.325,
+          "p99_ms": 500.997,
+          "total_s": 595.14,
+          "mean_ms": 500.117
+        },
+        "node|shutdown": {
+          "n": 73,
+          "p50_ms": 0.046,
+          "p95_ms": 0.065,
+          "p99_ms": 0.069,
+          "total_s": 0.0,
+          "mean_ms": 0.047
+        },
+        "node|madvise": {
+          "n": 255,
+          "p50_ms": 0.002,
+          "p95_ms": 0.012,
+          "p99_ms": 0.055,
+          "total_s": 0.0,
+          "mean_ms": 0.007
+        },
+        "node|mprotect": {
+          "n": 282,
+          "p50_ms": 0.002,
+          "p95_ms": 0.011,
+          "p99_ms": 0.043,
+          "total_s": 0.0,
+          "mean_ms": 0.009
+        },
+        "mysqld|nanosleep": {
+          "n": 59,
+          "p50_ms": 1000.072,
+          "p95_ms": 1000.092,
+          "p99_ms": 1000.643,
+          "total_s": 59.0,
+          "mean_ms": 1000.081
+        },
+        "node|socket": {
+          "n": 356,
+          "p50_ms": 0.006,
+          "p95_ms": 0.018,
+          "p99_ms": 0.022,
+          "total_s": 0.0,
+          "mean_ms": 0.009
+        },
+        "node|connect": {
+          "n": 267,
+          "p50_ms": 0.011,
+          "p95_ms": 0.099,
+          "p99_ms": 0.116,
+          "total_s": 0.01,
+          "mean_ms": 0.034
+        },
+        "node|bind": {
+          "n": 89,
+          "p50_ms": 0.003,
+          "p95_ms": 0.005,
+          "p99_ms": 0.01,
+          "total_s": 0.0,
+          "mean_ms": 0.004
+        },
+        "node|sendto": {
+          "n": 178,
+          "p50_ms": 0.021,
+          "p95_ms": 0.041,
+          "p99_ms": 0.055,
+          "total_s": 0.0,
+          "mean_ms": 0.021
+        },
+        "node|poll": {
+          "n": 152,
+          "p50_ms": 0.149,
+          "p95_ms": 0.85,
+          "p99_ms": 1.705,
+          "total_s": 0.03,
+          "mean_ms": 0.224
+        },
+        "node|recvmsg": {
+          "n": 241,
+          "p50_ms": 0.002,
+          "p95_ms": 0.005,
+          "p99_ms": 0.006,
+          "total_s": 0.0,
+          "mean_ms": 0.003
+        },
+        "app|accept4": {
+          "n": 25,
+          "p50_ms": 0.005,
+          "p95_ms": 0.012,
+          "p99_ms": 0.012,
+          "total_s": 0.0,
+          "mean_ms": 0.007
+        },
+        "node|getsockopt": {
+          "n": 89,
+          "p50_ms": 0.004,
+          "p95_ms": 0.005,
+          "p99_ms": 0.019,
+          "total_s": 0.0,
+          "mean_ms": 0.004
+        },
+        "node|getsockname": {
+          "n": 89,
+          "p50_ms": 0.002,
+          "p95_ms": 0.002,
+          "p99_ms": 0.002,
+          "total_s": 0.0,
+          "mean_ms": 0.002
+        },
+        "node|getrusage": {
+          "n": 6,
+          "p50_ms": 0.005,
+          "p95_ms": 0.006,
+          "p99_ms": 0.006,
+          "total_s": 0.0,
+          "mean_ms": 0.005
+        },
+        "node|getdents64": {
+          "n": 18,
+          "p50_ms": 0.012,
+          "p95_ms": 0.061,
+          "p99_ms": 0.061,
+          "total_s": 0.0,
+          "mean_ms": 0.022
+        }
+      }
+    }
+  },
+  "comparison": [
+    {
+      "comm_syscall": "app|sched_yield",
+      "n_incident": 6418,
+      "p95_baseline_ms": 0.122,
+      "p95_incident_ms": 0.482,
+      "p95_x": 3.95,
+      "total_s_baseline": 0.1,
+      "total_s_incident": 0.58
+    },
+    {
+      "comm_syscall": "node|poll",
+      "n_incident": 152,
+      "p95_baseline_ms": 0.402,
+      "p95_incident_ms": 0.85,
+      "p95_x": 2.11,
+      "total_s_baseline": 0.02,
+      "total_s_incident": 0.03
+    },
+    {
+      "comm_syscall": "app|newstat",
+      "n_incident": 24,
+      "p95_baseline_ms": 0.015,
+      "p95_incident_ms": 0.027,
+      "p95_x": 1.8,
+      "total_s_baseline": 0.0,
+      "total_s_incident": 0.0
+    },
+    {
+      "comm_syscall": "app|nanosleep",
+      "n_incident": 120197,
+      "p95_baseline_ms": 0.116,
+      "p95_incident_ms": 0.193,
+      "p95_x": 1.66,
+      "total_s_baseline": 9.48,
+      "total_s_incident": 12.2
+    },
+    {
+      "comm_syscall": "app|openat",
+      "n_incident": 96,
+      "p95_baseline_ms": 0.019,
+      "p95_incident_ms": 0.029,
+      "p95_x": 1.53,
+      "total_s_baseline": 0.0,
+      "total_s_incident": 0.0
+    },
+    {
+      "comm_syscall": "app|select",
+      "n_incident": 4962,
+      "p95_baseline_ms": 0.111,
+      "p95_incident_ms": 0.17,
+      "p95_x": 1.53,
+      "total_s_baseline": 0.38,
+      "total_s_incident": 0.49
+    },
+    {
+      "comm_syscall": "app|close",
+      "n_incident": 7627,
+      "p95_baseline_ms": 0.025,
+      "p95_incident_ms": 0.032,
+      "p95_x": 1.28,
+      "total_s_baseline": 0.07,
+      "total_s_incident": 0.13
+    },
+    {
+      "comm_syscall": "mysqld|open",
+      "n_incident": 3096,
+      "p95_baseline_ms": 0.022,
+      "p95_incident_ms": 0.028,
+      "p95_x": 1.27,
+      "total_s_baseline": 0.03,
+      "total_s_incident": 0.06
+    },
+    {
+      "comm_syscall": "node|bind",
+      "n_incident": 89,
+      "p95_baseline_ms": 0.004,
+      "p95_incident_ms": 0.005,
+      "p95_x": 1.25,
+      "total_s_baseline": 0.0,
+      "total_s_incident": 0.0
+    },
+    {
+      "comm_syscall": "app|futex",
+      "n_incident": 205073,
+      "p95_baseline_ms": 9.015,
+      "p95_incident_ms": 11.093,
+      "p95_x": 1.23,
+      "total_s_baseline": 1341.26,
+      "total_s_incident": 1455.27
+    },
+    {
+      "comm_syscall": "mysqld|madvise",
+      "n_incident": 1572,
+      "p95_baseline_ms": 0.019,
+      "p95_incident_ms": 0.023,
+      "p95_x": 1.21,
+      "total_s_baseline": 0.02,
+      "total_s_incident": 0.02
+    },
+    {
+      "comm_syscall": "node|madvise",
+      "n_incident": 255,
+      "p95_baseline_ms": 0.01,
+      "p95_incident_ms": 0.012,
+      "p95_x": 1.2,
+      "total_s_baseline": 0.0,
+      "total_s_incident": 0.0
+    },
+    {
+      "comm_syscall": "app|madvise",
+      "n_incident": 7963,
+      "p95_baseline_ms": 0.016,
+      "p95_incident_ms": 0.019,
+      "p95_x": 1.19,
+      "total_s_baseline": 0.05,
+      "total_s_incident": 0.07
+    },
+    {
+      "comm_syscall": "mysqld|poll",
+      "n_incident": 45337,
+      "p95_baseline_ms": 16.644,
+      "p95_incident_ms": 18.724,
+      "p95_x": 1.12,
+      "total_s_baseline": 160.92,
+      "total_s_incident": 177.55
+    },
+    {
+      "comm_syscall": "node|pread64",
+      "n_incident": 2594,
+      "p95_baseline_ms": 0.009,
+      "p95_incident_ms": 0.01,
+      "p95_x": 1.11,
+      "total_s_baseline": 0.02,
+      "total_s_incident": 0.02
+    },
+    {
+      "comm_syscall": "app|connect",
+      "n_incident": 7518,
+      "p95_baseline_ms": 0.091,
+      "p95_incident_ms": 0.097,
+      "p95_x": 1.07,
+      "total_s_baseline": 0.18,
+      "total_s_incident": 0.3
+    },
+    {
+      "comm_syscall": "app|getdents64",
+      "n_incident": 24,
+      "p95_baseline_ms": 0.014,
+      "p95_incident_ms": 0.015,
+      "p95_x": 1.07,
+      "total_s_baseline": 0.0,
+      "total_s_incident": 0.0
+    },
+    {
+      "comm_syscall": "node|mmap",
+      "n_incident": 48905,
+      "p95_baseline_ms": 0.016,
+      "p95_incident_ms": 0.017,
+      "p95_x": 1.06,
+      "total_s_baseline": 0.4,
+      "total_s_incident": 0.42
+    },
+    {
+      "comm_syscall": "app|socket",
+      "n_incident": 7518,
+      "p95_baseline_ms": 0.02,
+      "p95_incident_ms": 0.021,
+      "p95_x": 1.05,
+      "total_s_baseline": 0.07,
+      "total_s_incident": 0.11
+    },
+    {
+      "comm_syscall": "mysqld|sendto",
+      "n_incident": 32888,
+      "p95_baseline_ms": 0.039,
+      "p95_incident_ms": 0.041,
+      "p95_x": 1.05,
+      "total_s_baseline": 0.79,
+      "total_s_incident": 0.91
+    },
+    {
+      "comm_syscall": "node|shutdown",
+      "n_incident": 73,
+      "p95_baseline_ms": 0.062,
+      "p95_incident_ms": 0.065,
+      "p95_x": 1.05,
+      "total_s_baseline": 0.0,
+      "total_s_incident": 0.0
+    },
+    {
+      "comm_syscall": "node|munmap",
+      "n_incident": 49142,
+      "p95_baseline_ms": 0.028,
+      "p95_incident_ms": 0.029,
+      "p95_x": 1.04,
+      "total_s_baseline": 0.72,
+      "total_s_incident": 0.76
+    },
+    {
+      "comm_syscall": "node|read",
+      "n_incident": 59125,
+      "p95_baseline_ms": 0.028,
+      "p95_incident_ms": 0.029,
+      "p95_x": 1.04,
+      "total_s_baseline": 0.51,
+      "total_s_incident": 0.55
+    },
+    {
+      "comm_syscall": "app|write",
+      "n_incident": 86166,
+      "p95_baseline_ms": 0.039,
+      "p95_incident_ms": 0.04,
+      "p95_x": 1.03,
+      "total_s_baseline": 1.7,
+      "total_s_incident": 1.91
+    },
+    {
+      "comm_syscall": "node|write",
+      "n_incident": 100472,
+      "p95_baseline_ms": 0.038,
+      "p95_incident_ms": 0.039,
+      "p95_x": 1.03,
+      "total_s_baseline": 1.63,
+      "total_s_incident": 1.71
+    },
+    {
+      "comm_syscall": "node|writev",
+      "n_incident": 25680,
+      "p95_baseline_ms": 0.056,
+      "p95_incident_ms": 0.057,
+      "p95_x": 1.02,
+      "total_s_baseline": 0.92,
+      "total_s_incident": 0.98
+    },
+    {
+      "comm_syscall": "node|connect",
+      "n_incident": 267,
+      "p95_baseline_ms": 0.098,
+      "p95_incident_ms": 0.099,
+      "p95_x": 1.01,
+      "total_s_baseline": 0.01,
+      "total_s_incident": 0.01
+    },
+    {
+      "comm_syscall": "app|epoll_ctl",
+      "n_incident": 15134,
+      "p95_baseline_ms": 0.011,
+      "p95_incident_ms": 0.011,
+      "p95_x": 1.0,
+      "total_s_baseline": 0.05,
+      "total_s_incident": 0.08
+    },
+    {
+      "comm_syscall": "app|fcntl",
+      "n_incident": 144,
+      "p95_baseline_ms": 0.001,
+      "p95_incident_ms": 0.001,
+      "p95_x": 1.0,
+      "total_s_baseline": 0.0,
+      "total_s_incident": 0.0
+    },
+    {
+      "comm_syscall": "app|getpeername",
+      "n_incident": 7518,
+      "p95_baseline_ms": 0.002,
+      "p95_incident_ms": 0.002,
+      "p95_x": 1.0,
+      "total_s_baseline": 0.01,
+      "total_s_incident": 0.01
+    },
+    {
+      "comm_syscall": "app|getpid",
+      "n_incident": 2206,
+      "p95_baseline_ms": 0.001,
+      "p95_incident_ms": 0.001,
+      "p95_x": 1.0,
+      "total_s_baseline": 0.0,
+      "total_s_incident": 0.0
+    },
+    {
+      "comm_syscall": "app|getsockname",
+      "n_incident": 7531,
+      "p95_baseline_ms": 0.002,
+      "p95_incident_ms": 0.002,
+      "p95_x": 1.0,
+      "total_s_baseline": 0.01,
+      "total_s_incident": 0.01
+    },
+    {
+      "comm_syscall": "app|getsockopt",
+      "n_incident": 3096,
+      "p95_baseline_ms": 0.004,
+      "p95_incident_ms": 0.004,
+      "p95_x": 1.0,
+      "total_s_baseline": 0.01,
+      "total_s_incident": 0.01
+    },
+    {
+      "comm_syscall": "app|read",
+      "n_incident": 139249,
+      "p95_baseline_ms": 0.005,
+      "p95_incident_ms": 0.005,
+      "p95_x": 1.0,
+      "total_s_baseline": 0.41,
+      "total_s_incident": 0.48
+    },
+    {
+      "comm_syscall": "app|setsockopt",
+      "n_incident": 23060,
+      "p95_baseline_ms": 0.004,
+      "p95_incident_ms": 0.004,
+      "p95_x": 1.0,
+      "total_s_baseline": 0.03,
+      "total_s_incident": 0.04
+    },
+    {
+      "comm_syscall": "mysqld|accept",
+      "n_incident": 3096,
+      "p95_baseline_ms": 0.019,
+      "p95_incident_ms": 0.019,
+      "p95_x": 1.0,
+      "total_s_baseline": 0.02,
+      "total_s_incident": 0.03
+    },
+    {
+      "comm_syscall": "mysqld|access",
+      "n_incident": 3096,
+      "p95_baseline_ms": 0.006,
+      "p95_incident_ms": 0.006,
+      "p95_x": 1.0,
+      "total_s_baseline": 0.01,
+      "total_s_incident": 0.02
+    },
+    {
+      "comm_syscall": "mysqld|close",
+      "n_incident": 6192,
+      "p95_baseline_ms": 0.01,
+      "p95_incident_ms": 0.01,
+      "p95_x": 1.0,
+      "total_s_baseline": 0.02,
+      "total_s_incident": 0.03
+    },
+    {
+      "comm_syscall": "mysqld|getpeername",
+      "n_incident": 3096,
+      "p95_baseline_ms": 0.002,
+      "p95_incident_ms": 0.002,
+      "p95_x": 1.0,
+      "total_s_baseline": 0.0,
+      "total_s_incident": 0.01
+    },
+    {
+      "comm_syscall": "mysqld|gettid",
+      "n_incident": 3096,
+      "p95_baseline_ms": 0.002,
+      "p95_incident_ms": 0.002,
+      "p95_x": 1.0,
+      "total_s_baseline": 0.0,
+      "total_s_incident": 0.0
+    },
+    {
+      "comm_syscall": "mysqld|io_getevents",
+      "n_incident": 1190,
+      "p95_baseline_ms": 500.113,
+      "p95_incident_ms": 500.325,
+      "p95_x": 1.0,
+      "total_s_baseline": 544.59,
+      "total_s_incident": 595.14
+    },
+    {
+      "comm_syscall": "mysqld|nanosleep",
+      "n_incident": 59,
+      "p95_baseline_ms": 1000.263,
+      "p95_incident_ms": 1000.092,
+      "p95_x": 1.0,
+      "total_s_baseline": 54.0,
+      "total_s_incident": 59.0
+    },
+    {
+      "comm_syscall": "mysqld|read",
+      "n_incident": 3096,
+      "p95_baseline_ms": 0.002,
+      "p95_incident_ms": 0.002,
+      "p95_x": 1.0,
+      "total_s_baseline": 0.0,
+      "total_s_incident": 0.01
+    },
+    {
+      "comm_syscall": "mysqld|setsockopt",
+      "n_incident": 6192,
+      "p95_baseline_ms": 0.004,
+      "p95_incident_ms": 0.004,
+      "p95_x": 1.0,
+      "total_s_baseline": 0.01,
+      "total_s_incident": 0.02
+    },
+    {
+      "comm_syscall": "node|epoll_ctl",
+      "n_incident": 461,
+      "p95_baseline_ms": 0.007,
+      "p95_incident_ms": 0.007,
+      "p95_x": 1.0,
+      "total_s_baseline": 0.0,
+      "total_s_incident": 0.0
+    },
+    {
+      "comm_syscall": "node|fcntl",
+      "n_incident": 2785,
+      "p95_baseline_ms": 0.002,
+      "p95_incident_ms": 0.002,
+      "p95_x": 1.0,
+      "total_s_baseline": 0.0,
+      "total_s_incident": 0.0
+    },
+    {
+      "comm_syscall": "node|getpeername",
+      "n_incident": 140,
+      "p95_baseline_ms": 0.003,
+      "p95_incident_ms": 0.003,
+      "p95_x": 1.0,
+      "total_s_baseline": 0.0,
+      "total_s_incident": 0.0
+    },
+    {
+      "comm_syscall": "node|getpid",
+      "n_incident": 26949,
+      "p95_baseline_ms": 0.001,
+      "p95_incident_ms": 0.001,
+      "p95_x": 1.0,
+      "total_s_baseline": 0.02,
+      "total_s_incident": 0.02
+    },
+    {
+      "comm_syscall": "node|getsockname",
+      "n_incident": 89,
+      "p95_baseline_ms": 0.002,
+      "p95_incident_ms": 0.002,
+      "p95_x": 1.0,
+      "total_s_baseline": 0.0,
+      "total_s_incident": 0.0
+    },
+    {
+      "comm_syscall": "node|getsockopt",
+      "n_incident": 89,
+      "p95_baseline_ms": 0.005,
+      "p95_incident_ms": 0.005,
+      "p95_x": 1.0,
+      "total_s_baseline": 0.0,
+      "total_s_incident": 0.0
+    },
+    {
+      "comm_syscall": "node|mprotect",
+      "n_incident": 282,
+      "p95_baseline_ms": 0.011,
+      "p95_incident_ms": 0.011,
+      "p95_x": 1.0,
+      "total_s_baseline": 0.0,
+      "total_s_incident": 0.0
+    },
+    {
+      "comm_syscall": "node|open",
+      "n_incident": 2791,
+      "p95_baseline_ms": 0.033,
+      "p95_incident_ms": 0.033,
+      "p95_x": 1.0,
+      "total_s_baseline": 0.06,
+      "total_s_incident": 0.06
+    },
+    {
+      "comm_syscall": "node|recvmsg",
+      "n_incident": 241,
+      "p95_baseline_ms": 0.005,
+      "p95_incident_ms": 0.005,
+      "p95_x": 1.0,
+      "total_s_baseline": 0.0,
+      "total_s_incident": 0.0
+    },
+    {
+      "comm_syscall": "node|sendto",
+      "n_incident": 178,
+      "p95_baseline_ms": 0.041,
+      "p95_incident_ms": 0.041,
+      "p95_x": 1.0,
+      "total_s_baseline": 0.0,
+      "total_s_incident": 0.0
+    },
+    {
+      "comm_syscall": "node|setsockopt",
+      "n_incident": 496,
+      "p95_baseline_ms": 0.004,
+      "p95_incident_ms": 0.004,
+      "p95_x": 1.0,
+      "total_s_baseline": 0.0,
+      "total_s_incident": 0.0
+    },
+    {
+      "comm_syscall": "node|socket",
+      "n_incident": 356,
+      "p95_baseline_ms": 0.018,
+      "p95_incident_ms": 0.018,
+      "p95_x": 1.0,
+      "total_s_baseline": 0.0,
+      "total_s_incident": 0.0
+    },
+    {
+      "comm_syscall": "node|statx",
+      "n_incident": 19802,
+      "p95_baseline_ms": 0.018,
+      "p95_incident_ms": 0.018,
+      "p95_x": 1.0,
+      "total_s_baseline": 0.18,
+      "total_s_incident": 0.19
+    },
+    {
+      "comm_syscall": "app|epoll_wait",
+      "n_incident": 2358,
+      "p95_baseline_ms": 131.213,
+      "p95_incident_ms": 130.28,
+      "p95_x": 0.99,
+      "total_s_baseline": 54.73,
+      "total_s_incident": 59.68
+    },
+    {
+      "comm_syscall": "mysqld|shutdown",
+      "n_incident": 3096,
+      "p95_baseline_ms": 0.059,
+      "p95_incident_ms": 0.057,
+      "p95_x": 0.97,
+      "total_s_baseline": 0.08,
+      "total_s_incident": 0.11
+    },
+    {
+      "comm_syscall": "mysqld|recvfrom",
+      "n_incident": 132704,
+      "p95_baseline_ms": 0.019,
+      "p95_incident_ms": 0.018,
+      "p95_x": 0.95,
+      "total_s_baseline": 0.46,
+      "total_s_incident": 0.48
+    },
+    {
+      "comm_syscall": "app|newfstatat",
+      "n_incident": 72,
+      "p95_baseline_ms": 0.016,
+      "p95_incident_ms": 0.015,
+      "p95_x": 0.94,
+      "total_s_baseline": 0.0,
+      "total_s_incident": 0.0
+    },
+    {
+      "comm_syscall": "mysqld|futex",
+      "n_incident": 31732,
+      "p95_baseline_ms": 128.736,
+      "p95_incident_ms": 115.985,
+      "p95_x": 0.9,
+      "total_s_baseline": 683.01,
+      "total_s_incident": 749.33
+    },
+    {
+      "comm_syscall": "node|accept4",
+      "n_incident": 51,
+      "p95_baseline_ms": 0.027,
+      "p95_incident_ms": 0.024,
+      "p95_x": 0.89,
+      "total_s_baseline": 0.0,
+      "total_s_incident": 0.0
+    },
+    {
+      "comm_syscall": "node|close",
+      "n_incident": 3200,
+      "p95_baseline_ms": 0.016,
+      "p95_incident_ms": 0.014,
+      "p95_x": 0.88,
+      "total_s_baseline": 0.02,
+      "total_s_incident": 0.02
+    },
+    {
+      "comm_syscall": "app|accept4",
+      "n_incident": 25,
+      "p95_baseline_ms": 0.014,
+      "p95_incident_ms": 0.012,
+      "p95_x": 0.86,
+      "total_s_baseline": 0.0,
+      "total_s_incident": 0.0
+    },
+    {
+      "comm_syscall": "app|tgkill",
+      "n_incident": 2206,
+      "p95_baseline_ms": 0.019,
+      "p95_incident_ms": 0.016,
+      "p95_x": 0.84,
+      "total_s_baseline": 0.02,
+      "total_s_incident": 0.02
+    },
+    {
+      "comm_syscall": "node|futex",
+      "n_incident": 394818,
+      "p95_baseline_ms": 8.511,
+      "p95_incident_ms": 6.256,
+      "p95_x": 0.74,
+      "total_s_baseline": 430.72,
+      "total_s_incident": 469.73
+    },
+    {
+      "comm_syscall": "app|epoll_pwait",
+      "n_incident": 144942,
+      "p95_baseline_ms": 1.395,
+      "p95_incident_ms": 0.963,
+      "p95_x": 0.69,
+      "total_s_baseline": 49.98,
+      "total_s_incident": 53.79
+    },
+    {
+      "comm_syscall": "node|epoll_pwait",
+      "n_incident": 12912,
+      "p95_baseline_ms": 0.763,
+      "p95_incident_ms": 0.505,
+      "p95_x": 0.66,
+      "total_s_baseline": 2.43,
+      "total_s_incident": 1.18
+    }
+  ]
+}

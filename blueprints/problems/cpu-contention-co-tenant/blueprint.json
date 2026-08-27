@@ -1,9 +1,9 @@
 {
   "id": "cpu-contention-co-tenant",
-  "version": 2,
-  "title": "A co-tenant workload steals host CPU while the application looks almost healthy",
+  "version": 3,
+  "title": "A co-tenant workload steals host CPU: services wait on the runqueue, not on I/O",
   "problem": {
-    "summary": "An unrelated workload sharing the host consumes CPU. Application services are never themselves saturated, yet they are intermittently delayed because they wait their turn on a runqueue. User-facing latency moves only slightly, so dashboards look nearly normal and the cause is invisible above the kernel.",
+    "summary": "An unrelated workload sharing the host consumes CPU. Application services are never themselves busy, but each time they become ready to run they wait measurably longer before a CPU actually runs them. User-facing latency moves only slightly, so dashboards look nearly normal; the delay is only visible in the scheduler.",
     "symptoms": [
       "mild, intermittent latency jitter across several unrelated services at once",
       "no service is itself busy: per-container CPU is flat or falling",
@@ -12,22 +12,40 @@
     ],
     "discriminators": [
       {
-        "signal": "where the CPU went (container CPU vs call-path role)",
-        "this_problem": "a container consumes steady CPU during the incident that it did not consume in the baseline, and it has NO caller/callee edges in the call graph",
-        "not_this_problem": "the extra CPU is consumed by a service that appears in the call graph",
+        "signal": "runqueue delay: time from sched_waking to the sched_switch that runs the thread",
+        "this_problem": "p95 runqueue delay inflates several-fold across MANY unrelated processes at once, with the busiest application process among the worst",
+        "not_this_problem": "runqueue delay is flat or falls; the median across processes stays at or below 1x",
+        "confused_with": [
+          "db-latency-dependency-wait"
+        ],
+        "evidence": "MEASURED from raw L0 via babeltrace2. Co-tenant run: node p95 0.034 -> 0.242 ms = 7.12x (n=48,886); median 1.78x across 52 high-volume processes. CONTROL, slow-datastore run: max 1.59x, median 0.84x, and node 0.97x. See evidence/L0_runqueue_delay_cotenant.json and evidence/L0_runqueue_delay_CONTROL_slowdb.json"
+      },
+      {
+        "signal": "blocking-syscall duration of the same processes",
+        "this_problem": "syscall durations stay flat: nothing is blocking longer, the threads simply cannot get a CPU",
+        "not_this_problem": "one component's blocking syscall inflates by an order of magnitude",
+        "confused_with": [
+          "db-latency-dependency-wait"
+        ],
+        "evidence": "MEASURED: on the co-tenant run the datastore's poll p95 went 16.6 -> 18.7 ms = 1.12x (n=45,337) and the largest inflation of ANY syscall was 1.8x. On the slow-datastore run the same syscall on the same component was 36.83x. See evidence/L0_blocking_syscall_CONTROL_cotenant.json"
+      },
+      {
+        "signal": "call-graph convergence",
+        "this_problem": "no component has slow incoming edges; the slowdown does not converge anywhere",
+        "not_this_problem": "slow edges converge on one component",
+        "confused_with": [
+          "db-latency-dependency-wait"
+        ],
+        "evidence": "MEASURED: edge_convergence.py returns converged_on = null on the co-tenant run, max edge slowdown 1.7x with zero edges over the 2x threshold. See evidence/L0_edge_convergence_CONTROL_cotenant.json"
+      },
+      {
+        "signal": "where the CPU went",
+        "this_problem": "a container consumes steady CPU it did not consume in the baseline and has NO call-graph edges",
+        "not_this_problem": "the extra CPU belongs to a service that appears in the call graph",
         "confused_with": [
           "service-cpu-throttle"
         ],
-        "evidence": "MEASURED on noisy_neighbor_aggressive_steady_r1: the co-tenant consumed 2.00 cores (baseline 0.00) with no call-path edges. See evidence/measured_verdict_noisy_neighbor_r1.json"
-      },
-      {
-        "signal": "host CPU headroom",
-        "this_problem": "host busy cores rise but the host is NOT exhausted",
-        "not_this_problem": "host CPU is exhausted and many services degrade sharply together",
-        "confused_with": [
-          "host-cpu-exhaustion"
-        ],
-        "evidence": "MEASURED on the same run: host busy cores 5.31 -> 7.96 (x1.5), i.e. headroom remained. See evidence/measured_verdict_noisy_neighbor_r1.json"
+        "evidence": "MEASURED: the co-tenant consumed 2.00 cores against a 0.00 baseline with no call-path edges; host busy cores 5.31 -> 7.96 (x1.5), so the host retained headroom. See evidence/measured_verdict_noisy_neighbor_r1.json"
       }
     ],
     "unverified_do_not_claim": [
@@ -36,7 +54,7 @@
         "status": "NOT SUPPORTED by our data",
         "measurement": "runnable_wait of the labelled culprit never exceeds 4% in ANY fault family (max 4.0% svc_mem_cap, 2.6% svc_cpu_cap); on the co-tenant run the highest runnable_wait across services was 1.6%. See evidence/wait_signature_all_families.json",
         "consequence": "removed from the discriminators. Do not reinstate without new evidence.",
-        "agent_note": "A raised runnable-wait share on the delayed services. Measured across every labelled fault we have: this share never exceeds 4% for any fault type, and was 1.6% on the co-tenant case itself. It cannot separate anything - do not reason from it."
+        "agent_note": "The share of wall time a service spends in a runnable state. Measured across every labelled fault: it never exceeds 4%, because that share is diluted by ordinary idle waiting. Use per-wakeup runqueue DELAY instead, which shows the effect clearly."
       },
       {
         "claim": "the wait decomposition of the culprit distinguishes this fault",
@@ -68,11 +86,8 @@
       "recovery_s": 60
     },
     "kernel_events": [
-      "sched_switch",
       "sched_waking",
-      "sched_wakeup",
-      "sched_migrate_task",
-      "sched_process_exec"
+      "sched_switch"
     ],
     "metrics": [
       "container_cpu_usage_seconds_total",
@@ -84,42 +99,42 @@
     "traces": [
       "server span duration per service, only to confirm the impact is mild"
     ],
-    "why_these": "MEASURED BASIS: the verified discriminators for this problem come from container CPU and the call graph, not from wait shares - runnable_wait was 1.6% on the co-tenant run and never exceeds 4% in any family (evidence/wait_signature_all_families.json). The scheduler events are still collected because they are what a host-level wait record WOULD be derived from, which is the open gap for this family."
+    "why_these": "MEASURED BASIS. Runqueue delay needs exactly two tracepoints: sched_waking gives the moment a thread became runnable, and sched_switch (next_tid) gives the moment a CPU actually ran it. The difference is the delay. Syscall events are collected only as the NEGATIVE control - showing durations stay flat is what separates this from a component blocked on I/O. Nothing else in the kernel trace is required."
   },
   "processing": [
     {
-      "step": "Stage the kernel trace so babeltrace2 can read it, because channels are stored gzipped",
+      "step": "Stage the raw kernel trace (channels are stored gzipped)",
       "run": "cp -r <run_dir>/kernel/kernel <tmp>/ctf && gunzip -f <tmp>/ctf/*.gz",
       "produces": "<tmp>/ctf",
-      "expect": "a CTF directory containing a metadata file and channel0_* streams"
+      "expect": "a CTF directory with metadata plus channel0_* streams. The metadata is CTF 2 (JSON preamble), so babeltrace 2.1 or newer is required; 2.0.x fails with an invalid-metadata error"
     },
     {
-      "step": "Decode only the scheduler events inside the incident window",
-      "run": "TZ=UTC babeltrace2 <tmp>/ctf --begin <incident_start_utc> --end <incident_end_utc> | grep -E \"sched_switch|sched_waking|sched_wakeup\" > <tmp>/sched.txt",
+      "step": "Measure runqueue delay per process, baseline window vs incident window",
+      "run": "python3 blueprints/problems/cpu-contention-co-tenant/scripts/runqueue_delay.py --ctf <tmp>/ctf --gt <run_dir>/ground_truth.json --out <out>/rq.json",
+      "reads": [
+        "<tmp>/ctf",
+        "<run_dir>/ground_truth.json"
+      ],
+      "produces": "<out>/rq.json",
+      "expect": "millions of wake->run pairs per window; a broad multi-process inflation of p95 indicates contention"
+    },
+    {
+      "step": "NEGATIVE CONTROL: confirm blocking-syscall durations did NOT inflate",
+      "run": "python3 blueprints/problems/db-latency-dependency-wait/scripts/blocking_syscall.py --ctf <tmp>/ctf --gt <run_dir>/ground_truth.json --out <out>/blocking.json",
       "reads": [
         "<tmp>/ctf"
       ],
-      "produces": "<tmp>/sched.txt",
-      "expect": "non-empty output; zero lines means the window is misaligned, because the trace is stamped in the host timezone while ground truth is UTC, so TZ=UTC is required"
+      "produces": "<out>/blocking.json",
+      "expect": "no syscall inflates by more than about 2x; a 10x or larger inflation on one component means this is NOT the right blueprint"
     },
     {
-      "step": "Attribute per-service wall time to on-CPU, runnable-wait and blocked, using the container-to-PID map",
-      "run": "python3 stratatrace/derive_kernel_l2.py <run_dir> --names sched_switch,sched_waking,sched_wakeup --out <out>/wait.jsonl",
+      "step": "Identify the off-call-path CPU consumer and emit the verdict",
+      "run": "python3 blueprints/problems/cpu-contention-co-tenant/scripts/cpu_attribution.py --run <run_dir> --out <out>/verdict.json --chart <out>/runqueue.svg --text <out>/explanation.txt",
       "reads": [
-        "<run_dir>/kernel",
-        "<run_dir>/meta"
-      ],
-      "produces": "<out>/wait.jsonl",
-      "expect": "one record per service, with rule_out_pct summing to about 100 and a verdict_hint"
-    },
-    {
-      "step": "Rank containers by CPU consumed in the window, mark which have call-path edges, and emit the verdict",
-      "run": "python3 blueprints/lib/cpu_attribution.py --run <run_dir> --wait <out>/wait.jsonl --out <out>/verdict.json --chart <out>/runqueue.svg --text <out>/explanation.txt",
-      "reads": [
-        "<out>/wait.jsonl"
+        "<out>/rq.json"
       ],
       "produces": "<out>/verdict.json, <out>/runqueue.svg, <out>/explanation.txt",
-      "expect": "the top CPU consumer has no call-path edges, and affected services show raised runnable_wait"
+      "expect": "the top CPU consumer has no call-graph edges and was absent in the baseline"
     }
   ],
   "outputs": [
@@ -141,23 +156,23 @@
   ],
   "decision": {
     "verdict_when": [
-      "a container consumes steady CPU during the incident that it did not consume in the baseline",
-      "that container has NO caller or callee edges in the call graph",
-      "host CPU rises but retains headroom rather than being exhausted",
-      "user-facing latency is only mildly affected and no new error signatures appear"
+      "p95 runqueue delay inflates several-fold across many unrelated processes",
+      "blocking-syscall durations stay flat over the same window",
+      "the slowdown does not converge on any single component in the call graph",
+      "a container with no call-graph role consumes CPU it did not consume in the baseline"
     ],
     "rule_out": [
       {
+        "instead": "a component waiting on I/O or a dependency",
+        "when": "one component's blocking syscall inflates by an order of magnitude while runqueue delay stays flat"
+      },
+      {
         "instead": "host CPU exhaustion",
-        "when": "host CPU is exhausted and many services degrade sharply together"
+        "when": "host CPU is exhausted rather than merely raised, and user latency collapses instead of jittering"
       },
       {
-        "instead": "service CPU throttling",
-        "when": "throttled seconds jump on an application service that is on the call path"
-      },
-      {
-        "instead": "a fault inside an application service",
-        "when": "the extra CPU is consumed by a service that IS on the call path, or no off-call-path container consumed CPU at all"
+        "instead": "a service pinned by its own CPU limit",
+        "when": "only ONE service is delayed and it is on the call path"
       }
     ],
     "root_cause_is": "the co-tenant workload container itself, not any application service it delays",
@@ -180,6 +195,6 @@
     "authored_by": "human",
     "verified_by": "PENDING - Naser to sign off",
     "authored_utc": "2026-08-27",
-    "notes": "v2: two discriminators removed after measurement contradicted them. The first draft asserted a runnable-wait signature from prior knowledge; measuring 93 runs showed runnable_wait never exceeds 4% anywhere, and that this family has no culprit-side L2 record at all. What remains is measured and reproducible."
+    "notes": "v3: rebuilt on the raw kernel trace read with babeltrace2, after the derived wait-share record was measured to be non-discriminative. Every discriminator now cites a measurement with its control. The decisive pair: runqueue delay 7.12x here vs 0.97x on the datastore fault, and the datastore's poll syscall 1.12x here vs 36.83x there - same signals, opposite directions."
   }
 }

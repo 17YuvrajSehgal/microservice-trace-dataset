@@ -1,0 +1,80 @@
+{
+  "run": "slow_db_aggressive_steady_r1",
+  "slow_threshold_x": 2.0,
+  "candidates": [
+    {
+      "component": "catalogue",
+      "max_incoming_x": 717.7,
+      "n_slow_incoming": 1,
+      "slow_callers": [
+        "front-end"
+      ],
+      "emits_own_spans": false,
+      "n_slow_outgoing": 0,
+      "max_outgoing_x": 0,
+      "is_terminal": true
+    },
+    {
+      "component": "carts",
+      "max_incoming_x": 1.0,
+      "n_slow_incoming": 0,
+      "slow_callers": [],
+      "emits_own_spans": true,
+      "n_slow_outgoing": 0,
+      "max_outgoing_x": 0.8,
+      "is_terminal": true
+    },
+    {
+      "component": "orders-db",
+      "max_incoming_x": 0.9,
+      "n_slow_incoming": 0,
+      "slow_callers": [],
+      "emits_own_spans": false,
+      "n_slow_outgoing": 0,
+      "max_outgoing_x": 0,
+      "is_terminal": true
+    },
+    {
+      "component": "payment",
+      "max_incoming_x": 0.9,
+      "n_slow_incoming": 0,
+      "slow_callers": [],
+      "emits_own_spans": false,
+      "n_slow_outgoing": 0,
+      "max_outgoing_x": 0,
+      "is_terminal": true
+    },
+    {
+      "component": "orders",
+      "max_incoming_x": 0.8,
+      "n_slow_incoming": 0,
+      "slow_callers": [],
+      "emits_own_spans": true,
+      "n_slow_outgoing": 0,
+      "max_outgoing_x": 1.0,
+      "is_terminal": true
+    },
+    {
+      "component": "carts-db",
+      "max_incoming_x": 0.8,
+      "n_slow_incoming": 0,
+      "slow_callers": [],
+      "emits_own_spans": false,
+      "n_slow_outgoing": 0,
+      "max_outgoing_x": 0,
+      "is_terminal": true
+    },
+    {
+      "component": "user",
+      "max_incoming_x": 0.8,
+      "n_slow_incoming": 0,
+      "slow_callers": [],
+      "emits_own_spans": false,
+      "n_slow_outgoing": 0,
+      "max_outgoing_x": 0,
+      "is_terminal": true
+    }
+  ],
+  "converged_on": "catalogue",
+  "reasoning": "catalogue has 1 slow incoming edge(s) (up to 717.7x) and no slow outgoing edges, so nothing it depends on explains its slowness"
+}
