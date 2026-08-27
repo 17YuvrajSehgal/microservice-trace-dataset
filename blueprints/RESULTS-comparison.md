@@ -12,6 +12,7 @@ method, not access.
 | **Blueprint** (rules, no model) | 83% | **83%** | 83% | **100%** | 508 s | **$0** |
 | Agent + kernel pack | **100%** | 58% | 100% | 100% | 128 s | $0.021 |
 | Agent, no kernel pack | **100%** | 58% | 100% | 100% | 118 s | $0.014 |
+| Model only, no tools, kernel pack | **100%** | 58% | 100% | 100% | **103 s** | $0.009 |
 | Statistical rule-tree | 42% | 42% | 100% | 42% | — | $0 |
 | BARO (published) | 0% | n/a | 100% | 0% | — | $0 |
 
@@ -23,9 +24,15 @@ typing is n/a rather than 0. Precision is scored over answers actually given.*
 | Fully correct | Co-tenant (n=5) | Datastore (n=7) | Total |
 |---|---|---|---|
 | **Blueprint** | **5/5** | 5/7 | **10/12** |
-| Agent | **0/5** | **7/7** | 7/12 |
+| Agent + kernel pack | **0/5** | **7/7** | 7/12 |
+| Agent, no pack | **0/5** | **7/7** | 7/12 |
+| Model only, no tools | **0/5** | **7/7** | 7/12 |
 | Statistical | **5/5** | 0/7 | 5/12 |
 | BARO | 0/5 | 0/7 | 0/12 |
+
+**All three model configurations land on exactly the same 7/12**, and all three fail the same
+way: 0/5 on co-tenant contention, 7/7 on the datastore. Tools, no tools, kernel data, no
+kernel data — none of it moves the number.
 
 Each alternative is strong on one fault and blind on the other. The blueprint is the only
 method above chance on both, and it wins the total.
@@ -35,6 +42,17 @@ correctly.** It localizes the culprit perfectly every time, then calls it `cpu_s
 or `cpu_throttling` — plausible labels that are both wrong. It has no rule that separates
 "threads cannot get a CPU" from "one service is capped". The blueprint has exactly that
 rule, measured: runqueue delay inflates while socket-waiting syscalls stay flat.
+
+## The tool loop adds nothing here either
+
+One model call with no tools scores **identically** to the full 7-tool agent: 100%
+component, 58% fully correct. Their verdicts agree on 9 of 12 incidents outright, and the
+three disagreements are all co-tenant runs where both are wrong anyway (`cpu_saturation`
+versus `cpu_throttling`; the truth is neither).
+
+The one-shot call is also the cheapest and fastest model arm: **103 s and $0.009**, against
+128 s and $0.021 for the agent with tools. On these two fault families, eight to ten rounds
+of tool querying buy nothing over a single well-formed prompt.
 
 ## Giving the model the kernel data changed nothing
 
