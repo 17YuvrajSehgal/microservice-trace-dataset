@@ -135,8 +135,8 @@
   <span class="k">"window"</span>: { <span class="k">"baseline_s"</span>: 60, <span class="k">"incident_s"</span>: 120 }
 }
 <span class="k">"processing"</span>: [
-  { <span class="k">"step"</span>: <span class="s">"measure how long threads waited for a CPU"</span>,
-    <span class="k">"capability"</span>: <span class="s">"kernel.scheduler.runqueue_delay"</span> }
+  { <span class="k">"step"</span>: <span class="s">"measure how long threads waited for a CPU (Runqueue delay)"</span>,
+    <span class="k">"capability"</span>: <span class="s">"kernel.scheduler.runqueue_delay (Database poll wait)"</span> }
 ]
 <span class="k">"decision"</span>: {
   <span class="k">"verdict_when"</span>: [<span class="s">"wait time up several-fold, many processes"</span>],
@@ -186,9 +186,9 @@
   <table>
     <thead><tr><th>Measurement from the kernel trace</th><th>CPU contention</th><th>Slow datastore</th></tr></thead>
     <tbody>
-      <tr><td>How long threads waited for a CPU</td>
+      <tr><td>How long threads waited for a CPU (Runqueue delay)</td>
           <td class="n big">7.1×</td><td class="n dim">1.0×</td></tr>
-      <tr><td>How long the database sat blocked</td>
+      <tr><td>How long the database sat blocked (Database poll wait)</td>
           <td class="n dim">1.1×</td><td class="n big">36.8×</td></tr>
     </tbody>
   </table>
@@ -233,7 +233,7 @@
     </tr></thead>
     <tbody>
       <tr><td><strong>Blueprint</strong> — rules proven on kernel traces</td>
-          <td class="n big">83%</td><td class="n dim">33%</td></tr>
+          <td class="n big">83%</td><td class="n dim">88%</td></tr>
       <tr><td>AI agent, reading everything available</td>
           <td class="n dim">58%</td><td class="n dim">0%</td></tr>
       <tr><td>Classic metrics analysis</td>
