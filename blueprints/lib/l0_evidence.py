@@ -53,6 +53,11 @@ def main():
     ap.add_argument("--comms", default="",
                     help="processes to profile for blocking duration; empty = per-app default")
     ap.add_argument("--force", action="store_true")
+    ap.add_argument("--kernel-only", action="store_true",
+                    help="phase-1 mode: kernel trace only. Skips call-graph convergence and "
+                         "does not require an extracted working set, so a run can be judged "
+                         "from its staged CTF alone. Neither blueprint's FIRE decision uses "
+                         "convergence, so the verdict is unaffected.")
     a = ap.parse_args()
 
     # Per-app process set. Train Ticket reports EVERY Java service as `java`, so that one
@@ -62,11 +67,14 @@ def main():
                    "trainticket": "mysqld,java,node,redis-server"}.get(a.app, "mysqld,java")
 
     run_dir, fam = find_run_dir(a.app, a.run_id)
-    if not run_dir:
+    if not run_dir and not a.kernel_only:
         sys.exit(f"run not found: {a.run_id}")
+    fam = fam or "unstaged"
     ctf = os.path.join(L0ROOT, a.app, a.run_id, "ctf")
     gt_l0 = os.path.join(L0ROOT, a.app, a.run_id, "ground_truth.json")
-    gt = gt_l0 if os.path.exists(gt_l0) else os.path.join(run_dir, "ground_truth.json")
+    gt = gt_l0 if os.path.exists(gt_l0) else os.path.join(run_dir or "", "ground_truth.json")
+    if not os.path.exists(gt):
+        sys.exit(f"no ground_truth.json for {a.run_id} (looked in L0 stage and run dir)")
 
     os.makedirs(a.out, exist_ok=True)
     pack_path = os.path.join(a.out, f"{a.run_id}.json")
@@ -92,11 +100,14 @@ def main():
     if rc:
         print(f"  blocking FAILED: {err}")
 
-    rc, secs, err = sh([sys.executable, CONV, "--run", run_dir, "--app", a.app,
-                        "--out", f"{tmp}/convergence.json"])
-    timing["convergence_s"] = secs
-    if rc:
-        print(f"  convergence FAILED: {err}")
+    if a.kernel_only or not run_dir:
+        timing["convergence_s"] = 0.0          # phase 1: kernel trace only, no spans read
+    else:
+        rc, secs, err = sh([sys.executable, CONV, "--run", run_dir, "--app", a.app,
+                            "--out", f"{tmp}/convergence.json"])
+        timing["convergence_s"] = secs
+        if rc:
+            print(f"  convergence FAILED: {err}")
 
     def load(n):
         p = os.path.join(tmp, n)
@@ -119,7 +130,9 @@ def main():
 
     pack = {
         "run_id": a.run_id, "app": a.app, "family_dir": fam,
-        "source": "raw LTTng kernel trace (L0) read with babeltrace2, plus OTLP spans",
+        "kernel_only": bool(a.kernel_only),
+        "source": ("raw LTTng kernel trace (L0) read with babeltrace2" if a.kernel_only else
+                   "raw LTTng kernel trace (L0) read with babeltrace2, plus OTLP spans"),
         "timing_s": timing,
         "total_analysis_s": round(sum(timing.values()), 1),
         "runqueue_delay": {

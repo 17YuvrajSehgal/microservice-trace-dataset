@@ -1,0 +1,24 @@
+# E1 batch 1 — Sock Shop nearest neighbours + no-fault controls.
+# Format: <app> <family> <run_id>
+#
+# These are the families most likely to make a blueprint fire when it should not:
+#   anomaly_cpu        host CPU saturation also inflates runqueue delay broadly
+#   svc_cpu_cap        cgroup throttling also makes threads wait for a CPU
+#   dependency_outage  a hung dependency also blocks a socket syscall
+#   svc_net            added network delay also inflates socket waits
+#   normal             nothing is wrong; neither blueprint may fire
+#
+# Correct outcome for EVERY run in this file: no blueprint fires.
+
+sockshop anomaly_cpu       anomaly_cpu_aggressive_steady_r1
+sockshop anomaly_cpu       anomaly_cpu_aggressive_steady_r2
+sockshop anomaly_cpu       anomaly_cpu_aggressive_steady_r3
+sockshop svc_cpu_cap       svc_cpu_cap_aggressive_steady_r1
+sockshop svc_cpu_cap       svc_cpu_cap_aggressive_steady_r2
+sockshop dependency_outage dependency_outage_aggressive_steady_r1
+sockshop dependency_outage dependency_outage_aggressive_steady_r2
+sockshop svc_net           svc_net_aggressive_steady_r1
+sockshop svc_net           svc_net_aggressive_steady_r2
+sockshop normal            normal_none_steady_r1
+sockshop normal            normal_none_steady_r2
+sockshop normal            normal_none_burst_r1
