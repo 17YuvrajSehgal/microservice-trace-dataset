@@ -1,0 +1,31 @@
+# CPU cluster measurement — the three families that all make threads wait for a CPU,
+# plus the no-fault control. All L0 already staged, so this is decode only.
+#
+# The question this answers: given that runqueue delay is raised in ALL of these
+# (7x co-tenant, 52x host saturation, 15.7x cgroup cap, 3.7x healthy burst), what
+# in the kernel trace tells them apart?
+#
+# Candidate facts, measured by oncpu_share.py, asserted by nobody yet:
+#   thief          a process that gained CPU it was not using before
+#   host_util      whether the host still has headroom
+#   biggest_loser  a process that LOST CPU (expected only under a cgroup cap)
+#
+# Format: <app> <family> <run_id>
+
+sockshop noisy_neighbor noisy_neighbor_aggressive_steady_r1
+sockshop noisy_neighbor noisy_neighbor_aggressive_steady_r2
+sockshop noisy_neighbor noisy_neighbor_aggressive_steady_r3
+sockshop noisy_neighbor noisy_neighbor_subtle_steady_r1
+sockshop noisy_neighbor noisy_neighbor_subtle_steady_r2
+sockshop anomaly_cpu    anomaly_cpu_aggressive_steady_r1
+sockshop anomaly_cpu    anomaly_cpu_aggressive_steady_r2
+sockshop anomaly_cpu    anomaly_cpu_aggressive_steady_r3
+sockshop svc_cpu_cap    svc_cpu_cap_aggressive_steady_r1
+sockshop svc_cpu_cap    svc_cpu_cap_aggressive_steady_r2
+sockshop svc_cpu_cap    svc_cpu_cap_subtle_steady_r1
+sockshop svc_cpu_cap    svc_cpu_cap_subtle_steady_r2
+sockshop normal         normal_none_steady_r1
+sockshop normal         normal_none_steady_r2
+sockshop normal         normal_none_steady_r3
+sockshop normal         normal_none_burst_r1
+sockshop normal         normal_none_burst_r2

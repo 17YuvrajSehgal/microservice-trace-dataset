@@ -90,10 +90,14 @@ def scan(ctf, begin, end):
         except Exception:                                              # noqa: BLE001
             pass
     span = (t_last - t_first) if (t_first is not None and t_last is not None) else 0.0
-    return dict(on_cpu), span
+    # How many CPUs the trace actually saw. Needed for the saturation test: a co-tenant
+    # leaves headroom, a saturated host does not, and "busy cores" means nothing without
+    # knowing how many there are.
+    n_cpus = (max(last) + 1) if last else 0
+    return dict(on_cpu), span, n_cpus
 
 
-def summarise(on_cpu, span):
+def summarise(on_cpu, span, n_cpus):
     """Shares of BUSY cpu time (idle excluded), plus absolute cores used."""
     busy = {c: v for c, v in on_cpu.items() if not c.startswith(IDLE_PREFIX)}
     total_busy = sum(busy.values()) or 1e-9
@@ -105,9 +109,14 @@ def summarise(on_cpu, span):
                      "cores": round(v / span, 4) if span else None,
                      "kernel_thread": is_kernel(comm)})
     rows.sort(key=lambda r: -r["cpu_seconds"])
+    busy_cores = (total_busy / span) if span else 0.0
     return {"window_span_s": round(span, 3),
+            "n_cpus": n_cpus,
             "busy_cpu_seconds": round(total_busy, 3),
-            "busy_cores": round(total_busy / span, 3) if span else None,
+            "busy_cores": round(busy_cores, 3),
+            # THE saturation test. Co-tenant contention leaves headroom; host saturation
+            # does not. Both raise runqueue delay, so this is what separates them.
+            "host_utilisation": round(busy_cores / n_cpus, 4) if n_cpus else None,
             "per_comm": rows}
 
 
@@ -136,10 +145,11 @@ def main():
     result = {"ctf": a.ctf, "windows": {}}
     for name, (b, e) in windows.items():
         print(f"decoding {name}: {b} -> {e} ...", flush=True)
-        on_cpu, span = scan(a.ctf, b, e)
-        result["windows"][name] = {"range": [b, e], **summarise(on_cpu, span)}
-        print(f"  {len(on_cpu)} comms, busy "
-              f"{result['windows'][name]['busy_cores']} cores over {span:.1f}s")
+        on_cpu, span, n_cpus = scan(a.ctf, b, e)
+        result["windows"][name] = {"range": [b, e], **summarise(on_cpu, span, n_cpus)}
+        w = result["windows"][name]
+        print(f"  {len(on_cpu)} comms, busy {w['busy_cores']} of {n_cpus} cores "
+              f"({100 * (w['host_utilisation'] or 0):.0f}% util) over {span:.1f}s")
 
     base = {r["comm"]: r for r in result["windows"]["baseline"]["per_comm"]}
     inc = {r["comm"]: r for r in result["windows"]["incident"]["per_comm"]}
@@ -166,6 +176,24 @@ def main():
     result["cores_delta"] = deltas
     result["newcomers"] = [d for d in deltas if d["newcomer"] and not d["kernel_thread"]]
     result["biggest_loser"] = min(deltas, key=lambda r: r["cores_gained"]) if deltas else None
+
+    # The three facts that should separate the CPU cluster. Reported as measurements only —
+    # which combination means which fault is decided after looking at all the families,
+    # not asserted here.
+    wb, wi = result["windows"]["baseline"], result["windows"]["incident"]
+    top_new = result["newcomers"][0] if result["newcomers"] else None
+    loser = result["biggest_loser"]
+    result["signature"] = {
+        "host_util_baseline": wb["host_utilisation"],
+        "host_util_incident": wi["host_utilisation"],
+        "busy_cores_baseline": wb["busy_cores"],
+        "busy_cores_incident": wi["busy_cores"],
+        "n_cpus": wi["n_cpus"],
+        "thief_comm": top_new["comm"] if top_new else None,
+        "thief_cores_gained": top_new["cores_gained"] if top_new else 0.0,
+        "biggest_loser_comm": loser["comm"] if loser else None,
+        "biggest_loser_cores": loser["cores_gained"] if loser else 0.0,
+    }
 
     os.makedirs(os.path.dirname(a.out) or ".", exist_ok=True)
     json.dump(result, open(a.out, "w"), indent=2)
