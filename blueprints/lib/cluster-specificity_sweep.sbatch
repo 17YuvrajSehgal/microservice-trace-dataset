@@ -30,7 +30,7 @@ source transfer/env.sh >/dev/null 2>&1
 mkdir -p "$OUT/packs" "$OUT/verdicts" "$OUT/logs"
 
 echo "== specificity sweep start $(date -u +%FT%TZ) =="
-echo "tasks: $TASKS  ($(wc -l < "$TASKS") runs, $PAR at a time)"
+echo "tasks: $TASKS  ($(grep -cvE '^[[:space:]]*(#|$)' "$TASKS") runs, $PAR at a time)"
 
 run_one() {
   APP="$1"; FAM="$2"; RUN="$3"

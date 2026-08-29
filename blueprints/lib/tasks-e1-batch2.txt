@@ -1,0 +1,27 @@
+# E1 batch 2 — the rest of the Sock Shop negative class.
+# Format: <app> <family> <run_id>
+#
+# svc_cpu_cap SUBTLE is the sharp test predicted by finding F1. The aggressive cap stayed
+# quiet only because its socket-wait inflation (19.4x) tripped the CPU blueprint's veto. A
+# milder cap should inflate runqueue past 2x while leaving socket waits under 5x — which
+# would make the CPU-contention blueprint FIRE on a cgroup cap. If that happens, F1 is not a
+# theoretical weakness, it is a live false positive.
+#
+# Correct outcome for EVERY run in this file: no blueprint fires.
+
+sockshop svc_cpu_cap   svc_cpu_cap_subtle_steady_r1
+sockshop svc_cpu_cap   svc_cpu_cap_subtle_steady_r2
+sockshop queue_backlog queue_backlog_aggressive_steady_r1
+sockshop queue_backlog queue_backlog_aggressive_steady_r2
+sockshop anomaly_mem   anomaly_mem_aggressive_steady_r1
+sockshop anomaly_mem   anomaly_mem_aggressive_steady_r2
+sockshop anomaly_disk  anomaly_disk_aggressive_steady_r1
+sockshop anomaly_disk  anomaly_disk_aggressive_steady_r2
+sockshop anomaly_net   anomaly_net_aggressive_steady_r1
+sockshop anomaly_net   anomaly_net_aggressive_steady_r2
+sockshop svc_mem_cap   svc_mem_cap_aggressive_steady_r1
+sockshop svc_mem_cap   svc_mem_cap_aggressive_steady_r2
+sockshop error_storm   error_storm_aggressive_steady_r1
+sockshop error_storm   error_storm_aggressive_steady_r2
+sockshop normal        normal_none_steady_r3
+sockshop normal        normal_none_burst_r2
