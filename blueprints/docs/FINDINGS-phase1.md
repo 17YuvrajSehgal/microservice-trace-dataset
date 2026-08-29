@@ -5,6 +5,84 @@ Protocol: `RESEARCH-PLAN-phase1-kernel.md`.
 
 ---
 
+## F6 — Re-test on both applications: the CPU rules work on one app and break on the other
+
+**Re-test**, job 2222638, 69 runs, 1h12m. Both applications, new decision rules.
+Raw: `/scratch/yuvraj17/retest/retest.json`.
+
+| App | Class | n | Correct | Rate |
+|---|---|---|---|---|
+| Sock Shop | positive | 19 | 17 | **89%** |
+| Sock Shop | negative | 21 | 11 | 52% |
+| Train Ticket | positive | 19 | 13 | 68% |
+| Train Ticket | negative | 6 | 4 | 67% |
+
+### What improved on Sock Shop
+
+On the **same 21 negative runs**, wrong answers went **13 → 10**. Every CPU-rule mistake is
+fixed except one family:
+
+| Was wrong in E1 | Now |
+|---|---|
+| `svc_cpu_cap_subtle` ×2 → co-tenant | **correct** (both now `service-cpu-throttle`) |
+| `normal_none_burst` ×2 → co-tenant | **correct** (quiet) |
+| `anomaly_disk` ×1 → co-tenant | **correct** (quiet) |
+| `anomaly_mem` ×2 → co-tenant | **still wrong** |
+
+The eight datastore-rule mistakes are unchanged, as expected — that rule was deliberately
+left alone.
+
+### The cross-application result, which is the point of the exercise
+
+**Train Ticket runs hot. Its baseline is 0.82, not Sock Shop's 0.48.**
+
+| Family | Sock Shop | Train Ticket |
+|---|---|---|
+| host saturation | 0.991–0.998 | **0.994–0.997** |
+| co-tenant | 0.619–0.681 | **0.811–0.853** |
+| cgroup cap | 0.114–0.365 | **0.800–0.832** |
+| no fault | 0.462–0.531 | (baseline ≈0.82) |
+
+Consequences, measured:
+
+- **Host saturation transfers perfectly.** 0.99+ on both. A ceiling is a ceiling, and it is
+  the only rule here that is scale-free.
+- **The cgroup-cap rule fails completely on Train Ticket.** All three aggressive runs were
+  *missed*: utilisation went 0.8314 → 0.8316, 0.8172 → 0.8237, 0.8201 → 0.8191. **No
+  collapse at all.** On Sock Shop the same fault collapsed utilisation to a quarter of
+  baseline.
+- **The reason is architectural.** Sock Shop is a short chain, so throttling one service
+  stalls the whole pipeline behind it and the host goes quiet. Train Ticket has 40+ services
+  and keeps working on other requests, so one capped service barely dents the total.
+- **Co-tenant on Train Ticket (0.811–0.853) sits inside Sock Shop's *saturation* territory
+  and on top of Train Ticket's own baseline.** An absolute threshold learned on one app is
+  meaningless on the other.
+
+This is the same failure the datastore blueprint had when it fell to 44% precision on Train
+Ticket, and it has the same cause: **a threshold measured on one application encodes that
+application's architecture.**
+
+### Two new confusions the wider sweep exposed
+
+1. **`anomaly_mem` fires `cpu-contention` on both apps** (SS util 0.749–0.765, TT
+   0.797–0.798). The memory-stress recipe runs a `stress-ng` container, which *is* a
+   newcomer taking CPU. The rule is not wrong about what it sees; the fault families overlap
+   by construction.
+2. **`tt_slow_db` ×2 fires `service-cpu-throttle`.** On Train Ticket the datastore fault
+   collapses utilisation *and* raises runqueue delay, so the F4 guard does not separate them
+   there. One `tt_slow_db` run also reports utilisation of **−0.000**, which is a window with
+   effectively no scheduler events — a data problem to check, not a result.
+
+### What this says
+
+The direction of travel was right and the magnitudes are not portable. The fix is not to
+re-tune per app, which would be fitting. It is **E3**: express each discriminator relative to
+the system's own baseline and its own spread, rather than as an absolute cut, then re-test
+the same way. Host saturation already passes that bar because "at the ceiling" needs no
+calibration; the other two do not.
+
+---
+
 ## F5 — Socket peer attribution: the data is there, the first attempt failed
 
 **Goal.** The datastore rule fires on anything that blocks a socket, and the impostors are
