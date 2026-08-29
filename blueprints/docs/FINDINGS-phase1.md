@@ -5,6 +5,59 @@ Protocol: `RESEARCH-PLAN-phase1-kernel.md`.
 
 ---
 
+## F5 — Socket peer attribution: the data is there, the first attempt failed
+
+**Goal.** The datastore rule fires on anything that blocks a socket, and the impostors are
+louder than the real fault (network path 175×, hung dependency 89×, real slow datastore
+36.8×). Syscall duration says a process is blocked; it cannot say blocked **on what**.
+
+**The data exists.** Our `net_dev_queue` and `net_if_receive_skb` events carry full IP and
+TCP headers — source and destination address, both ports, interface name. 60,000 of each in
+a 3M-event sample. So the peer is recoverable in principle.
+
+**The first implementation does not work.** `socket_peer_wait.py` pairs each outgoing packet
+with the next incoming packet on the same (process, peer) and calls the gap a reply latency.
+Run on four labelled incidents, the output is unusable:
+
+| Run | Top "slow peer" | Baseline gap | Peers slowed ≥2× |
+|---|---|---|---|
+| slow datastore | `node → 172.18.0.10:80` | 1278 ms | 1 of 4 |
+| hung dependency | `app → 172.18.0.18:40772` | 2576 ms | 1 of 10 |
+| degraded network | `conn10 → 172.18.0.19:27017` | 1468 ms | 2 of 5 |
+| **no fault** | — | 1090 ms | **1 of 16** |
+
+Three things are wrong, and they are worth writing down so the next attempt does not repeat
+them:
+
+1. **It measures idleness, not latency.** Baseline gaps of 1–5 seconds on a *healthy* system
+   give it away. TCP connections are long-lived and mostly quiet, so "time until the next
+   packet arrives" is dominated by nothing happening.
+2. **The peer key is wrong for half the flows.** Outgoing is keyed on the destination and
+   incoming on the source, which matches only when the process is the client. Many rows show
+   ephemeral ports (51178, 42330), meaning the process is the *server* there — so the key is
+   a different random port per connection and never pairs across windows. `reply_ratio` above
+   1.0 (1.24, 1.32) confirms the two directions are not matching up.
+3. **The datastore never appears.** `mysqld:3306` is absent from the slow-datastore run
+   entirely, because **toxiproxy sits permanently in the catalogue→catalogue-db path**. The
+   kernel-visible peer of the caller is the proxy, not the database. Our own deployment
+   topology defeats a naive peer lookup.
+
+And the decisive test: the no-fault run reports a slowed peer too. **The signature does not
+separate.**
+
+**What the next attempt should do** — recorded, not yet built:
+- normalise each flow to its 5-tuple and identify the peer by the **well-known** endpoint
+  (port < 32768), so both directions map to one flow
+- cap measured gaps (order 200 ms) so idle time cannot enter the statistic
+- restrict to flows where the process is the client
+- account for the proxy hop, since the peer of a service is not always the service it is
+  logically talking to
+
+**Status: no rule written, no blueprint changed.** This is a measurement that failed, kept
+because knowing the naive version fails is worth as much as the version that works.
+
+---
+
 ## F3 — The CPU cluster separates cleanly, and the discriminator is not runqueue delay
 
 **CPU-cluster measurement**, 17 Sock Shop runs, job 2222558, 17 min.
