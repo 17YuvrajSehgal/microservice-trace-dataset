@@ -5,6 +5,75 @@ Protocol: `RESEARCH-PLAN-phase1-kernel.md`.
 
 ---
 
+## F2 — 42% false-positive rate on the negative class, and every false fire is confident
+
+**E1 batch 1**, Sock Shop, 12 runs from five families neither blueprint should claim.
+Job 2221923, 27 min, kernel-only packs. Raw: `/scratch/yuvraj17/specificity/`.
+
+| Truth family | n | Correctly quiet | Fired | Verdict it gave |
+|---|---|---|---|---|
+| `anomaly_cpu` | 3 | 3 | 0 | — (but see margins below) |
+| `svc_cpu_cap` | 2 | 2 | 0 | — (but see margins below) |
+| `dependency_outage` | 2 | **0** | **2** | `datastore-wait` → `db_latency` on "java", **conf 0.85** |
+| `svc_net` | 2 | **0** | **2** | `datastore-wait` → `db_latency` on "node", **conf 0.85** |
+| `normal` (no fault) | 3 | 2 | **1** | `cpu-contention` → `noisy_neighbor` on host, **conf 0.80** |
+
+**5 false fires in 12 negatives — 42%.** None abstained; all reported 0.80–0.85 confidence.
+The advertised "100% precision, declines when unsure" does not survive contact with a
+negative class: correct-decline rate is 7/12 = 58%.
+
+Worst single case: **`normal_none_burst_r1` — a healthy system under a bursty workload — was
+diagnosed as a noisy neighbour on the host at 0.80 confidence.** No fault was injected.
+
+### The two rules fail in different ways
+
+**datastore-wait fires on anything that blocks a socket.** It cannot ask *why* a process is
+blocked:
+
+| Run | Blocking call | Inflation | Verdict |
+|---|---|---|---|
+| `slow_db` (its target) | `poll` on mysqld | 36.8× | correct |
+| `dependency_outage` | `poll` on java | **89.0×** | wrong |
+| `svc_net` | `epoll_pwait` on node | **175.5×** | wrong |
+
+The impostors produce a *stronger* signal than the real thing, so no threshold change can
+fix this. It needs a different question: blocked **on what**.
+
+**cpu-contention's positive conditions are met by almost anything that loads the host.**
+
+| Run | rq max | procs inflated | socket veto | Fired? |
+|---|---|---|---|---|
+| `noisy_neighbor` (its target) | 7.12× | many | 1.5–2.99× | yes, correct |
+| `anomaly_cpu` | **36.97–52.54×** | 12 | 10.5–13.7× | no — vetoed |
+| `svc_cpu_cap` | 13.54–15.70× | 5–6 | 19.4–19.6× | no — vetoed |
+| `normal` burst | 3.69× | 12 | 1.71× | **yes — wrong** |
+
+Host saturation reaches **52×**, seven times the 7.12× of the fault the blueprint was written
+from. It stayed quiet only because its socket waits happened to exceed the veto. The healthy
+burst run had no such luck — modest runqueue inflation, quiet sockets — so it fired.
+**The veto, not the rule, is doing the discrimination, and the veto is not aimed at any of
+these causes.**
+
+This confirms F1 as a live defect rather than a theoretical one, and adds the case F1 did not
+anticipate: a *healthy* system can satisfy the rule.
+
+### Margins are thin where it matters
+
+`normal_none_steady_r1` measured 2.36× runqueue — over the 2× threshold — and was saved only
+by the ≥3-process breadth requirement, having inflated exactly 1 process. Two of three
+no-fault runs sit at or above the firing threshold on the primary signal.
+
+### What this says about the next step
+
+Every false fire names a blueprint that does not exist. `dependency_outage` had nowhere to go
+but `datastore-wait`; `svc_net` likewise. A two-blueprint library forces every incident into
+one of two answers, and mutual veto is the only thing standing in for "none of these".
+
+The fix is not threshold tuning. It is to **build the confusable siblings** and to make
+"nothing here matches" a first-class outcome. See `BLUEPRINT-BACKLOG.md`.
+
+---
+
 ## F1 — On a CPU cap, both blueprints' positive evidence was satisfied. Only mutual veto kept them quiet.
 
 **Run:** `svc_cpu_cap_aggressive_steady_r1`, Sock Shop. `carts` capped to 0.2 CPU.

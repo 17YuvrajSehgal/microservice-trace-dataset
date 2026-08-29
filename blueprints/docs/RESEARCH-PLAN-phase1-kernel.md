@@ -122,7 +122,7 @@ That is the honest transfer measurement, and it is what the 44% episode was real
 For each blueprint, a written record of:
 
 - what the literature establishes about the signal (runqueue delay, syscall blocking) —
-  grounded in `DOCS/reading-papers/`
+  grounded in `../../DOCS/reading-papers`
 - what we measured ourselves, with the run count behind each number
 - what we tested and retracted, and why
 
