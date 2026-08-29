@@ -1,27 +1,49 @@
 #!/usr/bin/env python3
-"""Apply the two blueprints' decision rules to an L0 evidence pack. No model involved.
+"""Apply the blueprints' decision rules to an L0 evidence pack. No model involved.
 
 This is the blueprint arm of the comparison. It reads the SAME evidence pack every other
-method gets, applies the rules written in the two blueprints, and returns a verdict in the
-same shape the LLM methods return, so one scorer can grade them all.
+method gets, applies the rules written in the blueprints, and returns a verdict in the same
+shape the LLM methods return, so one scorer can grade them all.
 
-Both blueprints are offered on every incident. Whichever fires is the answer; if both or
-neither fire, that is recorded as ambiguous rather than being resolved by a coin flip. That
-makes this a test of SELECTION as well as accuracy.
+Every blueprint is offered every incident. Whichever fires is the answer; if several or none
+fire that is recorded rather than resolved by a coin flip, so this tests SELECTION as well as
+accuracy.
 
-Thresholds come from the measured evidence, not from taste:
-    blocking inflation >= 5x     (measured 36.8x on the datastore fault, 1.12x control)
-    runqueue inflation >= 2x     (measured 7.12x on the CPU fault, 0.97x control)
+WHAT CHANGED (2026-08-29, findings F1-F3)
+-----------------------------------------
+The old version decided the CPU family on RUNQUEUE DELAY. Measurement killed that: runqueue
+delay is raised in every CPU-family fault AND in healthy load bursts, and its ordering is
+inverted against severity (host saturation 52x, cgroup cap 15.7x, co-tenant 7.1x, healthy
+burst 3.7x). Deciding on it gave a 42-62% false-positive rate, including a healthy system
+reported as a host fault at 0.80 confidence.
+
+The deciding signal is now HOST CPU UTILISATION from sched_switch, which was measured to
+split the four CPU families with no overlap across 17 labelled runs:
+
+    host saturation   util 0.991-0.998   newcomer takes 6.54-6.62 cores
+    co-tenant         util 0.619-0.681   newcomer takes 0.99-2.00 cores
+    healthy           util 0.462-0.531   4/5 have no newcomer
+    cgroup cap        util 0.114-0.365   no newcomer, utilisation FALLS
+
+Runqueue delay is kept and reported, but only as corroboration.
 
     python3 blueprint_decide.py --pack <pack.json> [--out verdict.json]
 """
 from __future__ import annotations
 import argparse, json, os, sys
 
-BLOCK_X = 5.0
-RQ_X = 2.0
+# ---- thresholds, every one of them measured; see evidence/cpu_cluster_separation.json ----
+SATURATED = 0.95        # host saturation measured 0.991-0.998; next family down tops out at 0.681
+COLLAPSE_RATIO = 0.80   # cap runs fell to 0.25-0.73 of baseline; healthy runs sat at 1.04-1.15
+THIEF_CORES = 0.50      # co-tenant newcomers took 0.988-2.002; the largest healthy one was 0.296
+CONTENDED = 0.55        # co-tenant utilisation floor 0.619; healthy ceiling 0.531
+BIG_THIEF = 4.0         # host-saturation newcomers took 6.54-6.62; co-tenant never above 2.002
+LOSER_CORES = -0.30     # cap runs lost 0.357-0.876; healthy and co-tenant lost 0.024-0.160
+
+BLOCK_X = 5.0           # datastore fault measured 36.8x; its control 1.12x
+RQ_X = 2.0              # corroboration only now, never a deciding test
+
 SOCKET_CALLS = ("poll", "epoll_wait", "epoll_pwait", "recvfrom", "recvmsg", "read", "select")
-# processes that are not application components; never name one as the culprit
 INFRA = ("kworker", "ksoftirqd", "rcu_", "kswapd", "kcompactd", "migration", "watchdog",
          "systemd", "containerd", "dockerd", "cadvisor", "prometheus", "node_export",
          "google_guest", "runc", "sshd", "irq/")
@@ -32,80 +54,137 @@ def is_infra(name):
     return any(k in n for k in INFRA)
 
 
-def cpu_rule(pack):
-    """CPU contention: runqueue delay inflates broadly, syscall durations stay flat."""
-    rq = pack["runqueue_delay"]["top_by_inflation"]
-    blk = pack["blocking_syscall"]["top_by_inflation"]
-    xs = [r["p95_x"] for r in rq if r.get("p95_x")]
+def _rq(pack):
+    """Runqueue statistics. Corroboration only; no rule may decide on these."""
+    rows = pack.get("runqueue_delay", {}).get("top_by_inflation", [])
+    xs = [r["p95_x"] for r in rows if r.get("p95_x")]
     if not xs:
-        return {"fires": False, "why": "no runqueue measurements available"}
-    top = max(xs)
-    median = sorted(xs)[len(xs) // 2]
-    n_inflated = sum(1 for x in xs if x >= RQ_X)
-    # MEASURED REFINEMENT: under CPU starvation *every* syscall lengthens a little, because
-    # the thread is descheduled inside it. connect() reached 5.3x on two co-tenant runs and
-    # wrongly vetoed this rule. The datastore signature is specifically a socket-WAITING call
-    # inflating hugely, so the veto must use that same set. Across all five co-tenant runs the
-    # max socket-wait inflation is 1.5-2.99x, against 36.8x on the datastore fault.
-    sock = [r["p95_x"] for r in blk
-            if r.get("p95_x") and r["comm_syscall"].split("|")[-1] in SOCKET_CALLS]
-    max_blk = max(sock or [0])
-    max_any = max([r["p95_x"] for r in blk if r.get("p95_x")] or [0])
-
-    fires = top >= RQ_X and n_inflated >= 3 and max_blk < BLOCK_X
-    # the culprit is the workload that took the CPU, which the call graph does not contain.
-    # From L0 alone we can name the most-delayed application process; the container-level
-    # attribution comes from the metrics step of the blueprint.
-    worst_app = next((r["service"] for r in rq
-                      if r.get("p95_x", 0) >= RQ_X and not is_infra(r["service"])), None)
+        return {"max": None, "median": None, "n_inflated": 0, "worst_app": None}
     return {
-        "fires": fires,
-        "max_runqueue_x": top, "median_runqueue_x": median,
-        "n_processes_inflated": n_inflated,
-        "max_socket_wait_x": max_blk, "max_any_syscall_x": max_any,
-        "most_delayed_app_process": worst_app,
-        "why": (f"runqueue delay up to {top}x across {n_inflated} processes "
-                f"(median {median}x) while no socket-waiting syscall inflated past {max_blk}x"
-                if fires else
-                f"runqueue top {top}x over {n_inflated} processes, max socket-wait {max_blk}x "
-                f"- does not match broad CPU starvation"),
+        "max": max(xs),
+        "median": sorted(xs)[len(xs) // 2],
+        "n_inflated": sum(1 for x in xs if x >= RQ_X),
+        "worst_app": next((r["service"] for r in rows
+                           if r.get("p95_x", 0) >= RQ_X and not is_infra(r["service"])), None),
     }
 
 
-def db_rule(pack):
-    """Datastore wait: one socket syscall inflates hugely, runqueue delay stays flat."""
-    rq = pack["runqueue_delay"]["top_by_inflation"]
-    blk = pack["blocking_syscall"]["top_by_inflation"]
-    xs = [r["p95_x"] for r in rq if r.get("p95_x")]
-    rq_max = max(xs) if xs else 0.0
+def _cpu(pack):
+    """On-CPU attribution: the deciding evidence for the whole CPU family."""
+    s = (pack.get("oncpu") or {}).get("signature") or {}
+    ub, ui = s.get("host_util_baseline"), s.get("host_util_incident")
+    return {
+        "available": ub is not None and ui is not None,
+        "util_baseline": ub,
+        "util_incident": ui,
+        "util_ratio": round(ui / ub, 3) if (ub and ui is not None) else None,
+        "thief_comm": s.get("thief_comm"),
+        "thief_cores": s.get("thief_cores_gained") or 0.0,
+        "loser_comm": s.get("biggest_loser_comm"),
+        "loser_cores": s.get("biggest_loser_cores") or 0.0,
+        "n_cpus": s.get("n_cpus"),
+    }
 
-    hits = [r for r in blk
-            if r.get("p95_x", 0) >= BLOCK_X
+
+def _blk(pack):
+    rows = pack.get("blocking_syscall", {}).get("top_by_inflation", [])
+    sock = [r for r in rows
+            if r.get("p95_x")
             and r["comm_syscall"].split("|")[-1] in SOCKET_CALLS
             and not is_infra(r["comm_syscall"].split("|")[0])]
-    hits.sort(key=lambda r: -r["p95_x"])
-    top = hits[0] if hits else None
+    sock.sort(key=lambda r: -r["p95_x"])
+    return {"rows": rows, "socket_hits": sock,
+            "max_socket_x": max([r["p95_x"] for r in sock], default=0.0),
+            "max_any_x": max([r["p95_x"] for r in rows if r.get("p95_x")], default=0.0)}
 
-    fires = bool(top) and rq_max < RQ_X
+
+# --------------------------------------------------------------------------- CPU family
+def host_saturation_rule(cpu, rq):
+    if not cpu["available"]:
+        return {"fires": False, "why": "on-CPU attribution not in the pack"}
+    fires = cpu["util_incident"] >= SATURATED
+    return {"fires": fires, **_cpu_fields(cpu, rq),
+            "why": (f"host CPU reached {cpu['util_incident']:.3f} of capacity with "
+                    f"{cpu['thief_comm']} taking {cpu['thief_cores']} cores - no headroom left"
+                    if fires else
+                    f"host CPU at {cpu['util_incident']:.3f}, below the {SATURATED} ceiling")}
+
+
+def cpu_throttle_rule(cpu, rq):
+    if not cpu["available"]:
+        return {"fires": False, "why": "on-CPU attribution not in the pack"}
+    collapsed = cpu["util_ratio"] is not None and cpu["util_ratio"] <= COLLAPSE_RATIO
+    no_thief = cpu["thief_cores"] < THIEF_CORES
+    lost = cpu["loser_cores"] <= LOSER_CORES
+    fires = collapsed and no_thief and lost
+    return {"fires": fires, **_cpu_fields(cpu, rq),
+            "why": (f"host CPU FELL to {cpu['util_ratio']:.2f} of its baseline "
+                    f"({cpu['util_baseline']:.3f} -> {cpu['util_incident']:.3f}) with no new "
+                    f"process, while threads waited {rq['max']}x longer - the system is doing "
+                    f"less work, not competing for it"
+                    if fires else
+                    f"utilisation ratio {cpu['util_ratio']}, thief {cpu['thief_cores']} cores, "
+                    f"biggest loss {cpu['loser_cores']} - not a quota holding work back")}
+
+
+def co_tenant_rule(cpu, rq, blk):
+    if not cpu["available"]:
+        return {"fires": False, "why": "on-CPU attribution not in the pack"}
+    has_thief = cpu["thief_cores"] >= THIEF_CORES and not is_infra(cpu["thief_comm"])
+    bounded = cpu["thief_cores"] < BIG_THIEF
+    busy = cpu["util_incident"] >= CONTENDED
+    headroom = cpu["util_incident"] < SATURATED
+    rising = cpu["util_ratio"] is not None and cpu["util_ratio"] > 1.0
+    fires = has_thief and bounded and busy and headroom and rising
+    return {"fires": fires, **_cpu_fields(cpu, rq),
+            "why": (f"{cpu['thief_comm']} took {cpu['thief_cores']} cores it was not using "
+                    f"before, raising host CPU to {cpu['util_incident']:.3f} - busier, but "
+                    f"still with headroom"
+                    if fires else
+                    f"thief {cpu['thief_comm']} {cpu['thief_cores']} cores, host "
+                    f"{cpu['util_incident']} - does not match a bounded co-tenant workload")}
+
+
+def _cpu_fields(cpu, rq):
+    return {"host_util_baseline": cpu["util_baseline"],
+            "host_util_incident": cpu["util_incident"],
+            "host_util_ratio": cpu["util_ratio"],
+            "thief_comm": cpu["thief_comm"], "thief_cores": cpu["thief_cores"],
+            "biggest_loser_comm": cpu["loser_comm"], "biggest_loser_cores": cpu["loser_cores"],
+            "corroboration_runqueue_max_x": rq["max"],
+            "corroboration_runqueue_median_x": rq["median"]}
+
+
+# ---------------------------------------------------------------------- datastore family
+def datastore_rule(cpu, rq, blk):
+    """One socket syscall inflates hugely while the component is not short of CPU.
+
+    UNCHANGED and still known-weak. E1 measured it firing on hung dependencies (89x),
+    degraded network paths (175x) and other families, because it can see THAT a process is
+    blocked on a socket but not WHAT it is blocked on. Fixing that needs socket-peer
+    attribution and is the work of the frozen-dependency and service-network-path blueprints,
+    not this cluster.
+    """
+    top = blk["socket_hits"][0] if blk["socket_hits"] else None
+    rq_ok = (rq["max"] or 0) < RQ_X
+    fires = bool(top) and top["p95_x"] >= BLOCK_X and rq_ok
     comm = top["comm_syscall"].split("|")[0] if top else None
     call = top["comm_syscall"].split("|")[-1] if top else None
-    return {
-        "fires": fires,
-        "blocked_process": comm, "blocking_call": call,
-        "blocking_x": top["p95_x"] if top else None,
-        "max_runqueue_x": rq_max,
-        "converged_on": pack["call_graph"].get("converged_on"),
-        "why": (f"{comm} blocked in {call} for {top['p95_x']}x baseline while runqueue delay "
-                f"stayed at {rq_max}x"
-                if fires else
-                (f"runqueue delay {rq_max}x indicates CPU starvation, not dependency wait"
-                 if top else "no socket-waiting syscall inflated enough")),
-    }
+    return {"fires": fires, "blocked_process": comm, "blocking_call": call,
+            "blocking_x": top["p95_x"] if top else None,
+            "max_runqueue_x": rq["max"],
+            "converged_on": pack_converged(blk),
+            "why": (f"{comm} blocked in {call} for {top['p95_x']}x baseline while runqueue "
+                    f"delay stayed at {rq['max']}x"
+                    if fires else
+                    (f"runqueue delay {rq['max']}x indicates CPU starvation, not dependency wait"
+                     if top else "no socket-waiting syscall inflated enough"))}
 
 
-# Process name -> the component name the ground truth uses. This is per-application: the
-# same `mysqld` process is the per-service datastore on one app and the single shared
-# datastore on the other, so the mapping cannot be global.
+def pack_converged(_blk):
+    return None
+
+
 COMM_TO_COMPONENT = {
     "sockshop":    {"mysqld": "catalogue-db", "mariadbd": "catalogue-db"},
     "trainticket": {"mysqld": "mysql", "mariadbd": "mysql"},
@@ -116,34 +195,60 @@ def comm_to_component(comm, app):
     return COMM_TO_COMPONENT.get(app, {}).get(comm, comm)
 
 
+# The order here is only for reporting; every rule is evaluated on every incident.
+VERDICTS = {
+    "host-cpu-saturation":     ("host", "host_cpu_saturation", 0.85),
+    "service-cpu-throttle":    (None,   "svc_cpu_cap",         0.80),
+    "cpu-contention-co-tenant": ("host", "noisy_neighbor",     0.80),
+    "datastore-wait":          (None,   "db_latency",          0.85),
+}
+
+
 def decide(pack):
-    cpu, db = cpu_rule(pack), db_rule(pack)
-    fired = [n for n, r in (("cpu-contention", cpu), ("datastore-wait", db)) if r["fires"]]
+    app = pack.get("app", "sockshop")
+    cpu, rq, blk = _cpu(pack), _rq(pack), _blk(pack)
 
-    verdict = {"run_id": pack["run_id"], "app": pack["app"],
+    results = {
+        "host-cpu-saturation": host_saturation_rule(cpu, rq),
+        "service-cpu-throttle": cpu_throttle_rule(cpu, rq),
+        "cpu-contention-co-tenant": co_tenant_rule(cpu, rq, blk),
+        "datastore-wait": datastore_rule(cpu, rq, blk),
+    }
+    fired = [n for n, r in results.items() if r["fires"]]
+
+    verdict = {"run_id": pack.get("run_id"), "app": app,
                "blueprints_fired": fired,
-               "cpu_contention": cpu, "datastore_wait": db,
+               "oncpu_available": cpu["available"],
                "analysis_seconds": pack.get("total_analysis_s")}
+    verdict.update({k.replace("-", "_"): v for k, v in results.items()})
 
-    if len(fired) == 1 and fired[0] == "cpu-contention":
-        verdict.update(selected="cpu-contention",
-                       root_cause_service="host",
-                       fault_type="noisy_neighbor",
-                       confidence=0.8,
-                       evidence=cpu["why"])
-    elif len(fired) == 1:
-        comm = db["blocked_process"]
-        verdict.update(selected="datastore-wait",
-                       root_cause_service=comm_to_component(comm, pack.get("app", "sockshop")),
-                       fault_type="db_latency",
-                       confidence=0.85,
-                       evidence=db["why"])
+    if len(fired) == 1:
+        name = fired[0]
+        svc, ftype, conf = VERDICTS[name]
+        if name == "cpu-contention-co-tenant":
+            svc = "host"
+        elif name == "service-cpu-throttle":
+            # MEASURED: the biggest loser is the busiest victim, not the capped service
+            # (target carts/java lost 0.395 while front-end/node lost 0.876). We can say a
+            # quota is throttling something; naming it needs cgroup-aware attribution.
+            svc = None
+        elif name == "datastore-wait":
+            svc = comm_to_component(results[name]["blocked_process"], app)
+        verdict.update(selected=name, root_cause_service=svc, fault_type=ftype,
+                       confidence=conf, evidence=results[name]["why"])
+    elif not fired and cpu["available"]:
+        # "Nothing here matches" is now a real answer rather than a gap between rules.
+        verdict.update(selected=None, root_cause_service=None, fault_type=None,
+                       confidence=0.0,
+                       evidence=("no blueprint matched. host CPU "
+                                 f"{cpu['util_baseline']} -> {cpu['util_incident']} "
+                                 f"(ratio {cpu['util_ratio']}), thief {cpu['thief_cores']} "
+                                 f"cores, top socket wait {blk['max_socket_x']}x"))
     else:
         verdict.update(selected=None, root_cause_service=None, fault_type=None,
                        confidence=0.0,
-                       evidence=("both blueprints fired" if len(fired) == 2
-                                 else "neither blueprint fired") +
-                                f" | cpu: {cpu['why']} | datastore: {db['why']}")
+                       evidence=(f"{len(fired)} blueprints fired: {', '.join(fired)}"
+                                 if fired else "no blueprint matched and no on-CPU evidence"))
     return verdict
 
 
@@ -157,7 +262,7 @@ def main():
     if a.out:
         os.makedirs(os.path.dirname(a.out) or ".", exist_ok=True)
         json.dump(v, open(a.out, "w"), indent=2)
-    print(f"{v['run_id']:44s} -> {str(v['selected']):16s} "
+    print(f"{str(v['run_id']):44s} -> {str(v['selected']):26s} "
           f"{str(v['root_cause_service']):16s} {str(v['fault_type'])}")
     return 0
 
