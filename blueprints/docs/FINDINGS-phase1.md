@@ -5,6 +5,88 @@ Protocol: `RESEARCH-PLAN-phase1-kernel.md`.
 
 ---
 
+## F3 — The CPU cluster separates cleanly, and the discriminator is not runqueue delay
+
+**CPU-cluster measurement**, 17 Sock Shop runs, job 2222558, 17 min.
+Raw: `/scratch/yuvraj17/cpucluster/cpu_cluster.json`. Host: **12 CPUs**.
+
+`oncpu_share.py` attributes on-CPU time per process from `sched_switch` alone, baseline
+window vs incident window. Nothing here reads metrics.
+
+| Family | n | Host utilisation (baseline → incident) | Newcomer process | Cores it gained |
+|---|---|---|---|---|
+| `anomaly_cpu` (host saturation) | 3 | 0.488–0.492 → **0.991–0.998** | `stress-ng-cpu` 3/3 | **6.54–6.62** |
+| `noisy_neighbor` (co-tenant) | 5 | 0.479–0.496 → **0.619–0.681** | `stress-ng-cpu` 5/5 | **0.99–2.00** |
+| `normal` (no fault) | 5 | 0.444–0.507 → **0.462–0.531** | none 4/5 | 0.00–0.30 |
+| `svc_cpu_cap` (cgroup cap) | 4 | 0.451–0.507 → **0.114–0.365** | **none 0/4** | 0.00 |
+
+**Host utilisation splits all four families with no overlap.** The automated separation check
+reports `NONE - clean split`. Baseline utilisation is 0.444–0.507 in every one of the 17 runs,
+so the healthy operating point is stable and *change* is a meaningful frame.
+
+### The surprise: a cgroup cap makes the host do LESS work
+
+Every other family raises utilisation. A cap **collapses** it — 0.451 → 0.114 on the
+aggressive runs. And the loss is not confined to the capped service; on
+`svc_cpu_cap_aggressive_steady_r1` every busy process drops:
+
+```
+node    1.120 -> 0.243  (-0.876)     dockerd  0.452 -> 0.088  (-0.364)
+python3 0.767 -> 0.137  (-0.630)     traefik  0.232 -> 0.052  (-0.180)
+java    0.673 -> 0.278  (-0.395)     app      0.204 -> 0.033  (-0.171)
+```
+
+Throttling one service stalls the whole request pipeline behind it, so the entire system
+does less work while its threads wait *more*. That combination is mechanically unique:
+
+| | busy cores | runqueue delay |
+|---|---|---|
+| co-tenant | ↑ (the newcomer adds work) | ↑ |
+| host saturation | ↑↑ to the ceiling | ↑↑ |
+| **cgroup cap** | **↓** | ↑ |
+| healthy | flat | flat |
+
+**The cap is the only case where the host does less work while threads wait more.** No
+amount of runqueue-delay thresholding could have found this; it needed the other half of the
+scheduler stream.
+
+### The measurement recovers the injected parameter
+
+A validation worth recording. The `noisy_neighbor` recipe caps its stress container at
+`CPUS=1.0` (subtle) or `CPUS=2.0` (aggressive). Measured newcomer cores:
+
+| Intensity | Recipe cap | Measured from the trace |
+|---|---|---|
+| subtle | 1.0 | 0.988, 0.997 |
+| aggressive | 2.0 | 1.978, 1.978, 2.002 |
+
+Within ~1% of ground truth, read out of `sched_switch` with no knowledge of the recipe. That
+is strong evidence the attribution is correct rather than merely suggestive.
+
+### Why the earlier failures happened
+
+`noisy_neighbor` and `anomaly_cpu` are **the same mechanism at different intensities** — both
+run a `stress-ng` container; one is capped at 1–2 CPUs, the other is uncapped at 2× cores.
+So the newcomer's *identity* cannot separate them; only how much it takes, and whether the
+host runs out. This is why F2 saw 52× runqueue delay on host saturation against 7.12× on the
+co-tenant fault: the same signal, harder.
+
+### What this does NOT settle
+
+- **Which service is capped.** `biggest_loser` names the largest victim (`node`, the
+  front-end), not the throttled service (`java`/carts, which lost 0.395). Comm-name
+  attribution cannot resolve this, and Train Ticket is worse — everything is `java`. The cap
+  blueprint can claim *that* a service is throttled, not *which*, until cgroup-aware
+  attribution exists.
+- **Portability of the absolute thresholds.** All 17 runs are Sock Shop on one 12-CPU host,
+  with a conveniently stable ~0.48 baseline. A system that idles at 0.9 would break any
+  absolute cut. The *directions* should travel; the numbers must be re-measured on Train
+  Ticket before being trusted. That is E3.
+- **One normal run had a newcomer** (`python3.12`, 0.296 cores) — well below the 0.99 floor
+  of the co-tenant runs, but it shows "a newcomer exists" is not by itself a fault.
+
+---
+
 ## F2 — 42% false-positive rate on the negative class, and every false fire is confident
 
 **E1 batch 1**, Sock Shop, 12 runs from five families neither blueprint should claim.

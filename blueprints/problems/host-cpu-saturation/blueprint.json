@@ -1,0 +1,316 @@
+{
+  "id": "host-cpu-saturation",
+  "version": 1,
+  "title": "The host has run out of CPU",
+  "problem": {
+    "summary": "A workload consumes so much CPU that the host has no headroom left. Every service on the box slows at once, because every ready thread queues behind work that will not yield. Unlike co-tenant contention this is not a matter of sharing: there is nothing left to share, and latency collapses rather than jitters.",
+    "symptoms": [
+      "many unrelated services degrade sharply and simultaneously",
+      "no single service is itself busy with useful work",
+      "host CPU sits at or near 100% for the whole window",
+      "requests still succeed but take far longer, and throughput falls"
+    ],
+    "discriminators": [
+      {
+        "signal": "host CPU utilisation during the incident, computed as busy on-CPU time over available CPU time from sched_switch",
+        "this_problem": "utilisation reaches the ceiling: 0.99 or above, leaving no headroom",
+        "not_this_problem": "utilisation rises but retains real headroom (co-tenant contention), stays flat (healthy), or FALLS below baseline (a cgroup cap)",
+        "confused_with": [
+          "cpu-contention-co-tenant",
+          "service-cpu-throttle"
+        ],
+        "evidence": "MEASURED on 17 labelled runs from four families. Host saturation 0.991-0.998 (n=3); co-tenant 0.619-0.681 (n=5); no-fault 0.462-0.531 (n=5); cgroup cap 0.114-0.365 (n=4). The automated overlap check reports a clean split with no family pair overlapping. Baseline utilisation was 0.444-0.507 in all 17 runs. See evidence/cpu_cluster_separation.json"
+      },
+      {
+        "signal": "cores gained by a process that was not consuming CPU in the baseline window",
+        "this_problem": "a newcomer takes several cores - measured 6.54-6.62 on a 12-CPU host, roughly half the machine",
+        "not_this_problem": "the newcomer takes only one or two cores (co-tenant contention), or there is no newcomer at all (cgroup cap, healthy)",
+        "confused_with": [
+          "cpu-contention-co-tenant"
+        ],
+        "evidence": "MEASURED: host saturation newcomer gained 6.544-6.624 cores (n=3) against 0.988-2.002 for the co-tenant fault (n=5) and 0.000-0.296 for no-fault runs (n=5). IMPORTANT: the newcomer is the SAME process name (stress-ng-cpu) in both fault families, because they are the same mechanism at different intensities. Identity does not separate them; magnitude and saturation do. See evidence/cpu_cluster_separation.json"
+      },
+      {
+        "signal": "runqueue delay: time from sched_waking to the sched_switch that runs the thread",
+        "this_problem": "inflated severely and broadly - measured 36.97x to 52.54x across 12 processes",
+        "not_this_problem": "runqueue delay alone does NOT separate this problem from anything. It is raised in every CPU-family fault and in healthy bursts too, so it is recorded as corroboration, never as the deciding signal",
+        "confused_with": [
+          "cpu-contention-co-tenant",
+          "service-cpu-throttle",
+          "healthy-baseline"
+        ],
+        "evidence": "MEASURED across the negative-class sweep: host saturation 36.97-52.54x, cgroup cap 13.54-15.70x, co-tenant 7.12x, healthy burst 3.69x. Note the ordering is INVERTED against severity of the fault the co-tenant blueprint was written from. See docs/FINDINGS-phase1.md finding F2."
+      }
+    ],
+    "unverified_do_not_claim": [
+      {
+        "claim": "high runqueue delay identifies host CPU saturation",
+        "status": "NOT SUPPORTED - the signal is present in every CPU-family fault and in healthy bursts",
+        "measurement": "runqueue delay was raised in all four families (52.54x saturation, 15.70x cgroup cap, 7.12x co-tenant, 3.69x a healthy burst run). Using it as a positive test produced a 42% false-positive rate on the negative class.",
+        "consequence": "runqueue delay may be reported as corroboration but must never be the deciding signal. Use host utilisation.",
+        "agent_note": "How long ready threads waited for a CPU. It rises under every kind of CPU trouble, and under ordinary load bursts as well, so on its own it tells you something is loaded, not what is wrong."
+      }
+    ]
+  },
+  "reproduction": {
+    "system": "Sock Shop or Train Ticket on Ubuntu 24.04, LTTng 2.15, Docker 27+, single GCP n2 VM with 12 vCPU",
+    "recipe": "microservice-lttng-data-collection-scripts/faults/anomaly_cpu.sh",
+    "invoke": "./anomaly_cpu.sh inject aggressive",
+    "teardown": "./anomaly_cpu.sh cleanup",
+    "labelled_examples": [
+      "sockshop/anomaly_cpu/anomaly_cpu_aggressive_steady_r1",
+      "sockshop/anomaly_cpu/anomaly_cpu_aggressive_steady_r2",
+      "sockshop/anomaly_cpu/anomaly_cpu_aggressive_steady_r3"
+    ],
+    "harness_only": [
+      "The recipe runs stress-ng in a container with 2x NCPU workers at 100% cpu-load using matrixprod. Subtle intensity uses half the cores at 50% load and has not been collected for this family."
+    ]
+  },
+  "collection_order": {
+    "window": {
+      "baseline_s": 60,
+      "incident_s": 120,
+      "recovery_s": 60
+    },
+    "kernel_events": [
+      "sched_switch",
+      "sched_waking"
+    ],
+    "metrics": [],
+    "logs": [],
+    "traces": [],
+    "why_these": "MEASURED BASIS. sched_switch alone carries everything the decision needs: it names the thread starting to run on each CPU and when, so the gap between consecutive switches on a CPU is the previous thread's on-CPU time. Summing that per process gives both host utilisation and per-process core consumption. sched_waking is collected only to compute runqueue delay as corroboration; the verdict does not depend on it. No metrics are required - the container-level attribution that earlier drafts took from cadvisor is recoverable from the scheduler stream, verified by recovering the injected cgroup cap to within 1%."
+  },
+  "processing": [
+    {
+      "step": "stage the stored kernel trace for reading",
+      "run": "bash /scratch/yuvraj17/extract_l0.sh <app> the host-saturation family <run_id>",
+      "produces": "<out>/ctf",
+      "expect": "a CTF directory the trace reader can open",
+      "reads": []
+    },
+    {
+      "step": "attribute on-CPU time per process, baseline window against incident window",
+      "run": "python3 blueprints/problems/cpu-contention-co-tenant/scripts/oncpu_share.py --ctf <ctf> --gt <ground_truth> --out <out>/oncpu.json",
+      "produces": "<out>/oncpu.json",
+      "reads": [
+        "<out>/ctf"
+      ],
+      "expect": "host_utilisation per window, and cores gained or lost per process"
+    },
+    {
+      "step": "measure runqueue delay as corroboration only",
+      "run": "python3 blueprints/problems/cpu-contention-co-tenant/scripts/runqueue_delay.py --ctf <ctf> --gt <ground_truth> --out <out>/rq.json",
+      "produces": "<out>/rq.json",
+      "reads": [
+        "<out>/ctf"
+      ],
+      "expect": "per-process p95 runqueue delay, baseline against incident"
+    },
+    {
+      "step": "Combine into the verdict and its artifacts: the JSON verdict, the CPU breakdown chart, and a plain-English explanation",
+      "run": "python3 blueprints/lib/blueprint_decide.py --pack <pack.json> --out <out>/verdict.json",
+      "produces": "<out>/verdict.json, <out>/oncpu.svg, <out>/explanation.txt",
+      "reads": [
+        "<out>/oncpu.json",
+        "<out>/rq.json"
+      ],
+      "expect": "name the workload that exhausted the host, how much it took, and what is left"
+    },
+    {
+      "step": "State the recommended action alongside the diagnosis",
+      "run": "python3 blueprints/lib/recommend_action.py --verdict <out>/verdict.json --blueprint host-cpu-saturation --out <out>/recommended_action.txt",
+      "produces": "<out>/recommended_action.txt",
+      "reads": [
+        "<out>/verdict.json"
+      ],
+      "expect": "cap or relocate the offending workload; if the load is legitimate, report the host as undersized for it"
+    }
+  ],
+  "outputs": [
+    {
+      "kind": "json",
+      "path": "<out>/verdict.json",
+      "contains": "verdict, host utilisation both windows, the newcomer and cores it took, and the runqueue corroboration"
+    },
+    {
+      "kind": "xy_chart",
+      "path": "<out>/oncpu.svg",
+      "contains": "per-process cores baseline against incident, with the CPU ceiling drawn"
+    },
+    {
+      "kind": "text",
+      "path": "<out>/explanation.txt",
+      "contains": "which workload exhausted the host, how much it took, and what remains for everything else"
+    },
+    {
+      "kind": "action",
+      "path": "<out>/recommended_action.txt",
+      "contains": "cap or relocate the offending workload; if it is legitimate, the host is undersized for its load"
+    }
+  ],
+  "decision": {
+    "verdict_when": [
+      "host CPU utilisation during the incident is at or above 0.95, against a baseline near 0.5",
+      "a process that consumed no CPU in the baseline now consumes several cores",
+      "runqueue delay is broadly inflated, corroborating that threads are queueing rather than working"
+    ],
+    "rule_out": [
+      {
+        "instead": "cpu-contention-co-tenant",
+        "when": "utilisation rises but stays well below the ceiling and the newcomer takes only one or two cores - the host is sharing, not exhausted"
+      },
+      {
+        "instead": "service-cpu-throttle",
+        "when": "utilisation FALLS below its baseline and there is no newcomer at all - the system is doing less work, not more"
+      },
+      {
+        "instead": "healthy-baseline",
+        "when": "utilisation is flat against baseline and no newcomer took meaningful CPU, even if runqueue delay is somewhat raised by a load burst"
+      }
+    ],
+    "root_cause_is": "the workload that consumed the host's remaining CPU capacity",
+    "fault_type": "host_cpu_saturation"
+  },
+  "evidence_from_literature": [
+    {
+      "claim": "Kernel-level scheduling state distinguishes CPU exhaustion from application slowness in ways request tracing cannot, because distributed tracing cannot explain time spent waiting on CPU",
+      "source": "Gelle, Ezzati-Jivan & Dagenais, Combining Distributed and Kernel Tracing for Performance Analysis of Cloud Applications, Electronics 10(21):2610, 2021",
+      "validated_on": "our 3 labelled host-saturation runs, where utilisation reached 0.991-0.998 while no service was doing useful work"
+    }
+  ],
+  "related_blueprints": [
+    "cpu-contention-co-tenant",
+    "service-cpu-throttle",
+    "healthy-baseline"
+  ],
+  "mutually_exclusive_with": [
+    "cpu-contention-co-tenant",
+    "service-cpu-throttle",
+    "healthy-baseline"
+  ],
+  "taxonomy": {
+    "domain": "Performance",
+    "category": "Throughput / latency degradation",
+    "subcategory": "CPU exhaustion",
+    "sibling_causes": [
+      "co-tenant contention",
+      "cgroup CPU throttling",
+      "undersized host"
+    ],
+    "note": "Covers any case where the host itself has no CPU left, whatever consumed it. Authored from stress-injected runs but the deciding signal - utilisation at the ceiling with a newcomer - is mechanism-independent."
+  },
+  "applicability": {
+    "apply_when": [
+      "many services degrade sharply at the same time",
+      "host CPU is reported at or near 100%",
+      "no individual service accounts for the load"
+    ],
+    "do_not_apply_when": [
+      "the host retains meaningful CPU headroom",
+      "only one service is affected",
+      "the system is doing LESS work than usual rather than more"
+    ],
+    "cheap_precheck": "host CPU utilisation over the incident window: if it is not near the ceiling, this blueprint does not apply and a cheaper answer exists"
+  },
+  "capabilities_required": [
+    {
+      "id": "trace.stage_ctf",
+      "why": "the stored kernel trace must be readable"
+    },
+    {
+      "id": "kernel.scheduler.oncpu_attribution",
+      "why": "the decisive signal: host utilisation and which process consumed the capacity"
+    },
+    {
+      "id": "kernel.scheduler.runqueue_delay",
+      "why": "corroboration only: confirms threads were queueing rather than working"
+    }
+  ],
+  "stopping_conditions": {
+    "conclude": "utilisation is at the ceiling, a newcomer accounts for the consumption, and runqueue delay corroborates",
+    "stop_and_switch": "utilisation retains headroom -> cpu-contention-co-tenant; utilisation fell below baseline -> service-cpu-throttle; utilisation is flat -> healthy-baseline",
+    "stop_insufficient": "sched_switch was not recorded, so utilisation cannot be computed -> request it and re-run. Do NOT fall back to runqueue delay alone, which is measured not to separate these causes",
+    "max_evidence_rounds": 2
+  },
+  "adaptation_rules": [
+    {
+      "if": "utilisation is at the ceiling but no newcomer is found",
+      "then": "the load is from processes already running. This is a capacity problem rather than an intruding workload; report it as an undersized host and name the largest consumers"
+    },
+    {
+      "if": "the newcomer is a kernel thread",
+      "then": "do not name it as the culprit. Kernel threads consuming CPU are usually a symptom - look for what is driving them, for example reclaim or interrupt load"
+    },
+    {
+      "if": "baseline utilisation is itself above 0.8",
+      "then": "the absolute thresholds here do not apply. Compare the change against that system's own baseline instead, and lower confidence, because the thresholds were measured on a host that idled near 0.48"
+    }
+  ],
+  "selection": {
+    "supported_goals": [
+      "diagnose_throughput_degradation",
+      "diagnose_cpu_exhaustion",
+      "diagnose_host_capacity"
+    ],
+    "supported_environments": [
+      "linux",
+      "container",
+      "virtual_machine"
+    ],
+    "applicable_symptoms": [
+      "many_services_slow_simultaneously",
+      "host_cpu_pinned",
+      "throughput_collapse_without_errors"
+    ],
+    "preconditions": [
+      "kernel scheduler events are collectable or already collected"
+    ],
+    "estimated_overhead_pct": {
+      "min": 0,
+      "max": 5
+    },
+    "historical_effectiveness": {
+      "runs_validated": 3,
+      "note": "3 labelled host-saturation runs, separated from 14 runs of three neighbouring families with no overlap on the deciding signal. Sock Shop only; Train Ticket owed."
+    }
+  },
+  "policies": {
+    "collection_order_rule": "Use evidence that already exists before enabling any new collection. Escalate a tier only when the cheaper tier leaves a candidate cause unresolved, and record why.",
+    "max_collection_overhead_pct": 5,
+    "scope": {
+      "restrict_to": "the hosts and time window named in the intent",
+      "never_widen_without": "explicit approval"
+    },
+    "privacy": [
+      "do not collect request payloads",
+      "do not retain personally identifiable data"
+    ],
+    "approval": {
+      "automatic": [
+        "query evidence that already exists",
+        "read-only analysis of collected evidence",
+        "active collection estimated below 3% overhead"
+      ],
+      "requires_approval": [
+        "active collection estimated above 3% overhead",
+        "widening the host scope or time window",
+        "any change to production configuration",
+        "any remediation action"
+      ]
+    },
+    "autonomy_level": 2,
+    "autonomy_note": "Level 2 = policy-controlled automation: select and execute low-risk plans inside the stated constraints."
+  },
+  "evidence_sufficiency": {
+    "confidence_floor": 0.7,
+    "if_below_floor": "name the unresolved question, pick the ONE additional capability that would settle it, check it against the overhead budget, and request it.",
+    "report_when_stuck": "if the floor is still not met after the allowed rounds, report the best-supported hypothesis, its confidence, and precisely what evidence is missing - never present a guess as a diagnosis"
+  },
+  "provenance": {
+    "authored_by": "measured from the CPU-cluster sweep, 17 labelled runs across four families",
+    "verified_by": "PENDING",
+    "authored_utc": "2026-08-29T17:00:00Z",
+    "notes": "Written together with service-cpu-throttle and the revised cpu-contention-co-tenant, because none of the three is separable on its own. Every threshold here comes from evidence/cpu_cluster_separation.json; none was chosen. Known gap: all runs are Sock Shop on a 12-CPU host with a stable ~0.48 baseline, so the absolute utilisation cuts are not yet shown to transfer."
+  }
+}

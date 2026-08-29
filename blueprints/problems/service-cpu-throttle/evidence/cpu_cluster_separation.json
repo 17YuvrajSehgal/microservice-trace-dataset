@@ -1,0 +1,322 @@
+{
+  "rows": [
+    {
+      "run_id": "anomaly_cpu_aggressive_steady_r1",
+      "app": "sockshop",
+      "family": "anomaly_cpu",
+      "host_util_baseline": 0.4915,
+      "host_util_incident": 0.9948,
+      "busy_cores_baseline": 5.897,
+      "busy_cores_incident": 11.937,
+      "n_cpus": 12,
+      "thief_comm": "stress-ng-cpu",
+      "thief_cores_gained": 6.6241,
+      "biggest_loser_comm": "node",
+      "biggest_loser_cores": -0.1595
+    },
+    {
+      "run_id": "anomaly_cpu_aggressive_steady_r2",
+      "app": "sockshop",
+      "family": "anomaly_cpu",
+      "host_util_baseline": 0.4922,
+      "host_util_incident": 0.9913,
+      "busy_cores_baseline": 5.906,
+      "busy_cores_incident": 11.895,
+      "n_cpus": 12,
+      "thief_comm": "stress-ng-cpu",
+      "thief_cores_gained": 6.5443,
+      "biggest_loser_comm": "node",
+      "biggest_loser_cores": -0.1462
+    },
+    {
+      "run_id": "anomaly_cpu_aggressive_steady_r3",
+      "app": "sockshop",
+      "family": "anomaly_cpu",
+      "host_util_baseline": 0.488,
+      "host_util_incident": 0.9984,
+      "busy_cores_baseline": 5.855,
+      "busy_cores_incident": 11.981,
+      "n_cpus": 12,
+      "thief_comm": "stress-ng-cpu",
+      "thief_cores_gained": 6.6116,
+      "biggest_loser_comm": "node",
+      "biggest_loser_cores": -0.1538
+    },
+    {
+      "run_id": "noisy_neighbor_aggressive_steady_r1",
+      "app": "sockshop",
+      "family": "noisy_neighbor",
+      "host_util_baseline": 0.4817,
+      "host_util_incident": 0.6751,
+      "busy_cores_baseline": 5.78,
+      "busy_cores_incident": 8.102,
+      "n_cpus": 12,
+      "thief_comm": "stress-ng-cpu",
+      "thief_cores_gained": 2.0018,
+      "biggest_loser_comm": "conn261",
+      "biggest_loser_cores": -0.0985
+    },
+    {
+      "run_id": "noisy_neighbor_aggressive_steady_r2",
+      "app": "sockshop",
+      "family": "noisy_neighbor",
+      "host_util_baseline": 0.4789,
+      "host_util_incident": 0.6789,
+      "busy_cores_baseline": 5.747,
+      "busy_cores_incident": 8.147,
+      "n_cpus": 12,
+      "thief_comm": "stress-ng-cpu",
+      "thief_cores_gained": 1.9779,
+      "biggest_loser_comm": "conn246",
+      "biggest_loser_cores": -0.1341
+    },
+    {
+      "run_id": "noisy_neighbor_aggressive_steady_r3",
+      "app": "sockshop",
+      "family": "noisy_neighbor",
+      "host_util_baseline": 0.4813,
+      "host_util_incident": 0.681,
+      "busy_cores_baseline": 5.776,
+      "busy_cores_incident": 8.172,
+      "n_cpus": 12,
+      "thief_comm": "stress-ng-cpu",
+      "thief_cores_gained": 1.9777,
+      "biggest_loser_comm": "conn235",
+      "biggest_loser_cores": -0.0614
+    },
+    {
+      "run_id": "noisy_neighbor_subtle_steady_r1",
+      "app": "sockshop",
+      "family": "noisy_neighbor",
+      "host_util_baseline": 0.4957,
+      "host_util_incident": 0.6186,
+      "busy_cores_baseline": 5.949,
+      "busy_cores_incident": 7.423,
+      "n_cpus": 12,
+      "thief_comm": "stress-ng-cpu",
+      "thief_cores_gained": 0.9973,
+      "biggest_loser_comm": "conn237",
+      "biggest_loser_cores": -0.125
+    },
+    {
+      "run_id": "noisy_neighbor_subtle_steady_r2",
+      "app": "sockshop",
+      "family": "noisy_neighbor",
+      "host_util_baseline": 0.495,
+      "host_util_incident": 0.619,
+      "busy_cores_baseline": 5.94,
+      "busy_cores_incident": 7.428,
+      "n_cpus": 12,
+      "thief_comm": "stress-ng-cpu",
+      "thief_cores_gained": 0.9882,
+      "biggest_loser_comm": "conn279",
+      "biggest_loser_cores": -0.0509
+    },
+    {
+      "run_id": "normal_none_burst_r1",
+      "app": "sockshop",
+      "family": "normal",
+      "host_util_baseline": 0.4819,
+      "host_util_incident": 0.5237,
+      "busy_cores_baseline": 5.783,
+      "busy_cores_incident": 6.284,
+      "n_cpus": 12,
+      "thief_comm": null,
+      "thief_cores_gained": 0.0,
+      "biggest_loser_comm": "conn24",
+      "biggest_loser_cores": -0.0514
+    },
+    {
+      "run_id": "normal_none_burst_r2",
+      "app": "sockshop",
+      "family": "normal",
+      "host_util_baseline": 0.4876,
+      "host_util_incident": 0.5266,
+      "busy_cores_baseline": 5.851,
+      "busy_cores_incident": 6.319,
+      "n_cpus": 12,
+      "thief_comm": null,
+      "thief_cores_gained": 0.0,
+      "biggest_loser_comm": "conn27",
+      "biggest_loser_cores": -0.0241
+    },
+    {
+      "run_id": "normal_none_steady_r1",
+      "app": "sockshop",
+      "family": "normal",
+      "host_util_baseline": 0.4611,
+      "host_util_incident": 0.5307,
+      "busy_cores_baseline": 5.534,
+      "busy_cores_incident": 6.369,
+      "n_cpus": 12,
+      "thief_comm": "python3.12",
+      "thief_cores_gained": 0.296,
+      "biggest_loser_comm": "conn31",
+      "biggest_loser_cores": -0.0408
+    },
+    {
+      "run_id": "normal_none_steady_r2",
+      "app": "sockshop",
+      "family": "normal",
+      "host_util_baseline": 0.4444,
+      "host_util_incident": 0.4622,
+      "busy_cores_baseline": 5.333,
+      "busy_cores_incident": 5.546,
+      "n_cpus": 12,
+      "thief_comm": null,
+      "thief_cores_gained": 0.0,
+      "biggest_loser_comm": "conn27",
+      "biggest_loser_cores": -0.0857
+    },
+    {
+      "run_id": "normal_none_steady_r3",
+      "app": "sockshop",
+      "family": "normal",
+      "host_util_baseline": 0.4543,
+      "host_util_incident": 0.4727,
+      "busy_cores_baseline": 5.452,
+      "busy_cores_incident": 5.672,
+      "n_cpus": 12,
+      "thief_comm": null,
+      "thief_cores_gained": 0.0,
+      "biggest_loser_comm": "conn27",
+      "biggest_loser_cores": -0.0664
+    },
+    {
+      "run_id": "svc_cpu_cap_aggressive_steady_r1",
+      "app": "sockshop",
+      "family": "svc_cpu_cap",
+      "host_util_baseline": 0.4509,
+      "host_util_incident": 0.1138,
+      "busy_cores_baseline": 5.411,
+      "busy_cores_incident": 1.366,
+      "n_cpus": 12,
+      "thief_comm": null,
+      "thief_cores_gained": 0.0,
+      "biggest_loser_comm": "node",
+      "biggest_loser_cores": -0.8764
+    },
+    {
+      "run_id": "svc_cpu_cap_aggressive_steady_r2",
+      "app": "sockshop",
+      "family": "svc_cpu_cap",
+      "host_util_baseline": 0.4684,
+      "host_util_incident": 0.1223,
+      "busy_cores_baseline": 5.621,
+      "busy_cores_incident": 1.468,
+      "n_cpus": 12,
+      "thief_comm": null,
+      "thief_cores_gained": 0.0,
+      "biggest_loser_comm": "node",
+      "biggest_loser_cores": -0.8414
+    },
+    {
+      "run_id": "svc_cpu_cap_subtle_steady_r1",
+      "app": "sockshop",
+      "family": "svc_cpu_cap",
+      "host_util_baseline": 0.5068,
+      "host_util_incident": 0.3355,
+      "busy_cores_baseline": 6.082,
+      "busy_cores_incident": 4.026,
+      "n_cpus": 12,
+      "thief_comm": null,
+      "thief_cores_gained": 0.0,
+      "biggest_loser_comm": "node",
+      "biggest_loser_cores": -0.4188
+    },
+    {
+      "run_id": "svc_cpu_cap_subtle_steady_r2",
+      "app": "sockshop",
+      "family": "svc_cpu_cap",
+      "host_util_baseline": 0.5011,
+      "host_util_incident": 0.3649,
+      "busy_cores_baseline": 6.013,
+      "busy_cores_incident": 4.379,
+      "n_cpus": 12,
+      "thief_comm": null,
+      "thief_cores_gained": 0.0,
+      "biggest_loser_comm": "node",
+      "biggest_loser_cores": -0.3572
+    }
+  ],
+  "summary": [
+    {
+      "family": "anomaly_cpu",
+      "n": 3,
+      "util_incident": [
+        0.9913,
+        0.9984
+      ],
+      "thief_cores": [
+        6.5443,
+        6.6241
+      ],
+      "loser_cores": [
+        -0.1595,
+        -0.1462
+      ],
+      "n_with_thief": 3,
+      "thief_comms": [
+        "stress-ng-cpu"
+      ]
+    },
+    {
+      "family": "noisy_neighbor",
+      "n": 5,
+      "util_incident": [
+        0.6186,
+        0.681
+      ],
+      "thief_cores": [
+        0.9882,
+        2.0018
+      ],
+      "loser_cores": [
+        -0.1341,
+        -0.0509
+      ],
+      "n_with_thief": 5,
+      "thief_comms": [
+        "stress-ng-cpu"
+      ]
+    },
+    {
+      "family": "normal",
+      "n": 5,
+      "util_incident": [
+        0.4622,
+        0.5307
+      ],
+      "thief_cores": [
+        0.0,
+        0.296
+      ],
+      "loser_cores": [
+        -0.0857,
+        -0.0241
+      ],
+      "n_with_thief": 1,
+      "thief_comms": [
+        "python3.12"
+      ]
+    },
+    {
+      "family": "svc_cpu_cap",
+      "n": 4,
+      "util_incident": [
+        0.1138,
+        0.3649
+      ],
+      "thief_cores": [
+        0.0,
+        0.0
+      ],
+      "loser_cores": [
+        -0.8764,
+        -0.3572
+      ],
+      "n_with_thief": 0,
+      "thief_comms": []
+    }
+  ]
+}

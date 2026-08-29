@@ -1,0 +1,342 @@
+{
+  "id": "service-cpu-throttle",
+  "version": 1,
+  "title": "A service is capped by its cgroup CPU quota",
+  "problem": {
+    "summary": "One service has a CPU quota lower than the work it is being asked to do. Its threads are repeatedly made runnable and then held off the CPU by the scheduler until the quota refills. The distinctive consequence is counter-intuitive: because callers stall waiting on the throttled service, the WHOLE system does less work, so host CPU usage falls even though threads are waiting longer than ever.",
+    "symptoms": [
+      "one service is slow, and its callers slow behind it",
+      "the host looks quiet - CPU usage falls rather than rises",
+      "requests still succeed, but latency is high and throughput drops",
+      "no new process appeared and nothing is competing for the machine"
+    ],
+    "discriminators": [
+      {
+        "signal": "host CPU utilisation during the incident, computed from sched_switch on-CPU time",
+        "this_problem": "utilisation FALLS well below its own baseline - the system is doing less work, not more",
+        "not_this_problem": "utilisation rises (co-tenant contention, host saturation) or stays flat (healthy)",
+        "confused_with": [
+          "cpu-contention-co-tenant",
+          "host-cpu-saturation",
+          "healthy-baseline"
+        ],
+        "evidence": "MEASURED on 17 labelled runs across four families. Cgroup cap 0.114-0.365 against its own 0.451-0.507 baseline (n=4); co-tenant 0.619-0.681 (n=5); host saturation 0.991-0.998 (n=3); no-fault 0.462-0.531 (n=5). The automated overlap check reports a clean split. This is the ONLY family whose utilisation moves downward. See evidence/cpu_cluster_separation.json"
+      },
+      {
+        "signal": "presence of a process consuming CPU it did not consume in the baseline",
+        "this_problem": "there is none - nothing arrived to take the CPU",
+        "not_this_problem": "a newcomer took one or two cores (co-tenant) or several (host saturation)",
+        "confused_with": [
+          "cpu-contention-co-tenant",
+          "host-cpu-saturation"
+        ],
+        "evidence": "MEASURED: 0 of 4 cgroup-cap runs had any newcomer, against 5 of 5 co-tenant runs and 3 of 3 host-saturation runs. One of 5 no-fault runs showed a small newcomer at 0.296 cores, well under the 0.988 floor of the co-tenant runs. See evidence/cpu_cluster_separation.json"
+      },
+      {
+        "signal": "direction of on-CPU time across the process population",
+        "this_problem": "broad, simultaneous LOSS of CPU time across many unrelated processes, because callers stall behind the throttled one",
+        "not_this_problem": "on-CPU time is redistributed or added to, not withdrawn from everyone at once",
+        "confused_with": [
+          "healthy-baseline"
+        ],
+        "evidence": "MEASURED on a labelled cgroup-cap run: node 1.120->0.243, python3 0.767->0.137, java 0.673->0.278, dockerd 0.452->0.088, traefik 0.232->0.052, app 0.204->0.033. Largest single loss 0.876 cores against 0.024-0.134 for no-fault and co-tenant runs. See evidence/cpu_cluster_separation.json"
+      },
+      {
+        "signal": "runqueue delay: time from sched_waking to the sched_switch that runs the thread",
+        "this_problem": "raised - measured 13.54x to 15.70x - while the host is doing LESS work. Waiting more while working less is the throttle signature",
+        "not_this_problem": "runqueue delay alone separates nothing: it is raised in every CPU-family fault and in healthy load bursts. Only its combination with falling utilisation is diagnostic",
+        "confused_with": [
+          "cpu-contention-co-tenant",
+          "host-cpu-saturation",
+          "healthy-baseline"
+        ],
+        "evidence": "MEASURED: cgroup cap 13.54-15.70x, host saturation 36.97-52.54x, co-tenant 7.12x, healthy burst 3.69x. Treating raised runqueue delay as evidence FOR this family caused both mild-intensity cap runs to be misdiagnosed as co-tenant contention. See docs/FINDINGS-phase1.md findings F1 and F2."
+      }
+    ],
+    "unverified_do_not_claim": [
+      {
+        "claim": "the process that loses the most CPU is the throttled service",
+        "status": "NOT SUPPORTED by our data",
+        "measurement": "on a labelled cgroup-cap run the target was carts, which runs as `java` and lost 0.395 cores. The largest loser was `node` - the front-end, a victim - at 0.876 cores. The biggest loser is the busiest caller, not the capped service.",
+        "consequence": "this blueprint may conclude THAT a service is throttled, but not WHICH one, until cgroup-aware attribution exists. Naming a service from comm alone would be wrong roughly as often as right.",
+        "agent_note": "Which process lost the most CPU time. This identifies the largest victim of the stall, not its cause, so do not report it as the culprit."
+      },
+      {
+        "claim": "cgroup throttling shows up as a raised runnable-wait share",
+        "status": "NOT SUPPORTED by our data",
+        "measurement": "runnable_wait of the labelled culprit never exceeds 4% in ANY fault family across 93 runs, and was 2.6% for the cgroup-cap family. The share is diluted by ordinary idle waiting.",
+        "consequence": "use per-wakeup runqueue delay and on-CPU attribution instead. Do not reinstate without new evidence.",
+        "agent_note": "The share of wall time a service spends runnable. Measured across every labelled fault it never exceeds 4%, because idle time swamps it."
+      }
+    ]
+  },
+  "reproduction": {
+    "system": "Sock Shop or Train Ticket on Ubuntu 24.04, LTTng 2.15, Docker 27+, single GCP n2 VM with 12 vCPU",
+    "recipe": "microservice-lttng-data-collection-scripts/faults/svc_cpu_cap.sh",
+    "invoke": "TARGET_SVC=carts ./svc_cpu_cap.sh inject aggressive",
+    "teardown": "TARGET_SVC=carts ./svc_cpu_cap.sh cleanup",
+    "labelled_examples": [
+      "sockshop/svc_cpu_cap/svc_cpu_cap_aggressive_steady_r1",
+      "sockshop/svc_cpu_cap/svc_cpu_cap_aggressive_steady_r2",
+      "sockshop/svc_cpu_cap/svc_cpu_cap_subtle_steady_r1",
+      "sockshop/svc_cpu_cap/svc_cpu_cap_subtle_steady_r2"
+    ],
+    "harness_only": [
+      "The recipe sets the quota with `docker update --cpus`: 0.2 for aggressive, 0.5 for subtle. Note the API trap recorded in faults/README.md - `--cpus=0` is a silent no-op, so restoration must write the saved quota explicitly and be verified against /sys/fs/cgroup rather than docker inspect."
+    ]
+  },
+  "collection_order": {
+    "window": {
+      "baseline_s": 60,
+      "incident_s": 120,
+      "recovery_s": 60
+    },
+    "kernel_events": [
+      "sched_switch",
+      "sched_waking"
+    ],
+    "metrics": [],
+    "logs": [],
+    "traces": [],
+    "why_these": "MEASURED BASIS. sched_switch gives on-CPU time per process per CPU, which yields both host utilisation and the per-process gain or loss - the two facts that decide this verdict. sched_waking adds runqueue delay, which is corroboration rather than evidence, since it is raised in every neighbouring fault. No metrics are needed: cgroup throttling counters would confirm the mechanism but are not required to reach the verdict, and the falling-utilisation signal is measured to separate this family from all three neighbours on its own."
+  },
+  "processing": [
+    {
+      "step": "stage the stored kernel trace for reading",
+      "run": "bash /scratch/yuvraj17/extract_l0.sh <app> the cgroup-cap family <run_id>",
+      "produces": "<out>/ctf",
+      "expect": "a CTF directory the trace reader can open",
+      "reads": []
+    },
+    {
+      "step": "attribute on-CPU time per process, baseline window against incident window",
+      "run": "python3 blueprints/problems/cpu-contention-co-tenant/scripts/oncpu_share.py --ctf <ctf> --gt <ground_truth> --out <out>/oncpu.json",
+      "produces": "<out>/oncpu.json",
+      "reads": [
+        "<out>/ctf"
+      ],
+      "expect": "host_utilisation falling between windows, no newcomer, broad per-process losses"
+    },
+    {
+      "step": "measure runqueue delay as corroboration only",
+      "run": "python3 blueprints/problems/cpu-contention-co-tenant/scripts/runqueue_delay.py --ctf <ctf> --gt <ground_truth> --out <out>/rq.json",
+      "produces": "<out>/rq.json",
+      "reads": [
+        "<out>/ctf"
+      ],
+      "expect": "per-process p95 runqueue delay raised while utilisation falls"
+    },
+    {
+      "step": "Combine into the verdict and its artifacts: the JSON verdict, the CPU breakdown chart, and a plain-English explanation",
+      "run": "python3 blueprints/lib/blueprint_decide.py --pack <pack.json> --out <out>/verdict.json",
+      "produces": "<out>/verdict.json, <out>/oncpu.svg, <out>/explanation.txt",
+      "reads": [
+        "<out>/oncpu.json",
+        "<out>/rq.json"
+      ],
+      "expect": "state that a CPU quota is throttling some service, why the host looks quiet, and that the service is NOT identified by this evidence"
+    },
+    {
+      "step": "State the recommended action alongside the diagnosis",
+      "run": "python3 blueprints/lib/recommend_action.py --verdict <out>/verdict.json --blueprint service-cpu-throttle --out <out>/recommended_action.txt",
+      "produces": "<out>/recommended_action.txt",
+      "reads": [
+        "<out>/verdict.json"
+      ],
+      "expect": "inspect cgroup cpu.max and cpu.stat throttling counters for the services on the stalled path, and raise or remove the quota on the one that is throttling"
+    }
+  ],
+  "outputs": [
+    {
+      "kind": "json",
+      "path": "<out>/verdict.json",
+      "contains": "verdict, host utilisation both windows, per-process losses, runqueue corroboration, and an explicit statement that the throttled service is not identified"
+    },
+    {
+      "kind": "xy_chart",
+      "path": "<out>/oncpu.svg",
+      "contains": "per-process cores baseline against incident, showing system-wide withdrawal with no newcomer"
+    },
+    {
+      "kind": "text",
+      "path": "<out>/explanation.txt",
+      "contains": "that a CPU quota is throttling some service, why the host looks quiet, and what evidence would name the service"
+    },
+    {
+      "kind": "action",
+      "path": "<out>/recommended_action.txt",
+      "contains": "inspect cgroup cpu.max and cpu.stat throttling counters for the services on the stalled path, and raise or remove the quota on the one that is throttling"
+    }
+  ],
+  "decision": {
+    "verdict_when": [
+      "host CPU utilisation during the incident falls materially below its own baseline",
+      "no process consumed CPU it was not already consuming",
+      "on-CPU time drops across many unrelated processes at once",
+      "runqueue delay is raised over the same window, so threads are waiting more while the system works less"
+    ],
+    "rule_out": [
+      {
+        "instead": "host-cpu-saturation",
+        "when": "utilisation reaches the ceiling rather than falling - the host is exhausted, not idle"
+      },
+      {
+        "instead": "cpu-contention-co-tenant",
+        "when": "utilisation rises and a newcomer took one or two cores - something arrived to compete, rather than a quota holding work back"
+      },
+      {
+        "instead": "healthy-baseline",
+        "when": "utilisation is flat rather than falling, and per-process losses stay within ordinary variation"
+      },
+      {
+        "instead": "db-latency-dependency-wait",
+        "when": "a single component's socket-waiting syscall inflates by an order of magnitude while on-CPU time is otherwise unremarkable - the system is blocked on something external, not held off the CPU"
+      }
+    ],
+    "root_cause_is": "a cgroup CPU quota set below the service's demand",
+    "fault_type": "svc_cpu_cap"
+  },
+  "evidence_from_literature": [
+    {
+      "claim": "A cgroup CPU limit manifests in kernel scheduling state as threads repeatedly held off the CPU, with requests stretching from milliseconds to seconds while the CPU becomes underused",
+      "source": "Gelle, Ezzati-Jivan & Dagenais, Combining Distributed and Kernel Tracing for Performance Analysis of Cloud Applications, Electronics 10(21):2610, 2021 - the paper's worked example is exactly a control-group limit",
+      "validated_on": "our 4 labelled cgroup-cap runs, which reproduce the reported underuse: host utilisation fell to 0.114-0.365 from a 0.451-0.507 baseline"
+    }
+  ],
+  "related_blueprints": [
+    "cpu-contention-co-tenant",
+    "host-cpu-saturation",
+    "healthy-baseline"
+  ],
+  "mutually_exclusive_with": [
+    "cpu-contention-co-tenant",
+    "host-cpu-saturation",
+    "healthy-baseline"
+  ],
+  "taxonomy": {
+    "domain": "Performance",
+    "category": "Throughput / latency degradation",
+    "subcategory": "Resource quota throttling",
+    "sibling_causes": [
+      "co-tenant contention",
+      "host CPU exhaustion",
+      "memory quota throttling"
+    ],
+    "note": "Covers any case where an administrative quota, rather than competition, holds a service off the CPU. Authored from Docker cpu-quota runs; the deciding signal - the host doing less work while threads wait more - should hold for any quota mechanism."
+  },
+  "applicability": {
+    "apply_when": [
+      "one service is slow and its callers slow behind it",
+      "the host looks quiet or quieter than usual",
+      "nothing new is running on the machine"
+    ],
+    "do_not_apply_when": [
+      "host CPU rose during the incident",
+      "a new or unexpected process is consuming CPU",
+      "the affected component is blocked on an external call rather than on the CPU"
+    ],
+    "cheap_precheck": "compare host CPU usage during the incident against the hour before: if it did not fall, this blueprint does not apply"
+  },
+  "capabilities_required": [
+    {
+      "id": "trace.stage_ctf",
+      "why": "the stored kernel trace must be readable"
+    },
+    {
+      "id": "kernel.scheduler.oncpu_attribution",
+      "why": "the decisive signal: utilisation falling, no newcomer, broad per-process losses"
+    },
+    {
+      "id": "kernel.scheduler.runqueue_delay",
+      "why": "corroboration: threads waiting more while the system works less"
+    }
+  ],
+  "stopping_conditions": {
+    "conclude": "utilisation fell against its own baseline, no newcomer appeared, losses are broad, and runqueue delay is raised",
+    "stop_and_switch": "utilisation rose with a newcomer -> cpu-contention-co-tenant; utilisation reached the ceiling -> host-cpu-saturation; utilisation flat -> healthy-baseline",
+    "stop_insufficient": "sched_switch was not recorded, so utilisation cannot be computed -> request it and re-run. Do NOT decide from runqueue delay alone: doing so misdiagnosed both mild-intensity runs as co-tenant contention",
+    "max_evidence_rounds": 2
+  },
+  "adaptation_rules": [
+    {
+      "if": "the verdict fires but the throttled service must be named",
+      "then": "this blueprint cannot name it from kernel comm alone - the biggest loser is the busiest victim. Request cgroup throttling counters for the services on the stalled path, which is one targeted question rather than broader collection"
+    },
+    {
+      "if": "utilisation falls but runqueue delay is NOT raised",
+      "then": "the system is simply idle - demand fell rather than being held back. Report reduced load, not throttling"
+    },
+    {
+      "if": "utilisation falls and one component also shows a hugely inflated socket-waiting syscall",
+      "then": "prefer the dependency-wait explanation: the system may be idle because it is blocked on something external, which produces the same drop in work done"
+    }
+  ],
+  "selection": {
+    "supported_goals": [
+      "diagnose_service_latency",
+      "diagnose_cpu_throttling",
+      "diagnose_quota_misconfiguration"
+    ],
+    "supported_environments": [
+      "linux",
+      "container",
+      "kubernetes",
+      "virtual_machine"
+    ],
+    "applicable_symptoms": [
+      "single_service_slow_with_quiet_host",
+      "throughput_drop_without_errors",
+      "latency_high_while_cpu_usage_low"
+    ],
+    "preconditions": [
+      "kernel scheduler events are collectable or already collected",
+      "the workload is run under a cgroup with a CPU quota"
+    ],
+    "estimated_overhead_pct": {
+      "min": 0,
+      "max": 5
+    },
+    "historical_effectiveness": {
+      "runs_validated": 4,
+      "note": "4 labelled runs at two intensities, separated from 13 runs of three neighbouring families with no overlap on the deciding signal. Sock Shop only; Train Ticket owed. Does not name the throttled service."
+    }
+  },
+  "policies": {
+    "collection_order_rule": "Use evidence that already exists before enabling any new collection. Escalate a tier only when the cheaper tier leaves a candidate cause unresolved, and record why.",
+    "max_collection_overhead_pct": 5,
+    "scope": {
+      "restrict_to": "the hosts and time window named in the intent",
+      "never_widen_without": "explicit approval"
+    },
+    "privacy": [
+      "do not collect request payloads",
+      "do not retain personally identifiable data"
+    ],
+    "approval": {
+      "automatic": [
+        "query evidence that already exists",
+        "read-only analysis of collected evidence",
+        "active collection estimated below 3% overhead"
+      ],
+      "requires_approval": [
+        "active collection estimated above 3% overhead",
+        "widening the host scope or time window",
+        "any change to production configuration",
+        "any remediation action"
+      ]
+    },
+    "autonomy_level": 2,
+    "autonomy_note": "Level 2 = policy-controlled automation: select and execute low-risk plans inside the stated constraints."
+  },
+  "evidence_sufficiency": {
+    "confidence_floor": 0.7,
+    "if_below_floor": "name the unresolved question, pick the ONE additional capability that would settle it, check it against the overhead budget, and request it.",
+    "report_when_stuck": "if the floor is still not met after the allowed rounds, report the best-supported hypothesis, its confidence, and precisely what evidence is missing - never present a guess as a diagnosis"
+  },
+  "provenance": {
+    "authored_by": "measured from the CPU-cluster sweep, 17 labelled runs across four families",
+    "verified_by": "PENDING",
+    "authored_utc": "2026-08-29T17:00:00Z",
+    "notes": "Written together with host-cpu-saturation and the revised cpu-contention-co-tenant, because none of the three is separable on its own. Directly answers findings F1 and F2, where both subtle-intensity runs of this family were confidently misdiagnosed as co-tenant contention. Every threshold comes from evidence/cpu_cluster_separation.json. Known gaps: Sock Shop only, and the throttled service is not identified."
+  }
+}

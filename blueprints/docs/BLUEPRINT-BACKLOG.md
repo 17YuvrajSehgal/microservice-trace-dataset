@@ -49,7 +49,7 @@ All 110 labelled runs, both applications. Kernel traces exist for every run.
 
 Build these next. Each one closes a measured false fire.
 
-### A1. `host-cpu-saturation` — the host itself is out of CPU
+### A1. `host-cpu-saturation` — the host itself is out of CPU  ✅ BUILT 2026-08-29
 - **Family:** `anomaly_cpu` · SS 3, TT 3
 - **Why first:** measured **36.97–52.54×** runqueue delay on 12 processes — seven times the
   7.12× of the co-tenant fault the CPU blueprint was written from. It satisfies every
@@ -60,7 +60,7 @@ Build these next. Each one closes a measured false fire.
   `sched_switch` on-CPU time — `oncpu_share.py` already measures it.
 - **Sibling of:** `cpu-contention-co-tenant`, `service-cpu-throttle`
 
-### A2. `service-cpu-throttle` — one service is capped by its cgroup
+### A2. `service-cpu-throttle` — one service is capped by its cgroup  ✅ BUILT 2026-08-29
 - **Family:** `svc_cpu_cap` · SS 5, TT 5
 - **Why:** measured 13.54–15.70× runqueue on 5–6 processes. Same collision (finding F1).
   Published precedent: Gelle/Ezzati-Jivan/Dagenais 2021 demonstrate a cgroup limit producing
@@ -136,6 +136,17 @@ Listed so the taxonomy is complete, not scheduled now.
 | `host-network-degradation` | `anomaly_net` (SS 3, TT 3) | traces — kernel sees the wait, not the loss |
 
 ---
+
+## Status
+
+**CPU cluster (A1 + A2) built 2026-08-29**, together with a v7 revision of
+`cpu-contention-co-tenant`. All three were authored from one 17-run measurement (finding
+F3), because none is separable on its own. The deciding signal turned out **not** to be
+runqueue delay — that was demoted to corroboration in all three — but host CPU utilisation,
+which splits the four families with no overlap.
+
+Still owed for this cluster: rewire `blueprint_decide.py` onto the new signals, then re-run
+E1 to see whether the 42% false-positive rate falls.
 
 ## Order of work
 

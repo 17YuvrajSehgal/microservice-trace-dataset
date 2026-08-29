@@ -1,6 +1,6 @@
 {
   "id": "cpu-contention-co-tenant",
-  "version": 6,
+  "version": 7,
   "title": "A co-tenant workload steals host CPU: services wait on the runqueue, not on I/O",
   "problem": {
     "summary": "An unrelated workload sharing the host consumes CPU. Application services are never themselves busy, but each time they become ready to run they wait measurably longer before a CPU actually runs them. User-facing latency moves only slightly, so dashboards look nearly normal; the delay is only visible in the scheduler.",
@@ -12,13 +12,25 @@
     ],
     "discriminators": [
       {
-        "signal": "runqueue delay: time from sched_waking to the sched_switch that runs the thread",
-        "this_problem": "p95 runqueue delay inflates several-fold across MANY unrelated processes at once, with the busiest application process among the worst",
-        "not_this_problem": "runqueue delay is flat or falls; the median across processes stays at or below 1x",
+        "signal": "host CPU utilisation during the incident, computed from sched_switch on-CPU time",
+        "this_problem": "utilisation rises but keeps real headroom - the host is being shared, not exhausted",
+        "not_this_problem": "utilisation reaches the ceiling (host exhaustion), FALLS below baseline (a cgroup quota holding work back), or stays flat (healthy)",
         "confused_with": [
-          "db-latency-dependency-wait"
+          "host-cpu-saturation",
+          "service-cpu-throttle",
+          "healthy-baseline"
         ],
-        "evidence": "MEASURED from raw L0 via babeltrace2. Co-tenant run: node p95 0.034 -> 0.242 ms = 7.12x (n=48,886); median 1.78x across 52 high-volume processes. CONTROL, slow-datastore run: max 1.59x, median 0.84x, and node 0.97x. See evidence/L0_runqueue_delay_cotenant.json and evidence/L0_runqueue_delay_CONTROL_slowdb.json"
+        "evidence": "MEASURED on 17 labelled runs across four families. Co-tenant 0.619-0.681 (n=5); host saturation 0.991-0.998 (n=3); no-fault 0.462-0.531 (n=5); cgroup cap 0.114-0.365 (n=4). Baseline was 0.444-0.507 in all 17 runs. The automated overlap check reports a clean split. See evidence/cpu_cluster_separation.json"
+      },
+      {
+        "signal": "cores gained by a process that consumed no CPU in the baseline window",
+        "this_problem": "a newcomer takes a bounded amount - measured 0.99 to 2.00 cores on a 12-CPU host",
+        "not_this_problem": "the newcomer takes several cores and pins the host (host exhaustion), or there is no newcomer at all (cgroup quota, healthy)",
+        "confused_with": [
+          "host-cpu-saturation",
+          "healthy-baseline"
+        ],
+        "evidence": "MEASURED: co-tenant newcomer gained 0.988-2.002 cores (n=5, present 5/5) against 6.544-6.624 for host saturation (n=3) and 0.000-0.296 for no-fault runs (1/5 had any newcomer). The measurement recovers the recipe's own cgroup cap to within 1% (CPUS=1.0 -> 0.988/0.997; CPUS=2.0 -> 1.978/1.978/2.002), which is why we trust the attribution. NOTE: the newcomer has the SAME process name as in host saturation, because they are the same mechanism at different intensities - identity never separates them. See evidence/cpu_cluster_separation.json"
       },
       {
         "signal": "blocking duration of socket-WAITING syscalls (poll, epoll_wait, recvfrom, read, select)",
@@ -46,22 +58,40 @@
           "service-cpu-throttle"
         ],
         "evidence": "MEASURED: the co-tenant consumed 2.00 cores against a 0.00 baseline with no call-path edges; host busy cores 5.31 -> 7.96 (x1.5), so the host retained headroom. See evidence/measured_verdict_noisy_neighbor_r1.json"
+      },
+      {
+        "signal": "runqueue delay: time from sched_waking to the sched_switch that runs the thread",
+        "this_problem": "raised - measured 7.12x - but this is CORROBORATION, not evidence. It must never be the deciding signal",
+        "not_this_problem": "runqueue delay alone separates nothing: it is raised in every CPU-family fault and in healthy load bursts too, and its ordering is inverted against severity",
+        "confused_with": [
+          "host-cpu-saturation",
+          "service-cpu-throttle",
+          "healthy-baseline"
+        ],
+        "evidence": "MEASURED across the negative-class sweep: host saturation 36.97-52.54x, cgroup cap 13.54-15.70x, THIS fault 7.12x, healthy burst 3.69x. Using it as the positive test produced a 42% false-positive rate and diagnosed a healthy system as this fault at 0.80 confidence. See docs/FINDINGS-phase1.md findings F1-F3."
       }
     ],
     "unverified_do_not_claim": [
       {
         "claim": "the delayed services show a raised runnable_wait share (ready to run, waiting for a CPU)",
         "status": "NOT SUPPORTED by our data",
-        "measurement": "runnable_wait of the labelled culprit never exceeds 4% in ANY fault family (max 4.0% svc_mem_cap, 2.6% svc_cpu_cap); on the co-tenant run the highest runnable_wait across services was 1.6%. See evidence/wait_signature_all_families.json",
+        "measurement": "runnable_wait of the labelled culprit never exceeds 4% in ANY fault family (max 4.0% svc_mem_cap, 2.6% the cgroup-cap family); on the co-tenant run the highest runnable_wait across services was 1.6%. See evidence/wait_signature_all_families.json",
         "consequence": "removed from the discriminators. Do not reinstate without new evidence.",
         "agent_note": "The share of wall time a service spends in a runnable state. Measured across every labelled fault: it never exceeds 4%, because that share is diluted by ordinary idle waiting. Use per-wakeup runqueue DELAY instead, which shows the effect clearly."
       },
       {
         "claim": "the wait decomposition of the culprit distinguishes this fault",
         "status": "CANNOT BE MEASURED for this family",
-        "measurement": "this fault is labelled against the host, and L2 produces no record for 'host'. Across 93 runs there is no culprit-side L2 record for anomaly_cpu, anomaly_disk, anomaly_mem, anomaly_net or noisy_neighbor.",
+        "measurement": "this fault is labelled against the host, and L2 produces no record for 'host'. Across 93 runs there is no culprit-side L2 record for the host-saturation family, anomaly_disk, anomaly_mem, anomaly_net or the co-tenant family.",
         "consequence": "either derive a host-level L2 record, or accept that this family is diagnosed from metrics + topology only.",
         "agent_note": "The wait decomposition of the culprit. For host-attributed faults no culprit-side wait record exists at all, so its absence is meaningless here."
+      },
+      {
+        "claim": "broadly inflated runqueue delay identifies co-tenant CPU contention",
+        "status": "NOT SUPPORTED - the signal is present in every neighbouring fault and in healthy bursts",
+        "measurement": "Runqueue delay was raised in all four CPU-cluster families (52.54x host saturation, 15.70x cgroup cap, 7.12x this fault, 3.69x a healthy burst). Deciding on it gave 5 false fires in 12 negative runs, including normal_none_burst_r1 - a healthy system - reported as this fault at 0.80 confidence.",
+        "consequence": "demoted to corroboration. The deciding signal is host utilisation with headroom plus a bounded newcomer.",
+        "agent_note": "How long ready threads waited for a CPU. It rises under every kind of CPU trouble and under ordinary load bursts, so on its own it tells you the machine is loaded, not what is wrong."
       }
     ]
   },
@@ -107,6 +137,15 @@
       "capability": "trace.stage_ctf",
       "produces": "<tmp>/ctf",
       "expect": "a CTF directory with metadata and channel streams"
+    },
+    {
+      "step": "attribute on-CPU time per process, baseline window against incident window",
+      "run": "python3 blueprints/problems/cpu-contention-co-tenant/scripts/oncpu_share.py --ctf <ctf> --gt <ground_truth> --out <out>/oncpu.json",
+      "produces": "oncpu.json",
+      "reads": [
+        "ctf"
+      ],
+      "expect": "host utilisation raised but below the ceiling, and one newcomer holding 1-2 cores"
     },
     {
       "step": "Measure runqueue delay per process, baseline vs incident",
@@ -167,12 +206,24 @@
   ],
   "decision": {
     "verdict_when": [
-      "p95 runqueue delay inflates several-fold across many unrelated processes",
-      "blocking-syscall durations stay flat over the same window",
-      "the slowdown does not converge on any single component in the call graph",
-      "a container with no call-graph role consumes CPU it did not consume in the baseline"
+      "host CPU utilisation rises during the incident but retains clear headroom",
+      "a process that consumed no CPU in the baseline now holds a bounded one to two cores",
+      "that process has no role in the call graph",
+      "runqueue delay is broadly inflated, corroborating that ready threads are queueing"
     ],
     "rule_out": [
+      {
+        "instead": "host-cpu-saturation",
+        "when": "utilisation reaches the ceiling and the newcomer takes several cores - the host is exhausted, not shared"
+      },
+      {
+        "instead": "service-cpu-throttle",
+        "when": "utilisation FALLS below baseline and there is no newcomer - a quota is holding work back"
+      },
+      {
+        "instead": "healthy-baseline",
+        "when": "utilisation is flat and no newcomer took meaningful CPU, even if a load burst raised runqueue delay"
+      },
       {
         "instead": "a component waiting on I/O or a dependency",
         "when": "one component's blocking syscall inflates by an order of magnitude while runqueue delay stays flat"
@@ -197,16 +248,22 @@
     }
   ],
   "related_blueprints": [
-    "db-latency-dependency-wait"
+    "db-latency-dependency-wait",
+    "healthy-baseline",
+    "host-cpu-saturation",
+    "service-cpu-throttle"
   ],
   "mutually_exclusive_with": [
-    "db-latency-dependency-wait"
+    "db-latency-dependency-wait",
+    "healthy-baseline",
+    "host-cpu-saturation",
+    "service-cpu-throttle"
   ],
   "provenance": {
     "authored_by": "human",
     "verified_by": "PENDING - Naser to sign off",
     "authored_utc": "2026-08-27",
-    "notes": "v3: rebuilt on the raw kernel trace read with babeltrace2, after the derived wait-share record was measured to be non-discriminative. Every discriminator now cites a measurement with its control. The decisive pair: runqueue delay 7.12x here vs 0.97x on the datastore fault, and the datastore's poll syscall 1.12x here vs 36.83x there - same signals, opposite directions. v6: discriminator narrowed from 'syscall durations' to 'socket-waiting syscall durations' after 5-run testing showed connect() inflating 5.3x under CPU starvation and wrongly vetoing the verdict on 2 of 5 runs."
+    "notes": "v3: rebuilt on the raw kernel trace read with babeltrace2, after the derived wait-share record was measured to be non-discriminative. Every discriminator now cites a measurement with its control. The decisive pair: runqueue delay 7.12x here vs 0.97x on the datastore fault, and the datastore's poll syscall 1.12x here vs 36.83x there - same signals, opposite directions. v6: discriminator narrowed from 'syscall durations' to 'socket-waiting syscall durations' after 5-run testing showed connect() inflating 5.3x under CPU starvation and wrongly vetoing the verdict on 2 of 5 runs. v7 (2026-08-29): rewritten after the CPU-cluster measurement. Runqueue delay demoted from deciding signal to corroboration after it was measured raised in every neighbouring fault and in healthy bursts; host utilisation with headroom plus a bounded newcomer is now the discriminator. The container-attribution step moved from metrics to the kernel trace."
   },
   "taxonomy": {
     "domain": "Performance",
@@ -246,8 +303,8 @@
       "why": "negative control: showing syscall durations stayed flat rules out I/O waiting"
     },
     {
-      "id": "metrics.container.cpu_attribution",
-      "why": "identify which container consumed the CPU and whether it is on the call graph"
+      "id": "kernel.scheduler.oncpu_attribution",
+      "why": "the deciding signal: host utilisation with headroom, and the bounded newcomer that took the CPU. Previously sourced from metrics; measured to be recoverable from the scheduler stream alone"
     }
   ],
   "stopping_conditions": {
@@ -295,8 +352,8 @@
       "max": 5
     },
     "historical_effectiveness": {
-      "runs_validated": 1,
-      "note": "one labelled run so far; effect size large (7.12x vs 0.97x control) but repeats owed"
+      "runs_validated": 5,
+      "note": "5 labelled co-tenant runs at two intensities, separated from 12 runs of three neighbouring families with no overlap on the deciding signal. Sock Shop only; Train Ticket owed."
     }
   },
   "policies": {

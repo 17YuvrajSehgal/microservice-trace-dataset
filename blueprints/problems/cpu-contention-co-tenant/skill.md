@@ -1,10 +1,10 @@
 ---
 name: cpu-contention-co-tenant
-version: 6
+version: 7
 authored_by: human
 generated_from: blueprints/cpu-contention-co-tenant.json
 covers: noisy_neighbor                       # harness metadata: scoring + LOFO; NEVER shown to the model
-mutually_exclusive_with: db-latency-dependency-wait
+mutually_exclusive_with: db-latency-dependency-wait, healthy-baseline, host-cpu-saturation, service-cpu-throttle
 ---
 ## When this applies
 - several unrelated services degrade mildly at the same time
@@ -25,10 +25,12 @@ Cheapest check first: host CPU rose but retains headroom, and no container on th
 - host CPU busy rises but is not exhausted, and host load rises moderately
 
 Telling it apart from its look-alikes:
-- **runqueue delay: time from sched_waking to the sched_switch that runs the thread** — this problem: p95 runqueue delay inflates several-fold across MANY unrelated processes at once, with the busiest application process among the worst. Not this problem: runqueue delay is flat or falls; the median across processes stays at or below 1x.
+- **host CPU utilisation during the incident, computed from sched_switch on-CPU time** — this problem: utilisation rises but keeps real headroom - the host is being shared, not exhausted. Not this problem: utilisation reaches the ceiling (host exhaustion), FALLS below baseline (a cgroup quota holding work back), or stays flat (healthy).
+- **cores gained by a process that consumed no CPU in the baseline window** — this problem: a newcomer takes a bounded amount - measured 0.99 to 2.00 cores on a 12-CPU host. Not this problem: the newcomer takes several cores and pins the host (host exhaustion), or there is no newcomer at all (cgroup quota, healthy).
 - **blocking duration of socket-WAITING syscalls (poll, epoll_wait, recvfrom, read, select)** — this problem: socket-waiting durations stay flat: nothing is blocking longer, the threads simply cannot get a CPU. Not this problem: one component's socket-waiting syscall inflates by an order of magnitude.
 - **call-graph convergence** — this problem: no component has slow incoming edges; the slowdown does not converge anywhere. Not this problem: slow edges converge on one component.
 - **where the CPU went** — this problem: a container consumes steady CPU it did not consume in the baseline and has NO call-graph edges. Not this problem: the extra CPU belongs to a service that appears in the call graph.
+- **runqueue delay: time from sched_waking to the sched_switch that runs the thread** — this problem: raised - measured 7.12x - but this is CORROBORATION, not evidence. It must never be the deciding signal. Not this problem: runqueue delay alone separates nothing: it is raised in every CPU-family fault and in healthy load bursts too, and its ordering is inverted against severity.
 
 ## What to look at first
 The signals below are sufficient for this problem; you do not need everything.
@@ -46,19 +48,22 @@ Each step names the capability it needs. The command shown is the binding resolv
    needs: `trace.stage_ctf`
    run [local]: `cp -r <run_dir>/kernel/kernel <tmp>/ctf && gunzip -f <tmp>/ctf/*.gz`
    expect: a CTF directory with metadata and channel streams
-2. Measure runqueue delay per process, baseline vs incident
+2. attribute on-CPU time per process, baseline window against incident window
+   run: `python3 blueprints/problems/cpu-contention-co-tenant/scripts/oncpu_share.py --ctf <ctf> --gt <ground_truth> --out <out>/oncpu.json`
+   expect: host utilisation raised but below the ceiling, and one newcomer holding 1-2 cores
+3. Measure runqueue delay per process, baseline vs incident
    needs: `kernel.scheduler.runqueue_delay`
    run [babeltrace2-cli]: `python3 blueprints/problems/cpu-contention-co-tenant/scripts/runqueue_delay.py --ctf <ctf> --gt <ground_truth> --out <out>/rq.json`
    expect: a broad multi-process inflation of p95 indicates contention
-3. NEGATIVE CONTROL: confirm blocking-syscall durations did not inflate
+4. NEGATIVE CONTROL: confirm blocking-syscall durations did not inflate
    needs: `kernel.syscall.blocking_duration`
    run [babeltrace2-cli]: `python3 blueprints/problems/db-latency-dependency-wait/scripts/blocking_syscall.py --ctf <ctf> --gt <ground_truth> --comms <comms> --out <out>/blocking.json`
    expect: no syscall inflates much; a large single-component inflation means this is the wrong blueprint
-4. Identify the off-call-path CPU consumer and emit the verdict
+5. Identify the off-call-path CPU consumer and emit the verdict
    needs: `metrics.container.cpu_attribution`
    run [prometheus-cadvisor]: `python3 blueprints/problems/cpu-contention-co-tenant/scripts/cpu_attribution.py --run <run_dir> --out <out>/verdict.json --chart <out>/runqueue.svg --text <out>/explanation.txt`
    expect: the top CPU consumer has no call-graph edges and was absent in the baseline
-5. State the recommended action alongside the diagnosis
+6. State the recommended action alongside the diagnosis
    needs: `metrics.container.cpu_attribution`
    run [prometheus-cadvisor]: `python3 blueprints/problems/cpu-contention-co-tenant/scripts/cpu_attribution.py --run <run_dir> --out <out>/verdict.json --chart <out>/runqueue.svg --text <out>/explanation.txt`
    expect: a concrete action naming the container to constrain, not a generic suggestion
@@ -71,12 +76,15 @@ Each step names the capability it needs. The command shown is the binding resolv
 
 ## Resolution template
 Conclude this problem when ALL of:
-- p95 runqueue delay inflates several-fold across many unrelated processes
-- blocking-syscall durations stay flat over the same window
-- the slowdown does not converge on any single component in the call graph
-- a container with no call-graph role consumes CPU it did not consume in the baseline
+- host CPU utilisation rises during the incident but retains clear headroom
+- a process that consumed no CPU in the baseline now holds a bounded one to two cores
+- that process has no role in the call graph
+- runqueue delay is broadly inflated, corroborating that ready threads are queueing
 
 Prefer a different explanation when:
+- host-cpu-saturation — utilisation reaches the ceiling and the newcomer takes several cores - the host is exhausted, not shared
+- service-cpu-throttle — utilisation FALLS below baseline and there is no newcomer - a quota is holding work back
+- healthy-baseline — utilisation is flat and no newcomer took meaningful CPU, even if a load burst raised runqueue delay
 - a component waiting on I/O or a dependency — one component's blocking syscall inflates by an order of magnitude while runqueue delay stays flat
 - host CPU exhaustion — host CPU is exhausted rather than merely raised, and user latency collapses instead of jittering
 - a service pinned by its own CPU limit — only ONE service is delayed and it is on the call path
@@ -112,3 +120,4 @@ Each of these was measured on our own data and found unusable. Do not reason
 from them, and do not let their absence argue against this problem:
 - the delayed services show a raised runnable_wait share (ready to run, waiting for a CPU) — **NOT SUPPORTED by our data**. The share of wall time a service spends in a runnable state. Measured across every labelled fault: it never exceeds 4%, because that share is diluted by ordinary idle waiting. Use per-wakeup runqueue DELAY instead, which shows the effect clearly.
 - the wait decomposition of the culprit distinguishes this fault — **CANNOT BE MEASURED for this family**. The wait decomposition of the culprit. For host-attributed faults no culprit-side wait record exists at all, so its absence is meaningless here.
+- broadly inflated runqueue delay identifies co-tenant CPU contention — **NOT SUPPORTED - the signal is present in every neighbouring fault and in healthy bursts**. How long ready threads waited for a CPU. It rises under every kind of CPU trouble and under ordinary load bursts, so on its own it tells you the machine is loaded, not what is wrong.
