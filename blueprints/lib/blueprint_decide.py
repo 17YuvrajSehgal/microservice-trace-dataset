@@ -116,7 +116,14 @@ def cpu_throttle_rule(cpu, rq):
     collapsed = cpu["util_ratio"] is not None and cpu["util_ratio"] <= COLLAPSE_RATIO
     no_thief = cpu["thief_cores"] < THIEF_CORES
     lost = cpu["loser_cores"] <= LOSER_CORES
-    fires = collapsed and no_thief and lost
+    # MEASURED (finding F4): a slow datastore ALSO collapses host CPU - 0.433 -> 0.175 on
+    # slow_db_aggressive_steady_r1 - so "the host went quiet" cannot separate the two. What
+    # does is WHY it went quiet. Under a quota threads are runnable and held off the CPU, so
+    # runqueue delay rises (measured 13.5-29.2x). Blocked on a datastore they are not
+    # runnable at all, so it stays flat (1.59x). This is the "waiting more while working
+    # less" clause the blueprint already states; it was missing from the code.
+    waiting_for_cpu = (rq["max"] or 0) >= RQ_X
+    fires = collapsed and no_thief and lost and waiting_for_cpu
     return {"fires": fires, **_cpu_fields(cpu, rq),
             "why": (f"host CPU FELL to {cpu['util_ratio']:.2f} of its baseline "
                     f"({cpu['util_baseline']:.3f} -> {cpu['util_incident']:.3f}) with no new "
@@ -124,7 +131,8 @@ def cpu_throttle_rule(cpu, rq):
                     f"less work, not competing for it"
                     if fires else
                     f"utilisation ratio {cpu['util_ratio']}, thief {cpu['thief_cores']} cores, "
-                    f"biggest loss {cpu['loser_cores']} - not a quota holding work back")}
+                    f"biggest loss {cpu['loser_cores']}, runqueue {rq['max']}x - not a quota "
+                    f"holding work back")}
 
 
 def co_tenant_rule(cpu, rq, blk):
