@@ -76,15 +76,15 @@ def scan(ctf, begin, end):
 
     unwrap = unwrapper()   # window may cross midnight
 
-    last = {}                                    # cpu -> (t, comm_currently_running)
-    on_cpu = collections.defaultdict(float)
+    last = {}                                    # cpu -> (t, (comm, tid) currently running)
+    per_thread = collections.defaultdict(float)  # (comm, tid) -> on-CPU seconds
     t_first = t_last = None
     for line in p2.stdout:
         mt, mc, ms = TS.match(line), CPU.search(line), SWITCH.search(line)
         if not (mt and mc and ms):
             continue
         t, cpu = unwrap(secs(mt)), int(mc.group(1))
-        prev_comm, next_comm = ms.group(1), ms.group(3)
+        next_comm, next_tid = ms.group(3), int(ms.group(4))
         if t_first is None:
             t_first = t
         t_last = t
@@ -94,10 +94,8 @@ def scan(ctf, begin, end):
             t0, running = prior
             d = t - t0
             if 0 <= d < 10.0:                    # guard against window-edge artifacts
-                on_cpu[running] += d
-        last[cpu] = (t, next_comm)
-        # prev_comm is a consistency check only; the running comm is tracked per CPU
-        del prev_comm
+                per_thread[running] += d
+        last[cpu] = (t, (next_comm, next_tid))
 
     p2.stdout.close()
     for p in (p2, p1):
@@ -110,7 +108,16 @@ def scan(ctf, begin, end):
     # leaves headroom, a saturated host does not, and "busy cores" means nothing without
     # knowing how many there are.
     n_cpus = (max(last) + 1) if last else 0
-    return dict(on_cpu), span, n_cpus
+
+    # Roll threads up to processes for everything that existed before, and keep the
+    # per-thread detail for the freeze test. MEASURED REASON: comm names are shared - Sock
+    # Shop runs several Go services as `app`, so when one container is paused its comm total
+    # only falls to 0.6x and looks like ordinary load shedding. Individual THREADS either get
+    # scheduled or they do not, so the freezer shows up cleanly at that level.
+    on_cpu = collections.defaultdict(float)
+    for (comm, _tid), v in per_thread.items():
+        on_cpu[comm] += v
+    return dict(on_cpu), span, n_cpus, dict(per_thread)
 
 
 def summarise(on_cpu, span, n_cpus):
@@ -145,9 +152,9 @@ def main():
     ap.add_argument("--incident-s", type=int, default=60)
     ap.add_argument("--newcomer-cores", type=float, default=0.25,
                     help="a comm must gain at least this many cores to be called a newcomer")
-    ap.add_argument("--silenced-floor", type=float, default=0.02,
-                    help="a comm must have been using at least this many cores to count "
-                         "as silenced - otherwise idle processes qualify trivially")
+    ap.add_argument("--thread-floor", type=float, default=0.002,
+                    help="a THREAD must have used at least this many cores in the "
+                         "baseline to count - otherwise idle threads qualify trivially")
     ap.add_argument("--silenced-drop", type=float, default=0.90,
                     help="fraction of its own CPU time a comm must lose to count as silenced")
     a = ap.parse_args()
@@ -168,9 +175,11 @@ def main():
                "incident": (t0, shift(t0, a.incident_s))}
 
     result = {"ctf": a.ctf, "windows": {}}
+    threads = {}
     for name, (b, e) in windows.items():
         print(f"decoding {name}: {b} -> {e} ...", flush=True)
-        on_cpu, span, n_cpus = scan(a.ctf, b, e)
+        on_cpu, span, n_cpus, per_thread = scan(a.ctf, b, e)
+        threads[name] = per_thread
         result["windows"][name] = {"range": [b, e], **summarise(on_cpu, span, n_cpus)}
         w = result["windows"][name]
         print(f"  {len(on_cpu)} comms, busy {w['busy_cores']} of {n_cpus} cores "
@@ -209,13 +218,23 @@ def main():
     # CPU still runs sometimes; a frozen one does not.
     # RELATIVE, not absolute: a small service that stops entirely loses few cores, so the
     # biggest-loser ranking would never surface it.
-    result["silenced"] = [
-        d for d in deltas
-        if not d["kernel_thread"]
-        and d["cores_baseline"] >= a.silenced_floor
-        and d["cores_incident"] <= d["cores_baseline"] * (1 - a.silenced_drop)
-    ]
-    result["silenced"].sort(key=lambda r: -r["cores_baseline"])
+    tb, ti = threads["baseline"], threads["incident"]
+    bspan = result["windows"]["baseline"]["window_span_s"] or 1e-9
+    frozen = collections.defaultdict(lambda: {"threads": 0, "cores_lost": 0.0})
+    for (comm, tid), v in tb.items():
+        if is_kernel(comm) or v / bspan < a.thread_floor:
+            continue                                  # too idle to say anything about
+        if ti.get((comm, tid), 0.0) <= v * (1 - a.silenced_drop):
+            frozen[comm]["threads"] += 1
+            frozen[comm]["cores_lost"] += v / bspan
+    result["silenced"] = sorted(
+        ({"comm": c, "threads_stopped": d["threads"],
+          "cores_lost": round(d["cores_lost"], 4),
+          "threads_running_baseline": sum(
+              1 for (cc, _t), vv in tb.items()
+              if cc == c and vv / bspan >= a.thread_floor)}
+         for c, d in frozen.items()),
+        key=lambda r: -r["cores_lost"])
 
     # The three facts that should separate the CPU cluster. Reported as measurements only —
     # which combination means which fault is decided after looking at all the families,
@@ -233,9 +252,10 @@ def main():
         "thief_cores_gained": top_new["cores_gained"] if top_new else 0.0,
         "biggest_loser_comm": loser["comm"] if loser else None,
         "biggest_loser_cores": loser["cores_gained"] if loser else 0.0,
-        "n_silenced": len(result["silenced"]),
-        "silenced_comms": [d["comm"] for d in result["silenced"][:5]],
-        "silenced_cores_lost": round(sum(-d["cores_gained"] for d in result["silenced"]), 4),
+        "n_frozen_comms": len(result["silenced"]),
+        "frozen_comms": [d["comm"] for d in result["silenced"][:5]],
+        "frozen_threads": sum(d["threads_stopped"] for d in result["silenced"]),
+        "frozen_cores_lost": round(sum(d["cores_lost"] for d in result["silenced"]), 4),
     }
 
     os.makedirs(os.path.dirname(a.out) or ".", exist_ok=True)
@@ -254,7 +274,8 @@ def main():
 
     if result["silenced"]:
         print(f"silenced ({len(result['silenced'])}): " + ", ".join(
-            f"{d['comm']} {d['cores_baseline']}->{d['cores_incident']}"
+            f"{d['comm']} {d['threads_stopped']}/{d['threads_running_baseline']} "
+            f"threads, {d['cores_lost']} cores"
             for d in result["silenced"][:6]))
     else:
         print("nothing went silent: no process stopped being scheduled")
