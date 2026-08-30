@@ -41,7 +41,17 @@ BIG_THIEF = 4.0         # host-saturation newcomers took 6.54-6.62; co-tenant ne
 LOSER_CORES = -0.30     # cap runs lost 0.357-0.876; healthy and co-tenant lost 0.024-0.160
 
 BLOCK_X = 5.0           # datastore fault measured 36.8x; its control 1.12x
-RQ_X = 2.0              # corroboration only now, never a deciding test
+RQ_X = 2.0              # "runqueue is raised at all" - used only to describe a run, never
+                        # to decide anything.
+
+# "the threads are genuinely SHORT of CPU" is a different and much stronger claim, and it
+# needs its own bar. MEASURED across 22 slow-datastore and cgroup-cap runs on both apps:
+#     slow datastore   runqueue 1.04-2.59   (never above 2.6 on either app)
+#     cgroup cap       runqueue 13.54-29.17 (on the app where it produces a signal at all)
+# A 2.0 cut sits inside the datastore range and misdiagnosed two Train Ticket datastore runs
+# as throttling. 5.0 leaves margin on both sides - 1.9x above the datastore ceiling and 2.7x
+# below the cap floor - rather than being placed next to any single run.
+STARVED_RQ_X = 5.0
 
 SOCKET_CALLS = ("poll", "epoll_wait", "epoll_pwait", "recvfrom", "recvmsg", "read", "select")
 INFRA = ("kworker", "ksoftirqd", "rcu_", "kswapd", "kcompactd", "migration", "watchdog",
@@ -122,7 +132,7 @@ def cpu_throttle_rule(cpu, rq):
     # runqueue delay rises (measured 13.5-29.2x). Blocked on a datastore they are not
     # runnable at all, so it stays flat (1.59x). This is the "waiting more while working
     # less" clause the blueprint already states; it was missing from the code.
-    waiting_for_cpu = (rq["max"] or 0) >= RQ_X
+    waiting_for_cpu = (rq["max"] or 0) >= STARVED_RQ_X
     fires = collapsed and no_thief and lost and waiting_for_cpu
     return {"fires": fires, **_cpu_fields(cpu, rq),
             "why": (f"host CPU FELL to {cpu['util_ratio']:.2f} of its baseline "
@@ -174,7 +184,7 @@ def datastore_rule(cpu, rq, blk):
     not this cluster.
     """
     top = blk["socket_hits"][0] if blk["socket_hits"] else None
-    rq_ok = (rq["max"] or 0) < RQ_X
+    rq_ok = (rq["max"] or 0) < STARVED_RQ_X
     fires = bool(top) and top["p95_x"] >= BLOCK_X and rq_ok
     comm = top["comm_syscall"].split("|")[0] if top else None
     call = top["comm_syscall"].split("|")[-1] if top else None
