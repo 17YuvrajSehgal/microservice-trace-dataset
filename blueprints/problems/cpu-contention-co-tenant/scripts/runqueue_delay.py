@@ -37,6 +37,20 @@ def hhmmss(iso):
     return iso.split("T")[1].rstrip("Z")
 
 
+def unwrapper():
+    """Trace timestamps are wall-clock time-of-day, so they wrap to zero at midnight. This
+    returns a function that adds a day each time it sees the clock jump backwards, so a
+    window crossing midnight still has monotonic time and a positive span."""
+    state = {"day": 0.0, "prev": None}
+
+    def fix(t):
+        if state["prev"] is not None and t < state["prev"] - 43200:
+            state["day"] += 86400.0
+        state["prev"] = t
+        return t + state["day"]
+    return fix
+
+
 def scan(ctf, begin, end, cap_events=0):
     """Decode ONE window and return {tid: [delay_seconds, ...]} plus tid->comm."""
     cmd = [BT2, ctf, "--begin", begin, "--end", end]
@@ -46,6 +60,8 @@ def scan(ctf, begin, end, cap_events=0):
                           stdout=subprocess.PIPE, text=True, errors="replace")
     p1.stdout.close()
 
+    unwrap = unwrapper()   # window may cross midnight
+
     wake = {}                                   # tid -> t_wake (most recent)
     delays = collections.defaultdict(list)      # tid -> [delay]
     comm = {}                                   # tid -> comm
@@ -54,7 +70,7 @@ def scan(ctf, begin, end, cap_events=0):
         m = TS.match(line)
         if not m:
             continue
-        t = secs(m)
+        t = unwrap(secs(m))
         w = WAKING.search(line)
         if w:
             c, tid = w.group(1), int(w.group(2))
@@ -119,7 +135,9 @@ def main():
 
     def shift(hms, delta):
         h, m, s = (int(x) for x in hms.split(":"))
-        v = max(0, h * 3600 + m * 60 + s + delta)
+        # wrap into a valid time of day: a window may legitimately cross midnight,
+        # and "24:00:21" is not a time the trace reader accepts
+        v = (h * 3600 + m * 60 + s + delta) % 86400
         return f"{v//3600:02d}:{(v%3600)//60:02d}:{v%60:02d}"
 
     windows = {

@@ -36,9 +36,25 @@ def hhmmss(iso):
     return iso.split("T")[1].rstrip("Z")
 
 
+def unwrapper():
+    """Trace timestamps are wall-clock time-of-day, so they wrap to zero at midnight. This
+    returns a function that adds a day each time it sees the clock jump backwards, so a
+    window crossing midnight still has monotonic time and a positive span."""
+    state = {"day": 0.0, "prev": None}
+
+    def fix(t):
+        if state["prev"] is not None and t < state["prev"] - 43200:
+            state["day"] += 86400.0
+        state["prev"] = t
+        return t + state["day"]
+    return fix
+
+
 def shift(hms, delta):
     h, m, s = (int(x) for x in hms.split(":"))
-    v = max(0, h * 3600 + m * 60 + s + delta)
+    # wrap into a valid time of day: a window may legitimately cross midnight,
+    # and "24:00:21" is not a time the trace reader accepts
+    v = (h * 3600 + m * 60 + s + delta) % 86400
     return f"{v//3600:02d}:{(v%3600)//60:02d}:{v%60:02d}"
 
 
@@ -50,6 +66,8 @@ def scan(ctf, begin, end, comms):
     p2 = subprocess.Popen(["grep", "-E", "syscall_entry_|syscall_exit_"], stdin=p1.stdout,
                           stdout=subprocess.PIPE, text=True, errors="replace")
     p1.stdout.close()
+
+    unwrap = unwrapper()   # window may cross midnight
 
     open_call = {}                                   # tid -> (syscall, t0)
     durs = collections.defaultdict(list)
@@ -65,7 +83,7 @@ def scan(ctf, begin, end, comms):
         comm = ctx.group(3)
         if want and comm not in want:
             continue
-        kind, name, t = ev.group(1), ev.group(2), secs(ts)
+        kind, name, t = ev.group(1), ev.group(2), unwrap(secs(ts))
         tid = int(ctx.group(2))
         if kind == "entry":
             open_call[tid] = (name, t)
