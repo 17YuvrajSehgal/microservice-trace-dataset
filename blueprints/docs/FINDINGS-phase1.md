@@ -5,6 +5,81 @@ Protocol: `RESEARCH-PLAN-phase1-kernel.md`.
 
 ---
 
+## F13 — A3 and A4 cannot be built from kernel data. A different blueprint can.
+
+**Endpoint sweep**, job 2223505, 40 runs, 7 families, both applications.
+Raw: `/scratch/yuvraj17/endpoints/endpoint_summary.json`.
+
+### Sock Shop
+
+| Family | endpoints slowed | worst slowdown | vanished |
+|---|---|---|---|
+| `anomaly_net` (host network) | **13–13** | 42.6–72.2× | 1 |
+| `slow_db` | 3–9 | **38.6–47.6×** | 0–2 |
+| `svc_net` (A3) | 3–6 | 8.0–14.0× | 1 |
+| `svc_mem_cap` | 1–2 | 3.4–8.6× | 1 |
+| `dependency_outage` (A4) | 1–2 | 2.5–3.0× | 1 |
+| `error_storm` | 1–1 | 2.6–3.1× | 0 |
+| `normal` | 1–3 | 2.5–2.9× | 0 |
+
+### The verdict on A3 and A4
+
+**A3 `service-network-path` — not buildable.** Its endpoint count (3–6) overlaps healthy runs
+(1–3) and slow datastore (3–9); its worst slowdown (8.0–14.0×) overlaps `svc_mem_cap`. On
+Train Ticket it collapses to 1–2 endpoints, inside the healthy range.
+
+**A4 `frozen-dependency` — not buildable.** 1–2 endpoints slowed at 2.5–3.0×, which is
+*indistinguishable from a healthy system* (1–3 at 2.5–2.9×). On Train Ticket, 0 of 21.
+
+Both match their pre-registration in `fault_catalog.md`, which names **traces** as the winning
+modality for each. Phase 1 is kernel-only, so this is the pre-registration being right rather
+than a surprise.
+
+### Two things worth having, found by looking
+
+**1. Host network impairment is cleanly identifiable — on Sock Shop.**
+`anomaly_net` slowed **13 of 22 endpoints in all three runs**, and the automated overlap check
+puts it in **no overlapping pair** on that signal. Nothing else exceeds 9. That is a stronger
+separation than either blueprint I was trying to build, and it belongs to
+`host-network-degradation`, which the backlog had parked in Tier C as "needs traces".
+
+Not portable: on Train Ticket the same fault gives 1–2 of 27, inside the healthy range. So it
+is a scenario, not a rule — the same shape as every other cross-app result here.
+
+**2. A measured fix for the datastore rule's false fires.**
+The current rule fires on socket blocking ≥5×, which every impostor also trips. Endpoint
+slowdown separates them on Sock Shop far better:
+
+| | worst endpoint slowdown |
+|---|---|
+| `slow_db` | **38.6–47.6×** |
+| everything except `anomaly_net` | **≤14.0×** |
+
+The overlap check confirms `slow_db` overlaps only `anomaly_net` on this signal, and those two
+are separated by endpoint count (3–9 against 13–13). A two-signal rule would address the false
+fires on `dependency_outage`, `svc_net`, `svc_mem_cap`, `error_storm` and healthy runs in one
+move — all of which sit at 2.5–8.6×, nowhere near 38×.
+
+Train Ticket does not support it (`slow_db` 9.8–1477.7× overlaps `svc_mem_cap` at 221–225×),
+so it would go in as a Sock-Shop-shaped scenario, not a universal threshold.
+
+### Two metrics that failed and should not be used
+
+- **`tail_ratio` is unusable as defined.** It divides by the change in p50, which is often near
+  zero, so it produced 1735, 18545, 246522. Dropped, not reported.
+- **`min reply ratio` separates nothing** — 0.00 in every Sock Shop family, overlapping all 21
+  pairs.
+
+### One architecture-specific signal for A4
+
+On **Train Ticket only**, `dependency_outage` shows **6–8 endpoints vanishing** against 1–2 for
+healthy, and it is in no overlapping pair for that signal there. On Sock Shop it vanishes 1,
+same as three other families. So a frozen dependency is visible on a wide fan-out system by
+what disappears, and invisible on a short chain — worth recording as a scenario if A4 is ever
+revisited, but far too thin to build a blueprint on now.
+
+---
+
 ## F12 — Wakeups do not separate frozen from blocked either. The scheduler stream is exhausted for A4.
 
 F11 left one idea open: a thread blocked on a socket gets **woken** when its reply arrives,
