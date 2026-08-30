@@ -5,6 +5,84 @@ Protocol: `RESEARCH-PLAN-phase1-kernel.md`.
 
 ---
 
+## F11 — The peer measurement is fixed. The frozen-dependency signal is not what we expected.
+
+### The rewrite works
+
+`socket_peer_wait.py` was replaced by `endpoint_latency.py`, which ignores process names and
+works on flows. Two assumptions in the original were wrong, both disproved from the trace:
+
+- **`procname` on a network event is not the socket owner.** Receive processing runs in
+  softirq context, so the field holds whatever was on-CPU. Measured: *both directions of one
+  flow* attributed to `python3`, elsewhere to `ksoftirqd` and `cadvisor`.
+- **There is no "us".** This host runs every container, so it sees both sides of every
+  conversation. That is a gift, not a problem: it means a service's true response time is
+  measurable from the host alone.
+
+The new version identifies flows by their 4-tuple, calls the well-known port the server, and
+caps gaps at 2 s (F5's 1–5 *second* baselines were idleness counted as latency). Result on
+the four runs that defeated the old one:
+
+| Run | Endpoints slowed ≥2× | Worst |
+|---|---|---|
+| **no fault** | **0 of 21** | 1.28× |
+| slow datastore | 8 of 22 | **11.0×** |
+| degraded network | 3 of 21 | 2.17× |
+| frozen dependency | 2 of 21 | 1.61× |
+
+**The no-fault run is now clean** — the single measurement that made the old version useless.
+And the slow datastore is unmistakable.
+
+### But two families remain too close to call
+
+Network (2.17×) and frozen dependency (1.61×) sit near the healthy ceiling (1.28×). Magnitude
+will not separate them.
+
+### The freeze test: comm level found nothing, thread level found the wrong thing
+
+The recipe pauses `payment` with `docker pause`, and its header promises "conspicuous
+silence". At **comm level there was none**: Sock Shop runs several Go services as `app`, so
+pausing one moved the comm total 0.2024 → 0.1209 cores (0.6×). The largest relative drop
+anywhere in the run was 0.234×.
+
+Moving to **thread level** — individual threads either get scheduled or they do not — the
+measurement works, but says something different from what was expected:
+
+| Run | Threads that stopped |
+|---|---|
+| **no fault** | containerd-shim 2/13, dockerd 1/15, java 1/34, python3 2/153 |
+| frozen dependency r1 | containerd-shim 7/17, mysqld 2/9, toxiproxy 3/13, **app 1/14** |
+| frozen dependency r2 | mysqld 4/9, containerd-shim 5/16, dockerd 2/17 |
+| **slow datastore** | **mysqld 10/11**, conn31 1/1, containerd-shim 7/16 |
+
+Three things follow, and none of them are what the hypothesis predicted:
+
+1. **Healthy runs also have threads that stop.** Thread churn is normal, so "some threads
+   stopped" is not a fault signal on its own.
+2. **The frozen dependency barely registers** — `app 1/14`. Payment is a low-traffic service
+   (60 requests in 30 s), so its threads sit below the activity floor and never qualify.
+3. **The strongest freeze signature belongs to the slow datastore**: `mysqld 10/11 threads`
+   stopped being scheduled, because they are all blocked waiting on the delayed proxy.
+
+That third point is the real limitation: **absence of on-CPU time cannot distinguish
+"frozen by the cgroup freezer" from "blocked on I/O"**. Both produce a thread that is not
+scheduled. Separating them needs the *reason* a thread left the CPU, which `sched_switch`
+does carry in `prev_state` — an avenue, not a result.
+
+### What this means for A4
+
+The honest position before writing anything: a frozen dependency on a **low-traffic path** is
+hard to see in aggregate kernel signals, because there is very little traffic to be absent.
+That is itself blueprint content — it tells the reader where not to look — and it argues for
+per-endpoint evidence with a low request-count floor rather than host-wide statistics.
+
+The 40-run endpoint sweep (job 2223505) will settle whether the per-endpoint view separates
+these families across both applications, or whether kernel data genuinely cannot, which the
+fault catalogue already predicts for the network family by pre-registering **traces** rather
+than kernel as its winning modality.
+
+---
+
 ## F10 — Splitting the runqueue threshold: 3 fixed, 1 broken, net +2
 
 Re-test with `STARVED_RQ_X = 5.0` (job 2223438) against the same 69 runs as job 2222638.
