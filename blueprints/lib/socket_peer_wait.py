@@ -162,9 +162,11 @@ def main():
 
     def shift(hms, d):
         h, m, s = (int(x) for x in hms.split(":"))
-        # wrap into a valid time of day: a window may legitimately cross midnight,
-        # and "24:00:21" is not a time the trace reader accepts
-        v = (h * 3600 + m * 60 + s + d) % 86400
+        # MEASURED against babeltrace: an end of "24:00:21" is accepted and read as the
+        # next day, but wrapping it to "00:00:21" against a begin of "23:59:21" makes the
+        # trimmer reject the window and return nothing. So an end that runs past midnight
+        # must stay past 24. The midnight problem is handled in unwrapper(), not here.
+        v = max(0, h * 3600 + m * 60 + s + d)
         return f"{v//3600:02d}:{(v%3600)//60:02d}:{v%60:02d}"
 
     windows = {"baseline": (shift(t0, -a.baseline_s), t0),
