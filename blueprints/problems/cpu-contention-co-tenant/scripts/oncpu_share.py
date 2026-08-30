@@ -252,6 +252,13 @@ def main():
     else:
         print("\nno newcomer process: nothing took CPU that was not already taking it")
 
+    if result["silenced"]:
+        print(f"silenced ({len(result['silenced'])}): " + ", ".join(
+            f"{d['comm']} {d['cores_baseline']}->{d['cores_incident']}"
+            for d in result["silenced"][:6]))
+    else:
+        print("nothing went silent: no process stopped being scheduled")
+
 
 if __name__ == "__main__":
     sys.exit(main())
