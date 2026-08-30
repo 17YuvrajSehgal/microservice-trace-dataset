@@ -1,0 +1,53 @@
+# Endpoint sweep: every family that currently gets mistaken for a slow datastore,
+# plus the real thing and the no-fault control. Both applications.
+#
+# The datastore rule owns 11 of the 13 remaining errors. It sees THAT a process is
+# blocked on a socket, not WHAT it is blocked on. This is the evidence for A3
+# (service-network-path) and A4 (frozen-dependency).
+#
+# Format: <app> <family> <run_id>
+
+# ---- sockshop ----
+sockshop slow_db slow_db_aggressive_burst_r1
+sockshop slow_db slow_db_aggressive_burst_r2
+sockshop slow_db slow_db_aggressive_steady_r1
+sockshop slow_db slow_db_aggressive_steady_r2
+sockshop dependency_outage dependency_outage_aggressive_steady_r1
+sockshop dependency_outage dependency_outage_aggressive_steady_r2
+sockshop dependency_outage dependency_outage_aggressive_steady_r3
+sockshop svc_net svc_net_aggressive_steady_r1
+sockshop svc_net svc_net_aggressive_steady_r2
+sockshop svc_net svc_net_aggressive_steady_r3
+sockshop anomaly_net anomaly_net_aggressive_steady_r1
+sockshop anomaly_net anomaly_net_aggressive_steady_r2
+sockshop anomaly_net anomaly_net_aggressive_steady_r3
+sockshop normal gate01
+sockshop normal normal_none_burst_r1
+sockshop normal normal_none_burst_r2
+sockshop svc_mem_cap svc_mem_cap_aggressive_steady_r1
+sockshop svc_mem_cap svc_mem_cap_aggressive_steady_r2
+sockshop error_storm error_storm_aggressive_burst_r1
+sockshop error_storm error_storm_aggressive_burst_r2
+
+# ---- trainticket ----
+trainticket slow_db tt_slow_db_aggressive_burst_r1
+trainticket slow_db tt_slow_db_aggressive_burst_r2
+trainticket slow_db tt_slow_db_aggressive_steady_r1
+trainticket slow_db tt_slow_db_aggressive_steady_r2
+trainticket dependency_outage tt_dependency_outage_aggressive_steady_r1
+trainticket dependency_outage tt_dependency_outage_aggressive_steady_r2
+trainticket dependency_outage tt_dependency_outage_aggressive_steady_r3
+trainticket svc_net tt_svc_net_aggressive_steady_r1
+trainticket svc_net tt_svc_net_aggressive_steady_r2
+trainticket svc_net tt_svc_net_aggressive_steady_r3
+trainticket anomaly_net tt_anomaly_net_aggressive_steady_r1
+trainticket anomaly_net tt_anomaly_net_aggressive_steady_r2
+trainticket anomaly_net tt_anomaly_net_aggressive_steady_r3
+trainticket normal tt_normal_none_burst_r1
+trainticket normal tt_normal_none_burst_r2
+trainticket normal tt_normal_none_burst_r3
+trainticket svc_mem_cap tt_svc_mem_cap_aggressive_steady_r1
+trainticket svc_mem_cap tt_svc_mem_cap_aggressive_steady_r2
+trainticket error_storm tt_error_storm_aggressive_burst_r1
+trainticket error_storm tt_error_storm_aggressive_burst_r2
+
