@@ -145,6 +145,11 @@ def main():
     ap.add_argument("--incident-s", type=int, default=60)
     ap.add_argument("--newcomer-cores", type=float, default=0.25,
                     help="a comm must gain at least this many cores to be called a newcomer")
+    ap.add_argument("--silenced-floor", type=float, default=0.02,
+                    help="a comm must have been using at least this many cores to count "
+                         "as silenced - otherwise idle processes qualify trivially")
+    ap.add_argument("--silenced-drop", type=float, default=0.90,
+                    help="fraction of its own CPU time a comm must lose to count as silenced")
     a = ap.parse_args()
 
     gt = json.load(open(a.gt))["fault"]
@@ -197,6 +202,21 @@ def main():
     result["newcomers"] = [d for d in deltas if d["newcomer"] and not d["kernel_thread"]]
     result["biggest_loser"] = min(deltas, key=lambda r: r["cores_gained"]) if deltas else None
 
+    # SILENCED processes: ones that were doing real work and then almost stopped. This is the
+    # opposite of a newcomer, and it is what a frozen container looks like from the scheduler
+    # - the dependency-outage recipe uses `docker pause`, whose freezer cgroup leaves the
+    # container up but stops its threads being scheduled at all. A process merely starved of
+    # CPU still runs sometimes; a frozen one does not.
+    # RELATIVE, not absolute: a small service that stops entirely loses few cores, so the
+    # biggest-loser ranking would never surface it.
+    result["silenced"] = [
+        d for d in deltas
+        if not d["kernel_thread"]
+        and d["cores_baseline"] >= a.silenced_floor
+        and d["cores_incident"] <= d["cores_baseline"] * (1 - a.silenced_drop)
+    ]
+    result["silenced"].sort(key=lambda r: -r["cores_baseline"])
+
     # The three facts that should separate the CPU cluster. Reported as measurements only —
     # which combination means which fault is decided after looking at all the families,
     # not asserted here.
@@ -213,6 +233,9 @@ def main():
         "thief_cores_gained": top_new["cores_gained"] if top_new else 0.0,
         "biggest_loser_comm": loser["comm"] if loser else None,
         "biggest_loser_cores": loser["cores_gained"] if loser else 0.0,
+        "n_silenced": len(result["silenced"]),
+        "silenced_comms": [d["comm"] for d in result["silenced"][:5]],
+        "silenced_cores_lost": round(sum(-d["cores_gained"] for d in result["silenced"]), 4),
     }
 
     os.makedirs(os.path.dirname(a.out) or ".", exist_ok=True)
