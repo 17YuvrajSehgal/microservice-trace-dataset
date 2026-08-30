@@ -5,6 +5,60 @@ Protocol: `RESEARCH-PLAN-phase1-kernel.md`.
 
 ---
 
+## F12 — Wakeups do not separate frozen from blocked either. The scheduler stream is exhausted for A4.
+
+F11 left one idea open: a thread blocked on a socket gets **woken** when its reply arrives,
+while a thread in the freezer cgroup will not run whatever arrives. So count `sched_waking`
+per thread, baseline against incident.
+
+Frozen dependency (payment paused) against a slow datastore as the control:
+
+| | frozen dependency | slow datastore |
+|---|---|---|
+| `docker` | 187/194 threads stop being woken | 170/176 |
+| `runc` | 28/28 | 33/33 |
+| `containerd-shim` | 6/42 | — |
+| `app` (contains payment) | **1/22** | — |
+| `mongod` | — | 1/28 |
+
+**It does not separate them.** Both runs show the same shape, and for the same uninteresting
+reason: `docker` and `runc` are transient processes — every health check spawns one — so
+"threads that stop being woken" is dominated by ordinary process churn in *any* run.
+
+And the fault's own service barely moves: `app` shows **1 of 22** threads. The freezer stops a
+task **running**; it does not stop the kernel **waking** it. Packets still arrive, wakeups
+still fire, the task just never gets to the CPU.
+
+### The scheduler stream is now exhausted for this problem
+
+Three constructions tried, all measured, none separating:
+
+| Signal | Result |
+|---|---|
+| on-CPU time per process | comm names shared; pausing one service moved `app` only to 0.6× |
+| threads that stop being scheduled | healthy runs show it too; the *slow datastore* shows it strongest (`mysqld` 10/11) |
+| threads that stop being woken | dominated by `docker`/`runc` churn in every run |
+
+### What the fault catalogue already said
+
+Worth stating plainly, because it reframes the whole task. Both blueprints in this pair are
+**pre-registered as non-kernel faults**:
+
+- `svc_net` (A3) — *"TRACES win localization … kernel confirms via socket-level waits"*
+- `dependency_outage` (A4) — *"TRACES localize (spans at orders pointing at payment); LOGS
+  carry the exception detail"*
+
+Phase 1 is kernel-only. So the honest expectation is that neither can be built to the
+standard of the CPU cluster from this phase's data, and the pre-registration says so in
+advance rather than after the fact.
+
+The remaining evidence is the **endpoint view**, which is kernel data and did show the slow
+datastore clearly (8 of 22 endpoints, 11×) while leaving the no-fault run at zero. Whether it
+separates these two families is what job 2223505 measures. If it does not, that is the result,
+and both blueprints will say where to look instead rather than carrying an invented rule.
+
+---
+
 ## F11 — The peer measurement is fixed. The frozen-dependency signal is not what we expected.
 
 ### The rewrite works
