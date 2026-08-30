@@ -1,6 +1,6 @@
 ---
 name: host-cpu-saturation
-version: 1
+version: 2
 authored_by: measured from the CPU-cluster sweep, 17 labelled runs across four families
 generated_from: blueprints/host-cpu-saturation.json
 covers: host_cpu_saturation                       # harness metadata: scoring + LOFO; NEVER shown to the model
@@ -91,6 +91,14 @@ Root cause is: the workload that consumed the host's remaining CPU capacity
 - Do not report a diagnosis below 0.7 confidence.
 - name the unresolved question, pick the ONE additional capability that would settle it, check it against the overhead budget, and request it.
 - if the floor is still not met after the allowed rounds, report the best-supported hypothesis, its confidence, and precisely what evidence is missing - never present a guess as a diagnosis
+
+## How this looks on different systems
+The same fault does not look the same everywhere. Work out which case you are
+in before you judge the numbers.
+
+**Any architecture** — recognise by: no precondition - a ceiling is a ceiling
+- What you see: utilisation at or above 0.99 with a newcomer holding a large share of the machine. Measured 0.991-0.998 on one system and 0.994-0.997 on the other, with the newcomer taking 6.5 and 7.8-8.1 cores respectively.
+- How much to trust it: high - this is the only signal in the CPU family that needed no re-calibration between two very different applications
 
 ## If the evidence does not fit
 - If utilisation is at the ceiling but no newcomer is found, then the load is from processes already running. This is a capacity problem rather than an intruding workload; report it as an undersized host and name the largest consumers.

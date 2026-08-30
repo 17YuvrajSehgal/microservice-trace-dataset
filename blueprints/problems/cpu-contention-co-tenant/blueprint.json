@@ -1,6 +1,6 @@
 {
   "id": "cpu-contention-co-tenant",
-  "version": 7,
+  "version": 8,
   "title": "A co-tenant workload steals host CPU: services wait on the runqueue, not on I/O",
   "problem": {
     "summary": "An unrelated workload sharing the host consumes CPU. Application services are never themselves busy, but each time they become ready to run they wait measurably longer before a CPU actually runs them. User-facing latency moves only slightly, so dashboards look nearly normal; the delay is only visible in the scheduler.",
@@ -263,7 +263,7 @@
     "authored_by": "human",
     "verified_by": "PENDING - Naser to sign off",
     "authored_utc": "2026-08-27",
-    "notes": "v3: rebuilt on the raw kernel trace read with babeltrace2, after the derived wait-share record was measured to be non-discriminative. Every discriminator now cites a measurement with its control. The decisive pair: runqueue delay 7.12x here vs 0.97x on the datastore fault, and the datastore's poll syscall 1.12x here vs 36.83x there - same signals, opposite directions. v6: discriminator narrowed from 'syscall durations' to 'socket-waiting syscall durations' after 5-run testing showed connect() inflating 5.3x under CPU starvation and wrongly vetoing the verdict on 2 of 5 runs. v7 (2026-08-29): rewritten after the CPU-cluster measurement. Runqueue delay demoted from deciding signal to corroboration after it was measured raised in every neighbouring fault and in healthy bursts; host utilisation with headroom plus a bounded newcomer is now the discriminator. The container-attribution step moved from metrics to the kernel trace."
+    "notes": "v3: rebuilt on the raw kernel trace read with babeltrace2, after the derived wait-share record was measured to be non-discriminative. Every discriminator now cites a measurement with its control. The decisive pair: runqueue delay 7.12x here vs 0.97x on the datastore fault, and the datastore's poll syscall 1.12x here vs 36.83x there - same signals, opposite directions. v6: discriminator narrowed from 'syscall durations' to 'socket-waiting syscall durations' after 5-run testing showed connect() inflating 5.3x under CPU starvation and wrongly vetoing the verdict on 2 of 5 runs. v7 (2026-08-29): rewritten after the CPU-cluster measurement. Runqueue delay demoted from deciding signal to corroboration after it was measured raised in every neighbouring fault and in healthy bursts; host utilisation with headroom plus a bounded newcomer is now the discriminator. The container-attribution step moved from metrics to the kernel trace. v8 (2026-08-29): added measured scenarios from the two-application re-test. The same fault produces different signatures on a short call chain and on a wide fan-out system; both are recorded rather than averaged into one threshold, because the point of a blueprint is to tell someone what to expect and where to look, not to be one tuned number."
   },
   "taxonomy": {
     "domain": "Performance",
@@ -388,5 +388,25 @@
     "confidence_floor": 0.7,
     "if_below_floor": "name the unresolved question, pick the ONE additional capability that would settle it, check it against the overhead budget, and request it. Do not broaden collection generally.",
     "report_when_stuck": "if the floor is still not met after the allowed rounds, report the best-supported hypothesis, its confidence, and precisely what evidence is missing - never present a guess as a diagnosis"
+  },
+  "scenarios": {
+    "note": "SCENARIOS record how this problem looks on different system shapes. They are measured, not assumed, and both pictures matter: a blueprint carrying only one application's numbers would mislead anyone running the other kind of system.",
+    "cases": [
+      {
+        "scenario": "Lightly loaded host",
+        "recognise_by": "the system normally runs around half its CPU capacity",
+        "what_you_see": "the newcomer pushes utilisation up clearly and visibly. Measured: 0.48 baseline rising to 0.62-0.68.",
+        "confidence": "high - both the newcomer and the utilisation rise are obvious",
+        "measured_on": "the first application, 5 labelled runs"
+      },
+      {
+        "scenario": "Busy host",
+        "recognise_by": "the system normally runs at 80% CPU or more",
+        "what_you_see": "the newcomer takes the SAME cores, but utilisation barely moves. Measured: 0.80 baseline rising only to 0.81-0.85, a change of 0.03-0.06. A percentage-based rule will miss this entirely.",
+        "confidence": "high IF you rank on the newcomer's cores rather than on utilisation",
+        "do_this_instead": "identify the fault by the absolute cores the newcomer took, and use utilisation only to check whether the host still had room. Measured across both systems the newcomer took 0.99-2.00 cores in every single run, because that number is set by the intruding workload rather than by the application.",
+        "measured_on": "the second application, 5 labelled runs"
+      }
+    ]
   }
 }

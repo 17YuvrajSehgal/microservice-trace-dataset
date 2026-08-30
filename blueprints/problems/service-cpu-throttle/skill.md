@@ -1,6 +1,6 @@
 ---
 name: service-cpu-throttle
-version: 1
+version: 2
 authored_by: measured from the CPU-cluster sweep, 17 labelled runs across four families
 generated_from: blueprints/service-cpu-throttle.json
 covers: svc_cpu_cap                       # harness metadata: scoring + LOFO; NEVER shown to the model
@@ -94,6 +94,19 @@ Root cause is: a cgroup CPU quota set below the service's demand
 - Do not report a diagnosis below 0.7 confidence.
 - name the unresolved question, pick the ONE additional capability that would settle it, check it against the overhead budget, and request it.
 - if the floor is still not met after the allowed rounds, report the best-supported hypothesis, its confidence, and precisely what evidence is missing - never present a guess as a diagnosis
+
+## How this looks on different systems
+The same fault does not look the same everywhere. Work out which case you are
+in before you judge the numbers.
+
+**Short call chain - requests pass through most services** — recognise by: a handful of services, and the affected one sits on the path of most requests, so its callers stall behind it
+- What you see: host CPU COLLAPSES to a quarter or two-thirds of its usual level while threads still wait longer for a CPU. Measured: utilisation fell to 0.25-0.73 of baseline, runqueue delay rose 13.5-29.2x.
+- How much to trust it: high - the signal is large and unambiguous
+
+**Wide fan-out - dozens of independent services** — recognise by: many services, and the affected one is on the path of only a small share of requests
+- What you see: NOTHING at the host level. Measured across 4 labelled runs: utilisation ratio 0.995-1.008, no newcomer, biggest process loss 0.03-0.06 cores, runqueue delay 1.55-1.81x. The host keeps working on every other request, so one capped service is invisible in the aggregate.
+- How much to trust it: none from host-level kernel data - do not expect to find it there
+- Instead: go straight to per-cgroup evidence: cpu.stat nr_throttled and throttled_time for the services on the slow path, or per-container CPU. Host aggregates cannot answer this question on this kind of system, and looking harder at them wastes time.
 
 ## If the evidence does not fit
 - If the verdict fires but the throttled service must be named, then this blueprint cannot name it from kernel comm alone - the biggest loser is the busiest victim. Request cgroup throttling counters for the services on the stalled path, which is one targeted question rather than broader collection.

@@ -5,6 +5,79 @@ Protocol: `RESEARCH-PLAN-phase1-kernel.md`.
 
 ---
 
+## F7 — Same fault, two architectures, two different signatures. That is blueprint content, not a bug.
+
+Reframed after Yuvraj's note: a blueprint is a **diagnostic guide**, not a classifier. It does
+not have to be one tuned number that fits every system. Where a fault looks different on a
+different architecture, the blueprint's job is to **record both pictures** so the reader knows
+what to expect and where to look.
+
+So the F6 "failure" is really a measurement of two scenarios. Here is the whole Train Ticket
+signature table, from the same re-test.
+
+| Family | util ratio | newcomer cores | biggest loss | runqueue | socket block |
+|---|---|---|---|---|---|
+| `anomaly_cpu` | 1.23–1.25 (→0.99) | **7.81–8.07** | −0.75 | 9.1–14.4× | 1.5–2.4× |
+| `noisy_neighbor` | 1.03–1.08 | **0.99–2.00** | −0.12 to −0.28 | 2.0–3.7× | 1.4–2.6× |
+| `anomaly_mem` | 1.02 | **0.98–0.99** | −0.56 to −0.63 | 2.5× | 1.6–155× |
+| `svc_cpu_cap` | **0.995–1.008** | **0.00** | **−0.03 to −0.06** | **1.6–1.8×** | 1.1–5.1× |
+| `slow_db` | 0.32–0.72 | 0.00 | −0.69 to −2.62 | 1.0–2.6× | **165–1450×** |
+| `dependency_outage` | 0.47–0.48 | 0.00 | −1.43 to −1.47 | 1.0–1.5× | **~1.0×** |
+| `svc_net` | 0.71–0.79 | 0.00 | −0.51 to −0.64 | 1.1–1.5× | **~1.15×** |
+
+### 1. On a wide fan-out architecture, a single-service CPU cap has no host-level signal
+
+Not a weak signal — **no signal**. Utilisation flat, no newcomer, biggest loss 0.03 cores,
+runqueue flat. Capping one of 40+ services is invisible at the host aggregate because the
+host keeps working on all the other requests.
+
+This is worth stating plainly in the blueprint: *on this kind of system, do not look for it
+in host-level kernel data. Go straight to per-cgroup throttling counters.* That saves an
+engineer an hour of looking in the wrong place, which is the whole point of writing it down.
+
+### 2. One signal DID transfer across both applications: the newcomer's core count
+
+| | Sock Shop | Train Ticket |
+|---|---|---|
+| co-tenant newcomer | 0.988–2.002 cores | 0.989–1.996 cores |
+| host saturation newcomer | 6.54–6.62 cores | 7.81–8.07 cores |
+
+Nearly identical, because the number is set by the injected cap, not by the application.
+**Absolute cores travel; utilisation percentages do not.** Co-tenant utilisation moved
+0.48→0.65 on one app and 0.80→0.85 on the other — the same fault, very different percentages
+— while the cores taken were the same both times.
+
+That is a concrete improvement available from evidence: rank the co-tenant rule on the
+newcomer's cores, and use utilisation only to say whether the host still had room.
+
+### 3. The datastore look-alikes swap behaviour between the two apps
+
+| Family | Sock Shop block | Train Ticket block |
+|---|---|---|
+| `slow_db` (the real one) | 36.8× | **165–1450×** |
+| `dependency_outage` | **89×** | ~1.0× |
+| `svc_net` | **175×** | ~1.15× |
+
+On Sock Shop the impostors shout and cause false fires. On Train Ticket they are silent and
+the datastore rule works — which is why Train Ticket scored better on negatives (67%) than
+Sock Shop (52%) despite everything else being harder there.
+
+The mechanism is architectural. Sock Shop's front-end is a single `node` process whose event
+loop blocks when a dependency hangs. Train Ticket spreads the same work across dozens of Java
+services with their own thread pools, so one hung dependency is diluted in the aggregate.
+
+**Neither picture is the truth on its own.** A blueprint that only carried the Sock Shop
+numbers would mislead someone running a fan-out system, and vice versa. Both go in.
+
+### 4. A data problem to fix
+
+`tt_slow_db_aggressive_steady_r1` reports utilisation of **−0.000** with a biggest loss of
+−2.621 cores. The incident window has almost no scheduler events. Either the trace has a gap
+or the system stopped scheduling. Excluded from the ranges above; needs checking before that
+run is used for anything.
+
+---
+
 ## F6 — Re-test on both applications: the CPU rules work on one app and break on the other
 
 **Re-test**, job 2222638, 69 runs, 1h12m. Both applications, new decision rules.

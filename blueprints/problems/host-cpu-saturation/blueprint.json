@@ -1,6 +1,6 @@
 {
   "id": "host-cpu-saturation",
-  "version": 1,
+  "version": 2,
   "title": "The host has run out of CPU",
   "problem": {
     "summary": "A workload consumes so much CPU that the host has no headroom left. Every service on the box slows at once, because every ready thread queues behind work that will not yield. Unlike co-tenant contention this is not a matter of sharing: there is nothing left to share, and latency collapses rather than jitters.",
@@ -311,6 +311,18 @@
     "authored_by": "measured from the CPU-cluster sweep, 17 labelled runs across four families",
     "verified_by": "PENDING",
     "authored_utc": "2026-08-29T17:00:00Z",
-    "notes": "Written together with service-cpu-throttle and the revised cpu-contention-co-tenant, because none of the three is separable on its own. Every threshold here comes from evidence/cpu_cluster_separation.json; none was chosen. Known gap: all runs are Sock Shop on a 12-CPU host with a stable ~0.48 baseline, so the absolute utilisation cuts are not yet shown to transfer."
+    "notes": "Written together with service-cpu-throttle and the revised cpu-contention-co-tenant, because none of the three is separable on its own. Every threshold here comes from evidence/cpu_cluster_separation.json; none was chosen. Known gap: all runs are Sock Shop on a 12-CPU host with a stable ~0.48 baseline, so the absolute utilisation cuts are not yet shown to transfer. v2 (2026-08-29): added measured scenarios from the two-application re-test. The same fault produces different signatures on a short call chain and on a wide fan-out system; both are recorded rather than averaged into one threshold, because the point of a blueprint is to tell someone what to expect and where to look, not to be one tuned number."
+  },
+  "scenarios": {
+    "note": "SCENARIOS record how this problem looks on different system shapes. They are measured, not assumed, and both pictures matter: a blueprint carrying only one application's numbers would mislead anyone running the other kind of system.",
+    "cases": [
+      {
+        "scenario": "Any architecture",
+        "recognise_by": "no precondition - a ceiling is a ceiling",
+        "what_you_see": "utilisation at or above 0.99 with a newcomer holding a large share of the machine. Measured 0.991-0.998 on one system and 0.994-0.997 on the other, with the newcomer taking 6.5 and 7.8-8.1 cores respectively.",
+        "confidence": "high - this is the only signal in the CPU family that needed no re-calibration between two very different applications",
+        "measured_on": "both applications, 6 labelled runs"
+      }
+    ]
   }
 }

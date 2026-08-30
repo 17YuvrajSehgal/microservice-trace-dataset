@@ -1,6 +1,6 @@
 ---
 name: cpu-contention-co-tenant
-version: 7
+version: 8
 authored_by: human
 generated_from: blueprints/cpu-contention-co-tenant.json
 covers: noisy_neighbor                       # harness metadata: scoring + LOFO; NEVER shown to the model
@@ -109,6 +109,19 @@ Root cause is: the co-tenant workload container itself, not any application serv
 - Do not report a diagnosis below 0.7 confidence.
 - name the unresolved question, pick the ONE additional capability that would settle it, check it against the overhead budget, and request it. Do not broaden collection generally.
 - if the floor is still not met after the allowed rounds, report the best-supported hypothesis, its confidence, and precisely what evidence is missing - never present a guess as a diagnosis
+
+## How this looks on different systems
+The same fault does not look the same everywhere. Work out which case you are
+in before you judge the numbers.
+
+**Lightly loaded host** — recognise by: the system normally runs around half its CPU capacity
+- What you see: the newcomer pushes utilisation up clearly and visibly. Measured: 0.48 baseline rising to 0.62-0.68.
+- How much to trust it: high - both the newcomer and the utilisation rise are obvious
+
+**Busy host** — recognise by: the system normally runs at 80% CPU or more
+- What you see: the newcomer takes the SAME cores, but utilisation barely moves. Measured: 0.80 baseline rising only to 0.81-0.85, a change of 0.03-0.06. A percentage-based rule will miss this entirely.
+- How much to trust it: high IF you rank on the newcomer's cores rather than on utilisation
+- Instead: identify the fault by the absolute cores the newcomer took, and use utilisation only to check whether the host still had room. Measured across both systems the newcomer took 0.99-2.00 cores in every single run, because that number is set by the intruding workload rather than by the application.
 
 ## If the evidence does not fit
 - If the runqueue signal is present but no off-call-path container is found, then the contention is internal: re-check whether an on-call-path service is consuming the CPU, which points at a service-level cause instead.

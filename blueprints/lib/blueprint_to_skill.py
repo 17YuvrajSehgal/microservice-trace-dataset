@@ -246,6 +246,23 @@ def to_skill(bp: dict) -> str:
         if suf.get("report_when_stuck"):
             res.append(f"- {suf['report_when_stuck']}")
 
+    # How this problem looks on different system shapes. Measured on more than one
+    # application, and kept as separate pictures rather than averaged into one threshold - a
+    # number learned on one architecture does not describe another, and saying so is the
+    # point of writing the blueprint down.
+    scen = (bp.get("scenarios") or {}).get("cases") or []
+    if scen:
+        res += ["", "## How this looks on different systems",
+                "The same fault does not look the same everywhere. Work out which case you are",
+                "in before you judge the numbers."]
+        for s in scen:
+            res.append(f"\n**{s['scenario']}** — recognise by: {s['recognise_by']}")
+            res.append(f"- What you see: {s['what_you_see']}")
+            if s.get("confidence"):
+                res.append(f"- How much to trust it: {s['confidence']}")
+            if s.get("do_this_instead"):
+                res.append(f"- Instead: {s['do_this_instead']}")
+
     adapt = bp.get("adaptation_rules") or []
     if adapt:
         res += ["", "## If the evidence does not fit"]
