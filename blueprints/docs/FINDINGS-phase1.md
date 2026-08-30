@@ -5,6 +5,72 @@ Protocol: `RESEARCH-PLAN-phase1-kernel.md`.
 
 ---
 
+## F8 — The −0.000 utilisation was a midnight-wrap bug, and the first fix made it worse
+
+**Run:** `tt_slow_db_aggressive_steady_r1`. Reported host utilisation of −0.000 in F6.
+
+### What happened
+
+Its fault window is `2026-08-04T23:59:21Z → 2026-08-05T00:01:21Z`. **It crosses midnight.**
+
+Trace timestamps are wall-clock **time of day**, so after midnight they wrap to zero. The
+window span is computed as last minus first:
+
+| Window | Range | Span measured | Utilisation |
+|---|---|---|---|
+| baseline | 23:58:26 → 23:59:21 | 55.0 s | 0.8179 — correct |
+| incident | 23:59:21 → 24:00:21 | **−86,340 s** | **−0.0002** |
+
+`21 − 86,361 = −86,340`. Every rate divided by that span came out negative.
+
+**The CPU work itself was measured correctly all along** — 275 seconds of busy time were
+decoded across the boundary. Only the divisor was wrong.
+
+### The corrected numbers
+
+| | Before | After |
+|---|---|---|
+| incident span | −86,340 s | **60.0 s** |
+| busy cores | −0.003 | **4.598 of 16** |
+| utilisation | −0.0002 | **0.287** |
+
+A ratio of 0.287 / 0.818 = **0.35**, which sits inside the 0.32–0.72 range measured for the
+other Train Ticket slow-datastore runs. The run is now usable and consistent with its family.
+
+### The first fix was wrong, and testing caught it
+
+The obvious repair was to wrap `shift()` with a modulo so 23:59:21 + 60 s gives "00:00:21"
+instead of "24:00:21". Measured against babeltrace, that is backwards:
+
+| Passed to babeltrace | Result |
+|---|---|
+| `--begin 23:59:21 --end 24:00:21` | **accepted** — reads it as the next day, 275 s decoded |
+| `--begin 23:59:21 --end 00:00:21` | **rejected** — `FLT.UTILS.TRIMMER` error, 0 events |
+
+The reader takes an hour past 24 happily; what it refuses is a window whose end is earlier
+than its begin. So the modulo turned a working case into an empty one. Reverted, with the
+measurement written next to the line so nobody re-applies it.
+
+The actual repair is an `unwrapper()` in each decode loop that adds a day whenever the clock
+jumps backwards. Unit-checked: the wrapping window now yields +4.0 s where it previously
+yielded −86,396 s, and ordinary windows are untouched.
+
+### Blast radius
+
+**1 run of 93.** Every run with a fault window was checked. But the failure was **silent** —
+it produced a plausible-looking number rather than an error — so all four scripts that window
+a trace by time of day were fixed: `oncpu_share`, `runqueue_delay`, `blocking_syscall`,
+`socket_peer_wait`.
+
+### Incidental
+
+The two applications run on **different hardware**: Sock Shop on 12 CPUs, Train Ticket on 16.
+Utilisation already normalises for this, but any comparison of raw core counts across the two
+must account for it. The co-tenant newcomer taking ~2.0 cores is 17% of one machine and 12%
+of the other.
+
+---
+
 ## F7 — Same fault, two architectures, two different signatures. That is blueprint content, not a bug.
 
 Reframed after Yuvraj's note: a blueprint is a **diagnostic guide**, not a classifier. It does
