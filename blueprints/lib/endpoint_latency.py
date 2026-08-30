@@ -193,12 +193,28 @@ def main():
         bb, ii = base[ep], inc[ep]
         comparison.append({
             "endpoint": ep, "port": ii["port"],
+            "p50_baseline_ms": bb["p50_ms"], "p50_incident_ms": ii["p50_ms"],
+            "p50_x": (round(ii["p50_ms"] / bb["p50_ms"], 2)
+                      if (bb["p50_ms"] and ii["p50_ms"]) else None),
             "p95_baseline_ms": bb["p95_ms"], "p95_incident_ms": ii["p95_ms"],
             "p95_x": (round(ii["p95_ms"] / bb["p95_ms"], 2)
                       if (bb["p95_ms"] and ii["p95_ms"]) else None),
+            # SHAPE of the slowdown, which should say WHY it is slow.
+            # An injected network delay is roughly constant, so the whole distribution
+            # shifts and p50 moves about as much as p95. Queueing behind a slow dependency
+            # grows a tail instead, so p95 moves far more than p50. Measured, not assumed -
+            # this is reported so the shapes can be compared across families.
+            "tail_ratio": (round((ii["p95_ms"] - bb["p95_ms"]) /
+                                 max(ii["p50_ms"] - bb["p50_ms"], 1e-6), 2)
+                           if (bb["p95_ms"] and ii["p95_ms"] and bb["p50_ms"]
+                               and ii["p50_ms"] and ii["p50_ms"] > bb["p50_ms"]) else None),
             "unanswered_baseline": bb["unanswered_ratio"],
             "unanswered_incident": ii["unanswered_ratio"],
             "requests_incident": ii["requests"],
+            "requests_baseline": bb["requests"],
+            # a paused service still receives requests but stops replying
+            "response_ratio_baseline": round(bb["responses"] / max(bb["requests"], 1), 3),
+            "response_ratio_incident": round(ii["responses"] / max(ii["requests"], 1), 3),
         })
     comparison.sort(key=lambda r: -(r["p95_x"] or 0))
     result["comparison"] = comparison
@@ -206,7 +222,12 @@ def main():
     slow = [r for r in comparison if (r["p95_x"] or 0) >= 2.0]
     # a hung dependency stops answering rather than answering slowly
     hung = [r for r in comparison
-            if r["unanswered_incident"] >= 0.5 and r["unanswered_baseline"] < 0.2]
+            if (r["unanswered_incident"] >= 0.5 and r["unanswered_baseline"] < 0.2)
+            or (r["response_ratio_incident"] <= 0.3
+                and r["response_ratio_baseline"] >= 0.7)]
+    # endpoints that answered in the baseline and produced nothing at all afterwards:
+    # they never reach the comparison, because that needs both windows
+    gone = sorted(set(base) - set(inc))
     result["signature"] = {
         "n_endpoints": len(comparison),
         "n_slowed_2x": len(slow),
@@ -216,18 +237,24 @@ def main():
         "hung_endpoints": [r["endpoint"] for r in hung][:5],
         "worst_unanswered_ratio": max([r["unanswered_incident"] for r in comparison],
                                       default=None),
+        "worst_response_ratio": min([r["response_ratio_incident"] for r in comparison],
+                                    default=None),
+        "endpoints_gone": gone[:8],
+        "n_gone": len(gone),
+        "median_tail_ratio_of_slowed": (
+            sorted(v)[len(v) // 2] if (v := [r["tail_ratio"] for r in slow
+                                             if r["tail_ratio"] is not None]) else None),
     }
 
     os.makedirs(os.path.dirname(a.out) or ".", exist_ok=True)
     json.dump(result, open(a.out, "w"), indent=2)
     print(f"\nwrote {a.out}\n")
-    print(f"{'endpoint':26s} {'base ms':>9s} {'inc ms':>9s} {'x':>7s} "
-          f"{'unans b':>8s} {'unans i':>8s} {'reqs':>7s}")
+    print(f"{'endpoint':24s} {'p50_x':>6s} {'p95_x':>6s} {'tail':>6s} "
+          f"{'resp b':>7s} {'resp i':>7s} {'reqs':>7s}")
     for r in comparison[:14]:
-        print(f"{r['endpoint']:26s} {str(r['p95_baseline_ms']):>9s} "
-              f"{str(r['p95_incident_ms']):>9s} {str(r['p95_x']):>7s} "
-              f"{r['unanswered_baseline']:8.3f} {r['unanswered_incident']:8.3f} "
-              f"{r['requests_incident']:7d}")
+        print(f"{r['endpoint']:24s} {str(r['p50_x']):>6s} {str(r['p95_x']):>6s} "
+              f"{str(r['tail_ratio']):>6s} {r['response_ratio_baseline']:7.3f} "
+              f"{r['response_ratio_incident']:7.3f} {r['requests_incident']:7d}")
     s = result["signature"]
     print(f"\n{s['n_slowed_2x']} of {s['n_endpoints']} endpoints slowed 2x "
           f"(ports {s['slow_ports']}); {s['n_hung']} stopped answering {s['hung_endpoints']}")
