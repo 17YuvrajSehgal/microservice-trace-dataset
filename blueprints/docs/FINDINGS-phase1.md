@@ -5,6 +5,57 @@ Protocol: `RESEARCH-PLAN-phase1-kernel.md`.
 
 ---
 
+## F10 — Splitting the runqueue threshold: 3 fixed, 1 broken, net +2
+
+Re-test with `STARVED_RQ_X = 5.0` (job 2223438) against the same 69 runs as job 2222638.
+
+| App | Class | Before | After |
+|---|---|---|---|
+| Sock Shop | positive | 17/19 (89%) | 17/19 (89%) |
+| Sock Shop | negative | 11/21 (52%) | **10/21 (48%)** |
+| Train Ticket | positive | 13/19 (68%) | **15/19 (79%)** |
+| Train Ticket | negative | 4/6 (67%) | **5/6 (83%)** |
+| **Total wrong** | | **15** | **13** |
+
+**Fixed (3):** `tt_slow_db_aggressive_steady_r1` and `_r3` — both were called cgroup throttling
+and are now correctly the datastore. `tt_anomaly_mem_aggressive_steady_r2` also stopped firing.
+
+**Broken (1):** `svc_mem_cap_aggressive_steady_r1` now fires `datastore-wait`. It has socket
+blocking of 105× with runqueue at 2.44×. The old veto (`< 2.0`) happened to block it; the new
+one (`< 5.0`) lets it through. It was never *correctly* rejected — it was rejected by
+accident, the same way F1's silence was accidental.
+
+That is the honest trade, and it is worth stating rather than smoothing over: loosening the
+datastore veto helped the application where the datastore signal is enormous and hurt the one
+where an unrelated fault also blocks sockets hard.
+
+### Where the remaining 13 errors live
+
+| Rule | Errors | Kind |
+|---|---|---|
+| `datastore-wait` | **11** | fires on anything that blocks a socket |
+| CPU family | **2–3** | `anomaly_mem` reads as co-tenant contention |
+
+**The CPU cluster work is essentially finished.** Every remaining error except `anomaly_mem`
+belongs to the datastore rule, which was deliberately left untouched and is the job of the
+`frozen-dependency` and `service-network-path` blueprints (backlog A3/A4).
+
+`anomaly_mem` is a genuine family overlap rather than a rule defect: the memory-stress recipe
+runs a `stress-ng` container that really does take ~1 core, so the co-tenant rule is not
+wrong about what it sees. Separating them needs a memory signal, and the event census (F5)
+found no `mm_*` or `kmem_*` tracepoints in our traces — so it cannot be done from the kernel
+data we have.
+
+### Still missed, and why that is the right outcome
+
+- `slow_db_subtle` ×2 — blocking 4.43–4.52× against a 5× bar. Declines rather than guessing.
+  Deliberately not lowered; the co-tenant runs reach 2.99×, so the margin would shrink from
+  10× to 1.5×.
+- `tt_svc_cpu_cap_aggressive` ×3 — no host-level signal exists at all (0.8314 → 0.8316). The
+  blueprint records this as its own scenario and sends the reader to cgroup counters.
+
+---
+
 ## F8 — The −0.000 utilisation was a midnight-wrap bug, and the first fix made it worse
 
 **Run:** `tt_slow_db_aggressive_steady_r1`. Reported host utilisation of −0.000 in F6.
