@@ -72,7 +72,7 @@ Build these next. Each one closes a measured false fire.
   blueprint outright. Queued in E1 batch 2.
 - **Sibling of:** A1, `cpu-contention-co-tenant`
 
-### A3. `service-network-path` — the network path to a service is degraded
+### A3. `service-network-path` — the network path to a service is degraded  ✅ BUILT 2026-08-30 as `network-path-degradation`
 - **Family:** `svc_net` · SS 3, TT 3
 - **Why:** measured `epoll_pwait` at **140–175×** — the *strongest* socket-block signal in
   the whole sweep, stronger than the real datastore fault at 36.8×. Fired `datastore-wait`
@@ -82,7 +82,7 @@ Build these next. Each one closes a measured false fire.
   `syscall_entry_connect` / `sendto` / socket fd tracking.
 - **Sibling of:** `db-latency-dependency-wait`, A4
 
-### A4. `frozen-dependency` — a downstream dependency hangs rather than errors
+### A4. `frozen-dependency` — a downstream dependency hangs rather than errors  ❌ NOT BUILDABLE from kernel data (F11-F15)
 - **Family:** `dependency_outage` · SS 3, TT 3
 - **Why:** measured `poll` at **84–89×**, fired `datastore-wait` confidently. Semantically the
   nearest miss of all: it *is* a dependency wait, just not on a datastore.
@@ -138,6 +138,22 @@ Listed so the taxonomy is complete, not scheduled now.
 ---
 
 ## Status
+
+**Network blueprint built 2026-08-30 as `network-path-degradation`** — one blueprint, not the
+two planned. Breadth separates host-wide from single-service impairment on Sock Shop (7–12
+interfaces against 1–3) and reverses on Train Ticket (0–1 against 1–2), so splitting them
+would assert a distinction that holds on only one system. Scope is reported as evidence.
+
+The deciding signal is **TCP retransmission**, not latency. Network faults are the only family
+in the catalogue that drop packets, and a dropped segment must be re-sent. Measured across 40
+runs: network 18.5–60.7%, every other family ≤7.1%, baseline exactly 0.00% in all 40.
+
+**A4 `frozen-dependency` is not buildable from kernel data.** Five constructions measured and
+all negative — on-CPU time, threads that stop being scheduled, threads that stop being woken,
+endpoint latency, and packet loss. A paused container does not drop packets or stop being
+woken; it stops answering. `fault_catalog.md` pre-registers traces and logs for it. Revisit in
+phase 2.
+
 
 **CPU cluster (A1 + A2) built 2026-08-29**, together with a v7 revision of
 `cpu-contention-co-tenant`. All three were authored from one 17-run measurement (finding

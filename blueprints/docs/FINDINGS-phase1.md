@@ -5,6 +5,63 @@ Protocol: `RESEARCH-PLAN-phase1-kernel.md`.
 
 ---
 
+## F15 — Packet loss confirmed across 40 runs. It answers "is it the network", not "which one".
+
+**Confirmation sweep**, job 2227189, 40 runs, 8 families, both applications.
+Raw: `/scratch/yuvraj17/netloss/netloss_summary.json`.
+
+| App | Family | interfaces impaired | worst retransmit % |
+|---|---|---|---|
+| Sock Shop | `anomaly_net` | 7–12 | **18.5–40.9** |
+| Sock Shop | `svc_net` | 1–3 | **25.6–52.6** |
+| Sock Shop | `slow_db` | 1 | 1.2–7.1 |
+| Sock Shop | `noisy_neighbor` | 0–2 | 0–3.9 |
+| Sock Shop | `svc_cpu_cap` | 0–1 | 0–2.3 |
+| Sock Shop | `normal` | 0–1 | 0–0.5 |
+| Sock Shop | `dependency_outage`, `error_storm` | **0** | **0** |
+| Train Ticket | `svc_net` | 1–2 | **38.1–60.7** |
+| Train Ticket | `anomaly_net` | 0–1 | **0.15–33.3** |
+| Train Ticket | `svc_cpu_cap` | 1 | 1.1–3.7 |
+| Train Ticket | everything else | 0 | 0–0.2 |
+
+### The question it answers well: is this a network fault?
+
+**Baseline retransmit rate is 0.00% in every one of the 40 runs, both applications.** There is
+no noise floor to fight.
+
+| | worst retransmit % |
+|---|---|
+| network faults (excluding one outlier) | **18.5–60.7** |
+| every non-network family, both apps | **≤7.1** |
+
+A gap of 2.6×, and it holds on both applications — the first discriminator in this phase that
+does. `dependency_outage` and `error_storm` sit at exactly **0**, which is what a specific
+signal looks like.
+
+**The outlier:** one Train Ticket `anomaly_net` run measured 0.15%. That would be a *miss*,
+not a false positive — the blueprint declines rather than misdiagnosing.
+
+### The question it does not answer: which network fault?
+
+Breadth separates the two on Sock Shop (7–12 interfaces against 1–3) and **fails on Train
+Ticket** (0–1 against 1–2). The host-wide fault does not spread there.
+
+So this is one problem, not two. **The right artifact is a single
+`network-path-degradation` blueprint** that fires on retransmissions and reports *which*
+interfaces are impaired — with the count as evidence of scope rather than as a second
+blueprint's discriminator. Building `host-network-degradation` and A3 as separate blueprints
+would assert a separation that only exists on one application.
+
+### Where this leaves the pair I was asked to build
+
+- **A3 `service-network-path`** — buildable, merged into `network-path-degradation`, because
+  splitting it from the host-wide case is not supported on both apps.
+- **A4 `frozen-dependency`** — still not buildable. It measured **0 interfaces, 0%** here, as
+  it should: a paused container does not drop packets, it stops answering. Five constructions
+  tried, all negative, and the catalogue pre-registered traces and logs for it.
+
+---
+
 ## F14 — Yes: packet loss makes network faults distinct, and it separates them from each other
 
 The question was whether anything in a kernel trace is specific to a network fault. F13 said

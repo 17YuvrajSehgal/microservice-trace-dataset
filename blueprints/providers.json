@@ -246,6 +246,63 @@
      "produces_contract": "per-container cpu seconds over time"
     }
    ]
+  },
+  "network.retransmission_rate": {
+   "what": "Share of TCP segments that repeat a sequence number already seen on the same flow, per interface, baseline window vs incident window. A repeat means the original was lost and re-sent.",
+   "requires_events": [
+    "net_if_receive_skb"
+   ],
+   "providers": [
+    {
+     "id": "babeltrace2-cli",
+     "status": "implemented",
+     "available_when": "babeltrace2 >= 2.1 on PATH and a CTF trace directory",
+     "run": "python3 blueprints/problems/network-path-degradation/scripts/net_loss_signature.py --ctf <ctf> --gt <ground_truth> --out <out>/netloss.json",
+     "notes": "Two traps, both measured. The same packet fires the event on more than one interface (veth then bridge), so buffers must be de-duplicated by skbaddr or every run reports about 50%. And the interface field must not be matched inside `procname`.",
+     "tier": "high_fidelity_active",
+     "platform": [
+      "linux"
+     ],
+     "estimated_overhead_pct": {
+      "min": 2,
+      "max": 5
+     },
+     "fidelity": "high",
+     "requires_permissions": [
+      "root or CAP_SYS_ADMIN for kernel tracing"
+     ],
+     "produces_contract": "per-interface retransmission and drop rates, both windows, plus the list of impaired interfaces"
+    }
+   ]
+  },
+  "network.queue_drop_rate": {
+   "what": "Share of buffers queued to a device that are never transmitted - dropped inside the queueing discipline. Per interface, both windows.",
+   "requires_events": [
+    "net_dev_queue",
+    "net_dev_xmit"
+   ],
+   "providers": [
+    {
+     "id": "babeltrace2-cli",
+     "status": "implemented",
+     "available_when": "babeltrace2 >= 2.1 on PATH and a CTF trace directory",
+     "run": "python3 blueprints/problems/network-path-degradation/scripts/net_loss_signature.py --ctf <ctf> --gt <ground_truth> --out <out>/netloss.json",
+     "notes": "Both events carry skbaddr, so a queued buffer with no matching transmit was dropped. Rates are small (0.06-0.29% on impaired runs) because the trace samples the loss, so this corroborates rather than decides.",
+     "tier": "high_fidelity_active",
+     "platform": [
+      "linux"
+     ],
+     "estimated_overhead_pct": {
+      "min": 2,
+      "max": 5
+     },
+     "fidelity": "high",
+     "requires_permissions": [
+      "root or CAP_SYS_ADMIN for kernel tracing"
+     ],
+     "produces_contract": "per-interface retransmission and drop rates, both windows, plus the list of impaired interfaces"
+    }
+   ]
   }
  },
  "escalation_policy": {

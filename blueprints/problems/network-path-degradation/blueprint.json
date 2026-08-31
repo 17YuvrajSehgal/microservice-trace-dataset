@@ -1,0 +1,341 @@
+{
+  "id": "network-path-degradation",
+  "version": 1,
+  "title": "The network path is dropping packets",
+  "problem": {
+    "summary": "Something on the network path is losing packets. Services that talk to each other over the affected path slow down and become erratic, because every lost segment has to be detected and sent again. Latency rises, but the distinguishing fact is not the latency - it is that data has to be re-sent at all. Nothing else on a healthy system does that.",
+    "symptoms": [
+      "services that talk to each other are slow and erratic, while each is individually idle",
+      "latency is variable rather than uniformly higher, and gets worse for chattier callers",
+      "requests still succeed, but throughput falls",
+      "the slowdown follows a network path rather than a single component"
+    ],
+    "discriminators": [
+      {
+        "signal": "TCP retransmission rate per interface: segments carrying a sequence number already seen on the same flow, as a share of segments",
+        "this_problem": "at least one interface retransmits heavily - measured 18.5% to 60.7% across both applications",
+        "not_this_problem": "retransmission stays low or absent. Every non-network fault measured at or below 7.1%, and most sit at exactly 0",
+        "confused_with": [
+          "db-latency-dependency-wait",
+          "frozen-dependency",
+          "healthy-baseline"
+        ],
+        "evidence": "MEASURED across 40 labelled runs, 8 fault families, two applications. Network impairment 18.5-60.7% (one outlier at 0.15%, see unverified_do_not_claim). Slow datastore 1.2-7.1%. Co-tenant contention 0-3.9%. Cgroup cap 0-3.7%. No-fault 0-0.5%. Hung dependency and error storm exactly 0. Baseline retransmission was 0.00% in all 40 runs on both applications. See evidence/netloss_separation.json"
+      },
+      {
+        "signal": "baseline retransmission rate, as a sanity check before trusting the incident figure",
+        "this_problem": "baseline is near zero, so any retransmission during the incident is signal rather than normal behaviour",
+        "not_this_problem": "the baseline already retransmits, in which case this environment is lossy in general and the incident figure needs comparing against it rather than against zero",
+        "confused_with": [],
+        "evidence": "MEASURED: 0.00% baseline in every one of 40 runs across both applications. This is what makes the discriminator unusually safe here - there is no noise floor to threshold against - and it is also why the check belongs in the rule rather than being assumed. See evidence/netloss_separation.json"
+      },
+      {
+        "signal": "packets queued to a device but never transmitted (net_dev_queue with no matching net_dev_xmit for the same buffer)",
+        "this_problem": "a small but non-zero share of buffers are dropped inside the queue, where the impairment sits",
+        "not_this_problem": "every queued buffer is transmitted",
+        "confused_with": [],
+        "evidence": "MEASURED: 0.06-0.29% on network-impaired runs against 0.00% on every other family. Corroborating rather than deciding - the rate is small because the trace samples the loss, and only the applied-impairment runs show it at all. See evidence/netloss_separation.json"
+      },
+      {
+        "signal": "how many interfaces retransmit heavily",
+        "this_problem": "reports the SCOPE of the impairment - one interface means a single service's path, many means the whole host's networking",
+        "not_this_problem": "this does not decide whether the problem is present; it describes it once the retransmission test has fired",
+        "confused_with": [],
+        "evidence": "MEASURED and DELIBERATELY NOT a discriminator. On the first application host-wide impairment hit 7-12 interfaces against 1-3 for a single-service impairment, a clean split. On the second application the same host-wide fault hit only 0-1 interfaces against 1-2, so the split reverses and cannot be relied on. Reported as evidence of scope, never used to choose a verdict. See evidence/netloss_separation.json"
+      }
+    ],
+    "unverified_do_not_claim": [
+      {
+        "claim": "endpoint latency identifies a degraded network path",
+        "status": "NOT SUPPORTED by our data",
+        "measurement": "Per-endpoint reply latency was measured across 40 runs. Single-service network impairment slowed 3-6 of 22 endpoints at 8.0-14.0x, overlapping healthy runs at 1-3 endpoints and 2.5-2.9x, and a slow datastore at 3-9 endpoints. On the second application it fell entirely inside the healthy range.",
+        "consequence": "latency changes under every fault, so it cannot be the deciding signal here. Use retransmission, which only loss produces.",
+        "agent_note": "How long each service endpoint takes to answer. It rises under almost every kind of fault, so on its own it says something is wrong, not what."
+      },
+      {
+        "claim": "a heavily retransmitting interface is always present when the path is impaired",
+        "status": "PARTIALLY SUPPORTED - one run in 40 did not show it",
+        "measurement": "one host-wide impairment run on the second application measured 0.15% worst retransmission and 0-1 impaired interfaces, well below the 18.5% floor of every other network run. The other runs of the same family on that application reached 33.3%.",
+        "consequence": "this blueprint will MISS that case rather than misdiagnose it. Do not lower the threshold to capture it: the non-network ceiling is 7.1%, so doing so would trade one recovered run for false fires on slow datastores.",
+        "agent_note": "A path can be impaired without the trace showing much retransmission, if there is too little traffic on it during the window. Absence of retransmission is weak evidence of absence; presence is strong evidence of presence."
+      }
+    ]
+  },
+  "reproduction": {
+    "system": "Sock Shop or Train Ticket on Ubuntu 24.04, LTTng 2.15, Docker 27+, single GCP n2 VM",
+    "recipe": "microservice-lttng-data-collection-scripts/faults/svc_net.sh and faults/anomaly_net.sh",
+    "invoke": "TARGET_SVC=carts ./svc_net.sh inject aggressive   # or ./anomaly_net.sh inject aggressive",
+    "teardown": "TARGET_SVC=carts ./svc_net.sh cleanup   # or ./anomaly_net.sh cleanup",
+    "labelled_examples": [
+      "sockshop/svc_net/svc_net_aggressive_steady_r1",
+      "sockshop/svc_net/svc_net_aggressive_steady_r2",
+      "sockshop/anomaly_net/anomaly_net_aggressive_steady_r1",
+      "sockshop/anomaly_net/anomaly_net_aggressive_steady_r2",
+      "trainticket/svc_net/tt_svc_net_aggressive_steady_r1"
+    ],
+    "harness_only": [
+      "Both recipes use tc netem inside container network namespaces on eth0, not on the host bridge - a qdisc on the bridge device does not affect L2-forwarded container-to-container frames, which was validated and recorded in the anomaly_net recipe header. svc_net impairs ONE container (aggressive: 150 ms delay, 40 ms jitter, 4% loss); anomaly_net impairs every container (aggressive: 80 ms delay, 20 ms jitter, 2% loss)."
+    ]
+  },
+  "collection_order": {
+    "window": {
+      "baseline_s": 60,
+      "incident_s": 120,
+      "recovery_s": 60
+    },
+    "kernel_events": [
+      "net_if_receive_skb",
+      "net_dev_queue",
+      "net_dev_xmit"
+    ],
+    "metrics": [],
+    "logs": [],
+    "traces": [],
+    "why_these": "MEASURED BASIS. net_if_receive_skb carries the full IP and TCP header, including the sequence number, so a segment repeating a sequence number already seen on its flow is a retransmission - the one effect only packet loss produces. net_dev_queue and net_dev_xmit both carry the buffer address, so a buffer queued to a device and never transmitted was dropped inside the queue, which is where the impairment sits; this corroborates. Nothing else in the kernel trace is needed, and in particular the scheduler events are irrelevant here: this fault does not change how threads are scheduled, only what happens to their packets."
+  },
+  "processing": [
+    {
+      "step": "stage the stored kernel trace for reading",
+      "run": "bash /scratch/yuvraj17/extract_l0.sh <app> <family> <run_id>",
+      "produces": "<out>/ctf",
+      "reads": [],
+      "expect": "a CTF directory the trace reader can open"
+    },
+    {
+      "step": "count retransmissions and queue drops per interface, baseline window against incident window",
+      "run": "python3 blueprints/problems/network-path-degradation/scripts/net_loss_signature.py --ctf <ctf> --gt <ground_truth> --out <out>/netloss.json",
+      "produces": "<out>/netloss.json",
+      "reads": [
+        "<out>/ctf"
+      ],
+      "expect": "per-interface retransmission and drop rates, and the list of impaired interfaces"
+    },
+    {
+      "step": "Combine into the verdict and its artifacts: the JSON verdict, the per-interface chart, and a plain-English explanation",
+      "run": "python3 blueprints/lib/blueprint_decide.py --pack <pack.json> --out <out>/verdict.json",
+      "produces": "<out>/verdict.json, <out>/netloss.svg, <out>/explanation.txt",
+      "reads": [
+        "<out>/netloss.json"
+      ],
+      "expect": "name the impaired interfaces, the retransmission rate on each, and the scope"
+    },
+    {
+      "step": "State the recommended action alongside the diagnosis",
+      "run": "python3 blueprints/lib/recommend_action.py --verdict <out>/verdict.json --blueprint network-path-degradation --out <out>/recommended_action.txt",
+      "produces": "<out>/recommended_action.txt",
+      "reads": [
+        "<out>/verdict.json"
+      ],
+      "expect": "map the impaired interfaces to their containers and inspect the queueing discipline and link health on that path"
+    }
+  ],
+  "outputs": [
+    {
+      "kind": "json",
+      "path": "<out>/verdict.json",
+      "contains": "verdict, the impaired interfaces with their retransmission rates, the baseline rate, the queue-drop rate, and the scope"
+    },
+    {
+      "kind": "xy_chart",
+      "path": "<out>/netloss.svg",
+      "contains": "retransmission rate per interface, baseline against incident"
+    },
+    {
+      "kind": "text",
+      "path": "<out>/explanation.txt",
+      "contains": "which paths are losing packets, how badly, and why that explains the slowdown better than any component being busy"
+    },
+    {
+      "kind": "text",
+      "path": "<out>/recommended_action.txt",
+      "contains": "map each impaired interface to its container, then check the queueing discipline, the link, and anything shaping traffic on that path"
+    }
+  ],
+  "decision": {
+    "verdict_when": [
+      "at least one interface retransmits at 12% or more of its segments during the incident",
+      "the same interface retransmitted at or near zero in the baseline window",
+      "buffers queued to that device were dropped without being transmitted"
+    ],
+    "rule_out": [
+      {
+        "instead": "db-latency-dependency-wait",
+        "when": "retransmission stays below a few percent while one component blocks in a socket call for an order of magnitude longer - the data is arriving intact, just late, so nothing needs re-sending"
+      },
+      {
+        "instead": "healthy-baseline",
+        "when": "no interface retransmits meaningfully, even if endpoint latency has risen - latency alone rises under almost every fault and under ordinary load"
+      },
+      {
+        "instead": "cpu-contention-co-tenant",
+        "when": "retransmission is low and host CPU rose with a newcomer taking cores - packets are fine, the machine is busy"
+      }
+    ],
+    "root_cause_is": "packet loss on the network path serving the impaired interfaces",
+    "fault_type": "network_impairment"
+  },
+  "evidence_from_literature": [
+    {
+      "claim": "Kernel-level network tracing exposes causes of request latency that distributed tracing cannot explain, because request spans record that a call was slow but not what happened to its packets",
+      "source": "Gelle, Ezzati-Jivan & Dagenais, Combining Distributed and Kernel Tracing for Performance Analysis of Cloud Applications, Electronics 10(21):2610, 2021",
+      "validated_on": "our 40-run sweep, where per-endpoint latency could not separate an impaired path from a healthy system while retransmission separated it from every other family on both applications"
+    }
+  ],
+  "related_blueprints": [
+    "db-latency-dependency-wait",
+    "healthy-baseline",
+    "frozen-dependency"
+  ],
+  "mutually_exclusive_with": [
+    "healthy-baseline"
+  ],
+  "scenarios": {
+    "note": "SCENARIOS record how this problem looks on different system shapes. They are measured, not assumed, and both pictures matter: a blueprint carrying only one application's numbers would mislead anyone running the other kind of system.",
+    "cases": [
+      {
+        "scenario": "One service's path is impaired",
+        "recognise_by": "exactly one or two interfaces retransmitting, while the rest are clean",
+        "what_you_see": "a very high rate on the affected interface. Measured 25.6-52.6% on the first application and 38.1-60.7% on the second, with 1-3 interfaces involved.",
+        "confidence": "high - this was the most consistent network signature across both systems",
+        "measured_on": "5 labelled runs across both applications",
+        "do_this_instead": "map the interface to its container and inspect that container's queueing discipline first, before looking at the host network"
+      },
+      {
+        "scenario": "The whole host's networking is impaired",
+        "recognise_by": "many interfaces retransmitting at once",
+        "what_you_see": "on a short call chain, 7-12 of 16 interfaces at 18.5-40.9%. On a wide fan-out system the SAME fault reached only 0-1 interfaces, and one run showed just 0.15% - so breadth is not a reliable way to recognise this case.",
+        "confidence": "medium on a short chain, low on a wide fan-out system",
+        "measured_on": "6 labelled runs across both applications",
+        "do_this_instead": "do not conclude host-wide impairment from interface count alone. Treat the count as evidence of scope and confirm against the actual container topology, since the same fault produced opposite breadth on the two systems we measured."
+      }
+    ]
+  },
+  "taxonomy": {
+    "domain": "Performance",
+    "category": "Throughput / latency degradation",
+    "subcategory": "Network path impairment",
+    "sibling_causes": [
+      "link errors",
+      "traffic shaping or policing",
+      "overloaded switch or NIC",
+      "misconfigured queueing discipline"
+    ],
+    "note": "Covers any cause of packet loss on a path between services, not only injected impairment. The deciding signal is the consequence - segments being re-sent - which is the same whatever produced the loss."
+  },
+  "applicability": {
+    "apply_when": [
+      "services that talk to each other are slow while each is individually idle",
+      "latency is erratic rather than uniformly raised",
+      "the slowdown follows a path rather than a component"
+    ],
+    "do_not_apply_when": [
+      "one component is blocked in a socket call for an order of magnitude longer while data still arrives intact",
+      "the host is short of CPU",
+      "requests are failing outright rather than slowing"
+    ],
+    "cheap_precheck": "count retransmissions on any one busy interface: if the rate is near zero, this blueprint does not apply and a cheaper answer exists elsewhere"
+  },
+  "capabilities_required": [
+    {
+      "id": "trace.stage_ctf",
+      "why": "the stored kernel trace must be readable"
+    },
+    {
+      "id": "network.retransmission_rate",
+      "why": "the decisive signal: segments repeating a sequence number, which only packet loss produces"
+    },
+    {
+      "id": "network.queue_drop_rate",
+      "why": "corroboration: buffers queued to a device and never transmitted were dropped in the queue"
+    }
+  ],
+  "stopping_conditions": {
+    "conclude": "at least one interface retransmits at 12% or more against a near-zero baseline, and queue drops corroborate",
+    "stop_and_switch": "retransmission is low but one component blocks in a socket call for an order of magnitude longer -> the dependency-wait blueprint; retransmission is low and host CPU rose with a newcomer -> the CPU-contention blueprint",
+    "stop_insufficient": "the network events were not recorded, so retransmission cannot be counted -> request net_if_receive_skb and re-run. Do NOT fall back to endpoint latency, which was measured not to separate this problem from a healthy system",
+    "max_evidence_rounds": 2
+  },
+  "adaptation_rules": [
+    {
+      "if": "the baseline window already shows meaningful retransmission",
+      "then": "this environment is lossy in general. Compare the incident against that baseline rather than against zero, and lower confidence - every threshold here was measured where the baseline was exactly zero"
+    },
+    {
+      "if": "retransmission is raised but only on a low-traffic interface with few segments",
+      "then": "treat it as weak. A handful of segments can produce a large percentage; require enough samples before naming the path"
+    },
+    {
+      "if": "no interface retransmits but the path is still suspected",
+      "then": "absence is weak evidence here - one run in 40 showed an impaired path at only 0.15%. Report the negative honestly and ask for traffic-level evidence on the specific path rather than concluding it is healthy"
+    }
+  ],
+  "selection": {
+    "supported_goals": [
+      "diagnose_network_degradation",
+      "diagnose_intermittent_latency",
+      "diagnose_throughput_degradation"
+    ],
+    "supported_environments": [
+      "linux",
+      "container",
+      "virtual_machine",
+      "kubernetes"
+    ],
+    "applicable_symptoms": [
+      "erratic_latency_between_services",
+      "throughput_drop_without_errors",
+      "slowdown_follows_a_path_not_a_component"
+    ],
+    "preconditions": [
+      "kernel network events are collectable or already collected",
+      "traffic on the suspected path is heavy enough to sample"
+    ],
+    "estimated_overhead_pct": {
+      "min": 0,
+      "max": 5
+    },
+    "historical_effectiveness": {
+      "runs_validated": 11,
+      "note": "11 labelled network-impairment runs across two applications, separated from 29 runs of six other families with a 2.6x gap on the deciding signal and a baseline of exactly zero in all 40. One run missed at 0.15%."
+    }
+  },
+  "policies": {
+    "collection_order_rule": "Use evidence that already exists before enabling any new collection. Escalate a tier only when the cheaper tier leaves a candidate cause unresolved, and record why.",
+    "max_collection_overhead_pct": 5,
+    "scope": {
+      "restrict_to": "the hosts and time window named in the intent",
+      "never_widen_without": "explicit approval"
+    },
+    "privacy": [
+      "do not collect request payloads",
+      "record only packet headers, never packet contents",
+      "do not retain personally identifiable data"
+    ],
+    "approval": {
+      "automatic": [
+        "query evidence that already exists",
+        "read-only analysis of collected evidence",
+        "active collection estimated below 3% overhead"
+      ],
+      "requires_approval": [
+        "active collection estimated above 3% overhead",
+        "widening the host scope or time window",
+        "any change to production configuration",
+        "any remediation action"
+      ]
+    },
+    "autonomy_level": 2,
+    "autonomy_note": "Level 2 = policy-controlled automation: select and execute low-risk plans inside the stated constraints."
+  },
+  "evidence_sufficiency": {
+    "confidence_floor": 0.7,
+    "if_below_floor": "name the unresolved question, pick the ONE additional capability that would settle it, check it against the overhead budget, and request it.",
+    "report_when_stuck": "if the floor is still not met after the allowed rounds, report the best-supported hypothesis, its confidence, and precisely what evidence is missing - never present a guess as a diagnosis"
+  },
+  "provenance": {
+    "authored_by": "measured from the packet-loss sweep, 40 labelled runs across 8 families and two applications",
+    "verified_by": "PENDING",
+    "authored_utc": "2026-08-30T00:00:00Z",
+    "notes": "Written after per-endpoint LATENCY failed to separate this fault from a healthy system on either application (finding F13). The turn came from asking what is mechanically specific to a network fault: it is the only family in the catalogue that drops packets, and a dropped segment must be re-sent. Deliberately ONE blueprint rather than two: breadth separates host-wide from single-service impairment on the first application (7-12 interfaces against 1-3) and reverses on the second (0-1 against 1-2), so splitting them would assert a distinction that only holds on one system. Scope is reported as evidence instead."
+  }
+}

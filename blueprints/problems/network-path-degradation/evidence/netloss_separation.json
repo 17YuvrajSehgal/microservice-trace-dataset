@@ -1,0 +1,893 @@
+{
+  "rows": [
+    {
+      "run_id": "anomaly_net_aggressive_steady_r1",
+      "app": "sockshop",
+      "family": "anomaly_net",
+      "is_network": true,
+      "n_interfaces": 16,
+      "n_impaired": 12,
+      "impaired_ifaces": [
+        "vethe8272c9",
+        "vethade28bb",
+        "veth3ffe457",
+        "eth0",
+        "veth683cd79",
+        "veth1267a2d",
+        "veth07798ff",
+        "vetha0095a7",
+        "veth64dad23",
+        "veth5af568a"
+      ],
+      "worst_retrans_pct": 28.571,
+      "median_retrans_pct_baseline": 0,
+      "worst_drop_pct": 0.289
+    },
+    {
+      "run_id": "anomaly_net_aggressive_steady_r2",
+      "app": "sockshop",
+      "family": "anomaly_net",
+      "is_network": true,
+      "n_interfaces": 18,
+      "n_impaired": 7,
+      "impaired_ifaces": [
+        "vethe8272c9",
+        "eth0",
+        "veth3ffe457",
+        "vethade28bb",
+        "veth1267a2d",
+        "veth07798ff",
+        "vetha0095a7"
+      ],
+      "worst_retrans_pct": 18.519,
+      "median_retrans_pct_baseline": 0,
+      "worst_drop_pct": 0.127
+    },
+    {
+      "run_id": "anomaly_net_aggressive_steady_r3",
+      "app": "sockshop",
+      "family": "anomaly_net",
+      "is_network": true,
+      "n_interfaces": 17,
+      "n_impaired": 11,
+      "impaired_ifaces": [
+        "vethade28bb",
+        "vethe8272c9",
+        "eth0",
+        "veth43fd5ca",
+        "veth3ffe457",
+        "veth683cd79",
+        "veth1267a2d",
+        "veth07798ff",
+        "vethc1ae15b",
+        "vetha0095a7"
+      ],
+      "worst_retrans_pct": 40.909,
+      "median_retrans_pct_baseline": 0,
+      "worst_drop_pct": 0.122
+    },
+    {
+      "run_id": "dependency_outage_aggressive_steady_r1",
+      "app": "sockshop",
+      "family": "dependency_outage",
+      "is_network": false,
+      "n_interfaces": 18,
+      "n_impaired": 0,
+      "impaired_ifaces": [],
+      "worst_retrans_pct": 0,
+      "median_retrans_pct_baseline": 0,
+      "worst_drop_pct": 0
+    },
+    {
+      "run_id": "dependency_outage_aggressive_steady_r2",
+      "app": "sockshop",
+      "family": "dependency_outage",
+      "is_network": false,
+      "n_interfaces": 18,
+      "n_impaired": 0,
+      "impaired_ifaces": [],
+      "worst_retrans_pct": 0,
+      "median_retrans_pct_baseline": 0,
+      "worst_drop_pct": 0
+    },
+    {
+      "run_id": "error_storm_aggressive_burst_r1",
+      "app": "sockshop",
+      "family": "error_storm",
+      "is_network": false,
+      "n_interfaces": 21,
+      "n_impaired": 0,
+      "impaired_ifaces": [],
+      "worst_retrans_pct": 0,
+      "median_retrans_pct_baseline": 0,
+      "worst_drop_pct": 0
+    },
+    {
+      "run_id": "error_storm_aggressive_burst_r2",
+      "app": "sockshop",
+      "family": "error_storm",
+      "is_network": false,
+      "n_interfaces": 21,
+      "n_impaired": 0,
+      "impaired_ifaces": [],
+      "worst_retrans_pct": 0,
+      "median_retrans_pct_baseline": 0,
+      "worst_drop_pct": 0
+    },
+    {
+      "run_id": "noisy_neighbor_aggressive_steady_r1",
+      "app": "sockshop",
+      "family": "noisy_neighbor",
+      "is_network": false,
+      "n_interfaces": 18,
+      "n_impaired": 2,
+      "impaired_ifaces": [
+        "vethfe77467",
+        "veth1450392"
+      ],
+      "worst_retrans_pct": 3.846,
+      "median_retrans_pct_baseline": 0,
+      "worst_drop_pct": 0
+    },
+    {
+      "run_id": "noisy_neighbor_aggressive_steady_r2",
+      "app": "sockshop",
+      "family": "noisy_neighbor",
+      "is_network": false,
+      "n_interfaces": 18,
+      "n_impaired": 0,
+      "impaired_ifaces": [],
+      "worst_retrans_pct": 0,
+      "median_retrans_pct_baseline": 0,
+      "worst_drop_pct": 0
+    },
+    {
+      "run_id": "normal_none_burst_r1",
+      "app": "sockshop",
+      "family": "normal",
+      "is_network": false,
+      "n_interfaces": 22,
+      "n_impaired": 0,
+      "impaired_ifaces": [],
+      "worst_retrans_pct": 0,
+      "median_retrans_pct_baseline": 0,
+      "worst_drop_pct": 0
+    },
+    {
+      "run_id": "normal_none_burst_r2",
+      "app": "sockshop",
+      "family": "normal",
+      "is_network": false,
+      "n_interfaces": 21,
+      "n_impaired": 1,
+      "impaired_ifaces": [
+        "vethb1d7098"
+      ],
+      "worst_retrans_pct": 0.513,
+      "median_retrans_pct_baseline": 0,
+      "worst_drop_pct": 0
+    },
+    {
+      "run_id": "slow_db_aggressive_burst_r1",
+      "app": "sockshop",
+      "family": "slow_db",
+      "is_network": false,
+      "n_interfaces": 21,
+      "n_impaired": 1,
+      "impaired_ifaces": [
+        "vethfe77467"
+      ],
+      "worst_retrans_pct": 7.143,
+      "median_retrans_pct_baseline": 0,
+      "worst_drop_pct": 0
+    },
+    {
+      "run_id": "slow_db_aggressive_burst_r2",
+      "app": "sockshop",
+      "family": "slow_db",
+      "is_network": false,
+      "n_interfaces": 21,
+      "n_impaired": 1,
+      "impaired_ifaces": [
+        "veth1450392"
+      ],
+      "worst_retrans_pct": 1.493,
+      "median_retrans_pct_baseline": 0,
+      "worst_drop_pct": 0
+    },
+    {
+      "run_id": "slow_db_aggressive_steady_r1",
+      "app": "sockshop",
+      "family": "slow_db",
+      "is_network": false,
+      "n_interfaces": 18,
+      "n_impaired": 1,
+      "impaired_ifaces": [
+        "vethb1d7098"
+      ],
+      "worst_retrans_pct": 1.176,
+      "median_retrans_pct_baseline": 0,
+      "worst_drop_pct": 0
+    },
+    {
+      "run_id": "svc_cpu_cap_aggressive_steady_r1",
+      "app": "sockshop",
+      "family": "svc_cpu_cap",
+      "is_network": false,
+      "n_interfaces": 18,
+      "n_impaired": 0,
+      "impaired_ifaces": [],
+      "worst_retrans_pct": 0,
+      "median_retrans_pct_baseline": 0,
+      "worst_drop_pct": 0
+    },
+    {
+      "run_id": "svc_cpu_cap_aggressive_steady_r2",
+      "app": "sockshop",
+      "family": "svc_cpu_cap",
+      "is_network": false,
+      "n_interfaces": 18,
+      "n_impaired": 1,
+      "impaired_ifaces": [
+        "vethfe77467"
+      ],
+      "worst_retrans_pct": 2.326,
+      "median_retrans_pct_baseline": 0,
+      "worst_drop_pct": 0
+    },
+    {
+      "run_id": "svc_net_aggressive_steady_r1",
+      "app": "sockshop",
+      "family": "svc_net",
+      "is_network": true,
+      "n_interfaces": 18,
+      "n_impaired": 1,
+      "impaired_ifaces": [
+        "vethe8272c9"
+      ],
+      "worst_retrans_pct": 52.632,
+      "median_retrans_pct_baseline": 0,
+      "worst_drop_pct": 0.125
+    },
+    {
+      "run_id": "svc_net_aggressive_steady_r2",
+      "app": "sockshop",
+      "family": "svc_net",
+      "is_network": true,
+      "n_interfaces": 18,
+      "n_impaired": 2,
+      "impaired_ifaces": [
+        "vethe8272c9",
+        "veth402b457"
+      ],
+      "worst_retrans_pct": 25.641,
+      "median_retrans_pct_baseline": 0,
+      "worst_drop_pct": 0.055
+    },
+    {
+      "run_id": "svc_net_aggressive_steady_r3",
+      "app": "sockshop",
+      "family": "svc_net",
+      "is_network": true,
+      "n_interfaces": 18,
+      "n_impaired": 3,
+      "impaired_ifaces": [
+        "vethe8272c9",
+        "vethade28bb",
+        "veth402b457"
+      ],
+      "worst_retrans_pct": 36.364,
+      "median_retrans_pct_baseline": 0,
+      "worst_drop_pct": 0.056
+    },
+    {
+      "run_id": "tt_anomaly_net_aggressive_steady_r1",
+      "app": "trainticket",
+      "family": "anomaly_net",
+      "is_network": true,
+      "n_interfaces": 26,
+      "n_impaired": 1,
+      "impaired_ifaces": [
+        "eth0"
+      ],
+      "worst_retrans_pct": 33.333,
+      "median_retrans_pct_baseline": 0,
+      "worst_drop_pct": 0
+    },
+    {
+      "run_id": "tt_anomaly_net_aggressive_steady_r2",
+      "app": "trainticket",
+      "family": "anomaly_net",
+      "is_network": true,
+      "n_interfaces": 27,
+      "n_impaired": 0,
+      "impaired_ifaces": [],
+      "worst_retrans_pct": 0.155,
+      "median_retrans_pct_baseline": 0,
+      "worst_drop_pct": 0
+    },
+    {
+      "run_id": "tt_anomaly_net_aggressive_steady_r3",
+      "app": "trainticket",
+      "family": "anomaly_net",
+      "is_network": true,
+      "n_interfaces": 27,
+      "n_impaired": 0,
+      "impaired_ifaces": [],
+      "worst_retrans_pct": 0.391,
+      "median_retrans_pct_baseline": 0,
+      "worst_drop_pct": 0
+    },
+    {
+      "run_id": "tt_dependency_outage_aggressive_steady_r1",
+      "app": "trainticket",
+      "family": "dependency_outage",
+      "is_network": false,
+      "n_interfaces": 16,
+      "n_impaired": 0,
+      "impaired_ifaces": [],
+      "worst_retrans_pct": 0.172,
+      "median_retrans_pct_baseline": 0,
+      "worst_drop_pct": 0
+    },
+    {
+      "run_id": "tt_dependency_outage_aggressive_steady_r2",
+      "app": "trainticket",
+      "family": "dependency_outage",
+      "is_network": false,
+      "n_interfaces": 16,
+      "n_impaired": 0,
+      "impaired_ifaces": [],
+      "worst_retrans_pct": 0,
+      "median_retrans_pct_baseline": 0,
+      "worst_drop_pct": 0
+    },
+    {
+      "run_id": "tt_error_storm_aggressive_burst_r1",
+      "app": "trainticket",
+      "family": "error_storm",
+      "is_network": false,
+      "n_interfaces": 14,
+      "n_impaired": 0,
+      "impaired_ifaces": [],
+      "worst_retrans_pct": 0,
+      "median_retrans_pct_baseline": 0,
+      "worst_drop_pct": 0
+    },
+    {
+      "run_id": "tt_error_storm_aggressive_burst_r2",
+      "app": "trainticket",
+      "family": "error_storm",
+      "is_network": false,
+      "n_interfaces": 13,
+      "n_impaired": 0,
+      "impaired_ifaces": [],
+      "worst_retrans_pct": 0,
+      "median_retrans_pct_baseline": 0,
+      "worst_drop_pct": 0
+    },
+    {
+      "run_id": "tt_noisy_neighbor_aggressive_steady_r1",
+      "app": "trainticket",
+      "family": "noisy_neighbor",
+      "is_network": false,
+      "n_interfaces": 27,
+      "n_impaired": 0,
+      "impaired_ifaces": [],
+      "worst_retrans_pct": 0.221,
+      "median_retrans_pct_baseline": 0,
+      "worst_drop_pct": 0
+    },
+    {
+      "run_id": "tt_noisy_neighbor_aggressive_steady_r2",
+      "app": "trainticket",
+      "family": "noisy_neighbor",
+      "is_network": false,
+      "n_interfaces": 27,
+      "n_impaired": 1,
+      "impaired_ifaces": [
+        "lo"
+      ],
+      "worst_retrans_pct": 1.149,
+      "median_retrans_pct_baseline": 0,
+      "worst_drop_pct": 0.001
+    },
+    {
+      "run_id": "tt_normal_none_burst_r1",
+      "app": "trainticket",
+      "family": "normal",
+      "is_network": false,
+      "n_interfaces": 27,
+      "n_impaired": 0,
+      "impaired_ifaces": [],
+      "worst_retrans_pct": 0,
+      "median_retrans_pct_baseline": 0,
+      "worst_drop_pct": 0
+    },
+    {
+      "run_id": "tt_normal_none_burst_r2",
+      "app": "trainticket",
+      "family": "normal",
+      "is_network": false,
+      "n_interfaces": 12,
+      "n_impaired": 0,
+      "impaired_ifaces": [],
+      "worst_retrans_pct": 0,
+      "median_retrans_pct_baseline": 0,
+      "worst_drop_pct": 0
+    },
+    {
+      "run_id": "tt_normal_none_burst_r3",
+      "app": "trainticket",
+      "family": "normal",
+      "is_network": false,
+      "n_interfaces": 27,
+      "n_impaired": 0,
+      "impaired_ifaces": [],
+      "worst_retrans_pct": 0.167,
+      "median_retrans_pct_baseline": 0,
+      "worst_drop_pct": 0
+    },
+    {
+      "run_id": "tt_slow_db_aggressive_burst_r1",
+      "app": "trainticket",
+      "family": "slow_db",
+      "is_network": false,
+      "n_interfaces": 11,
+      "n_impaired": 0,
+      "impaired_ifaces": [],
+      "worst_retrans_pct": 0,
+      "median_retrans_pct_baseline": 0,
+      "worst_drop_pct": 0
+    },
+    {
+      "run_id": "tt_slow_db_aggressive_burst_r2",
+      "app": "trainticket",
+      "family": "slow_db",
+      "is_network": false,
+      "n_interfaces": 22,
+      "n_impaired": 0,
+      "impaired_ifaces": [],
+      "worst_retrans_pct": 0,
+      "median_retrans_pct_baseline": 0,
+      "worst_drop_pct": 0
+    },
+    {
+      "run_id": "tt_slow_db_aggressive_steady_r1",
+      "app": "trainticket",
+      "family": "slow_db",
+      "is_network": false,
+      "n_interfaces": 21,
+      "n_impaired": 0,
+      "impaired_ifaces": [],
+      "worst_retrans_pct": 0,
+      "median_retrans_pct_baseline": 0,
+      "worst_drop_pct": 0
+    },
+    {
+      "run_id": "tt_svc_cpu_cap_aggressive_steady_r1",
+      "app": "trainticket",
+      "family": "svc_cpu_cap",
+      "is_network": false,
+      "n_interfaces": 27,
+      "n_impaired": 1,
+      "impaired_ifaces": [
+        "lo"
+      ],
+      "worst_retrans_pct": 1.136,
+      "median_retrans_pct_baseline": 0,
+      "worst_drop_pct": 0
+    },
+    {
+      "run_id": "tt_svc_cpu_cap_aggressive_steady_r2",
+      "app": "trainticket",
+      "family": "svc_cpu_cap",
+      "is_network": false,
+      "n_interfaces": 27,
+      "n_impaired": 1,
+      "impaired_ifaces": [
+        "lo"
+      ],
+      "worst_retrans_pct": 3.659,
+      "median_retrans_pct_baseline": 0,
+      "worst_drop_pct": 0
+    },
+    {
+      "run_id": "tt_svc_net_aggressive_steady_r1",
+      "app": "trainticket",
+      "family": "svc_net",
+      "is_network": true,
+      "n_interfaces": 27,
+      "n_impaired": 1,
+      "impaired_ifaces": [
+        "veth28e8754"
+      ],
+      "worst_retrans_pct": 38.095,
+      "median_retrans_pct_baseline": 0,
+      "worst_drop_pct": 0.002
+    },
+    {
+      "run_id": "tt_svc_net_aggressive_steady_r2",
+      "app": "trainticket",
+      "family": "svc_net",
+      "is_network": true,
+      "n_interfaces": 27,
+      "n_impaired": 2,
+      "impaired_ifaces": [
+        "veth28e8754",
+        "vethe69f7b9"
+      ],
+      "worst_retrans_pct": 60.714,
+      "median_retrans_pct_baseline": 0,
+      "worst_drop_pct": 0.003
+    },
+    {
+      "run_id": "tt_svc_net_aggressive_steady_r3",
+      "app": "trainticket",
+      "family": "svc_net",
+      "is_network": true,
+      "n_interfaces": 27,
+      "n_impaired": 1,
+      "impaired_ifaces": [
+        "veth28e8754"
+      ],
+      "worst_retrans_pct": 56.0,
+      "median_retrans_pct_baseline": 0,
+      "worst_drop_pct": 0.003
+    }
+  ],
+  "summary": [
+    {
+      "app": "sockshop",
+      "family": "anomaly_net",
+      "ranges": {
+        "n_impaired": [
+          7,
+          12
+        ],
+        "worst_retrans_pct": [
+          18.519,
+          40.909
+        ],
+        "median_retrans_pct_baseline": [
+          0,
+          0
+        ],
+        "worst_drop_pct": [
+          0.122,
+          0.289
+        ]
+      }
+    },
+    {
+      "app": "sockshop",
+      "family": "dependency_outage",
+      "ranges": {
+        "n_impaired": [
+          0,
+          0
+        ],
+        "worst_retrans_pct": [
+          0,
+          0
+        ],
+        "median_retrans_pct_baseline": [
+          0,
+          0
+        ],
+        "worst_drop_pct": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "app": "sockshop",
+      "family": "error_storm",
+      "ranges": {
+        "n_impaired": [
+          0,
+          0
+        ],
+        "worst_retrans_pct": [
+          0,
+          0
+        ],
+        "median_retrans_pct_baseline": [
+          0,
+          0
+        ],
+        "worst_drop_pct": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "app": "sockshop",
+      "family": "noisy_neighbor",
+      "ranges": {
+        "n_impaired": [
+          0,
+          2
+        ],
+        "worst_retrans_pct": [
+          0,
+          3.846
+        ],
+        "median_retrans_pct_baseline": [
+          0,
+          0
+        ],
+        "worst_drop_pct": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "app": "sockshop",
+      "family": "normal",
+      "ranges": {
+        "n_impaired": [
+          0,
+          1
+        ],
+        "worst_retrans_pct": [
+          0,
+          0.513
+        ],
+        "median_retrans_pct_baseline": [
+          0,
+          0
+        ],
+        "worst_drop_pct": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "app": "sockshop",
+      "family": "slow_db",
+      "ranges": {
+        "n_impaired": [
+          1,
+          1
+        ],
+        "worst_retrans_pct": [
+          1.176,
+          7.143
+        ],
+        "median_retrans_pct_baseline": [
+          0,
+          0
+        ],
+        "worst_drop_pct": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "app": "sockshop",
+      "family": "svc_cpu_cap",
+      "ranges": {
+        "n_impaired": [
+          0,
+          1
+        ],
+        "worst_retrans_pct": [
+          0,
+          2.326
+        ],
+        "median_retrans_pct_baseline": [
+          0,
+          0
+        ],
+        "worst_drop_pct": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "app": "sockshop",
+      "family": "svc_net",
+      "ranges": {
+        "n_impaired": [
+          1,
+          3
+        ],
+        "worst_retrans_pct": [
+          25.641,
+          52.632
+        ],
+        "median_retrans_pct_baseline": [
+          0,
+          0
+        ],
+        "worst_drop_pct": [
+          0.055,
+          0.125
+        ]
+      }
+    },
+    {
+      "app": "trainticket",
+      "family": "anomaly_net",
+      "ranges": {
+        "n_impaired": [
+          0,
+          1
+        ],
+        "worst_retrans_pct": [
+          0.155,
+          33.333
+        ],
+        "median_retrans_pct_baseline": [
+          0,
+          0
+        ],
+        "worst_drop_pct": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "app": "trainticket",
+      "family": "dependency_outage",
+      "ranges": {
+        "n_impaired": [
+          0,
+          0
+        ],
+        "worst_retrans_pct": [
+          0,
+          0.172
+        ],
+        "median_retrans_pct_baseline": [
+          0,
+          0
+        ],
+        "worst_drop_pct": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "app": "trainticket",
+      "family": "error_storm",
+      "ranges": {
+        "n_impaired": [
+          0,
+          0
+        ],
+        "worst_retrans_pct": [
+          0,
+          0
+        ],
+        "median_retrans_pct_baseline": [
+          0,
+          0
+        ],
+        "worst_drop_pct": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "app": "trainticket",
+      "family": "noisy_neighbor",
+      "ranges": {
+        "n_impaired": [
+          0,
+          1
+        ],
+        "worst_retrans_pct": [
+          0.221,
+          1.149
+        ],
+        "median_retrans_pct_baseline": [
+          0,
+          0
+        ],
+        "worst_drop_pct": [
+          0,
+          0.001
+        ]
+      }
+    },
+    {
+      "app": "trainticket",
+      "family": "normal",
+      "ranges": {
+        "n_impaired": [
+          0,
+          0
+        ],
+        "worst_retrans_pct": [
+          0,
+          0.167
+        ],
+        "median_retrans_pct_baseline": [
+          0,
+          0
+        ],
+        "worst_drop_pct": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "app": "trainticket",
+      "family": "slow_db",
+      "ranges": {
+        "n_impaired": [
+          0,
+          0
+        ],
+        "worst_retrans_pct": [
+          0,
+          0
+        ],
+        "median_retrans_pct_baseline": [
+          0,
+          0
+        ],
+        "worst_drop_pct": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "app": "trainticket",
+      "family": "svc_cpu_cap",
+      "ranges": {
+        "n_impaired": [
+          1,
+          1
+        ],
+        "worst_retrans_pct": [
+          1.136,
+          3.659
+        ],
+        "median_retrans_pct_baseline": [
+          0,
+          0
+        ],
+        "worst_drop_pct": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "app": "trainticket",
+      "family": "svc_net",
+      "ranges": {
+        "n_impaired": [
+          1,
+          2
+        ],
+        "worst_retrans_pct": [
+          38.095,
+          60.714
+        ],
+        "median_retrans_pct_baseline": [
+          0,
+          0
+        ],
+        "worst_drop_pct": [
+          0.002,
+          0.003
+        ]
+      }
+    }
+  ]
+}
