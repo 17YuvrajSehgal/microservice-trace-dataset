@@ -5,6 +5,65 @@ Protocol: `RESEARCH-PLAN-phase1-kernel.md`.
 
 ---
 
+## F16 — The datastore fix: wrong answers 13 → 4, and its own error count 11 → 1
+
+**Retest**, job 2227463, 69 runs, both applications, with the two added clauses.
+
+| App | Class | Before | After |
+|---|---|---|---|
+| Sock Shop | positive | 17/19 (89%) | 17/19 (89%) |
+| Sock Shop | negative | 10/21 (**48%**) | **18/21 (86%)** |
+| Train Ticket | positive | 15/19 (79%) | 12/19 (63%) |
+| Train Ticket | negative | 5/6 (83%) | **8/9 (89%)** |
+| **Wrong answers** | | **13** | **4** |
+| Missed | | 5 | 9 |
+
+**The datastore rule went from 11 wrong answers to 1.** Everything it used to claim wrongly —
+network faults, service network faults, hung dependencies, memory caps — is now correctly
+declined.
+
+### The four that remain
+
+| Run | Called it | Why |
+|---|---|---|
+| `anomaly_mem` ×2 (SS) | co-tenant | the memory-stress recipe genuinely runs a container taking ~1 core |
+| `tt_anomaly_mem` ×1 | co-tenant | same |
+| `error_storm` ×1 | datastore-wait | the only surviving datastore false fire |
+
+Three of four are the known `anomaly_mem` family overlap, which cannot be resolved from
+kernel data — the event census found no `mm_*` or `kmem_*` tracepoints.
+
+### The cost, which was predicted and is real
+
+Misses rose 5 → 9. All four new ones are the endpoint floor doing what the measurement said
+it would:
+
+- `tt_slow_db_aggressive_steady` ×3 — the datastore fault reaches only 9.75–13.59× endpoint
+  slowdown on Train Ticket, below the 18× floor measured on Sock Shop
+- `tt_svc_cpu_cap_subtle` ×1 — previously a **wrong answer** (`datastore-wait`), now a miss
+
+That last one is an improvement, not a cost: a decline is strictly better than a confident
+wrong answer. So the honest trade is **9 wrong answers eliminated for 3 new misses**, all
+three on the application where the threshold was known not to transfer.
+
+### On the threshold itself
+
+The suggested 39× would have missed the lowest Sock Shop datastore run outright, which
+measures **38.60×**. The safe window is (8.58, 38.60], and 18 sits at its geometric midpoint
+with 2.1× margin on both sides. Choosing the midpoint of a measured gap rather than a round
+number next to the data is the whole difference between a threshold and a fitted constant.
+
+### What each clause bought
+
+- **Retransmission veto (12%)** — universal, works on both applications, and is the clause
+  that killed the network false fires. Only possible because F14/F15 established that packet
+  loss is specific to network faults.
+- **Endpoint slowdown floor (18×)** — Sock Shop only, and recorded as such. It killed the
+  hung-dependency, memory-cap and error-storm false fires there, and cost three Train Ticket
+  datastore runs.
+
+---
+
 ## F15 — Packet loss confirmed across 40 runs. It answers "is it the network", not "which one".
 
 **Confirmation sweep**, job 2227189, 40 runs, 8 families, both applications.
