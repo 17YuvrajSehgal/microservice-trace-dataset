@@ -41,6 +41,26 @@ BIG_THIEF = 4.0         # host-saturation newcomers took 6.54-6.62; co-tenant ne
 LOSER_CORES = -0.30     # cap runs lost 0.357-0.876; healthy and co-tenant lost 0.024-0.160
 
 BLOCK_X = 5.0           # datastore fault measured 36.8x; its control 1.12x
+
+# ---- the two checks that fix the datastore rule's false fires (finding F13/F15) ----
+# The rule fires on socket blocking alone, which every impostor also trips. Two additions,
+# both measured across 40 runs on two applications.
+#
+# 1. RETRANSMISSION VETO. A network fault is the only family that drops packets, so heavy
+#    retransmission means the problem is the path, not the datastore. Measured: network
+#    18.5-60.7%, slow datastore never above 7.14%, every other family at or near 0. A cut at
+#    12 sits 1.7x above the datastore ceiling and 1.5x below the network floor.
+RETRANS_VETO_PCT = 12.0
+#
+# 2. THE DATASTORE MUST ACTUALLY BE SLOW. Blocking says a process is waiting; endpoint
+#    slowdown says something is answering slowly. MEASURED on the first application: slow
+#    datastore 38.60-47.57x against a 8.58x ceiling for every non-network family, so 18 sits
+#    at the geometric midpoint with 2.1x margin on both sides.
+#    HONEST COST: on the second application the datastore fault reaches only 9.75x on two of
+#    four runs, so this gate loses them, and a memory-cap fault there reaches 221-225x so the
+#    gate does not help. It is applied because the net effect is measured to be strongly
+#    positive, not because it is universal - see the blueprint scenario.
+ENDPOINT_SLOWDOWN_MIN = 18.0
 RQ_X = 2.0              # "runqueue is raised at all" - used only to describe a run, never
                         # to decide anything.
 
@@ -93,6 +113,24 @@ def _cpu(pack):
         "loser_comm": s.get("biggest_loser_comm"),
         "loser_cores": s.get("biggest_loser_cores") or 0.0,
         "n_cpus": s.get("n_cpus"),
+    }
+
+
+def _net(pack):
+    """Packet loss, and how slowly service endpoints answer. Either may be absent from a
+    pack built before these measurements existed, and absent is reported as absent - the
+    rules below treat an unavailable check as 'not applied' rather than as passing."""
+    nl = (pack.get("netloss") or {}).get("signature") or {}
+    ep = (pack.get("endpoints") or {}).get("signature") or {}
+    slowest = ep.get("slowest") or {}
+    return {
+        "retrans_available": nl.get("worst_retrans_pct") is not None,
+        "worst_retrans_pct": nl.get("worst_retrans_pct"),
+        "n_impaired_ifaces": nl.get("n_impaired"),
+        "endpoint_available": slowest.get("p95_x") is not None,
+        "worst_endpoint_x": slowest.get("p95_x"),
+        "worst_endpoint": slowest.get("endpoint"),
+        "n_endpoints_slowed": ep.get("n_slowed_2x"),
     }
 
 
@@ -174,29 +212,56 @@ def _cpu_fields(cpu, rq):
 
 
 # ---------------------------------------------------------------------- datastore family
-def datastore_rule(cpu, rq, blk):
-    """One socket syscall inflates hugely while the component is not short of CPU.
+def datastore_rule(cpu, rq, blk, net):
+    """One socket syscall inflates hugely while the component is not short of CPU, the path
+    is not dropping packets, and something really is answering slowly.
 
-    UNCHANGED and still known-weak. E1 measured it firing on hung dependencies (89x),
-    degraded network paths (175x) and other families, because it can see THAT a process is
-    blocked on a socket but not WHAT it is blocked on. Fixing that needs socket-peer
-    attribution and is the work of the frozen-dependency and service-network-path blueprints,
-    not this cluster.
+    The first clause alone used to fire on hung dependencies (89x), degraded network paths
+    (175x), memory caps and error storms, because socket blocking says a process is WAITING
+    but not what it is waiting for. The two added clauses answer that from measurements the
+    pack now carries.
     """
     top = blk["socket_hits"][0] if blk["socket_hits"] else None
     rq_ok = (rq["max"] or 0) < STARVED_RQ_X
-    fires = bool(top) and top["p95_x"] >= BLOCK_X and rq_ok
+    blocked = bool(top) and top["p95_x"] >= BLOCK_X
+
+    # the path is losing packets -> a network fault, whatever else is true
+    path_lossy = (net["retrans_available"]
+                  and (net["worst_retrans_pct"] or 0) >= RETRANS_VETO_PCT)
+    # something must actually be answering slowly, not merely be blocked
+    answers_slowly = (not net["endpoint_available"]
+                      or (net["worst_endpoint_x"] or 0) >= ENDPOINT_SLOWDOWN_MIN)
+
+    fires = blocked and rq_ok and not path_lossy and answers_slowly
     comm = top["comm_syscall"].split("|")[0] if top else None
     call = top["comm_syscall"].split("|")[-1] if top else None
+    if fires:
+        why = (f"{comm} blocked in {call} for {top['p95_x']}x baseline, its endpoint answering "
+               f"{net['worst_endpoint_x']}x slower, with runqueue delay flat at {rq['max']}x "
+               f"and no packet loss on the path")
+    elif path_lossy:
+        why = (f"the path is retransmitting {net['worst_retrans_pct']}% of segments across "
+               f"{net['n_impaired_ifaces']} interfaces - packets are being lost, so this is "
+               f"the network rather than the datastore")
+    elif blocked and rq_ok and not answers_slowly:
+        why = (f"{comm} is blocked in {call} at {top['p95_x']}x, but the slowest endpoint is "
+               f"only {net['worst_endpoint_x']}x - something is waiting, but nothing is "
+               f"answering slowly enough for the datastore to be the cause")
+    elif top:
+        why = f"runqueue delay {rq['max']}x indicates CPU starvation, not dependency wait"
+    else:
+        why = "no socket-waiting syscall inflated enough"
+
     return {"fires": fires, "blocked_process": comm, "blocking_call": call,
             "blocking_x": top["p95_x"] if top else None,
             "max_runqueue_x": rq["max"],
+            "worst_endpoint_x": net["worst_endpoint_x"],
+            "worst_endpoint": net["worst_endpoint"],
+            "worst_retrans_pct": net["worst_retrans_pct"],
+            "checks_applied": {"retransmission": net["retrans_available"],
+                               "endpoint_slowdown": net["endpoint_available"]},
             "converged_on": pack_converged(blk),
-            "why": (f"{comm} blocked in {call} for {top['p95_x']}x baseline while runqueue "
-                    f"delay stayed at {rq['max']}x"
-                    if fires else
-                    (f"runqueue delay {rq['max']}x indicates CPU starvation, not dependency wait"
-                     if top else "no socket-waiting syscall inflated enough"))}
+            "why": why}
 
 
 def pack_converged(_blk):
@@ -224,19 +289,21 @@ VERDICTS = {
 
 def decide(pack):
     app = pack.get("app", "sockshop")
-    cpu, rq, blk = _cpu(pack), _rq(pack), _blk(pack)
+    cpu, rq, blk, net = _cpu(pack), _rq(pack), _blk(pack), _net(pack)
 
     results = {
         "host-cpu-saturation": host_saturation_rule(cpu, rq),
         "service-cpu-throttle": cpu_throttle_rule(cpu, rq),
         "cpu-contention-co-tenant": co_tenant_rule(cpu, rq, blk),
-        "datastore-wait": datastore_rule(cpu, rq, blk),
+        "datastore-wait": datastore_rule(cpu, rq, blk, net),
     }
     fired = [n for n, r in results.items() if r["fires"]]
 
     verdict = {"run_id": pack.get("run_id"), "app": app,
                "blueprints_fired": fired,
                "oncpu_available": cpu["available"],
+               "retrans_available": net["retrans_available"],
+               "endpoint_available": net["endpoint_available"],
                "analysis_seconds": pack.get("total_analysis_s")}
     verdict.update({k.replace("-", "_"): v for k, v in results.items()})
 
