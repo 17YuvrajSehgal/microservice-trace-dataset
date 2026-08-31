@@ -36,7 +36,7 @@ BT2 = os.environ.get("BT2", "/scratch/yuvraj17/bt21.sh")
 TS = re.compile(r"^\[(\d{2}):(\d{2}):(\d{2})\.(\d{9})\]")
 EVENT = re.compile(r"\] \([^)]+\) [^ ]+ (net_dev_queue|net_dev_xmit|net_if_receive_skb):")
 SKB = re.compile(r"skbaddr = (0x[0-9A-Fa-f]+)")
-IFACE = re.compile(r'name = "([^"]*)"')
+IFACE = re.compile(r'(?<![A-Za-z])name = "([^"]*)"')   # not procname
 SADDR = re.compile(r"saddr = \[ \[0\] = (\d+), \[1\] = (\d+), \[2\] = (\d+), \[3\] = (\d+) \]")
 DADDR = re.compile(r"daddr = \[ \[0\] = (\d+), \[1\] = (\d+), \[2\] = (\d+), \[3\] = (\d+) \]")
 PORTS = re.compile(r"source_port = (\d+), dest_port = (\d+)")
@@ -71,6 +71,7 @@ def scan(ctf, begin, end):
     queued_n = collections.Counter()
     xmit_n = collections.Counter()
     dropped_n = collections.Counter()
+    seen_skb = collections.OrderedDict()            # buffers already counted once
     seen_seq = collections.defaultdict(collections.OrderedDict)   # flow -> seq -> None
     retrans = collections.Counter()                 # iface -> retransmitted segments
     segs = collections.Counter()                    # iface -> segments with a sequence number
@@ -105,6 +106,15 @@ def scan(ctf, begin, end):
         # pure ACKs carry no payload and legitimately repeat a sequence number
         if mlen and int(mlen.group(1)) <= 52:
             continue
+        # the SAME packet is delivered on more than one interface (veth then bridge),
+        # so without this every second sighting counts as a retransmission and every
+        # run reports about 50%
+        if ms:
+            if ms.group(1) in seen_skb:
+                continue
+            seen_skb[ms.group(1)] = None
+            if len(seen_skb) > 65536:
+                seen_skb.popitem(last=False)
         flow = (src, int(mp.group(1)), dst, int(mp.group(2)))
         seq = int(mq.group(1))
         segs[iface] += 1
