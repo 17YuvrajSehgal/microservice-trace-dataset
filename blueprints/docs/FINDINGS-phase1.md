@@ -5,6 +5,69 @@ Protocol: `RESEARCH-PLAN-phase1-kernel.md`.
 
 ---
 
+## F14 — Yes: packet loss makes network faults distinct, and it separates them from each other
+
+The question was whether anything in a kernel trace is specific to a network fault. F13 said
+no, but F13 measured **latency**, which every fault changes. The network recipes do one thing
+nothing else in the catalogue does: **they drop packets.**
+
+| Recipe | netem |
+|---|---|
+| `anomaly_net` | on **every** container's eth0 — 80 ms delay, 20 ms jitter, **2% loss** |
+| `svc_net` | on **one** container's eth0 — 150 ms delay, 40 ms jitter, **4% loss** |
+
+A dropped TCP segment is re-sent with the same sequence number, and our trace carries `seq`
+in the packet header. So retransmissions are countable, per interface.
+
+### The result
+
+| Run | interfaces impaired | worst retransmit | baseline median |
+|---|---|---|---|
+| `anomaly_net` (host-wide) | **12 of 16** | 28.6% | **0%** |
+| `svc_net` (one container) | **1 of 18** | 52.6% | **0%** |
+| `slow_db` | 1 of 18 | **1.18%** | 0% |
+| `normal` | **0 of 18** | **0%** | 0% |
+
+Three things make this the strongest signal found in phase 1:
+
+1. **The baseline is exactly zero in every run.** Healthy traffic here does not retransmit at
+   all, so any retransmission is signal rather than something to threshold against noise.
+2. **The no-fault run reports 0 of 18 impaired and 0% worst.** A clean control, which neither
+   the endpoint view nor any scheduler construction managed.
+3. **Breadth separates the two network faults exactly as the recipes describe them.** Twelve
+   of sixteen interfaces against exactly one — "netem on every container" against "netem on
+   one container", recovered from the trace without being told.
+
+`slow_db` trips one interface at 1.18%, which is 45× below `svc_net`'s 52.6% and comes from a
+handful of segments. Worth a magnitude floor, not a redesign.
+
+### Why the first run of this was wrong, and how the output said so
+
+The first attempt reported ~50% retransmits on *every* run including the healthy one, and
+listed interfaces named `swapper/4`, `mongod`, `conn15`. Two bugs:
+
+- the interface pattern `name = "` also matches inside `procname = "`, so every "interface"
+  was a process;
+- one packet fires `net_if_receive_skb` on more than one interface (veth, then bridge), so
+  every second sighting counted as a retransmission — which is exactly why the rate was ~50%
+  everywhere.
+
+**A rate that identical across a healthy run and three different faults is a bug, not a
+signal.** Now deduplicated by `skbaddr`.
+
+### What this unlocks
+
+Both network blueprints become buildable, which F13 had ruled out:
+
+- **`host-network-degradation`** — many interfaces impaired
+- **A3 `service-network-path`** — exactly one interface impaired, at a high rate
+
+And it is mechanism-matched rather than fitted: the discriminator is *packet loss*, which is
+literally what the fault injects. Confirmation across all runs and both applications is the
+next step before either is written.
+
+---
+
 ## F13 — A3 and A4 cannot be built from kernel data. A different blueprint can.
 
 **Endpoint sweep**, job 2223505, 40 runs, 7 families, both applications.
