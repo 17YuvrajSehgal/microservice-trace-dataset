@@ -1,6 +1,6 @@
 ---
 name: network-path-degradation
-version: 1
+version: 2
 authored_by: measured from the packet-loss sweep, 40 labelled runs across 8 families and two applications
 generated_from: blueprints/network-path-degradation.json
 covers: network_impairment                       # harness metadata: scoring + LOFO; NEVER shown to the model
@@ -27,7 +27,7 @@ Cheapest check first: count retransmissions on any one busy interface: if the ra
 Telling it apart from its look-alikes:
 - **TCP retransmission rate per interface: segments carrying a sequence number already seen on the same flow, as a share of segments** — this problem: at least one interface retransmits heavily - measured 18.5% to 60.7% across both applications. Not this problem: retransmission stays low or absent. Every non-network fault measured at or below 7.1%, and most sit at exactly 0.
 - **baseline retransmission rate, as a sanity check before trusting the incident figure** — this problem: baseline is near zero, so any retransmission during the incident is signal rather than normal behaviour. Not this problem: the baseline already retransmits, in which case this environment is lossy in general and the incident figure needs comparing against it rather than against zero.
-- **packets queued to a device but never transmitted (net_dev_queue with no matching net_dev_xmit for the same buffer)** — this problem: a small but non-zero share of buffers are dropped inside the queue, where the impairment sits. Not this problem: every queued buffer is transmitted.
+- **packets queued to a device but never transmitted (net_dev_queue with no matching net_dev_xmit for the same buffer)** — this problem: a non-zero share of buffers are dropped inside the queue. This is REQUIRED, not corroboration: it is what says the loss happened on the path rather than in a full receive buffer. Not this problem: every queued buffer is transmitted. A container that cannot keep up also loses packets and retransmits heavily, but it drops them in its receive buffer, so nothing is lost in the queue.
 - **how many interfaces retransmit heavily** — this problem: reports the SCOPE of the impairment - one interface means a single service's path, many means the whole host's networking. Not this problem: this does not decide whether the problem is present; it describes it once the retransmission test has fired.
 
 ## What to look at first
@@ -61,11 +61,12 @@ Each step names the capability it needs. The command shown is the binding resolv
 
 ## Resolution template
 Conclude this problem when ALL of:
-- at least one interface retransmits at 12% or more of its segments during the incident
+- at least one interface retransmits 12% or more of its segments during the incident
+- buffers queued to that device were dropped without ever being transmitted
 - the same interface retransmitted at or near zero in the baseline window
-- buffers queued to that device were dropped without being transmitted
 
 Prefer a different explanation when:
+- service-memory-cap or another overloaded component — retransmission is high but NOTHING was dropped in the queue - the packets are being lost in a receive buffer because a container cannot keep up, not on the path
 - db-latency-dependency-wait — retransmission stays below a few percent while one component blocks in a socket call for an order of magnitude longer - the data is arriving intact, just late, so nothing needs re-sending
 - healthy-baseline — no interface retransmits meaningfully, even if endpoint latency has risen - latency alone rises under almost every fault and under ordinary load
 - cpu-contention-co-tenant — retransmission is low and host CPU rose with a newcomer taking cores - packets are fine, the machine is busy
@@ -101,7 +102,7 @@ in before you judge the numbers.
 - Instead: map the interface to its container and inspect that container's queueing discipline first, before looking at the host network
 
 **The whole host's networking is impaired** — recognise by: many interfaces retransmitting at once
-- What you see: on a short call chain, 7-12 of 16 interfaces at 18.5-40.9%. On a wide fan-out system the SAME fault reached only 0-1 interfaces, and one run showed just 0.15% - so breadth is not a reliable way to recognise this case.
+- What you see: on a short call chain, 7-12 of 16 interfaces at 18.5-40.9%. On a wide fan-out system the SAME fault reached only 0-1 interfaces, and one run showed just 0.15% - so breadth is not a reliable way to recognise this case. And on that second system the host-wide fault produced NO queue drops at all across three runs, so this blueprint misses it rather than guessing.
 - How much to trust it: medium on a short chain, low on a wide fan-out system
 - Instead: do not conclude host-wide impairment from interface count alone. Treat the count as evidence of scope and confirm against the actual container topology, since the same fault produced opposite breadth on the two systems we measured.
 
@@ -113,5 +114,6 @@ in before you judge the numbers.
 ## Signals that do NOT work for this problem
 Each of these was measured on our own data and found unusable. Do not reason
 from them, and do not let their absence argue against this problem:
+- heavy retransmission alone identifies an impaired network path — **NOT SUPPORTED - two other families retransmit as hard or harder**. How often data has to be sent again. It rises whenever packets are lost, and packets are lost for several reasons - an impaired link, but also a container too overloaded to read its socket. On its own it says packets are being lost, not where.
 - endpoint latency identifies a degraded network path — **NOT SUPPORTED by our data**. How long each service endpoint takes to answer. It rises under almost every kind of fault, so on its own it says something is wrong, not what.
 - a heavily retransmitting interface is always present when the path is impaired — **PARTIALLY SUPPORTED - one run in 40 did not show it**. A path can be impaired without the trace showing much retransmission, if there is too little traffic on it during the window. Absence of retransmission is weak evidence of absence; presence is strong evidence of presence.

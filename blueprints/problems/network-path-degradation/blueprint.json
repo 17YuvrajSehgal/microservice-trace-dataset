@@ -1,6 +1,6 @@
 {
   "id": "network-path-degradation",
-  "version": 1,
+  "version": 2,
   "title": "The network path is dropping packets",
   "problem": {
     "summary": "Something on the network path is losing packets. Services that talk to each other over the affected path slow down and become erratic, because every lost segment has to be detected and sent again. Latency rises, but the distinguishing fact is not the latency - it is that data has to be re-sent at all. Nothing else on a healthy system does that.",
@@ -31,10 +31,13 @@
       },
       {
         "signal": "packets queued to a device but never transmitted (net_dev_queue with no matching net_dev_xmit for the same buffer)",
-        "this_problem": "a small but non-zero share of buffers are dropped inside the queue, where the impairment sits",
-        "not_this_problem": "every queued buffer is transmitted",
-        "confused_with": [],
-        "evidence": "MEASURED: 0.06-0.29% on network-impaired runs against 0.00% on every other family. Corroborating rather than deciding - the rate is small because the trace samples the loss, and only the applied-impairment runs show it at all. See evidence/netloss_separation.json"
+        "this_problem": "a non-zero share of buffers are dropped inside the queue. This is REQUIRED, not corroboration: it is what says the loss happened on the path rather than in a full receive buffer",
+        "not_this_problem": "every queued buffer is transmitted. A container that cannot keep up also loses packets and retransmits heavily, but it drops them in its receive buffer, so nothing is lost in the queue",
+        "confused_with": [
+          "service-memory-cap",
+          "host-cpu-saturation"
+        ],
+        "evidence": "MEASURED across 84 runs on two applications: queue drops were non-zero ONLY where the impairment was applied - 0.122-0.289% and 0.055-0.125% on the first application, 0.002-0.003% on the second. Every other family measured 0.000%, with two runs at 0.001% whose retransmission was under 2.5%. See evidence/netloss_separation.json"
       },
       {
         "signal": "how many interfaces retransmit heavily",
@@ -45,6 +48,13 @@
       }
     ],
     "unverified_do_not_claim": [
+      {
+        "claim": "heavy retransmission alone identifies an impaired network path",
+        "status": "NOT SUPPORTED - two other families retransmit as hard or harder",
+        "measurement": "A service memory cap retransmits 59.1-69.4% on the first application and 95.1-95.6% on the second, HARDER than any network impairment measured. Host CPU saturation crosses the same bar on two runs at 16.7% and 33.3%. Deciding on retransmission alone produced 4 false fires and 2 ambiguous verdicts across 84 runs.",
+        "consequence": "retransmission must be paired with queue drops. A container that cannot keep up loses packets in its receive buffer; an impaired path loses them in the queue. Only the second leaves a buffer queued and never transmitted.",
+        "agent_note": "How often data has to be sent again. It rises whenever packets are lost, and packets are lost for several reasons - an impaired link, but also a container too overloaded to read its socket. On its own it says packets are being lost, not where."
+      },
       {
         "claim": "endpoint latency identifies a degraded network path",
         "status": "NOT SUPPORTED by our data",
@@ -153,11 +163,15 @@
   ],
   "decision": {
     "verdict_when": [
-      "at least one interface retransmits at 12% or more of its segments during the incident",
-      "the same interface retransmitted at or near zero in the baseline window",
-      "buffers queued to that device were dropped without being transmitted"
+      "at least one interface retransmits 12% or more of its segments during the incident",
+      "buffers queued to that device were dropped without ever being transmitted",
+      "the same interface retransmitted at or near zero in the baseline window"
     ],
     "rule_out": [
+      {
+        "instead": "service-memory-cap or another overloaded component",
+        "when": "retransmission is high but NOTHING was dropped in the queue - the packets are being lost in a receive buffer because a container cannot keep up, not on the path"
+      },
       {
         "instead": "db-latency-dependency-wait",
         "when": "retransmission stays below a few percent while one component blocks in a socket call for an order of magnitude longer - the data is arriving intact, just late, so nothing needs re-sending"
@@ -203,7 +217,7 @@
       {
         "scenario": "The whole host's networking is impaired",
         "recognise_by": "many interfaces retransmitting at once",
-        "what_you_see": "on a short call chain, 7-12 of 16 interfaces at 18.5-40.9%. On a wide fan-out system the SAME fault reached only 0-1 interfaces, and one run showed just 0.15% - so breadth is not a reliable way to recognise this case.",
+        "what_you_see": "on a short call chain, 7-12 of 16 interfaces at 18.5-40.9%. On a wide fan-out system the SAME fault reached only 0-1 interfaces, and one run showed just 0.15% - so breadth is not a reliable way to recognise this case. And on that second system the host-wide fault produced NO queue drops at all across three runs, so this blueprint misses it rather than guessing.",
         "confidence": "medium on a short chain, low on a wide fan-out system",
         "measured_on": "6 labelled runs across both applications",
         "do_this_instead": "do not conclude host-wide impairment from interface count alone. Treat the count as evidence of scope and confirm against the actual container topology, since the same fault produced opposite breadth on the two systems we measured."
@@ -246,7 +260,7 @@
     },
     {
       "id": "network.queue_drop_rate",
-      "why": "corroboration: buffers queued to a device and never transmitted were dropped in the queue"
+      "why": "REQUIRED, not corroboration: it says the loss happened in the queue - on the path - rather than in a full receive buffer"
     }
   ],
   "stopping_conditions": {
@@ -295,8 +309,8 @@
       "max": 5
     },
     "historical_effectiveness": {
-      "runs_validated": 11,
-      "note": "11 labelled network-impairment runs across two applications, separated from 29 runs of six other families with a 2.6x gap on the deciding signal and a baseline of exactly zero in all 40. One run missed at 0.15%."
+      "runs_validated": 12,
+      "note": "12 labelled network runs across two applications, scored against 72 runs of ten other families. 9 of 12 correct with no false fires; the 3 misses are all the host-wide fault on the second application, which produces neither queue drops nor reliable retransmission there."
     }
   },
   "policies": {
@@ -336,6 +350,6 @@
     "authored_by": "measured from the packet-loss sweep, 40 labelled runs across 8 families and two applications",
     "verified_by": "PENDING",
     "authored_utc": "2026-08-30T00:00:00Z",
-    "notes": "Written after per-endpoint LATENCY failed to separate this fault from a healthy system on either application (finding F13). The turn came from asking what is mechanically specific to a network fault: it is the only family in the catalogue that drops packets, and a dropped segment must be re-sent. Deliberately ONE blueprint rather than two: breadth separates host-wide from single-service impairment on the first application (7-12 interfaces against 1-3) and reverses on the second (0-1 against 1-2), so splitting them would assert a distinction that only holds on one system. Scope is reported as evidence instead."
+    "notes": "Written after per-endpoint LATENCY failed to separate this fault from a healthy system on either application (finding F13). The turn came from asking what is mechanically specific to a network fault: it is the only family in the catalogue that drops packets, and a dropped segment must be re-sent. Deliberately ONE blueprint rather than two: breadth separates host-wide from single-service impairment on the first application (7-12 interfaces against 1-3) and reverses on the second (0-1 against 1-2), so splitting them would assert a distinction that only holds on one system. Scope is reported as evidence instead. v2 (2026-08-31): queue drops promoted from corroboration to a required test after finding F17. Retransmission alone was measured NOT to be specific - a service memory cap retransmits harder than any network fault, because an overloaded container drops packets in its receive buffer. The first sweep had covered 8 of 13 families and missed that one, which is precisely the check the specificity protocol exists to force."
   }
 }

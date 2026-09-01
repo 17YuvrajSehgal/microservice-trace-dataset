@@ -5,6 +5,81 @@ Protocol: `RESEARCH-PLAN-phase1-kernel.md`.
 
 ---
 
+## F17 — I made the mistake E1 exists to catch: I tested the network signal on 8 families, not 13
+
+**Network blueprint test**, job 2233310, 84 runs, both applications, network families scored as
+positives for the first time.
+
+**It scored 10 of 12** — Sock Shop 6/6, Train Ticket 4/6. But it caused **six regressions**,
+and the cause is my own testing gap.
+
+### What I claimed, and why it was wrong
+
+F14 and F15 said packet loss is specific to network faults: *"a slow datastore does not drop
+packets. Nor does a CPU cap, a frozen container, a memory limit or an error storm."*
+
+That was based on a sweep covering **8 of 13 families**. `svc_mem_cap` was not among them.
+
+| Family | worst retransmit % |
+|---|---|
+| `svc_mem_cap` (Train Ticket) | **95.1–95.6** |
+| `svc_mem_cap` (Sock Shop) | **59.1–69.4** |
+| `svc_net` | 25.6–60.7 |
+| `anomaly_net` | 0.15–40.9 |
+| `anomaly_cpu` | 1.2–33.3 |
+
+**A memory cap retransmits harder than any network fault.** Plausible in hindsight — the
+container cannot keep up, receive buffers fill, packets are dropped and re-sent — but it was
+never measured because that family was left out of the sweep.
+
+`anomaly_cpu` also crosses the bar on two runs, presumably softirq starvation dropping packets.
+
+**Consequence:** 4 false fires on `svc_mem_cap`, and 2 `anomaly_cpu` runs turned into misses
+because two blueprints fired at once and the verdict went ambiguous.
+
+The rule that exists to prevent exactly this — *check a new signal against the other families,
+not just its own* — is the one I skipped.
+
+### The fix, and it is mechanism-matched
+
+The second measurement in the same script separates them cleanly. **Queue drops** — buffers
+handed to a device and never transmitted — happen *inside the queueing discipline*, which is
+where netem sits. Loss caused by a full receive buffer happens somewhere else entirely.
+
+| Family | retransmit % | **queue drop %** |
+|---|---|---|
+| `anomaly_net` (SS) | 18.5–40.9 | **0.122–0.289** |
+| `svc_net` (SS) | 25.6–52.6 | **0.055–0.125** |
+| `svc_net` (TT) | 38.1–60.7 | **0.002–0.003** |
+| `svc_mem_cap` | 59.1–95.6 | **0.000** |
+| `anomaly_cpu` | 1.2–33.3 | **0.000** |
+| every other family | ≤7.1 | **0.000** (two runs at 0.001) |
+
+**Queue drops are non-zero only where netem was applied.** Nothing else in 84 runs produced
+one, on either application.
+
+So the rule becomes **retransmission ≥12% AND queue drops present**. No non-network family
+passes both: the two runs that reach 0.001% drop have retransmission of 0.16% and 2.41%, far
+under the first bar.
+
+### The cost, stated plainly
+
+Requiring queue drops loses `tt_anomaly_net` entirely — all three runs measure **0.000%**
+drop. On Train Ticket the host-wide network fault barely registers at all, which F15 had
+already flagged when one run showed just 0.15% retransmission.
+
+So: **6 regressions fixed for 1 more miss.** Network positives go 10/12 to 9/12, and the
+Train Ticket host-wide case is recorded as not detectable rather than caught by luck.
+
+### A data-completeness note
+
+21 of the 84 runs have no on-CPU evidence in their packs — they were added to the task list
+for this test and only the network measurements were built for them. Some CPU-family results
+in this run are therefore incomplete and should not be compared against F16's numbers
+directly.
+
+---
+
 ## F16 — The datastore fix: wrong answers 13 → 4, and its own error count 11 → 1
 
 **Retest**, job 2227463, 69 runs, both applications, with the two added clauses.

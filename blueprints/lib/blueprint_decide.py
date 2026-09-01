@@ -57,6 +57,14 @@ RETRANS_FIRE_PCT = 12.0
 # The incident figure only means something against a quiet baseline. MEASURED: baseline
 # retransmission was 0.00% in all 40 runs on both applications, so 2.0 is a generous ceiling.
 RETRANS_BASELINE_MAX = 2.0
+# Retransmission alone is NOT specific (finding F17). A memory cap retransmits harder than any
+# network fault - 59-96% - because the container cannot keep up and its receive buffers
+# overflow. Host CPU saturation crosses the bar too. What separates them is WHERE the packet
+# was lost: netem drops inside the queueing discipline, so the buffer is handed to the device
+# and never transmitted. A full receive buffer drops it somewhere else entirely.
+# MEASURED across 84 runs on two applications: queue drops were non-zero ONLY where netem was
+# applied. No other family produced one above 0.001%, and those runs retransmit under 2.5%.
+QUEUE_DROP_MIN = 0.0
 #
 # 2. THE DATASTORE MUST ACTUALLY BE SLOW. Blocking says a process is waiting; endpoint
 #    slowdown says something is answering slowly. MEASURED on the first application: slow
@@ -233,8 +241,11 @@ def network_rule(net, rq):
         return {"fires": False, "why": "packet-loss measurement not in the pack"}
     worst = net["worst_retrans_pct"] or 0.0
     base = net["baseline_retrans_pct"]
+    drop = net["worst_drop_pct"]
     quiet_baseline = base is None or base <= RETRANS_BASELINE_MAX
-    fires = worst >= RETRANS_FIRE_PCT and quiet_baseline
+    # the loss must have happened in the queue, not in a receive buffer (F17)
+    lost_in_queue = drop is not None and drop > QUEUE_DROP_MIN
+    fires = worst >= RETRANS_FIRE_PCT and quiet_baseline and lost_in_queue
     return {
         "fires": fires,
         "worst_retrans_pct": worst,
@@ -247,14 +258,19 @@ def network_rule(net, rq):
                   else "one or two interfaces" if (net["n_impaired_ifaces"] or 0) >= 1
                   else "none"),
         "corroboration_worst_drop_pct": net["worst_drop_pct"],
+        "lost_in_queue": lost_in_queue,
         "why": (f"{net['n_impaired_ifaces']} interface(s) retransmitting up to {worst}% of "
-                f"segments against a {base}% baseline - packets are being lost on "
-                f"{net['impaired_ifaces'][:3]}"
+                f"segments against a {base}% baseline, with {drop}% of buffers dropped in the "
+                f"queue - packets are being lost on the path at {net['impaired_ifaces'][:3]}"
                 if fires else
-                (f"worst retransmission {worst}% is below the {RETRANS_FIRE_PCT}% bar"
-                 if quiet_baseline else
-                 f"baseline already retransmits {base}%, so this environment is lossy in "
-                 f"general and the incident figure cannot be read against zero")),
+                (f"baseline already retransmits {base}%, so this environment is lossy in "
+                 f"general and the incident figure cannot be read against zero"
+                 if not quiet_baseline else
+                 f"retransmission is {worst}% but nothing was dropped in the queue - the loss "
+                 f"is happening in a receive buffer, not on the path, which is what an "
+                 f"overloaded container looks like rather than an impaired link"
+                 if worst >= RETRANS_FIRE_PCT else
+                 f"worst retransmission {worst}% is below the {RETRANS_FIRE_PCT}% bar")),
     }
 
 
