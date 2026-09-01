@@ -117,7 +117,7 @@ Worth building once Tier A closes the false fires.
 - Block-layer latency; expected to look like "blocked" but on `block_rq_*`, not sockets.
   Likely another `datastore-wait` impostor — worth testing before building.
 
-### B3. `async-queue-backlog` — work queues up silently
+### B3. `async-queue-backlog` — work queues up silently  ❌ NOT BUILDABLE from kernel data (F19)
 - **Family:** `queue_backlog` · SS 3, **TT 0**
 - The "silent failure" case: our catalogue records it as kernel-only by construction, with no
   metric or log signal. Strongest showcase of the kernel modality — but **Sock-Shop-only**,
@@ -138,6 +138,23 @@ Listed so the taxonomy is complete, not scheduled now.
 ---
 
 ## Status
+
+**`async-queue-backlog` attempted and NOT buildable (F19).** It is indistinguishable from
+`dependency_outage`: both pause a container in the same async chain, so both kill the AMQP
+conversation, and the flow view cannot say which end died. Worse, the same shape appears in
+seven of thirteen families on Sock Shop — "the queue went quiet" means "the system slowed
+down", not "the consumer is paused".
+
+This is the second `docker pause` fault that cannot be identified, for the reason found in
+F11/F12: a frozen container produces *absence*, and absence has too many causes. The library
+correctly declines all `queue_backlog` runs, so it is a coverage gap rather than a source of
+wrong answers.
+
+Worth recording against the pre-registration: `fault_catalog.md` calls this the hardest
+detection case and names **kernel** as the winning modality. **We could not deliver it.** The
+catalogue's reasoning needs per-cgroup attribution; our trace has shared process names and no
+memory events.
+
 
 **`host-disk-saturation` built 2026-09-01.** Sixth blueprint. Measured across 58 runs covering
 ALL 13 families on both applications from the start — the F17 lesson applied rather than

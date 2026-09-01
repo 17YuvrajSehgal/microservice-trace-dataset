@@ -5,6 +5,67 @@ Protocol: `RESEARCH-PLAN-phase1-kernel.md`.
 
 ---
 
+## F19 — Queue backlog is not separable from a hung dependency. They are the same shape.
+
+**Flow-activity sweep**, job 2234071, 55 runs, all 13 families, both applications.
+Raw: `/scratch/yuvraj17/flows/flows_summary.json`.
+
+The hypothesis was that a paused *queue consumer* differs from a paused *request-path service*
+in what happens to everyone else — the broker should lose one peer and keep the rest.
+
+**It does not. The two faults are indistinguishable.**
+
+| | `queue_backlog` r1 | `dependency_outage` r1 |
+|---|---|---|
+| `172.18.0.15:5672` (broker) | loses **both** peers, ratio 0.005 | loses **both** peers, ratio 0.009 |
+| `172.18.0.7:80` | loses 1 of 2, ratio 0.061 | loses 1 of 2, ratio 0.068 |
+| quietest flow | 54.9 → 0.0 pkt/s | 49.2 → 0.0 pkt/s |
+
+Same endpoints, same peers, near-identical ratios. Not a coincidence — a mechanism:
+
+- `dependency_outage` pauses **payment**, which sits on the checkout path. Orders stop
+  completing, so **nothing gets published to the queue**.
+- `queue_backlog` pauses **queue-master**, the consumer. The broker cannot deliver, so
+  **traffic to the consumer stops**.
+
+Both kill the AMQP conversation. The flow view sees a dead queue either way and cannot say
+which end died.
+
+### Worse: the shape is not specific to either
+
+On Sock Shop the pattern "3 conversations gone, 1 endpoint losing some, 1 losing all" appears
+in **`anomaly_cpu`, `anomaly_disk`, `anomaly_mem`, `anomaly_net`, `noisy_neighbor`,
+`dependency_outage` AND `queue_backlog`** — seven families, identical numbers.
+
+Only `normal` and `slow_db` show zero.
+
+The likely reason is that the shipping queue is used on checkout only, which is a small slice
+of traffic. Any fault that slows the system reduces checkouts, so the queue goes quiet.
+**"The queue went quiet" means "the system slowed down", not "the consumer is paused".**
+
+### Verdict
+
+`queue_backlog` is **not buildable from kernel data** by this route. Along with
+`dependency_outage`, it is the second `docker pause` fault that cannot be identified — and for
+the same underlying reason found in F11/F12: a frozen container produces *absence*, and
+absence has too many causes.
+
+No harm done in the meantime: the existing library correctly **declines** all
+`queue_backlog` runs, so it is a gap in coverage rather than a source of wrong answers.
+
+### What this costs the kernel-only case
+
+Worth stating plainly, because `fault_catalog.md` calls this *"the hardest detection case in
+the catalog"* and pre-registers **kernel** as the winning modality with metrics and logs at
+zero. We could not deliver it. The pre-registration is not confirmed for F10.
+
+The catalogue's own reasoning — *"queue-master's cgroup falls silent while rabbitmq's
+socket/memory activity keeps growing"* — needs **per-cgroup** attribution to work. Our trace
+gives process names shared across containers, and no memory events at all. The idea is sound;
+the instrumentation we collected cannot express it.
+
+---
+
 ## F18 — The disk fault separates cleanly, but on the opposite signal to the one predicted
 
 **Block-layer sweep**, job 2233638, 58 runs, **all 13 families**, both applications.
