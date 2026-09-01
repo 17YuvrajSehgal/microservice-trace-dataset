@@ -303,6 +303,35 @@
      "produces_contract": "per-interface retransmission and drop rates, both windows, plus the list of impaired interfaces"
     }
    ]
+  },
+  "storage.io_attribution": {
+   "what": "Disk requests per second attributed to the issuing process, plus service time per device, baseline window vs incident window.",
+   "requires_events": [
+    "block_rq_issue",
+    "block_rq_complete"
+   ],
+   "providers": [
+    {
+     "id": "babeltrace2-cli",
+     "status": "implemented",
+     "available_when": "babeltrace2 >= 2.1 on PATH and a CTF trace directory",
+     "run": "python3 blueprints/problems/host-disk-saturation/scripts/block_io_signature.py --ctf <ctf> --gt <ground_truth> --out <out>/blockio.json",
+     "notes": "block_rq_issue names the issuing process directly, so the culprit comes free. Requests are matched to completions by device and sector. Service time is produced but must NOT be used to decide - measured to stay flat or fall under disk flooding.",
+     "tier": "high_fidelity_active",
+     "platform": [
+      "linux"
+     ],
+     "estimated_overhead_pct": {
+      "min": 2,
+      "max": 5
+     },
+     "fidelity": "high",
+     "requires_permissions": [
+      "root or CAP_SYS_ADMIN for kernel tracing"
+     ],
+     "produces_contract": "per-process request rate both windows, per-device service time, queue depth, and the I/O newcomer if one exists"
+    }
+   ]
   }
  },
  "escalation_policy": {

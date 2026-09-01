@@ -1,0 +1,1525 @@
+{
+  "rows": [
+    {
+      "run_id": "anomaly_cpu_aggressive_steady_r1",
+      "app": "sockshop",
+      "family": "anomaly_cpu",
+      "is_network": false,
+      "io_newcomer": null,
+      "io_newcomer_iops_gained": 0.0,
+      "io_newcomer_share": 0.0,
+      "total_iops_baseline": 1091.7,
+      "total_iops_incident": 931.1,
+      "total_iops_x": 0.85,
+      "worst_device_p95_x": 0.47,
+      "worst_device_p95_ms": 1.81,
+      "queue_depth_baseline": 15.65,
+      "queue_depth_incident": 10.18,
+      "queue_depth_x": 0.65
+    },
+    {
+      "run_id": "anomaly_cpu_aggressive_steady_r2",
+      "app": "sockshop",
+      "family": "anomaly_cpu",
+      "is_network": false,
+      "io_newcomer": null,
+      "io_newcomer_iops_gained": 0.0,
+      "io_newcomer_share": 0.0,
+      "total_iops_baseline": 1097.7,
+      "total_iops_incident": 952.5,
+      "total_iops_x": 0.87,
+      "worst_device_p95_x": 0.25,
+      "worst_device_p95_ms": 1.668,
+      "queue_depth_baseline": 17.4,
+      "queue_depth_incident": 11.12,
+      "queue_depth_x": 0.64
+    },
+    {
+      "run_id": "anomaly_disk_aggressive_steady_r1",
+      "app": "sockshop",
+      "family": "anomaly_disk",
+      "is_network": true,
+      "io_newcomer": "stress-ng-hdd",
+      "io_newcomer_iops_gained": 6616.3,
+      "io_newcomer_share": 0.5733,
+      "total_iops_baseline": 1142.1,
+      "total_iops_incident": 11540.8,
+      "total_iops_x": 10.1,
+      "worst_device_p95_x": 0.55,
+      "worst_device_p95_ms": 1.406,
+      "queue_depth_baseline": 17.25,
+      "queue_depth_incident": 8.74,
+      "queue_depth_x": 0.51
+    },
+    {
+      "run_id": "anomaly_disk_aggressive_steady_r2",
+      "app": "sockshop",
+      "family": "anomaly_disk",
+      "is_network": true,
+      "io_newcomer": "stress-ng-hdd",
+      "io_newcomer_iops_gained": 6598.3,
+      "io_newcomer_share": 0.5734,
+      "total_iops_baseline": 1194.4,
+      "total_iops_incident": 11507.6,
+      "total_iops_x": 9.63,
+      "worst_device_p95_x": 0.55,
+      "worst_device_p95_ms": 1.398,
+      "queue_depth_baseline": 15.45,
+      "queue_depth_incident": 8.52,
+      "queue_depth_x": 0.55
+    },
+    {
+      "run_id": "anomaly_disk_aggressive_steady_r3",
+      "app": "sockshop",
+      "family": "anomaly_disk",
+      "is_network": true,
+      "io_newcomer": "stress-ng-hdd",
+      "io_newcomer_iops_gained": 6944.3,
+      "io_newcomer_share": 0.5731,
+      "total_iops_baseline": 1201.4,
+      "total_iops_incident": 12117.1,
+      "total_iops_x": 10.09,
+      "worst_device_p95_x": 0.54,
+      "worst_device_p95_ms": 1.299,
+      "queue_depth_baseline": 15.0,
+      "queue_depth_incident": 8.48,
+      "queue_depth_x": 0.57
+    },
+    {
+      "run_id": "anomaly_mem_aggressive_steady_r1",
+      "app": "sockshop",
+      "family": "anomaly_mem",
+      "is_network": false,
+      "io_newcomer": "stress-ng-vm",
+      "io_newcomer_iops_gained": 1142.1,
+      "io_newcomer_share": 0.3041,
+      "total_iops_baseline": 1307.8,
+      "total_iops_incident": 3755.7,
+      "total_iops_x": 2.87,
+      "worst_device_p95_x": 12.55,
+      "worst_device_p95_ms": 27.796,
+      "queue_depth_baseline": 11.82,
+      "queue_depth_incident": 28.12,
+      "queue_depth_x": 2.38
+    },
+    {
+      "run_id": "anomaly_mem_aggressive_steady_r2",
+      "app": "sockshop",
+      "family": "anomaly_mem",
+      "is_network": false,
+      "io_newcomer": "stress-ng-vm",
+      "io_newcomer_iops_gained": 1169.6,
+      "io_newcomer_share": 0.3305,
+      "total_iops_baseline": 1574.6,
+      "total_iops_incident": 3538.7,
+      "total_iops_x": 2.25,
+      "worst_device_p95_x": 10.66,
+      "worst_device_p95_ms": 34.328,
+      "queue_depth_baseline": 12.21,
+      "queue_depth_incident": 23.01,
+      "queue_depth_x": 1.88
+    },
+    {
+      "run_id": "anomaly_mem_aggressive_steady_r3",
+      "app": "sockshop",
+      "family": "anomaly_mem",
+      "is_network": false,
+      "io_newcomer": "stress-ng-vm",
+      "io_newcomer_iops_gained": 1148.5,
+      "io_newcomer_share": 0.3169,
+      "total_iops_baseline": 1605.1,
+      "total_iops_incident": 3624.6,
+      "total_iops_x": 2.26,
+      "worst_device_p95_x": 14.49,
+      "worst_device_p95_ms": 28.484,
+      "queue_depth_baseline": 11.13,
+      "queue_depth_incident": 20.97,
+      "queue_depth_x": 1.88
+    },
+    {
+      "run_id": "anomaly_net_aggressive_steady_r1",
+      "app": "sockshop",
+      "family": "anomaly_net",
+      "is_network": false,
+      "io_newcomer": "gzip",
+      "io_newcomer_iops_gained": 51.7,
+      "io_newcomer_share": 0.5429,
+      "total_iops_baseline": 1516.4,
+      "total_iops_incident": 681.9,
+      "total_iops_x": 0.45,
+      "worst_device_p95_x": 2.08,
+      "worst_device_p95_ms": 5.201,
+      "queue_depth_baseline": 11.39,
+      "queue_depth_incident": 10.51,
+      "queue_depth_x": 0.92
+    },
+    {
+      "run_id": "anomaly_net_aggressive_steady_r2",
+      "app": "sockshop",
+      "family": "anomaly_net",
+      "is_network": false,
+      "io_newcomer": "gzip",
+      "io_newcomer_iops_gained": 63.7,
+      "io_newcomer_share": 0.4273,
+      "total_iops_baseline": 1356.9,
+      "total_iops_incident": 512.9,
+      "total_iops_x": 0.38,
+      "worst_device_p95_x": 1.55,
+      "worst_device_p95_ms": 7.624,
+      "queue_depth_baseline": 12.82,
+      "queue_depth_incident": 11.98,
+      "queue_depth_x": 0.93
+    },
+    {
+      "run_id": "dependency_outage_aggressive_steady_r1",
+      "app": "sockshop",
+      "family": "dependency_outage",
+      "is_network": false,
+      "io_newcomer": null,
+      "io_newcomer_iops_gained": 0.0,
+      "io_newcomer_share": 0.0,
+      "total_iops_baseline": 1111.0,
+      "total_iops_incident": 885.4,
+      "total_iops_x": 0.8,
+      "worst_device_p95_x": 1.09,
+      "worst_device_p95_ms": 3.474,
+      "queue_depth_baseline": 18.89,
+      "queue_depth_incident": 20.26,
+      "queue_depth_x": 1.07
+    },
+    {
+      "run_id": "dependency_outage_aggressive_steady_r2",
+      "app": "sockshop",
+      "family": "dependency_outage",
+      "is_network": false,
+      "io_newcomer": null,
+      "io_newcomer_iops_gained": 0.0,
+      "io_newcomer_share": 0.0,
+      "total_iops_baseline": 1097.8,
+      "total_iops_incident": 894.6,
+      "total_iops_x": 0.81,
+      "worst_device_p95_x": 0.75,
+      "worst_device_p95_ms": 3.208,
+      "queue_depth_baseline": 18.49,
+      "queue_depth_incident": 19.91,
+      "queue_depth_x": 1.08
+    },
+    {
+      "run_id": "error_storm_aggressive_burst_r1",
+      "app": "sockshop",
+      "family": "error_storm",
+      "is_network": false,
+      "io_newcomer": "lttng-consumerd",
+      "io_newcomer_iops_gained": 68.1,
+      "io_newcomer_share": 0.899,
+      "total_iops_baseline": 1007.0,
+      "total_iops_incident": 1062.7,
+      "total_iops_x": 1.06,
+      "worst_device_p95_x": 0.72,
+      "worst_device_p95_ms": 2.932,
+      "queue_depth_baseline": 17.77,
+      "queue_depth_incident": 16.64,
+      "queue_depth_x": 0.94
+    },
+    {
+      "run_id": "error_storm_aggressive_burst_r2",
+      "app": "sockshop",
+      "family": "error_storm",
+      "is_network": false,
+      "io_newcomer": "lttng-consumerd",
+      "io_newcomer_iops_gained": 53.6,
+      "io_newcomer_share": 0.8883,
+      "total_iops_baseline": 998.5,
+      "total_iops_incident": 1057.3,
+      "total_iops_x": 1.06,
+      "worst_device_p95_x": 1.3,
+      "worst_device_p95_ms": 3.826,
+      "queue_depth_baseline": 17.01,
+      "queue_depth_incident": 15.91,
+      "queue_depth_x": 0.94
+    },
+    {
+      "run_id": "noisy_neighbor_aggressive_steady_r1",
+      "app": "sockshop",
+      "family": "noisy_neighbor",
+      "is_network": false,
+      "io_newcomer": "lttng-consumerd",
+      "io_newcomer_iops_gained": 71.3,
+      "io_newcomer_share": 0.9454,
+      "total_iops_baseline": 1124.8,
+      "total_iops_incident": 1143.6,
+      "total_iops_x": 1.02,
+      "worst_device_p95_x": 0.4,
+      "worst_device_p95_ms": 1.955,
+      "queue_depth_baseline": 17.66,
+      "queue_depth_incident": 13.81,
+      "queue_depth_x": 0.78
+    },
+    {
+      "run_id": "noisy_neighbor_aggressive_steady_r2",
+      "app": "sockshop",
+      "family": "noisy_neighbor",
+      "is_network": false,
+      "io_newcomer": "lttng-consumerd",
+      "io_newcomer_iops_gained": 77.1,
+      "io_newcomer_share": 0.9335,
+      "total_iops_baseline": 1104.0,
+      "total_iops_incident": 1158.8,
+      "total_iops_x": 1.05,
+      "worst_device_p95_x": 0.64,
+      "worst_device_p95_ms": 2.58,
+      "queue_depth_baseline": 19.02,
+      "queue_depth_incident": 15.74,
+      "queue_depth_x": 0.83
+    },
+    {
+      "run_id": "normal_none_burst_r1",
+      "app": "sockshop",
+      "family": "normal",
+      "is_network": false,
+      "io_newcomer": "lttng-consumerd",
+      "io_newcomer_iops_gained": 35.9,
+      "io_newcomer_share": 0.9168,
+      "total_iops_baseline": 1261.8,
+      "total_iops_incident": 1296.3,
+      "total_iops_x": 1.03,
+      "worst_device_p95_x": 1.1,
+      "worst_device_p95_ms": 3.556,
+      "queue_depth_baseline": 19.24,
+      "queue_depth_incident": 19.08,
+      "queue_depth_x": 0.99
+    },
+    {
+      "run_id": "normal_none_burst_r2",
+      "app": "sockshop",
+      "family": "normal",
+      "is_network": false,
+      "io_newcomer": "lttng-consumerd",
+      "io_newcomer_iops_gained": 86.4,
+      "io_newcomer_share": 0.9192,
+      "total_iops_baseline": 1266.8,
+      "total_iops_incident": 1347.7,
+      "total_iops_x": 1.06,
+      "worst_device_p95_x": 0.87,
+      "worst_device_p95_ms": 3.35,
+      "queue_depth_baseline": 19.52,
+      "queue_depth_incident": 19.44,
+      "queue_depth_x": 1.0
+    },
+    {
+      "run_id": "queue_backlog_aggressive_steady_r1",
+      "app": "sockshop",
+      "family": "queue_backlog",
+      "is_network": false,
+      "io_newcomer": "lttng-consumerd",
+      "io_newcomer_iops_gained": 127.3,
+      "io_newcomer_share": 0.9324,
+      "total_iops_baseline": 1099.0,
+      "total_iops_incident": 1210.8,
+      "total_iops_x": 1.1,
+      "worst_device_p95_x": 0.79,
+      "worst_device_p95_ms": 3.037,
+      "queue_depth_baseline": 19.02,
+      "queue_depth_incident": 18.07,
+      "queue_depth_x": 0.95
+    },
+    {
+      "run_id": "queue_backlog_aggressive_steady_r2",
+      "app": "sockshop",
+      "family": "queue_backlog",
+      "is_network": false,
+      "io_newcomer": "lttng-consumerd",
+      "io_newcomer_iops_gained": 117.6,
+      "io_newcomer_share": 0.9318,
+      "total_iops_baseline": 1099.2,
+      "total_iops_incident": 1209.5,
+      "total_iops_x": 1.1,
+      "worst_device_p95_x": 1.02,
+      "worst_device_p95_ms": 4.061,
+      "queue_depth_baseline": 21.48,
+      "queue_depth_incident": 19.71,
+      "queue_depth_x": 0.92
+    },
+    {
+      "run_id": "slow_db_aggressive_burst_r1",
+      "app": "sockshop",
+      "family": "slow_db",
+      "is_network": false,
+      "io_newcomer": null,
+      "io_newcomer_iops_gained": 0.0,
+      "io_newcomer_share": 0.0,
+      "total_iops_baseline": 993.5,
+      "total_iops_incident": 1008.8,
+      "total_iops_x": 1.02,
+      "worst_device_p95_x": 1.02,
+      "worst_device_p95_ms": 2.949,
+      "queue_depth_baseline": 16.46,
+      "queue_depth_incident": 17.06,
+      "queue_depth_x": 1.04
+    },
+    {
+      "run_id": "slow_db_aggressive_burst_r2",
+      "app": "sockshop",
+      "family": "slow_db",
+      "is_network": false,
+      "io_newcomer": null,
+      "io_newcomer_iops_gained": 0.0,
+      "io_newcomer_share": 0.0,
+      "total_iops_baseline": 1006.1,
+      "total_iops_incident": 899.2,
+      "total_iops_x": 0.89,
+      "worst_device_p95_x": 0.65,
+      "worst_device_p95_ms": 2.907,
+      "queue_depth_baseline": 18.82,
+      "queue_depth_incident": 18.53,
+      "queue_depth_x": 0.98
+    },
+    {
+      "run_id": "slow_db_aggressive_steady_r1",
+      "app": "sockshop",
+      "family": "slow_db",
+      "is_network": false,
+      "io_newcomer": null,
+      "io_newcomer_iops_gained": 0.0,
+      "io_newcomer_share": 0.0,
+      "total_iops_baseline": 1073.7,
+      "total_iops_incident": 518.1,
+      "total_iops_x": 0.48,
+      "worst_device_p95_x": 1.09,
+      "worst_device_p95_ms": 3.206,
+      "queue_depth_baseline": 19.2,
+      "queue_depth_incident": 22.39,
+      "queue_depth_x": 1.17
+    },
+    {
+      "run_id": "svc_cpu_cap_aggressive_steady_r1",
+      "app": "sockshop",
+      "family": "svc_cpu_cap",
+      "is_network": false,
+      "io_newcomer": null,
+      "io_newcomer_iops_gained": 0.0,
+      "io_newcomer_share": 0.0,
+      "total_iops_baseline": 1093.9,
+      "total_iops_incident": 275.8,
+      "total_iops_x": 0.25,
+      "worst_device_p95_x": 1.17,
+      "worst_device_p95_ms": 3.698,
+      "queue_depth_baseline": 15.63,
+      "queue_depth_incident": 22.91,
+      "queue_depth_x": 1.47
+    },
+    {
+      "run_id": "svc_cpu_cap_aggressive_steady_r2",
+      "app": "sockshop",
+      "family": "svc_cpu_cap",
+      "is_network": false,
+      "io_newcomer": null,
+      "io_newcomer_iops_gained": 0.0,
+      "io_newcomer_share": 0.0,
+      "total_iops_baseline": 1090.6,
+      "total_iops_incident": 304.0,
+      "total_iops_x": 0.28,
+      "worst_device_p95_x": 2.74,
+      "worst_device_p95_ms": 7.589,
+      "queue_depth_baseline": 16.66,
+      "queue_depth_incident": 25.15,
+      "queue_depth_x": 1.51
+    },
+    {
+      "run_id": "svc_mem_cap_aggressive_steady_r1",
+      "app": "sockshop",
+      "family": "svc_mem_cap",
+      "is_network": false,
+      "io_newcomer": "lttng-consumerd",
+      "io_newcomer_iops_gained": 250.3,
+      "io_newcomer_share": 0.5933,
+      "total_iops_baseline": 1690.8,
+      "total_iops_incident": 2258.4,
+      "total_iops_x": 1.34,
+      "worst_device_p95_x": 1.42,
+      "worst_device_p95_ms": 2.638,
+      "queue_depth_baseline": 10.79,
+      "queue_depth_incident": 11.05,
+      "queue_depth_x": 1.02
+    },
+    {
+      "run_id": "svc_mem_cap_aggressive_steady_r2",
+      "app": "sockshop",
+      "family": "svc_mem_cap",
+      "is_network": false,
+      "io_newcomer": "java",
+      "io_newcomer_iops_gained": 281.8,
+      "io_newcomer_share": 0.1691,
+      "total_iops_baseline": 1270.5,
+      "total_iops_incident": 1881.4,
+      "total_iops_x": 1.48,
+      "worst_device_p95_x": 2.34,
+      "worst_device_p95_ms": 4.35,
+      "queue_depth_baseline": 11.01,
+      "queue_depth_incident": 11.54,
+      "queue_depth_x": 1.05
+    },
+    {
+      "run_id": "svc_net_aggressive_steady_r1",
+      "app": "sockshop",
+      "family": "svc_net",
+      "is_network": false,
+      "io_newcomer": null,
+      "io_newcomer_iops_gained": 0.0,
+      "io_newcomer_share": 0.0,
+      "total_iops_baseline": 1196.4,
+      "total_iops_incident": 558.3,
+      "total_iops_x": 0.47,
+      "worst_device_p95_x": 6.21,
+      "worst_device_p95_ms": 14.503,
+      "queue_depth_baseline": 13.52,
+      "queue_depth_incident": 20.99,
+      "queue_depth_x": 1.55
+    },
+    {
+      "run_id": "svc_net_aggressive_steady_r2",
+      "app": "sockshop",
+      "family": "svc_net",
+      "is_network": false,
+      "io_newcomer": "gzip",
+      "io_newcomer_iops_gained": 112.5,
+      "io_newcomer_share": 0.2525,
+      "total_iops_baseline": 1227.2,
+      "total_iops_incident": 635.0,
+      "total_iops_x": 0.52,
+      "worst_device_p95_x": 1.99,
+      "worst_device_p95_ms": 5.296,
+      "queue_depth_baseline": 16.05,
+      "queue_depth_incident": 17.31,
+      "queue_depth_x": 1.08
+    },
+    {
+      "run_id": "tt_anomaly_cpu_aggressive_steady_r1",
+      "app": "trainticket",
+      "family": "anomaly_cpu",
+      "is_network": false,
+      "io_newcomer": null,
+      "io_newcomer_iops_gained": 0.0,
+      "io_newcomer_share": 0.0,
+      "total_iops_baseline": 2494.4,
+      "total_iops_incident": 1506.8,
+      "total_iops_x": 0.6,
+      "worst_device_p95_x": 0.61,
+      "worst_device_p95_ms": 52.798,
+      "queue_depth_baseline": 37.66,
+      "queue_depth_incident": 31.91,
+      "queue_depth_x": 0.85
+    },
+    {
+      "run_id": "tt_anomaly_cpu_aggressive_steady_r2",
+      "app": "trainticket",
+      "family": "anomaly_cpu",
+      "is_network": false,
+      "io_newcomer": null,
+      "io_newcomer_iops_gained": 0.0,
+      "io_newcomer_share": 0.0,
+      "total_iops_baseline": 2447.2,
+      "total_iops_incident": 1449.2,
+      "total_iops_x": 0.59,
+      "worst_device_p95_x": 0.44,
+      "worst_device_p95_ms": 5.906,
+      "queue_depth_baseline": 40.36,
+      "queue_depth_incident": 28.72,
+      "queue_depth_x": 0.71
+    },
+    {
+      "run_id": "tt_anomaly_disk_aggressive_steady_r1",
+      "app": "trainticket",
+      "family": "anomaly_disk",
+      "is_network": true,
+      "io_newcomer": "stress-ng-hdd",
+      "io_newcomer_iops_gained": 4852.3,
+      "io_newcomer_share": 0.5335,
+      "total_iops_baseline": 2266.7,
+      "total_iops_incident": 9095.4,
+      "total_iops_x": 4.01,
+      "worst_device_p95_x": 1.12,
+      "worst_device_p95_ms": 11.622,
+      "queue_depth_baseline": 33.17,
+      "queue_depth_incident": 21.7,
+      "queue_depth_x": 0.65
+    },
+    {
+      "run_id": "tt_anomaly_disk_aggressive_steady_r2",
+      "app": "trainticket",
+      "family": "anomaly_disk",
+      "is_network": true,
+      "io_newcomer": "stress-ng-hdd",
+      "io_newcomer_iops_gained": 4724.4,
+      "io_newcomer_share": 0.5124,
+      "total_iops_baseline": 2182.7,
+      "total_iops_incident": 9219.7,
+      "total_iops_x": 4.22,
+      "worst_device_p95_x": 1.0,
+      "worst_device_p95_ms": 12.543,
+      "queue_depth_baseline": 37.69,
+      "queue_depth_incident": 23.63,
+      "queue_depth_x": 0.63
+    },
+    {
+      "run_id": "tt_anomaly_disk_aggressive_steady_r3",
+      "app": "trainticket",
+      "family": "anomaly_disk",
+      "is_network": true,
+      "io_newcomer": "stress-ng-hdd",
+      "io_newcomer_iops_gained": 4776.0,
+      "io_newcomer_share": 0.5073,
+      "total_iops_baseline": 2177.4,
+      "total_iops_incident": 9413.9,
+      "total_iops_x": 4.32,
+      "worst_device_p95_x": 1.05,
+      "worst_device_p95_ms": 12.558,
+      "queue_depth_baseline": 38.73,
+      "queue_depth_incident": 23.64,
+      "queue_depth_x": 0.61
+    },
+    {
+      "run_id": "tt_anomaly_mem_aggressive_steady_r1",
+      "app": "trainticket",
+      "family": "anomaly_mem",
+      "is_network": false,
+      "io_newcomer": "java",
+      "io_newcomer_iops_gained": 90.5,
+      "io_newcomer_share": 0.0417,
+      "total_iops_baseline": 2119.1,
+      "total_iops_incident": 2171.1,
+      "total_iops_x": 1.02,
+      "worst_device_p95_x": 0.76,
+      "worst_device_p95_ms": 8.94,
+      "queue_depth_baseline": 37.11,
+      "queue_depth_incident": 30.98,
+      "queue_depth_x": 0.83
+    },
+    {
+      "run_id": "tt_anomaly_mem_aggressive_steady_r2",
+      "app": "trainticket",
+      "family": "anomaly_mem",
+      "is_network": false,
+      "io_newcomer": "java",
+      "io_newcomer_iops_gained": 51.8,
+      "io_newcomer_share": 0.0245,
+      "total_iops_baseline": 2024.6,
+      "total_iops_incident": 2111.4,
+      "total_iops_x": 1.04,
+      "worst_device_p95_x": 1.07,
+      "worst_device_p95_ms": 10.49,
+      "queue_depth_baseline": 37.03,
+      "queue_depth_incident": 31.44,
+      "queue_depth_x": 0.85
+    },
+    {
+      "run_id": "tt_anomaly_mem_aggressive_steady_r3",
+      "app": "trainticket",
+      "family": "anomaly_mem",
+      "is_network": false,
+      "io_newcomer": "java",
+      "io_newcomer_iops_gained": 182.1,
+      "io_newcomer_share": 0.0799,
+      "total_iops_baseline": 2037.2,
+      "total_iops_incident": 2279.1,
+      "total_iops_x": 1.12,
+      "worst_device_p95_x": 0.98,
+      "worst_device_p95_ms": 9.519,
+      "queue_depth_baseline": 38.64,
+      "queue_depth_incident": 32.37,
+      "queue_depth_x": 0.84
+    },
+    {
+      "run_id": "tt_anomaly_net_aggressive_steady_r1",
+      "app": "trainticket",
+      "family": "anomaly_net",
+      "is_network": false,
+      "io_newcomer": null,
+      "io_newcomer_iops_gained": 0.0,
+      "io_newcomer_share": 0.0,
+      "total_iops_baseline": 2053.6,
+      "total_iops_incident": 2003.6,
+      "total_iops_x": 0.98,
+      "worst_device_p95_x": 0.88,
+      "worst_device_p95_ms": 9.671,
+      "queue_depth_baseline": 35.8,
+      "queue_depth_incident": 34.83,
+      "queue_depth_x": 0.97
+    },
+    {
+      "run_id": "tt_anomaly_net_aggressive_steady_r2",
+      "app": "trainticket",
+      "family": "anomaly_net",
+      "is_network": false,
+      "io_newcomer": "lttng-consumerd",
+      "io_newcomer_iops_gained": 57.1,
+      "io_newcomer_share": 0.9496,
+      "total_iops_baseline": 1941.1,
+      "total_iops_incident": 2002.9,
+      "total_iops_x": 1.03,
+      "worst_device_p95_x": 0.93,
+      "worst_device_p95_ms": 9.921,
+      "queue_depth_baseline": 33.99,
+      "queue_depth_incident": 35.27,
+      "queue_depth_x": 1.04
+    },
+    {
+      "run_id": "tt_dependency_outage_aggressive_steady_r1",
+      "app": "trainticket",
+      "family": "dependency_outage",
+      "is_network": false,
+      "io_newcomer": null,
+      "io_newcomer_iops_gained": 0.0,
+      "io_newcomer_share": 0.0,
+      "total_iops_baseline": 2491.1,
+      "total_iops_incident": 1456.3,
+      "total_iops_x": 0.58,
+      "worst_device_p95_x": 0.63,
+      "worst_device_p95_ms": 48.665,
+      "queue_depth_baseline": 33.25,
+      "queue_depth_incident": 36.48,
+      "queue_depth_x": 1.1
+    },
+    {
+      "run_id": "tt_dependency_outage_aggressive_steady_r2",
+      "app": "trainticket",
+      "family": "dependency_outage",
+      "is_network": false,
+      "io_newcomer": null,
+      "io_newcomer_iops_gained": 0.0,
+      "io_newcomer_share": 0.0,
+      "total_iops_baseline": 2492.1,
+      "total_iops_incident": 1407.8,
+      "total_iops_x": 0.56,
+      "worst_device_p95_x": 0.44,
+      "worst_device_p95_ms": 5.738,
+      "queue_depth_baseline": 37.34,
+      "queue_depth_incident": 35.43,
+      "queue_depth_x": 0.95
+    },
+    {
+      "run_id": "tt_error_storm_aggressive_burst_r1",
+      "app": "trainticket",
+      "family": "error_storm",
+      "is_network": false,
+      "io_newcomer": null,
+      "io_newcomer_iops_gained": 0.0,
+      "io_newcomer_share": 0.0,
+      "total_iops_baseline": 2013.7,
+      "total_iops_incident": 1369.7,
+      "total_iops_x": 0.68,
+      "worst_device_p95_x": 0.55,
+      "worst_device_p95_ms": 5.731,
+      "queue_depth_baseline": 37.61,
+      "queue_depth_incident": 37.19,
+      "queue_depth_x": 0.99
+    },
+    {
+      "run_id": "tt_error_storm_aggressive_burst_r2",
+      "app": "trainticket",
+      "family": "error_storm",
+      "is_network": false,
+      "io_newcomer": null,
+      "io_newcomer_iops_gained": 0.0,
+      "io_newcomer_share": 0.0,
+      "total_iops_baseline": 1587.2,
+      "total_iops_incident": 1361.7,
+      "total_iops_x": 0.86,
+      "worst_device_p95_x": 0.89,
+      "worst_device_p95_ms": 1.476,
+      "queue_depth_baseline": 36.22,
+      "queue_depth_incident": 37.89,
+      "queue_depth_x": 1.05
+    },
+    {
+      "run_id": "tt_noisy_neighbor_aggressive_steady_r1",
+      "app": "trainticket",
+      "family": "noisy_neighbor",
+      "is_network": false,
+      "io_newcomer": null,
+      "io_newcomer_iops_gained": 0.0,
+      "io_newcomer_share": 0.0,
+      "total_iops_baseline": 2365.1,
+      "total_iops_incident": 2084.1,
+      "total_iops_x": 0.88,
+      "worst_device_p95_x": 0.8,
+      "worst_device_p95_ms": 9.701,
+      "queue_depth_baseline": 35.83,
+      "queue_depth_incident": 32.61,
+      "queue_depth_x": 0.91
+    },
+    {
+      "run_id": "tt_noisy_neighbor_aggressive_steady_r2",
+      "app": "trainticket",
+      "family": "noisy_neighbor",
+      "is_network": false,
+      "io_newcomer": null,
+      "io_newcomer_iops_gained": 0.0,
+      "io_newcomer_share": 0.0,
+      "total_iops_baseline": 2432.7,
+      "total_iops_incident": 2117.8,
+      "total_iops_x": 0.87,
+      "worst_device_p95_x": 0.93,
+      "worst_device_p95_ms": 10.774,
+      "queue_depth_baseline": 37.83,
+      "queue_depth_incident": 35.41,
+      "queue_depth_x": 0.94
+    },
+    {
+      "run_id": "tt_normal_none_burst_r1",
+      "app": "trainticket",
+      "family": "normal",
+      "is_network": false,
+      "io_newcomer": null,
+      "io_newcomer_iops_gained": 0.0,
+      "io_newcomer_share": 0.0,
+      "total_iops_baseline": 2333.6,
+      "total_iops_incident": 2327.0,
+      "total_iops_x": 1.0,
+      "worst_device_p95_x": 1.03,
+      "worst_device_p95_ms": 21.457,
+      "queue_depth_baseline": 27.44,
+      "queue_depth_incident": 27.05,
+      "queue_depth_x": 0.99
+    },
+    {
+      "run_id": "tt_normal_none_burst_r2",
+      "app": "trainticket",
+      "family": "normal",
+      "is_network": false,
+      "io_newcomer": "lttng-consumerd",
+      "io_newcomer_iops_gained": 20.3,
+      "io_newcomer_share": 0.9658,
+      "total_iops_baseline": 1360.4,
+      "total_iops_incident": 1400.6,
+      "total_iops_x": 1.03,
+      "worst_device_p95_x": 1.04,
+      "worst_device_p95_ms": 6.638,
+      "queue_depth_baseline": 39.3,
+      "queue_depth_incident": 39.65,
+      "queue_depth_x": 1.01
+    },
+    {
+      "run_id": "tt_normal_none_burst_r3",
+      "app": "trainticket",
+      "family": "normal",
+      "is_network": false,
+      "io_newcomer": "lttng-consumerd",
+      "io_newcomer_iops_gained": 47.3,
+      "io_newcomer_share": 0.9246,
+      "total_iops_baseline": 2068.7,
+      "total_iops_incident": 2150.7,
+      "total_iops_x": 1.04,
+      "worst_device_p95_x": 1.01,
+      "worst_device_p95_ms": 9.835,
+      "queue_depth_baseline": 36.52,
+      "queue_depth_incident": 37.36,
+      "queue_depth_x": 1.02
+    },
+    {
+      "run_id": "tt_slow_db_aggressive_burst_r1",
+      "app": "trainticket",
+      "family": "slow_db",
+      "is_network": false,
+      "io_newcomer": null,
+      "io_newcomer_iops_gained": 0.0,
+      "io_newcomer_share": 0.0,
+      "total_iops_baseline": 1427.0,
+      "total_iops_incident": 1398.5,
+      "total_iops_x": 0.98,
+      "worst_device_p95_x": 1.11,
+      "worst_device_p95_ms": 1.797,
+      "queue_depth_baseline": 35.67,
+      "queue_depth_incident": 38.09,
+      "queue_depth_x": 1.07
+    },
+    {
+      "run_id": "tt_slow_db_aggressive_burst_r2",
+      "app": "trainticket",
+      "family": "slow_db",
+      "is_network": false,
+      "io_newcomer": null,
+      "io_newcomer_iops_gained": 0.0,
+      "io_newcomer_share": 0.0,
+      "total_iops_baseline": 1973.0,
+      "total_iops_incident": 1441.6,
+      "total_iops_x": 0.73,
+      "worst_device_p95_x": 0.59,
+      "worst_device_p95_ms": 6.688,
+      "queue_depth_baseline": 37.96,
+      "queue_depth_incident": 40.69,
+      "queue_depth_x": 1.07
+    },
+    {
+      "run_id": "tt_slow_db_aggressive_steady_r1",
+      "app": "trainticket",
+      "family": "slow_db",
+      "is_network": false,
+      "io_newcomer": null,
+      "io_newcomer_iops_gained": 0.0,
+      "io_newcomer_share": 0.0,
+      "total_iops_baseline": 2143.1,
+      "total_iops_incident": 1389.0,
+      "total_iops_x": 0.65,
+      "worst_device_p95_x": 0.51,
+      "worst_device_p95_ms": 5.722,
+      "queue_depth_baseline": 40.66,
+      "queue_depth_incident": 41.16,
+      "queue_depth_x": 1.01
+    },
+    {
+      "run_id": "tt_svc_cpu_cap_aggressive_steady_r1",
+      "app": "trainticket",
+      "family": "svc_cpu_cap",
+      "is_network": false,
+      "io_newcomer": null,
+      "io_newcomer_iops_gained": 0.0,
+      "io_newcomer_share": 0.0,
+      "total_iops_baseline": 2754.9,
+      "total_iops_incident": 2696.9,
+      "total_iops_x": 0.98,
+      "worst_device_p95_x": 0.97,
+      "worst_device_p95_ms": 14.507,
+      "queue_depth_baseline": 39.44,
+      "queue_depth_incident": 37.06,
+      "queue_depth_x": 0.94
+    },
+    {
+      "run_id": "tt_svc_cpu_cap_aggressive_steady_r2",
+      "app": "trainticket",
+      "family": "svc_cpu_cap",
+      "is_network": false,
+      "io_newcomer": null,
+      "io_newcomer_iops_gained": 0.0,
+      "io_newcomer_share": 0.0,
+      "total_iops_baseline": 2692.3,
+      "total_iops_incident": 2640.3,
+      "total_iops_x": 0.98,
+      "worst_device_p95_x": 0.99,
+      "worst_device_p95_ms": 13.502,
+      "queue_depth_baseline": 36.54,
+      "queue_depth_incident": 36.05,
+      "queue_depth_x": 0.99
+    },
+    {
+      "run_id": "tt_svc_mem_cap_aggressive_steady_r1",
+      "app": "trainticket",
+      "family": "svc_mem_cap",
+      "is_network": false,
+      "io_newcomer": "dockerd",
+      "io_newcomer_iops_gained": 24.0,
+      "io_newcomer_share": 0.0181,
+      "total_iops_baseline": 2526.7,
+      "total_iops_incident": 2081.6,
+      "total_iops_x": 0.82,
+      "worst_device_p95_x": 0.69,
+      "worst_device_p95_ms": 9.325,
+      "queue_depth_baseline": 36.39,
+      "queue_depth_incident": 35.67,
+      "queue_depth_x": 0.98
+    },
+    {
+      "run_id": "tt_svc_mem_cap_aggressive_steady_r2",
+      "app": "trainticket",
+      "family": "svc_mem_cap",
+      "is_network": false,
+      "io_newcomer": null,
+      "io_newcomer_iops_gained": 0.0,
+      "io_newcomer_share": 0.0,
+      "total_iops_baseline": 2491.1,
+      "total_iops_incident": 1894.4,
+      "total_iops_x": 0.76,
+      "worst_device_p95_x": 0.56,
+      "worst_device_p95_ms": 7.81,
+      "queue_depth_baseline": 35.46,
+      "queue_depth_incident": 35.22,
+      "queue_depth_x": 0.99
+    },
+    {
+      "run_id": "tt_svc_net_aggressive_steady_r1",
+      "app": "trainticket",
+      "family": "svc_net",
+      "is_network": false,
+      "io_newcomer": null,
+      "io_newcomer_iops_gained": 0.0,
+      "io_newcomer_share": 0.0,
+      "total_iops_baseline": 2207.1,
+      "total_iops_incident": 1917.0,
+      "total_iops_x": 0.87,
+      "worst_device_p95_x": 0.71,
+      "worst_device_p95_ms": 7.866,
+      "queue_depth_baseline": 34.3,
+      "queue_depth_incident": 32.64,
+      "queue_depth_x": 0.95
+    },
+    {
+      "run_id": "tt_svc_net_aggressive_steady_r2",
+      "app": "trainticket",
+      "family": "svc_net",
+      "is_network": false,
+      "io_newcomer": null,
+      "io_newcomer_iops_gained": 0.0,
+      "io_newcomer_share": 0.0,
+      "total_iops_baseline": 2266.9,
+      "total_iops_incident": 1974.1,
+      "total_iops_x": 0.87,
+      "worst_device_p95_x": 0.57,
+      "worst_device_p95_ms": 7.408,
+      "queue_depth_baseline": 35.53,
+      "queue_depth_incident": 31.69,
+      "queue_depth_x": 0.89
+    }
+  ],
+  "summary": [
+    {
+      "app": "sockshop",
+      "family": "anomaly_cpu",
+      "ranges": {
+        "io_newcomer_iops_gained": [
+          0.0,
+          0.0
+        ],
+        "worst_device_p95_x": [
+          0.25,
+          0.47
+        ],
+        "total_iops_x": [
+          0.85,
+          0.87
+        ],
+        "queue_depth_x": [
+          0.64,
+          0.65
+        ]
+      }
+    },
+    {
+      "app": "sockshop",
+      "family": "anomaly_disk",
+      "ranges": {
+        "io_newcomer_iops_gained": [
+          6598.3,
+          6944.3
+        ],
+        "worst_device_p95_x": [
+          0.54,
+          0.55
+        ],
+        "total_iops_x": [
+          9.63,
+          10.1
+        ],
+        "queue_depth_x": [
+          0.51,
+          0.57
+        ]
+      }
+    },
+    {
+      "app": "sockshop",
+      "family": "anomaly_mem",
+      "ranges": {
+        "io_newcomer_iops_gained": [
+          1142.1,
+          1169.6
+        ],
+        "worst_device_p95_x": [
+          10.66,
+          14.49
+        ],
+        "total_iops_x": [
+          2.25,
+          2.87
+        ],
+        "queue_depth_x": [
+          1.88,
+          2.38
+        ]
+      }
+    },
+    {
+      "app": "sockshop",
+      "family": "anomaly_net",
+      "ranges": {
+        "io_newcomer_iops_gained": [
+          51.7,
+          63.7
+        ],
+        "worst_device_p95_x": [
+          1.55,
+          2.08
+        ],
+        "total_iops_x": [
+          0.38,
+          0.45
+        ],
+        "queue_depth_x": [
+          0.92,
+          0.93
+        ]
+      }
+    },
+    {
+      "app": "sockshop",
+      "family": "dependency_outage",
+      "ranges": {
+        "io_newcomer_iops_gained": [
+          0.0,
+          0.0
+        ],
+        "worst_device_p95_x": [
+          0.75,
+          1.09
+        ],
+        "total_iops_x": [
+          0.8,
+          0.81
+        ],
+        "queue_depth_x": [
+          1.07,
+          1.08
+        ]
+      }
+    },
+    {
+      "app": "sockshop",
+      "family": "error_storm",
+      "ranges": {
+        "io_newcomer_iops_gained": [
+          53.6,
+          68.1
+        ],
+        "worst_device_p95_x": [
+          0.72,
+          1.3
+        ],
+        "total_iops_x": [
+          1.06,
+          1.06
+        ],
+        "queue_depth_x": [
+          0.94,
+          0.94
+        ]
+      }
+    },
+    {
+      "app": "sockshop",
+      "family": "noisy_neighbor",
+      "ranges": {
+        "io_newcomer_iops_gained": [
+          71.3,
+          77.1
+        ],
+        "worst_device_p95_x": [
+          0.4,
+          0.64
+        ],
+        "total_iops_x": [
+          1.02,
+          1.05
+        ],
+        "queue_depth_x": [
+          0.78,
+          0.83
+        ]
+      }
+    },
+    {
+      "app": "sockshop",
+      "family": "normal",
+      "ranges": {
+        "io_newcomer_iops_gained": [
+          35.9,
+          86.4
+        ],
+        "worst_device_p95_x": [
+          0.87,
+          1.1
+        ],
+        "total_iops_x": [
+          1.03,
+          1.06
+        ],
+        "queue_depth_x": [
+          0.99,
+          1.0
+        ]
+      }
+    },
+    {
+      "app": "sockshop",
+      "family": "queue_backlog",
+      "ranges": {
+        "io_newcomer_iops_gained": [
+          117.6,
+          127.3
+        ],
+        "worst_device_p95_x": [
+          0.79,
+          1.02
+        ],
+        "total_iops_x": [
+          1.1,
+          1.1
+        ],
+        "queue_depth_x": [
+          0.92,
+          0.95
+        ]
+      }
+    },
+    {
+      "app": "sockshop",
+      "family": "slow_db",
+      "ranges": {
+        "io_newcomer_iops_gained": [
+          0.0,
+          0.0
+        ],
+        "worst_device_p95_x": [
+          0.65,
+          1.09
+        ],
+        "total_iops_x": [
+          0.48,
+          1.02
+        ],
+        "queue_depth_x": [
+          0.98,
+          1.17
+        ]
+      }
+    },
+    {
+      "app": "sockshop",
+      "family": "svc_cpu_cap",
+      "ranges": {
+        "io_newcomer_iops_gained": [
+          0.0,
+          0.0
+        ],
+        "worst_device_p95_x": [
+          1.17,
+          2.74
+        ],
+        "total_iops_x": [
+          0.25,
+          0.28
+        ],
+        "queue_depth_x": [
+          1.47,
+          1.51
+        ]
+      }
+    },
+    {
+      "app": "sockshop",
+      "family": "svc_mem_cap",
+      "ranges": {
+        "io_newcomer_iops_gained": [
+          250.3,
+          281.8
+        ],
+        "worst_device_p95_x": [
+          1.42,
+          2.34
+        ],
+        "total_iops_x": [
+          1.34,
+          1.48
+        ],
+        "queue_depth_x": [
+          1.02,
+          1.05
+        ]
+      }
+    },
+    {
+      "app": "sockshop",
+      "family": "svc_net",
+      "ranges": {
+        "io_newcomer_iops_gained": [
+          0.0,
+          112.5
+        ],
+        "worst_device_p95_x": [
+          1.99,
+          6.21
+        ],
+        "total_iops_x": [
+          0.47,
+          0.52
+        ],
+        "queue_depth_x": [
+          1.08,
+          1.55
+        ]
+      }
+    },
+    {
+      "app": "trainticket",
+      "family": "anomaly_cpu",
+      "ranges": {
+        "io_newcomer_iops_gained": [
+          0.0,
+          0.0
+        ],
+        "worst_device_p95_x": [
+          0.44,
+          0.61
+        ],
+        "total_iops_x": [
+          0.59,
+          0.6
+        ],
+        "queue_depth_x": [
+          0.71,
+          0.85
+        ]
+      }
+    },
+    {
+      "app": "trainticket",
+      "family": "anomaly_disk",
+      "ranges": {
+        "io_newcomer_iops_gained": [
+          4724.4,
+          4852.3
+        ],
+        "worst_device_p95_x": [
+          1.0,
+          1.12
+        ],
+        "total_iops_x": [
+          4.01,
+          4.32
+        ],
+        "queue_depth_x": [
+          0.61,
+          0.65
+        ]
+      }
+    },
+    {
+      "app": "trainticket",
+      "family": "anomaly_mem",
+      "ranges": {
+        "io_newcomer_iops_gained": [
+          51.8,
+          182.1
+        ],
+        "worst_device_p95_x": [
+          0.76,
+          1.07
+        ],
+        "total_iops_x": [
+          1.02,
+          1.12
+        ],
+        "queue_depth_x": [
+          0.83,
+          0.85
+        ]
+      }
+    },
+    {
+      "app": "trainticket",
+      "family": "anomaly_net",
+      "ranges": {
+        "io_newcomer_iops_gained": [
+          0.0,
+          57.1
+        ],
+        "worst_device_p95_x": [
+          0.88,
+          0.93
+        ],
+        "total_iops_x": [
+          0.98,
+          1.03
+        ],
+        "queue_depth_x": [
+          0.97,
+          1.04
+        ]
+      }
+    },
+    {
+      "app": "trainticket",
+      "family": "dependency_outage",
+      "ranges": {
+        "io_newcomer_iops_gained": [
+          0.0,
+          0.0
+        ],
+        "worst_device_p95_x": [
+          0.44,
+          0.63
+        ],
+        "total_iops_x": [
+          0.56,
+          0.58
+        ],
+        "queue_depth_x": [
+          0.95,
+          1.1
+        ]
+      }
+    },
+    {
+      "app": "trainticket",
+      "family": "error_storm",
+      "ranges": {
+        "io_newcomer_iops_gained": [
+          0.0,
+          0.0
+        ],
+        "worst_device_p95_x": [
+          0.55,
+          0.89
+        ],
+        "total_iops_x": [
+          0.68,
+          0.86
+        ],
+        "queue_depth_x": [
+          0.99,
+          1.05
+        ]
+      }
+    },
+    {
+      "app": "trainticket",
+      "family": "noisy_neighbor",
+      "ranges": {
+        "io_newcomer_iops_gained": [
+          0.0,
+          0.0
+        ],
+        "worst_device_p95_x": [
+          0.8,
+          0.93
+        ],
+        "total_iops_x": [
+          0.87,
+          0.88
+        ],
+        "queue_depth_x": [
+          0.91,
+          0.94
+        ]
+      }
+    },
+    {
+      "app": "trainticket",
+      "family": "normal",
+      "ranges": {
+        "io_newcomer_iops_gained": [
+          0.0,
+          47.3
+        ],
+        "worst_device_p95_x": [
+          1.01,
+          1.04
+        ],
+        "total_iops_x": [
+          1.0,
+          1.04
+        ],
+        "queue_depth_x": [
+          0.99,
+          1.02
+        ]
+      }
+    },
+    {
+      "app": "trainticket",
+      "family": "slow_db",
+      "ranges": {
+        "io_newcomer_iops_gained": [
+          0.0,
+          0.0
+        ],
+        "worst_device_p95_x": [
+          0.51,
+          1.11
+        ],
+        "total_iops_x": [
+          0.65,
+          0.98
+        ],
+        "queue_depth_x": [
+          1.01,
+          1.07
+        ]
+      }
+    },
+    {
+      "app": "trainticket",
+      "family": "svc_cpu_cap",
+      "ranges": {
+        "io_newcomer_iops_gained": [
+          0.0,
+          0.0
+        ],
+        "worst_device_p95_x": [
+          0.97,
+          0.99
+        ],
+        "total_iops_x": [
+          0.98,
+          0.98
+        ],
+        "queue_depth_x": [
+          0.94,
+          0.99
+        ]
+      }
+    },
+    {
+      "app": "trainticket",
+      "family": "svc_mem_cap",
+      "ranges": {
+        "io_newcomer_iops_gained": [
+          0.0,
+          24.0
+        ],
+        "worst_device_p95_x": [
+          0.56,
+          0.69
+        ],
+        "total_iops_x": [
+          0.76,
+          0.82
+        ],
+        "queue_depth_x": [
+          0.98,
+          0.99
+        ]
+      }
+    },
+    {
+      "app": "trainticket",
+      "family": "svc_net",
+      "ranges": {
+        "io_newcomer_iops_gained": [
+          0.0,
+          0.0
+        ],
+        "worst_device_p95_x": [
+          0.57,
+          0.71
+        ],
+        "total_iops_x": [
+          0.87,
+          0.87
+        ],
+        "queue_depth_x": [
+          0.89,
+          0.95
+        ]
+      }
+    }
+  ]
+}

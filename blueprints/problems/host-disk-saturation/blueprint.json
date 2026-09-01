@@ -1,0 +1,307 @@
+{
+  "id": "host-disk-saturation",
+  "version": 1,
+  "title": "A workload is flooding the disk",
+  "problem": {
+    "summary": "One workload issues far more disk requests than the machine normally handles, and everything else has to share the device with it. The surprise is what this does NOT look like: the requests do not get slower. The flooding workload writes large sequential blocks that complete quickly, so average service time stays flat or even improves while the number of requests goes up several-fold.",
+    "symptoms": [
+      "several services slow at once, none of them busy with useful work",
+      "disk activity on the host is far above its normal level",
+      "requests still succeed; throughput falls",
+      "per-request disk latency looks normal, which is why this is easy to miss"
+    ],
+    "discriminators": [
+      {
+        "signal": "requests per second gained by a process that was barely using the disk before, from block_rq_issue",
+        "this_problem": "one process arrives on the disk with thousands of requests per second it was not making before - measured 4724 to 6944",
+        "not_this_problem": "no process gains meaningful disk work. The largest gain in any other family is 1170 requests per second, and most are under 120",
+        "confused_with": [
+          "host-memory-pressure",
+          "service-memory-cap"
+        ],
+        "evidence": "MEASURED across 58 runs covering ALL 13 fault families on two applications. Disk flooding 6598-6944 req/s on the first application and 4724-4852 on the second. The next highest of any other family is 1142-1170 (memory pressure), then 250-282, then everything else under 128. A 4.0x gap that holds on both applications. See evidence/blockio_separation.json"
+      },
+      {
+        "signal": "total disk requests per second across the whole host",
+        "this_problem": "total I/O rises several-fold - measured 4.0x to 10.1x",
+        "not_this_problem": "total I/O is flat or falls. Every other family measured at or below 2.9x, and most below 1.1x",
+        "confused_with": [
+          "host-memory-pressure"
+        ],
+        "evidence": "MEASURED: disk flooding 9.63-10.10x on the first application and 4.01-4.32x on the second, against a 2.25-2.87x ceiling for memory pressure and 1.48x for everything else. Supporting rather than deciding - the gap is 1.4x, much thinner than the newcomer signal 4.0x. See evidence/blockio_separation.json"
+      },
+      {
+        "signal": "which process is doing the I/O, taken from block_rq_issue",
+        "this_problem": "the flooding process is named directly, because the block layer records who issued each request",
+        "not_this_problem": "n/a - this identifies the culprit once the problem is established; it does not decide whether the problem is present",
+        "confused_with": [],
+        "evidence": "MEASURED and worth stating as a capability rather than a test: block_rq_issue carries a comm field naming the issuing process. This is unlike the network events, where the process field holds whatever was on-CPU when the interrupt fired and no culprit can be named. Here the culprit comes free with the measurement."
+      }
+    ],
+    "unverified_do_not_claim": [
+      {
+        "claim": "disk saturation makes disk requests slower",
+        "status": "NOT SUPPORTED - it is measured to do the opposite",
+        "measurement": "Device p95 service time under disk flooding measured 0.54-1.12x, that is flat, and on the first application it FALLS. Meanwhile memory pressure reached 10.66-14.49x and a service network fault 1.99-6.21x. The automated overlap check reports overlap on this signal on both applications.",
+        "consequence": "never decide this problem on device latency. The flooding workload writes large sequential blocks that complete quickly and pull the distribution down. Use the arrival rate instead.",
+        "agent_note": "How long each disk request takes. Under heavy sequential writing it stays flat or improves, because those requests are efficient. It rises under memory pressure instead. Do not read it as a measure of how busy the disk is."
+      },
+      {
+        "claim": "queue depth rises when the disk is saturated",
+        "status": "NOT SUPPORTED by our data",
+        "measurement": "Requests in flight FELL under disk flooding - 0.51-0.65x of baseline - and rose under memory pressure to 1.88-2.38x.",
+        "consequence": "removed from the tests. Do not reinstate without new evidence.",
+        "agent_note": "How many disk requests are outstanding at once. It moves the opposite way to the intuition here, so it is reported but never used."
+      }
+    ]
+  },
+  "reproduction": {
+    "system": "Sock Shop or Train Ticket on Ubuntu 24.04, LTTng 2.15, Docker 27+, single GCP n2 VM",
+    "recipe": "microservice-lttng-data-collection-scripts/faults/anomaly_disk.sh",
+    "invoke": "./anomaly_disk.sh inject aggressive",
+    "teardown": "./anomaly_disk.sh cleanup",
+    "labelled_examples": [
+      "sockshop/anomaly_disk/anomaly_disk_aggressive_steady_r1",
+      "sockshop/anomaly_disk/anomaly_disk_aggressive_steady_r2",
+      "trainticket/anomaly_disk/tt_anomaly_disk_aggressive_steady_r1"
+    ],
+    "harness_only": [
+      "stress-ng --hdd in a container with a host bind mount, so writes reach the real block device and produce block-layer events. Uses fsync rather than O_DIRECT, which the overlay filesystem may reject."
+    ]
+  },
+  "collection_order": {
+    "window": {
+      "baseline_s": 60,
+      "incident_s": 120,
+      "recovery_s": 60
+    },
+    "kernel_events": [
+      "block_rq_issue",
+      "block_rq_complete"
+    ],
+    "metrics": [],
+    "logs": [],
+    "traces": [],
+    "why_these": "MEASURED BASIS. block_rq_issue carries the device, the sector, the byte count AND the process that issued the request, which is everything needed to say who arrived on the disk and how much work they brought. block_rq_complete closes each request so service time can be measured - not because it decides anything, but because it is what proves latency is NOT the signal, and that retraction is worth carrying. Nothing else in the kernel trace is required: this fault changes neither scheduling nor networking, only what reaches the block device."
+  },
+  "processing": [
+    {
+      "step": "stage the stored kernel trace for reading",
+      "run": "bash /scratch/yuvraj17/extract_l0.sh <app> <family> <run_id>",
+      "produces": "<out>/ctf",
+      "reads": [],
+      "expect": "a CTF directory the trace reader can open"
+    },
+    {
+      "step": "measure disk arrivals per process and service time per device, both windows",
+      "run": "python3 blueprints/problems/host-disk-saturation/scripts/block_io_signature.py --ctf <ctf> --gt <ground_truth> --out <out>/blockio.json",
+      "produces": "<out>/blockio.json",
+      "reads": [
+        "<out>/ctf"
+      ],
+      "expect": "requests per second per process, and the newcomer if there is one"
+    },
+    {
+      "step": "Combine into the verdict and its artifacts: the JSON verdict, the per-process I/O chart, and a plain-English explanation",
+      "run": "python3 blueprints/lib/blueprint_decide.py --pack <pack.json> --out <out>/verdict.json",
+      "produces": "<out>/verdict.json, <out>/blockio.svg, <out>/explanation.txt",
+      "reads": [
+        "<out>/blockio.json"
+      ],
+      "expect": "name the flooding process, how much I/O it brought, and what share of the device it now holds"
+    },
+    {
+      "step": "State the recommended action alongside the diagnosis",
+      "run": "python3 blueprints/lib/recommend_action.py --verdict <out>/verdict.json --blueprint host-disk-saturation --out <out>/recommended_action.txt",
+      "produces": "<out>/recommended_action.txt",
+      "reads": [
+        "<out>/verdict.json"
+      ],
+      "expect": "identify the container owning the flooding process, then throttle its I/O or move it off this device"
+    }
+  ],
+  "outputs": [
+    {
+      "kind": "json",
+      "path": "<out>/verdict.json",
+      "contains": "verdict, the flooding process, requests per second gained, its share of all disk work, total I/O change, and the device latency that deliberately did not decide it"
+    },
+    {
+      "kind": "xy_chart",
+      "path": "<out>/blockio.svg",
+      "contains": "requests per second per process, baseline against incident"
+    },
+    {
+      "kind": "text",
+      "path": "<out>/explanation.txt",
+      "contains": "which process flooded the disk and why per-request latency looks normal despite the device being overwhelmed"
+    },
+    {
+      "kind": "text",
+      "path": "<out>/recommended_action.txt",
+      "contains": "map the process to its container, then throttle its I/O or move it to another device"
+    }
+  ],
+  "decision": {
+    "verdict_when": [
+      "a process gains at least 2000 disk requests per second over its baseline",
+      "total host disk requests rise several-fold over the same window",
+      "that process was doing little or no disk work before"
+    ],
+    "rule_out": [
+      {
+        "instead": "host-memory-pressure",
+        "when": "disk arrivals rise only moderately - around a thousand requests per second - but device latency rises sharply and queue depth roughly doubles. That is reclaim and swap reaching the disk, not a workload flooding it"
+      },
+      {
+        "instead": "healthy-baseline",
+        "when": "no process gains meaningful disk work, even if some other measure looks raised"
+      },
+      {
+        "instead": "db-latency-dependency-wait",
+        "when": "disk arrivals are flat and a component is blocked in a socket call - it is waiting on the network, not on storage"
+      }
+    ],
+    "root_cause_is": "the process flooding the block device",
+    "fault_type": "anomaly_disk"
+  },
+  "evidence_from_literature": [
+    {
+      "claim": "Kernel block-layer events attribute I/O to the issuing process, which utilisation metrics cannot do - they show the device is busy but not who made it busy",
+      "source": "Gelle, Ezzati-Jivan & Dagenais, Combining Distributed and Kernel Tracing for Performance Analysis of Cloud Applications, Electronics 10(21):2610, 2021",
+      "validated_on": "our 58-run sweep, where the flooding process is named directly from block_rq_issue while device-level latency does not even indicate that a problem exists"
+    }
+  ],
+  "related_blueprints": [
+    "host-cpu-saturation",
+    "cpu-contention-co-tenant",
+    "healthy-baseline"
+  ],
+  "mutually_exclusive_with": [
+    "healthy-baseline"
+  ],
+  "taxonomy": {
+    "domain": "Performance",
+    "category": "Throughput / latency degradation",
+    "subcategory": "Storage saturation",
+    "sibling_causes": [
+      "memory pressure driving swap",
+      "a runaway log or backup job",
+      "an undersized device",
+      "a noisy co-tenant on shared storage"
+    ],
+    "note": "Covers any case where one workload takes the disk from everything else. Authored from an injected stressor, but the deciding fact - a process arriving with thousands of requests per second it was not making before - does not depend on what the process is."
+  },
+  "applicability": {
+    "apply_when": [
+      "several services slow at once with none of them busy",
+      "host disk activity is far above normal",
+      "per-request disk latency looks unremarkable"
+    ],
+    "do_not_apply_when": [
+      "disk arrivals are flat",
+      "the host is short of CPU",
+      "one component is blocked on a socket rather than on storage"
+    ],
+    "cheap_precheck": "compare total disk requests per second against the hour before: if it has not risen several-fold, this blueprint does not apply"
+  },
+  "capabilities_required": [
+    {
+      "id": "trace.stage_ctf",
+      "why": "the stored kernel trace must be readable"
+    },
+    {
+      "id": "storage.io_attribution",
+      "why": "the deciding signal: requests per second per process, and who arrived on the disk"
+    }
+  ],
+  "stopping_conditions": {
+    "conclude": "a process gained thousands of disk requests per second it was not making before, and total host I/O rose several-fold",
+    "stop_and_switch": "arrivals rise only moderately while device latency and queue depth rise sharply -> host-memory-pressure; arrivals flat and a component blocked on a socket -> the dependency-wait blueprint",
+    "stop_insufficient": "block_rq_issue was not recorded, so arrivals cannot be attributed -> request it and re-run. Do NOT fall back to device latency, which was measured to move the wrong way under this fault",
+    "max_evidence_rounds": 2
+  },
+  "adaptation_rules": [
+    {
+      "if": "a process gained heavy I/O but is a kernel thread",
+      "then": "do not name it as the culprit. Kernel threads doing I/O are usually flushing writes made by something else; look for what is dirtying the pages"
+    },
+    {
+      "if": "total I/O rose but no single process accounts for it",
+      "then": "the load is spread across processes already running. Report it as a capacity problem rather than an intruding workload, and name the largest consumers"
+    },
+    {
+      "if": "device latency rose sharply while arrivals rose only moderately",
+      "then": "prefer memory pressure. Measured: memory pressure raises latency 10.7-14.5x with about a thousand extra requests per second, whereas disk flooding brings thousands of requests and leaves latency flat"
+    }
+  ],
+  "selection": {
+    "supported_goals": [
+      "diagnose_storage_saturation",
+      "diagnose_throughput_degradation",
+      "diagnose_host_capacity"
+    ],
+    "supported_environments": [
+      "linux",
+      "container",
+      "virtual_machine",
+      "kubernetes"
+    ],
+    "applicable_symptoms": [
+      "many_services_slow_simultaneously",
+      "host_disk_busy",
+      "throughput_drop_without_errors"
+    ],
+    "preconditions": [
+      "kernel block-layer events are collectable or already collected",
+      "the workload writes to a real block device rather than tmpfs"
+    ],
+    "estimated_overhead_pct": {
+      "min": 0,
+      "max": 5
+    },
+    "historical_effectiveness": {
+      "runs_validated": 6,
+      "note": "6 labelled disk runs across two applications, separated from 52 runs of the other twelve families with a 4.0x gap on the deciding signal. Both applications agree, which only one other signal in this phase managed."
+    }
+  },
+  "policies": {
+    "collection_order_rule": "Use evidence that already exists before enabling any new collection. Escalate a tier only when the cheaper tier leaves a candidate cause unresolved, and record why.",
+    "max_collection_overhead_pct": 5,
+    "scope": {
+      "restrict_to": "the hosts and time window named in the intent",
+      "never_widen_without": "explicit approval"
+    },
+    "privacy": [
+      "do not collect request payloads",
+      "record only packet headers, never packet contents",
+      "do not retain personally identifiable data"
+    ],
+    "approval": {
+      "automatic": [
+        "query evidence that already exists",
+        "read-only analysis of collected evidence",
+        "active collection estimated below 3% overhead"
+      ],
+      "requires_approval": [
+        "active collection estimated above 3% overhead",
+        "widening the host scope or time window",
+        "any change to production configuration",
+        "any remediation action"
+      ]
+    },
+    "autonomy_level": 2,
+    "autonomy_note": "Level 2 = policy-controlled automation: select and execute low-risk plans inside the stated constraints."
+  },
+  "evidence_sufficiency": {
+    "confidence_floor": 0.7,
+    "if_below_floor": "name the unresolved question, pick the ONE additional capability that would settle it, check it against the overhead budget, and request it.",
+    "report_when_stuck": "if the floor is still not met after the allowed rounds, report the best-supported hypothesis, its confidence, and precisely what evidence is missing - never present a guess as a diagnosis"
+  },
+  "provenance": {
+    "authored_by": "measured from the block-layer sweep, 58 runs across all 13 fault families and two applications",
+    "verified_by": "PENDING",
+    "authored_utc": "2026-09-01T00:00:00Z",
+    "notes": "Built after asking what in the kernel trace was still unused. The block events were present in every trace all along and had never been read. The pre-registered expectation in fault_catalog was half right: block_rq_* IS dominated by the stressor, but the predicted waits do not appear - device latency stays flat or falls, because the flooding workload writes large sequential blocks that complete quickly. Both halves are recorded, the wrong one as a retraction. All 13 families were measured from the start rather than a subset, which is the F17 lesson."
+  }
+}

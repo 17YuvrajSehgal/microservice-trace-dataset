@@ -5,6 +5,67 @@ Protocol: `RESEARCH-PLAN-phase1-kernel.md`.
 
 ---
 
+## F18 — The disk fault separates cleanly, but on the opposite signal to the one predicted
+
+**Block-layer sweep**, job 2233638, 58 runs, **all 13 families**, both applications.
+Raw: `/scratch/yuvraj17/blockio/blockio_summary.json`.
+
+### What works: who arrived on the disk
+
+| Family | I/O newcomer, requests/s gained |
+|---|---|
+| `anomaly_disk` (Sock Shop) | **6598 – 6944** |
+| `anomaly_disk` (Train Ticket) | **4724 – 4852** |
+| `anomaly_mem` (SS) | 1142 – 1170 |
+| `svc_mem_cap` (SS) | 250 – 282 |
+| `queue_backlog` (SS) | 118 – 127 |
+| every other family, both apps | **0 – 113** |
+
+**Disk-fault floor 4724, every-other ceiling 1170 — a 4.0× gap that holds on both
+applications.** A bar at 2000 req/s fires on 2 of 2 disk families, on nothing else, with
+2.4× margin above and 1.7× below.
+
+This is only the second signal in the whole phase to separate on both apps without a
+per-application scenario. The first was packet loss.
+
+### What does NOT work: the signal the catalogue predicted
+
+`fault_catalog.md` pre-registers *"block_rq_* dominated by the stressor, DB threads in D-state
+waits"*. The first half is right. The second is not.
+
+| Family | device p95 latency change |
+|---|---|
+| `anomaly_disk` | **0.54 – 1.12×** — flat, and on Sock Shop it FALLS |
+| `anomaly_mem` (SS) | **10.66 – 14.49×** |
+| `svc_net` (SS) | 1.99 – 6.21× |
+| `svc_cpu_cap` (SS) | 1.17 – 2.74× |
+
+**The disk fault does not make disk requests slower.** It makes them far more numerous. The
+stressor's own writes are large and sequential, so they complete quickly and pull the
+distribution down rather than up.
+
+Queue depth behaves the same way — it *falls* under the disk fault (0.51–0.65×) and rises
+under memory pressure (1.88–2.38×). Both are the opposite of the intuition.
+
+The automated overlap check confirms it: on device latency the disk fault overlaps other
+families on **both** applications.
+
+### A lead for the memory fault, which we had written off
+
+`anomaly_mem` on Sock Shop shows **10.66–14.49× device latency**, 1142–1170 req/s of new I/O,
+and queue depth up 1.88–2.38×. That is memory pressure driving reclaim and swap onto the disk,
+and it is the clearest `anomaly_mem` signature found anywhere in this phase.
+
+F10 recorded that `anomaly_mem` could not be separated because our traces carry no `mm_*` or
+`kmem_*` tracepoints. That remains true — but it turns out the **block layer sees the
+consequence** even though the memory layer is untraced.
+
+It does not transfer: Train Ticket `anomaly_mem` measures 0.76–1.07× device latency and
+52–182 req/s. So it is a Sock Shop lead, not a rule — but it is a real one, and it is the
+first crack in the three remaining `anomaly_mem` wrong answers.
+
+---
+
 ## F17 — I made the mistake E1 exists to catch: I tested the network signal on 8 families, not 13
 
 **Network blueprint test**, job 2233310, 84 runs, both applications, network families scored as

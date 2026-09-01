@@ -112,7 +112,7 @@ Worth building once Tier A closes the false fires.
 - **Family:** `anomaly_mem` · SS 7 (most runs of any family), TT 3
 - Kernel-visible via reclaim and page-fault activity. Distinct mechanism from anything built.
 
-### B2. `host-disk-saturation` — the storage device is the bottleneck
+### B2. `host-disk-saturation` — the storage device is the bottleneck  ✅ BUILT 2026-09-01
 - **Family:** `anomaly_disk` · SS 3, TT 3
 - Block-layer latency; expected to look like "blocked" but on `block_rq_*`, not sockets.
   Likely another `datastore-wait` impostor — worth testing before building.
@@ -138,6 +138,27 @@ Listed so the taxonomy is complete, not scheduled now.
 ---
 
 ## Status
+
+**`host-disk-saturation` built 2026-09-01.** Sixth blueprint. Measured across 58 runs covering
+ALL 13 families on both applications from the start — the F17 lesson applied rather than
+learned again.
+
+The deciding signal is **who arrived on the disk**: a process gaining thousands of requests
+per second it was not making before. Disk flooding 4724–6944 req/s against a 1170 ceiling for
+every other family — a 4.0× gap that holds on both apps, which only packet loss had managed
+before.
+
+Two retractions carried. The catalogue predicted *"DB threads in D-state waits"*; device
+latency actually stays **flat or falls** under disk flooding (0.54–1.12×), because the
+stressor writes large sequential blocks that complete quickly. Queue depth falls too. Both are
+recorded as things not to use.
+
+Unexpected lead: device latency rises **10.7–14.5×** under *memory* pressure, with queue depth
+roughly doubling. F10 had written `anomaly_mem` off as unresolvable without `mm_*` tracepoints
+— the block layer sees the consequence even though the memory layer is untraced. Sock Shop
+only, so a lead rather than a rule, but it is the first crack in the three remaining
+`anomaly_mem` wrong answers.
+
 
 **Network blueprint built 2026-08-30 as `network-path-degradation`** — one blueprint, not the
 two planned. Breadth separates host-wide from single-service impairment on Sock Shop (7–12
