@@ -51,6 +51,12 @@ BLOCK_X = 5.0           # datastore fault measured 36.8x; its control 1.12x
 #    18.5-60.7%, slow datastore never above 7.14%, every other family at or near 0. A cut at
 #    12 sits 1.7x above the datastore ceiling and 1.5x below the network floor.
 RETRANS_VETO_PCT = 12.0
+# The same number is what makes the network blueprint FIRE, which is deliberate: "the path is
+# losing packets" is one fact, used to claim the network fault and to rule out the datastore.
+RETRANS_FIRE_PCT = 12.0
+# The incident figure only means something against a quiet baseline. MEASURED: baseline
+# retransmission was 0.00% in all 40 runs on both applications, so 2.0 is a generous ceiling.
+RETRANS_BASELINE_MAX = 2.0
 #
 # 2. THE DATASTORE MUST ACTUALLY BE SLOW. Blocking says a process is waiting; endpoint
 #    slowdown says something is answering slowly. MEASURED on the first application: slow
@@ -126,7 +132,10 @@ def _net(pack):
     return {
         "retrans_available": nl.get("worst_retrans_pct") is not None,
         "worst_retrans_pct": nl.get("worst_retrans_pct"),
+        "baseline_retrans_pct": nl.get("median_retrans_pct_baseline"),
         "n_impaired_ifaces": nl.get("n_impaired"),
+        "impaired_ifaces": nl.get("impaired_ifaces") or [],
+        "worst_drop_pct": nl.get("worst_drop_pct"),
         "endpoint_available": slowest.get("p95_x") is not None,
         "worst_endpoint_x": slowest.get("p95_x"),
         "worst_endpoint": slowest.get("endpoint"),
@@ -211,6 +220,44 @@ def _cpu_fields(cpu, rq):
             "corroboration_runqueue_median_x": rq["median"]}
 
 
+# ------------------------------------------------------------------------ network family
+def network_rule(net, rq):
+    """The path is dropping packets, which nothing else in the catalogue does.
+
+    MEASURED across 40 runs on two applications: network impairment 18.5-60.7% retransmission,
+    slow datastore never above 7.14%, every other family at or near 0, and a baseline of
+    exactly 0.00% in all 40. One host-wide run measured only 0.15% and is missed rather than
+    rescued by lowering the bar into datastore territory.
+    """
+    if not net["retrans_available"]:
+        return {"fires": False, "why": "packet-loss measurement not in the pack"}
+    worst = net["worst_retrans_pct"] or 0.0
+    base = net["baseline_retrans_pct"]
+    quiet_baseline = base is None or base <= RETRANS_BASELINE_MAX
+    fires = worst >= RETRANS_FIRE_PCT and quiet_baseline
+    return {
+        "fires": fires,
+        "worst_retrans_pct": worst,
+        "baseline_retrans_pct": base,
+        "n_impaired_ifaces": net["n_impaired_ifaces"],
+        "impaired_ifaces": net["impaired_ifaces"],
+        # SCOPE, reported and never used to decide: breadth separated host-wide from
+        # single-service impairment on one application and reversed on the other.
+        "scope": ("several interfaces" if (net["n_impaired_ifaces"] or 0) >= 4
+                  else "one or two interfaces" if (net["n_impaired_ifaces"] or 0) >= 1
+                  else "none"),
+        "corroboration_worst_drop_pct": net["worst_drop_pct"],
+        "why": (f"{net['n_impaired_ifaces']} interface(s) retransmitting up to {worst}% of "
+                f"segments against a {base}% baseline - packets are being lost on "
+                f"{net['impaired_ifaces'][:3]}"
+                if fires else
+                (f"worst retransmission {worst}% is below the {RETRANS_FIRE_PCT}% bar"
+                 if quiet_baseline else
+                 f"baseline already retransmits {base}%, so this environment is lossy in "
+                 f"general and the incident figure cannot be read against zero")),
+    }
+
+
 # ---------------------------------------------------------------------- datastore family
 def datastore_rule(cpu, rq, blk, net):
     """One socket syscall inflates hugely while the component is not short of CPU, the path
@@ -284,6 +331,7 @@ VERDICTS = {
     "service-cpu-throttle":    (None,   "svc_cpu_cap",         0.80),
     "cpu-contention-co-tenant": ("host", "noisy_neighbor",     0.80),
     "datastore-wait":          (None,   "db_latency",          0.85),
+    "network-path-degradation": (None,  "network_impairment",  0.85),
 }
 
 
@@ -296,6 +344,7 @@ def decide(pack):
         "service-cpu-throttle": cpu_throttle_rule(cpu, rq),
         "cpu-contention-co-tenant": co_tenant_rule(cpu, rq, blk),
         "datastore-wait": datastore_rule(cpu, rq, blk, net),
+        "network-path-degradation": network_rule(net, rq),
     }
     fired = [n for n, r in results.items() if r["fires"]]
 
@@ -319,6 +368,10 @@ def decide(pack):
             svc = None
         elif name == "datastore-wait":
             svc = comm_to_component(results[name]["blocked_process"], app)
+        elif name == "network-path-degradation":
+            # the impaired interface is known; which container owns it is not resolvable
+            # from the kernel trace alone, so no service is named
+            svc = None
         verdict.update(selected=name, root_cause_service=svc, fault_type=ftype,
                        confidence=conf, evidence=results[name]["why"])
     elif not fired and cpu["available"]:

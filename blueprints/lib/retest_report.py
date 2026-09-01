@@ -19,6 +19,10 @@ TARGET_OF = {
     "anomaly_cpu": "host-cpu-saturation",
     "svc_cpu_cap": "service-cpu-throttle",
     "slow_db": "datastore-wait",
+    # both network families map to ONE blueprint on purpose: breadth separates host-wide from
+    # single-service impairment on one application and reverses on the other (finding F15).
+    "anomaly_net": "network-path-degradation",
+    "svc_net": "network-path-degradation",
 }
 
 
@@ -70,6 +74,9 @@ def main():
             "loser_cores": cc.get("biggest_loser_cores"),
             "runqueue_max_x": cc.get("corroboration_runqueue_max_x"),
             "blocking_x": v.get("datastore_wait", {}).get("blocking_x"),
+            "worst_retrans_pct": v.get("network_path_degradation", {}).get("worst_retrans_pct"),
+            "n_impaired_ifaces": v.get("network_path_degradation", {}).get("n_impaired_ifaces"),
+            "worst_endpoint_x": v.get("datastore_wait", {}).get("worst_endpoint_x"),
         })
 
     if not rows:
