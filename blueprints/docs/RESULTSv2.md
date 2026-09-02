@@ -186,7 +186,10 @@ That needs request traces or logs — exactly what `fault_catalog.md` predicted 
 
 ## Honest limits
 
-- **One test run each.** Numbers can move ±9 points on a repeat. Repeats are owed.
+- **Small numbers per fault.** Each fault type has 2-7 runs, so one run moves a score a
+  lot. The rules themselves are deterministic - the same trace always gives the same
+  answer - so there is no run-to-run noise to average out. What we do not know is whether
+  a *different* machine or workload would land the same way.
 - **Only two apps**, both ours, both on one machine.
 - **Kernel traces only.** Logs, metrics and request traces come later.
 - **Two tests do not transfer** to the booking app: the database one and the CPU-cap one.
@@ -197,7 +200,8 @@ That needs request traces or logs — exactly what `fault_catalog.md` predicted 
 
 ## What is worth doing next
 
-1. **Repeat runs.** Every number here is a single run. We do not know the noise yet.
+1. **The with/without test.** We have never measured whether a blueprint actually beats
+   not having one. That is the number the supervisor asked for and it is still missing.
 2. **Add logs or request traces.** That unlocks the hung service, the error storm and the
    memory faults — most of what we cannot do today.
 3. **Make the booking app work.** 11 of 14 "don't knows" are there.
