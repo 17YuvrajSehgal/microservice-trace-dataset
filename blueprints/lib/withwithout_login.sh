@@ -48,7 +48,10 @@ echo "model: ${RCA_PROVIDER:-?}/${RCA_MODEL:-?}   blueprints: $(ls "$SKILLS"/*.m
 
 chunk () {   # chunk <arm> <tag> <app> <family> <skill args...>
   local arm="$1" tag="$2" app="$3" fam="$4"; shift 4
-  local dir="$OUT/${arm}_${tag}" out="$dir/${fam}.json"
+  # two statements on purpose: bash expands ALL words of a `local` before assigning any, so
+  # `local dir=... out="$dir/..."` reads dir while it is still unset (fatal under `set -u`).
+  local dir="$OUT/${arm}_${tag}"
+  local out="$dir/${fam}.json"
   mkdir -p "$dir"
   if [ -s "$out" ]; then echo "skip ${arm}_${tag} $fam"; return 0; fi
   echo "run  ${arm}_${tag} $fam $(date +%T)"
