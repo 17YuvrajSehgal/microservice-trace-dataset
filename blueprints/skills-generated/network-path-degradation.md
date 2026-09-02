@@ -3,7 +3,7 @@ name: network-path-degradation
 version: 3
 authored_by: measured from the packet-loss sweep, 40 labelled runs across 8 families and two applications
 generated_from: blueprints/network-path-degradation.json
-covers: anomaly_net                       # harness metadata: scoring + LOFO; NEVER shown to the model
+covers: anomaly_net
 mutually_exclusive_with: healthy-baseline
 ---
 ## When this applies
@@ -44,7 +44,7 @@ Each step names the capability it needs. The command shown is the binding resolv
    run: `bash /scratch/yuvraj17/extract_l0.sh <app> <family> <run_id>`
    expect: a CTF directory the trace reader can open
 2. count retransmissions and queue drops per interface, baseline window against incident window
-   run: `python3 blueprints/problems/network-path-degradation/scripts/net_loss_signature.py --ctf <ctf> --gt <ground_truth> --out <out>/netloss.json`
+   run: `python3 blueprints/problems/network-path-degradation/scripts/net_loss_signature.py --ctf <ctf> --gt <window> --out <out>/netloss.json`
    expect: per-interface retransmission and drop rates, and the list of impaired interfaces
 3. Combine into the verdict and its artifacts: the JSON verdict, the per-interface chart, and a plain-English explanation
    run: `python3 blueprints/lib/blueprint_decide.py --pack <pack.json> --out <out>/verdict.json`

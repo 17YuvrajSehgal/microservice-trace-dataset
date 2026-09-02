@@ -94,7 +94,7 @@
     },
     {
       "step": "measure disk arrivals per process and service time per device, both windows",
-      "run": "python3 blueprints/problems/host-disk-saturation/scripts/block_io_signature.py --ctf <ctf> --gt <ground_truth> --out <out>/blockio.json",
+      "run": "python3 blueprints/problems/host-disk-saturation/scripts/block_io_signature.py --ctf <ctf> --gt <window> --out <out>/blockio.json",
       "produces": "<out>/blockio.json",
       "reads": [
         "<out>/ctf"

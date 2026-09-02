@@ -91,7 +91,7 @@
     },
     {
       "step": "attribute on-CPU time per process, baseline window against incident window",
-      "run": "python3 blueprints/problems/cpu-contention-co-tenant/scripts/oncpu_share.py --ctf <ctf> --gt <ground_truth> --out <out>/oncpu.json",
+      "run": "python3 blueprints/problems/cpu-contention-co-tenant/scripts/oncpu_share.py --ctf <ctf> --gt <window> --out <out>/oncpu.json",
       "produces": "<out>/oncpu.json",
       "reads": [
         "<out>/ctf"
@@ -100,7 +100,7 @@
     },
     {
       "step": "measure runqueue delay as corroboration only",
-      "run": "python3 blueprints/problems/cpu-contention-co-tenant/scripts/runqueue_delay.py --ctf <ctf> --gt <ground_truth> --out <out>/rq.json",
+      "run": "python3 blueprints/problems/cpu-contention-co-tenant/scripts/runqueue_delay.py --ctf <ctf> --gt <window> --out <out>/rq.json",
       "produces": "<out>/rq.json",
       "reads": [
         "<out>/ctf"

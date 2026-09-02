@@ -3,7 +3,7 @@ name: cpu-contention-co-tenant
 version: 8
 authored_by: human
 generated_from: blueprints/cpu-contention-co-tenant.json
-covers: noisy_neighbor                       # harness metadata: scoring + LOFO; NEVER shown to the model
+covers: noisy_neighbor
 mutually_exclusive_with: db-latency-dependency-wait, healthy-baseline, host-cpu-saturation, service-cpu-throttle
 ---
 ## When this applies
@@ -49,15 +49,15 @@ Each step names the capability it needs. The command shown is the binding resolv
    run [local]: `cp -r <run_dir>/kernel/kernel <tmp>/ctf && gunzip -f <tmp>/ctf/*.gz`
    expect: a CTF directory with metadata and channel streams
 2. attribute on-CPU time per process, baseline window against incident window
-   run: `python3 blueprints/problems/cpu-contention-co-tenant/scripts/oncpu_share.py --ctf <ctf> --gt <ground_truth> --out <out>/oncpu.json`
+   run: `python3 blueprints/problems/cpu-contention-co-tenant/scripts/oncpu_share.py --ctf <ctf> --gt <window> --out <out>/oncpu.json`
    expect: host utilisation raised but below the ceiling, and one newcomer holding 1-2 cores
 3. Measure runqueue delay per process, baseline vs incident
    needs: `kernel.scheduler.runqueue_delay`
-   run [babeltrace2-cli]: `python3 blueprints/problems/cpu-contention-co-tenant/scripts/runqueue_delay.py --ctf <ctf> --gt <ground_truth> --out <out>/rq.json`
+   run [babeltrace2-cli]: `python3 blueprints/problems/cpu-contention-co-tenant/scripts/runqueue_delay.py --ctf <ctf> --gt <window> --out <out>/rq.json`
    expect: a broad multi-process inflation of p95 indicates contention
 4. NEGATIVE CONTROL: confirm blocking-syscall durations did not inflate
    needs: `kernel.syscall.blocking_duration`
-   run [babeltrace2-cli]: `python3 blueprints/problems/db-latency-dependency-wait/scripts/blocking_syscall.py --ctf <ctf> --gt <ground_truth> --comms <comms> --out <out>/blocking.json`
+   run [babeltrace2-cli]: `python3 blueprints/problems/db-latency-dependency-wait/scripts/blocking_syscall.py --ctf <ctf> --gt <window> --comms <comms> --out <out>/blocking.json`
    expect: no syscall inflates much; a large single-component inflation means this is the wrong blueprint
 5. Identify the off-call-path CPU consumer and emit the verdict
    needs: `metrics.container.cpu_attribution`

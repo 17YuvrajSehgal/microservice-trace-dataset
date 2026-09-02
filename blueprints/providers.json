@@ -28,7 +28,7 @@
      "id": "babeltrace2-cli",
      "status": "implemented",
      "available_when": "babeltrace2 >= 2.1 on PATH and a CTF trace directory",
-     "run": "python3 blueprints/problems/cpu-contention-co-tenant/scripts/runqueue_delay.py --ctf <ctf> --gt <ground_truth> --out <out>/rq.json",
+     "run": "python3 blueprints/problems/cpu-contention-co-tenant/scripts/runqueue_delay.py --ctf <ctf> --gt <window> --out <out>/rq.json",
      "notes": "Our traces carry CTF 2 metadata (JSON preamble). babeltrace 2.0.x rejects it; use the 2.1 wrapper so its lib directory precedes the system one.",
      "tier": "high_fidelity_active",
      "platform": [
@@ -92,7 +92,7 @@
      "id": "babeltrace2-cli",
      "status": "implemented",
      "available_when": "babeltrace2 >= 2.1 on PATH and a CTF trace directory",
-     "run": "python3 blueprints/problems/db-latency-dependency-wait/scripts/blocking_syscall.py --ctf <ctf> --gt <ground_truth> --comms <comms> --out <out>/blocking.json",
+     "run": "python3 blueprints/problems/db-latency-dependency-wait/scripts/blocking_syscall.py --ctf <ctf> --gt <window> --comms <comms> --out <out>/blocking.json",
      "tier": "high_fidelity_active",
      "platform": [
       "linux"
@@ -211,7 +211,7 @@
      "id": "babeltrace2-cli",
      "status": "implemented",
      "available_when": "babeltrace2 >= 2.1 on PATH and a CTF trace directory",
-     "run": "python3 blueprints/problems/cpu-contention-co-tenant/scripts/oncpu_share.py --ctf <ctf> --gt <ground_truth> --out <out>/oncpu.json",
+     "run": "python3 blueprints/problems/cpu-contention-co-tenant/scripts/oncpu_share.py --ctf <ctf> --gt <window> --out <out>/oncpu.json",
      "notes": "One tracepoint is enough. Validated by recovering the injected cgroup cap of the noisy-neighbour recipe to within 1% (1.0 -> measured 0.988-0.997; 2.0 -> measured 1.978-2.002).",
      "tier": "high_fidelity_active",
      "platform": [
@@ -257,7 +257,7 @@
      "id": "babeltrace2-cli",
      "status": "implemented",
      "available_when": "babeltrace2 >= 2.1 on PATH and a CTF trace directory",
-     "run": "python3 blueprints/problems/network-path-degradation/scripts/net_loss_signature.py --ctf <ctf> --gt <ground_truth> --out <out>/netloss.json",
+     "run": "python3 blueprints/problems/network-path-degradation/scripts/net_loss_signature.py --ctf <ctf> --gt <window> --out <out>/netloss.json",
      "notes": "Two traps, both measured. The same packet fires the event on more than one interface (veth then bridge), so buffers must be de-duplicated by skbaddr or every run reports about 50%. And the interface field must not be matched inside `procname`.",
      "tier": "high_fidelity_active",
      "platform": [
@@ -286,7 +286,7 @@
      "id": "babeltrace2-cli",
      "status": "implemented",
      "available_when": "babeltrace2 >= 2.1 on PATH and a CTF trace directory",
-     "run": "python3 blueprints/problems/network-path-degradation/scripts/net_loss_signature.py --ctf <ctf> --gt <ground_truth> --out <out>/netloss.json",
+     "run": "python3 blueprints/problems/network-path-degradation/scripts/net_loss_signature.py --ctf <ctf> --gt <window> --out <out>/netloss.json",
      "notes": "Both events carry skbaddr, so a queued buffer with no matching transmit was dropped. Rates are small (0.06-0.29% on impaired runs) because the trace samples the loss, so this corroborates rather than decides.",
      "tier": "high_fidelity_active",
      "platform": [
@@ -315,7 +315,7 @@
      "id": "babeltrace2-cli",
      "status": "implemented",
      "available_when": "babeltrace2 >= 2.1 on PATH and a CTF trace directory",
-     "run": "python3 blueprints/problems/host-disk-saturation/scripts/block_io_signature.py --ctf <ctf> --gt <ground_truth> --out <out>/blockio.json",
+     "run": "python3 blueprints/problems/host-disk-saturation/scripts/block_io_signature.py --ctf <ctf> --gt <window> --out <out>/blockio.json",
      "notes": "block_rq_issue names the issuing process directly, so the culprit comes free. Requests are matched to completions by device and sector. Service time is produced but must NOT be used to decide - measured to stay flat or fall under disk flooding.",
      "tier": "high_fidelity_active",
      "platform": [

@@ -3,7 +3,7 @@ name: host-cpu-saturation
 version: 3
 authored_by: measured from the CPU-cluster sweep, 17 labelled runs across four families
 generated_from: blueprints/host-cpu-saturation.json
-covers: anomaly_cpu                       # harness metadata: scoring + LOFO; NEVER shown to the model
+covers: anomaly_cpu
 mutually_exclusive_with: cpu-contention-co-tenant, service-cpu-throttle, healthy-baseline
 ---
 ## When this applies
@@ -43,10 +43,10 @@ Each step names the capability it needs. The command shown is the binding resolv
    run: `bash /scratch/yuvraj17/extract_l0.sh <app> the host-saturation family <run_id>`
    expect: a CTF directory the trace reader can open
 2. attribute on-CPU time per process, baseline window against incident window
-   run: `python3 blueprints/problems/cpu-contention-co-tenant/scripts/oncpu_share.py --ctf <ctf> --gt <ground_truth> --out <out>/oncpu.json`
+   run: `python3 blueprints/problems/cpu-contention-co-tenant/scripts/oncpu_share.py --ctf <ctf> --gt <window> --out <out>/oncpu.json`
    expect: host_utilisation per window, and cores gained or lost per process
 3. measure runqueue delay as corroboration only
-   run: `python3 blueprints/problems/cpu-contention-co-tenant/scripts/runqueue_delay.py --ctf <ctf> --gt <ground_truth> --out <out>/rq.json`
+   run: `python3 blueprints/problems/cpu-contention-co-tenant/scripts/runqueue_delay.py --ctf <ctf> --gt <window> --out <out>/rq.json`
    expect: per-process p95 runqueue delay, baseline against incident
 4. Combine into the verdict and its artifacts: the JSON verdict, the CPU breakdown chart, and a plain-English explanation
    run: `python3 blueprints/lib/blueprint_decide.py --pack <pack.json> --out <out>/verdict.json`

@@ -5,7 +5,7 @@
   "problem": {
     "summary": "Several services slow down and their slow call paths all end at the same downstream component. That component is not busy and is not short of CPU - it is blocked inside a single socket-waiting syscall for far longer than usual. Because it emits no request traces of its own, the call graph can only point at its nearest traced caller, so the traces accuse a victim and only the kernel identifies the real culprit.",
     "symptoms": [
-      "caller latency inflates sharply, often by orders of magnitude",
+      "caller latency inflates sharply, often by 10x or more",
       "the slow call edges all converge on one shared downstream component",
       "that component is resource-quiet: CPU flat or falling, no disk or memory pressure",
       "requests still succeed, so error rates barely move"
@@ -96,7 +96,7 @@
     "traces": [
       "caller to callee edge latency, baseline versus incident, so convergence can be seen"
     ],
-    "why_these": "MEASURED BASIS. The verdict rests on how long the component blocks inside its socket-waiting syscall, so entry AND exit of those calls are required - entry alone gives no duration. The two scheduler events are needed for the negative control: showing runqueue delay is FLAT is what rules out CPU starvation. This is strictly more than the CPU-contention blueprint needs, and that difference is the point: the two problems genuinely require different collection orders."
+    "why_these": "MEASURED BASIS. The verdict rests on how long the component blocks inside its socket-waiting syscall, so entry AND exit of those calls are required - entry alone gives no duration. The two scheduler events are needed for the negative control: showing runqueue delay is FLAT is what rules out CPU starvation. This is strictly more than the CPU-contention blueprint needs, and that difference is the point: the two problems genuinely require different collection sequences."
   },
   "processing": [
     {

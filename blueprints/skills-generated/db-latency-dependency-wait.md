@@ -3,7 +3,7 @@ name: db-latency-dependency-wait
 version: 5
 authored_by: human
 generated_from: blueprints/db-latency-dependency-wait.json
-covers: slow_db                       # harness metadata: scoring + LOFO; NEVER shown to the model
+covers: slow_db
 mutually_exclusive_with: cpu-contention-co-tenant
 ---
 ## When this applies
@@ -19,7 +19,7 @@ Do NOT use this blueprint when:
 Cheapest check first: one component has slow incoming edges and no slow outgoing edges
 
 ## Problem signature
-- caller latency inflates sharply, often by orders of magnitude
+- caller latency inflates sharply, often by 10x or more
 - the slow call edges all converge on one shared downstream component
 - that component is resource-quiet: CPU flat or falling, no disk or memory pressure
 - requests still succeed, so error rates barely move
@@ -37,7 +37,7 @@ The signals below are sufficient for this problem; you do not need everything.
 - traces: caller to callee edge latency, baseline versus incident, so convergence can be seen
 - logs: error-rate change per container, to confirm calls succeed rather than fail
 
-Why this set: MEASURED BASIS. The verdict rests on how long the component blocks inside its socket-waiting syscall, so entry AND exit of those calls are required - entry alone gives no duration. The two scheduler events are needed for the negative control: showing runqueue delay is FLAT is what rules out CPU starvation. This is strictly more than the CPU-contention blueprint needs, and that difference is the point: the two problems genuinely require different collection orders.
+Why this set: MEASURED BASIS. The verdict rests on how long the component blocks inside its socket-waiting syscall, so entry AND exit of those calls are required - entry alone gives no duration. The two scheduler events are needed for the negative control: showing runqueue delay is FLAT is what rules out CPU starvation. This is strictly more than the CPU-contention blueprint needs, and that difference is the point: the two problems genuinely require different collection sequences.
 
 ## Investigation blueprint
 Each step names the capability it needs. The command shown is the binding resolved for THIS environment; another environment may bind a different tool to the same capability without changing the procedure.
@@ -52,11 +52,11 @@ Each step names the capability it needs. The command shown is the binding resolv
    expect: one component with slow incoming and no slow outgoing edges; it may be the CALLER of the culprit if the culprit emits no spans
 3. Measure how long the suspect blocks inside each syscall
    needs: `kernel.syscall.blocking_duration`
-   run [babeltrace2-cli]: `python3 blueprints/problems/db-latency-dependency-wait/scripts/blocking_syscall.py --ctf <ctf> --gt <ground_truth> --comms <comms> --out <out>/blocking.json`
+   run [babeltrace2-cli]: `python3 blueprints/problems/db-latency-dependency-wait/scripts/blocking_syscall.py --ctf <ctf> --gt <window> --comms <comms> --out <out>/blocking.json`
    expect: one socket-waiting syscall inflated by roughly an order of magnitude
 4. NEGATIVE CONTROL: confirm the suspect is not merely CPU-starved
    needs: `kernel.scheduler.runqueue_delay`
-   run [babeltrace2-cli]: `python3 blueprints/problems/cpu-contention-co-tenant/scripts/runqueue_delay.py --ctf <ctf> --gt <ground_truth> --out <out>/rq.json`
+   run [babeltrace2-cli]: `python3 blueprints/problems/cpu-contention-co-tenant/scripts/runqueue_delay.py --ctf <ctf> --gt <window> --out <out>/rq.json`
    expect: runqueue delay flat; if it inflates broadly this is the CPU-contention blueprint instead
 5. Combine into the verdict and its artifacts
    needs: `verdict.dependency_wait`

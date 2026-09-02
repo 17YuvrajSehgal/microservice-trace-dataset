@@ -3,7 +3,7 @@ name: service-cpu-throttle
 version: 3
 authored_by: measured from the CPU-cluster sweep, 17 labelled runs across four families
 generated_from: blueprints/service-cpu-throttle.json
-covers: svc_cpu_cap                       # harness metadata: scoring + LOFO; NEVER shown to the model
+covers: svc_cpu_cap
 mutually_exclusive_with: cpu-contention-co-tenant, host-cpu-saturation, healthy-baseline
 ---
 ## When this applies
@@ -44,10 +44,10 @@ Each step names the capability it needs. The command shown is the binding resolv
    run: `bash /scratch/yuvraj17/extract_l0.sh <app> the cgroup-cap family <run_id>`
    expect: a CTF directory the trace reader can open
 2. attribute on-CPU time per process, baseline window against incident window
-   run: `python3 blueprints/problems/cpu-contention-co-tenant/scripts/oncpu_share.py --ctf <ctf> --gt <ground_truth> --out <out>/oncpu.json`
+   run: `python3 blueprints/problems/cpu-contention-co-tenant/scripts/oncpu_share.py --ctf <ctf> --gt <window> --out <out>/oncpu.json`
    expect: host_utilisation falling between windows, no newcomer, broad per-process losses
 3. measure runqueue delay as corroboration only
-   run: `python3 blueprints/problems/cpu-contention-co-tenant/scripts/runqueue_delay.py --ctf <ctf> --gt <ground_truth> --out <out>/rq.json`
+   run: `python3 blueprints/problems/cpu-contention-co-tenant/scripts/runqueue_delay.py --ctf <ctf> --gt <window> --out <out>/rq.json`
    expect: per-process p95 runqueue delay raised while utilisation falls
 4. Combine into the verdict and its artifacts: the JSON verdict, the CPU breakdown chart, and a plain-English explanation
    run: `python3 blueprints/lib/blueprint_decide.py --pack <pack.json> --out <out>/verdict.json`

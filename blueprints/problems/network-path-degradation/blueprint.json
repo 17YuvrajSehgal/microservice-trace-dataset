@@ -113,7 +113,7 @@
     },
     {
       "step": "count retransmissions and queue drops per interface, baseline window against incident window",
-      "run": "python3 blueprints/problems/network-path-degradation/scripts/net_loss_signature.py --ctf <ctf> --gt <ground_truth> --out <out>/netloss.json",
+      "run": "python3 blueprints/problems/network-path-degradation/scripts/net_loss_signature.py --ctf <ctf> --gt <window> --out <out>/netloss.json",
       "produces": "<out>/netloss.json",
       "reads": [
         "<out>/ctf"

@@ -131,9 +131,26 @@ def validate(bp: dict, path: str) -> list:
     return errs
 
 
+def _harness_leak_re():
+    """The evaluation harness lints every skill it loads and REFUSES a dirty library. Keeping a
+    second, private word list here was the bug: this file passed a skill the harness then
+    rejected, and the whole with/without job died at load time. Borrow the harness list so the
+    generator can never emit something the consumer will refuse."""
+    try:
+        sys.path.insert(0, os.path.join(ROOT, "agentic-rca"))
+        import skillreg                                                    # noqa: PLC0415
+        return skillreg._FORBIDDEN_RE
+    except Exception:                                                      # noqa: BLE001
+        return None                                    # harness absent — local list still applies
+
+
 def leak_scan(text: str) -> list:
     low = text.lower()
-    return sorted({t for t in LEAK_TOKENS if t.lower() in low})
+    hits = {t for t in LEAK_TOKENS if t.lower() in low}
+    rx = _harness_leak_re()
+    if rx:
+        hits |= {m.group(0).lower() for m in rx.finditer(text)}
+    return sorted(hits)
 
 
 def to_skill(bp: dict) -> str:
@@ -289,8 +306,11 @@ def to_skill(bp: dict) -> str:
         f"version: {bp['version']}",
         f"authored_by: {bp['provenance']['authored_by']}",
         f"generated_from: blueprints/{bp['id']}.json",
-        f"covers: {d.get('fault_type', '')}"
-        "                       # harness metadata: scoring + LOFO; NEVER shown to the model",
+        # No trailing comment here. skillreg parses frontmatter as split(":", 1) and keeps the
+        # whole remainder, so an inline note becomes PART OF the value — `covers` then never
+        # equals the ground-truth family and every selection scores wrong. (It is harness
+        # metadata for scoring and LOFO, stripped before the model sees anything.)
+        f"covers: {d.get('fault_type', '')}",
     ]
     if bp.get("mutually_exclusive_with"):
         fm.append(f"mutually_exclusive_with: {', '.join(bp['mutually_exclusive_with'])}")

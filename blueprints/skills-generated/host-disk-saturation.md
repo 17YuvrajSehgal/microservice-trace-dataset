@@ -3,7 +3,7 @@ name: host-disk-saturation
 version: 2
 authored_by: measured from the block-layer sweep, 58 runs across all 13 fault families and two applications
 generated_from: blueprints/host-disk-saturation.json
-covers: anomaly_disk                       # harness metadata: scoring + LOFO; NEVER shown to the model
+covers: anomaly_disk
 mutually_exclusive_with: healthy-baseline
 ---
 ## When this applies
@@ -43,7 +43,7 @@ Each step names the capability it needs. The command shown is the binding resolv
    run: `bash /scratch/yuvraj17/extract_l0.sh <app> <family> <run_id>`
    expect: a CTF directory the trace reader can open
 2. measure disk arrivals per process and service time per device, both windows
-   run: `python3 blueprints/problems/host-disk-saturation/scripts/block_io_signature.py --ctf <ctf> --gt <ground_truth> --out <out>/blockio.json`
+   run: `python3 blueprints/problems/host-disk-saturation/scripts/block_io_signature.py --ctf <ctf> --gt <window> --out <out>/blockio.json`
    expect: requests per second per process, and the newcomer if there is one
 3. Combine into the verdict and its artifacts: the JSON verdict, the per-process I/O chart, and a plain-English explanation
    run: `python3 blueprints/lib/blueprint_decide.py --pack <pack.json> --out <out>/verdict.json`
