@@ -80,3 +80,43 @@ separate a fault, and the without-arm has no particular reason to abstain, so a 
 
 First draft of that report was written against guessed field names and would have scored
 every run zero — caught by reading `evaluate.py` before the arms finished, not after.
+
+## The run itself: Slurm was the wrong place, and we already knew
+
+First launch was an sbatch. Every completed incident came back **"Request timed out."**, 0
+tool calls, no diagnosis — 29 zeros on Train Ticket before we killed it.
+
+Cause was measured months ago and written down in `agentic-rca/RESULTS-agent-sanitygate.md`:
+
+> Compute nodes have no internet (verified: curl to the Azure endpoint times out, no proxy)
+> — so agent runs cannot be Slurm batch jobs.
+
+The sbatch was wrong the moment it was written. What made it worse: the two `with` arms died
+early on the skill lint, so the only thing left running was the arm that *looked* like it was
+working. A file of 29 zeros scores as "the model got everything wrong", which is a believable
+number. Deleted rather than kept.
+
+**Lesson for this repo, not a general one:** before running anything that calls the model,
+check whether it is on a node that can reach the model. The constraint is in
+RESULTS-agent-sanitygate.md and it is easy to walk past.
+
+Now on the login node, following the v4 campaign pattern that is known to work there:
+
+- one fresh python **per family** — the login-node watchdog kills long cumulative processes
+  (one incident is fine, 23 back-to-back got killed)
+- skip-if-exists, so it resumes instead of restarting
+- four streams (arm x app) at once; ~7 GB each against 755 GB is free
+- `--per-family 3`, so up to 36 Sock Shop + 21 Train Ticket incidents per arm
+
+Smoke-tested one incident on the login node first (correct, real diagnosis) before spending
+the rest.
+
+Two more small bugs on the way, both caught by running rather than reading:
+
+- `local dir=... out="$dir/..."` — bash expands every word of a `local` before assigning any,
+  so `dir` was unset. Fatal under `set -u`; all four streams died in under a second.
+- the first scorer was written against guessed field names and would have scored every run
+  zero. Caught by reading `evaluate.py` while the arms were still running.
+
+Three of the four failures so far would have produced a plausible wrong number rather than an
+obvious crash. That is the pattern worth remembering from today.
