@@ -1,6 +1,6 @@
 {
   "id": "service-cpu-throttle",
-  "version": 2,
+  "version": 3,
   "title": "A service is capped by its cgroup CPU quota",
   "problem": {
     "summary": "One service has a CPU quota lower than the work it is being asked to do. Its threads are repeatedly made runnable and then held off the CPU by the scheduler until the quota refills. The distinctive consequence is counter-intuitive: because callers stall waiting on the throttled service, the WHOLE system does less work, so host CPU usage falls even though threads are waiting longer than ever.",
@@ -337,7 +337,7 @@
     "authored_by": "measured from the CPU-cluster sweep, 17 labelled runs across four families",
     "verified_by": "PENDING",
     "authored_utc": "2026-08-29T17:00:00Z",
-    "notes": "Written together with host-cpu-saturation and the revised cpu-contention-co-tenant, because none of the three is separable on its own. Directly answers findings F1 and F2, where both subtle-intensity runs of this family were confidently misdiagnosed as co-tenant contention. Every threshold comes from evidence/cpu_cluster_separation.json. Known gaps: Sock Shop only, and the throttled service is not identified. v2 (2026-08-29): added measured scenarios from the two-application re-test. The same fault produces different signatures on a short call chain and on a wide fan-out system; both are recorded rather than averaged into one threshold, because the point of a blueprint is to tell someone what to expect and where to look, not to be one tuned number."
+    "notes": "Written together with host-cpu-saturation and the revised cpu-contention-co-tenant, because none of the three is separable on its own. Directly answers findings F1 and F2, where both subtle-intensity runs of this family were confidently misdiagnosed as co-tenant contention. Every threshold comes from evidence/cpu_cluster_separation.json. Known gaps: Sock Shop only, and the throttled service is not identified. v2 (2026-08-29): added measured scenarios from the two-application re-test. The same fault produces different signatures on a short call chain and on a wide fan-out system; both are recorded rather than averaged into one threshold, because the point of a blueprint is to tell someone what to expect and where to look, not to be one tuned number. v3: fault_type set to the ground-truth FAMILY name (svc_cpu_cap). This field becomes `covers:` in the generated skill, which the harness matches against the family, and the diagnosis scorer falls back to identity for unknown labels - so a family name satisfies both, while the agent's own fault vocabulary satisfies only the second."
   },
   "scenarios": {
     "note": "SCENARIOS record how this problem looks on different system shapes. They are measured, not assumed, and both pictures matter: a blueprint carrying only one application's numbers would mislead anyone running the other kind of system.",

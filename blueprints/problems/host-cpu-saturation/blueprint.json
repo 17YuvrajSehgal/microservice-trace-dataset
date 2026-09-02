@@ -1,6 +1,6 @@
 {
   "id": "host-cpu-saturation",
-  "version": 2,
+  "version": 3,
   "title": "The host has run out of CPU",
   "problem": {
     "summary": "A workload consumes so much CPU that the host has no headroom left. Every service on the box slows at once, because every ready thread queues behind work that will not yield. Unlike co-tenant contention this is not a matter of sharing: there is nothing left to share, and latency collapses rather than jitters.",
@@ -170,7 +170,7 @@
       }
     ],
     "root_cause_is": "the workload that consumed the host's remaining CPU capacity",
-    "fault_type": "host_cpu_saturation"
+    "fault_type": "anomaly_cpu"
   },
   "evidence_from_literature": [
     {
@@ -311,7 +311,7 @@
     "authored_by": "measured from the CPU-cluster sweep, 17 labelled runs across four families",
     "verified_by": "PENDING",
     "authored_utc": "2026-08-29T17:00:00Z",
-    "notes": "Written together with service-cpu-throttle and the revised cpu-contention-co-tenant, because none of the three is separable on its own. Every threshold here comes from evidence/cpu_cluster_separation.json; none was chosen. Known gap: all runs are Sock Shop on a 12-CPU host with a stable ~0.48 baseline, so the absolute utilisation cuts are not yet shown to transfer. v2 (2026-08-29): added measured scenarios from the two-application re-test. The same fault produces different signatures on a short call chain and on a wide fan-out system; both are recorded rather than averaged into one threshold, because the point of a blueprint is to tell someone what to expect and where to look, not to be one tuned number."
+    "notes": "Written together with service-cpu-throttle and the revised cpu-contention-co-tenant, because none of the three is separable on its own. Every threshold here comes from evidence/cpu_cluster_separation.json; none was chosen. Known gap: all runs are Sock Shop on a 12-CPU host with a stable ~0.48 baseline, so the absolute utilisation cuts are not yet shown to transfer. v2 (2026-08-29): added measured scenarios from the two-application re-test. The same fault produces different signatures on a short call chain and on a wide fan-out system; both are recorded rather than averaged into one threshold, because the point of a blueprint is to tell someone what to expect and where to look, not to be one tuned number. v3: fault_type set to the ground-truth FAMILY name (anomaly_cpu). This field becomes `covers:` in the generated skill, which the harness matches against the family, and the diagnosis scorer falls back to identity for unknown labels - so a family name satisfies both, while the agent's own fault vocabulary satisfies only the second."
   },
   "scenarios": {
     "note": "SCENARIOS record how this problem looks on different system shapes. They are measured, not assumed, and both pictures matter: a blueprint carrying only one application's numbers would mislead anyone running the other kind of system.",

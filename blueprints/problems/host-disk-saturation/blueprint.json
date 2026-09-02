@@ -1,6 +1,6 @@
 {
   "id": "host-disk-saturation",
-  "version": 1,
+  "version": 2,
   "title": "A workload is flooding the disk",
   "problem": {
     "summary": "One workload issues far more disk requests than the machine normally handles, and everything else has to share the device with it. The surprise is what this does NOT look like: the requests do not get slower. The flooding workload writes large sequential blocks that complete quickly, so average service time stays flat or even improves while the number of requests goes up several-fold.",
@@ -302,6 +302,6 @@
     "authored_by": "measured from the block-layer sweep, 58 runs across all 13 fault families and two applications",
     "verified_by": "PENDING",
     "authored_utc": "2026-09-01T00:00:00Z",
-    "notes": "Built after asking what in the kernel trace was still unused. The block events were present in every trace all along and had never been read. The pre-registered expectation in fault_catalog was half right: block_rq_* IS dominated by the stressor, but the predicted waits do not appear - device latency stays flat or falls, because the flooding workload writes large sequential blocks that complete quickly. Both halves are recorded, the wrong one as a retraction. All 13 families were measured from the start rather than a subset, which is the F17 lesson."
+    "notes": "Built after asking what in the kernel trace was still unused. The block events were present in every trace all along and had never been read. The pre-registered expectation in fault_catalog was half right: block_rq_* IS dominated by the stressor, but the predicted waits do not appear - device latency stays flat or falls, because the flooding workload writes large sequential blocks that complete quickly. Both halves are recorded, the wrong one as a retraction. All 13 families were measured from the start rather than a subset, which is the F17 lesson. v2: fault_type set to the ground-truth FAMILY name (anomaly_disk). This field becomes `covers:` in the generated skill, which the harness matches against the family, and the diagnosis scorer falls back to identity for unknown labels - so a family name satisfies both, while the agent's own fault vocabulary satisfies only the second."
   }
 }

@@ -341,13 +341,18 @@ def comm_to_component(comm, app):
     return COMM_TO_COMPONENT.get(app, {}).get(comm, comm)
 
 
+# fault_type is the ground-truth FAMILY name. That value becomes `covers:` in the
+# generated skill, which the harness matches against the family, and the diagnosis
+# scorer falls back to identity for labels it does not know - so a family name
+# satisfies both scorers where the agent's own vocabulary satisfies only one.
 # The order here is only for reporting; every rule is evaluated on every incident.
 VERDICTS = {
-    "host-cpu-saturation":     ("host", "host_cpu_saturation", 0.85),
+    "host-cpu-saturation":     ("host", "anomaly_cpu",        0.85),
     "service-cpu-throttle":    (None,   "svc_cpu_cap",         0.80),
     "cpu-contention-co-tenant": ("host", "noisy_neighbor",     0.80),
     "datastore-wait":          (None,   "db_latency",          0.85),
-    "network-path-degradation": (None,  "network_impairment",  0.85),
+    "network-path-degradation": (None,  "anomaly_net",         0.85),
+    "host-disk-saturation":    (None,   "anomaly_disk",        0.85),
 }
 
 
