@@ -120,3 +120,57 @@ Two more small bugs on the way, both caught by running rather than reading:
 
 Three of the four failures so far would have produced a plausible wrong number rather than an
 obvious crash. That is the pattern worth remembering from today.
+
+## Result: a tie, and the noise floor is what makes it readable
+
+57 incidents, both apps. Fully correct: **without 32/57, with 29/57**.
+
+Taken alone that reads as "blueprints hurt". It is not, and the experiment carries its own
+control that says so:
+
+**On 30 of 57 runs the selector picked no blueprint.** Both arms then had identical input —
+same evidence, same prompt, same model. They still scored differently: **15 vs 13**. So the
+noise floor is about ±2 runs, and the headline gap of 3 is inside it.
+
+Recording this because it was luck, not design: we did not plan repeats, and the
+selector's abstentions handed us a noise estimate for free. Any future version of this
+experiment should build repeats in rather than rely on that.
+
+### What moved, underneath the tie
+
+Fixed by a blueprint (3): noisy_neighbor x2, dependency_outage x1.
+Broken by a blueprint (4): anomaly_mem x2, dependency_outage x1, slow_db x1.
+
+**All four breaks are the WRONG BLUEPRINT being selected.** Not one is a blueprint giving bad
+advice about its own fault. That is a useful split: content is not the problem, routing is.
+
+Two results are worth more than the headline:
+
+- **noisy_neighbor: 0/6 without -> 2/6 with.** The model cannot do this fault at all on its
+  own. This is the only place a blueprint added something the model did not have.
+- **network-path-degradation was selected ZERO times across 9 network incidents**, while our
+  own rule engine scores 9/12 on those same faults with that same blueprint. The knowledge is
+  fine; nothing routes to it. Cheapest large gain available.
+- `service-cpu-throttle` fires too easily: picked 7 times, right 3. It fired on network
+  faults, a slow DB and a hung dependency.
+
+### The confound we chose on purpose
+
+Both arms got the L0 evidence pack, which already contains the measurements a blueprint tells
+you to collect. So this tested only the **interpretation** half of a blueprint, never the
+**collection** half. That was the deliberate strong-control choice, and the cost of it is that
+we handed the control the blueprint's best part for free. anomaly_cpu (6/6) and anomaly_disk
+(3/3) were already perfect without a blueprint — no room to improve.
+
+The complementary run (neither arm gets the pack) is the other half of the question and is
+now the obvious next experiment.
+
+### The finding that actually matters
+
+The deterministic rule engine reads the same kernel data with no model and names the right
+fault 38/41 when it fires. The model handed the same blueprints as prose gets about half.
+
+**The rules work; handing the rules to a model as text does not transfer them.**
+
+That points at what a blueprint should ship as. Today we render markdown and hope. The
+measurement says ship the executable decision, and let the model do what a rule cannot.

@@ -1,0 +1,2723 @@
+{
+  "headline": {
+    "both_delta_pts": -5,
+    "both_without": 32,
+    "both_with": 29,
+    "n_without": 57,
+    "n_with": 57,
+    "service_delta": -1,
+    "fault_delta": -1,
+    "silent_delta": 0
+  },
+  "pooled": {
+    "without": {
+      "n": 57,
+      "service": 45,
+      "fault": 33,
+      "both": 32,
+      "both_pct": 56,
+      "no_answer": 0,
+      "errors": 0,
+      "median_s": 79,
+      "median_calls": 7,
+      "median_tokens": null,
+      "total_tokens": null
+    },
+    "with": {
+      "n": 57,
+      "service": 44,
+      "fault": 32,
+      "both": 29,
+      "both_pct": 51,
+      "no_answer": 0,
+      "errors": 0,
+      "median_s": 79,
+      "median_calls": 6,
+      "median_tokens": null,
+      "total_tokens": null
+    }
+  },
+  "by_app": {
+    "sockshop_without": {
+      "n": 36,
+      "service": 30,
+      "fault": 20,
+      "both": 20,
+      "both_pct": 56,
+      "no_answer": 0,
+      "errors": 0,
+      "median_s": 110,
+      "median_calls": 6,
+      "median_tokens": null,
+      "total_tokens": null
+    },
+    "sockshop_with": {
+      "n": 36,
+      "service": 29,
+      "fault": 21,
+      "both": 21,
+      "both_pct": 58,
+      "no_answer": 0,
+      "errors": 0,
+      "median_s": 115,
+      "median_calls": 6,
+      "median_tokens": null,
+      "total_tokens": null
+    },
+    "traintkt_without": {
+      "n": 21,
+      "service": 15,
+      "fault": 13,
+      "both": 12,
+      "both_pct": 57,
+      "no_answer": 0,
+      "errors": 0,
+      "median_s": 42,
+      "median_calls": 8,
+      "median_tokens": null,
+      "total_tokens": null
+    },
+    "traintkt_with": {
+      "n": 21,
+      "service": 15,
+      "fault": 11,
+      "both": 8,
+      "both_pct": 38,
+      "no_answer": 0,
+      "errors": 0,
+      "median_s": 42,
+      "median_calls": 7,
+      "median_tokens": null,
+      "total_tokens": null
+    }
+  },
+  "covered_split": {
+    "covered by a blueprint|without": {
+      "n": 36,
+      "service": 29,
+      "fault": 20,
+      "both": 20,
+      "both_pct": 56,
+      "no_answer": 0,
+      "errors": 0,
+      "median_s": 72,
+      "median_calls": 6,
+      "median_tokens": null,
+      "total_tokens": null
+    },
+    "covered by a blueprint|with": {
+      "n": 36,
+      "service": 28,
+      "fault": 22,
+      "both": 20,
+      "both_pct": 56,
+      "no_answer": 0,
+      "errors": 0,
+      "median_s": 69,
+      "median_calls": 6,
+      "median_tokens": null,
+      "total_tokens": null
+    },
+    "not covered|without": {
+      "n": 21,
+      "service": 16,
+      "fault": 13,
+      "both": 12,
+      "both_pct": 57,
+      "no_answer": 0,
+      "errors": 0,
+      "median_s": 110,
+      "median_calls": 7,
+      "median_tokens": null,
+      "total_tokens": null
+    },
+    "not covered|with": {
+      "n": 21,
+      "service": 16,
+      "fault": 10,
+      "both": 9,
+      "both_pct": 43,
+      "no_answer": 0,
+      "errors": 0,
+      "median_s": 119,
+      "median_calls": 7,
+      "median_tokens": null,
+      "total_tokens": null
+    }
+  },
+  "per_family": {
+    "anomaly_cpu": {
+      "without": {
+        "n": 6,
+        "service": 6,
+        "fault": 6,
+        "both": 6,
+        "both_pct": 100,
+        "no_answer": 0,
+        "errors": 0,
+        "median_s": 72,
+        "median_calls": 4,
+        "median_tokens": null,
+        "total_tokens": null
+      },
+      "with": {
+        "n": 6,
+        "service": 6,
+        "fault": 6,
+        "both": 6,
+        "both_pct": 100,
+        "no_answer": 0,
+        "errors": 0,
+        "median_s": 79,
+        "median_calls": 4,
+        "median_tokens": null,
+        "total_tokens": null
+      },
+      "change": 0,
+      "covered": true
+    },
+    "anomaly_disk": {
+      "without": {
+        "n": 3,
+        "service": 3,
+        "fault": 3,
+        "both": 3,
+        "both_pct": 100,
+        "no_answer": 0,
+        "errors": 0,
+        "median_s": 142,
+        "median_calls": 5,
+        "median_tokens": null,
+        "total_tokens": null
+      },
+      "with": {
+        "n": 3,
+        "service": 3,
+        "fault": 3,
+        "both": 3,
+        "both_pct": 100,
+        "no_answer": 0,
+        "errors": 0,
+        "median_s": 144,
+        "median_calls": 4,
+        "median_tokens": null,
+        "total_tokens": null
+      },
+      "change": 0,
+      "covered": true
+    },
+    "anomaly_mem": {
+      "without": {
+        "n": 6,
+        "service": 6,
+        "fault": 6,
+        "both": 6,
+        "both_pct": 100,
+        "no_answer": 0,
+        "errors": 0,
+        "median_s": 82,
+        "median_calls": 8,
+        "median_tokens": null,
+        "total_tokens": null
+      },
+      "with": {
+        "n": 6,
+        "service": 6,
+        "fault": 4,
+        "both": 4,
+        "both_pct": 67,
+        "no_answer": 0,
+        "errors": 0,
+        "median_s": 89,
+        "median_calls": 6,
+        "median_tokens": null,
+        "total_tokens": null
+      },
+      "change": -2,
+      "covered": false
+    },
+    "anomaly_net": {
+      "without": {
+        "n": 3,
+        "service": 0,
+        "fault": 0,
+        "both": 0,
+        "both_pct": 0,
+        "no_answer": 0,
+        "errors": 0,
+        "median_s": 72,
+        "median_calls": 8,
+        "median_tokens": null,
+        "total_tokens": null
+      },
+      "with": {
+        "n": 3,
+        "service": 0,
+        "fault": 0,
+        "both": 0,
+        "both_pct": 0,
+        "no_answer": 0,
+        "errors": 0,
+        "median_s": 69,
+        "median_calls": 6,
+        "median_tokens": null,
+        "total_tokens": null
+      },
+      "change": 0,
+      "covered": true
+    },
+    "dependency_outage": {
+      "without": {
+        "n": 6,
+        "service": 4,
+        "fault": 5,
+        "both": 4,
+        "both_pct": 67,
+        "no_answer": 0,
+        "errors": 0,
+        "median_s": 74,
+        "median_calls": 8,
+        "median_tokens": null,
+        "total_tokens": null
+      },
+      "with": {
+        "n": 6,
+        "service": 5,
+        "fault": 5,
+        "both": 4,
+        "both_pct": 67,
+        "no_answer": 0,
+        "errors": 0,
+        "median_s": 75,
+        "median_calls": 8,
+        "median_tokens": null,
+        "total_tokens": null
+      },
+      "change": 0,
+      "covered": false
+    },
+    "error_storm": {
+      "without": {
+        "n": 3,
+        "service": 3,
+        "fault": 0,
+        "both": 0,
+        "both_pct": 0,
+        "no_answer": 0,
+        "errors": 0,
+        "median_s": 126,
+        "median_calls": 4,
+        "median_tokens": null,
+        "total_tokens": null
+      },
+      "with": {
+        "n": 3,
+        "service": 3,
+        "fault": 0,
+        "both": 0,
+        "both_pct": 0,
+        "no_answer": 0,
+        "errors": 0,
+        "median_s": 119,
+        "median_calls": 5,
+        "median_tokens": null,
+        "total_tokens": null
+      },
+      "change": 0,
+      "covered": false
+    },
+    "noisy_neighbor": {
+      "without": {
+        "n": 6,
+        "service": 6,
+        "fault": 0,
+        "both": 0,
+        "both_pct": 0,
+        "no_answer": 0,
+        "errors": 0,
+        "median_s": 88,
+        "median_calls": 7,
+        "median_tokens": null,
+        "total_tokens": null
+      },
+      "with": {
+        "n": 6,
+        "service": 6,
+        "fault": 2,
+        "both": 2,
+        "both_pct": 33,
+        "no_answer": 0,
+        "errors": 0,
+        "median_s": 83,
+        "median_calls": 8,
+        "median_tokens": null,
+        "total_tokens": null
+      },
+      "change": 2,
+      "covered": true
+    },
+    "queue_backlog": {
+      "without": {
+        "n": 3,
+        "service": 1,
+        "fault": 0,
+        "both": 0,
+        "both_pct": 0,
+        "no_answer": 0,
+        "errors": 0,
+        "median_s": 135,
+        "median_calls": 6,
+        "median_tokens": null,
+        "total_tokens": null
+      },
+      "with": {
+        "n": 3,
+        "service": 0,
+        "fault": 0,
+        "both": 0,
+        "both_pct": 0,
+        "no_answer": 0,
+        "errors": 0,
+        "median_s": 160,
+        "median_calls": 10,
+        "median_tokens": null,
+        "total_tokens": null
+      },
+      "change": 0,
+      "covered": false
+    },
+    "slow_db": {
+      "without": {
+        "n": 6,
+        "service": 4,
+        "fault": 4,
+        "both": 4,
+        "both_pct": 67,
+        "no_answer": 0,
+        "errors": 0,
+        "median_s": 63,
+        "median_calls": 6,
+        "median_tokens": null,
+        "total_tokens": null
+      },
+      "with": {
+        "n": 6,
+        "service": 3,
+        "fault": 5,
+        "both": 3,
+        "both_pct": 50,
+        "no_answer": 0,
+        "errors": 0,
+        "median_s": 59,
+        "median_calls": 6,
+        "median_tokens": null,
+        "total_tokens": null
+      },
+      "change": -1,
+      "covered": true
+    },
+    "svc_cpu_cap": {
+      "without": {
+        "n": 6,
+        "service": 4,
+        "fault": 4,
+        "both": 4,
+        "both_pct": 67,
+        "no_answer": 0,
+        "errors": 0,
+        "median_s": 70,
+        "median_calls": 8,
+        "median_tokens": null,
+        "total_tokens": null
+      },
+      "with": {
+        "n": 6,
+        "service": 4,
+        "fault": 4,
+        "both": 4,
+        "both_pct": 67,
+        "no_answer": 0,
+        "errors": 0,
+        "median_s": 66,
+        "median_calls": 6,
+        "median_tokens": null,
+        "total_tokens": null
+      },
+      "change": 0,
+      "covered": true
+    },
+    "svc_mem_cap": {
+      "without": {
+        "n": 3,
+        "service": 2,
+        "fault": 2,
+        "both": 2,
+        "both_pct": 67,
+        "no_answer": 0,
+        "errors": 0,
+        "median_s": 93,
+        "median_calls": 6,
+        "median_tokens": null,
+        "total_tokens": null
+      },
+      "with": {
+        "n": 3,
+        "service": 2,
+        "fault": 1,
+        "both": 1,
+        "both_pct": 33,
+        "no_answer": 0,
+        "errors": 0,
+        "median_s": 114,
+        "median_calls": 6,
+        "median_tokens": null,
+        "total_tokens": null
+      },
+      "change": -1,
+      "covered": false
+    },
+    "svc_net": {
+      "without": {
+        "n": 6,
+        "service": 6,
+        "fault": 3,
+        "both": 3,
+        "both_pct": 50,
+        "no_answer": 0,
+        "errors": 0,
+        "median_s": 58,
+        "median_calls": 8,
+        "median_tokens": null,
+        "total_tokens": null
+      },
+      "with": {
+        "n": 6,
+        "service": 6,
+        "fault": 2,
+        "both": 2,
+        "both_pct": 33,
+        "no_answer": 0,
+        "errors": 0,
+        "median_s": 57,
+        "median_calls": 8,
+        "median_tokens": null,
+        "total_tokens": null
+      },
+      "change": -1,
+      "covered": true
+    }
+  },
+  "selection": {
+    "n_with_a_pick": 57,
+    "n_correct_pick": 19,
+    "n_no_pick": 0,
+    "by_blueprint": {
+      "host-cpu-saturation": {
+        "n": 5,
+        "right": 5,
+        "both": 5
+      },
+      "host-disk-saturation": {
+        "n": 3,
+        "right": 3,
+        "both": 3
+      },
+      "none": {
+        "n": 30,
+        "right": 0,
+        "both": 13
+      },
+      "service-cpu-throttle": {
+        "n": 7,
+        "right": 3,
+        "both": 3
+      },
+      "cpu-contention-co-tenant": {
+        "n": 9,
+        "right": 6,
+        "both": 3
+      },
+      "db-latency-dependency-wait": {
+        "n": 3,
+        "right": 2,
+        "both": 2
+      }
+    }
+  },
+  "rows": {
+    "without_ss": [
+      {
+        "run_id": "anomaly_cpu_aggressive_steady_r1",
+        "family": "anomaly_cpu",
+        "service_ok": true,
+        "fault_ok": true,
+        "both_ok": true,
+        "no_answer": false,
+        "pred_fault": "cpu_saturation",
+        "pred_service": "aggressor",
+        "seconds": 100.1,
+        "tokens": {
+          "in": 13128,
+          "out": 311
+        },
+        "calls": 3,
+        "error": null,
+        "skill": null,
+        "skill_ok": null
+      },
+      {
+        "run_id": "anomaly_cpu_aggressive_steady_r2",
+        "family": "anomaly_cpu",
+        "service_ok": true,
+        "fault_ok": true,
+        "both_ok": true,
+        "no_answer": false,
+        "pred_fault": "cpu_saturation",
+        "pred_service": "aggressor",
+        "seconds": 110.9,
+        "tokens": {
+          "in": 13383,
+          "out": 312
+        },
+        "calls": 5,
+        "error": null,
+        "skill": null,
+        "skill_ok": null
+      },
+      {
+        "run_id": "anomaly_cpu_aggressive_steady_r3",
+        "family": "anomaly_cpu",
+        "service_ok": true,
+        "fault_ok": true,
+        "both_ok": true,
+        "no_answer": false,
+        "pred_fault": "cpu_saturation",
+        "pred_service": "aggressor",
+        "seconds": 121.5,
+        "tokens": {
+          "in": 13894,
+          "out": 367
+        },
+        "calls": 7,
+        "error": null,
+        "skill": null,
+        "skill_ok": null
+      },
+      {
+        "run_id": "anomaly_disk_aggressive_steady_r1",
+        "family": "anomaly_disk",
+        "service_ok": true,
+        "fault_ok": true,
+        "both_ok": true,
+        "no_answer": false,
+        "pred_fault": "disk_io",
+        "pred_service": "aggressor",
+        "seconds": 153.9,
+        "tokens": {
+          "in": 13732,
+          "out": 301
+        },
+        "calls": 5,
+        "error": null,
+        "skill": null,
+        "skill_ok": null
+      },
+      {
+        "run_id": "anomaly_disk_aggressive_steady_r2",
+        "family": "anomaly_disk",
+        "service_ok": true,
+        "fault_ok": true,
+        "both_ok": true,
+        "no_answer": false,
+        "pred_fault": "disk_io",
+        "pred_service": "aggressor",
+        "seconds": 137.4,
+        "tokens": {
+          "in": 13334,
+          "out": 317
+        },
+        "calls": 4,
+        "error": null,
+        "skill": null,
+        "skill_ok": null
+      },
+      {
+        "run_id": "anomaly_disk_aggressive_steady_r3",
+        "family": "anomaly_disk",
+        "service_ok": true,
+        "fault_ok": true,
+        "both_ok": true,
+        "no_answer": false,
+        "pred_fault": "disk_io",
+        "pred_service": "aggressor",
+        "seconds": 142.4,
+        "tokens": {
+          "in": 7675,
+          "out": 328
+        },
+        "calls": 6,
+        "error": null,
+        "skill": null,
+        "skill_ok": null
+      },
+      {
+        "run_id": "anomaly_mem_aggressive_steady_r1",
+        "family": "anomaly_mem",
+        "service_ok": true,
+        "fault_ok": true,
+        "both_ok": true,
+        "no_answer": false,
+        "pred_fault": "memory_pressure",
+        "pred_service": "aggressor",
+        "seconds": 127.5,
+        "tokens": {
+          "in": 14282,
+          "out": 335
+        },
+        "calls": 6,
+        "error": null,
+        "skill": null,
+        "skill_ok": null
+      },
+      {
+        "run_id": "anomaly_mem_aggressive_steady_r2",
+        "family": "anomaly_mem",
+        "service_ok": true,
+        "fault_ok": true,
+        "both_ok": true,
+        "no_answer": false,
+        "pred_fault": "memory_pressure",
+        "pred_service": "aggressor",
+        "seconds": 121.5,
+        "tokens": {
+          "in": 13867,
+          "out": 312
+        },
+        "calls": 5,
+        "error": null,
+        "skill": null,
+        "skill_ok": null
+      },
+      {
+        "run_id": "anomaly_mem_aggressive_steady_r3",
+        "family": "anomaly_mem",
+        "service_ok": true,
+        "fault_ok": true,
+        "both_ok": true,
+        "no_answer": false,
+        "pred_fault": "memory_pressure",
+        "pred_service": "aggressor",
+        "seconds": 128.9,
+        "tokens": {
+          "in": 8669,
+          "out": 349
+        },
+        "calls": 9,
+        "error": null,
+        "skill": null,
+        "skill_ok": null
+      },
+      {
+        "run_id": "anomaly_net_aggressive_steady_r1",
+        "family": "anomaly_net",
+        "service_ok": false,
+        "fault_ok": false,
+        "both_ok": false,
+        "no_answer": false,
+        "pred_fault": "db_latency",
+        "pred_service": "catalogue-db",
+        "seconds": 60.0,
+        "tokens": {
+          "in": 13960,
+          "out": 300
+        },
+        "calls": 5,
+        "error": null,
+        "skill": null,
+        "skill_ok": null
+      },
+      {
+        "run_id": "anomaly_net_aggressive_steady_r2",
+        "family": "anomaly_net",
+        "service_ok": false,
+        "fault_ok": false,
+        "both_ok": false,
+        "no_answer": false,
+        "pred_fault": "dependency_outage",
+        "pred_service": "catalogue-db",
+        "seconds": 71.6,
+        "tokens": {
+          "in": 22270,
+          "out": 371
+        },
+        "calls": 8,
+        "error": null,
+        "skill": null,
+        "skill_ok": null
+      },
+      {
+        "run_id": "anomaly_net_aggressive_steady_r3",
+        "family": "anomaly_net",
+        "service_ok": false,
+        "fault_ok": false,
+        "both_ok": false,
+        "no_answer": false,
+        "pred_fault": "db_latency",
+        "pred_service": "catalogue-db",
+        "seconds": 72.8,
+        "tokens": {
+          "in": 23315,
+          "out": 406
+        },
+        "calls": 10,
+        "error": null,
+        "skill": null,
+        "skill_ok": null
+      },
+      {
+        "run_id": "dependency_outage_aggressive_steady_r1",
+        "family": "dependency_outage",
+        "service_ok": true,
+        "fault_ok": true,
+        "both_ok": true,
+        "no_answer": false,
+        "pred_fault": "dependency_outage",
+        "pred_service": "payment",
+        "seconds": 110.0,
+        "tokens": {
+          "in": 21852,
+          "out": 300
+        },
+        "calls": 8,
+        "error": null,
+        "skill": null,
+        "skill_ok": null
+      },
+      {
+        "run_id": "dependency_outage_aggressive_steady_r2",
+        "family": "dependency_outage",
+        "service_ok": true,
+        "fault_ok": true,
+        "both_ok": true,
+        "no_answer": false,
+        "pred_fault": "dependency_outage",
+        "pred_service": "payment",
+        "seconds": 112.2,
+        "tokens": {
+          "in": 31085,
+          "out": 427
+        },
+        "calls": 9,
+        "error": null,
+        "skill": null,
+        "skill_ok": null
+      },
+      {
+        "run_id": "dependency_outage_aggressive_steady_r3",
+        "family": "dependency_outage",
+        "service_ok": true,
+        "fault_ok": true,
+        "both_ok": true,
+        "no_answer": false,
+        "pred_fault": "dependency_outage",
+        "pred_service": "payment",
+        "seconds": 109.9,
+        "tokens": {
+          "in": 13756,
+          "out": 268
+        },
+        "calls": 4,
+        "error": null,
+        "skill": null,
+        "skill_ok": null
+      },
+      {
+        "run_id": "error_storm_aggressive_burst_r1",
+        "family": "error_storm",
+        "service_ok": true,
+        "fault_ok": false,
+        "both_ok": false,
+        "no_answer": false,
+        "pred_fault": "dependency_outage",
+        "pred_service": "catalogue-db",
+        "seconds": 109.7,
+        "tokens": {
+          "in": 13937,
+          "out": 275
+        },
+        "calls": 6,
+        "error": null,
+        "skill": null,
+        "skill_ok": null
+      },
+      {
+        "run_id": "error_storm_aggressive_burst_r2",
+        "family": "error_storm",
+        "service_ok": true,
+        "fault_ok": false,
+        "both_ok": false,
+        "no_answer": false,
+        "pred_fault": "dependency_outage",
+        "pred_service": "catalogue-db",
+        "seconds": 126.5,
+        "tokens": {
+          "in": 13750,
+          "out": 251
+        },
+        "calls": 4,
+        "error": null,
+        "skill": null,
+        "skill_ok": null
+      },
+      {
+        "run_id": "error_storm_aggressive_steady_r1",
+        "family": "error_storm",
+        "service_ok": true,
+        "fault_ok": false,
+        "both_ok": false,
+        "no_answer": false,
+        "pred_fault": "dependency_outage",
+        "pred_service": "catalogue-db",
+        "seconds": 137.0,
+        "tokens": {
+          "in": 13573,
+          "out": 284
+        },
+        "calls": 4,
+        "error": null,
+        "skill": null,
+        "skill_ok": null
+      },
+      {
+        "run_id": "noisy_neighbor_aggressive_steady_r1",
+        "family": "noisy_neighbor",
+        "service_ok": true,
+        "fault_ok": false,
+        "both_ok": false,
+        "no_answer": false,
+        "pred_fault": "cpu_throttling",
+        "pred_service": "aggressor",
+        "seconds": 125.7,
+        "tokens": {
+          "in": 14271,
+          "out": 308
+        },
+        "calls": 7,
+        "error": null,
+        "skill": null,
+        "skill_ok": null
+      },
+      {
+        "run_id": "noisy_neighbor_aggressive_steady_r2",
+        "family": "noisy_neighbor",
+        "service_ok": true,
+        "fault_ok": false,
+        "both_ok": false,
+        "no_answer": false,
+        "pred_fault": "cpu_throttling",
+        "pred_service": "aggressor",
+        "seconds": 148.2,
+        "tokens": {
+          "in": 13948,
+          "out": 321
+        },
+        "calls": 6,
+        "error": null,
+        "skill": null,
+        "skill_ok": null
+      },
+      {
+        "run_id": "noisy_neighbor_aggressive_steady_r3",
+        "family": "noisy_neighbor",
+        "service_ok": true,
+        "fault_ok": false,
+        "both_ok": false,
+        "no_answer": false,
+        "pred_fault": "cpu_saturation",
+        "pred_service": "aggressor",
+        "seconds": 154.5,
+        "tokens": {
+          "in": 14211,
+          "out": 354
+        },
+        "calls": 7,
+        "error": null,
+        "skill": null,
+        "skill_ok": null
+      },
+      {
+        "run_id": "queue_backlog_aggressive_steady_r1",
+        "family": "queue_backlog",
+        "service_ok": false,
+        "fault_ok": false,
+        "both_ok": false,
+        "no_answer": false,
+        "pred_fault": "error_storm",
+        "pred_service": "carts",
+        "seconds": 134.8,
+        "tokens": {
+          "in": 13885,
+          "out": 281
+        },
+        "calls": 6,
+        "error": null,
+        "skill": null,
+        "skill_ok": null
+      },
+      {
+        "run_id": "queue_backlog_aggressive_steady_r2",
+        "family": "queue_backlog",
+        "service_ok": true,
+        "fault_ok": false,
+        "both_ok": false,
+        "no_answer": false,
+        "pred_fault": "dependency_outage",
+        "pred_service": "queue-master",
+        "seconds": 138.5,
+        "tokens": {
+          "in": 13424,
+          "out": 292
+        },
+        "calls": 5,
+        "error": null,
+        "skill": null,
+        "skill_ok": null
+      },
+      {
+        "run_id": "queue_backlog_aggressive_steady_r3",
+        "family": "queue_backlog",
+        "service_ok": false,
+        "fault_ok": false,
+        "both_ok": false,
+        "no_answer": false,
+        "pred_fault": "service_network",
+        "pred_service": "carts",
+        "seconds": 126.1,
+        "tokens": {
+          "in": 8153,
+          "out": 287
+        },
+        "calls": 7,
+        "error": null,
+        "skill": null,
+        "skill_ok": null
+      },
+      {
+        "run_id": "slow_db_aggressive_burst_r1",
+        "family": "slow_db",
+        "service_ok": true,
+        "fault_ok": true,
+        "both_ok": true,
+        "no_answer": false,
+        "pred_fault": "db_latency",
+        "pred_service": "catalogue-db",
+        "seconds": 107.9,
+        "tokens": {
+          "in": 14035,
+          "out": 340
+        },
+        "calls": 8,
+        "error": null,
+        "skill": null,
+        "skill_ok": null
+      },
+      {
+        "run_id": "slow_db_aggressive_burst_r2",
+        "family": "slow_db",
+        "service_ok": true,
+        "fault_ok": true,
+        "both_ok": true,
+        "no_answer": false,
+        "pred_fault": "db_latency",
+        "pred_service": "catalogue-db",
+        "seconds": 124.1,
+        "tokens": {
+          "in": 13528,
+          "out": 265
+        },
+        "calls": 4,
+        "error": null,
+        "skill": null,
+        "skill_ok": null
+      },
+      {
+        "run_id": "slow_db_aggressive_steady_r1",
+        "family": "slow_db",
+        "service_ok": true,
+        "fault_ok": true,
+        "both_ok": true,
+        "no_answer": false,
+        "pred_fault": "db_latency",
+        "pred_service": "catalogue-db",
+        "seconds": 85.3,
+        "tokens": {
+          "in": 14591,
+          "out": 301
+        },
+        "calls": 7,
+        "error": null,
+        "skill": null,
+        "skill_ok": null
+      },
+      {
+        "run_id": "svc_cpu_cap_aggressive_steady_r1",
+        "family": "svc_cpu_cap",
+        "service_ok": true,
+        "fault_ok": true,
+        "both_ok": true,
+        "no_answer": false,
+        "pred_fault": "cpu_throttling",
+        "pred_service": "carts",
+        "seconds": 71.0,
+        "tokens": {
+          "in": 13913,
+          "out": 283
+        },
+        "calls": 4,
+        "error": null,
+        "skill": null,
+        "skill_ok": null
+      },
+      {
+        "run_id": "svc_cpu_cap_aggressive_steady_r2",
+        "family": "svc_cpu_cap",
+        "service_ok": true,
+        "fault_ok": true,
+        "both_ok": true,
+        "no_answer": false,
+        "pred_fault": "cpu_throttling",
+        "pred_service": "carts",
+        "seconds": 75.0,
+        "tokens": {
+          "in": 14928,
+          "out": 298
+        },
+        "calls": 7,
+        "error": null,
+        "skill": null,
+        "skill_ok": null
+      },
+      {
+        "run_id": "svc_cpu_cap_aggressive_steady_r3",
+        "family": "svc_cpu_cap",
+        "service_ok": true,
+        "fault_ok": true,
+        "both_ok": true,
+        "no_answer": false,
+        "pred_fault": "cpu_throttling",
+        "pred_service": "carts",
+        "seconds": 73.1,
+        "tokens": {
+          "in": 14427,
+          "out": 282
+        },
+        "calls": 6,
+        "error": null,
+        "skill": null,
+        "skill_ok": null
+      },
+      {
+        "run_id": "svc_mem_cap_aggressive_steady_r1",
+        "family": "svc_mem_cap",
+        "service_ok": true,
+        "fault_ok": true,
+        "both_ok": true,
+        "no_answer": false,
+        "pred_fault": "memory_limit",
+        "pred_service": "carts",
+        "seconds": 86.8,
+        "tokens": {
+          "in": 14225,
+          "out": 294
+        },
+        "calls": 6,
+        "error": null,
+        "skill": null,
+        "skill_ok": null
+      },
+      {
+        "run_id": "svc_mem_cap_aggressive_steady_r2",
+        "family": "svc_mem_cap",
+        "service_ok": false,
+        "fault_ok": false,
+        "both_ok": false,
+        "no_answer": false,
+        "pred_fault": "disk_io",
+        "pred_service": "host",
+        "seconds": 100.9,
+        "tokens": {
+          "in": 14561,
+          "out": 420
+        },
+        "calls": 9,
+        "error": null,
+        "skill": null,
+        "skill_ok": null
+      },
+      {
+        "run_id": "svc_mem_cap_aggressive_steady_r3",
+        "family": "svc_mem_cap",
+        "service_ok": true,
+        "fault_ok": true,
+        "both_ok": true,
+        "no_answer": false,
+        "pred_fault": "memory_limit",
+        "pred_service": "carts",
+        "seconds": 92.7,
+        "tokens": {
+          "in": 7873,
+          "out": 264
+        },
+        "calls": 5,
+        "error": null,
+        "skill": null,
+        "skill_ok": null
+      },
+      {
+        "run_id": "svc_net_aggressive_steady_r1",
+        "family": "svc_net",
+        "service_ok": true,
+        "fault_ok": false,
+        "both_ok": false,
+        "no_answer": false,
+        "pred_fault": "db_latency",
+        "pred_service": "carts-db",
+        "seconds": 89.3,
+        "tokens": {
+          "in": 23799,
+          "out": 618
+        },
+        "calls": 10,
+        "error": null,
+        "skill": null,
+        "skill_ok": null
+      },
+      {
+        "run_id": "svc_net_aggressive_steady_r2",
+        "family": "svc_net",
+        "service_ok": true,
+        "fault_ok": false,
+        "both_ok": false,
+        "no_answer": false,
+        "pred_fault": "db_latency",
+        "pred_service": "carts-db",
+        "seconds": 78.7,
+        "tokens": {
+          "in": 14582,
+          "out": 261
+        },
+        "calls": 5,
+        "error": null,
+        "skill": null,
+        "skill_ok": null
+      },
+      {
+        "run_id": "svc_net_aggressive_steady_r3",
+        "family": "svc_net",
+        "service_ok": true,
+        "fault_ok": false,
+        "both_ok": false,
+        "no_answer": false,
+        "pred_fault": "db_latency",
+        "pred_service": "carts-db",
+        "seconds": 73.0,
+        "tokens": {
+          "in": 13848,
+          "out": 259
+        },
+        "calls": 3,
+        "error": null,
+        "skill": null,
+        "skill_ok": null
+      }
+    ],
+    "without_tt": [
+      {
+        "run_id": "tt_anomaly_cpu_aggressive_steady_r1",
+        "family": "anomaly_cpu",
+        "service_ok": true,
+        "fault_ok": true,
+        "both_ok": true,
+        "no_answer": false,
+        "pred_fault": "cpu_saturation",
+        "pred_service": "aggressor",
+        "seconds": 42.1,
+        "tokens": {
+          "in": 13750,
+          "out": 269
+        },
+        "calls": 4,
+        "error": null,
+        "skill": null,
+        "skill_ok": null
+      },
+      {
+        "run_id": "tt_anomaly_cpu_aggressive_steady_r2",
+        "family": "anomaly_cpu",
+        "service_ok": true,
+        "fault_ok": true,
+        "both_ok": true,
+        "no_answer": false,
+        "pred_fault": "cpu_saturation",
+        "pred_service": "aggressor",
+        "seconds": 41.7,
+        "tokens": {
+          "in": 13956,
+          "out": 283
+        },
+        "calls": 4,
+        "error": null,
+        "skill": null,
+        "skill_ok": null
+      },
+      {
+        "run_id": "tt_anomaly_cpu_aggressive_steady_r3",
+        "family": "anomaly_cpu",
+        "service_ok": true,
+        "fault_ok": true,
+        "both_ok": true,
+        "no_answer": false,
+        "pred_fault": "cpu_saturation",
+        "pred_service": "aggressor",
+        "seconds": 42.9,
+        "tokens": {
+          "in": 14207,
+          "out": 278
+        },
+        "calls": 5,
+        "error": null,
+        "skill": null,
+        "skill_ok": null
+      },
+      {
+        "run_id": "tt_anomaly_mem_aggressive_steady_r1",
+        "family": "anomaly_mem",
+        "service_ok": true,
+        "fault_ok": true,
+        "both_ok": true,
+        "no_answer": false,
+        "pred_fault": "memory_pressure",
+        "pred_service": "aggressor",
+        "seconds": 42.8,
+        "tokens": {
+          "in": 14964,
+          "out": 331
+        },
+        "calls": 8,
+        "error": null,
+        "skill": null,
+        "skill_ok": null
+      },
+      {
+        "run_id": "tt_anomaly_mem_aggressive_steady_r2",
+        "family": "anomaly_mem",
+        "service_ok": true,
+        "fault_ok": true,
+        "both_ok": true,
+        "no_answer": false,
+        "pred_fault": "memory_pressure",
+        "pred_service": "aggressor",
+        "seconds": 39.6,
+        "tokens": {
+          "in": 22598,
+          "out": 403
+        },
+        "calls": 10,
+        "error": null,
+        "skill": null,
+        "skill_ok": null
+      },
+      {
+        "run_id": "tt_anomaly_mem_aggressive_steady_r3",
+        "family": "anomaly_mem",
+        "service_ok": true,
+        "fault_ok": true,
+        "both_ok": true,
+        "no_answer": false,
+        "pred_fault": "memory_pressure",
+        "pred_service": "aggressor",
+        "seconds": 40.9,
+        "tokens": {
+          "in": 14980,
+          "out": 424
+        },
+        "calls": 12,
+        "error": null,
+        "skill": null,
+        "skill_ok": null
+      },
+      {
+        "run_id": "tt_dependency_outage_aggressive_steady_r1",
+        "family": "dependency_outage",
+        "service_ok": false,
+        "fault_ok": false,
+        "both_ok": false,
+        "no_answer": false,
+        "pred_fault": "db_latency",
+        "pred_service": "mysql",
+        "seconds": 37.3,
+        "tokens": {
+          "in": 15523,
+          "out": 410
+        },
+        "calls": 11,
+        "error": null,
+        "skill": null,
+        "skill_ok": null
+      },
+      {
+        "run_id": "tt_dependency_outage_aggressive_steady_r2",
+        "family": "dependency_outage",
+        "service_ok": true,
+        "fault_ok": true,
+        "both_ok": true,
+        "no_answer": false,
+        "pred_fault": "dependency_outage",
+        "pred_service": "ts-seat-service",
+        "seconds": 38.9,
+        "tokens": {
+          "in": 15605,
+          "out": 388
+        },
+        "calls": 11,
+        "error": null,
+        "skill": null,
+        "skill_ok": null
+      },
+      {
+        "run_id": "tt_dependency_outage_aggressive_steady_r3",
+        "family": "dependency_outage",
+        "service_ok": false,
+        "fault_ok": true,
+        "both_ok": false,
+        "no_answer": false,
+        "pred_fault": "dependency_outage",
+        "pred_service": "mysql",
+        "seconds": 35.2,
+        "tokens": {
+          "in": 14490,
+          "out": 339
+        },
+        "calls": 7,
+        "error": null,
+        "skill": null,
+        "skill_ok": null
+      },
+      {
+        "run_id": "tt_noisy_neighbor_aggressive_steady_r1",
+        "family": "noisy_neighbor",
+        "service_ok": true,
+        "fault_ok": false,
+        "both_ok": false,
+        "no_answer": false,
+        "pred_fault": "cpu_throttling",
+        "pred_service": "aggressor",
+        "seconds": 49.8,
+        "tokens": {
+          "in": 14078,
+          "out": 306
+        },
+        "calls": 6,
+        "error": null,
+        "skill": null,
+        "skill_ok": null
+      },
+      {
+        "run_id": "tt_noisy_neighbor_aggressive_steady_r2",
+        "family": "noisy_neighbor",
+        "service_ok": true,
+        "fault_ok": false,
+        "both_ok": false,
+        "no_answer": false,
+        "pred_fault": "cpu_throttling",
+        "pred_service": "aggressor",
+        "seconds": 50.4,
+        "tokens": {
+          "in": 15456,
+          "out": 414
+        },
+        "calls": 13,
+        "error": null,
+        "skill": null,
+        "skill_ok": null
+      },
+      {
+        "run_id": "tt_noisy_neighbor_aggressive_steady_r3",
+        "family": "noisy_neighbor",
+        "service_ok": true,
+        "fault_ok": false,
+        "both_ok": false,
+        "no_answer": false,
+        "pred_fault": "cpu_throttling",
+        "pred_service": "aggressor",
+        "seconds": 48.3,
+        "tokens": {
+          "in": 22390,
+          "out": 466
+        },
+        "calls": 12,
+        "error": null,
+        "skill": null,
+        "skill_ok": null
+      },
+      {
+        "run_id": "tt_slow_db_aggressive_burst_r1",
+        "family": "slow_db",
+        "service_ok": false,
+        "fault_ok": false,
+        "both_ok": false,
+        "no_answer": false,
+        "pred_fault": "dependency_outage",
+        "pred_service": "toxiproxy",
+        "seconds": 16.6,
+        "tokens": {
+          "in": 13451,
+          "out": 261
+        },
+        "calls": 4,
+        "error": null,
+        "skill": null,
+        "skill_ok": null
+      },
+      {
+        "run_id": "tt_slow_db_aggressive_burst_r2",
+        "family": "slow_db",
+        "service_ok": true,
+        "fault_ok": true,
+        "both_ok": true,
+        "no_answer": false,
+        "pred_fault": "db_latency",
+        "pred_service": "mysql",
+        "seconds": 26.6,
+        "tokens": {
+          "in": 14759,
+          "out": 326
+        },
+        "calls": 8,
+        "error": null,
+        "skill": null,
+        "skill_ok": null
+      },
+      {
+        "run_id": "tt_slow_db_aggressive_steady_r1",
+        "family": "slow_db",
+        "service_ok": false,
+        "fault_ok": false,
+        "both_ok": false,
+        "no_answer": false,
+        "pred_fault": "dependency_outage",
+        "pred_service": "toxiproxy",
+        "seconds": 41.3,
+        "tokens": {
+          "in": 14178,
+          "out": 259
+        },
+        "calls": 4,
+        "error": null,
+        "skill": null,
+        "skill_ok": null
+      },
+      {
+        "run_id": "tt_svc_cpu_cap_aggressive_steady_r1",
+        "family": "svc_cpu_cap",
+        "service_ok": true,
+        "fault_ok": true,
+        "both_ok": true,
+        "no_answer": false,
+        "pred_fault": "cpu_throttling",
+        "pred_service": "ts-travel-service",
+        "seconds": 68.3,
+        "tokens": {
+          "in": 14579,
+          "out": 425
+        },
+        "calls": 12,
+        "error": null,
+        "skill": null,
+        "skill_ok": null
+      },
+      {
+        "run_id": "tt_svc_cpu_cap_aggressive_steady_r2",
+        "family": "svc_cpu_cap",
+        "service_ok": false,
+        "fault_ok": false,
+        "both_ok": false,
+        "no_answer": false,
+        "pred_fault": "disk_io",
+        "pred_service": "host",
+        "seconds": 55.8,
+        "tokens": {
+          "in": 14437,
+          "out": 321
+        },
+        "calls": 8,
+        "error": null,
+        "skill": null,
+        "skill_ok": null
+      },
+      {
+        "run_id": "tt_svc_cpu_cap_aggressive_steady_r3",
+        "family": "svc_cpu_cap",
+        "service_ok": false,
+        "fault_ok": false,
+        "both_ok": false,
+        "no_answer": false,
+        "pred_fault": "db_latency",
+        "pred_service": "mysql",
+        "seconds": 57.8,
+        "tokens": {
+          "in": 14129,
+          "out": 326
+        },
+        "calls": 8,
+        "error": null,
+        "skill": null,
+        "skill_ok": null
+      },
+      {
+        "run_id": "tt_svc_net_aggressive_steady_r1",
+        "family": "svc_net",
+        "service_ok": true,
+        "fault_ok": true,
+        "both_ok": true,
+        "no_answer": false,
+        "pred_fault": "service_network",
+        "pred_service": "ts-basic-service",
+        "seconds": 42.0,
+        "tokens": {
+          "in": 14874,
+          "out": 351
+        },
+        "calls": 8,
+        "error": null,
+        "skill": null,
+        "skill_ok": null
+      },
+      {
+        "run_id": "tt_svc_net_aggressive_steady_r2",
+        "family": "svc_net",
+        "service_ok": true,
+        "fault_ok": true,
+        "both_ok": true,
+        "no_answer": false,
+        "pred_fault": "service_network",
+        "pred_service": "ts-basic-service",
+        "seconds": 39.4,
+        "tokens": {
+          "in": 14839,
+          "out": 348
+        },
+        "calls": 9,
+        "error": null,
+        "skill": null,
+        "skill_ok": null
+      },
+      {
+        "run_id": "tt_svc_net_aggressive_steady_r3",
+        "family": "svc_net",
+        "service_ok": true,
+        "fault_ok": true,
+        "both_ok": true,
+        "no_answer": false,
+        "pred_fault": "service_network",
+        "pred_service": "ts-basic-service",
+        "seconds": 42.5,
+        "tokens": {
+          "in": 25262,
+          "out": 550
+        },
+        "calls": 18,
+        "error": null,
+        "skill": null,
+        "skill_ok": null
+      }
+    ],
+    "with_ss": [
+      {
+        "run_id": "anomaly_cpu_aggressive_steady_r1",
+        "family": "anomaly_cpu",
+        "service_ok": true,
+        "fault_ok": true,
+        "both_ok": true,
+        "no_answer": false,
+        "pred_fault": "cpu_saturation",
+        "pred_service": "aggressor",
+        "seconds": 123.0,
+        "tokens": {
+          "in": 25801,
+          "out": 418
+        },
+        "calls": 7,
+        "error": null,
+        "skill": "host-cpu-saturation",
+        "skill_ok": true
+      },
+      {
+        "run_id": "anomaly_cpu_aggressive_steady_r2",
+        "family": "anomaly_cpu",
+        "service_ok": true,
+        "fault_ok": true,
+        "both_ok": true,
+        "no_answer": false,
+        "pred_fault": "cpu_saturation",
+        "pred_service": "aggressor",
+        "seconds": 127.5,
+        "tokens": {
+          "in": 25066,
+          "out": 396
+        },
+        "calls": 4,
+        "error": null,
+        "skill": "host-cpu-saturation",
+        "skill_ok": true
+      },
+      {
+        "run_id": "anomaly_cpu_aggressive_steady_r3",
+        "family": "anomaly_cpu",
+        "service_ok": true,
+        "fault_ok": true,
+        "both_ok": true,
+        "no_answer": false,
+        "pred_fault": "cpu_saturation",
+        "pred_service": "aggressor",
+        "seconds": 114.5,
+        "tokens": {
+          "in": 25862,
+          "out": 414
+        },
+        "calls": 5,
+        "error": null,
+        "skill": "host-cpu-saturation",
+        "skill_ok": true
+      },
+      {
+        "run_id": "anomaly_disk_aggressive_steady_r1",
+        "family": "anomaly_disk",
+        "service_ok": true,
+        "fault_ok": true,
+        "both_ok": true,
+        "no_answer": false,
+        "pred_fault": "disk_io",
+        "pred_service": "aggressor",
+        "seconds": 144.2,
+        "tokens": {
+          "in": 24771,
+          "out": 554
+        },
+        "calls": 4,
+        "error": null,
+        "skill": "host-disk-saturation",
+        "skill_ok": true
+      },
+      {
+        "run_id": "anomaly_disk_aggressive_steady_r2",
+        "family": "anomaly_disk",
+        "service_ok": true,
+        "fault_ok": true,
+        "both_ok": true,
+        "no_answer": false,
+        "pred_fault": "disk_io",
+        "pred_service": "aggressor",
+        "seconds": 158.8,
+        "tokens": {
+          "in": 24910,
+          "out": 453
+        },
+        "calls": 5,
+        "error": null,
+        "skill": "host-disk-saturation",
+        "skill_ok": true
+      },
+      {
+        "run_id": "anomaly_disk_aggressive_steady_r3",
+        "family": "anomaly_disk",
+        "service_ok": true,
+        "fault_ok": true,
+        "both_ok": true,
+        "no_answer": false,
+        "pred_fault": "disk_io",
+        "pred_service": "aggressor",
+        "seconds": 133.1,
+        "tokens": {
+          "in": 18464,
+          "out": 447
+        },
+        "calls": 4,
+        "error": null,
+        "skill": "host-disk-saturation",
+        "skill_ok": true
+      },
+      {
+        "run_id": "anomaly_mem_aggressive_steady_r1",
+        "family": "anomaly_mem",
+        "service_ok": true,
+        "fault_ok": true,
+        "both_ok": true,
+        "no_answer": false,
+        "pred_fault": "memory_pressure",
+        "pred_service": "aggressor",
+        "seconds": 131.5,
+        "tokens": {
+          "in": 22236,
+          "out": 439
+        },
+        "calls": 6,
+        "error": null,
+        "skill": "none",
+        "skill_ok": false
+      },
+      {
+        "run_id": "anomaly_mem_aggressive_steady_r2",
+        "family": "anomaly_mem",
+        "service_ok": true,
+        "fault_ok": true,
+        "both_ok": true,
+        "no_answer": false,
+        "pred_fault": "memory_pressure",
+        "pred_service": "aggressor",
+        "seconds": 131.5,
+        "tokens": {
+          "in": 22480,
+          "out": 478
+        },
+        "calls": 7,
+        "error": null,
+        "skill": "none",
+        "skill_ok": false
+      },
+      {
+        "run_id": "anomaly_mem_aggressive_steady_r3",
+        "family": "anomaly_mem",
+        "service_ok": true,
+        "fault_ok": true,
+        "both_ok": true,
+        "no_answer": false,
+        "pred_fault": "memory_pressure",
+        "pred_service": "aggressor",
+        "seconds": 132.9,
+        "tokens": {
+          "in": 15989,
+          "out": 445
+        },
+        "calls": 7,
+        "error": null,
+        "skill": "none",
+        "skill_ok": false
+      },
+      {
+        "run_id": "anomaly_net_aggressive_steady_r1",
+        "family": "anomaly_net",
+        "service_ok": false,
+        "fault_ok": false,
+        "both_ok": false,
+        "no_answer": false,
+        "pred_fault": "db_latency",
+        "pred_service": "catalogue-db",
+        "seconds": 62.4,
+        "tokens": {
+          "in": 27323,
+          "out": 443
+        },
+        "calls": 6,
+        "error": null,
+        "skill": "service-cpu-throttle",
+        "skill_ok": false
+      },
+      {
+        "run_id": "anomaly_net_aggressive_steady_r2",
+        "family": "anomaly_net",
+        "service_ok": false,
+        "fault_ok": false,
+        "both_ok": false,
+        "no_answer": false,
+        "pred_fault": "db_latency",
+        "pred_service": "catalogue-db",
+        "seconds": 68.7,
+        "tokens": {
+          "in": 22943,
+          "out": 423
+        },
+        "calls": 6,
+        "error": null,
+        "skill": "none",
+        "skill_ok": false
+      },
+      {
+        "run_id": "anomaly_net_aggressive_steady_r3",
+        "family": "anomaly_net",
+        "service_ok": false,
+        "fault_ok": false,
+        "both_ok": false,
+        "no_answer": false,
+        "pred_fault": "db_latency",
+        "pred_service": "catalogue-db",
+        "seconds": 104.1,
+        "tokens": {
+          "in": 27037,
+          "out": 411
+        },
+        "calls": 5,
+        "error": null,
+        "skill": "service-cpu-throttle",
+        "skill_ok": false
+      },
+      {
+        "run_id": "dependency_outage_aggressive_steady_r1",
+        "family": "dependency_outage",
+        "service_ok": true,
+        "fault_ok": true,
+        "both_ok": true,
+        "no_answer": false,
+        "pred_fault": "dependency_outage",
+        "pred_service": "payment",
+        "seconds": 148.3,
+        "tokens": {
+          "in": 38776,
+          "out": 560
+        },
+        "calls": 11,
+        "error": null,
+        "skill": "none",
+        "skill_ok": false
+      },
+      {
+        "run_id": "dependency_outage_aggressive_steady_r2",
+        "family": "dependency_outage",
+        "service_ok": true,
+        "fault_ok": true,
+        "both_ok": true,
+        "no_answer": false,
+        "pred_fault": "dependency_outage",
+        "pred_service": "payment",
+        "seconds": 120.2,
+        "tokens": {
+          "in": 29790,
+          "out": 424
+        },
+        "calls": 8,
+        "error": null,
+        "skill": "none",
+        "skill_ok": false
+      },
+      {
+        "run_id": "dependency_outage_aggressive_steady_r3",
+        "family": "dependency_outage",
+        "service_ok": true,
+        "fault_ok": true,
+        "both_ok": true,
+        "no_answer": false,
+        "pred_fault": "dependency_outage",
+        "pred_service": "payment",
+        "seconds": 110.2,
+        "tokens": {
+          "in": 21909,
+          "out": 355
+        },
+        "calls": 4,
+        "error": null,
+        "skill": "none",
+        "skill_ok": false
+      },
+      {
+        "run_id": "error_storm_aggressive_burst_r1",
+        "family": "error_storm",
+        "service_ok": true,
+        "fault_ok": false,
+        "both_ok": false,
+        "no_answer": false,
+        "pred_fault": "dependency_outage",
+        "pred_service": "catalogue-db",
+        "seconds": 118.9,
+        "tokens": {
+          "in": 22553,
+          "out": 427
+        },
+        "calls": 7,
+        "error": null,
+        "skill": "none",
+        "skill_ok": false
+      },
+      {
+        "run_id": "error_storm_aggressive_burst_r2",
+        "family": "error_storm",
+        "service_ok": true,
+        "fault_ok": false,
+        "both_ok": false,
+        "no_answer": false,
+        "pred_fault": "dependency_outage",
+        "pred_service": "catalogue-db",
+        "seconds": 114.9,
+        "tokens": {
+          "in": 22522,
+          "out": 386
+        },
+        "calls": 5,
+        "error": null,
+        "skill": "none",
+        "skill_ok": false
+      },
+      {
+        "run_id": "error_storm_aggressive_steady_r1",
+        "family": "error_storm",
+        "service_ok": true,
+        "fault_ok": false,
+        "both_ok": false,
+        "no_answer": false,
+        "pred_fault": "dependency_outage",
+        "pred_service": "catalogue-db",
+        "seconds": 121.6,
+        "tokens": {
+          "in": 21610,
+          "out": 381
+        },
+        "calls": 4,
+        "error": null,
+        "skill": "none",
+        "skill_ok": false
+      },
+      {
+        "run_id": "noisy_neighbor_aggressive_steady_r1",
+        "family": "noisy_neighbor",
+        "service_ok": true,
+        "fault_ok": true,
+        "both_ok": true,
+        "no_answer": false,
+        "pred_fault": "noisy_neighbor",
+        "pred_service": "aggressor",
+        "seconds": 113.9,
+        "tokens": {
+          "in": 27418,
+          "out": 494
+        },
+        "calls": 8,
+        "error": null,
+        "skill": "cpu-contention-co-tenant",
+        "skill_ok": true
+      },
+      {
+        "run_id": "noisy_neighbor_aggressive_steady_r2",
+        "family": "noisy_neighbor",
+        "service_ok": true,
+        "fault_ok": false,
+        "both_ok": false,
+        "no_answer": false,
+        "pred_fault": "cpu_throttling",
+        "pred_service": "aggressor",
+        "seconds": 141.4,
+        "tokens": {
+          "in": 27461,
+          "out": 451
+        },
+        "calls": 8,
+        "error": null,
+        "skill": "cpu-contention-co-tenant",
+        "skill_ok": true
+      },
+      {
+        "run_id": "noisy_neighbor_aggressive_steady_r3",
+        "family": "noisy_neighbor",
+        "service_ok": true,
+        "fault_ok": true,
+        "both_ok": true,
+        "no_answer": false,
+        "pred_fault": "noisy_neighbor",
+        "pred_service": "aggressor",
+        "seconds": 115.9,
+        "tokens": {
+          "in": 26460,
+          "out": 393
+        },
+        "calls": 4,
+        "error": null,
+        "skill": "cpu-contention-co-tenant",
+        "skill_ok": true
+      },
+      {
+        "run_id": "queue_backlog_aggressive_steady_r1",
+        "family": "queue_backlog",
+        "service_ok": false,
+        "fault_ok": false,
+        "both_ok": false,
+        "no_answer": false,
+        "pred_fault": "error_storm",
+        "pred_service": "carts",
+        "seconds": 160.0,
+        "tokens": {
+          "in": 21644,
+          "out": 385
+        },
+        "calls": 6,
+        "error": null,
+        "skill": "none",
+        "skill_ok": false
+      },
+      {
+        "run_id": "queue_backlog_aggressive_steady_r2",
+        "family": "queue_backlog",
+        "service_ok": false,
+        "fault_ok": false,
+        "both_ok": false,
+        "no_answer": false,
+        "pred_fault": "dependency_outage",
+        "pred_service": "rabbitmq",
+        "seconds": 156.9,
+        "tokens": {
+          "in": 22522,
+          "out": 495
+        },
+        "calls": 11,
+        "error": null,
+        "skill": "none",
+        "skill_ok": false
+      },
+      {
+        "run_id": "queue_backlog_aggressive_steady_r3",
+        "family": "queue_backlog",
+        "service_ok": false,
+        "fault_ok": false,
+        "both_ok": false,
+        "no_answer": false,
+        "pred_fault": "normal",
+        "pred_service": "normal",
+        "seconds": 167.3,
+        "tokens": {
+          "in": 20504,
+          "out": 484
+        },
+        "calls": 10,
+        "error": null,
+        "skill": "none",
+        "skill_ok": false
+      },
+      {
+        "run_id": "slow_db_aggressive_burst_r1",
+        "family": "slow_db",
+        "service_ok": true,
+        "fault_ok": true,
+        "both_ok": true,
+        "no_answer": false,
+        "pred_fault": "db_latency",
+        "pred_service": "catalogue-db",
+        "seconds": 111.5,
+        "tokens": {
+          "in": 22189,
+          "out": 445
+        },
+        "calls": 7,
+        "error": null,
+        "skill": "none",
+        "skill_ok": false
+      },
+      {
+        "run_id": "slow_db_aggressive_burst_r2",
+        "family": "slow_db",
+        "service_ok": true,
+        "fault_ok": true,
+        "both_ok": true,
+        "no_answer": false,
+        "pred_fault": "db_latency",
+        "pred_service": "catalogue-db",
+        "seconds": 108.7,
+        "tokens": {
+          "in": 21690,
+          "out": 412
+        },
+        "calls": 6,
+        "error": null,
+        "skill": "none",
+        "skill_ok": false
+      },
+      {
+        "run_id": "slow_db_aggressive_steady_r1",
+        "family": "slow_db",
+        "service_ok": true,
+        "fault_ok": true,
+        "both_ok": true,
+        "no_answer": false,
+        "pred_fault": "db_latency",
+        "pred_service": "catalogue-db",
+        "seconds": 79.0,
+        "tokens": {
+          "in": 26181,
+          "out": 424
+        },
+        "calls": 5,
+        "error": null,
+        "skill": "db-latency-dependency-wait",
+        "skill_ok": true
+      },
+      {
+        "run_id": "svc_cpu_cap_aggressive_steady_r1",
+        "family": "svc_cpu_cap",
+        "service_ok": true,
+        "fault_ok": true,
+        "both_ok": true,
+        "no_answer": false,
+        "pred_fault": "cpu_throttling",
+        "pred_service": "carts",
+        "seconds": 66.5,
+        "tokens": {
+          "in": 27370,
+          "out": 393
+        },
+        "calls": 4,
+        "error": null,
+        "skill": "service-cpu-throttle",
+        "skill_ok": true
+      },
+      {
+        "run_id": "svc_cpu_cap_aggressive_steady_r2",
+        "family": "svc_cpu_cap",
+        "service_ok": true,
+        "fault_ok": true,
+        "both_ok": true,
+        "no_answer": false,
+        "pred_fault": "cpu_throttling",
+        "pred_service": "carts",
+        "seconds": 75.3,
+        "tokens": {
+          "in": 26771,
+          "out": 404
+        },
+        "calls": 4,
+        "error": null,
+        "skill": "service-cpu-throttle",
+        "skill_ok": true
+      },
+      {
+        "run_id": "svc_cpu_cap_aggressive_steady_r3",
+        "family": "svc_cpu_cap",
+        "service_ok": true,
+        "fault_ok": true,
+        "both_ok": true,
+        "no_answer": false,
+        "pred_fault": "cpu_throttling",
+        "pred_service": "carts",
+        "seconds": 70.4,
+        "tokens": {
+          "in": 26637,
+          "out": 359
+        },
+        "calls": 3,
+        "error": null,
+        "skill": "service-cpu-throttle",
+        "skill_ok": true
+      },
+      {
+        "run_id": "svc_mem_cap_aggressive_steady_r1",
+        "family": "svc_mem_cap",
+        "service_ok": true,
+        "fault_ok": false,
+        "both_ok": false,
+        "no_answer": false,
+        "pred_fault": "dependency_outage",
+        "pred_service": "carts-db",
+        "seconds": 97.1,
+        "tokens": {
+          "in": 22255,
+          "out": 521
+        },
+        "calls": 6,
+        "error": null,
+        "skill": "none",
+        "skill_ok": false
+      },
+      {
+        "run_id": "svc_mem_cap_aggressive_steady_r2",
+        "family": "svc_mem_cap",
+        "service_ok": false,
+        "fault_ok": false,
+        "both_ok": false,
+        "no_answer": false,
+        "pred_fault": "dependency_outage",
+        "pred_service": "payment",
+        "seconds": 129.2,
+        "tokens": {
+          "in": 30455,
+          "out": 496
+        },
+        "calls": 7,
+        "error": null,
+        "skill": "none",
+        "skill_ok": false
+      },
+      {
+        "run_id": "svc_mem_cap_aggressive_steady_r3",
+        "family": "svc_mem_cap",
+        "service_ok": true,
+        "fault_ok": true,
+        "both_ok": true,
+        "no_answer": false,
+        "pred_fault": "memory_limit",
+        "pred_service": "carts",
+        "seconds": 113.7,
+        "tokens": {
+          "in": 16297,
+          "out": 387
+        },
+        "calls": 6,
+        "error": null,
+        "skill": "none",
+        "skill_ok": false
+      },
+      {
+        "run_id": "svc_net_aggressive_steady_r1",
+        "family": "svc_net",
+        "service_ok": true,
+        "fault_ok": false,
+        "both_ok": false,
+        "no_answer": false,
+        "pred_fault": "db_latency",
+        "pred_service": "carts-db",
+        "seconds": 70.0,
+        "tokens": {
+          "in": 22575,
+          "out": 432
+        },
+        "calls": 5,
+        "error": null,
+        "skill": "none",
+        "skill_ok": false
+      },
+      {
+        "run_id": "svc_net_aggressive_steady_r2",
+        "family": "svc_net",
+        "service_ok": true,
+        "fault_ok": false,
+        "both_ok": false,
+        "no_answer": false,
+        "pred_fault": "db_latency",
+        "pred_service": "carts-db",
+        "seconds": 92.6,
+        "tokens": {
+          "in": 31662,
+          "out": 591
+        },
+        "calls": 11,
+        "error": null,
+        "skill": "none",
+        "skill_ok": false
+      },
+      {
+        "run_id": "svc_net_aggressive_steady_r3",
+        "family": "svc_net",
+        "service_ok": true,
+        "fault_ok": false,
+        "both_ok": false,
+        "no_answer": false,
+        "pred_fault": "db_latency",
+        "pred_service": "carts-db",
+        "seconds": 73.4,
+        "tokens": {
+          "in": 23908,
+          "out": 490
+        },
+        "calls": 5,
+        "error": null,
+        "skill": "none",
+        "skill_ok": false
+      }
+    ],
+    "with_tt": [
+      {
+        "run_id": "tt_anomaly_cpu_aggressive_steady_r1",
+        "family": "anomaly_cpu",
+        "service_ok": true,
+        "fault_ok": true,
+        "both_ok": true,
+        "no_answer": false,
+        "pred_fault": "cpu_saturation",
+        "pred_service": "aggressor",
+        "seconds": 44.2,
+        "tokens": {
+          "in": 21487,
+          "out": 400
+        },
+        "calls": 4,
+        "error": null,
+        "skill": "none",
+        "skill_ok": false
+      },
+      {
+        "run_id": "tt_anomaly_cpu_aggressive_steady_r2",
+        "family": "anomaly_cpu",
+        "service_ok": true,
+        "fault_ok": true,
+        "both_ok": true,
+        "no_answer": false,
+        "pred_fault": "cpu_saturation",
+        "pred_service": "aggressor",
+        "seconds": 41.6,
+        "tokens": {
+          "in": 24510,
+          "out": 391
+        },
+        "calls": 4,
+        "error": null,
+        "skill": "host-cpu-saturation",
+        "skill_ok": true
+      },
+      {
+        "run_id": "tt_anomaly_cpu_aggressive_steady_r3",
+        "family": "anomaly_cpu",
+        "service_ok": true,
+        "fault_ok": true,
+        "both_ok": true,
+        "no_answer": false,
+        "pred_fault": "cpu_saturation",
+        "pred_service": "aggressor",
+        "seconds": 43.3,
+        "tokens": {
+          "in": 25134,
+          "out": 390
+        },
+        "calls": 4,
+        "error": null,
+        "skill": "host-cpu-saturation",
+        "skill_ok": true
+      },
+      {
+        "run_id": "tt_anomaly_mem_aggressive_steady_r1",
+        "family": "anomaly_mem",
+        "service_ok": true,
+        "fault_ok": false,
+        "both_ok": false,
+        "no_answer": false,
+        "pred_fault": "noisy_neighbor",
+        "pred_service": "aggressor",
+        "seconds": 46.0,
+        "tokens": {
+          "in": 25715,
+          "out": 458
+        },
+        "calls": 5,
+        "error": null,
+        "skill": "cpu-contention-co-tenant",
+        "skill_ok": false
+      },
+      {
+        "run_id": "tt_anomaly_mem_aggressive_steady_r2",
+        "family": "anomaly_mem",
+        "service_ok": true,
+        "fault_ok": false,
+        "both_ok": false,
+        "no_answer": false,
+        "pred_fault": "noisy_neighbor",
+        "pred_service": "aggressor",
+        "seconds": 37.3,
+        "tokens": {
+          "in": 25002,
+          "out": 435
+        },
+        "calls": 5,
+        "error": null,
+        "skill": "cpu-contention-co-tenant",
+        "skill_ok": false
+      },
+      {
+        "run_id": "tt_anomaly_mem_aggressive_steady_r3",
+        "family": "anomaly_mem",
+        "service_ok": true,
+        "fault_ok": true,
+        "both_ok": true,
+        "no_answer": false,
+        "pred_fault": "memory_pressure",
+        "pred_service": "aggressor",
+        "seconds": 37.4,
+        "tokens": {
+          "in": 19844,
+          "out": 407
+        },
+        "calls": 6,
+        "error": null,
+        "skill": "cpu-contention-co-tenant",
+        "skill_ok": false
+      },
+      {
+        "run_id": "tt_dependency_outage_aggressive_steady_r1",
+        "family": "dependency_outage",
+        "service_ok": true,
+        "fault_ok": true,
+        "both_ok": true,
+        "no_answer": false,
+        "pred_fault": "dependency_outage",
+        "pred_service": "ts-seat-service",
+        "seconds": 38.9,
+        "tokens": {
+          "in": 25839,
+          "out": 484
+        },
+        "calls": 9,
+        "error": null,
+        "skill": "db-latency-dependency-wait",
+        "skill_ok": false
+      },
+      {
+        "run_id": "tt_dependency_outage_aggressive_steady_r2",
+        "family": "dependency_outage",
+        "service_ok": true,
+        "fault_ok": false,
+        "both_ok": false,
+        "no_answer": false,
+        "pred_fault": "cpu_throttling",
+        "pred_service": "ts-seat-service",
+        "seconds": 37.7,
+        "tokens": {
+          "in": 27034,
+          "out": 493
+        },
+        "calls": 8,
+        "error": null,
+        "skill": "service-cpu-throttle",
+        "skill_ok": false
+      },
+      {
+        "run_id": "tt_dependency_outage_aggressive_steady_r3",
+        "family": "dependency_outage",
+        "service_ok": false,
+        "fault_ok": true,
+        "both_ok": false,
+        "no_answer": false,
+        "pred_fault": "dependency_outage",
+        "pred_service": "mysql",
+        "seconds": 39.4,
+        "tokens": {
+          "in": 21618,
+          "out": 428
+        },
+        "calls": 7,
+        "error": null,
+        "skill": "none",
+        "skill_ok": false
+      },
+      {
+        "run_id": "tt_noisy_neighbor_aggressive_steady_r1",
+        "family": "noisy_neighbor",
+        "service_ok": true,
+        "fault_ok": false,
+        "both_ok": false,
+        "no_answer": false,
+        "pred_fault": "cpu_throttling",
+        "pred_service": "aggressor",
+        "seconds": 49.7,
+        "tokens": {
+          "in": 26340,
+          "out": 403
+        },
+        "calls": 5,
+        "error": null,
+        "skill": "cpu-contention-co-tenant",
+        "skill_ok": true
+      },
+      {
+        "run_id": "tt_noisy_neighbor_aggressive_steady_r2",
+        "family": "noisy_neighbor",
+        "service_ok": true,
+        "fault_ok": false,
+        "both_ok": false,
+        "no_answer": false,
+        "pred_fault": "cpu_throttling",
+        "pred_service": "aggressor",
+        "seconds": 52.2,
+        "tokens": {
+          "in": 27727,
+          "out": 521
+        },
+        "calls": 12,
+        "error": null,
+        "skill": "cpu-contention-co-tenant",
+        "skill_ok": true
+      },
+      {
+        "run_id": "tt_noisy_neighbor_aggressive_steady_r3",
+        "family": "noisy_neighbor",
+        "service_ok": true,
+        "fault_ok": false,
+        "both_ok": false,
+        "no_answer": false,
+        "pred_fault": "cpu_throttling",
+        "pred_service": "aggressor",
+        "seconds": 44.7,
+        "tokens": {
+          "in": 26454,
+          "out": 495
+        },
+        "calls": 10,
+        "error": null,
+        "skill": "cpu-contention-co-tenant",
+        "skill_ok": true
+      },
+      {
+        "run_id": "tt_slow_db_aggressive_burst_r1",
+        "family": "slow_db",
+        "service_ok": false,
+        "fault_ok": false,
+        "both_ok": false,
+        "no_answer": false,
+        "pred_fault": "dependency_outage",
+        "pred_service": "toxiproxy",
+        "seconds": 18.4,
+        "tokens": {
+          "in": 20474,
+          "out": 375
+        },
+        "calls": 4,
+        "error": null,
+        "skill": "none",
+        "skill_ok": false
+      },
+      {
+        "run_id": "tt_slow_db_aggressive_burst_r2",
+        "family": "slow_db",
+        "service_ok": false,
+        "fault_ok": true,
+        "both_ok": false,
+        "no_answer": false,
+        "pred_fault": "db_latency",
+        "pred_service": "toxiproxy",
+        "seconds": 30.7,
+        "tokens": {
+          "in": 26691,
+          "out": 513
+        },
+        "calls": 8,
+        "error": null,
+        "skill": "service-cpu-throttle",
+        "skill_ok": false
+      },
+      {
+        "run_id": "tt_slow_db_aggressive_steady_r1",
+        "family": "slow_db",
+        "service_ok": false,
+        "fault_ok": true,
+        "both_ok": false,
+        "no_answer": false,
+        "pred_fault": "db_latency",
+        "pred_service": "toxiproxy",
+        "seconds": 39.4,
+        "tokens": {
+          "in": 25476,
+          "out": 440
+        },
+        "calls": 7,
+        "error": null,
+        "skill": "db-latency-dependency-wait",
+        "skill_ok": true
+      },
+      {
+        "run_id": "tt_svc_cpu_cap_aggressive_steady_r1",
+        "family": "svc_cpu_cap",
+        "service_ok": true,
+        "fault_ok": true,
+        "both_ok": true,
+        "no_answer": false,
+        "pred_fault": "cpu_throttling",
+        "pred_service": "ts-travel-service",
+        "seconds": 65.9,
+        "tokens": {
+          "in": 20663,
+          "out": 429
+        },
+        "calls": 7,
+        "error": null,
+        "skill": "none",
+        "skill_ok": false
+      },
+      {
+        "run_id": "tt_svc_cpu_cap_aggressive_steady_r2",
+        "family": "svc_cpu_cap",
+        "service_ok": false,
+        "fault_ok": false,
+        "both_ok": false,
+        "no_answer": false,
+        "pred_fault": "disk_io",
+        "pred_service": "host",
+        "seconds": 63.9,
+        "tokens": {
+          "in": 20710,
+          "out": 399
+        },
+        "calls": 7,
+        "error": null,
+        "skill": "none",
+        "skill_ok": false
+      },
+      {
+        "run_id": "tt_svc_cpu_cap_aggressive_steady_r3",
+        "family": "svc_cpu_cap",
+        "service_ok": false,
+        "fault_ok": false,
+        "both_ok": false,
+        "no_answer": false,
+        "pred_fault": "db_latency",
+        "pred_service": "mysql",
+        "seconds": 55.4,
+        "tokens": {
+          "in": 20677,
+          "out": 520
+        },
+        "calls": 10,
+        "error": null,
+        "skill": "none",
+        "skill_ok": false
+      },
+      {
+        "run_id": "tt_svc_net_aggressive_steady_r1",
+        "family": "svc_net",
+        "service_ok": true,
+        "fault_ok": false,
+        "both_ok": false,
+        "no_answer": false,
+        "pred_fault": "dependency_outage",
+        "pred_service": "ts-basic-service",
+        "seconds": 44.8,
+        "tokens": {
+          "in": 22004,
+          "out": 483
+        },
+        "calls": 8,
+        "error": null,
+        "skill": "none",
+        "skill_ok": false
+      },
+      {
+        "run_id": "tt_svc_net_aggressive_steady_r2",
+        "family": "svc_net",
+        "service_ok": true,
+        "fault_ok": true,
+        "both_ok": true,
+        "no_answer": false,
+        "pred_fault": "service_network",
+        "pred_service": "ts-basic-service",
+        "seconds": 40.2,
+        "tokens": {
+          "in": 29780,
+          "out": 471
+        },
+        "calls": 8,
+        "error": null,
+        "skill": "none",
+        "skill_ok": false
+      },
+      {
+        "run_id": "tt_svc_net_aggressive_steady_r3",
+        "family": "svc_net",
+        "service_ok": true,
+        "fault_ok": true,
+        "both_ok": true,
+        "no_answer": false,
+        "pred_fault": "service_network",
+        "pred_service": "ts-basic-service",
+        "seconds": 36.5,
+        "tokens": {
+          "in": 22294,
+          "out": 447
+        },
+        "calls": 8,
+        "error": null,
+        "skill": "none",
+        "skill_ok": false
+      }
+    ]
+  }
+}
