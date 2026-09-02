@@ -1,0 +1,1187 @@
+Naser Ezzati-Jivan
+0 minutes 3 seconds0:03
+Naser Ezzati-Jivan 0 minutes 3 seconds
+Let's continue only with trace, like LTTNG and kernel trace for now. Kernel can be LTNG can be EBPF can be other things, right? Can be perfect as well if we need it, but now we're working on LTTNG kernel trace, OK?
+
+Yuvraj Sehgal
+0 minutes 12 seconds0:12
+Yuvraj Sehgal 0 minutes 12 seconds
+Mhm.
+
+Naser Ezzati-Jivan
+0 minutes 22 seconds0:22
+Naser Ezzati-Jivan 0 minutes 22 seconds
+Let's create some scenarios.
+Naser Ezzati-Jivan 0 minutes 25 seconds
+Let's say, eventually we'll have a comprehensive list of issues that we can detect. For example, it can be about CPU contention problems. This is 1 problem, right? It's a reason of many latency problems. Let's focus on latency problems.
+
+Yuvraj Sehgal
+0 minutes 31 seconds0:31
+Yuvraj Sehgal 0 minutes 31 seconds
+Okay.
+
+Naser Ezzati-Jivan
+0 minutes 46 seconds0:46
+Naser Ezzati-Jivan 0 minutes 46 seconds
+Let's say, okay. Latency can come from contention, can come from different things. You know, search for this, do a quick research with AI. AIs are good on this phase, establish research, establish knowledge. It doesn't need to read papers or something. It comes from textbooks, right? So
+
+Yuvraj Sehgal
+1 minute 2 seconds1:02
+Yuvraj Sehgal 1 minute 2 seconds
+Yeah.
+
+Naser Ezzati-Jivan
+1 minute 5 seconds1:05
+Naser Ezzati-Jivan 1 minute 5 seconds
+For latency, try to find 5 reasons or 10 reasons, 10 different isolated reasons. Isolated and group reasons, so this and that, or only this, only that. Okay, up to 10, it can be 5 as well. So let's say latency problem, we find 5 reasons, then use LC and use again AI.
+
+Yuvraj Sehgal
+1 minute 18 seconds1:18
+Yuvraj Sehgal 1 minute 18 seconds
+Mm.
+
+Naser Ezzati-Jivan
+1 minute 25 seconds1:25
+Naser Ezzati-Jivan 1 minute 25 seconds
+to generate trace for you using LCNG for those cases. So AI can create source codes and simple applications. So it can generate those problems. It can generate A latency problem that causes, let's say, contention between trace, for example. Right? So you trace this.
+
+Yuvraj Sehgal
+1 minute 32 seconds1:32
+Yuvraj Sehgal 1 minute 32 seconds
+Mhm.
+
+Naser Ezzati-Jivan
+1 minute 47 seconds1:47
+Naser Ezzati-Jivan 1 minute 47 seconds
+Okay. And you can trace this like 5, 10 different traces only of this specific case. So overall, you create, let's say, 5 to 10 different scenarios all about the same problem, all about the latency problem for now. So latency problem, 10 scenarios.
+
+Yuvraj Sehgal
+1 minute 48 seconds1:48
+Yuvraj Sehgal 1 minute 48 seconds
+Ke.
+Yuvraj Sehgal 1 minute 56 seconds
+Okay.
+Yuvraj Sehgal 2 minutes
+Mhm.
+
+Naser Ezzati-Jivan
+2 minutes 7 seconds2:07
+Naser Ezzati-Jivan 2 minutes 7 seconds
+And generate the like skill for one of the problem.
+Naser Ezzati-Jivan 2 minutes 15 seconds
+And then for the others, try to use the with and without, I mean, create the trace data, then use the blueprint to analyse this. So this way we can cover multiple latency problems. At the end of the day, we can have a very comprehensive blueprint that covers all the latency-related problems from Kennel Trace.
+
+Yuvraj Sehgal
+2 minutes 25 seconds2:25
+Yuvraj Sehgal 2 minutes 25 seconds
+Okay.
+Yuvraj Sehgal 2 minutes 36 seconds
+Okay.
+
+Naser Ezzati-Jivan
+2 minutes 37 seconds2:37
+Naser Ezzati-Jivan 2 minutes 37 seconds
+Okay, then this is the training part. Then we find a paper or a trace data with the real latency data like problem. We give it to our system and then see if our system with that blueprint can find out that latency problem and the reason behind that.
+Naser Ezzati-Jivan 2 minutes 58 seconds
+This is 1 scenario. And other than that, you can work on other different scenarios. There are many different scenarios of kind of tricks, like different kind of problems. You know, you can, for example, look for like using critical analysis, you can look for long weightings.
+Naser Ezzati-Jivan 3 minutes 13 seconds
+Or there are some real problems from Chrome, from Google Chrome, like sometimes the lock contention.
+
+Yuvraj Sehgal
+3 minutes 14 seconds3:14
+Yuvraj Sehgal 3 minutes 14 seconds
+Okay.
+Yuvraj Sehgal 3 minutes 22 seconds
+Mhm.
+
+Naser Ezzati-Jivan
+3 minutes 23 seconds3:23
+Naser Ezzati-Jivan 3 minutes 23 seconds
+Lock control lots of things, but but but kernel level lock condition, not like the user level, because if it's like spinning is not good, but if it's kernel level lock, you can easily generate it. You can generate many cases of that and create a like a skill, like a blueprint for it, a skill or blueprint for it.
+
+Yuvraj Sehgal
+3 minutes 35 seconds3:35
+Yuvraj Sehgal 3 minutes 35 seconds
+Yes.
+
+Naser Ezzati-Jivan
+3 minutes 42 seconds3:42
+Naser Ezzati-Jivan 3 minutes 42 seconds
+And then use your agent with and without those blueprints, and then get some results. For example, next time, next time that we have meeting with Sina, let's show them, you know, five different problems, real problems that we have developed blueprints for, and then we show that with and without blueprints.
+Naser Ezzati-Jivan 4 minutes 3 seconds
+how good it works with blueprint compared to if you don't use any like blueprints or something.
+
+Yuvraj Sehgal
+4 minutes 9 seconds4:09
+Yuvraj Sehgal 4 minutes 9 seconds
+Okay, sure.
+
+Naser Ezzati-Jivan
+4 minutes 11 seconds4:11
+Naser Ezzati-Jivan 4 minutes 11 seconds
+Yeah.
+
+Yuvraj Sehgal
+4 minutes 12 seconds4:12
+Yuvraj Sehgal 4 minutes 12 seconds
+Yeah, yeah, yeah, so, so like, uh...
+
+Naser Ezzati-Jivan
+4 minutes 13 seconds4:13
+Naser Ezzati-Jivan 4 minutes 13 seconds
+But we should get there. But easy problems, the blueprint might not be that good. And this is also a good result. You say that, look, for this very simple problem, blueprint doesn't do anything. AI agent is smart enough and they can detect the problem. That's a good finding, you know. We don't want to say that, look, blueprint works always all the time. It's not a good result.
+MP
+
+Mahsa Panahandeh
+4 minutes 29 seconds4:29
+Mahsa Panahandeh 4 minutes 29 seconds
+Mhm.
+
+Yuvraj Sehgal
+4 minutes 30 seconds4:30
+Yuvraj Sehgal 4 minutes 30 seconds
+Mhm.
+
+Naser Ezzati-Jivan
+4 minutes 32 seconds4:32
+Naser Ezzati-Jivan 4 minutes 32 seconds
+So I really want to know where the blueprint works now, where it does not work. It does not add too much to finding.
+Naser Ezzati-Jivan 4 minutes 42 seconds
+It should be about the more like complex problems, right? It should be about the complex. For example, if I ask someone, hey, can you like make some egg for me? It's very easy. They don't need to read, like watch like 10 hours of YouTube videos. I'm asking them to do, let's say, like Mahsa, like Gurmez Azizi, for example.
+
+Yuvraj Sehgal
+4 minutes 46 seconds4:46
+Yuvraj Sehgal 4 minutes 46 seconds
+Yes.
+Yuvraj Sehgal 4 minutes 57 seconds
+Mhm.
+MP
+
+Mahsa Panahandeh
+5 minutes 2 seconds5:02
+Mahsa Panahandeh 5 minutes 2 seconds
+Nah.
+
+Naser Ezzati-Jivan
+5 minutes 3 seconds5:03
+Naser Ezzati-Jivan 5 minutes 3 seconds
+Is it very difficult, the meal to make, these to make, right? Then they need the skill, the blueprint. So we can say, look, for this kind of problems, this was a scenario, this was a reason, this was a cause, blueprint didn't do anything, or 5% only for this complex problem.
+
+Yuvraj Sehgal
+5 minutes 6 seconds5:06
+Yuvraj Sehgal 5 minutes 6 seconds
+Mhm.
+
+Naser Ezzati-Jivan
+5 minutes 21 seconds5:21
+Naser Ezzati-Jivan 5 minutes 21 seconds
+This was the scenario, this was the cause, this was the traces, this was the data. It had like improved by 30% or 40% or something. Or the normal agent was not able to find it, but with blueprint, it is able to find. And not only find, but also reason about it and so on and so forth. So make it more systematic research, no?
+
+Yuvraj Sehgal
+5 minutes 34 seconds5:34
+Yuvraj Sehgal 5 minutes 34 seconds
+Yeah.
+Yuvraj Sehgal 5 minutes 41 seconds
+So you are saying like for the latency, don't you think we already have enough latency runs? So for example, these are the type of anomalies we have and for each we have multiple runs. So I was, yes, yes, I have it on my VM, not VM, sorry.
+
+Naser Ezzati-Jivan
+5 minutes 54 seconds5:54
+Naser Ezzati-Jivan 5 minutes 54 seconds
+Do you have it already? Okay.
+MP
+Mahsa Panahandeh
+6 minutes6:00
+Mahsa Panahandeh 6 minutes
+Yeah.
+
+Yuvraj Sehgal
+6 minutes6:00
+Yuvraj Sehgal 6 minutes
+On our, yes, yes.
+
+Naser Ezzati-Jivan
+6 minutes6:00
+Naser Ezzati-Jivan 6 minutes
+Have you created the created like trace data for them?
+
+Yuvraj Sehgal
+6 minutes 4 seconds6:04
+Yuvraj Sehgal 6 minutes 4 seconds
+Exactly, yeah, yeah. We have traces, logs, metrics, everything collected for them. Because you remember when I was working on that MSR paper, we were creating a data set. So I am using that only.
+
+Naser Ezzati-Jivan
+6 minutes 14 seconds6:14
+Naser Ezzati-Jivan 6 minutes 14 seconds
+Yeah.
+Naser Ezzati-Jivan 6 minutes 17 seconds
+Yeah, I remember. Yeah, I remember. Okay, good. That's good then. If it's enough or not, I don't know. Cheque it again with the thing that I said today.
+
+Yuvraj Sehgal
+6 minutes 21 seconds6:21
+Yuvraj Sehgal 6 minutes 21 seconds
+Yeah.
+
+Naser Ezzati-Jivan
+6 minutes 26 seconds6:26
+Naser Ezzati-Jivan 6 minutes 26 seconds
+Try to, you know, if you have it, even if you have it, then to, you know, finalise it. Finalise it means say that this is the blueprint. Do you need one blueprint, multiple blueprints? One blueprint can cover all the different latency things, or we need multiple blueprints? You know, I think we can have a one like a like a hierarchical blueprints, one parent about latency.
+
+Yuvraj Sehgal
+6 minutes 26 seconds6:26
+Yuvraj Sehgal 6 minutes 26 seconds
+Okay.
+Yuvraj Sehgal 6 minutes 33 seconds
+Sure.
+Yuvraj Sehgal 6 minutes 42 seconds
+Okay.
+
+Naser Ezzati-Jivan
+6 minutes 47 seconds6:47
+Naser Ezzati-Jivan 6 minutes 47 seconds
+And we can have several smaller scales for different kind of latencies. And if it's needed, AI agents should be able to go from the parent to the children scales and use them to identify the things. And if you have them, that's fine. Then next time, give us a full demo of them.
+
+Yuvraj Sehgal
+7 minutes 3 seconds7:03
+Yuvraj Sehgal 7 minutes 3 seconds
+Okay, sure, sure, sure.
+
+Naser Ezzati-Jivan
+7 minutes 8 seconds7:08
+Naser Ezzati-Jivan 7 minutes 8 seconds
+And now you can write a document or kind of paper, not paper, but technical paper, about just the results part, I mean, the study part, not the other things. Say that this is all the latency thing and this is what we have a list, full list of trace, each of them.
+
+Yuvraj Sehgal
+7 minutes 13 seconds7:13
+Yuvraj Sehgal 7 minutes 13 seconds
+Okay.
+Yuvraj Sehgal 7 minutes 23 seconds
+Mhm.
+
+Naser Ezzati-Jivan
+7 minutes 28 seconds7:28
+Naser Ezzati-Jivan 7 minutes 28 seconds
+turn them to a template, like what's the problem, how do we generate it, what are the scenarios generated, what is the problem, data that we had, how much data, what events enabled and so on, and with blueprint and without blueprint, and what is the blue dot blueprint.
+
+Yuvraj Sehgal
+7 minutes 44 seconds7:44
+Yuvraj Sehgal 7 minutes 44 seconds
+Okay, okay, yeah.
+
+Naser Ezzati-Jivan
+7 minutes 45 seconds7:45
+Naser Ezzati-Jivan 7 minutes 45 seconds
+No, so it can be a paper for itself. If you do this way, then the architecture, the blueprint and so on, this case, and if we can find another case, it can make a very good paper.
+
+Yuvraj Sehgal
+7 minutes 58 seconds7:58
+Yuvraj Sehgal 7 minutes 58 seconds
+Okay, yeah.
+
+Naser Ezzati-Jivan
+8 minutes8:00
+Naser Ezzati-Jivan 8 minutes
+So, don't rush into, like, other data logs, but I'm sure, you know, I'm sure that if we, if this works on kernel, it can work on logs and metrics and so on, all of them together, okay? But those can be other topics, because now CNI is only interested on the kernel part. Let's focus on the kernel part, make sure we have something that works, something like functional for the kernel part.
+
+Yuvraj Sehgal
+8 minutes 12 seconds8:12
+Yuvraj Sehgal 8 minutes 12 seconds
+Yes.
+
+Naser Ezzati-Jivan
+8 minutes 22 seconds8:22
+Naser Ezzati-Jivan 8 minutes 22 seconds
+Then the same architecture, the same mechanism, we can add many other data, many other things.
+
+Yuvraj Sehgal
+8 minutes 27 seconds8:27
+Yuvraj Sehgal 8 minutes 27 seconds
+Okay, sure.
+
+Naser Ezzati-Jivan
+8 minutes 28 seconds8:28
+Naser Ezzati-Jivan 8 minutes 28 seconds
+And this is going to be your research, like teases as well, right? They put this whole architecture. So it's going to be agent, agentic software, root cause analysis, something like that. But you need to think about it. You can package it much better than what just using critical, just using root cause or something. It can be much more. I believe it's more than root cause analysis.
+
+Yuvraj Sehgal
+8 minutes 36 seconds8:36
+Yuvraj Sehgal 8 minutes 36 seconds
+It was an.
+Yuvraj Sehgal 8 minutes 40 seconds
+Yeah.
+
+Naser Ezzati-Jivan
+8 minutes 53 seconds8:53
+Naser Ezzati-Jivan 8 minutes 53 seconds
+It includes pretty much everything. You can say, even you can add like instead of root cause, say software observability, I don't know, agent-based architecture or something like that.
+
+Yuvraj Sehgal
+8 minutes 53 seconds8:53
+Yuvraj Sehgal 8 minutes 53 seconds
+Mhm.
+Yuvraj Sehgal 9 minutes 4 seconds
+Okay. And like a one question.
+
+Naser Ezzati-Jivan
+9 minutes 6 seconds9:06
+Naser Ezzati-Jivan 9 minutes 6 seconds
+And, and Mahsa, sorry, Mahsa, it can be also written as a vision paper, right? I don't know if XC has a vision paper, and and cheque the cheque the deadline Yuvraj for XC.
+
+Yuvraj Sehgal
+9 minutes 8 seconds9:08
+Yuvraj Sehgal 9 minutes 8 seconds
+Yeah.
+MP
+Mahsa Panahandeh
+9 minutes 11 seconds9:11
+Mahsa Panahandeh 9 minutes 11 seconds
+Yeah.
+Mahsa Panahandeh 9 minutes 16 seconds
+I think that they do have, and the deadline is in January, yeah, before I checked, I think.
+
+Naser Ezzati-Jivan
+9 minutes 19 seconds9:19
+Naser Ezzati-Jivan 9 minutes 19 seconds
+Nah.
+Naser Ezzati-Jivan 9 minutes 22 seconds
+Janet, can you please open up here Yuvraj, since you have shared your screen? Just say exceed doesn't, is not vision, I think is near or just for call for vision, see what you say.
+Naser Ezzati-Jivan 9 minutes 35 seconds
+2027.
+MP
+Mahsa Panahandeh
+9 minutes 35 seconds9:35
+Mahsa Panahandeh 9 minutes 35 seconds
+For a week, yeah.
+Mahsa Panahandeh 9 minutes 38 seconds
+Okay.
+
+Naser Ezzati-Jivan
+9 minutes 38 seconds9:38
+Naser Ezzati-Jivan 9 minutes 38 seconds
+I say June, not this is not.
+
+Yuvraj Sehgal
+9 minutes 42 seconds9:42
+Yuvraj Sehgal 9 minutes 42 seconds
+Mm.
+
+Naser Ezzati-Jivan
+9 minutes 42 seconds9:42
+Naser Ezzati-Jivan 9 minutes 42 seconds
+2027.
+Naser Ezzati-Jivan 9 minutes 45 seconds
+Click on that, yeah, go to the tracks and then tracks, what track, yeah, there.
+MP
+Mahsa Panahandeh
+9 minutes 49 seconds9:49
+Mahsa Panahandeh 9 minutes 49 seconds
+It.
+
+Yuvraj Sehgal
+9 minutes 50 seconds9:50
+Yuvraj Sehgal 9 minutes 50 seconds
+Research one.
+
+Naser Ezzati-Jivan
+9 minutes 51 seconds9:51
+Naser Ezzati-Jivan 9 minutes 51 seconds
+No, no, no, the menu menu tracks, see what do we have any like?
+MP
+Mahsa Panahandeh
+9 minutes 52 seconds9:52
+Mahsa Panahandeh 9 minutes 52 seconds
+Tetreault.
+
+Naser Ezzati-Jivan
+9 minutes 58 seconds9:58
+Naser Ezzati-Jivan 9 minutes 58 seconds
+Ke in the middle.
+
+Yuvraj Sehgal
+10 minutes10:00
+Yuvraj Sehgal 10 minutes
+Menu.
+
+Naser Ezzati-Jivan
+10 minutes10:00
+Naser Ezzati-Jivan 10 minutes
+The top menus.
+MP
+Mahsa Panahandeh
+10 minutes 2 seconds10:02
+Mahsa Panahandeh 10 minutes 2 seconds
+Get her tab, yeah.
+
+Yuvraj Sehgal
+10 minutes 3 seconds10:03
+Yuvraj Sehgal 10 minutes 3 seconds
+Yeah, yeah.
+
+Naser Ezzati-Jivan
+10 minutes 4 seconds10:04
+Naser Ezzati-Jivan 10 minutes 4 seconds
+So, see.
+MP
+Mahsa Panahandeh
+10 minutes 6 seconds10:06
+Mahsa Panahandeh 10 minutes 6 seconds
+Near, yeah, new idea and emerging results near.
+
+Naser Ezzati-Jivan
+10 minutes 9 seconds10:09
+Naser Ezzati-Jivan 10 minutes 9 seconds
+There's near, yeah, the 4th, 5th one, yeah, near. Click on that, please. This is October, Mahsa. Yeah, you were about to confuse us, Mahsa. Don't do that, yeah. So, 23rd October, you know, the deadline is perfect. You know, you can easily write a very good, very, very good vision paper.
+
+Yuvraj Sehgal
+10 minutes 9 seconds10:09
+Yuvraj Sehgal 10 minutes 9 seconds
+This one?
+MP
+Mahsa Panahandeh
+10 minutes 15 seconds10:15
+Mahsa Panahandeh 10 minutes 15 seconds
+OK, sorry.
+Mahsa Panahandeh 10 minutes 23 seconds
+Okay.
+
+Naser Ezzati-Jivan
+10 minutes 27 seconds10:27
+Naser Ezzati-Jivan 10 minutes 27 seconds
+What it is?
+
+Yuvraj Sehgal
+10 minutes 30 seconds10:30
+Yuvraj Sehgal 10 minutes 30 seconds
+Ombuki.
+
+Naser Ezzati-Jivan
+10 minutes 31 seconds10:31
+Naser Ezzati-Jivan 10 minutes 31 seconds
+But then for the cases, the use cases, it has to be very complex. Because as I said, for normal and easy cases, we don't really need to have any skill or any blueprint or something. You know, it can be simply the agent itself, because agents are becoming very, you know, excellent now.
+
+Yuvraj Sehgal
+10 minutes 44 seconds10:44
+Yuvraj Sehgal 10 minutes 44 seconds
+K.
+Yuvraj Sehgal 10 minutes 49 seconds
+Mhm, mhm.
+Yuvraj Sehgal 10 minutes 52 seconds
+To a bye bye.
+
+Naser Ezzati-Jivan
+10 minutes 52 seconds10:52
+Naser Ezzati-Jivan 10 minutes 52 seconds
+But I'm sure the agents do not have those detail kernel and domain knowledge.
+
+Yuvraj Sehgal
+10 minutes 59 seconds10:59
+Yuvraj Sehgal 10 minutes 59 seconds
+Mhm.
+
+Naser Ezzati-Jivan
+10 minutes 59 seconds10:59
+Naser Ezzati-Jivan 10 minutes 59 seconds
+So, we are adding it, we are like attaching those expertise to agent and agent should be. So, you know, your I think the main part of your vote now and your effort now should be on you should focus on mainly the difficult cases, the complex cases of like performance.
+Naser Ezzati-Jivan 11 minutes 19 seconds
+Mainly performance, but security can be a part of it as well. You should that with blueprint you can solve it.
+
+Yuvraj Sehgal
+11 minutes 25 seconds11:25
+Yuvraj Sehgal 11 minutes 25 seconds
+Okay, and like, so for example, some of the problems, so for example, let's say error storm in this one, when we collect this data set, we have lots of errors in the services. So for example, if a service went down, it won't put much pressure on the kernel. So it is very difficult to detect.
+Yuvraj Sehgal 11 minutes 46 seconds
+Do I leave such cases out because we are just using LTT?
+
+Naser Ezzati-Jivan
+11 minutes 49 seconds11:49
+Naser Ezzati-Jivan 11 minutes 49 seconds
+Yeah, yeah, we don't need to cover everything, no, if that doesn't work, forget about it, forget about it.
+
+Yuvraj Sehgal
+11 minutes 51 seconds11:51
+Yuvraj Sehgal 11 minutes 51 seconds
+OKOK.
+Yuvraj Sehgal 11 minutes 53 seconds
+Okay, so I'll use only the ones that are latency related or yeah.
+
+Naser Ezzati-Jivan
+11 minutes 57 seconds11:57
+Naser Ezzati-Jivan 11 minutes 57 seconds
+Yeah, yeah. I think Yuvraj, you need to also include the critical pack analysis in your work, because the most complex cases come from critical.
+
+Yuvraj Sehgal
+12 minutes 9 seconds12:09
+Yuvraj Sehgal 12 minutes 9 seconds
+Okay.
+
+Naser Ezzati-Jivan
+12 minutes 10 seconds12:10
+Naser Ezzati-Jivan 12 minutes 10 seconds
+And if you have any questions about that, we have already an expert in our team, like Sneh Patel is there. He is an expert in good call path analysis. OK, and I believe he did a good literature last time to for the he said he did a good review on the different cases that you can generate using good call path.
+
+Yuvraj Sehgal
+12 minutes 14 seconds12:14
+Yuvraj Sehgal 12 minutes 14 seconds
+Yeah.
+Yuvraj Sehgal 12 minutes 28 seconds
+Okay, sure, sure. Yeah, I can get some.
+
+Naser Ezzati-Jivan
+12 minutes 29 seconds12:29
+Naser Ezzati-Jivan 12 minutes 29 seconds
+But you can start this week, you can start with like simple cases and you know, put them together and make a nice report. But while doing that, think about more critical and complex cases. Yes, Sneh.
+SP
+
+Sneh Patel
+12 minutes 36 seconds12:36
+Sneh Patel 12 minutes 36 seconds
+iPhone.
+Sneh Patel 12 minutes 41 seconds
+I found a really good paper on like critical path analysis with microservices. If you want to take a look at that, I can share the paper with you maybe.
+
+Yuvraj Sehgal
+12 minutes 47 seconds12:47
+Yuvraj Sehgal 12 minutes 47 seconds
+Sure, yeah, please share it.
+MP
+Mahsa Panahandeh
+12 minutes 50 seconds12:50
+Mahsa Panahandeh 12 minutes 50 seconds
+Right now, your friends should have one SKM per the case that you want to study.
+SP
+
+Sneh Patel
+12 minutes 50 seconds12:50
+Sneh Patel 12 minutes 50 seconds
+Awesome.
+
+Yuvraj Sehgal
+12 minutes 56 seconds12:56
+Yuvraj Sehgal 12 minutes 56 seconds
+So professor asked me not to work on skills, so I was just working on blueprint, but it is very easy to create skills out of blueprint. So if we parse it through a like by ourself or just write it in a skill.md file, it becomes like skill from the blueprint. So yeah, it won't take much time.
+
+Naser Ezzati-Jivan
+12 minutes 59 seconds12:59
+Naser Ezzati-Jivan 12 minutes 59 seconds
+Yeah.
+MP
+Mahsa Panahandeh
+13 minutes 1 second13:01
+Mahsa Panahandeh 13 minutes 1 second
+Okay.
+
+Naser Ezzati-Jivan
+13 minutes 8 seconds13:08
+Naser Ezzati-Jivan 13 minutes 8 seconds
+Po.
+Naser Ezzati-Jivan 13 minutes 15 seconds
+Yep.
+MP
+Mahsa Panahandeh
+13 minutes 16 seconds13:16
+Mahsa Panahandeh 13 minutes 16 seconds
+Okay.
+
+Yuvraj Sehgal
+13 minutes 16 seconds13:16
+Yuvraj Sehgal 13 minutes 16 seconds
+But yeah, one scale per problem.
+
+Naser Ezzati-Jivan
+13 minutes 18 seconds13:18
+Naser Ezzati-Jivan 13 minutes 18 seconds
+In the paper, Mahsa, we should not say it is a skill because we're not developing it too. A blueprint is a better packaging, better name, no? But then the question is, if a blueprint, if one blueprint is like either one-to-one mapping between them or not, that's another question that Yuvraj is saying that is not one-to-one now.
+MP
+Mahsa Panahandeh
+13 minutes 21 seconds13:21
+Mahsa Panahandeh 13 minutes 21 seconds
+Yeah, right, yeah.
+Mahsa Panahandeh 13 minutes 26 seconds
+Right, yeah, to set it, yeah, of course.
+
+Naser Ezzati-Jivan
+13 minutes 37 seconds13:37
+Naser Ezzati-Jivan 13 minutes 37 seconds
+But I believe it is not going to be the case. It can be one to many, one to one or one to many later.
+
+Yuvraj Sehgal
+13 minutes 43 seconds13:43
+Yuvraj Sehgal 13 minutes 43 seconds
+Yeah, so it's, yeah, so far it is according to the category. So for example, CPU related contention problem will have one scale. Database issue related will have one scale. So this kind of, but if there are multiple issues related to database, they will all be covered by one scale only.
+
+Naser Ezzati-Jivan
+13 minutes 44 seconds13:44
+Naser Ezzati-Jivan 13 minutes 44 seconds
+And then, yeah.
+MP
+Mahsa Panahandeh
+14 minutes 4 seconds14:04
+Mahsa Panahandeh 14 minutes 4 seconds
+So, the only concern that I have, and you may have, you know, have an answer for that, is that if later we want to say when Blueprint works and when it and when it won't work, how we can isolate the effect of using Blueprint or
+
+Naser Ezzati-Jivan
+14 minutes 4 seconds14:04
+Naser Ezzati-Jivan 14 minutes 4 seconds
+Thank you.
+
+Yuvraj Sehgal
+14 minutes 18 seconds14:18
+Yuvraj Sehgal 14 minutes 18 seconds
+Yeah.
+MP
+Mahsa Panahandeh
+14 minutes 24 seconds14:24
+Mahsa Panahandeh 14 minutes 24 seconds
+if we consider it like, you know, the SQL that it's called by that. Since if we say that for complex cases it's working, isn't it because the SQL has some, or you know, the blueprint had some SQL for covering those cases? For instance, as long as you say that if you see this kind of dependency, do this one and that one or call this one,
+Mahsa Panahandeh 14 minutes 49 seconds
+So you're giving a hint to that. So, you know, you're training that or you're giving some tips and techniques for solving those complex problems. And so later, if we say that complex problems that for instance, they do have a bottle, pardon?
+
+Naser Ezzati-Jivan
+14 minutes 58 seconds14:58
+Naser Ezzati-Jivan 14 minutes 58 seconds
+Yeah.
+MP
+Mahsa Panahandeh
+15 minutes 8 seconds15:08
+Mahsa Panahandeh 15 minutes 8 seconds
+that they do have a bottleneck in the critical path. They work better with blueprints. So the question maybe is that, is any because that in the skill or in the blueprint, we have some tips on the bottlenecks in the critical path?
+Mahsa Panahandeh 15 minutes 27 seconds
+Or no, generally blueprint works better. So do you know what I mean? Did you get me since I don't know how much it was clear? I was just thinking loudly.
+
+Naser Ezzati-Jivan
+15 minutes 27 seconds15:27
+Naser Ezzati-Jivan 15 minutes 27 seconds
+Right.
+
+Yuvraj Sehgal
+15 minutes 33 seconds15:33
+Yuvraj Sehgal 15 minutes 33 seconds
+I.
+Yuvraj Sehgal 15 minutes 39 seconds
+I got a little bit of idea. So you are basically saying like how we can prove that the solution was because of the blueprint or maybe because of something else, right?
+MP
+Mahsa Panahandeh
+15 minutes 48 seconds15:48
+Mahsa Panahandeh 15 minutes 48 seconds
+Mhm.
+Mahsa Panahandeh 15 minutes 51 seconds
+Because the design that we have, yeah. So it's why that even I ask, how's the cardinality? Is it one to one or is it one to many? Since as long as if you have, or if you cover different types of designs, we can say that, okay, we tried different designs and generally blueprints works better in these cases. And it
+
+Yuvraj Sehgal
+15 minutes 53 seconds15:53
+Yuvraj Sehgal 15 minutes 53 seconds
+Yes, yeah.
+
+Mahsa Panahandeh
+16 minutes 11 seconds16:11
+Mahsa Panahandeh 16 minutes 11 seconds
+doesn't work good for simple cases, for instance. But if it's one-to-one, later, maybe the question that we should answer is that how we know that, you know, I'm afraid we cannot say the effectiveness is because of blueprints, since maybe it's because of the designs that we're giving to that.
+
+Yuvraj Sehgal
+16 minutes 15 seconds16:15
+Yuvraj Sehgal 16 minutes 15 seconds
+Yeah.
+
+Naser Ezzati-Jivan
+16 minutes 23 seconds16:23
+Naser Ezzati-Jivan 16 minutes 23 seconds
+No.
+Naser Ezzati-Jivan 16 minutes 28 seconds
+Okay.
+
+Yuvraj Sehgal
+16 minutes 32 seconds16:32
+Yuvraj Sehgal 16 minutes 32 seconds
+Oh.
+
+Naser Ezzati-Jivan
+16 minutes 32 seconds16:32
+Naser Ezzati-Jivan 16 minutes 32 seconds
+What do you mean by design? What design myself?
+MP
+Mahsa Panahandeh
+16 minutes 34 seconds16:34
+Mahsa Panahandeh 16 minutes 34 seconds
+You know, what do you want to focus on that in that skill? Is it the critical path, for instance? So then the results would be better for critical path problem. Is it based on huge dependencies? So later we can say that it works better for large dependent cases.
+
+Naser Ezzati-Jivan
+16 minutes 45 seconds16:45
+Naser Ezzati-Jivan 16 minutes 45 seconds
+Sneh.
+
+Naser Ezzati-Jivan
+19 minutes 31 seconds19:31
+Naser Ezzati-Jivan 19 minutes 31 seconds
+Ohh.
+Naser Ezzati-Jivan 19 minutes 32 seconds
+Sneh.
+Naser Ezzati-Jivan 19 minutes 45 seconds
+Nah.
+Naser Ezzati-Jivan 20 minutes 16 seconds
+List.
+
+Yuvraj Sehgal
+20 minutes 16 seconds20:16
+Yuvraj Sehgal 20 minutes 16 seconds
+again a CPU related problem. In order to distinguish that, that takes a lot of time to find the right.
+
+Naser Ezzati-Jivan
+20 minutes 23 seconds20:23
+Naser Ezzati-Jivan 20 minutes 23 seconds
+Yeah, I know. I know it needs a lot of knowledge, like domain knowledge. But the question is, who creates those blueprints? The analyzer, human analyzer, or AI agents? And then write it down based on multiple experiments and experiments.
+
+Yuvraj Sehgal
+20 minutes 34 seconds20:34
+Yuvraj Sehgal 20 minutes 34 seconds
+These are created by...
+Yuvraj Sehgal 20 minutes 38 seconds
+Yes, yeah. So based on multiple experiments, first I collect evidence that we have got, then I ask agent to learn, sorry, like read that evidence and create a very specific blueprint. So this is the like evidence that we collect first, analyse it, then create the blueprint out of it.
+
+Naser Ezzati-Jivan
+20 minutes 50 seconds20:50
+Naser Ezzati-Jivan 20 minutes 50 seconds
+Yeah.
+Naser Ezzati-Jivan 20 minutes 52 seconds
+Yeah.
+Naser Ezzati-Jivan 20 minutes 56 seconds
+Mmh.
+Naser Ezzati-Jivan 20 minutes 58 seconds
+Yeah, yeah, I like this, I like this, yeah. So it is like a systematic method, kind of. We have some evidence, we analyse the evidence, we abstract them out, then we put them together, we link them to one of the resources, and then we find, right? This is great. So eventually that part, you know, creating the blueprint will have a systematic method as well. We don't say that, we rely for the argument.
+
+Yuvraj Sehgal
+20 minutes 59 seconds20:59
+Yuvraj Sehgal 20 minutes 59 seconds
+Yeah.
+Yuvraj Sehgal 21 minutes 3 seconds
+Exactly.
+Yuvraj Sehgal 21 minutes 6 seconds
+We have scripts, yeah.
+Yuvraj Sehgal 21 minutes 11 seconds
+Exactly, exactly.
+
+Naser Ezzati-Jivan
+21 minutes 20 seconds21:20
+Naser Ezzati-Jivan 21 minutes 20 seconds
+But humans can always see it, review it, and change it.
+
+Yuvraj Sehgal
+21 minutes 23 seconds21:23
+Yuvraj Sehgal 21 minutes 23 seconds
+Yes, yes.
+
+Naser Ezzati-Jivan
+21 minutes 24 seconds21:24
+Naser Ezzati-Jivan 21 minutes 24 seconds
+I saw a paper recently, yesterday, maybe the day before, they said that now...
+Naser Ezzati-Jivan 21 minutes 30 seconds
+The agents documenting their failures.
+Naser Ezzati-Jivan 21 minutes 37 seconds
+And they sex and they try to learn from it.
+Naser Ezzati-Jivan 21 minutes 41 seconds
+You know, now, for example, Codex and Cloud, they have memory of you, right? They have memory, they learn about yourself, but now they're learning about their processes and their work on your context, in your context. Let's say you do some specific tasks, so agents do and fail or don't fail based on the feedback they get or based on the response.
+
+Yuvraj Sehgal
+21 minutes 41 seconds21:41
+Yuvraj Sehgal 21 minutes 41 seconds
+Is.
+Yuvraj Sehgal 21 minutes 45 seconds
+Yeah.
+MP
+Mahsa Panahandeh
+21 minutes 51 seconds21:51
+Mahsa Panahandeh 21 minutes 51 seconds
+Mm-hmm.
+
+Naser Ezzati-Jivan
+22 minutes22:00
+Naser Ezzati-Jivan 22 minutes
+They, they try to learn the process itself.
+
+Yuvraj Sehgal
+22 minutes 4 seconds22:04
+Yuvraj Sehgal 22 minutes 4 seconds
+Yeah, this is not.
+
+Naser Ezzati-Jivan
+22 minutes 4 seconds22:04
+Naser Ezzati-Jivan 22 minutes 4 seconds
+Which is very interesting, right? Yeah.
+
+Yuvraj Sehgal
+22 minutes 6 seconds22:06
+Yuvraj Sehgal 22 minutes 6 seconds
+something I faced as well. So while doing this, it ran into an issue. I said that no, it is incorrect. Then after half an hour or one hour, it did the same mistake again. So it kind of figured out itself and then it was like, I'm going to send a feedback saying that I made this mistake twice. So I'm going to get it fixed.
+
+Naser Ezzati-Jivan
+22 minutes 17 seconds22:17
+Naser Ezzati-Jivan 22 minutes 17 seconds
+Yeah, yeah.
+Naser Ezzati-Jivan 22 minutes 25 seconds
+Yeah.
+Naser Ezzati-Jivan 22 minutes 27 seconds
+Yeah, did it, did it say, did it say, ohh, nice.
+
+Yuvraj Sehgal
+22 minutes 29 seconds22:29
+Yuvraj Sehgal 22 minutes 29 seconds
+Yeah, yeah, it was saying that I will report this. Yes, yeah, yeah.
+
+Naser Ezzati-Jivan
+22 minutes 31 seconds22:31
+Naser Ezzati-Jivan 22 minutes 31 seconds
+So it shows that they're learning, right? They're learning. But the thing I said, it was about the GitHub repo implementing this idea.
+
+Yuvraj Sehgal
+22 minutes 39 seconds22:39
+Yuvraj Sehgal 22 minutes 39 seconds
+Mhm.
+
+Naser Ezzati-Jivan
+22 minutes 41 seconds22:41
+Naser Ezzati-Jivan 22 minutes 41 seconds
+Recently, Claude, I think yesterday before, they added something called intent, intent at MD. So they're trying to simulate the software development process. So you write the intent, so they don't go directly to the court anymore. They don't want to go to the court. If you follow that path, it's not going to go directly, if you ask the court, it's not going to go directly to a court.
+
+Yuvraj Sehgal
+22 minutes 56 seconds22:56
+Yuvraj Sehgal 22 minutes 56 seconds
+Okay.
+
+Naser Ezzati-Jivan
+23 minutes 3 seconds23:03
+Naser Ezzati-Jivan 23 minutes 3 seconds
+It will try to analyse the requirements, then write full spec, detailed spec, phases, then implement and test and so on, so, so they're gonna rely on like the the the sex stories of humans of how you know the development.
+
+Yuvraj Sehgal
+23 minutes 16 seconds23:16
+Yuvraj Sehgal 23 minutes 16 seconds
+Mm.
+
+Naser Ezzati-Jivan
+23 minutes 19 seconds23:19
+Naser Ezzati-Jivan 23 minutes 19 seconds
+Because now they rely on you what you ask them, what prompt you give them. You know, they now agents are not able to follow a full process, right?
+
+Yuvraj Sehgal
+23 minutes 23 seconds23:23
+Yuvraj Sehgal 23 minutes 23 seconds
+Ke.
+MP
+Mahsa Panahandeh
+23 minutes 27 seconds23:27
+Mahsa Panahandeh 23 minutes 27 seconds
+Yes.
+
+Naser Ezzati-Jivan
+23 minutes 28 seconds23:28
+Naser Ezzati-Jivan 23 minutes 28 seconds
+They know how to write code, but they don't know, I don't believe they know like full process now. So maybe in like since 6th, we'll ask Claude or Codex, say, Claude, can you implement this like using an agile method?
+
+Yuvraj Sehgal
+23 minutes 29 seconds23:29
+Yuvraj Sehgal 23 minutes 29 seconds
+Yes.
+
+Yuvraj Sehgal
+25 minutes 23 seconds25:23
+Yuvraj Sehgal 25 minutes 23 seconds
+Okay. Okay.
+Yuvraj Sehgal 25 minutes 28 seconds
+Ombuki.
+
+Naser Ezzati-Jivan
+25 minutes 29 seconds25:29
+Naser Ezzati-Jivan 25 minutes 29 seconds
+And not only alternative, but also many other traces, like even Perf, EBPF, they also support CTF format now. Okay. So use a library that reads from CTF, not the text. Text will take a long time. So Babel trace is saying Python, but there is a C plus or value. I think you should use that one.
+
+Yuvraj Sehgal
+25 minutes 36 seconds25:36
+Yuvraj Sehgal 25 minutes 36 seconds
+Okay, and...
+Yuvraj Sehgal 25 minutes 43 seconds
+Long time in.
+Yuvraj Sehgal 25 minutes 48 seconds
+Okay, okay, maybe that's...
+
+Naser Ezzati-Jivan
+25 minutes 49 seconds25:49
+Naser Ezzati-Jivan 25 minutes 49 seconds
+Babel, the original Babel is a C library. Maybe the first time you searched, it brought you like the Python, and you'd be using that, right? No, if you go to babel.com, you know, this website here.
+
+Yuvraj Sehgal
+25 minutes 54 seconds25:54
+Yuvraj Sehgal 25 minutes 54 seconds
+Yeah.
+Yuvraj Sehgal 25 minutes 59 seconds
+Guess.
+
+Naser Ezzati-Jivan
+26 minutes 4 seconds26:04
+Naser Ezzati-Jivan 26 minutes 4 seconds
+We have C plus plus library originally for C. I'm sure about that.
+Naser Ezzati-Jivan 26 minutes 8 seconds
+But they have Python library and even PHP library on top of that. But this is just a wrapper that calls the C library and it's, I know they're very slow.
+
+Yuvraj Sehgal
+26 minutes 13 seconds26:13
+Yuvraj Sehgal 26 minutes 13 seconds
+Okay.
+Yuvraj Sehgal 26 minutes 20 seconds
+Yeah, yeah, yeah.
+
+Naser Ezzati-Jivan
+26 minutes 21 seconds26:21
+Naser Ezzati-Jivan 26 minutes 21 seconds
+Python service is very slow, right? So, use the C, so you need to run it as a command line in Linux. The APT can install Babel trace and it is C is much, much faster than you will see, 100 times faster.
+
+Yuvraj Sehgal
+26 minutes 23 seconds26:23
+Yuvraj Sehgal 26 minutes 23 seconds
+Yes.
+Yuvraj Sehgal 26 minutes 27 seconds
+Okay.
+Yuvraj Sehgal 26 minutes 33 seconds
+Okay.
+Yuvraj Sehgal 26 minutes 34 seconds
+Yeah, I need it for the part where we do like analysis of the kernel trace. It takes like 2 to 3 hours for each.
+
+Naser Ezzati-Jivan
+26 minutes 39 seconds26:39
+Naser Ezzati-Jivan 26 minutes 39 seconds
+Yeah, you need that. Yeah, yeah. You don't need trace compass. Sneh covers that part. You need to bubble trace, which is the best library to read trace data.
+
+Yuvraj Sehgal
+26 minutes 48 seconds26:48
+Yuvraj Sehgal 26 minutes 48 seconds
+Okay, perfect. Yeah, I'll look into that then.
+
+Naser Ezzati-Jivan
+26 minutes 52 seconds26:52
+Naser Ezzati-Jivan 26 minutes 52 seconds
+Wait, Mahsa, sorry, go ahead then.
+
+Yuvraj Sehgal
+26 minutes 53 seconds26:53
+Yuvraj Sehgal 26 minutes 53 seconds
+Yeah.
+MP
+Mahsa Panahandeh
+26 minutes 53 seconds26:53
+Mahsa Panahandeh 26 minutes 53 seconds
+No, no, it's fine. I'm just thinking that for now in your blueprint, how do you detect, for instance, the latency issues or noises that you have? Is it based on your own approach or statistical approach or what?
+
+Naser Ezzati-Jivan
+27 minutes 8 seconds27:08
+Naser Ezzati-Jivan 27 minutes 8 seconds
+Bing.
+
+Yuvraj Sehgal
+27 minutes 9 seconds27:09
+Yuvraj Sehgal 27 minutes 9 seconds
+That's what the mining part does. It kind of sees on an average how much time it was taking for that system call earlier, then when the problem was injected, how it got affected, and if it is very specific to that problem. So for example, if this
+
+Naser Ezzati-Jivan
+27 minutes 13 seconds27:13
+Naser Ezzati-Jivan 27 minutes 13 seconds
+No.
+
+Yuvraj Sehgal
+27 minutes 28 seconds27:28
+Yuvraj Sehgal 27 minutes 28 seconds
+block RQ part. On a normal run, it was taking, let's say, one millisecond, 2 millisecond, but when the disc related problem got injected, it spiked. But we see this spike only in disc problem, only then we bring it to our blueprint saying that, hey, if next time you are analysing any.
+Yuvraj Sehgal 27 minutes 49 seconds
+root cause, a problem related to disk, you should look at the system call. On an average, it takes this much time, but if you see a spike, then it is definitely a risk for.
+MP
+Mahsa Panahandeh
+27 minutes 58 seconds27:58
+Mahsa Panahandeh 27 minutes 58 seconds
+Okay, so this, so you do a kind of pro-processing or their word, you do a reasoning or that, but the decision that, for instance, next time if you will see this kind of issue, use this one, is it this decision is made by you as a as an expert? No, no, I mean...
+
+Yuvraj Sehgal
+28 minutes 14 seconds28:14
+Yuvraj Sehgal 28 minutes 14 seconds
+No, no agent, hey, yeah.
+MP
+Mahsa Panahandeh
+28 minutes 17 seconds28:17
+Mahsa Panahandeh 28 minutes 17 seconds
+Um, but you, you know, the instruction that you provide is made by you, yeah.
+
+Yuvraj Sehgal
+28 minutes 22 seconds28:22
+Yuvraj Sehgal 28 minutes 22 seconds
+Which instruction? Sorry.
+MP
+Mahsa Panahandeh
+28 minutes 25 seconds28:25
+Mahsa Panahandeh 28 minutes 25 seconds
+This instruction, exactly, that if you see the next time this issue, you should OK, so the...
+
+Yuvraj Sehgal
+28 minutes 29 seconds28:29
+Yuvraj Sehgal 28 minutes 29 seconds
+Yes, yes, we keep finding such conditions and the best one I look at, maybe that this one will satisfy in both data sets or something as a common ground, then I use it.
+MP
+Mahsa Panahandeh
+28 minutes 39 seconds28:39
+Mahsa Panahandeh 28 minutes 39 seconds
+I see.
+Mahsa Panahandeh 28 minutes 41 seconds
+I don't know, it's a kind of raw idea that I'm thinking. I don't know how much is correct or not, but let's say, let's first I phrase it like that, that for instance, right now when you ask an agent to do something for you, what they do, they go and search the other skills that they can call, they search over Gits and so.
+Mahsa Panahandeh 29 minutes 3 seconds
+So do you think that we could do the same and use the GitHub of other anomaly detections, latency detections approaches, and use the encoding or a skill or in our blueprint?
+
+Yuvraj Sehgal
+29 minutes 15 seconds29:15
+Yuvraj Sehgal 29 minutes 15 seconds
+I think so. I haven't really worked on the multiple skill at the same time. That's where the agent struggled. So when professor said with and without, I tried that the results were not happy, like good at all because it end up using the wrong skill. So the thing that you mentioned right now.
+MP
+Mahsa Panahandeh
+29 minutes 22 seconds29:22
+Mahsa Panahandeh 29 minutes 22 seconds
+Yeah, yeah.
+Mahsa Panahandeh 29 minutes 34 seconds
+Okay.
+
+Yuvraj Sehgal
+29 minutes 35 seconds29:35
+Yuvraj Sehgal 29 minutes 35 seconds
+I will be working on that part this week, how to tell the agent that which scale it should use and how it would figure out instead of like, like trying each and everything with everything and then coming up with the results.
+MP
+Mahsa Panahandeh
+29 minutes 50 seconds29:50
+Mahsa Panahandeh 29 minutes 50 seconds
+Yeah, but anyway, right now, the skills, they've been designed by a domain expert that it is, it's you. I'm saying that in the same, you know, the design, someone that knows the domain does it, but instead of defining that instructions, we refer to some of
+Mahsa Panahandeh 30 minutes 13 seconds
+the GitHub or even ask the agent to search for that. I'm not saying that it's good to merge it with your current projects since you know they are different paths, but I'm just thinking that can it be a kind of research project or not since it's interesting if...
+
+Yuvraj Sehgal
+30 minutes 30 seconds30:30
+Yuvraj Sehgal 30 minutes 30 seconds
+Yeah, we bought this same idea with Sienna as well, and they were the one who said that we are going to provide you with our documented issues once the, like, once we show them one first demo, and then we can maybe start learning from what they have been facing and the solutions they have, and then create the blueprints out of that.
+MP
+Mahsa Panahandeh
+30 minutes 34 seconds30:34
+Mahsa Panahandeh 30 minutes 34 seconds
+Okay.
+Mahsa Panahandeh 30 minutes 41 seconds
+Yeah, yeah.
+Mahsa Panahandeh 30 minutes 51 seconds
+Yeah.
+Mahsa Panahandeh 30 minutes 54 seconds
+Yeah, that's correct. I remember that even previous time we talked about that since it's exactly the same that already I'm doing for Huawei that I'm working for them to use their traditional functions that they called over those functions, those problems, but now we're using them as SKS and agents.
+
+Yuvraj Sehgal
+31 minutes 2 seconds31:02
+Yuvraj Sehgal 31 minutes 2 seconds
+Mhm.
+
+Naser Ezzati-Jivan
+31 minutes 11 seconds31:11
+Naser Ezzati-Jivan 31 minutes 11 seconds
+Nah.
+MP
+Mahsa Panahandeh
+31 minutes 13 seconds31:13
+Mahsa Panahandeh 31 minutes 13 seconds
+But, you know, in research idea, yeah, I think it's interesting if we could make an agent that it goes over the GitHubs of other anomaly detection root cause analysis and finds the its own function, yeah.
+
+Yuvraj Sehgal
+31 minutes 13 seconds31:13
+Yuvraj Sehgal 31 minutes 13 seconds
+Exactly.
+
+Naser Ezzati-Jivan
+31 minutes 13 seconds31:13
+Naser Ezzati-Jivan 31 minutes 13 seconds
+But.
+Naser Ezzati-Jivan 31 minutes 22 seconds
+Okay.
+Naser Ezzati-Jivan 31 minutes 24 seconds
+The right one. Yeah, yeah, yeah. I agree, yeah. This is important, I agree, yeah. This is important. We cannot just say that that you, Yuvraj, eventually we cannot say that, hey, we developed a skill that works very well. It is not a methodology important. And the things that you said about like the evidence and how it collects that,
+
+Yuvraj Sehgal
+31 minutes 26 seconds31:26
+Yuvraj Sehgal 31 minutes 26 seconds
+Right, when yeah.
+Yuvraj Sehgal 31 minutes 29 seconds
+That's weird.
+Yuvraj Sehgal 31 minutes 35 seconds
+Mhm, mhm.
+Yuvraj Sehgal 31 minutes 38 seconds
+Yes.
+
+Naser Ezzati-Jivan
+31 minutes 44 seconds31:44
+Naser Ezzati-Jivan 31 minutes 44 seconds
+And the other side, how it chooses the best skill or the best skills, maybe it needs several of them.
+
+Yuvraj Sehgal
+31 minutes 51 seconds31:51
+Yuvraj Sehgal 31 minutes 51 seconds
+Multiply, yeah.
+
+Naser Ezzati-Jivan
+31 minutes 52 seconds31:52
+Naser Ezzati-Jivan 31 minutes 52 seconds
+Maybe the hierarchical model would be good.
+
+Yuvraj Sehgal
+31 minutes 55 seconds31:55
+Yuvraj Sehgal 31 minutes 55 seconds
+Yes, yeah.
+
+Naser Ezzati-Jivan
+31 minutes 56 seconds31:56
+Naser Ezzati-Jivan 31 minutes 56 seconds
+Thank you. All right. Great. Thank you. Anything else Yuvraj?
+
+Yuvraj Sehgal
+31 minutes 58 seconds31:58
+Yuvraj Sehgal 31 minutes 58 seconds
+Perfect.
+Yuvraj Sehgal 32 minutes
+No, I think that's all I had.
+
+Naser Ezzati-Jivan
+32 minutes 1 second32:01
+Naser Ezzati-Jivan 32 minutes 1 second
+The abstract, don't forget the abstract. I don't remember the deadline, but do it as soon as possible since you know the research and your research topic. And it's a good time to think and write it down, the idea and the problem.
+
+Yuvraj Sehgal
+32 minutes 3 seconds32:03
+Yuvraj Sehgal 32 minutes 3 seconds
+Yeah, I'll work on it.
+Yuvraj Sehgal 32 minutes 7 seconds
+Yes.
+Yuvraj Sehgal 32 minutes 13 seconds
+Yeah, will do.
+
+Naser Ezzati-Jivan
+32 minutes 15 seconds32:15
+Naser Ezzati-Jivan 32 minutes 15 seconds
+All right, thank you. I'll continue with mass and mass reavailment. Yeah? Okay. All right, thank you. Have a great day. Bye-bye.
+
+Yuvraj Sehgal
+32 minutes 18 seconds32:18
+Yuvraj Sehgal 32 minutes 18 seconds
+Perfect.
+MP
+Mahsa Panahandeh
+32 minutes 18 seconds32:18
+Mahsa Panahandeh 32 minutes 18 seconds
+Yeah, of course, if you have time, yeah.
+SP
+Sneh Patel
+32 minutes 20 seconds32:20
+Sneh Patel 32 minutes 20 seconds
+Bye.
+
+Yuvraj Sehgal
+32 minutes 21 seconds32:21
+Yuvraj Sehgal 32 minutes 21 seconds
+See you later. You as well. Bye bye.
+SP
+Sneh Patel
+32 minutes 23 seconds32:23
+Sneh Patel 32 minutes 23 seconds
+Thanks.
+
