@@ -126,7 +126,7 @@ def summarise(on_cpu, span, n_cpus):
                      "share_of_busy": round(v / total_busy, 5),
                      "cores": round(v / span, 4) if span else None,
                      "kernel_thread": is_kernel(comm)})
-    rows.sort(key=lambda r: -r["cpu_seconds"])
+    rows.sort(key=lambda r: (-r["cpu_seconds"], r["comm"]))
     busy_cores = (total_busy / span) if span else 0.0
     return {"window_span_s": round(span, 3),
             "n_cpus": n_cpus,
@@ -201,7 +201,7 @@ def main():
             # deliberately loose (10x or from near-zero) because a co-tenant starts at zero.
             "newcomer": bool(ic - bc >= a.newcomer_cores and (bc < 0.05 or ic / max(bc, 1e-9) >= 10)),
         })
-    deltas.sort(key=lambda r: -r["cores_gained"])
+    deltas.sort(key=lambda r: (-r["cores_gained"], r["comm"]))
     result["cores_delta"] = deltas
     result["newcomers"] = [d for d in deltas if d["newcomer"] and not d["kernel_thread"]]
     result["biggest_loser"] = min(deltas, key=lambda r: r["cores_gained"]) if deltas else None

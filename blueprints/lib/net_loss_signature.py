@@ -149,7 +149,7 @@ def summarise(queued_n, xmit_n, dropped_n, retrans, segs, min_pkts=200):
             "segments": s, "retransmitted": r,
             "retrans_pct": round(100.0 * r / s, 3) if s else None,
         })
-    rows.sort(key=lambda r: -(r["retrans_pct"] or 0))
+    rows.sort(key=lambda r: (-(r["retrans_pct"] or 0), r["iface"]))
     return rows
 
 
@@ -195,7 +195,7 @@ def main():
             "drop_pct_baseline": bb["drop_pct"], "drop_pct_incident": ii["drop_pct"],
             "segments_incident": ii["segments"], "queued_incident": ii["queued"],
         })
-    comparison.sort(key=lambda r: -(r["retrans_pct_incident"] or 0))
+    comparison.sort(key=lambda r: (-(r["retrans_pct_incident"] or 0), r["iface"]))
     result["comparison"] = comparison
 
     # HOW MANY interfaces are impaired is what should separate the two network faults:

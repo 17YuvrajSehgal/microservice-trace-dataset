@@ -150,7 +150,7 @@ def summarise(lat, req, resp, dropped, min_n=30):
             "p95_ms": round(g[min(len(g) - 1, int(0.95 * len(g)))] * 1e3, 3) if g else None,
             "mean_ms": round(statistics.fmean(g) * 1e3, 3) if g else None,
         })
-    rows.sort(key=lambda r: -(r["p95_ms"] or 0))
+    rows.sort(key=lambda r: (-(r["p95_ms"] or 0), r["endpoint"]))
     return rows
 
 
@@ -213,7 +213,7 @@ def main():
             "response_ratio_baseline": round(bb["responses"] / max(bb["requests"], 1), 3),
             "response_ratio_incident": round(ii["responses"] / max(ii["requests"], 1), 3),
         })
-    comparison.sort(key=lambda r: -(r["p95_x"] or 0))
+    comparison.sort(key=lambda r: (-(r["p95_x"] or 0), r["endpoint"]))
     result["comparison"] = comparison
 
     slow = [r for r in comparison if (r["p95_x"] or 0) >= 2.0]
