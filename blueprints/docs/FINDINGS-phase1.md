@@ -5,6 +5,91 @@ Protocol: `RESEARCH-PLAN-phase1-kernel.md`.
 
 ---
 
+## F20 — Interrupt time separates disk and memory faults. It is the first signal that splits memory from a noisy neighbour.
+
+**futex/irq probe**, job 2252768, 49 Sock Shop runs, all 13 families.
+Raw: `/scratch/yuvraj17/stratatrace/results/futexirq/report.json`.
+
+We enable `--syscall --all` and the `irq_*`/`softirq_*` families in every run, so **futex waits
+and interrupt time have been in all 109 runs since collection**. Neither had ever been read —
+`futex` appeared in our code once, as a name in a counting list.
+
+`hardirq` is time the CPU spends inside device interrupt handlers. Per run, not just in the
+median:
+
+| Family | hardirq change vs its own baseline |
+|---|---|
+| `anomaly_disk` | **12.94 – 14.27x** |
+| `svc_mem_cap` | **6.23 – 6.35x** |
+| `anomaly_mem` | **2.36 – 3.45x** |
+| all ten other families | 0.21 – 1.81x |
+
+**No overlap.** Disk never drops below 12.94x. Memory never drops below 2.36x. Nothing else
+reaches 1.9x.
+
+This matters because it attacks the failure we already had. All 3 wrong answers from the rule
+engine were memory faults called `noisy_neighbor`:
+
+| | hardirq change |
+|---|---|
+| `noisy_neighbor` (5 runs) | 1.19 – 1.36x |
+| `anomaly_mem` (3 runs) | 2.36 – 3.45x |
+
+They do not touch. Every CPU-shaped signal we have tried puts these two on top of each other,
+because memory stress really does burn a core. Interrupts do not care about that — they count
+device work, and reclaim drives paging I/O that a co-tenant does not.
+
+**Limits, stated plainly.** n is 3 and 2 for the memory families and 5 for noisy neighbour. The
+gap is real but thin: memory starts at 2.36x and the largest non-memory value is 1.81x — and
+that 1.81x is a **healthy** run, not a fault. Any threshold has to sit inside that narrow band,
+so this needs the Train Ticket numbers before it goes into a blueprint.
+
+---
+
+## F21 — Aggressive cgroup throttling shows up as a futex wait of ~100 ms, which is the CFS period
+
+Same sweep. `futex` p95 wait in the incident window, `svc_cpu_cap` runs:
+
+| Run | p95 |
+|---|---|
+| aggressive r1 | 111.7 ms |
+| aggressive r3 | 103.2 ms |
+| aggressive r2 | 102.4 ms |
+| subtle r1 | 14.4 ms |
+| subtle r2 | 11.2 ms |
+
+All three aggressive runs land near **100 ms**, which is the default CFS quota period. A
+throttled thread is frozen for the remainder of its slice, and a thread waiting on it inherits
+that delay. The number is a mechanism, not a coincidence, which is why it repeats across runs.
+
+The subtle runs sit at 11–14 ms: the cap is loose enough that threads rarely exhaust the slice.
+
+**This does not identify a CPU cap on its own.** `anomaly_net` (9.89–12.41x) and `svc_net`
+(9.20–9.85x) also inflate futex p95, landing near 50 ms. The *ratio* does not separate them;
+the *absolute value* does — ~100 ms for a cap, ~50 ms for the network faults.
+
+---
+
+## F22 — No fault we inject fakes lock contention, so futex is still clean for a future blueprint
+
+Same sweep. Total futex wait per second of wall clock is **flat across all 13 families**,
+largest move 1.30x.
+
+That is the negative control Naser's lock-contention blueprint needs, and we have it before
+writing the blueprint rather than after — the reverse of F17, where the packet-loss signal was
+checked on 8 of 13 families and the skipped one beat every network fault.
+
+One thing the sweep also settled: **raw futex wait time can never detect a contended lock.**
+Measured on the first run, total futex wait was **408 seconds per second of wall clock**, and
+`java` alone waited 6684 s over 22036 calls — about 300 ms each. That is thread pools **parked
+waiting for work**, not contention. Idle parking swamps the signal by orders of size.
+
+Contention has a different shape: many waits, each short, because the holder releases quickly
+and the waiter wakes and re-blocks. The probe now buckets durations so the two can be told
+apart. A lock blueprint must key on the shape, never the total.
+
+---
+
 ## F19 — Queue backlog is not separable from a hung dependency. They are the same shape.
 
 **Flow-activity sweep**, job 2234071, 55 runs, all 13 families, both applications.
