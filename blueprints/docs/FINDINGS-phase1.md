@@ -5,52 +5,68 @@ Protocol: `RESEARCH-PLAN-phase1-kernel.md`.
 
 ---
 
-## F20 — Interrupt time separates disk and memory faults. It is the first signal that splits memory from a noisy neighbour.
+## F20 — Interrupt time is a real signal for disk and container memory caps. The part I hoped would fix our memory errors does NOT transfer.
 
-**futex/irq probe**, job 2252768, 49 Sock Shop runs, all 13 families.
-Raw: `/scratch/yuvraj17/stratatrace/results/futexirq/report.json`.
+**futex/irq probe**, jobs 2252768 + 2252830, **49 Sock Shop + 42 Train Ticket runs**, 13 and
+12 families. Raw: `results/futexirq/report.json`, `results/futexirq_trainticket/report.json`.
 
-We enable `--syscall --all` and the `irq_*`/`softirq_*` families in every run, so **futex waits
-and interrupt time have been in all 109 runs since collection**. Neither had ever been read —
-`futex` appeared in our code once, as a name in a counting list.
+We enable `--syscall --all` and the `irq_*`/`softirq_*` families in every run, so futex waits
+and interrupt time have been in all 109 runs since collection. Neither had ever been read.
 
-`hardirq` is time the CPU spends inside device interrupt handlers. Per run, not just in the
-median:
+`hardirq` is time spent inside device interrupt handlers. Per-run ranges, both apps:
 
-| Family | hardirq change vs its own baseline |
-|---|---|
-| `anomaly_disk` | **12.94 – 14.27x** |
-| `svc_mem_cap` | **6.23 – 6.35x** |
-| `anomaly_mem` | **2.36 – 3.45x** |
-| all ten other families | 0.21 – 1.81x |
+| Family | Sock Shop | Train Ticket | Transfers? |
+|---|---|---|---|
+| `anomaly_disk` | **12.94 – 14.27x** | **5.78 – 6.67x** | **yes** |
+| `svc_mem_cap` | **6.23 – 6.35x** | **3.23 – 4.25x** | **yes** |
+| `anomaly_mem` | 2.36 – 3.45x | 1.00 – 1.22x | **no** |
+| all others | 0.21 – 1.81x | 0.43 – 1.65x | quiet on both |
 
-**No overlap.** Disk never drops below 12.94x. Memory never drops below 2.36x. Nothing else
-reaches 1.9x.
+The ordering **disk > container-memory-cap > everything else** holds on both applications,
+with no overlap on either.
 
-This matters because it attacks the failure we already had. All 3 wrong answers from the rule
-engine were memory faults called `noisy_neighbor`:
+**The correction.** On Sock Shop alone, `anomaly_mem` (2.36–3.45x) sits clear of
+`noisy_neighbor` (1.19–1.36x), and that looked like a fix for the 3 wrong answers the rule
+engine makes — every one a memory fault called a noisy neighbour. **It does not survive the
+second application.** On Train Ticket `anomaly_mem` is 1.00–1.22x and `noisy_neighbor` is
+0.81–1.00x: barely apart, and inside the healthy range (up to 1.65x). Host memory stress does
+not drive extra device interrupts on Train Ticket.
 
-| | hardirq change |
-|---|---|
-| `noisy_neighbor` (5 runs) | 1.19 – 1.36x |
-| `anomaly_mem` (3 runs) | 2.36 – 3.45x |
+So the memory-vs-noisy-neighbour problem is still open. Recording the failed half deliberately:
+the Sock-Shop-only version was a deployment property, and one app could not tell us that.
 
-They do not touch. Every CPU-shaped signal we have tried puts these two on top of each other,
-because memory stress really does burn a core. Interrupts do not care about that — they count
-device work, and reclaim drives paging I/O that a co-tenant does not.
+**What we did gain, and it is not small.** `svc_mem_cap` was filed in the backlog as Tier C —
+*"needs logs, OOM-kill is the tell"*. It is now separable from kernel data alone, on both
+applications: 6.2x and 3.2–4.3x against a ceiling of 1.81x and 1.65x. That moves a blueprint
+from "not buildable without another modality" to buildable.
 
-**Limits, stated plainly.** n is 3 and 2 for the memory families and 5 for noisy neighbour. The
-gap is real but thin: memory starts at 2.36x and the largest non-memory value is 1.81x — and
-that 1.81x is a **healthy** run, not a fault. Any threshold has to sit inside that narrow band,
-so this needs the Train Ticket numbers before it goes into a blueprint.
+`anomaly_disk` also gains a second, independent confirmation. Our disk blueprint decides on
+`block_rq` arrival rate; interrupt time agrees with it on both apps, from a different part of
+the kernel.
 
 ---
 
-## F21 — Aggressive cgroup throttling shows up as a futex wait of ~100 ms, which is the CFS period
+## F21 — futex p95 tracks real mechanisms, but which mechanism is app-specific
 
-Same sweep. `futex` p95 wait in the incident window, `svc_cpu_cap` runs:
+Same sweeps. `futex` p95 wait, per-run ratios:
 
-| Run | p95 |
+| Family | Sock Shop | Train Ticket |
+|---|---|---|
+| `svc_cpu_cap` | **2.39 – 25.38x** | 0.95 – 1.04x |
+| `anomaly_net` | 9.89 – 12.41x | 0.96 – 1.16x |
+| `svc_net` | **9.20 – 9.85x** | **10.15 – 11.49x** |
+| `error_storm` | 0.59 – 0.85x | 15.95 – 53.10x |
+| `slow_db` | 0.89 – 2.38x | 2.00 – 14.51x |
+| `anomaly_cpu` | 2.11 – 2.19x | 8.10 – 9.03x |
+
+**Only `svc_net` moves on both apps.** Everything else fires on one and not the other, and
+`error_storm` fires in *opposite* directions. As a family-identifying signal, futex p95 is not
+usable.
+
+The Sock Shop `svc_cpu_cap` numbers are still worth keeping, because the absolute value is a
+mechanism rather than a ratio:
+
+| Run | p95 in the incident window |
 |---|---|
 | aggressive r1 | 111.7 ms |
 | aggressive r3 | 103.2 ms |
@@ -58,35 +74,35 @@ Same sweep. `futex` p95 wait in the incident window, `svc_cpu_cap` runs:
 | subtle r1 | 14.4 ms |
 | subtle r2 | 11.2 ms |
 
-All three aggressive runs land near **100 ms**, which is the default CFS quota period. A
-throttled thread is frozen for the remainder of its slice, and a thread waiting on it inherits
-that delay. The number is a mechanism, not a coincidence, which is why it repeats across runs.
-
-The subtle runs sit at 11–14 ms: the cap is loose enough that threads rarely exhaust the slice.
-
-**This does not identify a CPU cap on its own.** `anomaly_net` (9.89–12.41x) and `svc_net`
-(9.20–9.85x) also inflate futex p95, landing near 50 ms. The *ratio* does not separate them;
-the *absolute value* does — ~100 ms for a cap, ~50 ms for the network faults.
+All three aggressive runs land on ~100 ms, the default CFS quota period: a throttled thread is
+frozen for the rest of its slice and anything waiting on it inherits that. The subtle runs
+never exhaust the slice. It does not appear on Train Ticket for the same reason host-wide
+signals never do there — capping one of 40+ services does not move the host.
 
 ---
 
-## F22 — No fault we inject fakes lock contention, so futex is still clean for a future blueprint
+## F22 — Total futex wait is flat on BOTH applications, so a lock blueprint starts with its negative control in hand
 
-Same sweep. Total futex wait per second of wall clock is **flat across all 13 families**,
-largest move 1.30x.
+Total futex wait per second of wall clock, across every family:
 
-That is the negative control Naser's lock-contention blueprint needs, and we have it before
-writing the blueprint rather than after — the reverse of F17, where the packet-loss signal was
-checked on 8 of 13 families and the skipped one beat every network fault.
+| | largest move |
+|---|---|
+| Sock Shop, 13 families | 1.38x |
+| Train Ticket, 12 families | 1.11x |
 
-One thing the sweep also settled: **raw futex wait time can never detect a contended lock.**
-Measured on the first run, total futex wait was **408 seconds per second of wall clock**, and
-`java` alone waited 6684 s over 22036 calls — about 300 ms each. That is thread pools **parked
-waiting for work**, not contention. Idle parking swamps the signal by orders of size.
+Nothing we inject moves it. That is the negative control Naser's lock-contention blueprint
+needs, obtained **before** the blueprint exists rather than after — the reverse of F17, where
+the packet-loss signal was checked on 8 of 13 families and the one skipped beat every network
+fault.
 
-Contention has a different shape: many waits, each short, because the holder releases quickly
-and the waiter wakes and re-blocks. The probe now buckets durations so the two can be told
-apart. A lock blueprint must key on the shape, never the total.
+The sweep also settled how a lock blueprint must NOT be written. On the first run, total futex
+wait was **408 seconds per second of wall clock**, and `java` alone waited 6684 s over 22036
+calls — about 300 ms each. That is thread pools **parked waiting for work**, not contention.
+Idle parking swamps the total by orders of size.
+
+Contention has the opposite shape: many waits, each short, because the holder releases quickly
+and the waiter wakes and re-blocks. The probe now buckets durations so the two are
+distinguishable. **A lock blueprint must key on the shape, never the total.**
 
 ---
 

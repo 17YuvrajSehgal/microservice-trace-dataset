@@ -132,7 +132,7 @@ Listed so the taxonomy is complete, not scheduled now.
 | Blueprint | Family | Blocked on |
 |---|---|---|
 | `app-error-burst` | `error_storm` (SS 5, TT 5) | logs — the signal is 5xx rate, not kernel |
-| `service-memory-cap` | `svc_mem_cap` (SS 3, TT 3) | logs — OOM-kill is the tell |
+| ~~`service-memory-cap`~~ | `svc_mem_cap` | **NO LONGER BLOCKED (F20)** — device interrupt time separates it on BOTH apps: 6.2x SS, 3.2-4.3x TT, against a ceiling of 1.8x. Promote to Tier B. |
 | `host-network-degradation` | `anomaly_net` (SS 3, TT 3) | traces — kernel sees the wait, not the loss |
 
 ---
