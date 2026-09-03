@@ -42,7 +42,7 @@ Unset, or a cache miss, falls back to decoding - so nothing breaks when the cach
 from __future__ import annotations
 import contextlib, os, subprocess
 
-BT2 = os.environ.get("BT2", "/scratch/yuvraj17/bt21.sh")
+BT2 = os.environ.get("BT2", "/scratch/yuvraj17/stratatrace/tools/bt21.sh")
 
 # One family per grep pattern actually used by our scripts, each a superset of what any single
 # consumer needs. Counts are from the 4M-event sample of the trace above - they say which

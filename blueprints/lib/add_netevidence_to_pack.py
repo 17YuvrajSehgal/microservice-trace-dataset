@@ -13,8 +13,8 @@ Idempotent. Reuses a measurement already made by the endpoint or netloss sweeps 
 from __future__ import annotations
 import argparse, json, os, subprocess, sys, time
 
-REPO = "/scratch/yuvraj17/microservice-trace-dataset"
-L0ROOT = "/scratch/yuvraj17/l0"
+REPO = "/scratch/yuvraj17/stratatrace/repo"
+L0ROOT = "/scratch/yuvraj17/stratatrace/data/l0"
 EP = f"{REPO}/blueprints/lib/endpoint_latency.py"
 NL = f"{REPO}/blueprints/problems/network-path-degradation/scripts/net_loss_signature.py"
 SYNTH = f"{REPO}/blueprints/lib/synthesize_gt.py"
@@ -44,8 +44,8 @@ def main():
     ap.add_argument("--run-id", required=True)
     ap.add_argument("--app", default="sockshop")
     ap.add_argument("--pack-dir", required=True)
-    ap.add_argument("--endpoint-cache", default="/scratch/yuvraj17/endpoints")
-    ap.add_argument("--netloss-cache", default="/scratch/yuvraj17/netloss")
+    ap.add_argument("--endpoint-cache", default="/scratch/yuvraj17/stratatrace/results/endpoints")
+    ap.add_argument("--netloss-cache", default="/scratch/yuvraj17/stratatrace/results/netloss")
     ap.add_argument("--force", action="store_true")
     a = ap.parse_args()
 

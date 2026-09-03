@@ -17,7 +17,7 @@ inside the recorded region regardless of when the run happened.
 from __future__ import annotations
 import argparse, json, os, re, subprocess, sys
 
-BT2 = os.environ.get("BT2", "/scratch/yuvraj17/bt21.sh")
+BT2 = os.environ.get("BT2", "/scratch/yuvraj17/stratatrace/tools/bt21.sh")
 TS = re.compile(r"^\[(\d{2}):(\d{2}):(\d{2})\.(\d{9})\]")
 
 

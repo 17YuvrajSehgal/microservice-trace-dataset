@@ -32,7 +32,7 @@ import argparse, collections, json, os, re, statistics, subprocess, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import ctf_stream                                                      # noqa: E402
 
-BT2 = os.environ.get("BT2", "/scratch/yuvraj17/bt21.sh")
+BT2 = os.environ.get("BT2", "/scratch/yuvraj17/stratatrace/tools/bt21.sh")
 
 TS = re.compile(r"^\[(\d{2}):(\d{2}):(\d{2})\.(\d{9})\]")
 EVENT = re.compile(r"\] \([^)]+\) [^ ]+ (block_rq_issue|block_rq_complete):")

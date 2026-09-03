@@ -18,7 +18,7 @@ they cannot discriminate. Any claim that they can must be checked against this o
 from __future__ import annotations
 import argparse, collections, glob, json, os, statistics, sys
 
-DEFAULT_ROOT = os.environ.get("RUNS_ROOT", "/scratch/yuvraj17/agentic-runs")
+DEFAULT_ROOT = os.environ.get("RUNS_ROOT", "/scratch/yuvraj17/stratatrace/data/agentic-runs")
 
 
 def scan(root):

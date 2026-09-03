@@ -9,9 +9,9 @@
 #SBATCH --partition=compute
 #SBATCH --nodes=1
 #SBATCH --time=03:00:00
-#SBATCH --output=/scratch/yuvraj17/strata-mmbaro-%j.out
+#SBATCH --output=/scratch/yuvraj17/stratatrace/slurm-logs/strata-mmbaro-%j.out
 set -uo pipefail
-cd /scratch/yuvraj17/microservice-trace-dataset
+cd /scratch/yuvraj17/stratatrace/repo
 module load python/3.12 >/dev/null 2>&1; module load arrow/19.0.1 >/dev/null 2>&1  # pyarrow → kernel-fold
 source /scratch/yuvraj17/.venv-rca/bin/activate
 OUT=agentic-rca/results/sweep_mmbaro; mkdir -p "$OUT"
@@ -19,7 +19,7 @@ echo "== mmbaro sweep start $(date) | python=$(python --version 2>&1) =="
 
 TASKS="$OUT/_tasks.txt"; : > "$TASKS"
 for app in trainticket sockshop; do
-  for d in /scratch/yuvraj17/agentic-runs/$app/*/; do
+  for d in /scratch/yuvraj17/stratatrace/data/agentic-runs/$app/*/; do
     fam=$(basename "$d")
     case "$fam" in normal|lttng_only|*_metrics) continue;; esac
     echo "$app $fam" >> "$TASKS"

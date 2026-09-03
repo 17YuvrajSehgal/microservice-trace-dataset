@@ -9,9 +9,9 @@
 #SBATCH --partition=compute
 #SBATCH --nodes=1
 #SBATCH --time=06:00:00
-#SBATCH --output=/scratch/yuvraj17/strata-trace-%j.out
+#SBATCH --output=/scratch/yuvraj17/stratatrace/slurm-logs/strata-trace-%j.out
 set -uo pipefail
-cd /scratch/yuvraj17/microservice-trace-dataset
+cd /scratch/yuvraj17/stratatrace/repo
 module load python/3.12 >/dev/null 2>&1; module load arrow/19.0.1 >/dev/null 2>&1
 source /scratch/yuvraj17/.venv-rca/bin/activate
 export TQDM_DISABLE=1
@@ -20,7 +20,7 @@ echo "== trace-method sweep start $(date) =="
 
 TASKS="$OUT/_tasks.txt"; : > "$TASKS"
 for app in trainticket sockshop; do
-  for d in /scratch/yuvraj17/agentic-runs/$app/*/; do
+  for d in /scratch/yuvraj17/stratatrace/data/agentic-runs/$app/*/; do
     fam=$(basename "$d"); case "$fam" in normal|lttng_only|*_metrics) continue;; esac
     for m in microrank tracerca; do echo "$app $fam $m" >> "$TASKS"; done
   done

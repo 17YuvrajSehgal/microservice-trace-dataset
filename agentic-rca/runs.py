@@ -12,7 +12,7 @@ from dataclasses import dataclass, field
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from stratatrace import load_run, list_runs
 
-DEFAULT_ROOT = os.environ.get("RUNS_ROOT", "/scratch/yuvraj17/agentic-runs")
+DEFAULT_ROOT = os.environ.get("RUNS_ROOT", "/scratch/yuvraj17/stratatrace/data/agentic-runs")
 
 # agent fault_type  ->  ground-truth recipe/family it corresponds to
 FAULT_TO_FAMILY = {

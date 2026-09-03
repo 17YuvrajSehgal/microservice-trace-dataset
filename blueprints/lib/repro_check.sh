@@ -7,13 +7,13 @@
 #
 # Reads from the shared cache, so each run is ~30 s instead of ~200 s.
 set -uo pipefail
-REPO=/scratch/yuvraj17/microservice-trace-dataset
-RUN=/scratch/yuvraj17/l0/sockshop/anomaly_cpu_aggressive_steady_r1
+REPO=/scratch/yuvraj17/stratatrace/repo
+RUN=/scratch/yuvraj17/stratatrace/data/l0/sockshop/anomaly_cpu_aggressive_steady_r1
 CTF=$RUN/ctf
 GT=$RUN/ground_truth.json
-V=/scratch/yuvraj17/repro
+V=/scratch/yuvraj17/stratatrace/results/repro
 mkdir -p "$V"
-export CTF_CACHE_DIR=/scratch/yuvraj17/verify/cache
+export CTF_CACHE_DIR=/scratch/yuvraj17/stratatrace/results/verify/cache
 cd "$REPO" || exit 1
 
 check () {   # check <label> <script> [extra args...]

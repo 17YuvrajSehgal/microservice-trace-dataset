@@ -15,11 +15,11 @@
 #SBATCH --partition=compute
 #SBATCH --nodes=1
 #SBATCH --time=04:00:00
-#SBATCH --output=/scratch/yuvraj17/bp-cpucluster-%j.out
+#SBATCH --output=/scratch/yuvraj17/stratatrace/slurm-logs/bp-cpucluster-%j.out
 set -uo pipefail
 
-REPO=/scratch/yuvraj17/microservice-trace-dataset
-OUT=/scratch/yuvraj17/cpucluster
+REPO=/scratch/yuvraj17/stratatrace/repo
+OUT=/scratch/yuvraj17/stratatrace/results/cpucluster
 TASKS="${1:-$REPO/blueprints/lib/tasks-cpucluster.txt}"
 PAR="${PAR:-4}"
 
@@ -32,9 +32,9 @@ echo "tasks: $TASKS  ($(grep -cvE '^[[:space:]]*(#|$)' "$TASKS") runs, $PAR at a
 
 measure_one() {
   APP="$1"; FAM="$2"; RUN="$3"
-  REPO=/scratch/yuvraj17/microservice-trace-dataset
-  OUT=/scratch/yuvraj17/cpucluster
-  L0=/scratch/yuvraj17/l0/$APP/$RUN
+  REPO=/scratch/yuvraj17/stratatrace/repo
+  OUT=/scratch/yuvraj17/stratatrace/results/cpucluster
+  L0=/scratch/yuvraj17/stratatrace/data/l0/$APP/$RUN
   cd "$REPO" || return 1
   source transfer/env.sh >/dev/null 2>&1
 

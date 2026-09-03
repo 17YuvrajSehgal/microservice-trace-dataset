@@ -12,7 +12,7 @@ set -uo pipefail
 APP="${1:?usage: extract_working_set.sh <sockshop|trainticket>}"
 DATASET_ROOT="${DATASET_ROOT:-/project/def-naser2/yuvraj17/microservice-trace-dataset}"
 SRC="${SRC:-$DATASET_ROOT/$APP}"
-OUT="${OUT:-${RUNS_ROOT:-/scratch/yuvraj17/agentic-runs}/$APP}"
+OUT="${OUT:-${RUNS_ROOT:-/scratch/yuvraj17/stratatrace/data/agentic-runs}/$APP}"
 RUNGLOB="${RUNGLOB:-*}"
 PAR="${PAR:-4}"
 UNZ="pigz -dc"; command -v pigz >/dev/null 2>&1 || UNZ="zcat"

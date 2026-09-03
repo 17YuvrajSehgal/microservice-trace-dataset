@@ -28,7 +28,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
                                 "..", "..", "..", "lib"))
 import ctf_stream                                                      # noqa: E402
 
-BT2 = os.environ.get("BT2", "/scratch/yuvraj17/bt21.sh")
+BT2 = os.environ.get("BT2", "/scratch/yuvraj17/stratatrace/tools/bt21.sh")
 
 TS = re.compile(r"^\[(\d{2}):(\d{2}):(\d{2})\.(\d{9})\]")
 EV = re.compile(r"\] \([^)]*\) \S+ syscall_(entry|exit)_([a-z0-9_]+):")

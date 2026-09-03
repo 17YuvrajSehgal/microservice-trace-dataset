@@ -1,5 +1,5 @@
 {
-  "ctf": "/scratch/yuvraj17/l0/sockshop/slow_db_aggressive_steady_r1/ctf",
+  "ctf": "/scratch/yuvraj17/stratatrace/data/l0/sockshop/slow_db_aggressive_steady_r1/ctf",
   "fault_window_utc": [
     "2026-07-28T18:09:35Z",
     "2026-07-28T18:11:35Z"

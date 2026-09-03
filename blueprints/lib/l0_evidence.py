@@ -17,14 +17,14 @@ per-(process, syscall) blocking duration, and call-graph convergence. Nothing in
 fault or a culprit.
 
     python3 l0_evidence.py --run-id slow_db_aggressive_steady_r1 --app sockshop \
-        --out /scratch/yuvraj17/evidence_packs
+        --out /scratch/yuvraj17/stratatrace/data/packs/evidence_packs
 """
 from __future__ import annotations
 import argparse, json, os, subprocess, sys, time
 
-REPO = "/scratch/yuvraj17/microservice-trace-dataset"
-L0ROOT = "/scratch/yuvraj17/l0"
-RUNS = "/scratch/yuvraj17/agentic-runs"
+REPO = "/scratch/yuvraj17/stratatrace/repo"
+L0ROOT = "/scratch/yuvraj17/stratatrace/data/l0"
+RUNS = "/scratch/yuvraj17/stratatrace/data/agentic-runs"
 
 RQ = f"{REPO}/blueprints/problems/cpu-contention-co-tenant/scripts/runqueue_delay.py"
 BLK = f"{REPO}/blueprints/problems/db-latency-dependency-wait/scripts/blocking_syscall.py"
@@ -49,7 +49,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--run-id", required=True)
     ap.add_argument("--app", default="sockshop")
-    ap.add_argument("--out", default="/scratch/yuvraj17/evidence_packs")
+    ap.add_argument("--out", default="/scratch/yuvraj17/stratatrace/data/packs/evidence_packs")
     ap.add_argument("--comms", default="",
                     help="processes to profile for blocking duration; empty = per-app default")
     ap.add_argument("--force", action="store_true")

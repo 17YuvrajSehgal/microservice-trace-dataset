@@ -15,11 +15,11 @@
 #SBATCH --partition=compute
 #SBATCH --nodes=1
 #SBATCH --time=06:00:00
-#SBATCH --output=/scratch/yuvraj17/bp-endpoints-%j.out
+#SBATCH --output=/scratch/yuvraj17/stratatrace/slurm-logs/bp-endpoints-%j.out
 set -uo pipefail
 
-REPO=/scratch/yuvraj17/microservice-trace-dataset
-OUT=/scratch/yuvraj17/endpoints
+REPO=/scratch/yuvraj17/stratatrace/repo
+OUT=/scratch/yuvraj17/stratatrace/results/endpoints
 TASKS="${1:-$REPO/blueprints/lib/tasks-endpoints.txt}"
 PAR="${PAR:-6}"
 
@@ -32,15 +32,15 @@ echo "tasks: $TASKS  ($(grep -cvE '^[[:space:]]*(#|$)' "$TASKS") runs, $PAR at a
 
 one() {
   APP="$1"; FAM="$2"; RUN="$3"
-  REPO=/scratch/yuvraj17/microservice-trace-dataset
-  OUT=/scratch/yuvraj17/endpoints
-  L0=/scratch/yuvraj17/l0/$APP/$RUN
+  REPO=/scratch/yuvraj17/stratatrace/repo
+  OUT=/scratch/yuvraj17/stratatrace/results/endpoints
+  L0=/scratch/yuvraj17/stratatrace/data/l0/$APP/$RUN
   cd "$REPO" || return 1
   source transfer/env.sh >/dev/null 2>&1
 
   {
     echo "--- $RUN ($APP/$FAM) $(date -u +%FT%TZ)"
-    [ -d "$L0/ctf" ] || bash /scratch/yuvraj17/extract_l0.sh "$APP" "$FAM" "$RUN"
+    [ -d "$L0/ctf" ] || bash /scratch/yuvraj17/stratatrace/scripts/extract_l0.sh "$APP" "$FAM" "$RUN"
     [ -f "$L0/ground_truth.json" ] || \
       python blueprints/lib/synthesize_gt.py --ctf "$L0/ctf" --out "$L0/ground_truth.json"
     [ -f "$OUT/$RUN.json" ] || \

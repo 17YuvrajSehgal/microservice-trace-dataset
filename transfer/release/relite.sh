@@ -1,7 +1,7 @@
 #!/bin/bash
 set -uo pipefail
-D=/scratch/yuvraj17/stratatrace-v1
-python3 /scratch/yuvraj17/reorg/build_manifest.py || exit 1
+D=/scratch/yuvraj17/stratatrace/data/stratatrace-v1
+python3 /scratch/yuvraj17/stratatrace/results/reorg/build_manifest.py || exit 1
 cd "$D" || exit 1
 cp README.md UNDERSTANDING-DATASET.md manifest.csv _lite/
 cp sockshop/README.md    _lite/sockshop/README.md

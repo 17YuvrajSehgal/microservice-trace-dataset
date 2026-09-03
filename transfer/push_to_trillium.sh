@@ -17,7 +17,7 @@
 set -uo pipefail
 TRILLIUM_USER="${TRILLIUM_USER:-yuvraj17}"
 TRILLIUM_HOST="${TRILLIUM_HOST:-trillium.scinet.utoronto.ca}"
-DEST_ROOT="${DEST_ROOT:-/scratch/yuvraj17/microservice-trace-dataset}"
+DEST_ROOT="${DEST_ROOT:-/scratch/yuvraj17/stratatrace/repo}"
 PAR="${PAR:-4}"                 # parallel recipe streams (each fills one WAN connection)
 PIGZ_P="${PIGZ_P:-4}"           # cores per pigz worker (PAR*PIGZ_P <= vCPUs)
 # default to the per-VM transfer key if present (SciNet/Alliance = key + MFA); override with SSH_KEY=

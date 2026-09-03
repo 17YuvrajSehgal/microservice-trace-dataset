@@ -106,7 +106,7 @@
   "processing": [
     {
       "step": "stage the stored kernel trace for reading",
-      "run": "bash /scratch/yuvraj17/extract_l0.sh <app> <family> <run_id>",
+      "run": "bash /scratch/yuvraj17/stratatrace/scripts/extract_l0.sh <app> <family> <run_id>",
       "produces": "<out>/ctf",
       "reads": [],
       "expect": "a CTF directory the trace reader can open"

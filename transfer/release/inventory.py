@@ -2,7 +2,7 @@
 """Inventory the CURRENT scattered dataset: what exists, where, for every run."""
 import csv, os, subprocess, sys
 
-WS   = "/scratch/yuvraj17/agentic-runs"
+WS   = "/scratch/yuvraj17/stratatrace/data/agentic-runs"
 PROJ = "/project/def-naser2/yuvraj17/microservice-trace-dataset"
 APPS = ("sockshop", "trainticket")
 
@@ -47,7 +47,7 @@ for app in APPS:
                 metrics_MB=round(sz(os.path.join(root, run+"_metrics"))/1e6, 1),
             ))
 
-out = "/scratch/yuvraj17/reorg/inventory.csv"
+out = "/scratch/yuvraj17/stratatrace/results/reorg/inventory.csv"
 with open(out, "w", newline="") as fh:
     w = csv.DictWriter(fh, fieldnames=list(rows[0].keys())); w.writeheader(); w.writerows(rows)
 

@@ -6,7 +6,7 @@
 #   s1  = skills full + brief           (production shape; skill lift)
 #   s2  = skills LOFO + brief           (never-seen-fault claim)
 # Login-node pattern: one fresh python per incident (watchdog-safe), resumable (skip-if-exists).
-cd /scratch/yuvraj17/microservice-trace-dataset
+cd /scratch/yuvraj17/stratatrace/repo
 source transfer/env.sh >/dev/null
 set -a; source .env; set +a
 cd agentic-rca

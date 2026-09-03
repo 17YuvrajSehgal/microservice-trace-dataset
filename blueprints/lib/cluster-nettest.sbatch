@@ -8,9 +8,9 @@
 # the same runs, so the comparison is like for like.
 #
 # Handles both applications and both pack directories:
-#   sockshop positives  /scratch/yuvraj17/evidence_packs
-#   sockshop negatives  /scratch/yuvraj17/specificity/packs
-#   trainticket         /scratch/yuvraj17/evidence_packs_tt
+#   sockshop positives  /scratch/yuvraj17/stratatrace/data/packs/evidence_packs
+#   sockshop negatives  /scratch/yuvraj17/stratatrace/data/packs/specificity/packs
+#   trainticket         /scratch/yuvraj17/stratatrace/data/packs/evidence_packs_tt
 #
 #   sbatch blueprints/lib/cluster-retest.sbatch <task_file>
 #   task lines:  <app> <family> <run_id> <pack_dir>
@@ -20,11 +20,11 @@
 #SBATCH --partition=compute
 #SBATCH --nodes=1
 #SBATCH --time=06:00:00
-#SBATCH --output=/scratch/yuvraj17/bp-nettest-%j.out
+#SBATCH --output=/scratch/yuvraj17/stratatrace/slurm-logs/bp-nettest-%j.out
 set -uo pipefail
 
-REPO=/scratch/yuvraj17/microservice-trace-dataset
-OUT=/scratch/yuvraj17/nettest
+REPO=/scratch/yuvraj17/stratatrace/repo
+OUT=/scratch/yuvraj17/stratatrace/results/nettest
 TASKS="${1:-$REPO/blueprints/lib/tasks-netblueprint.txt}"
 PAR="${PAR:-8}"
 
@@ -37,16 +37,16 @@ echo "tasks: $TASKS  ($(grep -cvE '^[[:space:]]*(#|$)' "$TASKS") runs, $PAR at a
 
 nettest_one() {
   APP="$1"; FAM="$2"; RUN="$3"; PACKDIR="$4"
-  REPO=/scratch/yuvraj17/microservice-trace-dataset
-  OUT=/scratch/yuvraj17/nettest
+  REPO=/scratch/yuvraj17/stratatrace/repo
+  OUT=/scratch/yuvraj17/stratatrace/results/nettest
   cd "$REPO" || return 1
   source transfer/env.sh >/dev/null 2>&1
 
   {
     echo "--- $RUN ($APP/$FAM) $(date -u +%FT%TZ)"
     # stage the trace if this run has never been decoded before
-    [ -d "/scratch/yuvraj17/l0/$APP/$RUN/ctf" ] || \
-      bash /scratch/yuvraj17/extract_l0.sh "$APP" "$FAM" "$RUN"
+    [ -d "/scratch/yuvraj17/stratatrace/data/l0/$APP/$RUN/ctf" ] || \
+      bash /scratch/yuvraj17/stratatrace/scripts/extract_l0.sh "$APP" "$FAM" "$RUN"
     # build the pack if it does not exist yet (train ticket negatives)
     [ -f "$PACKDIR/$RUN.json" ] || \
       python blueprints/lib/l0_evidence.py --run-id "$RUN" --app "$APP" \

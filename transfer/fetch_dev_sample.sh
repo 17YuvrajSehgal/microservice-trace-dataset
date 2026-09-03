@@ -7,7 +7,7 @@
 # each <recipe>.tar.gz (never extracting L0) and pack them into one tiny tarball to scp down.
 #
 # Run this ON TRILLIUM, once per app, from inside that app's archive dir:
-#   cd /scratch/yuvraj17/microservice-trace-dataset/trainticket
+#   cd /scratch/yuvraj17/stratatrace/repo/trainticket
 #   bash fetch_dev_sample.sh --list                      # see recipes + run counts, extract nothing
 #   bash fetch_dev_sample.sh                             # default: run *_r1 of every recipe
 #   RUNGLOB='*_r1' bash fetch_dev_sample.sh              # same, explicit

@@ -5,11 +5,11 @@ set -uo pipefail
 
 APP="$1"; FAM="$2"; THREADS="${3:-8}"
 SRC="/project/def-naser2/yuvraj17/microservice-trace-dataset/$APP/$FAM.tar.gz"
-WS="/scratch/yuvraj17/agentic-runs/$APP"
-DEST="/scratch/yuvraj17/stratatrace-v1"
+WS="/scratch/yuvraj17/stratatrace/data/agentic-runs/$APP"
+DEST="/scratch/yuvraj17/stratatrace/data/stratatrace-v1"
 OUT="$DEST/$APP"
 LITE="$DEST/_lite/$APP/$FAM"
-STAGE="${STAGE_ROOT:-/scratch/yuvraj17/reorg/stage}/$APP-$FAM"
+STAGE="${STAGE_ROOT:-/scratch/yuvraj17/stratatrace/results/reorg/stage}/$APP-$FAM"
 LOG="$DEST/_logs/$APP-$FAM.log"
 
 mkdir -p "$OUT" "$LITE" "$STAGE" "$DEST/_logs"
@@ -35,7 +35,7 @@ echo "-- $N_IN run dirs extracted"
 echo "-- enriching runs (L2 + metrics + load + RUN-INFO) ..."
 for RD in "$ROOT"/*/; do
     [ -d "$RD" ] || continue
-    python3 /scratch/yuvraj17/reorg/enrich_run.py "$RD" "$WS" "$FAM" "$LITE" || echo "  WARN enrich failed: $RD"
+    python3 /scratch/yuvraj17/stratatrace/results/reorg/enrich_run.py "$RD" "$WS" "$FAM" "$LITE" || echo "  WARN enrich failed: $RD"
 done
 
 echo "-- repacking with pigz -p $THREADS ..."

@@ -7,7 +7,7 @@
 # copy don't intermix. Each <recipe>.tar.gz expands to <recipe>/<run>/... - archives never overlap
 # (one fault family each), so nothing mixes.
 #
-#   cd /scratch/yuvraj17/microservice-trace-dataset/trainticket
+#   cd /scratch/yuvraj17/stratatrace/repo/trainticket
 #   bash extract_on_trillium.sh --list                 # inspect run counts, extract nothing
 #   bash extract_on_trillium.sh                         # -> ./extracted/<recipe>/<run>/...
 #   OUT=$SLURM_TMPDIR/tt bash extract_on_trillium.sh    # extract to fast node-local scratch (HPC way)

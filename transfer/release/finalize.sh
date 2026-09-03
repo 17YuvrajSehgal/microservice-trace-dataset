@@ -1,10 +1,10 @@
 #!/bin/bash
 # Final assembly: manifest, per-app READMEs, the small "lite" bundle, checksums.
 set -uo pipefail
-D=/scratch/yuvraj17/stratatrace-v1
+D=/scratch/yuvraj17/stratatrace/data/stratatrace-v1
 
 echo "== manifest + per-app READMEs =="
-python3 /scratch/yuvraj17/reorg/build_manifest.py || exit 1
+python3 /scratch/yuvraj17/stratatrace/results/reorg/build_manifest.py || exit 1
 
 echo "== lite bundle =="
 cp "$D/README.md" "$D/UNDERSTANDING-DATASET.md" "$D/manifest.csv" "$D/_lite/" 2>/dev/null

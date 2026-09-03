@@ -13,8 +13,8 @@ Idempotent: skips a run whose pack already has an `oncpu` section unless --force
 from __future__ import annotations
 import argparse, json, os, subprocess, sys, time
 
-REPO = "/scratch/yuvraj17/microservice-trace-dataset"
-L0ROOT = "/scratch/yuvraj17/l0"
+REPO = "/scratch/yuvraj17/stratatrace/repo"
+L0ROOT = "/scratch/yuvraj17/stratatrace/data/l0"
 ONCPU = f"{REPO}/blueprints/problems/cpu-contention-co-tenant/scripts/oncpu_share.py"
 SYNTH = f"{REPO}/blueprints/lib/synthesize_gt.py"
 
@@ -24,7 +24,7 @@ def main():
     ap.add_argument("--run-id", required=True)
     ap.add_argument("--app", default="sockshop")
     ap.add_argument("--pack-dir", required=True)
-    ap.add_argument("--cache", default="/scratch/yuvraj17/cpucluster/oncpu",
+    ap.add_argument("--cache", default="/scratch/yuvraj17/stratatrace/results/cpucluster/oncpu",
                     help="reuse a measurement already made for this run")
     ap.add_argument("--force", action="store_true")
     a = ap.parse_args()

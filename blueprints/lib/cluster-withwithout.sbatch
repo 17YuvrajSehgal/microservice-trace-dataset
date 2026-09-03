@@ -22,13 +22,13 @@
 #SBATCH --partition=compute
 #SBATCH --nodes=1
 #SBATCH --time=08:00:00
-#SBATCH --output=/scratch/yuvraj17/bp-withwithout-%j.out
+#SBATCH --output=/scratch/yuvraj17/stratatrace/slurm-logs/bp-withwithout-%j.out
 set -uo pipefail
 
-REPO=/scratch/yuvraj17/microservice-trace-dataset
-OUT=/scratch/yuvraj17/withwithout
+REPO=/scratch/yuvraj17/stratatrace/repo
+OUT=/scratch/yuvraj17/stratatrace/results/withwithout
 SKILLS=$REPO/blueprints/skills-generated
-PACKS=/scratch/yuvraj17/allpacks
+PACKS=/scratch/yuvraj17/stratatrace/data/packs/allpacks
 
 cd "$REPO" || exit 1
 source transfer/env.sh >/dev/null 2>&1

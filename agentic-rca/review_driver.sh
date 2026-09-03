@@ -4,7 +4,7 @@
 # is the SAME for all of them — each step therefore gets its OWN transcripts dir, or later
 # steps silently overwrite earlier ones and most diagnoses become unauditable.
 set -uo pipefail
-cd /scratch/yuvraj17/microservice-trace-dataset || exit 1
+cd /scratch/yuvraj17/stratatrace/repo || exit 1
 source transfer/env.sh >/dev/null 2>&1
 set -a; source .env; set +a
 cd agentic-rca || exit 1

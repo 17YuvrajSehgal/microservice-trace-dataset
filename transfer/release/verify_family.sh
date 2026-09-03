@@ -4,8 +4,8 @@
 set -uo pipefail
 APP="$1"; FAM="$2"
 OLD="/project/def-naser2/yuvraj17/microservice-trace-dataset/$APP/$FAM.tar.gz"
-NEW="/scratch/yuvraj17/stratatrace-v1/$APP/$FAM.tar.gz"
-V="/scratch/yuvraj17/stratatrace-v1/_verify"; mkdir -p "$V"
+NEW="/scratch/yuvraj17/stratatrace/data/stratatrace-v1/$APP/$FAM.tar.gz"
+V="/scratch/yuvraj17/stratatrace/data/stratatrace-v1/_verify"; mkdir -p "$V"
 
 tar tzf "$OLD" | sed 's,/$,,' | grep -v '^$' | sort -u > "$V/$APP-$FAM.old"
 tar tzf "$NEW" | sed 's,/$,,' | grep -v '^$' | sort -u > "$V/$APP-$FAM.new"

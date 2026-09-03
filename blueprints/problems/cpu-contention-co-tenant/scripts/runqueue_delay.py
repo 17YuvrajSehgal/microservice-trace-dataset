@@ -26,7 +26,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
                                 "..", "..", "..", "lib"))
 import ctf_stream                                                      # noqa: E402
 
-BT2 = os.environ.get("BT2", "/scratch/yuvraj17/bt21.sh")
+BT2 = os.environ.get("BT2", "/scratch/yuvraj17/stratatrace/tools/bt21.sh")
 
 TS = re.compile(r"^\[(\d{2}):(\d{2}):(\d{2})\.(\d{9})\]")
 # sched_waking payload: { comm = "X", tid = N, prio = P, target_cpu = C }
@@ -145,7 +145,7 @@ def main():
         "incident": (t0, shift(t0, a.incident_s)),
     }
 
-    sys.path.insert(0, "/scratch/yuvraj17/microservice-trace-dataset/stratatrace")
+    sys.path.insert(0, "/scratch/yuvraj17/stratatrace/repo/stratatrace")
     try:
         os.environ.setdefault("STRATATRACE_APP", a.app)
         from service_map import COMM_SERVICE, SVC_COMM

@@ -26,13 +26,13 @@
 # ONE FRESH PYTHON PER FAMILY, resumable by skip-if-exists. Four streams (arm x app) run
 # concurrently; at ~7 GB each that is nothing against the login node's 755 GB.
 #
-#   nohup bash blueprints/lib/withwithout_login.sh > /scratch/yuvraj17/withwithout/driver.log 2>&1 &
+#   nohup bash blueprints/lib/withwithout_login.sh > /scratch/yuvraj17/stratatrace/results/withwithout/driver.log 2>&1 &
 set -uo pipefail
 
-REPO=/scratch/yuvraj17/microservice-trace-dataset
-OUT=/scratch/yuvraj17/withwithout
+REPO=/scratch/yuvraj17/stratatrace/repo
+OUT=/scratch/yuvraj17/stratatrace/results/withwithout
 SKILLS=$REPO/blueprints/skills-generated
-PACKS=/scratch/yuvraj17/allpacks
+PACKS=/scratch/yuvraj17/stratatrace/data/packs/allpacks
 PER_FAMILY=${PER_FAMILY:-3}          # incidents per family per arm; keeps each python short
 
 cd "$REPO" || exit 1

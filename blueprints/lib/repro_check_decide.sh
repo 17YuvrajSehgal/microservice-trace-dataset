@@ -2,11 +2,11 @@
 # blueprint_decide is the verdict-relevant one, and it reads evidence packs rather than a
 # trace, so we can check every pack cheaply. Two different hash seeds; verdicts must match.
 set -uo pipefail
-cd /scratch/yuvraj17/microservice-trace-dataset || exit 1
-V=/scratch/yuvraj17/repro/decide
+cd /scratch/yuvraj17/stratatrace/repo || exit 1
+V=/scratch/yuvraj17/stratatrace/results/repro/decide
 mkdir -p "$V"
 same=0; diffn=0; err=0
-for p in /scratch/yuvraj17/allpacks/sockshop/*.json /scratch/yuvraj17/allpacks/trainticket/*.json; do
+for p in /scratch/yuvraj17/stratatrace/data/packs/allpacks/sockshop/*.json /scratch/yuvraj17/stratatrace/data/packs/allpacks/trainticket/*.json; do
   n=$(basename "$p" .json)
   PYTHONHASHSEED=1 python3 blueprints/lib/blueprint_decide.py --pack "$p" --out "$V/${n}_h1.json" > /dev/null 2>&1
   PYTHONHASHSEED=2 python3 blueprints/lib/blueprint_decide.py --pack "$p" --out "$V/${n}_h2.json" > /dev/null 2>&1

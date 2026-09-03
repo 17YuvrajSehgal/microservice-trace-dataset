@@ -16,7 +16,7 @@ beside the existing results rather than being a private scale.
 from __future__ import annotations
 import argparse, glob, json, os, statistics, sys
 
-REPO = "/scratch/yuvraj17/microservice-trace-dataset"
+REPO = "/scratch/yuvraj17/stratatrace/repo"
 sys.path.insert(0, os.path.join(REPO, "agentic-rca"))
 sys.path.insert(0, REPO)
 
@@ -80,18 +80,18 @@ def load_eval(path, method_label):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--blueprint-dir", default="/scratch/yuvraj17/comparison/blueprint")
-    ap.add_argument("--results-dir", default="/scratch/yuvraj17/comparison")
+    ap.add_argument("--blueprint-dir", default="/scratch/yuvraj17/stratatrace/results/comparison/blueprint")
+    ap.add_argument("--results-dir", default="/scratch/yuvraj17/stratatrace/results/comparison")
     ap.add_argument("--app", default="sockshop", choices=["sockshop", "trainticket"])
     ap.add_argument("--runs-root", default="")
     ap.add_argument("--families", default="noisy_neighbor,slow_db")
-    ap.add_argument("--out", default="/scratch/yuvraj17/comparison/comparison.json")
+    ap.add_argument("--out", default="/scratch/yuvraj17/stratatrace/results/comparison/comparison.json")
     a = ap.parse_args()
 
     import runs as R
 
     if not a.runs_root:
-        a.runs_root = f"/scratch/yuvraj17/agentic-runs/{a.app}"
+        a.runs_root = f"/scratch/yuvraj17/stratatrace/data/agentic-runs/{a.app}"
     fams = a.families.split(",")
     index = {}
     for fam in fams:

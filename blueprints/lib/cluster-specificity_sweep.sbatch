@@ -17,11 +17,11 @@
 #SBATCH --partition=compute
 #SBATCH --nodes=1
 #SBATCH --time=06:00:00
-#SBATCH --output=/scratch/yuvraj17/bp-specificity-%j.out
+#SBATCH --output=/scratch/yuvraj17/stratatrace/slurm-logs/bp-specificity-%j.out
 set -uo pipefail
 
-REPO=/scratch/yuvraj17/microservice-trace-dataset
-OUT=/scratch/yuvraj17/specificity
+REPO=/scratch/yuvraj17/stratatrace/repo
+OUT=/scratch/yuvraj17/stratatrace/data/packs/specificity
 TASKS="${1:-$OUT/tasks.txt}"
 PAR="${PAR:-4}"
 
@@ -34,8 +34,8 @@ echo "tasks: $TASKS  ($(grep -cvE '^[[:space:]]*(#|$)' "$TASKS") runs, $PAR at a
 
 run_one() {
   APP="$1"; FAM="$2"; RUN="$3"
-  REPO=/scratch/yuvraj17/microservice-trace-dataset
-  OUT=/scratch/yuvraj17/specificity
+  REPO=/scratch/yuvraj17/stratatrace/repo
+  OUT=/scratch/yuvraj17/stratatrace/data/packs/specificity
   LOG="$OUT/logs/$RUN.log"
   cd "$REPO" || return 1
   source transfer/env.sh >/dev/null 2>&1
@@ -43,14 +43,14 @@ run_one() {
   {
     echo "--- $RUN ($APP/$FAM) start $(date -u +%FT%TZ)"
     if [ ! -f "$OUT/packs/$RUN.json" ]; then
-      bash /scratch/yuvraj17/extract_l0.sh "$APP" "$FAM" "$RUN" || { echo "EXTRACT FAILED"; return 1; }
+      bash /scratch/yuvraj17/stratatrace/scripts/extract_l0.sh "$APP" "$FAM" "$RUN" || { echo "EXTRACT FAILED"; return 1; }
 
       # A no-fault run carries no injection window. Cut one arbitrarily: the correct
       # outcome is still that nothing fires.
-      GT="/scratch/yuvraj17/l0/$APP/$RUN/ground_truth.json"
+      GT="/scratch/yuvraj17/stratatrace/data/l0/$APP/$RUN/ground_truth.json"
       if [ ! -f "$GT" ]; then
         python blueprints/lib/synthesize_gt.py \
-          --ctf "/scratch/yuvraj17/l0/$APP/$RUN/ctf" --out "$GT" || { echo "GT FAILED"; return 1; }
+          --ctf "/scratch/yuvraj17/stratatrace/data/l0/$APP/$RUN/ctf" --out "$GT" || { echo "GT FAILED"; return 1; }
       fi
 
       python blueprints/lib/l0_evidence.py --run-id "$RUN" --app "$APP" \

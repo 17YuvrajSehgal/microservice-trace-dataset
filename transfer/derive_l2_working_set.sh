@@ -9,23 +9,23 @@
 #   PAR=8 bash derive_l2_working_set.sh sockshop
 set -uo pipefail
 APP="${1:?usage: derive_l2_working_set.sh <sockshop|trainticket>}"
-REPO="${REPO:-/scratch/yuvraj17/microservice-trace-dataset}"
+REPO="${REPO:-/scratch/yuvraj17/stratatrace/repo}"
 DATASET_ROOT="${DATASET_ROOT:-/project/def-naser2/yuvraj17/microservice-trace-dataset}"
 SRC="$DATASET_ROOT/$APP"
-RUNS="${RUNS_ROOT:-/scratch/yuvraj17/agentic-runs}/$APP"     # where kernel_l2.jsonl lands
-STAGE="${STAGE:-${SLURM_TMPDIR:-/scratch/yuvraj17/tmp_l2}/$APP}"   # node-local L0 staging
+RUNS="${RUNS_ROOT:-/scratch/yuvraj17/stratatrace/data/agentic-runs}/$APP"     # where kernel_l2.jsonl lands
+STAGE="${STAGE:-${SLURM_TMPDIR:-/scratch/yuvraj17/stratatrace/tmp_l2}/$APP}"   # node-local L0 staging
 PAR="${PAR:-8}"
 # babeltrace2: prefer the CTF2-capable 2.1.2 build — Sock Shop L0 metadata is CTF 2, which
 # 2.0.4 cannot read. ORDER MATTERS: local-bt21 must precede the old local/ install, whose lib
 # otherwise SHADOWS the new one (symptom: undefined symbol bt_get_greatest_operative_mip_...).
 # Big temp for prepare_ctf's gunzip is routed OFF the small node /tmp below.
-export PATH="/scratch/yuvraj17/local-bt21/bin:/scratch/yuvraj17/local/bin:$PATH"
-export LD_LIBRARY_PATH="/scratch/yuvraj17/local-bt21/lib:/scratch/yuvraj17/local/lib:${LD_LIBRARY_PATH:-}"
+export PATH="/scratch/yuvraj17/stratatrace/tools/local-bt21/bin:/scratch/yuvraj17/local/bin:$PATH"
+export LD_LIBRARY_PATH="/scratch/yuvraj17/stratatrace/tools/local-bt21/lib:/scratch/yuvraj17/local/lib:${LD_LIBRARY_PATH:-}"
 export STRATATRACE_APP="$APP"
 export PYTHONPATH="$REPO/stratatrace:${PYTHONPATH:-}"
 export TZ=UTC                       # ground_truth is UTC; babeltrace2 must window-match in UTC
 MAXSEC="${MAXSEC:-0}"               # attribution window cap (s); 0 = full injection window
-export TMPDIR="${TMPDIR:-${SLURM_TMPDIR:-/scratch/yuvraj17/tmp_l2}/bt}"; mkdir -p "$TMPDIR"
+export TMPDIR="${TMPDIR:-${SLURM_TMPDIR:-/scratch/yuvraj17/stratatrace/tmp_l2}/bt}"; mkdir -p "$TMPDIR"
 L2="$REPO/stratatrace/derive_kernel_l2.py"
 UNZ="pigz -dc"; command -v pigz >/dev/null 2>&1 || UNZ="zcat"
 [ -d "$SRC" ] || { echo "FATAL: no archive dir $SRC"; exit 1; }

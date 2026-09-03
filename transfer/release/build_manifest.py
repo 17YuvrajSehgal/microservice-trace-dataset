@@ -2,7 +2,7 @@
 """Build manifest.csv + per-app READMEs from the finished lite tree."""
 import csv, json, os, collections
 
-DEST = "/scratch/yuvraj17/stratatrace-v1"
+DEST = "/scratch/yuvraj17/stratatrace/data/stratatrace-v1"
 LITE = os.path.join(DEST, "_lite")
 
 PLAIN = {

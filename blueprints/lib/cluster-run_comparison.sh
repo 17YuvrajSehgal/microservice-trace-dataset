@@ -1,13 +1,13 @@
 #!/bin/bash
 # Every method, same 12 incidents, same evidence. Resumable: existing outputs are skipped.
 set -uo pipefail
-cd /scratch/yuvraj17/microservice-trace-dataset || exit 1
+cd /scratch/yuvraj17/stratatrace/repo || exit 1
 source transfer/env.sh >/dev/null 2>&1
 set -a; source .env; set +a
 cd agentic-rca || exit 1
 
-C=/scratch/yuvraj17/comparison
-PACKS=/scratch/yuvraj17/evidence_packs
+C=/scratch/yuvraj17/stratatrace/results/comparison
+PACKS=/scratch/yuvraj17/stratatrace/data/packs/evidence_packs
 mkdir -p "$C/blueprint" "$C/transcripts"
 FAMS=noisy_neighbor,slow_db
 

@@ -3,8 +3,8 @@
 #   extract_l0.sh <app> <family> <run_id>
 set -uo pipefail
 APP="$1"; FAM="$2"; RUN="$3"
-SRC="/scratch/yuvraj17/stratatrace-v1/$APP/$FAM.tar.gz"
-DEST="/scratch/yuvraj17/l0/$APP/$RUN"
+SRC="/scratch/yuvraj17/stratatrace/data/stratatrace-v1/$APP/$FAM.tar.gz"
+DEST="/scratch/yuvraj17/stratatrace/data/l0/$APP/$RUN"
 [ -d "$DEST/ctf" ] && { echo "already staged: $DEST/ctf"; exit 0; }
 mkdir -p "$DEST"
 echo "extracting $RUN from $(basename "$SRC") ..."

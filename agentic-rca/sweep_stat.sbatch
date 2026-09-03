@@ -8,9 +8,9 @@
 #SBATCH --partition=compute
 #SBATCH --nodes=1
 #SBATCH --time=03:00:00
-#SBATCH --output=/scratch/yuvraj17/strata-sweep-%j.out
+#SBATCH --output=/scratch/yuvraj17/stratatrace/slurm-logs/strata-sweep-%j.out
 set -uo pipefail
-cd /scratch/yuvraj17/microservice-trace-dataset
+cd /scratch/yuvraj17/stratatrace/repo
 module load python/3.11 >/dev/null 2>&1; module load arrow/19.0.1 >/dev/null 2>&1
 source .venv/bin/activate
 OUT=agentic-rca/results/sweep; mkdir -p "$OUT"
@@ -19,7 +19,7 @@ echo "== sweep start $(date) =="
 # (app, family) task list — skip baseline dirs (normal/lttng_only have no ground_truth)
 TASKS="$OUT/_tasks.txt"; : > "$TASKS"
 for app in trainticket sockshop; do
-  for d in /scratch/yuvraj17/agentic-runs/$app/*/; do
+  for d in /scratch/yuvraj17/stratatrace/data/agentic-runs/$app/*/; do
     fam=$(basename "$d")
     case "$fam" in normal|lttng_only|*_metrics) continue;; esac   # skip baselines + aux metric dirs
     echo "$app $fam" >> "$TASKS"
