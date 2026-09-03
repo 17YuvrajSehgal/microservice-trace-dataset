@@ -34,20 +34,39 @@ from ctf_stream import BT2, FAMILIES, cache_path, windows          # noqa: E402
 
 
 def fanout_cmd(ctf, begin, end, out_dir, families):
-    """One decode, tee'd into one (grep | zstd) pipeline per family."""
-    subs = []
+    """One decode, fanned out to one (grep | zstd) pipeline per family.
+
+    Uses explicit FIFOs and `wait` rather than `tee >(...)` process substitution. That is not
+    style: **bash does not wait for process substitutions to finish.** With `tee >(a) >(b)`
+    the shell returns as soon as tee exits, so the caller renames .part into place while grep
+    and zstd are still flushing, and the cache silently ends up TRUNCATED. That produced a
+    complete-looking cache whose results disagreed with the per-script path.
+
+    TZ=UTC is equally non-optional: babeltrace prints AND interprets --begin/--end in the
+    local zone, while the collector wrote these traces in UTC. Without it a 22:43:58 UTC
+    window is read as 22:43:58 EDT, lands outside the trace, and every family file comes out
+    as a valid but EMPTY 13-byte zstd frame.
+    """
+    lines = ["set -uo pipefail",
+             'FIFO=$(mktemp -d)',
+             'trap \'rm -rf "$FIFO"\' EXIT',
+             "pids=()"]
+    fifos = []
     for fam in families:
         path = cache_path(fam, begin, end, out_dir)
-        subs.append(f">(grep -E {shlex.quote(FAMILIES[fam])} "
-                    f"| zstd -1 -q -T4 -o {shlex.quote(path + '.part')})")
-    # TZ=UTC is NOT optional. babeltrace prints and INTERPRETS --begin/--end in the local
-    # zone, and the collector wrote these traces in UTC. Without it, a UTC window like
-    # 22:43:58 is read as 22:43:58 EDT, lands outside the trace, and every family file comes
-    # out as a valid but EMPTY 13-byte zstd frame - a cache that looks built and yields
-    # nothing. The per-script path has always set this on the babeltrace process; the shell
-    # pipeline needs it too.
-    return (f"TZ=UTC {shlex.quote(BT2)} {shlex.quote(ctf)} "
-            f"--begin {begin} --end {end} 2>/dev/null | tee {' '.join(subs)} > /dev/null")
+        f = f'"$FIFO"/{fam}'
+        fifos.append(f)
+        lines.append(f"mkfifo {f}")
+        lines.append(f"( grep -E {shlex.quote(FAMILIES[fam])} < {f} "
+                     f"| zstd -1 -q -T4 -o {shlex.quote(path + '.part')} ) & pids+=($!)")
+    lines.append(f"TZ=UTC {shlex.quote(BT2)} {shlex.quote(ctf)} "
+                 f"--begin {begin} --end {end} 2>/dev/null "
+                 f"| tee {' '.join(fifos)} > /dev/null")
+    lines.append("rc=$?")
+    # the point of the whole exercise: do not return until every writer has finished
+    lines.append('for p in "${pids[@]}"; do wait "$p" || rc=1; done')
+    lines.append("exit $rc")
+    return "\n".join(lines)
 
 
 def main():
