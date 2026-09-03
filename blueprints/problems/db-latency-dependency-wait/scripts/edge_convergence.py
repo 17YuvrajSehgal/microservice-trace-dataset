@@ -65,7 +65,8 @@ def main():
             # the cause is the DEEPEST component whose own dependencies are not also slow
             "is_terminal": len(slow_out) == 0,
         })
-    cands.sort(key=lambda c: (-c["n_slow_incoming"], -c["max_incoming_x"]))
+    cands.sort(key=lambda c: (-c["n_slow_incoming"], -c["max_incoming_x"],
+                              c["component"]))
     terminal = [c for c in cands if c["is_terminal"] and c["n_slow_incoming"] > 0]
 
     out = {

@@ -156,7 +156,8 @@ def main():
                               "ratio": round(ri / rb, 3) if rb else None,
                               "bytes_baseline": bb.get(key, 0),
                               "bytes_incident": ib.get(key, 0)})
-    conversations.sort(key=lambda r: r["ratio"] if r["ratio"] is not None else 9e9)
+    conversations.sort(key=lambda r: (r["ratio"] if r["ratio"] is not None else 9e9,
+                                      r["endpoint"], r["peer"]))
 
     rows = []
     for ep, e in per_endpoint.items():

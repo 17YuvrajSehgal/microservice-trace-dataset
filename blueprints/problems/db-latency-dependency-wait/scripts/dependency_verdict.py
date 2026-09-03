@@ -41,7 +41,7 @@ def main():
     socket_rows = [r for r in rows
                    if r["comm_syscall"].split("|")[-1] in SOCKET_CALLS
                    and (r.get("p95_x") or 0) >= BLOCK_X]
-    socket_rows.sort(key=lambda r: -(r["p95_x"] or 0))
+    socket_rows.sort(key=lambda r: (-(r["p95_x"] or 0), r["comm_syscall"]))
     top = socket_rows[0] if socket_rows else None
     max_any = max((r.get("p95_x") or 0) for r in rows) if rows else 0.0
 

@@ -182,7 +182,7 @@ def main():
             "p99_baseline_ms": b["p99_ms"], "p99_incident_ms": i["p99_ms"],
             "n_baseline": b["n"], "n_incident": i["n"],
         })
-    comparison.sort(key=lambda r: -(r["p95_x"] or 0))
+    comparison.sort(key=lambda r: (-(r["p95_x"] or 0), r["service"]))
     result["comparison"] = comparison
 
     os.makedirs(os.path.dirname(a.out) or ".", exist_ok=True)

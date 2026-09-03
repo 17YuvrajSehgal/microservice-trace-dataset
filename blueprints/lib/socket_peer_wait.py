@@ -141,7 +141,7 @@ def summarise(gaps, sent, recv, unanswered, min_n=20):
             "sent": sent.get(key, 0), "received": recv.get(key, 0),
             "reply_ratio": round(recv.get(key, 0) / max(sent.get(key, 1), 1), 3),
         })
-    rows.sort(key=lambda r: -r["p95_ms"])
+    rows.sort(key=lambda r: (-r["p95_ms"], r["process"], r["peer_ip"], r["peer_port"]))
     return rows
 
 
@@ -200,7 +200,8 @@ def main():
             "reply_ratio_incident": i["reply_ratio"],
             "n_incident": i["n"],
         })
-    comparison.sort(key=lambda r: -(r["p95_x"] or 0))
+    comparison.sort(key=lambda r: (-(r["p95_x"] or 0), r["process"], r["peer_ip"],
+                                   r["peer_port"]))
     result["comparison"] = comparison
 
     slow = [r for r in comparison if (r["p95_x"] or 0) >= 2.0]

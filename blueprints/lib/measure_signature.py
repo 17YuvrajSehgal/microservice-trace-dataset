@@ -114,7 +114,7 @@ def edge_slowdown(run_dir, app):
                      "n_incoming_slow_edges": sum(1 for x in ins if x >= 2),
                      "max_outgoing_slowdown_x": round(max(outs), 2) if outs else None,
                      "emits_spans": bool(outs)})
-    conv.sort(key=lambda c: -c["max_incoming_slowdown_x"])
+    conv.sort(key=lambda c: (-c["max_incoming_slowdown_x"], c["component"]))
     return {"edges": edges[:12], "convergence": conv[:8]}, None
 
 

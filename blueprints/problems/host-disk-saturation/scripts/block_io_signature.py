@@ -130,7 +130,7 @@ def summarise(s, min_n=50):
             "mean_ms": round(statistics.fmean(g) * 1e3, 3),
             "iops": round(len(g) / span, 1),
         })
-    devs.sort(key=lambda r: -r["p95_ms"])
+    devs.sort(key=lambda r: (-r["p95_ms"], r["dev"]))
     total = sum(s["reqs"].values()) or 1
     procs = [{"comm": c, "requests": n, "share": round(n / total, 4),
               "sectors": s["sectors"].get(c, 0),
@@ -183,7 +183,7 @@ def main():
         gained.append({"comm": comm, "iops_baseline": b_iops, "iops_incident": i_iops,
                        "iops_gained": round(i_iops - b_iops, 1),
                        "share_incident": ip.get(comm, {}).get("share", 0.0)})
-    gained.sort(key=lambda r: -r["iops_gained"])
+    gained.sort(key=lambda r: (-r["iops_gained"], r["comm"]))
     result["iops_delta"] = gained
 
     bd = {d["dev"]: d for d in wb["devices"]}
@@ -196,7 +196,7 @@ def main():
                         "p95_baseline_ms": b["p95_ms"], "p95_incident_ms": d["p95_ms"],
                         "p95_x": round(d["p95_ms"] / b["p95_ms"], 2) if b["p95_ms"] else None,
                         "iops_baseline": b["iops"], "iops_incident": d["iops"]})
-    dev_cmp.sort(key=lambda r: -(r["p95_x"] or 0))
+    dev_cmp.sort(key=lambda r: (-(r["p95_x"] or 0), r["dev"]))
     result["device_comparison"] = dev_cmp
 
     newcomer = next((g for g in gained if g["iops_gained"] >= a.newcomer_iops), None)

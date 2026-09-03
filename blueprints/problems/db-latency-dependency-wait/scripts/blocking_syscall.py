@@ -147,7 +147,7 @@ def main():
                          "p95_baseline_ms": b["p95_ms"], "p95_incident_ms": i["p95_ms"],
                          "p95_x": round(i["p95_ms"] / b["p95_ms"], 2) if b["p95_ms"] else None,
                          "total_s_baseline": b["total_s"], "total_s_incident": i["total_s"]})
-    cmp_rows.sort(key=lambda r: -(r["p95_x"] or 0))
+    cmp_rows.sort(key=lambda r: (-(r["p95_x"] or 0), r["comm_syscall"]))
     res["comparison"] = cmp_rows
 
     os.makedirs(os.path.dirname(a.out) or ".", exist_ok=True)

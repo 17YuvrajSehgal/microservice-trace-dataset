@@ -157,7 +157,7 @@ def _blk(pack):
             if r.get("p95_x")
             and r["comm_syscall"].split("|")[-1] in SOCKET_CALLS
             and not is_infra(r["comm_syscall"].split("|")[0])]
-    sock.sort(key=lambda r: -r["p95_x"])
+    sock.sort(key=lambda r: (-r["p95_x"], r["comm_syscall"]))
     return {"rows": rows, "socket_hits": sock,
             "max_socket_x": max([r["p95_x"] for r in sock], default=0.0),
             "max_any_x": max([r["p95_x"] for r in rows if r.get("p95_x")], default=0.0)}

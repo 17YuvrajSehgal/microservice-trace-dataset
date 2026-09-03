@@ -85,7 +85,7 @@ def main():
         candidates.append({"container": c, "cpu_baseline": base, "cpu_incident": inc,
                            "appeared": base <= 0.01 < inc,
                            "on_call_path": c in on_path})
-    candidates.sort(key=lambda x: -x["cpu_incident"])
+    candidates.sort(key=lambda x: (-x["cpu_incident"], x["container"]))
     off_path = [c for c in candidates if not c["on_call_path"]]
 
     # --- 2. what the affected services were waiting for --------------------------------
@@ -96,7 +96,7 @@ def main():
         wait_rows.append({"service": svc, **{k: s.get(k) for k in
                           ("on_cpu", "runnable_wait", "disk_wait", "off_cpu_io_wait")},
                           "verdict_hint": r.get("verdict_hint")})
-    wait_rows.sort(key=lambda r: -(r.get("runnable_wait") or 0))
+    wait_rows.sort(key=lambda r: (-(r.get("runnable_wait") or 0), r["service"]))
 
     # --- 3. verdict, stated only as far as the evidence goes ---------------------------
     reasons, supports = [], True
