@@ -148,3 +148,114 @@ pack, so we only tested the *reading the numbers* half of a blueprint, never the
 collect* half. Naser's plan — generate a trace, hand it over, ask the system to find the
 problem — tests both halves. That is the stronger version of the experiment and we should run
 it that way from now on.
+
+---
+
+# Investigation — ideas for A1 and B
+
+Brainstormed 3 Sept 2026. Not decided yet. This is the thinking behind the latency
+list (A1) and the test cases to build (B).
+
+## Start here: `prev_state`
+
+`sched_switch` carries a field called **`prev_state`**. Checked in our own trace data on
+3 Sept — it is there in every run. We have never used it. Our code only reads the thread
+names.
+
+`prev_state` says **why** a thread stopped running:
+
+| prev_state | Meaning | Bucket |
+|---|---|---|
+| runnable | it was pushed off, still wants CPU | **waiting for CPU** |
+| sleeping | it is waiting for something | **waiting for a lock or a reply** |
+| uninterruptible | usually disk or kernel | **waiting for I/O** |
+
+This gives us the **parent blueprint** Naser asked for, almost for free. The parent splits
+latency into three buckets. The children then tell apart the causes inside one bucket. The
+agent walks down the tree instead of guessing from a flat list of six.
+
+It also fixes our worst problem. Right now the agent picks blindly — it picked the network
+blueprint **zero times in 9 chances**.
+
+## How to pick the causes
+
+Naser wants blueprints to earn their place. So do not pick easy causes. Pick causes that
+**look the same as each other**.
+
+We already know four pairs that fool us:
+
+| These two look alike | Why |
+|---|---|
+| CPU theft vs memory stress | memory stress also eats a CPU core — this caused all 3 of our wrong answers |
+| Lock wait vs slow dependency | both are a thread sleeping and waiting |
+| Slow disk vs memory pressure | reclaim causes disk I/O |
+| Network loss vs slow receiver | a memory-capped container drops packets harder than real packet loss |
+
+One number cannot split these. That is the argument for a blueprint.
+
+## The candidate list
+
+| Cause | Kernel can see it | We have data | Hard for the agent? |
+|---|---|---|---|
+| Host out of CPU | yes | yes | easy (6/6 without help) |
+| Another workload steals CPU | yes | yes | **hard** (0/6 without help) |
+| Container CPU cap | yes | yes | medium |
+| **Priority inversion** | yes | no | **very hard** |
+| **Lock contention (futex)** | yes | **already in our traces** | **hard** |
+| Kernel lock contention | need to check | no | hard |
+| Thread pool exhausted | yes | no | hard |
+| Slow dependency | yes | yes | medium |
+| Disk saturated | yes | yes | easy |
+| fsync / journal stall | yes | no | medium |
+| Memory reclaim / page faults | **events are off** | no | hard |
+| Packet loss | yes | yes | medium |
+| **Nagle + delayed ACK (40 ms stalls)** | yes | no | **very hard** |
+| IRQ / softirq storm | yes | **already in our traces** | hard |
+
+## Two free wins
+
+We record **all syscalls** and all `irq_*` / `softirq_*` events in every run. So:
+
+- **`futex` waits are already in our 109 runs.** That is lock contention — the case Naser
+  asked for by name. We may not need to collect anything new.
+- **IRQ storms are already there too.** We have never looked at them once.
+
+Worth one afternoon before writing any new programs.
+
+## The two cases I like most
+
+**Priority inversion.** A low-priority thread holds a lock. A high-priority thread waits for
+it. A medium-priority thread hogs the CPU, so the lock holder never runs. Everything stalls,
+and no resource looks busy. An agent will not guess this. Famous bug, about 30 lines to write.
+
+**Nagle + delayed ACK.** Small writes without `TCP_NODELAY` cause fixed ~40 ms stalls. CPU
+idle. Disk idle. No packets lost. Nothing looks wrong anywhere. Also famous, also easy to
+write.
+
+Both fit Naser's point exactly: the agent alone fails, the blueprint wins.
+
+## Small programs — one warning
+
+Small programs are good: clean ground truth, tiny traces, fast to run.
+
+But a toy program is not a microservice. A signature that works on a 50-line program may not
+hold on Sock Shop.
+
+So use this shape:
+
+1. **Learn** the signature on the small program, where we control everything.
+2. **Test** it on the Sock Shop and Train Ticket data we already have.
+
+That is a stronger story than either alone: we found the pattern in a clean setting, then
+showed it still holds in a real system.
+
+Also write the **pairs**, not single cases. For each hard cause, write its look-alike too.
+That is what proves the blueprint separates them.
+
+## Suggested first five
+
+1. Lock contention (futex) — check our existing data first
+2. Priority inversion — new program
+3. Nagle / delayed ACK — new program
+4. IRQ storm — check existing data first
+5. One combined case: CPU cap **while** holding a lock
