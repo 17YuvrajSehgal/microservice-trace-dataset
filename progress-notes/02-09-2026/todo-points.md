@@ -62,7 +62,9 @@ Do these in order, for latency:
       each script needs: **23 min -> 7 min** per run. Checked the answers are unchanged.
       Details in `progress-notes/03-09-2026/decisions.md`.
 - [ ] **A4. Cut the non-latency faults** from the current blueprint set, or mark them clearly
-      as out of scope.
+      as out of scope. **CHANGED 3 Sept:** `svc_mem_cap` comes back **in** scope. It was filed
+      as "needs logs", but device interrupt time separates it on both apps (F20). One fewer
+      fault to drop.
 - [ ] **A5. Start the report** even with simple cases. A first version is better than waiting.
 
 ### B. New test cases to build
@@ -72,6 +74,11 @@ Do these in order, for latency:
       exist (Google Chrome was mentioned).
 - [ ] **B2. Small generated programs**, one per latency cause from A1, each traced 5–10 times.
 - [ ] **B3. Find a real, outside dataset** with a known latency problem to test against.
+- [ ] **B4. NEW (3 Sept). Build `service-memory-cap`.** Now buildable from kernel data alone —
+      device interrupt time is 6.2x on Sock Shop and 3.2–4.3x on Train Ticket, against a
+      ceiling of 1.8x everywhere else (F20). Honest caveat: the model already gets this fault
+      2 of 3 times unaided, so it is a win for the **rule engine**, not a case where a
+      blueprint beats the agent.
 
 ### C. Critical path analysis
 
@@ -259,3 +266,52 @@ That is what proves the blueprint separates them.
 3. Nagle / delayed ACK — new program
 4. IRQ storm — check existing data first
 5. One combined case: CPU cap **while** holding a lock
+
+---
+
+# What the futex/irq check changed (3 Sept)
+
+We checked the two "free win" signals on 49 Sock Shop and 42 Train Ticket runs.
+Full numbers: `blueprints/docs/FINDINGS-phase1.md` F20–F22.
+
+## Four changes to the plan above
+
+**1. `svc_mem_cap` is back in scope (A4).**
+It was filed as "needs logs, OOM-kill is the tell". Device interrupt time separates it on
+**both** apps: 6.2x on Sock Shop, 3.2–4.3x on Train Ticket, against 1.8x for everything else.
+One fewer fault to drop, and one new blueprint we can build (**B4**).
+
+**2. The lock case is only half free (B1).**
+Total futex wait is **flat on both apps** (biggest move 1.38x and 1.11x). So the negative
+control is done before we start — nothing we inject fakes lock contention. But we have **no
+positive example**, so the test program still has to be written. "Free win" was too strong.
+
+**3. "IRQ storm" is not a cause we can show.**
+No fault in our set produces an interrupt storm. What interrupt time actually gives us is a
+**discriminator** — it tells disk and container-memory faults apart from the rest. Keep it in
+the candidate list as a signal, drop it as a cause.
+
+**4. One candidate fix for memory-vs-noisy-neighbour is now dead.**
+On Sock Shop, interrupt time split them cleanly per run. On Train Ticket both sit inside the
+healthy range. Do not retry this one. The pair is still unsolved.
+
+## Two things it helps with
+
+**The parent blueprint (A2).** Interrupt time is a cheap first-level split that works on both
+apps: high means the disk or memory branch, low means look elsewhere. That is exactly the kind
+of test a parent needs — one number, checked on two systems, no overlap.
+
+**The disk blueprint.** It currently decides on disk request rate. Interrupt time agrees on
+both apps, from a different part of the kernel, so it is a free second check. Low priority
+though — the model already gets disk faults 3 of 3 without any help.
+
+## The rule this adds to our method (E3, D1)
+
+**A discriminator does not enter a blueprint until it has been checked on both applications.**
+
+We had a clean, per-run, no-overlap separation on one app. It vanished on the other. One app
+cannot tell you whether you found a property of the fault or a property of the deployment.
+
+This is also a worked example of the method Naser wants written down: collect evidence,
+measure, check it transfers, keep what survives, and **write down what died**. It produced a
+negative result, which is what he said he wants.
