@@ -21,6 +21,13 @@ Reported per (comm, syscall): count and duration percentiles, baseline vs incide
 from __future__ import annotations
 import argparse, collections, json, os, re, statistics, subprocess, sys
 
+# Shared reader: with CTF_CACHE_DIR set this reads a pre-extracted family file
+# instead of decoding the trace again. Our own grep still runs on top either way,
+# so this script sees exactly the lines it always did. See ctf_stream.py.
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                "..", "..", "..", "lib"))
+import ctf_stream                                                      # noqa: E402
+
 BT2 = os.environ.get("BT2", "/scratch/yuvraj17/bt21.sh")
 
 TS = re.compile(r"^\[(\d{2}):(\d{2}):(\d{2})\.(\d{9})\]")
@@ -62,19 +69,15 @@ def shift(hms, delta):
 
 def scan(ctf, begin, end, comms):
     """-> {(comm, syscall): [durations]}"""
-    cmd = [BT2, ctf, "--begin", begin, "--end", end]
-    env = {**os.environ, "TZ": "UTC"}
-    p1 = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, env=env)
-    p2 = subprocess.Popen(["grep", "-E", "syscall_entry_|syscall_exit_"], stdin=p1.stdout,
-                          stdout=subprocess.PIPE, text=True, errors="replace")
-    p1.stdout.close()
+    p2out, _bt = ctf_stream.open_lines(ctf, begin, end,
+                                      'syscall_entry_|syscall_exit_', family="syscall")
 
     unwrap = unwrapper()   # window may cross midnight
 
     open_call = {}                                   # tid -> (syscall, t0)
     durs = collections.defaultdict(list)
     want = set(comms) if comms else None
-    for line in p2.stdout:
+    for line in p2out:
         ts = TS.match(line)
         ev = EV.search(line)
         if not ts or not ev:
@@ -95,12 +98,7 @@ def scan(ctf, begin, end, comms):
                 d = t - prev[1]
                 if d < 30.0:
                     durs[(comm, name)].append(d)
-    p2.stdout.close()
-    for p in (p2, p1):
-        try:
-            p.terminate()
-        except Exception:                                              # noqa: BLE001
-            pass
+    ctf_stream.close_lines(_bt)
     return durs
 
 

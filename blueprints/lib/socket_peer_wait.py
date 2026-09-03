@@ -31,6 +31,12 @@ actually are - no rule is written here:
 from __future__ import annotations
 import argparse, collections, json, os, re, statistics, subprocess, sys
 
+# Shared reader: with CTF_CACHE_DIR set this reads a pre-extracted family file
+# instead of decoding the trace again. Our own grep still runs on top either way,
+# so this script sees exactly the lines it always did. See ctf_stream.py.
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import ctf_stream                                                      # noqa: E402
+
 BT2 = os.environ.get("BT2", "/scratch/yuvraj17/bt21.sh")
 
 TS = re.compile(r"^\[(\d{2}):(\d{2}):(\d{2})\.(\d{9})\]")
@@ -71,12 +77,8 @@ def ip(m):
 
 def scan(ctf, begin, end):
     """One window. Returns reply gaps per (proc, peer) and unanswered-request counts."""
-    p1 = subprocess.Popen([BT2, ctf, "--begin", begin, "--end", end],
-                          stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
-                          env={**os.environ, "TZ": "UTC"})
-    p2 = subprocess.Popen(["grep", "-E", "net_dev_queue|net_if_receive_skb"],
-                          stdin=p1.stdout, stdout=subprocess.PIPE, text=True, errors="replace")
-    p1.stdout.close()
+    p2out, _bt = ctf_stream.open_lines(ctf, begin, end,
+                                      'net_dev_queue|net_if_receive_skb', family="net")
 
     unwrap = unwrapper()   # window may cross midnight
 
@@ -86,7 +88,7 @@ def scan(ctf, begin, end):
     recv = collections.Counter()
     ifaces = collections.defaultdict(collections.Counter)
 
-    for line in p2.stdout:
+    for line in p2out:
         mt, me = TS.match(line), EVENT.search(line)
         if not (mt and me):
             continue
@@ -114,12 +116,7 @@ def scan(ctf, begin, end):
         if mif:
             ifaces[proc][mif.group(1)] += 1
 
-    p2.stdout.close()
-    for p in (p2, p1):
-        try:
-            p.terminate()
-        except Exception:                                              # noqa: BLE001
-            pass
+    ctf_stream.close_lines(_bt)
 
     # requests still waiting when the window ended: the frozen-dependency shape
     unanswered = collections.Counter()

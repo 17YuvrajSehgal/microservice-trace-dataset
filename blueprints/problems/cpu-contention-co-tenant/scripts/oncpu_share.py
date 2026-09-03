@@ -24,6 +24,13 @@ newcomer shows up as a share that rises from ~0.
 from __future__ import annotations
 import argparse, collections, json, os, re, subprocess, sys
 
+# Shared reader: with CTF_CACHE_DIR set it reads a pre-extracted family file instead of
+# decoding the trace again. Our own grep still runs on top either way, so this script sees
+# exactly the lines it always did. See ctf_stream.py for the measurements that motivated it.
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                "..", "..", "..", "lib"))
+import ctf_stream                                                      # noqa: E402
+
 BT2 = os.environ.get("BT2", "/scratch/yuvraj17/bt21.sh")
 
 TS = re.compile(r"^\[(\d{2}):(\d{2}):(\d{2})\.(\d{9})\]")
@@ -67,42 +74,30 @@ def unwrapper():
 
 def scan(ctf, begin, end):
     """Decode one window; return {comm: on_cpu_seconds} and the window's wall span."""
-    p1 = subprocess.Popen([BT2, ctf, "--begin", begin, "--end", end],
-                          stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
-                          env={**os.environ, "TZ": "UTC"})
-    p2 = subprocess.Popen(["grep", "sched_switch"], stdin=p1.stdout,
-                          stdout=subprocess.PIPE, text=True, errors="replace")
-    p1.stdout.close()
-
     unwrap = unwrapper()   # window may cross midnight
 
     last = {}                                    # cpu -> (t, (comm, tid) currently running)
     per_thread = collections.defaultdict(float)  # (comm, tid) -> on-CPU seconds
     t_first = t_last = None
-    for line in p2.stdout:
-        mt, mc, ms = TS.match(line), CPU.search(line), SWITCH.search(line)
-        if not (mt and mc and ms):
-            continue
-        t, cpu = unwrap(secs(mt)), int(mc.group(1))
-        next_comm, next_tid = ms.group(3), int(ms.group(4))
-        if t_first is None:
-            t_first = t
-        t_last = t
+    with ctf_stream.stream(ctf, begin, end, "sched_switch", family="sched") as src:
+        for line in src:
+            mt, mc, ms = TS.match(line), CPU.search(line), SWITCH.search(line)
+            if not (mt and mc and ms):
+                continue
+            t, cpu = unwrap(secs(mt)), int(mc.group(1))
+            next_comm, next_tid = ms.group(3), int(ms.group(4))
+            if t_first is None:
+                t_first = t
+            t_last = t
 
-        prior = last.get(cpu)
-        if prior is not None:
-            t0, running = prior
-            d = t - t0
-            if 0 <= d < 10.0:                    # guard against window-edge artifacts
-                per_thread[running] += d
-        last[cpu] = (t, (next_comm, next_tid))
+            prior = last.get(cpu)
+            if prior is not None:
+                t0, running = prior
+                d = t - t0
+                if 0 <= d < 10.0:                # guard against window-edge artifacts
+                    per_thread[running] += d
+            last[cpu] = (t, (next_comm, next_tid))
 
-    p2.stdout.close()
-    for p in (p2, p1):
-        try:
-            p.terminate()
-        except Exception:                                              # noqa: BLE001
-            pass
     span = (t_last - t_first) if (t_first is not None and t_last is not None) else 0.0
     # How many CPUs the trace actually saw. Needed for the saturation test: a co-tenant
     # leaves headroom, a saturated host does not, and "busy cores" means nothing without

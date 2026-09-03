@@ -31,6 +31,12 @@ other: impairment on every container's veth against impairment on exactly one.
 from __future__ import annotations
 import argparse, collections, json, os, re, subprocess, sys
 
+# Shared reader: with CTF_CACHE_DIR set this reads a pre-extracted family file
+# instead of decoding the trace again. Our own grep still runs on top either way,
+# so this script sees exactly the lines it always did. See ctf_stream.py.
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import ctf_stream                                                      # noqa: E402
+
 BT2 = os.environ.get("BT2", "/scratch/yuvraj17/bt21.sh")
 
 TS = re.compile(r"^\[(\d{2}):(\d{2}):(\d{2})\.(\d{9})\]")
@@ -60,12 +66,8 @@ def ip(m):
 
 
 def scan(ctf, begin, end):
-    p1 = subprocess.Popen([BT2, ctf, "--begin", begin, "--end", end],
-                          stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
-                          env={**os.environ, "TZ": "UTC"})
-    p2 = subprocess.Popen(["grep", "-E", "net_dev_queue|net_dev_xmit|net_if_receive_skb"],
-                          stdin=p1.stdout, stdout=subprocess.PIPE, text=True, errors="replace")
-    p1.stdout.close()
+    p2out, _bt = ctf_stream.open_lines(ctf, begin, end,
+                                      'net_dev_queue|net_dev_xmit|net_if_receive_skb', family="net")
 
     queued = {}                                     # skbaddr -> iface, awaiting an xmit
     queued_n = collections.Counter()
@@ -76,7 +78,7 @@ def scan(ctf, begin, end):
     retrans = collections.Counter()                 # iface -> retransmitted segments
     segs = collections.Counter()                    # iface -> segments with a sequence number
 
-    for line in p2.stdout:
+    for line in p2out:
         me = EVENT.search(line)
         if not me:
             continue
@@ -126,12 +128,7 @@ def scan(ctf, begin, end):
             if len(memo) > SEQ_MEMORY:
                 memo.popitem(last=False)
 
-    p2.stdout.close()
-    for p in (p2, p1):
-        try:
-            p.terminate()
-        except Exception:                                              # noqa: BLE001
-            pass
+    ctf_stream.close_lines(_bt)
 
     for _skb, iface in queued.items():
         dropped_n[iface] += 1

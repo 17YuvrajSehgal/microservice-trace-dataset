@@ -36,6 +36,12 @@ dependency looks like.
 from __future__ import annotations
 import argparse, collections, json, os, re, statistics, subprocess, sys
 
+# Shared reader: with CTF_CACHE_DIR set this reads a pre-extracted family file
+# instead of decoding the trace again. Our own grep still runs on top either way,
+# so this script sees exactly the lines it always did. See ctf_stream.py.
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import ctf_stream                                                      # noqa: E402
+
 BT2 = os.environ.get("BT2", "/scratch/yuvraj17/bt21.sh")
 
 TS = re.compile(r"^\[(\d{2}):(\d{2}):(\d{2})\.(\d{9})\]")
@@ -85,12 +91,8 @@ def server_of(a, b):
 
 def scan(ctf, begin, end):
     """One window -> per-endpoint reply latencies, request/response counts, unanswered."""
-    p1 = subprocess.Popen([BT2, ctf, "--begin", begin, "--end", end],
-                          stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
-                          env={**os.environ, "TZ": "UTC"})
-    p2 = subprocess.Popen(["grep", "net_if_receive_skb:"], stdin=p1.stdout,
-                          stdout=subprocess.PIPE, text=True, errors="replace")
-    p1.stdout.close()
+    p2out, _bt = ctf_stream.open_lines(ctf, begin, end,
+                                      'net_if_receive_skb:', family="net")
 
     unwrap = unwrapper()
     open_req = {}                                   # flow -> t of the request awaiting a reply
@@ -99,7 +101,7 @@ def scan(ctf, begin, end):
     resp = collections.Counter()
     dropped = collections.Counter()                 # request never answered inside the cap
 
-    for line in p2.stdout:
+    for line in p2out:
         mt, mp = TS.match(line), PORTS.search(line)
         if not (mt and mp):
             continue
@@ -124,12 +126,7 @@ def scan(ctf, begin, end):
                 else:
                     dropped[srv] += 1
 
-    p2.stdout.close()
-    for p in (p2, p1):
-        try:
-            p.terminate()
-        except Exception:                                              # noqa: BLE001
-            pass
+    ctf_stream.close_lines(_bt)
 
     # requests still open when the window closed: the frozen-dependency shape
     for flow in open_req:

@@ -19,6 +19,13 @@ Baseline and incident windows are decoded separately so the comparison is like-f
 from __future__ import annotations
 import argparse, collections, json, os, re, statistics, subprocess, sys
 
+# Shared reader: with CTF_CACHE_DIR set this reads a pre-extracted family file
+# instead of decoding the trace again. Our own grep still runs on top either way,
+# so this script sees exactly the lines it always did. See ctf_stream.py.
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                "..", "..", "..", "lib"))
+import ctf_stream                                                      # noqa: E402
+
 BT2 = os.environ.get("BT2", "/scratch/yuvraj17/bt21.sh")
 
 TS = re.compile(r"^\[(\d{2}):(\d{2}):(\d{2})\.(\d{9})\]")
@@ -53,12 +60,8 @@ def unwrapper():
 
 def scan(ctf, begin, end, cap_events=0):
     """Decode ONE window and return {tid: [delay_seconds, ...]} plus tid->comm."""
-    cmd = [BT2, ctf, "--begin", begin, "--end", end]
-    env = {**os.environ, "TZ": "UTC"}
-    p1 = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, env=env)
-    p2 = subprocess.Popen(["grep", "-E", "sched_waking|sched_switch"], stdin=p1.stdout,
-                          stdout=subprocess.PIPE, text=True, errors="replace")
-    p1.stdout.close()
+    p2out, _bt = ctf_stream.open_lines(ctf, begin, end,
+                                      'sched_waking|sched_switch', family="sched")
 
     unwrap = unwrapper()   # window may cross midnight
 
@@ -66,7 +69,7 @@ def scan(ctf, begin, end, cap_events=0):
     delays = collections.defaultdict(list)      # tid -> [delay]
     comm = {}                                   # tid -> comm
     n = 0
-    for line in p2.stdout:
+    for line in p2out:
         m = TS.match(line)
         if not m:
             continue
@@ -89,12 +92,7 @@ def scan(ctf, begin, end, cap_events=0):
             n += 1
             if cap_events and n >= cap_events:
                 break
-    p2.stdout.close()
-    for p in (p2, p1):
-        try:
-            p.terminate()
-        except Exception:                                              # noqa: BLE001
-            pass
+    ctf_stream.close_lines(_bt)
     return delays, comm
 
 
