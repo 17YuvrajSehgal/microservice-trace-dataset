@@ -107,3 +107,48 @@ Round 1 taught us that a wrong cache looks fine. Round 2 that a matching diff ca
 - extract the 93 staged runs once, then the `ctf/` dirs (1.3 TB) can go
 - optional next lever: a C sink that skips text formatting entirely — worth up to 3.5x more,
   but only after the shared decode is in routine use
+
+## Reproducibility: all remaining sorts fixed and verified
+
+17 more sorts across 11 files, on top of the 6 done earlier. Every tie-breaker is the row's
+real identity field, read out of the code that builds the row. One needed a triple —
+`socket_peer_wait` rows are identified by (process, peer_ip, peer_port), because `process`
+repeats across peers, so adding `process` alone would not have broken the tie.
+
+The two that were not cosmetic:
+
+| File | What it does after ranking on `p95_x` alone |
+|---|---|
+| `dependency_verdict.py` | `top = socket_rows[0]` |
+| `blueprint_decide.py` | reads the top `socket_hits` |
+
+With ties falling back to insertion order, two runs on the same trace could in principle name
+different culprits.
+
+### How we checked
+
+Consecutive runs can agree by luck, so we forced the thing that caused it:
+**`PYTHONHASHSEED=1` vs `PYTHONHASHSEED=2`**, which guarantees different set/dict iteration
+order.
+
+| Test | Result |
+|---|---|
+| `oncpu_share` | byte-identical |
+| `runqueue_delay` | byte-identical |
+| `net_loss_signature` | byte-identical |
+| `flow_activity` | byte-identical |
+| `blueprint_decide`, **86 evidence packs** | **86 identical, 0 varying** |
+
+The trace-reading tests ran off the shared cache, so each took ~30 s instead of ~200 s — the
+speedup paying for the verification.
+
+**Not executed:** `block_io_signature`, `blocking_syscall`, `socket_peer_wait`,
+`measure_signature`, `cpu_attribution`, `edge_convergence`, `dependency_verdict`. They got
+the same class of fix and compile clean, but their families are not in the test cache, so
+they are reviewed rather than measured. Worth running when a full battery next executes.
+
+Both checks are now in the repo (`repro_check.sh`, `repro_check_decide.sh`) rather than
+living in a scratch directory, because this is a property we want to keep, not a one-off.
+
+The one sort still ranking on a bare expression is `compare_methods.py`, which orders by
+`method` — already unique per row, so already deterministic.
