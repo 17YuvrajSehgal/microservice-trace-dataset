@@ -20,9 +20,10 @@
 #SBATCH --output=/scratch/yuvraj17/stratatrace/slurm-logs/bp-futexirq-%j.out
 set -uo pipefail
 
+APP=${APP:-sockshop}          # sockshop = negative control; trainticket = transfer test
 REPO=/scratch/yuvraj17/stratatrace/repo
 L0=/scratch/yuvraj17/stratatrace/data/l0
-OUT=/scratch/yuvraj17/stratatrace/results/futexirq
+OUT=/scratch/yuvraj17/stratatrace/results/futexirq$([ "$APP" = sockshop ] || echo "_$APP")
 PAR=${PAR:-10}          # concurrent runs; each is one babeltrace decode
 
 mkdir -p "$OUT"
@@ -44,15 +45,16 @@ one () {   # one <app> <run_id>
     && echo "ok   $app $run" || echo "FAIL $app $run"
 }
 
-# every Sock Shop run that has an expanded trace - all 13 families, so the negative control
-# covers everything we can inject
-mapfile -t RUNS < <(find "$L0/sockshop" -maxdepth 2 -name ctf -type d 2>/dev/null \
-                    | sed 's#.*/sockshop/##; s#/ctf##' | sort)
-echo "${#RUNS[@]} sockshop runs"
+# Every run of APP that has an expanded trace. Sock Shop covers all 13 families, so it is the
+# negative control; Train Ticket is the transfer test - a signal that works on only one app is
+# not a finding, it is an accident of that deployment.
+mapfile -t RUNS < <(find "$L0/$APP" -maxdepth 2 -name ctf -type d 2>/dev/null \
+                    | sed "s#.*/$APP/##; s#/ctf##" | sort)
+echo "${#RUNS[@]} $APP runs"
 
 n=0
 for r in "${RUNS[@]}"; do
-  one sockshop "$r" &
+  one "$APP" "$r" &
   n=$((n+1))
   if [ $((n % PAR)) -eq 0 ]; then wait; fi
 done
