@@ -40,7 +40,13 @@ def fanout_cmd(ctf, begin, end, out_dir, families):
         path = cache_path(fam, begin, end, out_dir)
         subs.append(f">(grep -E {shlex.quote(FAMILIES[fam])} "
                     f"| zstd -1 -q -T4 -o {shlex.quote(path + '.part')})")
-    return (f"{shlex.quote(BT2)} {shlex.quote(ctf)} "
+    # TZ=UTC is NOT optional. babeltrace prints and INTERPRETS --begin/--end in the local
+    # zone, and the collector wrote these traces in UTC. Without it, a UTC window like
+    # 22:43:58 is read as 22:43:58 EDT, lands outside the trace, and every family file comes
+    # out as a valid but EMPTY 13-byte zstd frame - a cache that looks built and yields
+    # nothing. The per-script path has always set this on the babeltrace process; the shell
+    # pipeline needs it too.
+    return (f"TZ=UTC {shlex.quote(BT2)} {shlex.quote(ctf)} "
             f"--begin {begin} --end {end} 2>/dev/null | tee {' '.join(subs)} > /dev/null")
 
 
@@ -79,6 +85,24 @@ def main():
         if r.returncode != 0:
             print(f"  FAILED (exit {r.returncode}) - leaving .part files, cache not published")
             return 1
+        # An empty zstd frame is 13 bytes and is perfectly valid, so a cache built against the
+        # wrong timezone or a window outside the trace looks FINE and yields nothing - the
+        # scripts then "succeed" in 0.08 s with empty results. Check before publishing.
+        # A single empty family can be real (a run with no disk I/O has no block_rq_* events),
+        # but ALL of them empty means the window never matched.
+        sizes = {f: os.path.getsize(cache_path(f, b, e, a.out) + ".part")
+                 for f in want if os.path.exists(cache_path(f, b, e, a.out) + ".part")}
+        if sizes and max(sizes.values()) < 1024:
+            print(f"  REFUSING to publish: every family is empty {sizes}.\n"
+                  f"  The window {b}->{e} matched no events. Almost always a timezone "
+                  f"mismatch - the traces are UTC and babeltrace reads --begin/--end in the "
+                  f"local zone.")
+            return 1
+        for f, n in sorted(sizes.items()):
+            if n < 1024:
+                print(f"  note: {f} family is empty ({n} B) - real for some runs, "
+                      f"but check if you expected events")
+
         # publish atomically, so an interrupted extract never looks like a complete cache
         for f in want:
             p = cache_path(f, b, e, a.out)
