@@ -56,9 +56,11 @@ Do these in order, for latency:
 - [ ] **A2. Fix blueprint selection.** This is the known weak spot. Yuvraj told the meeting
       the with/without results were poor because the agent picked the wrong blueprint. Our own
       measurement says the same thing (see the last section).
-- [ ] **A3. Switch to the Babeltrace C library.** The Python binding is a wrapper and is
-      roughly 100× slower. Install with apt and call it on the command line. Our kernel
-      analysis takes 2–3 hours per run today.
+- [x] **A3. Make kernel analysis faster.** DONE 2026-09-03. We were already using the C
+      command line, not the Python binding, so there was nothing to switch. The real waste
+      was reading the same trace 14 times per run. Now we read it once and save the parts
+      each script needs: **23 min -> 7 min** per run. Checked the answers are unchanged.
+      Details in `progress-notes/03-09-2026/decisions.md`.
 - [ ] **A4. Cut the non-latency faults** from the current blueprint set, or mark them clearly
       as out of scope.
 - [ ] **A5. Start the report** even with simple cases. A first version is better than waiting.
