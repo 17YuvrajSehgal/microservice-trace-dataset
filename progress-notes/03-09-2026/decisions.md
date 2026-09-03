@@ -152,3 +152,38 @@ living in a scratch directory, because this is a property we want to keep, not a
 
 The one sort still ranking on a bare expression is `compare_methods.py`, which orders by
 `method` — already unique per row, so already deterministic.
+
+## Cluster cleanup
+
+The scratch root held ~120 loose files and ~30 directories from this work, mixed in with four
+other projects. Everything of ours now sits under `/scratch/yuvraj17/stratatrace/` in
+`repo/ data/ results/ tools/ scripts/ slurm-logs/ misc/`. Map: `CLUSTER-LAYOUT.md`.
+
+All on one filesystem, so every `mv` was a rename — the 1.3 TB of traces moved instantly and
+no data was copied.
+
+Also updated 195 hardcoded paths across 67 runnable files. Markdown was left alone on
+purpose: progress notes record the paths a run actually used, so rewriting them would make
+the log wrong.
+
+### Two things that would have broken quietly
+
+**`allpacks` is 86 symlinks**, not files, pointing into `specificity/packs/` and
+`evidence_packs*/`. Moving the targets left every one dangling. The script relinks them and
+reports the count: 86 relinked, 0 broken.
+
+**`tools/bt21.sh` lives only on the cluster, not in git.** So the path update never reached
+it, and it fell back to the system **babeltrace 2.0.4** — which cannot read our CTF 2 traces
+at all. Nothing errored; `--version` was the only tell. Found it because the check after the
+move asked "does the tool still work?" rather than "did the move finish?".
+
+Fixed by copying `blueprints/lib/cluster-bt21.sh` over it. Now reports 2.1.2.
+
+### Verified after the move
+
+| Check | Result |
+|---|---|
+| `bt21.sh --version` | 2.1.2 "Brossard" |
+| packs through relinked symlinks | 46 Sock Shop packs load |
+| `blueprint_decide` on all packs | 86 identical, 0 varying |
+| reading a trace from the new `l0` path | 4,983,754 events in a 5 s window |

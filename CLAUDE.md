@@ -107,7 +107,20 @@ applies to chat replies AND to any document/report written for the user.
 | `archive/progress-snapshots/` | Superseded dated progress/update files (progress-notes/ is the live log) |
 | `microservices-demo/`, `train-ticket/` | Submodules: pinned Sock Shop + Train Ticket app forks |
 | `DOCS/` | JSS-era docs; some paths reference the old adaptive_tracer workspace (known drift) |
+| `CLUSTER-LAYOUT.md` | **Where everything lives on Trillium** — read before running cluster jobs |
 | `pdf_proofs_of_injection/` | Grafana evidence for the prior 148 GB release |
+
+## Cluster paths (as of 2026-09-03)
+
+All of this project's files on Trillium are under **`/scratch/yuvraj17/stratatrace/`**
+(`repo/`, `data/`, `results/`, `tools/`, `scripts/`, `slurm-logs/`). They used to sit loose
+in the scratch root. Full map, plus which sibling dirs belong to other projects, is in
+`CLUSTER-LAYOUT.md`.
+
+Two things that bite: `data/packs/allpacks` is 86 **symlinks** into the other pack dirs, and
+`tools/bt21.sh` exists only on the cluster (git copy: `blueprints/lib/cluster-bt21.sh`) — if
+its paths go stale it silently falls back to babeltrace 2.0.4, which cannot read our traces.
+Check `tools/bt21.sh --version` says 2.1.2.
 
 ## Environment note
 
