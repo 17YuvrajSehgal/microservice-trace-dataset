@@ -18,6 +18,7 @@ FAMILIES = ["anomaly_cpu", "anomaly_disk", "anomaly_mem", "anomaly_net",
             "queue_backlog", "slow_db", "svc_cpu_cap", "svc_mem_cap", "svc_net"]
 
 SIGNALS = [("futex_long_waits_per_s", "futex blocks/s"),
+           ("futex_short_waits_per_s", "futex SHORT waits/s"),
            ("futex_wait_s_per_s",     "futex wait s/s"),
            ("futex_p95_ms",           "futex p95 ms"),
            ("softirq_s_per_s",        "softirq s/s"),

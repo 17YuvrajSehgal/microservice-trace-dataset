@@ -51,6 +51,27 @@ SOFTIRQ = {0: "HI", 1: "TIMER", 2: "NET_TX", 3: "NET_RX", 4: "BLOCK",
 
 LONG_WAIT_S = 0.001          # a futex call over 1 ms is a real block, not a fast wake
 
+# MEASURED, first run (noisy_neighbor r1): total futex wait was 408 SECONDS per second of wall
+# clock, and java alone waited 6684 s over 22036 calls - about 300 ms a call. That is not
+# contention, it is thread pools PARKED waiting for work. Raw futex wait time is dominated by
+# idle parking and cannot detect a contended lock on its own.
+#
+# A contended lock looks different in shape: many waits, each short, because the holder
+# releases quickly and the waiter is woken and re-blocks. Idle parking is few waits, each long.
+# So bucket the durations instead of trusting a single total.
+BUCKETS = [(0.0, 1e-4, "<100us"), (1e-4, 1e-3, "100us-1ms"), (1e-3, 1e-2, "1-10ms"),
+           (1e-2, 1e-1, "10-100ms"), (1e-1, 1.0, "100ms-1s"), (1.0, 1e9, ">1s")]
+
+
+def bucketise(durs):
+    out = {name: 0 for _, _, name in BUCKETS}
+    for d in durs:
+        for lo, hi, name in BUCKETS:
+            if lo <= d < hi:
+                out[name] += 1
+                break
+    return out
+
 
 def secs(m):
     return (int(m.group(1)) * 3600 + int(m.group(2)) * 60 + int(m.group(3))
@@ -164,6 +185,9 @@ def scan(ctf, begin, end):
             "p99_ms": pct(fx_dur, 0.99),
             "long_waits": len(long_waits),
             "long_wait_s": round(sum(long_waits), 3),
+            # the shape, not just the total - see BUCKETS above
+            "buckets": bucketise(fx_dur),
+            "short_waits": sum(1 for d in fx_dur if d < LONG_WAIT_S),
             "top_waiters": [{"comm": c, "wait_s": round(s, 3), "n": n} for c, s, n in top],
         },
         "softirq": {
@@ -225,6 +249,10 @@ def main():
             "incident": round(inc["futex"]["long_wait_s"] / is_, 3)},
         "futex_p95_ms": {"baseline": base["futex"]["p95_ms"],
                          "incident": inc["futex"]["p95_ms"]},
+        # short waits are the contention-shaped ones; parking sits in the long buckets
+        "futex_short_waits_per_s": {
+            "baseline": round(base["futex"]["short_waits"] / bs, 2),
+            "incident": round(inc["futex"]["short_waits"] / is_, 2)},
         "softirq_s_per_s": {"baseline": round(base["softirq"]["total_s"] / bs, 4),
                             "incident": round(inc["softirq"]["total_s"] / is_, 4)},
         "hardirq_s_per_s": {"baseline": round(base["hardirq"]["total_s"] / bs, 4),
