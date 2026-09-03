@@ -59,6 +59,11 @@ FAMILIES = {
     "net":     "net_dev_queue|net_dev_xmit|net_if_receive_skb",
     "syscall": "syscall_entry_|syscall_exit_",
     "block":   "block_rq_issue|block_rq_complete",
+    # Lock waits and interrupt time. Both are ALREADY in every run we collected - futex is a
+    # syscall so `--syscall --all` caught it, and the profile enables irq_*/softirq_*. Neither
+    # has ever been analysed. One family so a single decode serves both.
+    "lockirq": ("syscall_entry_futex|syscall_exit_futex|"
+                "irq_softirq_entry|irq_softirq_exit|irq_handler_entry|irq_handler_exit"),
 }
 
 
