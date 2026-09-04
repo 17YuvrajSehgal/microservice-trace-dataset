@@ -23,6 +23,9 @@ TARGET_OF = {
     # single-service impairment on one application and reverses on the other (finding F15).
     "anomaly_net": "network-path-degradation",
     "svc_net": "network-path-degradation",
+    # added 2026-09-04 with the block/interrupt signals (F18, F20, F23)
+    "anomaly_disk": "host-disk-saturation",
+    "svc_mem_cap": "service-memory-cap",
 }
 
 

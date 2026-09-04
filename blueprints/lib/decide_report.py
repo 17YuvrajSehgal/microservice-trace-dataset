@@ -17,9 +17,13 @@ import argparse, collections, glob, json, os, re, sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import blueprint_decide as BD                                          # noqa: E402
+from retest_report import TARGET_OF                                    # noqa: E402
 
-# families a blueprint claims; anything else should get silence
-COVERED = {v[1] for v in BD.VERDICTS.values()}
+# Score on WHICH BLUEPRINT fired, not on the fault_type string it emits. Those are not the
+# same thing and treating them as one produces false failures: `datastore-wait` emits
+# "db_latency" for the `slow_db` family, and ONE network blueprint deliberately covers both
+# `anomaly_net` and `svc_net` (finding F15). TARGET_OF is the shared map.
+COVERED = set(TARGET_OF)
 
 FAMILIES = ["anomaly_cpu", "anomaly_disk", "anomaly_mem", "anomaly_net", "dependency_outage",
             "error_storm", "noisy_neighbor", "normal", "queue_backlog", "slow_db",
@@ -49,12 +53,14 @@ def main():
                 continue
             pack = json.load(open(f, encoding="utf-8"))
             v = BD.decide(pack)
-            said = v.get("fault_type")
+            sel = v.get("selected")
+            want = TARGET_OF.get(fam)
             rows.append({"app": app, "run": rid, "family": fam,
-                         "selected": v.get("selected"), "said": said,
+                         "selected": sel, "said": v.get("fault_type"),
+                         "expected_blueprint": want,
                          "fired": v.get("blueprints_fired") or [],
-                         "correct": (said == fam) if said else (fam not in COVERED),
-                         "silent": said is None,
+                         "correct": (sel == want) if sel else (want is None),
+                         "silent": sel is None,
                          "why": v.get("evidence")})
 
     n = len(rows)
@@ -72,8 +78,8 @@ def main():
         per[r["family"]].append(r)
     for fam in sorted(per):
         rs = per[fam]
-        ok = sum(1 for r in rs if r["said"] == fam)
-        bad = sum(1 for r in rs if r["said"] and r["said"] != fam)
+        ok = sum(1 for r in rs if r["correct"] and not r["silent"])
+        bad = sum(1 for r in rs if not r["correct"] and not r["silent"])
         sil = sum(1 for r in rs if r["silent"])
         cov = "yes" if fam in COVERED else "no"
         flag = "  <-- WRONG" if bad else ""
@@ -82,7 +88,8 @@ def main():
     if wrong:
         print("\n=== wrong answers ===")
         for r in wrong:
-            print(f"  {r['app']:12s} {r['run']:42s} {r['family']} -> said {r['said']}")
+            print(f"  {r['app']:12s} {r['run']:42s} {r['family']:18s} -> "
+                  f"{r['selected']} (expected {r['expected_blueprint'] or 'silence'})")
 
     print("\n=== which blueprint fired, and was it right? ===")
     byb = collections.defaultdict(lambda: {"n": 0, "right": 0})
