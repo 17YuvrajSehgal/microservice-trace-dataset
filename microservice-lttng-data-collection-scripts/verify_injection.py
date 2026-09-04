@@ -158,12 +158,27 @@ def overall_verdict(checks):
 # ----------------------------------------------------------------- plotting --
 
 def try_plot(out_png, series_by_name, t_start, t_end):
+    """Draw the impact plot. Returns the path, or None with a LOUD warning.
+
+    v1 swallowed a missing matplotlib and returned None in silence. The result: Sock Shop
+    asked for --plot on every run and produced ZERO images across 50 runs, because
+    vm_bootstrap.sh never installed matplotlib and nothing ever said so. Train Ticket, on a
+    machine that happened to have it, produced 40. Nobody noticed for a month.
+
+    A verification image is the human-readable proof that a fault actually took effect, so
+    losing it silently is exactly the kind of gap that cannot be repaired after the campaign.
+    """
     try:
         import matplotlib
         matplotlib.use("Agg")
         import matplotlib.pyplot as plt
         import matplotlib.dates as mdates
-    except Exception:
+    except Exception as e:                                             # noqa: BLE001
+        sys.stderr.write(
+            "\n*** NO VERIFICATION IMAGE: matplotlib is not available "
+            f"({type(e).__name__}: {e}).\n"
+            f"*** Expected to write {out_png}\n"
+            "*** Install it before the campaign:  pip3 install --user matplotlib\n\n")
         return None
     fig, axes = plt.subplots(len(series_by_name), 1, sharex=True,
                              figsize=(9, 2.4 * len(series_by_name)), squeeze=False)
