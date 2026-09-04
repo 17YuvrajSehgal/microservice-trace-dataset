@@ -51,8 +51,10 @@ Do these in order, for latency:
 
 ### A. Do this week
 
-- [ ] **A1. Research the latency causes.** Write a list of 5–10 latency reasons, isolated and
-      combined. Say for each whether kernel traces can see it.
+- [x] **A1. Research the latency causes.** DONE 2026-09-04 —
+      `blueprints/docs/LATENCY-CAUSES.md`. 11 single causes + 5 combined. The "can kernel
+      traces see it" column is answered from our own 109 runs, not from textbooks: 6 yes,
+      1 partly, 1 one-app-only, 2 proved impossible, 1 never tried.
 - [ ] **A2. Fix blueprint selection.** This is the known weak spot. Yuvraj told the meeting
       the with/without results were poor because the agent picked the wrong blueprint. Our own
       measurement says the same thing (see the last section).
