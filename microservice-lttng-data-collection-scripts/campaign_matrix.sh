@@ -42,8 +42,31 @@ CAMPAIGN_WORKLOAD_FAULTS=(slow_db error_storm anomaly_net)
 CAMPAIGN_REPEATS="${CAMPAIGN_REPEATS:-5}"
 CAMPAIGN_REPEATS_VARIANT="${CAMPAIGN_REPEATS_VARIANT:-3}"
 
-# families that cannot run on a given app, with the reason
+# families that cannot run on a given app, with the reason.
+#
+# CLARIFIED 4 Sept: this does NOT drop queue_backlog from the dataset. Sock Shop CAN run it -
+# it has RabbitMQ and a single-consumer queue - so the family is collected there in full. It
+# is Train Ticket that has no message broker. The two applications are simply asymmetric on
+# this one family, and that asymmetry is stated at build time rather than being a silent hole.
+#
+# `conn_pool_exhaustion` (proposed for v2) is the closer analogue and would give Train Ticket
+# a saturation fault of its own - see FAULT-CATEGORIES-V2.md.
 CAMPAIGN_TT_EXCLUDE=(queue_backlog)
+
+# --- v2 CANDIDATE FAMILIES (see FAULT-CATEGORIES-V2.md) ----------------------------------
+# Naser, 4 Sept: "latency is only the first step. we will cover around 10 different issue
+# types." Our 12 families sit in 5 categories and are nearly all "slow because a resource is
+# scarce". These ten add concurrency, resource leaks, security/abuse and configuration.
+#
+# INTENTIONALLY EMPTY until each recipe exists in faults/ AND has passed a pilot smoke run.
+# On a campaign we cannot repeat, an untested recipe is a worse risk than a missing family -
+# so a name only moves into this array once it has been shown to actually inject.
+CAMPAIGN_NEW_FAULTS=()
+# candidates, in the order they should be written:
+#   concurrency   lock_contention priority_inversion deadlock
+#   leaks         fd_exhaustion conn_pool_exhaustion
+#   security      resource_abuse data_exfiltration fork_storm
+#   config        dns_delay nagle_delayed_ack
 
 # build_matrix <app>   ->  fills the array MATRIX with "recipe intensity workload repeat"
 build_matrix() {
@@ -53,7 +76,7 @@ build_matrix() {
     for r in $(seq 1 "$CAMPAIGN_REPEATS"); do MATRIX+=("normal none steady $r"); done
     for r in $(seq 1 "$CAMPAIGN_REPEATS"); do MATRIX+=("normal none burst $r"); done
 
-    for f in "${CAMPAIGN_CORE_FAULTS[@]}"; do
+    for f in "${CAMPAIGN_CORE_FAULTS[@]}" ${CAMPAIGN_NEW_FAULTS[@]+"${CAMPAIGN_NEW_FAULTS[@]}"}; do
         excluded=0
         if [[ "$app" == "trainticket" ]]; then
             for x in "${CAMPAIGN_TT_EXCLUDE[@]}"; do
