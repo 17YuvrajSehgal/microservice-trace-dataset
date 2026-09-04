@@ -74,3 +74,50 @@ optional.
 The 3 wrong answers (memory faults called noisy neighbour) survive. Interrupt time looked like
 the fix on Sock Shop and died on Train Ticket. Only route left is re-collecting a few runs with
 `KERNEL_MEM=1`, which records reclaim and paging directly instead of inferring them.
+
+## Do we need new collection? Yes — three things
+
+Full list: `blueprints/docs/COLLECTION-PLAN.md`. Written because a new GCP project is being
+set up and the machine shape depends on what we intend to collect.
+
+### The three that block work
+
+**1. Memory events (`KERNEL_MEM=1`).** Our 3 wrong answers are all memory faults called noisy
+neighbour, and we have tried twice to reach them indirectly — disk latency (F18) and interrupt
+time (F20). Both worked on one application and died on the other. There is no third
+workaround. The memory layer has to be recorded. 12 runs per app; ~8 GB per run instead of
+2–3 GB, so ~200 GB for both.
+
+Do one app first. If the memory layer does not separate memory stress from a noisy neighbour
+there, stop rather than spend the second app.
+
+**2. A lock contention positive example.** F22 gave us the negative control for free — total
+lock wait moves for nothing we inject. But we have never injected lock contention, so we know
+what its absence looks like and not what it looks like. Needs a program, plus its look-alike
+(an idle thread pool), because idle parking swamped the total on the first look: 408 seconds
+of wait per second of wall clock, which was Java pools parked waiting for work.
+
+**3. Priority inversion and Nagle/delayed-ACK.** Both are cases where every signal we collect
+says the system is healthy — no resource is busy, no packet is lost. That is exactly the shape
+Naser asked for: the agent alone should fail, the blueprint should win.
+
+### Cheap while the machine exists
+
+- **Compound faults — we have zero.** All 12 recipes inject one thing. Naser asked for combined
+  causes. Every look-alike pair we know is a candidate, starting with a CPU cap applied while
+  a lock is held.
+- Top up `svc_mem_cap` (4 runs total, thinnest threshold in the library) and `anomaly_disk`.
+- More healthy runs at varied load. Our thresholds are set by the busiest healthy run, so this
+  is the cheapest way to learn whether they are safe or lucky.
+- The intensity calibration the VM already owed.
+
+### The split worth knowing before picking machine types
+
+Steps 1–3 need **no microservice deployment**. They are small programs on a plain VM. Only the
+memory re-collection and compound faults need the full stack. So two machines may be cheaper
+than one: a small one for the programs, the usual shape for the microservice runs.
+
+### One thing to run before planning
+
+`lttng list --kernel | grep -i lock` on the new VM. Naser asked for KERNEL lock contention;
+today we can only see user-level locks through futex. That one command decides what B1 is.
