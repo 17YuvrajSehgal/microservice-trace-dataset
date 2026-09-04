@@ -117,6 +117,12 @@ Deliberately left out for now: `memory_leak`, `wrong_timeout`, `cold_start`, `re
 All are medium-risk recipes, and on a campaign we cannot repeat, an untested recipe is a
 worse risk than a missing family.
 
+**They are parked, not dropped.** `future.md` records what each one is, why it waits, what
+its recipe would need and what it would tell us — so picking one up later does not mean
+redoing this thinking. `retry_storm` in particular is worth returning to: it is the case where
+the symptom sits furthest from the cause, which is the hardest thing an agent can be asked to
+do.
+
 ### What that costs
 
 | | Value |

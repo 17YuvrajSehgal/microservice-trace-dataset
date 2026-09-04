@@ -108,6 +108,7 @@ applies to chat replies AND to any document/report written for the user.
 | `microservices-demo/`, `train-ticket/` | Submodules: pinned Sock Shop + Train Ticket app forks |
 | `DOCS/` | JSS-era docs; some paths reference the old adaptive_tracer workspace (known drift) |
 | `CLUSTER-LAYOUT.md` | **Where everything lives on Trillium** — read before running cluster jobs |
+| `future.md` | Parked work: deferred fault families, and why each waits |
 | `pdf_proofs_of_injection/` | Grafana evidence for the prior 148 GB release |
 
 ## Cluster paths (as of 2026-09-03)
