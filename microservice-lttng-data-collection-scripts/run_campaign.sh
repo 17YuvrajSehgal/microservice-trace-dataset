@@ -35,20 +35,15 @@ done
 # Each entry: "recipe intensity workload repeats". recipe=normal is fault-free.
 # 8 core faults (aggressive/steady x3), normals (steady+burst x3), intensity
 # study (3 faults subtle/steady x2), workload study (2 faults burst x3... x2).
-CORE_FAULTS=(slow_db error_storm svc_cpu_cap svc_mem_cap dependency_outage queue_backlog noisy_neighbor anomaly_cpu)
-INTENSITY_FAULTS=(noisy_neighbor slow_db svc_cpu_cap)   # subtle variants (RQ5)
-WORKLOAD_FAULTS=(slow_db error_storm)                   # burst variants (RQ5)
-
-MATRIX=()
-for r in 1 2 3; do MATRIX+=("normal none steady $r"); done
-for r in 1 2 3; do MATRIX+=("normal none burst $r"); done
-for f in "${CORE_FAULTS[@]}"; do for r in 1 2 3; do MATRIX+=("$f aggressive steady $r"); done; done
-for f in "${INTENSITY_FAULTS[@]}"; do for r in 1 2; do MATRIX+=("$f subtle steady $r"); done; done
-for f in "${WORKLOAD_FAULTS[@]}"; do for r in 1 2; do MATRIX+=("$f aggressive burst $r"); done; done
+# v2: the matrix lives in ONE file, sourced by both application drivers. v1 had two drivers
+# with two different matrices - 8 of 12 families here, 11 of 12 on the other application - and
+# that, not any deliberate choice, is why the stored run counts came out uneven.
+source "$SD/campaign_matrix.sh"
+build_matrix "sockshop"
 
 echo "=== StrataTrace Phase-2 campaign: ${#MATRIX[@]} runs "\
 "(baseline ${BASELINE_S}s / injection ${INJECTION_S}s / recovery ${RECOVERY_S}s) ==="
-[[ ! -f "$MANIFEST" ]] && echo "run_id,recipe,intensity,workload,repeat,verification,timestamp_utc" > "$MANIFEST"
+[[ ! -f "$MANIFEST" ]] && echo "run_id,recipe,intensity,workload,repeat,verification,event_loss,timestamp_utc" > "$MANIFEST"
 
 idx=0
 for entry in "${MATRIX[@]}"; do
@@ -79,10 +74,20 @@ for entry in "${MATRIX[@]}"; do
         gzip -q "$RUN_DIR"/kernel/kernel/channel0_* 2>/dev/null || true
     fi
 
+    # v2: surface event loss in the campaign manifest. LTTng reports discarded events only
+    # at `lttng stop`, and v1 threw that away - so a run that dropped a third of its events
+    # was indistinguishable from a clean one, and every ratio from it was wrong.
+    loss="n/a"
+    [[ -f "$RUN_DIR/meta/event_loss.json" ]] && loss=$(python3 -c \
+        "import json;d=json.load(open('$RUN_DIR/meta/event_loss.json'));print('clean' if d.get('clean') else 'LOSSY:%d' % d.get('discarded_events',0))" 2>/dev/null || echo n/a)
+
+    # v2: package the run so it arrives self-describing, with checksums and a usable/not verdict
+    bash "$SD/package_run.sh" "$RUN_DIR" >/dev/null 2>&1 || true
+
     verdict="n/a"
     [[ -f "$RUN_DIR/verification.json" ]] && verdict=$(python3 -c \
         "import json;print(json.load(open('$RUN_DIR/verification.json')).get('verification_status','n/a'))" 2>/dev/null || echo n/a)
-    echo "${RUN},${recipe},${intensity},${workload},${repeat},${verdict},$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$MANIFEST"
+    echo "${RUN},${recipe},${intensity},${workload},${repeat},${verdict},${loss},$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$MANIFEST"
     echo "[$idx/${#MATRIX[@]}] DONE $RUN -> verification=$verdict"
 done
 

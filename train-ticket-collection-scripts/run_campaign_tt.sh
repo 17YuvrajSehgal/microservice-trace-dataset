@@ -59,16 +59,11 @@ PXY[error_storm]=mysql; TSVC[error_storm]=mysql; FNAME[error_storm]=error_storm_
 BLAST[error_storm]="$_DB_BLAST"; MODALITY[error_storm]=logs; TRACEVIS[error_storm]=covered
 
 # --- the matrix (46 runs, matching the Sock Shop campaign) ------------------
-CORE_FAULTS=(slow_db error_storm svc_cpu_cap svc_mem_cap dependency_outage svc_net anomaly_cpu anomaly_disk anomaly_mem anomaly_net noisy_neighbor)
-INTENSITY_FAULTS=(noisy_neighbor svc_cpu_cap slow_db)  # subtle variants (RQ5)
-WORKLOAD_FAULTS=(slow_db error_storm)                  # burst variants (RQ5)
-
-MATRIX=()
-for r in 1 2 3; do MATRIX+=("normal none steady $r"); done
-for r in 1 2 3; do MATRIX+=("normal none burst $r"); done
-for f in "${CORE_FAULTS[@]}"; do for r in 1 2 3; do MATRIX+=("$f aggressive steady $r"); done; done
-for f in "${INTENSITY_FAULTS[@]}"; do for r in 1 2; do MATRIX+=("$f subtle steady $r"); done; done
-for f in "${WORKLOAD_FAULTS[@]}"; do for r in 1 2; do MATRIX+=("$f aggressive burst $r"); done; done
+# v2: the matrix lives in ONE file, sourced by both application drivers. v1 had two drivers
+# with two different matrices - 8 of 12 families here, 11 of 12 on the other application - and
+# that, not any deliberate choice, is why the stored run counts came out uneven.
+source "$SD/../microservice-lttng-data-collection-scripts/campaign_matrix.sh"
+build_matrix "trainticket"
 
 echo "=== Train Ticket Phase-2 campaign: ${#MATRIX[@]} runs "\
 "(baseline ${BASELINE_S}s / injection ${INJECTION_S}s / recovery ${RECOVERY_S}s) ==="
