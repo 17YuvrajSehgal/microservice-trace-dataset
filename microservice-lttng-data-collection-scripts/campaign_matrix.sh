@@ -68,6 +68,30 @@ CAMPAIGN_NEW_FAULTS=()
 #   security      resource_abuse data_exfiltration fork_storm
 #   config        dns_delay nagle_delayed_ack
 
+# --- CODE DEFECTS (see CODE-BUGS-V2.md) --------------------------------------------------
+# Every fault above is EXTERNAL to the application: we throttle a cgroup, delay a packet,
+# pause a container. The code is innocent and the environment is made hostile. Real incidents
+# are usually the reverse. These inject the defect into the service itself.
+#
+# Feasible because we already build two Sock Shop services from our own forks - a bug is one
+# more branch and one more image tag, on a pipeline we proved when adding OpenTelemetry.
+#
+# Each one PAIRS with an environment fault we already have, and the pairing is the experiment:
+# the same symptom, once from the environment and once from the code. If the kernel signatures
+# turn out identical, that is a result too - the honest verdict becomes "threads are serialised
+# on a lock, and kernel data cannot tell you whether that is contention or a coding mistake".
+#
+#   code_lock_across_io    (Go)    pairs with lock_contention
+#   code_n_plus_one        (Go)    pairs with slow_db
+#   code_event_loop_block  (Node)  pairs with svc_cpu_cap
+#   code_serial_awaits     (Node)  pairs with slow_db
+#   code_unbounded_cache   (Node)  pairs with svc_mem_cap
+#
+# EMPTY until each branch builds, starts, serves traffic and shows its symptom in a pilot
+# smoke run. Note these are single-app: the defect lives in one service, so a code bug is
+# 5 runs, not 10.
+CAMPAIGN_CODE_BUGS=()
+
 # build_matrix <app>   ->  fills the array MATRIX with "recipe intensity workload repeat"
 build_matrix() {
     local app="${1:-sockshop}" f r excluded
@@ -76,7 +100,7 @@ build_matrix() {
     for r in $(seq 1 "$CAMPAIGN_REPEATS"); do MATRIX+=("normal none steady $r"); done
     for r in $(seq 1 "$CAMPAIGN_REPEATS"); do MATRIX+=("normal none burst $r"); done
 
-    for f in "${CAMPAIGN_CORE_FAULTS[@]}" ${CAMPAIGN_NEW_FAULTS[@]+"${CAMPAIGN_NEW_FAULTS[@]}"}; do
+    for f in "${CAMPAIGN_CORE_FAULTS[@]}" ${CAMPAIGN_NEW_FAULTS[@]+"${CAMPAIGN_NEW_FAULTS[@]}"}              ${CAMPAIGN_CODE_BUGS[@]+"${CAMPAIGN_CODE_BUGS[@]}"}; do
         excluded=0
         if [[ "$app" == "trainticket" ]]; then
             for x in "${CAMPAIGN_TT_EXCLUDE[@]}"; do
