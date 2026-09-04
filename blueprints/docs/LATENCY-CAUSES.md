@@ -27,9 +27,23 @@ Deliberately **not** recorded (too big; `KERNEL_MEM=1` turns them on):
 
 Not recorded: `lock_*` kernel lock tracepoints, `power_*` CPU frequency.
 
-`lock_*` usually needs a kernel built with lock debugging turned on. **We have not checked
-whether our VM has them** — the VM is stopped. Worth one `lttng list --kernel` before planning
-around it.
+**ANSWERED 4 Sept 2026** on the new VM (`lttng list --kernel`, kernel 6.17.0-1022-gcp,
+233 tracepoints available):
+
+| Question | Answer |
+|---|---|
+| `lock_*` kernel lock tracepoints | **0 — not available.** Stock Ubuntu kernels do not enable the lock debugging they need |
+| `power_cpu_frequency` | **available** |
+| `power_cpu_idle` | **available** |
+| `vmscan_*` / `kmem_*` | available |
+
+Two consequences:
+
+- **Kernel lock contention cannot be traced.** We can only see **user-level** locks, through
+  `futex`. Naser asked for kernel locks; that is not collectable without a custom kernel, so
+  the lock blueprint is about user-level locks and must say so.
+- **CPU frequency becomes collectable.** Cause 11 below was "never tried" only because we
+  never enabled `power_*`. It is available, so it can move from untested to testable.
 
 Checked on a real trace, not from the config file.
 
@@ -133,12 +147,13 @@ waiting for work**, not contention. Idle parking drowns the total.
 **What we can see today:** user-level locks, through the `futex` system call. That is what our
 109 runs contain.
 
-**What we have not checked:** kernel-level locks. `lock_*` tracepoints are not in our profile,
-and they usually need a kernel built with lock debugging. Whether our VM offers them at all is
-**unverified** — one `lttng list --kernel` on the VM answers it.
+**What we now know we cannot see:** kernel-level locks. Checked on the v2 VM — **zero**
+`lock_*` tracepoints. Stock Ubuntu kernels do not build in the lock debugging they require.
 
-Naser asked for *kernel* lock contention. So run that check first. If the tracepoints are not
-there, we either rebuild the kernel or write the blueprint for user-level locks and say so.
+Naser asked for *kernel* lock contention. It is not collectable without a custom kernel, which
+is not worth doing. **So the lock blueprint is about user-level locks via `futex`, and says
+so.** That is not a big loss: application locks are where service latency actually comes from,
+and F22 already gives us the negative control for them.
 
 ---
 

@@ -28,6 +28,31 @@ sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq \
 # the human-readable proof that a fault actually took effect, and it cannot be regenerated
 # after the campaign - Prometheus data is not kept.
 
+# LTTNG KERNEL MODULES: build, then REGISTER, then PROVE they load.
+#
+# Measured on the v2 VM (kernel 6.17.0-1022-gcp, 2026-09-04): dkms compiled and installed all
+# 44 modules and reported "installed", yet `modprobe lttng-tracer` failed with
+#   FATAL: Module lttng-tracer not found in directory /lib/modules/6.17.0-1022-gcp
+# and `lttng list --kernel` returned "Failed to list Linux kernel tracepoints".
+#
+# The build was fine. The module index was stale - dkms had dropped the .ko files into
+# updates/dkms/ without a depmod. One `depmod -a` fixed it and all 233 tracepoints appeared.
+#
+# Worth doing loudly rather than assuming: without kernel modules there is NO kernel tracing,
+# which is the entire dataset. Failing here is cheap; failing mid-campaign is not.
+echo "--- registering LTTng kernel modules ---"
+sudo depmod -a
+if sudo modprobe lttng-tracer 2>/dev/null; then
+    n_events=$(sudo lttng list --kernel 2>/dev/null | wc -l)
+    echo "    lttng-tracer loaded; $n_events kernel tracepoints available"
+    [ "$n_events" -lt 100 ] && echo "    ** WARNING: expected ~230 tracepoints, got $n_events **"
+else
+    echo "    *** FATAL: lttng-tracer will not load on kernel $(uname -r)."
+    echo "    *** There is no kernel tracing without it, so collection cannot start."
+    echo "    *** Check: sudo dkms status ; sudo find /lib/modules/\$(uname -r) -name 'lttng*'"
+    exit 1
+fi
+
 echo "=== [2/5] Docker (official get.docker.com; 27+ with compose v2) ==="
 if ! command -v docker >/dev/null; then
     curl -fsSL https://get.docker.com | sudo sh
