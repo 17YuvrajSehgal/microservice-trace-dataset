@@ -93,8 +93,35 @@ PY
                 echo
                 cat "/proc/$pid/cgroup" 2>/dev/null || true
                 echo
+                # the namespace INODES. These are what the new kernel-event contexts carry,
+                # so this file is the lookup table that turns an event into a container name.
                 ls -l "/proc/$pid/ns" 2>/dev/null || true
             } > "$META_DIR/proc_${safe_name}_${tag}.txt"
+
+            # CGROUP COUNTERS (v2). The kernel keeps per-cgroup counters that say directly
+            # what a blueprint currently has to infer:
+            #   cpu.stat       nr_throttled / throttled_usec  -> WHICH service is CPU-capped
+            #   memory.events  low/high/max/oom               -> WHICH service hit its memory
+            #                                                    limit, and whether it was
+            #                                                    throttled or killed
+            #   memory.stat    pgscan / pgsteal               -> reclaim, per cgroup
+            #   io.stat        per-device bytes and ios       -> disk work, per container
+            # Free to read, no tracing overhead, and they give per-run ground truth that does
+            # not depend on our own analysis being right.
+            cg="$(sed -n 's/^0:://p' "/proc/$pid/cgroup" 2>/dev/null | head -1)"
+            if [[ -n "$cg" && -d "/sys/fs/cgroup$cg" ]]; then
+                {
+                    echo "container=$c"
+                    echo "cgroup=$cg"
+                    for f in cpu.stat cpu.max memory.events memory.max memory.current \
+                             memory.stat io.stat pids.current; do
+                        if [[ -r "/sys/fs/cgroup$cg/$f" ]]; then
+                            echo "--- $f"
+                            cat "/sys/fs/cgroup$cg/$f" 2>/dev/null || true
+                        fi
+                    done
+                } > "$META_DIR/cgroup_${safe_name}_${tag}.txt"
+            fi
         fi
     done
 }
@@ -185,8 +212,22 @@ else
     # (advisor guidance + storage: ~2-3 GB/run). Opt in with KERNEL_MEM=1 for the
     # memory-layer faults (host_mem, svc_mem_cap) so the kernel modality can see
     # reclaim / paging / page-cache writeback - the F3/F8 signature the study needs.
-    if [ "${KERNEL_MEM:-0}" = "1" ]; then
+    # MEMORY TRACEPOINTS (v2 default ON, see KERNEL_MEM below).
+    #
+    # v1 left these off because they are the highest-volume class, and paid for it: our three
+    # remaining wrong answers are all memory faults called noisy neighbours, and BOTH indirect
+    # routes we tried died the same way - block-layer latency (F18) and device interrupt time
+    # (F20) each separated the two on one application and failed on the other.
+    #
+    # But "memory tracepoints" is not one thing. The firehose is kmem_* and the page
+    # alloc/free path; the signal we actually need - is this cgroup reclaiming? - lives in
+    # vmscan_*, which is far cheaper. So KERNEL_MEM=1 now enables the TARGETED set, and
+    # KERNEL_MEM=full adds the firehose for anyone who needs allocation detail.
+    if [ "${KERNEL_MEM:-0}" = "full" ]; then
         KERNEL_GROUPS="$KERNEL_GROUPS kmem_* mm_* vmscan_* writeback_* compaction_* migrate_*"
+        echo "[collect] KERNEL_MEM=full -> ALL memory tracepoints (very large traces)"
+    elif [ "${KERNEL_MEM:-0}" = "1" ]; then
+        KERNEL_GROUPS="$KERNEL_GROUPS vmscan_* writeback_* compaction_* migrate_*"
         echo "[collect] KERNEL_MEM=1 -> memory-management tracepoints ADDED to profile"
     fi
     for grp in $KERNEL_GROUPS; do
@@ -194,6 +235,29 @@ else
     done
 fi
 sudo lttng add-context --kernel --channel channel0 --type=pid --type=tid --type=procname 2>/dev/null || true
+
+# CONTAINER ATTRIBUTION (v2). procname is NOT enough: Sock Shop runs several Go services whose
+# comm is all `app`, so three blueprints can say a fault is happening but not WHICH service -
+# service-cpu-throttle, network-path-degradation and the disk/memory pair all end with
+# "naming it needs cgroup-aware attribution we do not have from the trace".
+#
+# A namespace id on every event closes that gap. snapshot_metadata already records
+# `ls -l /proc/<pid>/ns` per container, so the lookup table was always being collected - the
+# key on the event was the missing half. Added one type at a time and best-effort, so a kernel
+# missing one context does not cost us the others.
+for ctx in cgroup_ns pid_ns net_ns mnt_ns ipc_ns user_ns; do
+    if sudo lttng add-context --kernel --channel channel0 --type="$ctx" >/dev/null 2>&1; then
+        echo "[$TYPE/$RUN] context ok: $ctx"
+    else
+        echo "[$TYPE/$RUN] context MISSING on this kernel: $ctx"
+    fi
+done
+
+# Record exactly which events and contexts were enabled. Nothing did this before, so finding
+# out what a stored trace contains meant opening it.
+sudo lttng list "${TRACE_APP}-kernel" > "$META_DIR/lttng_enabled_kernel.txt" 2>&1 || true
+lttng list "${TRACE_APP}-ust" > "$META_DIR/lttng_enabled_ust.txt" 2>&1 || true
+
 sudo lttng start
 
 OTLP_START_OFFSET=$(otlp_start_offset)
@@ -222,8 +286,22 @@ wait "$RELAY_PID" 2>/dev/null || true
 
 snapshot_metadata "end"
 
-lttng stop || true
-sudo lttng stop || true
+# EVENT LOSS (v2). `lttng stop` reports discarded events and lost packets, and we used to
+# throw that away with `|| true`. It is the difference between a good run and a silently
+# corrupted one: a run that dropped a third of its sched_switch events looks exactly like a
+# clean one, and every ratio computed from it is wrong. Buffer pressure also rises with the
+# memory tracepoints on - which is precisely the runs we most care about in v2.
+{
+    echo "== ust stop =="
+    lttng stop 2>&1 || true
+    echo "== kernel stop =="
+    sudo lttng stop 2>&1 || true
+} | tee "$META_DIR/lttng_stop.txt"
+
+# machine-readable, so the campaign driver can flag a run without parsing prose
+python3 "$SCRIPT_DIR/parse_event_loss.py" \
+    "$META_DIR/lttng_stop.txt" "$META_DIR/event_loss.json" || true
+
 lttng destroy || true
 sudo lttng destroy || true
 
