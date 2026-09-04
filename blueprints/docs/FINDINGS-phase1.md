@@ -5,6 +5,80 @@ Protocol: `RESEARCH-PLAN-phase1-kernel.md`.
 
 ---
 
+## F23 — A container memory cap is separable, but only as a PAIR. And the disk blueprint had never actually run.
+
+Joint re-check of the two existing sweeps (F18 block layer, F20 interrupt layer) against
+every family on both applications. No new collection.
+
+### Neither signal works alone
+
+| Signal | Why not |
+|---|---|
+| interrupt ratio | the disk fault goes **higher** (5.78–14.27x); and Sock Shop `anomaly_mem` reaches **3.45x**, above Train Ticket `svc_mem_cap`'s **3.23x** floor. Pooled across apps, the target is overlapped from both sides |
+| interrupt **absolute** | worse — the ordering **inverts**. Disk sits above the target on Sock Shop (0.0235 vs 0.0162 s/s) and below it on Train Ticket (0.0161 vs 0.0225) |
+| disk arrivals | separate the disk fault cleanly, say nothing about memory |
+
+### The pair does it
+
+    interrupt ratio >= 2.5   AND   disk requests gained < 500
+
+| | Result |
+|---|---|
+| fires on target | 2 of 2 app-family groups, every run |
+| false fires | **0 across 24 family-application groups** |
+
+**Each half carries the decision on a different application.** On Sock Shop the disk test is
+the only thing excluding host memory pressure (1142 req/s against a 500 bar). On Train Ticket
+the interrupt test is the only thing excluding a healthy run (1.65x against a 2.5 bar). A
+blueprint written from one application would look like a one-signal rule and would be wrong.
+
+### The thing found while wiring it up
+
+**`host-disk-saturation` has been in the decision engine's verdict table since it was built,
+and had never once been evaluated.** The evidence packs carry `runqueue_delay`,
+`blocking_syscall`, `call_graph`, `oncpu`, `endpoints`, `netloss` — not the block layer and
+not the interrupt layer. The rule had no data to read, and was never even listed in the
+results dict. It was counted as "built" for a month.
+
+Both sweeps had already run over every run we own, so nothing needed re-measuring; the data
+just had to be merged into the packs.
+
+### Scoreboard after wiring both in
+
+86 runs, both applications, rule engine only, no model:
+
+| | Before (81 runs) | Now (86 runs) |
+|---|---|---|
+| correct | 64 (79%) | **68 (79%)** |
+| wrong | 3 | 4 |
+| precision when a blueprint fires | 38/41 = 93% | **46/50 = 92%** |
+
+| Blueprint | Fired | Right |
+|---|---|---|
+| cpu-contention-co-tenant | 13 | 10 |
+| datastore-wait | 10 | 9 |
+| network-path-degradation | 9 | 9 |
+| host-cpu-saturation | 6 | 6 |
+| **host-disk-saturation** | **4** | **4** |
+| service-cpu-throttle | 4 | 4 |
+| **service-memory-cap** | **4** | **4** |
+
+Two families moved from "correctly silent because nothing covers them" to "correctly named":
+`anomaly_disk` and `svc_mem_cap`, 8 runs in total.
+
+The 4th wrong answer is **not** a regression from this work. It is an `error_storm` run firing
+`datastore-wait`, in one of the 5 extra runs this larger pack set includes. The datastore rule
+was not touched here. Recording it as a pre-existing false fire that a wider run set exposed,
+rather than letting it read as a cost of the new blueprints.
+
+### Honest limit
+
+`svc_mem_cap` has **2 runs per application, 4 in total** — the thinnest evidence behind any
+threshold in the library. The separation is clean on everything we have, but the fault itself
+was observed four times. Written into the blueprint as a caveat rather than left implicit.
+
+---
+
 ## F20 — Interrupt time is a real signal for disk and container memory caps. The part I hoped would fix our memory errors does NOT transfer.
 
 **futex/irq probe**, jobs 2252768 + 2252830, **49 Sock Shop + 42 Train Ticket runs**, 13 and

@@ -55,9 +55,6 @@ Do these in order, for latency:
       `blueprints/docs/LATENCY-CAUSES.md`. 11 single causes + 5 combined. The "can kernel
       traces see it" column is answered from our own 109 runs, not from textbooks: 6 yes,
       1 partly, 1 one-app-only, 2 proved impossible, 1 never tried.
-- [ ] **A2. Fix blueprint selection.** This is the known weak spot. Yuvraj told the meeting
-      the with/without results were poor because the agent picked the wrong blueprint. Our own
-      measurement says the same thing (see the last section).
 - [x] **A3. Make kernel analysis faster.** DONE 2026-09-03. We were already using the C
       command line, not the Python binding, so there was nothing to switch. The real waste
       was reading the same trace 14 times per run. Now we read it once and save the parts
@@ -76,7 +73,10 @@ Do these in order, for latency:
       exist (Google Chrome was mentioned).
 - [ ] **B2. Small generated programs**, one per latency cause from A1, each traced 5–10 times.
 - [ ] **B3. Find a real, outside dataset** with a known latency problem to test against.
-- [ ] **B4. NEW (3 Sept). Build `service-memory-cap`.** Now buildable from kernel data alone —
+- [x] **B4. DONE 2026-09-04. Built `service-memory-cap`.** Fires 4/4, 0 false fires
+      across 24 family-app groups. Needed BOTH interrupt time and disk arrivals - neither
+      works alone (F23). Also fixed: `host-disk-saturation` had never actually run, because
+      the packs carried neither signal. Original note: Now buildable from kernel data alone —
       device interrupt time is 6.2x on Sock Shop and 3.2–4.3x on Train Ticket, against a
       ceiling of 1.8x everywhere else (F20). Honest caveat: the model already gets this fault
       2 of 3 times unaided, so it is a win for the **rule engine**, not a case where a
@@ -116,6 +116,18 @@ Do these in order, for latency:
       as a method: collect evidence → analyse → abstract → link to a cause → write the
       blueprint, with a human able to review and edit. He said the **method** is the
       contribution, not any one blueprint that works well.
+
+### E-last. Fix blueprint selection — DO THIS LAST
+
+**Moved to the end on 4 Sept, Yuvraj's call:** build better blueprints first, then fix the
+picking. Reason it holds up: selection is chosen from whatever library exists at the time, so
+tuning it against today's 6 blueprints would tune it against a library we are about to change.
+Every blueprint added or reworded changes what the selector sees.
+
+- [ ] **Z1. Fix blueprint selection.** The known weak spot. All 4 runs a blueprint broke were
+      the *wrong blueprint being picked*, and `network-path-degradation` was picked **zero
+      times in 9 network incidents**. Naser's hierarchy idea is the fix: one parent latency
+      blueprint that routes to children, instead of a flat list of guesses.
 
 ### F. Later, not now
 
