@@ -111,10 +111,22 @@ measures its reuse.
 
 ## 4. Research questions
 
-The scope was narrowed on 2 September 2026, on supervisor guidance, to **latency problems
-observed through kernel traces**. Faults that kernel traces cannot see (application error
-storms, for example) are explicitly out of scope; extending to logs and metrics is future work
-using the same design.
+**Scope, as set by the supervisor on 3 September 2026.** Draft v1 of this proposal recorded the
+2 September working decision to narrow to latency observed through kernel traces. That was the
+*first step*, not the thesis boundary. The confirmed scope is:
+
+- **Around ten classes of operational issue**, beginning with latency.
+- **Telemetry in general** — metrics, logs, distributed traces, kernel traces — beginning with
+  kernel traces, because that is the layer existing incident datasets omit.
+- **Systems spanning microservice, monolithic, and agentic** applications, where an AI agent is
+  itself a subject under observation as well as the consumer of the blueprint library.
+- **No industry partner is named** in the thesis; the framing stays on agentic software
+  observability.
+
+Practically, the near-term work is still latency on kernel traces — that is where the evidence
+and tooling already are. The difference is that this is now stated as a starting point rather
+than a boundary, and the design must not assume one issue class, one telemetry type, or one
+system class.
 
 | RQ | Question | Status |
 |---|---|---|
