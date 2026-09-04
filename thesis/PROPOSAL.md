@@ -1,7 +1,7 @@
 # M.Sc. Thesis Proposal (draft v1)
 
-**Executable Observability Blueprints: Accumulating Diagnostic Expertise for
-Agentic Trace Analysis**
+**Agentic Software Observability: Capturing, Transferring, and Re-executing
+Diagnostic Expertise**
 
 Yuvraj Sehgal · Department of Computer Science, Brock University
 Supervisor: Dr. Naser Ezzati-Jivan

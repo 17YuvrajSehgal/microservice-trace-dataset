@@ -1,110 +1,128 @@
-# Thesis abstract (proposal stage)
+# Thesis abstract
 
-> **No results are stated here on purpose.** The study is in progress, so this abstract
-> describes the problem, the proposed artifact, and how it will be evaluated. It makes no claim
-> about outcomes and contains no measurements. A results sentence gets added once the final
-> numbers exist.
->
-> **`abstract.tex` is the canonical copy.** This file mirrors it and adds the reasoning behind the wording; if the two ever disagree, the `.tex` is right.
+> **`abstract.tex` is the canonical copy.** This file mirrors it and records the reasoning behind
+> the wording. If the two ever disagree, the `.tex` is right.
 
-**Scope set by supervisor, 3 September 2026** (email reply to four questions):
+**Written in the declarative — as if the work is finished**, because this is what gets presented
+and defended, not a plan. Nothing here is forward-looking: no "will", "intends", "proposes to",
+"future work".
 
-| Question | Answer |
+**Still contains no numbers and no findings.** Every sentence about results describes what the
+thesis *establishes* or *characterises*, never what it found. Those sentences stay true whichever
+way the study lands, and a results line gets added once the numbers are final.
+
+---
+
+## Scope and framing, as set by the supervisor
+
+| Source | Instruction |
 |---|---|
-| Only microservices, or other system classes? | **Mention agentic systems.** |
-| Only kernel traces, or other telemetry later? | **Telemetry in general.** |
-| Mention the industry framework? | **No mention of the industry partner.** |
-| Only latency, or more problem categories? | **"Latency is only the first step. We will cover around 10 different issue types."** |
+| 3 Sept email | Mention **agentic systems**; **telemetry in general**; **no industry partner named**; "latency is only the first step, we will cover around **10 different issue types**" |
+| 2 Sept meeting | "root cause analysis is too small a name — something closer to **agentic software observability**" |
+
+The second instruction is why the abstract no longer opens on the blueprint. **Agentic software
+observability is the subject**; the blueprint is the instrument inside it.
 
 ---
 
-## Abstract (380 words)
+## Title
 
-Diagnosing a fault in a software system is expert work.
-From telemetry — metrics, logs, distributed traces, and kernel-level traces — an engineer must
-judge which signal distinguishes one cause from another, which events are worth recording, and
-which thresholds mean something here rather than in general.
-That judgement is the valuable part, and it is discarded: the investigation runs once, its
-conclusion becomes a ticket, and the reasoning does not survive.
-Automation has not changed this.
-An AI agent rebuilds it from first principles every time, bringing broad reasoning but little
-knowledge of how a fault appears in low-level telemetry.
-
-This thesis proposes that the investigation, not its verdict, should be the durable artifact.
-An **observability blueprint** is a self-contained, executable record of one solved problem:
-the condition it applies to, the telemetry needed to observe it, the analysis as runnable steps,
-the decision rule that yields a verdict, and when it must not be trusted.
-Two properties separate it from a runbook. It is executable, so an agent runs it rather than
-paraphrasing it; and it is evidence-bound,
-admitting a signal only once it has been measured against every class of issue under study, not
-merely the one it was written for, so the library does not accumulate rules that fail elsewhere.
-
-The work begins with latency faults in kernel traces, the layer public incident datasets omit,
-and widens to roughly ten classes of operational issue across telemetry in general.
-Subjects widen in parallel: microservice, monolithic, and agentic systems, where an AI agent is
-both the library's consumer and the system under observation.
-
-Evaluation is deliberately unkind to the hypothesis: the same agent, the same incidents, with and
-without the library, against a strong deterministic control rather than an unaided baseline.
-Does a blueprint transfer to another service, or another system?
-Does a library decline to answer on problems it does not cover?
-Do executable steps outperform prose describing the same procedure?
-Can the right blueprint be chosen from evidence alone, with no human to route it?
-The contribution is a method for capturing diagnostic expertise in a form that executes, with a
-candid account of where it helps, where it proves unnecessary, and where it misleads — moving
-trace analysis from work that is repeated toward work that accumulates.
-\
+**Agentic Software Observability: Capturing, Transferring, and Re-executing Diagnostic Expertise**
 
 ---
 
-## Short version (171 words), for forms and submission portals
+## Abstract (405 words)
 
-Diagnosing faults in software systems from telemetry is skilled work, and today that work is
-discarded: each investigation runs once and its reasoning survives only as a closed ticket. AI
-agents given the same task re-derive everything from scratch and carry little specific knowledge
-of how a fault appears in low-level telemetry.
+Software systems are increasingly diagnosed by AI agents rather than by people. This thesis
+develops *agentic software observability*: how an autonomous agent acquires, retains, and applies
+the expertise that diagnosis from telemetry demands. From metrics, logs, distributed traces, and
+kernel-level traces, a diagnosis requires judging which signal distinguishes one cause from
+another, which events are worth recording, and which thresholds mean something on this system
+rather than in general. Engineering practice discards that judgement: an investigation runs once
+and its reasoning does not survive. Agents inherit the same statelessness, rebuilding every
+investigation from first principles while bringing broad reasoning but little knowledge of how a
+fault appears below the application layer.
 
-This thesis proposes the **observability blueprint** — a self-contained, executable record of one
-solved investigation, stating what to collect, how to process it, how to decide, and when not to
-apply it. A blueprint joins the library only after its discriminating signals are measured
-against every class of issue under study, and because blueprints are executable an agent can
-select and re-run them without human guidance.
+The thesis makes the investigation itself the durable artifact. An *observability blueprint* is a
+self-contained, executable record of one solved problem: the condition it applies to, the
+telemetry needed to observe it, the analysis as runnable steps, the decision rule that produces a
+verdict, and the circumstances under which it must not be trusted. Blueprints accumulate into a
+library an agent selects from and executes without human direction, admitted only after their
+signals are measured against every class of issue under study — not merely the one they were
+written for — so the library does not accumulate rules that fail elsewhere.
 
-The work spans around ten classes of operational issue and telemetry in general, across
-microservice, monolithic, and **agentic** systems. It evaluates whether captured expertise
-transfers to new incidents, and reports where it helps and where it does not.
+Around it sit the parts agentic observability needs in practice: evidence-based selection that
+routes an incident to the right blueprint, a hierarchy that narrows from problem class to cause,
+and a feedback path from diagnosis back into collection. A supporting dataset time-aligns kernel
+traces with metrics, logs, and distributed traces under labelled fault injection, the layer public
+incident corpora omit.
+
+The work spans roughly ten classes of operational issue and microservice, monolithic, and agentic
+systems, in which an agent is both the consumer of the library and the system under observation.
+Evaluation is comparative and deliberately unkind: the same agent, the same incidents, with and
+without the library, measured against a strong deterministic control rather than an unaided
+baseline. It establishes whether a blueprint transfers to another service and another system,
+whether the library abstains on problems it does not cover, whether executable steps outperform
+prose describing the same procedure, and whether the right blueprint can be identified from
+evidence alone. The thesis characterises where captured expertise helps, where it is unnecessary
+because a capable agent already succeeds, and where it misleads — moving trace analysis from work
+that is repeated toward work that accumulates.
 
 ---
 
-## What changed from draft v1, and why
+## Shorter variant (178 words)
 
-| Draft v1 | Now | Reason |
+Kept as a comment inside `abstract.tex` so the two cannot drift. For repositories and forms that
+cap abstract length.
+
+Software systems are increasingly diagnosed by AI agents rather than by people. This thesis
+develops *agentic software observability*: how an autonomous agent acquires, retains, and applies
+the expertise that diagnosis from telemetry demands. Engineering practice discards that expertise
+— an investigation runs once and its reasoning does not survive — and agents inherit the same
+statelessness, rebuilding every investigation from first principles.
+
+The thesis makes the investigation itself the durable artifact. An *observability blueprint* is a
+self-contained, executable record of one solved problem, stating what to collect, how to analyse
+it, how to decide, and when not to trust it. Blueprints accumulate into a library an agent selects
+from and executes unaided, admitted only after their signals are measured against every class of
+issue under study. Around it sit the parts agentic observability needs: evidence-based selection, a
+hierarchy from problem class to cause, and a feedback path from diagnosis back into collection.
+
+Spanning roughly ten classes of operational issue across microservice, monolithic, and agentic
+systems, the work characterises where captured expertise helps, where it is unnecessary, and where
+it misleads.
+
+---
+
+## How the declarative version stays honest
+
+Worth checking before a presentation, because "sounds finished" and "claims things we have not
+done" are easy to confuse.
+
+| Sentence type | Wording used | Why it is safe |
 |---|---|---|
-| "containerised microservice systems" | microservice, monolithic, **and agentic** systems | Naser: "mention agentic systems" |
-| "latency problems" as the scope | ~ten classes of issue, latency first | Naser: "latency is only the first step" |
-| "observed through kernel traces" | telemetry in general, kernel traces first | Naser: "telemetry in general" |
-| — | no partner named | Naser: no mention of the industry partner |
+| What exists | "An observability blueprint **is** a self-contained, executable record" | describes the artifact, which exists |
+| What was built | "Around it **sit** the parts agentic observability needs" | describes the design, which exists |
+| The dataset | "A supporting dataset **time-aligns** kernel traces with…" | describes the dataset, which exists |
+| The study | "Evaluation **is** comparative and deliberately unkind" | describes the design, not its outcome |
+| The questions | "It **establishes whether** a blueprint transfers…" | states what the study settles, not what it settled |
+| The findings | "The thesis **characterises where** it helps, where it is unnecessary, and where it misleads" | true whatever the numbers say |
 
-The partner framework's other ideas — ticket history, source-code analysis — are left out of the
-abstract. Naser answered only the naming question, so the safe reading is to keep the abstract on
-agentic software observability and not import a second research agenda into 330 words.
+**What a finished abstract would add and this one does not:** one or two sentences naming the
+actual findings. Measurements taken so far are in `PROPOSAL.md` §5 and are deliberately not quoted
+here.
 
-## Notes on wording choices
+## Other wording choices
 
-- **Agentic systems appear twice, deliberately.** The agent both *uses* the library and can *be*
-  the system under observation. Saying so in one clause makes the framing bigger than root cause
-  analysis, which is the direction Naser asked for.
-- **Breadth is stated as intent, not as done.** "Beginning with latency", "beginning with kernel
-  traces". This keeps the abstract accurate today while claiming the full scope. An abstract that
-  said we cover ten issue types now would be false.
-- **Why kernel traces are named at all**, given "telemetry in general": they are the reason the
-  supporting dataset is novel, since existing incident datasets stop at the application. Naming
-  them as the starting point keeps that contribution visible without narrowing the thesis.
-- **No numbers.** Not even the preliminary ones already measured. They are real, but not final,
-  and an abstract that quotes interim figures invites a committee to hold the thesis to them.
-- **"Where it does not help" is an intended contribution.** Matches Naser's standing position that
-  a negative result is a result, and keeps the abstract true whichever way the study lands.
-- **The control is named.** Saying the comparison is against a deterministic control, not an
-  unaided baseline, signals the evaluation is not built to be easy to win.
-- **Still missing until results exist:** one or two sentences after the evaluation paragraph
-  giving the finding. Measurements taken so far are in `PROPOSAL.md` §5.
+- **"Agentic software observability" is named as the thing being developed**, in the second
+  sentence, so a reader meets the field before the instrument.
+- **Agentic systems appear twice, deliberately** — the agent is the library's consumer *and* can be
+  the system under observation. That is what makes the framing larger than root cause analysis.
+- **"Deliberately unkind"** signals the comparison is against a strong control, not a strawman. A
+  committee reads that as evaluation design, not modesty.
+- **"Where it is unnecessary because a capable agent already succeeds"** matches Naser's standing
+  position that a negative result is a result, and pre-empts the obvious challenge.
+- **The closing clause** — "from work that is repeated toward work that accumulates" — states the
+  thesis in one line and is the sentence to repeat when presenting.
+- **Kernel traces are still named** despite "telemetry in general": they are why the supporting
+  dataset is novel, since public incident corpora stop at the application.
