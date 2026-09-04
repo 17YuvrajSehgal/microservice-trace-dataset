@@ -41,7 +41,7 @@ Why this set: MEASURED BASIS. net_if_receive_skb carries the full IP and TCP hea
 Each step names the capability it needs. The command shown is the binding resolved for THIS environment; another environment may bind a different tool to the same capability without changing the procedure.
 
 1. stage the stored kernel trace for reading
-   run: `bash /scratch/yuvraj17/extract_l0.sh <app> <family> <run_id>`
+   run: `bash /scratch/yuvraj17/stratatrace/scripts/extract_l0.sh <app> <family> <run_id>`
    expect: a CTF directory the trace reader can open
 2. count retransmissions and queue drops per interface, baseline window against incident window
    run: `python3 blueprints/problems/network-path-degradation/scripts/net_loss_signature.py --ctf <ctf> --gt <window> --out <out>/netloss.json`

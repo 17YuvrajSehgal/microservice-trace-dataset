@@ -1,0 +1,280 @@
+{
+  "id": "service-memory-cap",
+  "version": 1,
+  "title": "One container is at its memory limit and is thrashing against it",
+  "problem": {
+    "summary": "A single container has been given a memory limit and is now working right at it. The kernel keeps reclaiming and re-faulting pages for that one cgroup, and the device interrupt rate on the host climbs well above normal. The tell is what does NOT happen: almost no extra work reaches the disk. A disk fault and host-wide memory pressure both push thousands of new requests per second onto the block device; a container at its own cap pushes almost none, because the pressure is contained to one cgroup and served largely from page cache and swap-in of pages it already owns.",
+    "symptoms": [
+      "one service is slow while the rest of the system looks unremarkable",
+      "the host is not short of CPU and no process is stealing it",
+      "device interrupt time on the host is several times its normal level",
+      "disk request arrivals barely move",
+      "requests still succeed, so nothing errors and no log line names the cause"
+    ],
+    "discriminators": [
+      {
+        "signal": "time spent inside device interrupt handlers, incident against baseline, from irq_handler_entry/irq_handler_exit",
+        "this_problem": "6.23-6.35x on the first application, 3.23-4.25x on the second application",
+        "not_this_problem": "no other family exceeds 1.81x on the first application or 1.65x on the second application - except the disk fault, which goes HIGHER (12.94-14.27x and 5.78-6.67x), and host memory pressure on the first application at 2.36-3.45x",
+        "confused_with": [
+          "host-disk-saturation",
+          "host-memory-pressure"
+        ],
+        "evidence": "MEASURED in the futex/irq sweep, 49 the first application + 42 the second application runs, 13 and 12 families (finding F20). This signal does NOT identify the fault alone: host memory pressure on the first application reaches 3.45x, above the 3.23x floor of a second-application memory cap, so one global bar cannot separate them. Absolute interrupt seconds are worse - they invert between applications."
+      },
+      {
+        "signal": "disk requests per second gained by a process that was barely using the disk before, from block_rq_issue",
+        "this_problem": "0-282 requests per second - essentially nothing reaches the disk",
+        "not_this_problem": "the disk fault gains 4724-6944; host memory pressure on the first application gains 1142-1170. Both are far above this fault's ceiling",
+        "confused_with": [
+          "host-disk-saturation",
+          "host-memory-pressure"
+        ],
+        "evidence": "MEASURED in the block-layer sweep, 57 runs, all 13 families, both applications (finding F18). Alone it says nothing about memory - it only establishes that the disk stayed quiet."
+      },
+      {
+        "signal": "the pair: interrupt time up AND disk arrivals flat",
+        "this_problem": "fires on 2 of 2 target groups, every run",
+        "not_this_problem": "0 false fires across 24 family-application groups. The disk fault raises both signals; host memory pressure raises both by less; everything else raises neither",
+        "confused_with": [],
+        "evidence": "MEASURED by re-checking both sweeps together against every family on both applications (finding F23). Each half carries the decision on a DIFFERENT application: on the first application the disk test excludes host memory pressure, on the second application the interrupt test excludes a healthy run."
+      }
+    ],
+    "unverified_do_not_claim": [
+      {
+        "claim": "device interrupt time alone identifies this fault",
+        "status": "NOT SUPPORTED by our data",
+        "measurement": "host memory pressure on the first application reaches 3.45x, ABOVE the 3.23x floor of a second-application memory cap. Pooling both applications, this fault's range (3.23-6.35x) is overlapped from above by the disk fault (5.78-14.27x) and from below by host memory pressure (1.00-3.45x). See F20 and F23.",
+        "consequence": "the rule requires a second signal - disk arrivals - and both halves are load-bearing. Do not simplify it to one threshold.",
+        "agent_note": "Interrupt time rising is necessary but not sufficient. Two other conditions raise it too, one higher and one overlapping. Always check whether the disk stayed quiet before concluding."
+      },
+      {
+        "claim": "absolute interrupt seconds per second can be used instead of the ratio",
+        "status": "NOT SUPPORTED by our data",
+        "measurement": "the ordering inverts between applications. On the first, the disk fault sits above this fault (0.0235 vs 0.0162 s/s); on the second it sits below it (0.0161 vs 0.0225).",
+        "consequence": "use the incident-to-baseline ratio only. An absolute bar tuned on one deployment will be wrong on another.",
+        "agent_note": "Compare each machine against its own baseline. Absolute interrupt time depends on the hardware and the service count, and its ordering between faults is not stable across systems."
+      },
+      {
+        "claim": "the thresholds here rest on a large sample",
+        "status": "WEAK - stated so it is not mistaken for settled",
+        "measurement": "the E1 specificity check covered 24 family-application groups with 0 false fires, but the target itself has only 2 runs per application, 4 in total.",
+        "consequence": "treat the bars as provisional. More capped runs should be collected before this is relied on.",
+        "agent_note": "The separation is clean on everything we have, but the fault itself was observed only four times. Report the verdict with that caveat rather than as a settled threshold."
+      }
+    ]
+  },
+  "reproduction": {
+    "how": "cap one service's memory with a cgroup limit low enough that it works against the limit without being OOM-killed, then hold normal load",
+    "recipe": "microservice-lttng-data-collection-scripts/faults/svc_mem_cap.sh",
+    "ground_truth": "the capped container, plus the window the cap was applied",
+    "notes": "The cap must be tight enough to cause reclaim but loose enough to avoid the kill. If the container is killed the shape changes completely and this blueprint no longer applies - that is a dependency outage, which kernel traces cannot see (F11-F13)."
+  },
+  "collection_order": {
+    "kernel_events": [
+      "irq_handler_entry",
+      "irq_handler_exit",
+      "block_rq_issue",
+      "block_rq_complete"
+    ],
+    "why_these": "MEASURED BASIS. The verdict needs one signal that rises and one that stays flat, and both halves are load-bearing: on the first application the disk test is what excludes host memory pressure, and on the second application the interrupt test is what excludes a healthy run. Interrupt handlers need entry AND exit because the signal is time spent inside them, not a count. block_rq_issue alone is enough for arrivals; block_rq_complete is kept so the negative claim - that service time did not change - can be shown rather than asserted.",
+    "not_needed": "No memory tracepoints. kmem_*, mm_* and vmscan_* are excluded from our collection profile because of their volume, and this blueprint exists precisely because the fault is identifiable without them - the interrupt layer sees the consequence."
+  },
+  "processing": [
+    {
+      "step": "stage the stored kernel trace for reading",
+      "run": "bash /scratch/yuvraj17/stratatrace/scripts/extract_l0.sh <app> <family> <run_id>",
+      "produces": "<out>/ctf",
+      "reads": [],
+      "expect": "a CTF directory the trace reader can open"
+    },
+    {
+      "step": "measure device interrupt time in both windows",
+      "run": "python3 blueprints/lib/futex_irq_probe.py --ctf <ctf> --gt <window> --out <out>/irq.json",
+      "produces": "<out>/irq.json",
+      "reads": [
+        "<out>/ctf"
+      ],
+      "expect": "hardirq seconds per second of wall clock, baseline and incident, and their ratio"
+    },
+    {
+      "step": "measure disk arrivals per process, to show the disk stayed quiet",
+      "run": "python3 blueprints/problems/host-disk-saturation/scripts/block_io_signature.py --ctf <ctf> --gt <window> --out <out>/blockio.json",
+      "produces": "<out>/blockio.json",
+      "reads": [
+        "<out>/ctf"
+      ],
+      "expect": "requests per second gained by any newcomer process; expected to be near zero for this fault"
+    },
+    {
+      "step": "combine into the verdict and its artifacts",
+      "run": "python3 blueprints/lib/blueprint_decide.py --pack <pack.json> --out <out>/verdict.json",
+      "produces": "<out>/verdict.json, <out>/irq_vs_io.svg, <out>/explanation.txt, <out>/recommended_action.txt",
+      "reads": [
+        "<out>/irq.json",
+        "<out>/blockio.json"
+      ],
+      "expect": "a verdict naming the capped service, or a refusal to decide"
+    }
+  ],
+  "outputs": [
+    {
+      "kind": "json",
+      "path": "<out>/verdict.json",
+      "contains": "verdict, the interrupt ratio that fired it, the disk arrivals that stayed flat, and which of the two tests carried the decision on this application"
+    },
+    {
+      "kind": "xy_chart",
+      "path": "<out>/irq_vs_io.svg",
+      "contains": "interrupt ratio against disk requests gained, one point per family, so the separation is visible rather than asserted"
+    },
+    {
+      "kind": "text",
+      "path": "<out>/explanation.txt",
+      "contains": "why interrupts rose while the disk stayed quiet, and why that pair points at a container limit rather than a host-wide shortage"
+    },
+    {
+      "kind": "text",
+      "path": "<out>/recommended_action.txt",
+      "contains": "map the affected cgroup to its container, then raise its memory limit or reduce its working set"
+    }
+  ],
+  "decision": {
+    "verdict_when": [
+      "device interrupt time rises to at least 2.5x its baseline",
+      "AND no process gains 500 or more disk requests per second"
+    ],
+    "rule_out": [
+      {
+        "instead": "host-disk-saturation",
+        "when": "a process gains thousands of disk requests per second. Both faults raise interrupt time - the disk fault raises it MORE - so interrupts cannot tell them apart. Arrivals can, and the gap is wide: 4724 at the disk fault's floor against 282 at this fault's ceiling"
+      },
+      {
+        "instead": "host-memory-pressure",
+        "when": "disk arrivals rise to roughly a thousand per second and device latency rises sharply. That is reclaim reaching the disk host-wide, not one cgroup working against its own limit. On the first application this is the ONLY thing separating the two, because host memory pressure reaches 3.45x on interrupts - above a second-application memory cap's 3.23x floor"
+      },
+      {
+        "instead": "healthy-baseline",
+        "when": "interrupt time stays under 2.5x. Healthy runs reach 1.81x on the first application and 1.65x on the second application, so a quiet interrupt layer rules this fault out on both applications"
+      },
+      {
+        "instead": "dependency-outage",
+        "when": "the container was killed rather than throttled. Kernel traces cannot see that (F11-F13); it is defined by an absence of answers, not by any signal"
+      }
+    ],
+    "root_cause_is": "the container whose cgroup memory limit is being hit",
+    "fault_type": "svc_mem_cap"
+  },
+  "scenarios": {
+    "note": "SCENARIOS record how this problem looks on different system shapes. Both matter here more than usual, because the two halves of the decision rule carry it on DIFFERENT applications - a blueprint carrying only one application's numbers would look like a one-signal rule and would be wrong.",
+    "cases": [
+      {
+        "scenario": "Lightly loaded host, few services",
+        "recognise_by": "the machine normally idles around half its CPU, and a handful of services share it",
+        "what_you_see": "interrupt time rises 6.23-6.35x while disk arrivals gain only 250-282 requests per second",
+        "what_decides_it": "the DISK test. Host memory pressure reaches 2.36-3.45x on interrupts here, overlapping the interrupt bar, so interrupts alone cannot separate them. Its 1142-1170 requests per second is what rules it out - 2.3x above the 500 bar",
+        "confidence": "high - the interrupt rise is large and the disk stays plainly quiet",
+        "measured_on": "the first application, 2 labelled runs"
+      },
+      {
+        "scenario": "Busy host, many services",
+        "recognise_by": "the machine already runs above 80% CPU with 40 or more services",
+        "what_you_see": "interrupt time rises 3.23-4.25x while disk arrivals gain 0-24 requests per second",
+        "what_decides_it": "the INTERRUPT test. Nothing else on this application exceeds 1.65x, and host memory pressure barely moves at all (1.00-1.22x). The disk test contributes nothing here because almost nothing reaches the disk in any family",
+        "confidence": "medium - the margin above the bar is 1.29x, the tightest in this blueprint",
+        "measured_on": "the second application, 2 labelled runs"
+      }
+    ]
+  },
+  "evidence_from_literature": [
+    "cgroup memory limits are enforced by reclaim inside the cgroup rather than by the global reclaim path, which is why the pressure stays local and does not show as host-wide disk load",
+    "this blueprint does not rest on that reading - it rests on the two sweeps cited in the discriminators"
+  ],
+  "related_blueprints": [
+    "host-disk-saturation",
+    "host-memory-pressure"
+  ],
+  "mutually_exclusive_with": [
+    "host-disk-saturation"
+  ],
+  "taxonomy": {
+    "layer": "container resource limit",
+    "family": "memory",
+    "blast_radius": "one service"
+  },
+  "applicability": {
+    "apply_when": [
+      "one service is slow while the rest of the system looks normal",
+      "device interrupt activity on the host is well above its usual level",
+      "disk request arrivals have barely moved",
+      "the host has spare CPU and nothing is stealing it"
+    ],
+    "do_not_apply_when": [
+      "a process has arrived on the disk with thousands of requests per second",
+      "device interrupt time is flat",
+      "the affected service stopped answering entirely rather than slowing down"
+    ]
+  },
+  "capabilities_required": [],
+  "stopping_conditions": {
+    "conclude": "interrupt time rose at least 2.5x while no process gained 500 or more disk requests per second",
+    "stop_and_switch": "thousands of disk requests per second gained -> host-disk-saturation; roughly a thousand gained with device latency up sharply -> host-memory-pressure; interrupts flat -> neither, look elsewhere",
+    "stop_insufficient": "irq_handler_entry/exit or block_rq_issue were not recorded, so one half of the pair is missing -> request them and re-run. Do NOT decide on interrupt time alone: it was measured to overlap host memory pressure across applications",
+    "max_evidence_rounds": 2
+  },
+  "adaptation_rules": [
+    {
+      "if": "you are tempted to decide on interrupt time alone",
+      "then": "do not. host memory pressure on the first application reaches 3.45x, above the 3.23x floor of a second-application memory cap. The disk test is what separates them, and on that application it is the only thing that does"
+    },
+    {
+      "if": "you want to use absolute interrupt seconds instead of the ratio",
+      "then": "do not. They invert between our two applications: the disk fault sits above this fault on one (0.0235 vs 0.0162 s/s) and below it on the other (0.0161 vs 0.0225). Only the ratio keeps a consistent ordering"
+    },
+    {
+      "if": "a third application shows a healthy interrupt ceiling above 2.0x",
+      "then": "raise the bar rather than accepting the false fire, and record the new ceiling as a scenario"
+    },
+    {
+      "if": "the capped container does real page-cache or file work of its own",
+      "then": "re-measure the disk gap before trusting it. The 500 bar sits between this fault's ceiling of 282 and host memory pressure's floor of 1142, and heavy file traffic from the container would close that gap"
+    },
+    {
+      "if": "the container was OOM-killed rather than throttled",
+      "then": "this blueprint does not apply. A killed container stops answering, and that is defined by absence - six measured attempts failed to see it in kernel data (F11-F13)"
+    }
+  ],
+  "selection": {
+    "supported_goals": [
+      "diagnose_single_service_slowdown",
+      "diagnose_container_resource_limit",
+      "diagnose_memory_problem"
+    ],
+    "user_triggers": [
+      "one service is slow and nothing else is",
+      "a container feels memory starved",
+      "interrupts are high but the disk is idle"
+    ]
+  },
+  "policies": {
+    "collection_order_rule": "Use evidence that already exists before enabling any new collection. Both signals here were already in every run we had collected - neither required a new trace.",
+    "max_collection_overhead_pct": 5,
+    "scope": {
+      "restrict_to": "the hosts and time window named in the intent",
+      "never_widen_without": "explicit approval"
+    },
+    "abstain_when": "either signal is missing, or the interrupt ratio sits between 1.81 and 2.5 - above every healthy run we measured but below every instance of this fault, so genuinely undecided"
+  },
+  "evidence_sufficiency": {
+    "runs_behind_the_thresholds": 4,
+    "applications": 2,
+    "families_checked": 13,
+    "note": "The E1 check covered 24 family-application groups and produced 0 false fires. But the target itself rests on only 2 runs per application, which is the thinnest evidence behind any threshold in the library. Treat the bars as provisional until more capped runs exist."
+  },
+  "provenance": {
+    "authored_by": "measured from two sweeps: the futex/irq probe (49 the first application + 42 the second application runs) and the block-layer sweep (57 runs), then a joint check across 24 family-application groups",
+    "verified_by": "PENDING",
+    "authored_utc": "2026-09-04T00:00:00Z",
+    "notes": "This fault was filed in the backlog as Tier C, needing logs, on the reasoning that an OOM-kill is the only tell. That was wrong: the container is throttled rather than killed, and the interrupt layer sees the reclaim. Neither signal identifies the fault alone - interrupt time overlaps host memory pressure across applications, and disk arrivals say nothing about memory - which is why the decision is a pair. Recorded because it is the first blueprint in the library whose two halves carry the decision on DIFFERENT applications."
+  }
+}

@@ -41,7 +41,7 @@ Why this set: MEASURED BASIS. sched_switch gives on-CPU time per process per CPU
 Each step names the capability it needs. The command shown is the binding resolved for THIS environment; another environment may bind a different tool to the same capability without changing the procedure.
 
 1. stage the stored kernel trace for reading
-   run: `bash /scratch/yuvraj17/extract_l0.sh <app> the cgroup-cap family <run_id>`
+   run: `bash /scratch/yuvraj17/stratatrace/scripts/extract_l0.sh <app> the cgroup-cap family <run_id>`
    expect: a CTF directory the trace reader can open
 2. attribute on-CPU time per process, baseline window against incident window
    run: `python3 blueprints/problems/cpu-contention-co-tenant/scripts/oncpu_share.py --ctf <ctf> --gt <window> --out <out>/oncpu.json`

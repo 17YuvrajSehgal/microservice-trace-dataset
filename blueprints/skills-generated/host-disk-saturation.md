@@ -40,7 +40,7 @@ Why this set: MEASURED BASIS. block_rq_issue carries the device, the sector, the
 Each step names the capability it needs. The command shown is the binding resolved for THIS environment; another environment may bind a different tool to the same capability without changing the procedure.
 
 1. stage the stored kernel trace for reading
-   run: `bash /scratch/yuvraj17/extract_l0.sh <app> <family> <run_id>`
+   run: `bash /scratch/yuvraj17/stratatrace/scripts/extract_l0.sh <app> <family> <run_id>`
    expect: a CTF directory the trace reader can open
 2. measure disk arrivals per process and service time per device, both windows
    run: `python3 blueprints/problems/host-disk-saturation/scripts/block_io_signature.py --ctf <ctf> --gt <window> --out <out>/blockio.json`

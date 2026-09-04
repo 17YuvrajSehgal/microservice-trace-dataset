@@ -87,6 +87,24 @@ RQ_X = 2.0              # "runqueue is raised at all" - used only to describe a 
 # below the cap floor - rather than being placed next to any single run.
 STARVED_RQ_X = 5.0
 
+# --- storage and container-memory family -------------------------------------------------
+# A process arriving on the disk with thousands of requests per second is the disk fault. The
+# floor across both applications is 4724 req/s; the next highest of any other family is
+# 1142-1170 (host memory pressure), then 250-282, then everything under 128. A 4.0x gap that
+# holds on both applications (F18).
+DISK_IOPS_GAINED = 2000.0
+
+# Device interrupt time, incident against baseline. This does NOT identify a fault on its own:
+# the disk fault goes higher (5.78-14.27x) and host memory pressure on the first application
+# reaches 3.45x, above the second application's memory-cap floor of 3.23x. The bar sits
+# between the highest healthy run measured (1.81x) and the lowest memory cap (3.23x) (F20).
+IRQ_X = 2.5
+
+# ...so a container memory cap is the PAIR: interrupts up while the disk stays quiet. This
+# fault gains at most 282 req/s; host memory pressure gains at least 1142. The bar sits
+# between them (F23).
+MEMCAP_IOPS_MAX = 500.0
+
 SOCKET_CALLS = ("poll", "epoll_wait", "epoll_pwait", "recvfrom", "recvmsg", "read", "select")
 INFRA = ("kworker", "ksoftirqd", "rcu_", "kswapd", "kcompactd", "migration", "watchdog",
          "systemd", "containerd", "dockerd", "cadvisor", "prometheus", "node_export",
@@ -161,6 +179,60 @@ def _blk(pack):
     return {"rows": rows, "socket_hits": sock,
             "max_socket_x": max([r["p95_x"] for r in sock], default=0.0),
             "max_any_x": max([r["p95_x"] for r in rows if r.get("p95_x")], default=0.0)}
+
+
+def _io(pack):
+    """Block layer and interrupt layer. Both were measured over every run we have, but
+    neither was in the pack until add_irqio_to_pack.py - which is why host-disk-saturation
+    had a VERDICTS entry it could never reach."""
+    b = (pack.get("blockio") or {}).get("signature") or {}
+    i = (pack.get("irq") or {}).get("signature") or {}
+    return {"available": bool(b) and bool(i),
+            "io_available": bool(b), "irq_available": bool(i),
+            "iops_gained": b.get("io_newcomer_iops_gained"),
+            "io_newcomer": b.get("io_newcomer"),
+            "total_iops_x": b.get("total_iops_x"),
+            "device_p95_x": b.get("worst_device_p95_x"),
+            "hardirq_x": i.get("hardirq_x")}
+
+
+# ----------------------------------------------------------------- storage / container mem
+def disk_saturation_rule(io):
+    """One process floods the block device. Decides on ARRIVALS, not device latency -
+    the fault makes requests more numerous, not slower, and latency actually falls (F18)."""
+    if not io["io_available"]:
+        return {"fires": False, "why": "block-layer evidence not in the pack"}
+    g = io["iops_gained"] or 0.0
+    fires = g >= DISK_IOPS_GAINED
+    return {"fires": fires, "iops_gained": g, "io_newcomer": io["io_newcomer"],
+            "device_p95_x": io["device_p95_x"],
+            "why": (f"{io['io_newcomer']} arrived on the disk with {g:.0f} more requests/s "
+                    f"than its baseline, while per-request service time stayed at "
+                    f"{io['device_p95_x']}x - a flood, not a slow device"
+                    if fires else
+                    f"largest disk arrival gain {g:.0f} req/s, below the "
+                    f"{DISK_IOPS_GAINED:.0f} bar")}
+
+
+def service_memory_cap_rule(io):
+    """A container working against its own memory limit: reclaim drives device interrupts up
+    while almost nothing extra reaches the disk. Needs BOTH halves - interrupt time alone
+    overlaps host memory pressure across applications (F20, F23)."""
+    if not io["available"]:
+        missing = "interrupt" if io["io_available"] else "block-layer"
+        return {"fires": False, "why": f"{missing} evidence not in the pack"}
+    x, g = io["hardirq_x"] or 0.0, io["iops_gained"] or 0.0
+    fires = x >= IRQ_X and g < MEMCAP_IOPS_MAX
+    if fires:
+        why = (f"device interrupt time rose {x:.2f}x while the disk stayed quiet "
+               f"({g:.0f} req/s gained) - reclaim inside one cgroup, not host-wide "
+               f"pressure and not a disk flood")
+    elif x < IRQ_X:
+        why = f"interrupt time {x:.2f}x, below the {IRQ_X} bar"
+    else:
+        why = (f"interrupt time {x:.2f}x is raised, but {g:.0f} req/s of new disk work "
+               f"means the pressure reached the device - host-wide, not one container")
+    return {"fires": fires, "hardirq_x": x, "iops_gained": g, "why": why}
 
 
 # --------------------------------------------------------------------------- CPU family
@@ -353,12 +425,14 @@ VERDICTS = {
     "datastore-wait":          (None,   "db_latency",          0.85),
     "network-path-degradation": (None,  "anomaly_net",         0.85),
     "host-disk-saturation":    (None,   "anomaly_disk",        0.85),
+    "service-memory-cap":      (None,   "svc_mem_cap",         0.80),
 }
 
 
 def decide(pack):
     app = pack.get("app", "sockshop")
     cpu, rq, blk, net = _cpu(pack), _rq(pack), _blk(pack), _net(pack)
+    io = _io(pack)
 
     results = {
         "host-cpu-saturation": host_saturation_rule(cpu, rq),
@@ -366,6 +440,8 @@ def decide(pack):
         "cpu-contention-co-tenant": co_tenant_rule(cpu, rq, blk),
         "datastore-wait": datastore_rule(cpu, rq, blk, net),
         "network-path-degradation": network_rule(net, rq),
+        "host-disk-saturation": disk_saturation_rule(io),
+        "service-memory-cap": service_memory_cap_rule(io),
     }
     fired = [n for n, r in results.items() if r["fires"]]
 
@@ -374,6 +450,8 @@ def decide(pack):
                "oncpu_available": cpu["available"],
                "retrans_available": net["retrans_available"],
                "endpoint_available": net["endpoint_available"],
+               "blockio_available": io["io_available"],
+               "irq_available": io["irq_available"],
                "analysis_seconds": pack.get("total_analysis_s")}
     verdict.update({k.replace("-", "_"): v for k, v in results.items()})
 
@@ -389,6 +467,10 @@ def decide(pack):
             svc = None
         elif name == "datastore-wait":
             svc = comm_to_component(results[name]["blocked_process"], app)
+        elif name in ("host-disk-saturation", "service-memory-cap"):
+            # the flooding process / raised interrupt rate is host-wide evidence; mapping it
+            # to a container needs cgroup-aware attribution we do not have from the trace
+            svc = None
         elif name == "network-path-degradation":
             # the impaired interface is known; which container owns it is not resolvable
             # from the kernel trace alone, so no service is named
