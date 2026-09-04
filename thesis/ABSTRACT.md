@@ -4,6 +4,8 @@
 > describes the problem, the proposed artifact, and how it will be evaluated. It makes no claim
 > about outcomes and contains no measurements. A results sentence gets added once the final
 > numbers exist.
+>
+> **`abstract.tex` is the canonical copy.** This file mirrors it and adds the reasoning behind the wording; if the two ever disagree, the `.tex` is right.
 
 **Scope set by supervisor, 3 September 2026** (email reply to four questions):
 
@@ -16,42 +18,46 @@
 
 ---
 
-## Abstract (357 words)
+## Abstract (380 words)
 
-Software systems are observed through telemetry: metrics, logs, distributed traces, and
-kernel-level traces. Turning that telemetry into a diagnosis is skilled work: knowing which
-signal separates one cause from another, which events are worth recording, and which
-thresholds mean something on the system at hand. That work is currently discarded:
-analysis runs once, and the reasoning survives only as a closed ticket, so the next similar
-incident begins with nothing. The problem sharpens when AI agents are given the task: an agent
-re-derives the investigation every time, and a language model knows little about how a fault
-appears in low-level telemetry.
+Diagnosing a fault in a software system is expert work.
+From telemetry — metrics, logs, distributed traces, and kernel-level traces — an engineer must
+judge which signal distinguishes one cause from another, which events are worth recording, and
+which thresholds mean something here rather than in general.
+That judgement is the valuable part, and it is discarded: the investigation runs once, its
+conclusion becomes a ticket, and the reasoning does not survive.
+Automation has not changed this.
+An AI agent rebuilds it from first principles every time, bringing broad reasoning but little
+knowledge of how a fault appears in low-level telemetry.
 
-This thesis proposes the **observability blueprint**: a self-contained, executable record of one
-solved investigation. A blueprint states the problem it addresses and when it applies, the
-telemetry to collect, the processing steps as runnable commands, the decision rule that yields a
-verdict, and the conditions under which it should not be used. A
-blueprint enters the library only once its discriminating signals have been measured against
-every class of issue under study, not only the one it targets, so the library grows without
-accumulating claims that fail elsewhere. Because a blueprint is executed rather than read, an
-agent can select one and re-run the investigation unaided.
+This thesis proposes that the investigation, not its verdict, should be the durable artifact.
+An **observability blueprint** is a self-contained, executable record of one solved problem:
+the condition it applies to, the telemetry needed to observe it, the analysis as runnable steps,
+the decision rule that yields a verdict, and when it must not be trusted.
+Two properties separate it from a runbook. It is executable, so an agent runs it rather than
+paraphrasing it; and it is evidence-bound,
+admitting a signal only once it has been measured against every class of issue under study, not
+merely the one it was written for, so the library does not accumulate rules that fail elsewhere.
 
-Coverage is intended to reach around ten classes of operational issue, beginning with latency,
-and telemetry in general, beginning with kernel traces because that is the layer existing
-incident datasets omit. The systems studied span microservice and monolithic applications and
-**agentic systems**, where an AI agent is itself under observation as well as the consumer of
-the library.
+The work begins with latency faults in kernel traces, the layer public incident datasets omit,
+and widens to roughly ten classes of operational issue across telemetry in general.
+Subjects widen in parallel: microservice, monolithic, and agentic systems, where an AI agent is
+both the library's consumer and the system under observation.
 
-Evaluation compares the same agent on the same incidents, with and without the library, against
-a deterministic control rather than an unaided baseline. It further asks whether a blueprint transfers to another
-incident, service, and system; whether the library stays silent on issues it does not cover;
-whether executable steps beat prose describing the same procedure; and whether the right
-blueprint can be chosen from evidence alone. The intended contribution is a method for capturing diagnostic expertise in executable
-form, with an account of where it helps and where it does not.
+Evaluation is deliberately unkind to the hypothesis: the same agent, the same incidents, with and
+without the library, against a strong deterministic control rather than an unaided baseline.
+Does a blueprint transfer to another service, or another system?
+Does a library decline to answer on problems it does not cover?
+Do executable steps outperform prose describing the same procedure?
+Can the right blueprint be chosen from evidence alone, with no human to route it?
+The contribution is a method for capturing diagnostic expertise in a form that executes, with a
+candid account of where it helps, where it proves unnecessary, and where it misleads — moving
+trace analysis from work that is repeated toward work that accumulates.
+\
 
 ---
 
-## Short version (~160 words), for forms and submission portals
+## Short version (171 words), for forms and submission portals
 
 Diagnosing faults in software systems from telemetry is skilled work, and today that work is
 discarded: each investigation runs once and its reasoning survives only as a closed ticket. AI

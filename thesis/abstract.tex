@@ -1,0 +1,77 @@
+\documentclass[11pt]{article}
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{graphicx}
+\usepackage[margin=1in]{geometry}
+
+\title{Executable Blueprints for Agentic Software Observability:\\
+       Capturing, Transferring, and Re-executing Diagnostic Expertise}
+\author{Yuvraj Sehgal\\
+        \small Department of Computer Science, Brock University\\
+        \small Supervisor: Dr.\ Naser Ezzati-Jivan}
+\date{September 2026}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+Diagnosing a fault in a software system is expert work.
+From telemetry---metrics, logs, distributed traces, and kernel-level traces---an engineer must
+judge which signal distinguishes one cause from another, which events are worth recording, and
+which thresholds mean something here rather than in general.
+That judgement is the valuable part, and it is discarded: the investigation runs once, its
+conclusion becomes a ticket, and the reasoning does not survive.
+Automation has not changed this.
+An AI agent rebuilds it from first principles every time, bringing broad reasoning but little
+knowledge of how a fault appears in low-level telemetry.
+
+This thesis proposes that the investigation, not its verdict, should be the durable artifact.
+An \emph{observability blueprint} is a self-contained, executable record of one solved problem:
+the condition it applies to, the telemetry needed to observe it, the analysis as runnable steps,
+the decision rule that yields a verdict, and when it must not be trusted.
+Two properties separate it from a runbook. It is executable, so an agent runs it rather than
+paraphrasing it; and it is evidence-bound,
+admitting a signal only once it has been measured against every class of issue under study, not
+merely the one it was written for, so the library does not accumulate rules that fail elsewhere.
+
+The work begins with latency faults in kernel traces, the layer public incident datasets omit,
+and widens to roughly ten classes of operational issue across telemetry in general.
+Subjects widen in parallel: microservice, monolithic, and agentic systems, where an AI agent is
+both the library's consumer and the system under observation.
+
+Evaluation is deliberately unkind to the hypothesis: the same agent, the same incidents, with and
+without the library, against a strong deterministic control rather than an unaided baseline.
+Does a blueprint transfer to another service, or another system?
+Does a library decline to answer on problems it does not cover?
+Do executable steps outperform prose describing the same procedure?
+Can the right blueprint be chosen from evidence alone, with no human to route it?
+The contribution is a method for capturing diagnostic expertise in a form that executes, with a
+candid account of where it helps, where it proves unnecessary, and where it misleads---moving
+trace analysis from work that is repeated toward work that accumulates.
+\end{abstract}
+
+% ---------------------------------------------------------------------------
+% SHORTER VARIANT (171 words), for repositories and forms that cap the abstract length.
+% To use it: uncomment the paragraphs below and comment out the long version above,
+% keeping both inside the single abstract environment.
+%
+% Diagnosing a fault in a software system is expert work: from telemetry---metrics, logs,
+% distributed traces, and kernel-level traces---an engineer must judge which signal
+% distinguishes one cause from another and which thresholds mean something here rather than in
+% general. That judgement is routinely discarded, and an AI agent given the same task rebuilds
+% the investigation from first principles every time.
+%
+% This thesis proposes the \emph{observability blueprint}: a self-contained, executable record
+% of one solved problem, stating what to collect, how to analyse it, how to decide, and when not
+% to trust it. A signal joins the library only after being measured against every class of issue
+% under study, not merely the one it was written for.
+%
+% Spanning roughly ten classes of operational issue and microservice, monolithic, and agentic
+% systems, the work asks whether captured expertise transfers---and reports where it helps and
+% where it does not.
+% ---------------------------------------------------------------------------
+
+
+\end{document}
