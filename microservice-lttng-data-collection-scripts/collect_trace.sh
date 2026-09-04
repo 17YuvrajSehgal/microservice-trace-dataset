@@ -207,7 +207,12 @@ else
     sudo lttng enable-event -k --syscall --all --channel channel0 2>/dev/null || true
     # Tracepoint families; some wildcards may match nothing on a given kernel,
     # so each is best-effort (|| true) and failures are non-fatal.
-    KERNEL_GROUPS='sched_* block_* net_* netif_* napi_* skb_* sock_* tcp_* udp_* irq_* softirq_*'
+    # power_* ADDED FOR v2. `power_cpu_frequency` and `power_cpu_idle` were confirmed
+    # available on the collection VM (lttng list --kernel, 2026-09-04). v1 never enabled them,
+    # which is the ONLY reason "slow CPU clock / frequency scaling" sits in LATENCY-CAUSES.md
+    # as never tried - not because it is invisible, but because we were not recording it.
+    # Both are low volume: they fire on frequency and idle-state transitions, not per event.
+    KERNEL_GROUPS='sched_* block_* net_* netif_* napi_* skb_* sock_* tcp_* udp_* irq_* softirq_* power_*'
     # Memory-management tracepoints are EXCLUDED from the default curated profile
     # (advisor guidance + storage: ~2-3 GB/run). Opt in with KERNEL_MEM=1 for the
     # memory-layer faults (host_mem, svc_mem_cap) so the kernel modality can see

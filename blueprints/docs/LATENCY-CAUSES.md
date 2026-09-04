@@ -63,7 +63,7 @@ Checked on a real trace, not from the config file.
 | 8 | Host running low on memory | **One app only** | F20 |
 | 9 | A service stops answering | **No** | F11–F13 |
 | 10 | Work queues up behind a stopped consumer | **No** | F19 |
-| 11 | Slow CPU clock, priority problems | **Not tested** | — |
+| 11 | Slow CPU clock, priority problems | **frequency: yes (v2)** | power_* now enabled |
 
 ---
 
@@ -196,8 +196,15 @@ Same shape as number 9 (F19). Both are defined by something **not happening**.
 
 ### 11. Slow CPU clock, priority problems
 
-CPU frequency scaling, priority inversion, NUMA effects. We record no `power_*` events, so we
-cannot see frequency at all today. Nobody has tried the others.
+CPU frequency scaling, priority inversion, NUMA effects.
+
+**Changed 4 Sept: frequency is now collectable.** `power_cpu_frequency` and `power_cpu_idle`
+were confirmed present on the collection VM, and `power_*` is now in the v2 event profile. It
+was never "invisible" — we simply were not recording it. Both are low volume, firing on
+frequency and idle-state transitions rather than per event.
+
+Priority inversion and NUMA effects remain untried, but priority inversion has a recipe
+planned (FAULT-CATEGORIES-V2.md) and `sched_*` already carries the priority fields it needs.
 
 Application-level causes — garbage collection pauses, a bad algorithm, retry storms — are also
 untested and mostly not visible below the application.
