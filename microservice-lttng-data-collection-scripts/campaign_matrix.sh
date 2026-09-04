@@ -100,7 +100,17 @@ build_matrix() {
     for r in $(seq 1 "$CAMPAIGN_REPEATS"); do MATRIX+=("normal none steady $r"); done
     for r in $(seq 1 "$CAMPAIGN_REPEATS"); do MATRIX+=("normal none burst $r"); done
 
-    for f in "${CAMPAIGN_CORE_FAULTS[@]}" ${CAMPAIGN_NEW_FAULTS[@]+"${CAMPAIGN_NEW_FAULTS[@]}"}              ${CAMPAIGN_CODE_BUGS[@]+"${CAMPAIGN_CODE_BUGS[@]}"}; do
+    # Code defects live in a SPECIFIC service's source, so they are single-application. The
+    # five recommended ones patch Sock Shop's Go catalogue and Node front-end; the Java
+    # equivalents for Train Ticket are listed in CODE-BUGS-V2.md but not built yet.
+    local codebugs=()
+    if [[ "$app" == "sockshop" ]]; then
+        codebugs=(${CAMPAIGN_CODE_BUGS[@]+"${CAMPAIGN_CODE_BUGS[@]}"})
+    elif [[ ${#CAMPAIGN_CODE_BUGS[@]} -gt 0 ]]; then
+        echo "[matrix] SKIP ${#CAMPAIGN_CODE_BUGS[@]} code defects on $app -"              "they patch Sock Shop services; see CODE-BUGS-V2.md" >&2
+    fi
+
+    for f in "${CAMPAIGN_CORE_FAULTS[@]}" ${CAMPAIGN_NEW_FAULTS[@]+"${CAMPAIGN_NEW_FAULTS[@]}"}              ${codebugs[@]+"${codebugs[@]}"}; do
         excluded=0
         if [[ "$app" == "trainticket" ]]; then
             for x in "${CAMPAIGN_TT_EXCLUDE[@]}"; do
