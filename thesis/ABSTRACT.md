@@ -16,21 +16,21 @@
 
 ---
 
-## Abstract (330 words)
+## Abstract (357 words)
 
 Software systems are observed through telemetry: metrics, logs, distributed traces, and
-kernel-level traces. Turning that telemetry into a diagnosis is skilled work — it requires
-knowing which signal separates one cause from another, which events are worth recording, and
-which thresholds mean something on the system at hand. That work is currently discarded:
+kernel-level traces. Turning that telemetry into a diagnosis is skilled work: knowing which
+signal separates one cause from another, which events are worth recording, and which
+thresholds mean something on the system at hand. That work is currently discarded:
 analysis runs once, and the reasoning survives only as a closed ticket, so the next similar
-incident begins with nothing. The problem sharpens when AI agents are given the task, because an
-agent re-derives an investigation on every incident and a language model carries little specific
-knowledge of how a fault appears in low-level telemetry.
+incident begins with nothing. The problem sharpens when AI agents are given the task: an agent
+re-derives the investigation every time, and a language model knows little about how a fault
+appears in low-level telemetry.
 
 This thesis proposes the **observability blueprint**: a self-contained, executable record of one
 solved investigation. A blueprint states the problem it addresses and when it applies, the
-telemetry to collect, the processing steps as runnable commands, the form of the output, the
-decision rule that yields a verdict, and the conditions under which it should not be used. A
+telemetry to collect, the processing steps as runnable commands, the decision rule that yields a
+verdict, and the conditions under which it should not be used. A
 blueprint enters the library only once its discriminating signals have been measured against
 every class of issue under study, not only the one it targets, so the library grows without
 accumulating claims that fail elsewhere. Because a blueprint is executed rather than read, an
@@ -43,11 +43,10 @@ incident datasets omit. The systems studied span microservice and monolithic app
 the library.
 
 Evaluation compares the same agent on the same incidents, with and without the library, against
-a deterministic control rather than an unaided baseline. It further asks whether a blueprint
-written from one incident transfers to another incident, service, and system; whether the
-library stays silent on issues it does not cover; whether executable steps outperform prose
-describing the same procedure; and whether the right blueprint can be identified from evidence
-alone. The intended contribution is a method for capturing diagnostic expertise in executable
+a deterministic control rather than an unaided baseline. It further asks whether a blueprint transfers to another
+incident, service, and system; whether the library stays silent on issues it does not cover;
+whether executable steps beat prose describing the same procedure; and whether the right
+blueprint can be chosen from evidence alone. The intended contribution is a method for capturing diagnostic expertise in executable
 form, with an account of where it helps and where it does not.
 
 ---
