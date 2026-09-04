@@ -77,6 +77,11 @@ quality = {
     # did the injected fault actually move its target metric?
     "verification": (verif or {}).get("verification_status", "n/a"),
     # the v2 additions, so a reader can tell which profile produced this run
+    # v1 produced 50 Sock Shop runs with a verification verdict and NOT ONE image, because
+    # matplotlib was missing and the failure was silent. The image is the human-readable proof
+    # that a fault took effect and it cannot be regenerated later - the Prometheus data behind
+    # it is not retained. So a missing one is reported per run, not found a month afterwards.
+    "has_verification_image": os.path.exists(os.path.join(run_dir, "verification.png")),
     "has_namespace_context": bool(re.search(r"\b(cgroup_ns|pid_ns|net_ns)\b", enabled)),
     "has_memory_tracepoints": bool(re.search(r"\bvmscan_|\bkmem_", enabled)),
     "enabled_events_recorded": bool(enabled),
@@ -136,7 +141,10 @@ flag = "" if usable else f"   ** NOT USABLE: {quality['why_not']} **"
 print(f"[pack] {run_id:44s} {gb:6.2f} GB  "
       f"loss={quality['event_loss'].get('clean')}  "
       f"verif={quality['verification']}  "
-      f"ns={quality['has_namespace_context']}  mem={quality['has_memory_tracepoints']}{flag}")
+      f"ns={quality['has_namespace_context']}  mem={quality['has_memory_tracepoints']}  "
+      f"img={quality['has_verification_image']}{flag}")
+if not quality["has_verification_image"]:
+    print("       ^ NO verification.png - is matplotlib installed on this VM?")
 PY
 
 if [[ "$TAR" -eq 1 ]]; then

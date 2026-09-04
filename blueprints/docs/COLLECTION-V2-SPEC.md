@@ -148,6 +148,55 @@ plan rather than stop it.
 
 ---
 
+## 6b. Two decisions taken 4 Sept
+
+### Verification images — on BOTH applications this time
+
+Checked rather than assumed, and the result was worse than expected:
+
+| | `verification.json` | `verification.png` |
+|---|---|---|
+| Sock Shop | 50 | **0** |
+| Train Ticket | 43 | 40 |
+
+`run_scenario.sh` asked for `--plot` on every Sock Shop run and produced nothing for a month.
+`vm_bootstrap.sh` never installed matplotlib, and `try_plot` caught the ImportError and
+returned `None` in silence. Train Ticket only has images because it ran on a machine that
+happened to have matplotlib.
+
+**This cannot be repaired after the fact** — the Prometheus data behind the plot is not
+retained. Three fixes, because one was not enough:
+
+- `vm_bootstrap.sh` installs `python3-matplotlib`, with the evidence in a comment so nobody
+  trims it back out as optional
+- `try_plot` prints a loud warning naming the file it could not write and the command to fix
+  it
+- `package_run.sh` records `has_verification_image` per run and says so when it is missing
+
+The pilot checks for the image on **both** applications before the campaign starts.
+
+### Skip the derived kernel tiers — keep the raw traces only
+
+v1 derived L1/L2/L3 representations from every kernel trace. v2 stores **only the original
+CTF**.
+
+Checked what depends on them: the derived tiers are used **only** by `agentic-rca/degrade.py`
+and the `kernel` / `interact` degradation grids in `evaluate.py`. **Nothing in `blueprints/`
+reads them** — the blueprint work opens raw CTF through `ctf_stream`.
+
+This is safe for a reason worth stating plainly: **derivation is post-processing, not
+collection.** Every tier can be regenerated from the stored CTF whenever the degradation
+experiment is wanted. It is the one decision in this whole plan that is reversible, which is
+exactly why it is the right one to take.
+
+What it buys:
+
+- no derive step in the campaign, so runs finish faster and the VM does less work
+- much less disk and much less to move to Trillium
+- one fewer stage that can silently produce a wrong artifact
+
+---
+
 ## 7. Packaging for Trillium
 
 Each run becomes one self-describing bundle, so moving it is one command and nothing is
