@@ -43,35 +43,25 @@ target_url_for() {
     esac
 }
 
-# Median request time in ms, at a given concurrency.
+# Median request time in ms, from loadprobe.py.
 #
-# CONCURRENCY IS NOT OPTIONAL for the serialising defects. The first version of this test
-# measured sequentially and reported code_lock_across_io at 1.00x - "indistinguishable from
-# its control" - which is exactly what a lock held across I/O looks like when only one request
-# is ever in flight. Nothing is waiting, so nothing is slow. The defect was fine; the
-# measurement could not see it, and it nearly got dropped as broken.
-measure() {   # measure <path> <n> <concurrency>
-    local path="$1" n="${2:-40}" conc="${3:-1}" i
-    local tmp; tmp=$(mktemp)
-    for ((i = 0; i < n; i++)); do
-        {
-            local t0 t1
-            t0=$(date +%s%N)
-            curl -sf -m 15 -o /dev/null "${path}" 2>/dev/null || true
-            t1=$(date +%s%N)
-            echo $(( (t1 - t0) / 1000000 )) >> "$tmp"
-        } &
-        while [[ $(jobs -rp | wc -l) -ge $conc ]]; do wait -n 2>/dev/null || break; done
-    done
-    wait
-    sort -n "$tmp" | awk '{a[NR]=$1} END {print (NR ? a[int(NR/2)+1] : 0)}'
-    rm -f "$tmp"
+# FOUR MEASUREMENTS WERE WRONG BEFORE THIS ONE, and each reported a working defect as doing
+# nothing. Sequential curl (a lock costs nothing with one request in flight), curl through the
+# front-end proxy (~35 ms of its own), xargs -P with curl (300 process spawns dominated), and
+# finally a threaded probe WITHOUT keep-alive (25 ms per connection hid a 1.7 ms critical
+# section). Only the last version - one process, real threads, connections reused - showed
+# code_lock_across_io at 5.4x, which is what it had been doing all along.
+#
+# A defect wrongly declared dead gets tuned or dropped. The measurement has to be trustworthy
+# before its verdict means anything.
+measure() {   # measure <url> <n> <concurrency>  -> p50 in ms
+    python3 "$SD/loadprobe.py" "$1" "${2:-400}" "${3:-60}" 2>/dev/null         | sed -n 's/.*p50=\([0-9.]*\).*//p' | cut -d. -f1
 }
 
 # Which defects only reveal themselves when requests overlap.
 concurrency_for() {
     case "$1" in
-        code_lock_across_io|code_event_loop_block|code_serial_awaits) echo 12 ;;
+        code_lock_across_io|code_event_loop_block|code_serial_awaits) echo 60 ;;
         *) echo 1 ;;
     esac
 }
@@ -97,7 +87,7 @@ for d in "${DEFECTS[@]}"; do
     bash "$recipe" control >/dev/null 2>&1 || { echo "  FAIL  control would not start"; fail=$((fail+1)); continue; }
     sleep 6
     path=$(target_url_for "$d")   # re-resolve: the container was just recreated
-    base=$(measure "$path" 40 "$conc")
+    base=$(measure "$path" 400 "$conc")
     echo "  control (STRATA_BUG=none): median ${base} ms  (concurrency $conc)"
 
     if ! bash "$recipe" inject aggressive >/dev/null 2>&1; then
@@ -116,7 +106,7 @@ for d in "${DEFECTS[@]}"; do
 
     # 2. does it change anything?
     path=$(target_url_for "$d")   # re-resolve after the swap
-    with=$(measure "$path" 40 "$conc")
+    with=$(measure "$path" 400 "$conc")
     echo "  defect  (STRATA_BUG on):   median ${with} ms"
 
     if [[ "$base" -gt 0 ]]; then
