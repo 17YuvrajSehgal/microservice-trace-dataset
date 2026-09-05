@@ -1,33 +1,42 @@
 #!/bin/bash
 # Fault recipe: file-descriptor exhaustion on a target service.
 #
-# The service is given a descriptor limit low enough that its own normal traffic runs it out.
-# `accept` and `socket` then return EMFILE and the service starts refusing connections while
-# still running.
+# The running service's RLIMIT_NOFILE is lowered to just above what it is already using, so its
+# own normal traffic runs it out. `accept` and `socket` then return EMFILE while the process
+# keeps running - which is what a descriptor leak actually looks like from the kernel's side.
 #
-# WHY NOT AN EXTERNAL PROCESS EATING DESCRIPTORS (the first design, and it was wrong)
-# ----------------------------------------------------------------------------------
-# The first version ran a loop inside the container to take descriptors until EMFILE. It could
-# not work, for a reason worth writing down: **RLIMIT_NOFILE is PER PROCESS.** A helper process
-# exhausting its own descriptors tells the service nothing - the service keeps its own budget.
-# The only shared ceiling is the system-wide file-max, which is in the millions and cannot be
-# reached safely beside a live application.
+# THIS RECIPE WAS WRONG TWICE. Both mistakes are worth keeping, because both were the kind that
+# produce a run labelled as a fault that never happened.
 #
-# The smoke test caught it, and also caught that the target has no bash, so the `exec -a` the
-# loop relied on did not exist either. Two independent reasons the same recipe could never
-# have produced the fault it claimed.
+# 1. AN EXTERNAL PROCESS EATING DESCRIPTORS CANNOT WORK.
+#    The first version ran a loop inside the container taking descriptors until EMFILE.
+#    RLIMIT_NOFILE is PER PROCESS. A helper exhausting its own descriptors tells the service
+#    nothing - the service keeps its own budget. The only shared ceiling is the system-wide
+#    file-max, in the millions, and not reachable safely beside a live application. The smoke
+#    test also caught that the target has no bash, so the `exec -a` the loop relied on did not
+#    exist either: two independent reasons the same recipe could never have done its job.
 #
-# Lowering the limit is not a workaround - it is a better model. A real descriptor leak ends
-# with the SERVICE at its ceiling, which is exactly this state, and it is the service's own
-# syscalls that fail rather than a stranger's.
+# 2. APPLYING THE LIMIT BY RECREATING THE CONTAINER POLLUTES THE RUN.
+#    The second version set `ulimits.nofile` in a compose override and recreated the service. It
+#    worked - but it RESTARTS the service in the middle of a traced run. A restart is a huge
+#    event in the kernel stream: process exit, process start, every descriptor closed and
+#    reopened. The signature we would then be studying could be the restart rather than the
+#    exhaustion, and no amount of downstream analysis could separate the two.
 #
-# Measured at idle: front-end 21 descriptors, catalogue 9, carts 4. So a limit in the low
-# hundreds lets a service start and then fail under real load.
+#    `prlimit` changes the limit on the LIVE process. No restart, nothing recreated, no compose
+#    override, and the only thing added to the trace is the fault. It also restores exactly,
+#    because the original value is read and saved before anything changes.
+#
+# MEASURED, NOT ASSUMED. The limit is set from what the service is using right now, so the
+# recipe fits whatever it is pointed at. Sock Shop's Node front-end sits at 21 descriptors idle
+# and climbs to ~151 under 150 concurrent requests; Train Ticket's front door is a Spring Cloud
+# Gateway JVM and will sit far higher. A fixed number tuned on one of them would be either
+# harmless or fatal on the other.
 #
 # PAIRS WITH dependency_outage. Both end with a service that stops serving. The difference is
 # that this one is running and FAILING at a specific syscall, while an outage means it is not
 # running at all. F11-F13 showed a paused container is invisible in the scheduler stream; this
-# should be loud, because the kernel states EMFILE on every refused call.
+# should be loud, because the kernel records EMFILE on every refused call.
 #
 # Pre-registered expectations: KERNEL (EMFILE returns, which we capture because every syscall
 # is recorded with its return value) and LOGS (the service will complain).
@@ -59,127 +68,94 @@ EXPECTED_WINNING_MODALITY="${EXPECTED_WINNING_MODALITY:-kernel}"
 TARGET_TRACE_VISIBILITY="${TARGET_TRACE_VISIBILITY:-covered}"
 REMEDIATION="close descriptors on the error path; raise the limit only after fixing the leak"
 
-# Generated, so it lives with the other generated state and NOT in the git checkout. The
-# campaign pulls the repo between runs; a stray file in the working tree is one more way for an
-# unattended run to fail. Absolute path, and the file contains no relative paths, so it does not
-# matter that compose resolves relative mounts against the project dir.
-OVERRIDE_FILE="${FAULT_STATE_DIR:-$HOME/fault-state}/docker-compose.fdlimit.yml"
-mkdir -p "$(dirname "$OVERRIDE_FILE")"
+STATE_DIR="${FAULT_STATE_DIR:-$HOME/fault-state}"
+SAVED="$STATE_DIR/fd_exhaustion.original_limit"
+mkdir -p "$STATE_DIR"
 
-# How many descriptors the service is using RIGHT NOW. Returns empty if it cannot tell.
-current_fds() {
+target_pid() {
     local c pid
     c="$(compose_container "$TARGET_SVC" 2>/dev/null || true)"
-    [[ -z "$c" ]] && return 1
+    [[ -z "$c" ]] && { echo "[$FAULT_NAME] cannot find a container for $TARGET_SVC" >&2; return 1; }
     pid="$(docker inspect -f '{{.State.Pid}}' "$c" 2>/dev/null || true)"
-    [[ -z "$pid" || "$pid" == "0" ]] && return 1
-    sudo ls "/proc/$pid/fd" 2>/dev/null | wc -l
+    [[ -z "$pid" || "$pid" == "0" ]] && { echo "[$FAULT_NAME] $TARGET_SVC is not running" >&2; return 1; }
+    echo "$pid"
 }
 
-apply_limit() {   # apply_limit <nofile-or-empty-to-restore>
-    local n="${1:-}"
-    if [[ -n "$n" ]]; then
-        cat > "$OVERRIDE_FILE" <<EOF
-# GENERATED by fd_exhaustion.sh. Safe to delete; regenerated on every inject.
-services:
-  $TARGET_SVC:
-    ulimits:
-      nofile:
-        soft: $n
-        hard: $n
-EOF
-        export COMPOSE_OVERRIDE="$OVERRIDE_FILE"
-    else
-        rm -f "$OVERRIDE_FILE"
-        export COMPOSE_OVERRIDE=""
-    fi
+limit_of() { sudo awk '/open files/{print $4}' "/proc/$1/limits" 2>/dev/null || echo 0; }
+fds_of()   { sudo ls "/proc/$1/fd" 2>/dev/null | wc -l; }
 
-    if ! compose_recreate "$TARGET_SVC"; then
-        echo "[$FAULT_NAME] compose could not recreate $TARGET_SVC - stack left as it was"
-        return 1
-    fi
-    sleep 5
-    local c; c="$(compose_container "$TARGET_SVC")"
-    if [[ "$(docker inspect -f '{{.State.Running}}' "$c" 2>/dev/null)" != "true" ]]; then
-        echo "[$FAULT_NAME] $TARGET_SVC did not stay up with nofile=$n - the limit is too low"
-        docker logs "$c" 2>&1 | tail -10
-        return 1
-    fi
-    local pid lim
-    pid="$(docker inspect -f '{{.State.Pid}}' "$c")"
-    lim="$(sudo awk '/open files/{print $4}' "/proc/$pid/limits" 2>/dev/null || echo '?')"
-    echo "[$FAULT_NAME] $TARGET_SVC running with descriptor limit ${lim}"
+# GENUINE idle use, not whatever the last thing to touch the service left behind.
+#
+# A single reading taken straight after a load probe returned 147 for a service that sits at 21:
+# the probe's connections were still closing. The limit was then set to 155 and the fault barely
+# bit - peak 148 against a ceiling of 155. Sockets in flight only ever ADD to the count, so the
+# minimum across a few seconds is the honest floor.
+idle_fds() {
+    local pid="$1" n min=999999 i
+    for i in 1 2 3 4 5 6; do
+        n="$(fds_of "$pid" || true)"
+        if [[ "$n" =~ ^[0-9]+$ ]] && [[ "$n" -lt "$min" ]]; then min="$n"; fi
+        sleep 0.5
+    done
+    echo "$min"
 }
 
 case "${1:-}" in
   inject)
     INTENSITY="${2:-aggressive}"
-    # HEADROOM above what the service already uses, not an absolute number.
-    #
-    # A fixed 64 was calibrated against Sock Shop's Node front-end, which sits at 21 descriptors
-    # idle. Train Ticket's front door is a Spring Cloud Gateway JVM, and a JVM opens far more
-    # than that just loading jars - the same 64 would very likely stop it booting. That would
-    # turn a fault run into a failed run, on a campaign we cannot repeat.
-    #
-    # Measuring first makes the recipe fit whatever it is pointed at. aggressive leaves barely
-    # any room, so normal traffic runs it out; subtle leaves enough for moderate load and only
-    # bites at peak.
+    # Headroom ABOVE current use, not an absolute number - see the header.
     case "$INTENSITY" in
       subtle)     HEADROOM="${HEADROOM:-64}" ;;
       aggressive) HEADROOM="${HEADROOM:-8}" ;;
       *) echo "unknown intensity: $INTENSITY"; exit 1 ;;
     esac
 
-    IDLE="$(current_fds || true)"
-    if [[ -z "$IDLE" || "$IDLE" == "0" ]]; then
-        # Could not read it: fall back to the numbers measured on Sock Shop rather than guess.
-        IDLE=21
-        echo "[$FAULT_NAME] could not read $TARGET_SVC descriptor use - assuming $IDLE"
-    fi
-    NOFILE="${NOFILE:-$(( IDLE + HEADROOM ))}"
-    REQUESTED="$NOFILE"
-
-    # A LADDER, because "the service did not start" must not end a campaign run.
-    #
-    # Steady-state usage is not startup usage - a JVM opens a burst of files loading classes and
-    # then settles. If the service will not come up, double the limit and try again rather than
-    # abort. Whatever it settles on is what goes into ground truth, so the label always matches
-    # what actually happened, even when it is not what we asked for.
-    ok=0
-    for _try in 1 2 3 4 5 6; do
-        if apply_limit "$NOFILE"; then ok=1; break; fi
-        echo "[$FAULT_NAME] $TARGET_SVC would not run at nofile=$NOFILE - doubling"
-        NOFILE=$(( NOFILE * 2 ))
-    done
-    if [[ "$ok" -ne 1 ]]; then
-        echo "[$FAULT_NAME] gave up after 6 attempts; restoring the service"
-        apply_limit "" || true
+    PID="$(target_pid)" || exit 1
+    ORIG="$(limit_of "$PID")"
+    if [[ ! "$ORIG" =~ ^[0-9]+$ ]] || [[ "$ORIG" -eq 0 ]]; then
+        echo "[$FAULT_NAME] could not read the current limit for pid $PID - refusing to guess"
         exit 1
     fi
-    [[ "$NOFILE" != "$REQUESTED" ]] &&         echo "[$FAULT_NAME] NOTE: settled at $NOFILE, not the requested $REQUESTED"
+    # Saved BEFORE anything changes, so cleanup restores the real value rather than a default
+    # that merely looked right on this VM.
+    echo "$ORIG" > "$SAVED"
 
-    SETTLED="$(current_fds || echo 0)"
-    gt_begin "$INTENSITY" "{\"target_service\": \"$TARGET_SVC\", \"nofile_limit\": $NOFILE, \"nofile_requested\": $REQUESTED, \"fds_idle_before\": $IDLE, \"fds_idle_after\": $SETTLED, \"headroom\": $HEADROOM, \"mechanism\": \"RLIMIT_NOFILE lowered to just above measured idle use, so the service exhausts its own descriptors under normal load\"}"
+    IDLE="$(idle_fds "$PID")"
+    NOFILE="${NOFILE:-$(( IDLE + HEADROOM ))}"
+    if [[ "$NOFILE" -ge "$ORIG" ]]; then
+        echo "[$FAULT_NAME] computed limit $NOFILE is not below the current $ORIG - nothing to do"
+        exit 1
+    fi
+
+    # The live process, no restart. Lowering the hard limit needs root, and cleanup raises it
+    # again as root.
+    if ! sudo prlimit --pid "$PID" --nofile="$NOFILE:$NOFILE"; then
+        echo "[$FAULT_NAME] prlimit failed on pid $PID"
+        exit 1
+    fi
+    NOW="$(limit_of "$PID")"
+    if [[ "$NOW" != "$NOFILE" ]]; then
+        echo "[$FAULT_NAME] the limit did not take: asked for $NOFILE, /proc reports $NOW"
+        exit 1
+    fi
+    echo "[$FAULT_NAME] $TARGET_SVC (pid $PID) limit $ORIG -> $NOFILE, using $IDLE at idle"
+
+    gt_begin "$INTENSITY" "{\"target_service\": \"$TARGET_SVC\", \"target_pid\": $PID, \"nofile_limit\": $NOFILE, \"nofile_original\": $ORIG, \"fds_idle\": $IDLE, \"headroom\": $HEADROOM, \"mechanism\": \"prlimit on the live process - RLIMIT_NOFILE lowered to just above measured idle use, so the service exhausts its own descriptors under normal load. No restart, so the trace contains the fault and nothing else.\"}"
     ;;
-  cleanup)
-    apply_limit "" || true
-    gt_end
-    ;;
+
   prove)
     # Does the service ACTUALLY run out of descriptors, or is the cap just decoration?
     #
     # The first version of this check asked for failed requests and got errors=0, which looked
     # like a dead fault. It was not. Node does not refuse the connection - the kernel completes
     # the handshake into the listen backlog and the app accepts as descriptors free up. So the
-    # requests get SLOW (p95 went 95 -> 590 ms) rather than failing, and any check keyed on
-    # errors would have thrown away a working fault.
+    # requests get SLOW rather than failing, and a check keyed on errors would have thrown away
+    # a working fault.
     #
     # What is true regardless of how the application reacts is that the descriptor count reaches
-    # the ceiling. That is the fault itself, so that is what to measure. Sample it while load
-    # runs and report the peak.
-    c="$(compose_container "$TARGET_SVC")"
-    pid="$(docker inspect -f '{{.State.Pid}}' "$c")"
-    LIM="$(sudo awk '/open files/{print $4}' "/proc/$pid/limits" 2>/dev/null || echo 0)"
+    # the ceiling. That is the fault itself, so that is what to measure.
+    PID="$(target_pid)" || exit 1
+    LIM="$(limit_of "$PID")"
     if [[ "${STRATA_APP:-sockshop}" == "trainticket" ]]; then
         URL="${PROBE_URL:-http://localhost:8080/index.html}"
     else
@@ -187,35 +163,53 @@ case "${1:-}" in
     fi
 
     OUT="$(mktemp)"
-    python3 "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/code-defects/loadprobe.py"         "$URL" "${PROBE_N:-600}" "${PROBE_CONC:-150}" >"$OUT" 2>&1 &
+    python3 "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/code-defects/loadprobe.py" "$URL" "${PROBE_N:-600}" "${PROBE_CONC:-150}" >"$OUT" 2>&1 &
     probe=$!
 
     # `if`, not `&&`, and `|| true` on the sample. With `set -e` a false `[[ ]]` at the end of a
-    # loop body kills the shell, and so does a command substitution whose pipeline fails when
-    # the process has gone. Either would abort the probe and read as "the fault did nothing".
+    # loop body kills the shell, and so does a command substitution whose pipeline fails once the
+    # process has gone. Either would abort the probe and read as "the fault did nothing".
     peak=0
     while kill -0 "$probe" 2>/dev/null; do
-        n="$(sudo ls "/proc/$pid/fd" 2>/dev/null | wc -l || true)"
+        n="$(fds_of "$PID" || true)"
         if [[ "$n" =~ ^[0-9]+$ ]] && [[ "$n" -gt "$peak" ]]; then peak="$n"; fi
         sleep 0.2
     done
     wait "$probe" 2>/dev/null || true
 
-    result="$(tr '
-' ' ' <"$OUT" 2>/dev/null || true)"; rm -f "$OUT"
+    result="$(tr '\n' ' ' <"$OUT" 2>/dev/null || true)"; rm -f "$OUT"
     echo "peak fds $peak of limit $LIM | $result"
     # within 4 of the ceiling counts as reached - a 0.2 s sampler cannot catch every instant
     [[ "$LIM" -gt 0 && "$peak" -ge $(( LIM - 4 )) ]]
     ;;
+
+  cleanup)
+    # Restore whatever was saved at inject time. If the container has restarted since, its new
+    # process already has the stock limit and there is nothing to undo - say so rather than
+    # fail, because a cleanup that exits nonzero stops a campaign run.
+    if [[ -f "$SAVED" ]]; then
+        ORIG="$(cat "$SAVED")"
+        if PID="$(target_pid 2>/dev/null)"; then
+            sudo prlimit --pid "$PID" --nofile="$ORIG:$ORIG" 2>/dev/null || true
+            echo "[$FAULT_NAME] $TARGET_SVC (pid $PID) limit restored to $(limit_of "$PID")"
+        else
+            echo "[$FAULT_NAME] $TARGET_SVC not running at cleanup - nothing to restore"
+        fi
+        rm -f "$SAVED"
+    else
+        echo "[$FAULT_NAME] no saved limit - nothing to restore"
+    fi
+    gt_end
+    ;;
+
   status)
-    c="$(compose_container "$TARGET_SVC" 2>/dev/null || true)"
-    if [[ -n "$c" ]]; then
-        pid="$(docker inspect -f '{{.State.Pid}}' "$c" 2>/dev/null)"
-        echo "limit: $(sudo awk '/open files/{print $4}' "/proc/$pid/limits" 2>/dev/null || echo '?')"
-        echo "in use: $(sudo ls "/proc/$pid/fd" 2>/dev/null | wc -l)"
+    if PID="$(target_pid 2>/dev/null)"; then
+        echo "limit: $(limit_of "$PID")"
+        echo "in use: $(fds_of "$PID")"
     else
         echo "$TARGET_SVC not running"
     fi
     ;;
+
   *) echo "usage: $0 inject [subtle|aggressive] | prove | cleanup | status"; exit 1 ;;
 esac

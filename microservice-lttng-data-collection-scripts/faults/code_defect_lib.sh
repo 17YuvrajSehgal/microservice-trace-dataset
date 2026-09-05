@@ -27,25 +27,15 @@
 #
 # A recipe sources this file, sets DEFECT_* and calls code_defect_dispatch "$@".
 
-_cd_repo() { cd "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)" && pwd; }
+_cd_repo() { (cd "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)" && pwd); }
 
-# The 7-file stack, in the order the deployment requires (see docker-compose.toxiproxy.yml).
-_cd_compose() {
-    local repo sd
-    repo="$(_cd_repo)"
-    sd="$repo/microservice-lttng-data-collection-scripts"
-    export TRACE_SCRIPTS_DIR="$sd"
-    export COMPOSE_COMPATIBILITY=true
-    ( cd "$repo/microservices-demo/deploy/docker-compose" && docker compose \
-        -f docker-compose.yml \
-        -f docker-compose.monitoring.yml \
-        -f "$sd/docker-compose.metrics.yml" \
-        -f "$sd/docker-compose.otel.yml" \
-        -f "$sd/docker-compose.frontend-otel.yml" \
-        -f "$sd/docker-compose.catalogue-otel.yml" \
-        -f "$sd/docker-compose.toxiproxy.yml" \
-        ${_CD_OVERRIDE:+-f "$_CD_OVERRIDE"} "$@" )
-}
+# ONE definition of the stack, in fault_lib.sh.
+#
+# This file used to carry its own copy of the 7-file compose invocation. Two copies of an
+# ordering that matters is exactly how the v1 drivers drifted into two different fault
+# matrices - the bug that left Sock Shop with 50 runs and Train Ticket with 43. A duplicate
+# that is correct today is still a duplicate.
+_cd_compose() { COMPOSE_OVERRIDE="${_CD_OVERRIDE:-}" compose_stack "$@"; }
 
 code_defect_require_image() {
     if ! docker image inspect "$DEFECT_IMAGE" >/dev/null 2>&1; then

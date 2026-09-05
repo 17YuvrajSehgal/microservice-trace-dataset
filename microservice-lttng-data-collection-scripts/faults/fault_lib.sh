@@ -182,15 +182,6 @@ compose_stack() {
         ${COMPOSE_OVERRIDE:+-f "$COMPOSE_OVERRIDE"} "$@" )
 }
 
-# compose_recreate <service> - recreate one service, clearing containers compose renamed out
-# of the way in a previous failed attempt (they shadow the expected name and break lookups).
-compose_recreate() {
-    local svc="$1"
-    docker ps -a --format '{{.Names}}' | grep -E "^[0-9a-f]{12}_.*_${svc}_1$" \
-        | xargs -r docker rm -f >/dev/null 2>&1 || true
-    compose_stack up -d --no-deps --force-recreate "$svc" >/dev/null 2>&1
-}
-
 # compose_container <service> - the container id, asked of compose rather than assumed
 compose_container() {
     local id
