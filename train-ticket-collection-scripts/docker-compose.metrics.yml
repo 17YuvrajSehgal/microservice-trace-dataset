@@ -50,6 +50,17 @@ services:
     #
     # Cheap to add now, impossible to add later - the metrics modality of every run in the
     # campaign is whatever cAdvisor was configured to emit at collection time.
+    # PID: HOST is required for the process metrics to have any VALUE.
+    #
+    # Enabling the `process` group made container_file_descriptors and container_sockets APPEAR,
+    # and they all read 0.0000 - measured on a JVM that /proc says is holding 125 descriptors.
+    # cAdvisor enumerates a container's processes through /proc, and without the host PID
+    # namespace it cannot see them, so it reports the series with a zero in it.
+    #
+    # A metric that exists and is always zero is worse than one that is missing: `absent` is
+    # obvious, `0.0000` looks like an answer. The first calibration pass caught the missing
+    # metrics; only the second caught the empty ones.
+    pid: host
     command:
       - --disable_metrics=advtcp,cpu_topology,cpuset,hugetlb,memory_numa,referenced_memory,resctrl,sched
     privileged: true
