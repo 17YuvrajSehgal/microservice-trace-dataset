@@ -100,7 +100,17 @@ quality = {
     # that a fault took effect and it cannot be regenerated later - the Prometheus data behind
     # it is not retained. So a missing one is reported per run, not found a month afterwards.
     "has_verification_image": os.path.exists(os.path.join(run_dir, "verification.png")),
-    "has_namespace_context": bool(re.search(r"\b(cgroup_ns|pid_ns|net_ns)\b", enabled)),
+    # READ THE TRACE'S OWN METADATA, not the session listing.
+    #
+    # This searched `lttng list`'s output, which does not print contexts at all - so it
+    # reported ns=False on every run while cgroup_ns, pid_ns and net_ns were demonstrably
+    # present in the events. A quality flag stuck at False is indistinguishable from a broken
+    # collector, and would have had someone chasing it mid-campaign.
+    #
+    # The CTF metadata declares every field the streams carry, and package_run deliberately
+    # leaves it uncompressed so a reader can open the trace.
+    "has_namespace_context": bool(re.search(r"\b(cgroup_ns|pid_ns|net_ns)\b",
+                                            read("kernel/kernel/metadata") or enabled)),
     "has_memory_tracepoints": bool(re.search(r"\bvmscan_|\bkmem_", enabled)),
     "enabled_events_recorded": bool(enabled),
 }
