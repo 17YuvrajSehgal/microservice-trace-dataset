@@ -135,3 +135,9 @@ for i in $(seq 1 12); do
   sleep 10
 done
 echo "== done. Next: seed TT data (empty DBs -> search returns []), then load_generator + alignment gate. =="
+
+echo "== workload image for the fault recipes =="
+# Every co-located fault workload runs in this image. Built here so no campaign run ever has to
+# pip-install anything: 300+ runs each fetching the same package over the network is a slow step
+# that can only fail.
+bash "$STRATA_REPO/microservice-lttng-data-collection-scripts/faults/build_workload_image.sh"

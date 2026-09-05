@@ -108,3 +108,9 @@ echo "front-end:80 = $FE   prometheus:9090 = $PR"
     || echo "BOOTSTRAP INCOMPLETE - see TROUBLESHOOTING.md (edge-router/prometheus port checks)"
 
 echo "NOTE: log out and back in (or run 'newgrp docker') so docker group membership applies to your shell."
+
+echo "== workload image for the fault recipes =="
+# Every co-located fault workload runs in this image. Built here so no campaign run ever has to
+# pip-install anything: 300+ runs each fetching the same package over the network is a slow step
+# that can only fail.
+bash "$SD/faults/build_workload_image.sh"

@@ -105,7 +105,9 @@ toxiproxy_status() {
 # Every workload container is CPU-capped so a runaway program cannot take the host, and is
 # named so cleanup is unambiguous.
 
-WORKLOAD_IMAGE="${WORKLOAD_IMAGE:-python:3.12-slim}"
+# Our own image, not stock python:3.12-slim. It is python:3.12-slim plus the MySQL driver that
+# conn_pool_exhaustion needs to actually log in - see faults/build_workload_image.sh.
+WORKLOAD_IMAGE="${WORKLOAD_IMAGE:-stratatrace-workload:v1}"
 WORKLOAD_DIR="${WORKLOAD_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/workloads}"
 
 # workload_start <container-name> <script.py> <cpus> [extra docker args...] [-- prog args...]
@@ -117,6 +119,14 @@ workload_start() {
         if [[ "$seen" -eq 0 ]]; then dockerargs+=("$a"); else progargs+=("$a"); fi
     done
     [[ -f "$WORKLOAD_DIR/$script" ]] || { echo "missing workload: $WORKLOAD_DIR/$script"; exit 1; }
+    # Say WHICH thing is missing and how to fix it. `docker run` on an absent local tag tries
+    # Docker Hub, fails with a pull error, and the real cause - a build step never run on this
+    # VM - is nowhere in the message.
+    if ! docker image inspect "$WORKLOAD_IMAGE" >/dev/null 2>&1; then
+        echo "[$FAULT_NAME] $WORKLOAD_IMAGE has not been built on this machine."
+        echo "[$FAULT_NAME] Run: bash faults/build_workload_image.sh"
+        exit 1
+    fi
     docker rm -f "$name" >/dev/null 2>&1 || true
     docker run -d --name "$name" --cpus="$cpus" \
         -v "$WORKLOAD_DIR/$script:/w/$script:ro" \

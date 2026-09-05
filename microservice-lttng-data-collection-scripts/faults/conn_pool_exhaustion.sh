@@ -17,10 +17,16 @@
 #    recipe was the remodel that document proposed, and it was never written. With it, both
 #    applications get a saturation fault.
 #
-# MECHANISM. Hold N connections open from a helper container. For MySQL the server enforces
-# max_connections (151 by default), so exhaustion is the server refusing; for Mongo it is the
-# connection limit per host. Either way the failure is at connect, which is what makes it
-# distinct from a slow query.
+# MECHANISM. Hold N AUTHENTICATED connections open from a helper container. The server enforces
+# max_connections, so exhaustion is the server refusing new logins. The failure is at connect,
+# which is what makes it distinct from a slow query.
+#
+# AUTHENTICATED IS THE WHOLE POINT, and the first version was not. It held raw TCP sockets, and
+# measured on the VM while it claimed to be holding 400: Threads_connected=3, Aborted_connects
+# =750, application HTTP 200, a fresh connection succeeded. MySQL waits for an auth packet and
+# throws the connection away when none arrives, so a pre-auth socket occupies no slot at all.
+# The fault occupied nothing, and passed its smoke test because the check believed the
+# workload's own report. Details in workloads/conn_pool_exhaustion.py.
 #
 # SAFETY. Connections are held by one container and released the instant it is removed, so
 # cleanup is complete and immediate. Nothing is written to the database and no schema is
@@ -36,6 +42,7 @@
 #   env: DB_HOST  (default: the deployed app's datastore - catalogue-db on Sock Shop,
 #                  the shared mysql on Train Ticket)
 #        DB_PORT  (3306)
+#        DB_USER / DB_PASSWORD  (per-app defaults; see below)
 #        STRATA_APP  sockshop | trainticket
 set -euo pipefail
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/fault_lib.sh"
@@ -48,10 +55,18 @@ FAULT_SCOPE="service"
 # per-app env is a recipe that will be run wrong once. Train Ticket's 20 DB services share ONE
 # mysql (FAULTS-TT.md), which makes it a far bigger blast radius than Sock Shop's per-service db
 # - worth noting when the two are compared.
+# Credentials measured on each VM, not guessed: Sock Shop's catalogue-db (MySQL 5.7) accepts
+# root with an empty password from any host - verified from a container on its network - and
+# Train Ticket's shared MySQL 8 uses root/root, which is what all 20 of its DB services are
+# configured with in docker-compose.dbenv.yml.
 if [[ "${STRATA_APP:-sockshop}" == "trainticket" ]]; then
     DB_HOST="${DB_HOST:-mysql}"
+    DB_USER="${DB_USER:-root}"
+    DB_PASSWORD="${DB_PASSWORD:-root}"
 else
     DB_HOST="${DB_HOST:-catalogue-db}"
+    DB_USER="${DB_USER:-root}"
+    DB_PASSWORD="${DB_PASSWORD:-}"
 fi
 DB_PORT="${DB_PORT:-3306}"
 TARGET_SERVICE="${TARGET_SERVICE:-$DB_HOST}"
@@ -69,15 +84,19 @@ case "${1:-}" in
   inject)
     INTENSITY="${2:-aggressive}"
     case "$INTENSITY" in
-      # MySQL default max_connections is 151. 120 leaves the application squeezed but alive;
-      # 400 takes everything and makes connect fail outright.
-      subtle)     CONNS="${CONNS:-120}" ;;
-      aggressive) CONNS="${CONNS:-400}" ;;
+      # ADAPTIVE, asked of the server rather than assumed. A fixed 400 against a server that
+      # allows 151 wastes 249 doomed attempts; against one that allows 1000 it exhausts nothing.
+      # Sock Shop's MySQL 5.7 reports 151; Train Ticket's MySQL 8 need not agree, and the two
+      # applications must get the same FAULT rather than the same number.
+      #   80%  = squeezed but alive
+      #   auto = past the ceiling, so the server starts refusing
+      subtle)     CONNS="${CONNS:-80%}" ;;
+      aggressive) CONNS="${CONNS:-auto}" ;;
       *) echo "unknown intensity: $INTENSITY"; exit 1 ;;
     esac
     workload_start "$CONTAINER" conn_pool_exhaustion.py 1.0 \
-        --network "$NETWORK" -- "$DB_HOST" "$DB_PORT" "$CONNS"
-    gt_begin "$INTENSITY" "{\"db_host\": \"$DB_HOST\", \"db_port\": $DB_PORT, \"connections_held\": $CONNS, \"container\": \"$CONTAINER\", \"network\": \"$NETWORK\"}"
+        --network "$NETWORK" -- "$DB_HOST" "$DB_PORT" "$CONNS" "$DB_USER" "$DB_PASSWORD"
+    gt_begin "$INTENSITY" "{\"db_host\": \"$DB_HOST\", \"db_port\": $DB_PORT, \"connections_target\": \"$CONNS\", \"db_user\": \"$DB_USER\", \"container\": \"$CONTAINER\", \"network\": \"$NETWORK\", \"mechanism\": \"authenticated connections held until the server refuses; counts read back from the server with SHOW STATUS, not from the holder\"}"
     ;;
   cleanup)  workload_stop "$CONTAINER"; gt_end ;;
   status)   workload_status "$CONTAINER" ;;

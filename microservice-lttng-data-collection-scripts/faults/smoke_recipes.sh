@@ -68,7 +68,11 @@ evidence_for() {
         lock_contention)      echo "container:lock-contention:acquisitions: [1-9]" ;;
         priority_inversion)   echo "container:priority-inversion:high-priority waits: [1-9]" ;;
         deadlock)             echo "container:deadlock:stuck pairs: [1-9]" ;;
-        conn_pool_exhaustion) echo "container:conn-pool-exhaustion:holding [1-9][0-9]* connections" ;;
+        # NOT "holding N connections" - that was the workload's own belief, and it was wrong.
+        # The first version held pre-auth sockets that MySQL threw away; it reported holding 400
+        # while the server reported Threads_connected=3. The evidence has to come from the thing
+        # being attacked, so match on the server's own SHOW STATUS reading.
+        conn_pool_exhaustion) echo "container:conn-pool-exhaustion:server Threads_connected=[1-9][0-9]" ;;
         resource_abuse)       echo "container:resource-abuse:hashes [1-9]" ;;
         data_exfiltration)    echo "container:data-exfiltration:sent [1-9]" ;;
         fork_storm)           echo "container:fork-storm:forked [1-9]" ;;
