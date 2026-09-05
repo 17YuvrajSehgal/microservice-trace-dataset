@@ -180,14 +180,35 @@ lttng start
 
 sudo lttng create "${TRACE_APP}-kernel" --output="$OUTPUT_DIR/kernel"
 # Large per-CPU ring buffers to avoid discarded events under peak stress.
-# The LTTng kernel default (~1 MB/CPU) overflows during heavy bursts. We use
-# many sub-buffers (8 MB x 32 = 256 MB/CPU) so that, while the consumer is
-# starved of CPU/disk under load, there is almost always a free sub-buffer to
-# rotate into instead of dropping events. Override via the env vars below if
-# RAM is constrained (256 MB/CPU x N_CPU is reserved at session start).
+# The LTTng kernel default (~1 MB/CPU) overflows during heavy bursts.
+#
+# SIZED PER APPLICATION, BECAUSE 256 MB/CPU SILENTLY LOST 27 MILLION EVENTS ON TRAIN TICKET.
+#
+# Measured 5 Sept, campaign runs 1 and 2 on stratatrace-tt:
+#
+#   LOSSY:27132559   LOSSY:28640833     ~1.35 GB of events discarded, per run
+#
+# The arithmetic looked fine, and that is what makes it worth writing down. Train Ticket
+# produces ~193-211 MB/s of trace and the disk sustains 206 MB/s, so the deficit is ~5 MB/s -
+# about 1.2 GB across a 240 s run, comfortably inside the 4 GB TOTAL buffer. But buffers are
+# PER CPU, and a 40-JVM workload does not spread evenly: one hot CPU exhausted its 256 MB while
+# the other fifteen sat idle. The total was never the constraint.
+#
+# Verified at 768 MB/CPU on the same stack under the same load: discarded 0, lost packets 0.
+#
+# Sock Shop keeps 256 MB/CPU - measured clean at 53 MB/s, and it has 40 GB of RAM against
+# Train Ticket's 62 GB. Buffer size affects only whether an event is DROPPED, never what a kept
+# event contains, so the two applications differing here costs nothing in comparability. The
+# value used is recorded in each run's meta snapshot either way.
+if [[ "${STRATA_APP:-${STRATATRACE_APP:-${TRACE_APP:-sockshop}}}" == "trainticket" ]]; then
+    _DEFAULT_NUM_SUBBUF=96      # 768 MB/CPU
+else
+    _DEFAULT_NUM_SUBBUF=32      # 256 MB/CPU
+fi
 sudo lttng enable-channel -k channel0 \
     --subbuf-size="${KERNEL_SUBBUF_SIZE:-8M}" \
-    --num-subbuf="${KERNEL_NUM_SUBBUF:-32}"
+    --num-subbuf="${KERNEL_NUM_SUBBUF:-$_DEFAULT_NUM_SUBBUF}"
+echo "[collect] ring buffers: ${KERNEL_SUBBUF_SIZE:-8M} x ${KERNEL_NUM_SUBBUF:-$_DEFAULT_NUM_SUBBUF} per CPU"
 
 # Kernel event selection: a CURATED profile (advisor-recommended) is used for
 # EVERY run - all syscalls (covers filesystem read/write/open, process
