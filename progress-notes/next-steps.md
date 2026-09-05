@@ -19,9 +19,11 @@ Updated 2026-09-05 (end of the fault-recipe session).
    `faults/measure_targets.sh` is written and needs one calibration pass per app (~1 h each).
    Register only what measurably moves — plausible PromQL would look like verification while
    confirming nothing.
-2. **Train Ticket has no seeded data.** Its bootstrap ends with "seed TT data (empty DBs →
-   search returns [])". No seeding script exists. `load_generator.py --probe` has never been
-   run against this stack.
+2. ~~Train Ticket has no seeded data.~~ **Wrong — it is already seeded.** The bootstrap's
+   "next: seed TT data" line was stale and I repeated it without checking. The services
+   self-seed through their own `InitData` on first boot: `--probe` returns a login token and
+   D1345 shanghai→suzhou with prices, and the databases hold 13 stations, 72 route rows,
+   10 prices, 5 travels. The note in `vm_bootstrap_tt.sh` has been corrected.
 3. **Pre-registration.** `fault_catalog.md` has cards for F1–F12 only. The 15 new families have
    no pre-registered modality predictions, and predictions freeze when Phase 2 starts. This is
    a research decision, not an implementation one.

@@ -134,7 +134,17 @@ for i in $(seq 1 12); do
   [ "$code" = 200 ] && { echo "  API UP (login 200)"; break; }
   sleep 10
 done
-echo "== done. Next: seed TT data (empty DBs -> search returns []), then load_generator + alignment gate. =="
+# CORRECTED 5 Sept: this used to say "Next: seed TT data (empty DBs -> search returns [])".
+# It is not true on this deployment and it cost a wrong status report. The services self-seed
+# through their own InitData classes on first boot against the per-service databases that
+# tt-init.sql creates. Verified on a fresh stack: login returns a token, trips/left returns
+# D1345 shanghai->suzhou with prices, and the databases hold 13 stations, 72 route rows,
+# 10 prices, 5 travels.
+#
+# There is nothing to seed. If a future stack really does come up empty, the symptom is
+# `--probe` returning `"data":[]` from trips/left - check that first rather than assuming.
+echo "== done. Verify with: python3 load_generator.py --host http://localhost:8080 --probe =="
+echo "==       then the alignment gate. TT self-seeds; empty DBs would show as trips/left []. =="
 
 echo "== workload image for the fault recipes =="
 # Every co-located fault workload runs in this image. Built here so no campaign run ever has to
