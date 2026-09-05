@@ -97,3 +97,36 @@ corrected targets need), so verdicts are re-derivable offline, permanently, with
 - My own bug worth naming: a patch asserted on most replacements but not one, so `.replace()`
   matched nothing and said nothing. **Every edit to a file you cannot immediately re-read needs
   an assert.**
+
+---
+
+## The disk fault degrades the trace collector — on one application only
+
+`tt_anomaly_disk_aggressive_steady_r4` came back **`LOSSY:2481855`** while verifying
+`confirmed`. One of four repeats; ~0.25% of the run's events.
+
+This is the predicted consequence of the numbers measured earlier the same day. On Train Ticket
+LTTng writes **~176 MB/s** to a disk that sustains **206 MB/s**. `anomaly_disk` adds `stress-ng`
+`direct,fsync` writes on top, and the consumer falls behind. Sock Shop, tracing at 53 MB/s, has
+four times the headroom and shows no loss on the same family.
+
+**The fault and the instrument contend for the same device.** That is not a bug to fix so much
+as a property to state: on a sufficiently busy application, a disk-saturation fault and a
+disk-backed tracer cannot both be at full strength.
+
+Deliberately NOT "fixed" by:
+
+- **Bigger buffers** — currently 768 MB/CPU (12 GB of 62). Going to 1 GB/CPU leaves ~10 GB
+  against 40 JVMs, and LTTng allocates at session start, so a failed allocation is a failed run.
+  More buffer also only *delays* a sustained overrun rather than removing it.
+- **A weaker fault on Train Ticket** — that would make `anomaly_disk` a different experiment on
+  the two applications, which is precisely what the two-application design exists to avoid.
+
+Recorded instead. Loss is captured per run in `meta/event_loss.json` and surfaced in the
+manifest, so analysis can exclude or weight these runs explicitly. Watching whether r5 repeats
+it before considering a modest buffer increase.
+
+Related, and the same root cause seen from the other side: the disk fault adds only **+24 MB/s**
+on Train Ticket against **+80 MB/s** on Sock Shop, because there is barely 30 MB/s of headroom
+left after tracing. The instrument does not merely fail to *see* the fault — it limits how large
+the fault can be.
