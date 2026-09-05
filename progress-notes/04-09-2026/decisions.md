@@ -738,3 +738,79 @@ symptom to look for if a future stack really does come up empty.
 of the time at rest under 20 users, and the failures arrive in a tight burst — six 500s inside
 4 ms. Any analysis that treats payment errors during an injection window as evidence of the
 fault has to clear this floor first.
+
+---
+
+## Target calibration: the tool found holes in the collector, not just in the panel
+
+Ran `measure_targets.sh` on both applications with real load. Almost nothing I proposed
+survived, and the reasons are more useful than the ratios.
+
+### cAdvisor was not emitting process metrics at all
+
+```
+container_file_descriptors   METRIC ABSENT
+container_processes          METRIC ABSENT
+```
+
+cAdvisor v0.49 ships `process` in its **default `--disable_metrics` list**. Four of the new
+faults had no metric signature purely because of a collector default nobody had looked at:
+
+| fault | the metric it needed |
+|---|---|
+| `fd_exhaustion` | `container_file_descriptors` pinned at the cap |
+| `conn_pool_exhaustion` | the DB's descriptor and socket counts climbing |
+| `fork_storm` | `container_processes` / `container_threads` |
+| `deadlock` | `container_threads` with none of them running |
+
+Enabled `process`, `tcp`, `udp` on both apps; left `sched` and `referenced_memory` off. Verified:
+**68 series** on Sock Shop, **92** on Train Ticket.
+
+This is the `kernel_mem` lesson in a different modality. The data a run contains is whatever
+the collector was configured to emit at the time, and no amount of later analysis can add it.
+Cheap now, impossible after 300 runs.
+
+### `data_exfiltration` moved 839 MB and no counter saw a byte
+
+```
+container_network_transmit_bytes_total{name="data-exfiltration"}   0.0000
+node_network_transmit_bytes_total (host, non-loopback)             1.00x
+```
+
+It sent to `127.0.0.1` inside its own container. A deliberate safety choice, stated plainly in
+the docstring — but the consequence went unnoticed until something went looking for a metric
+that moved.
+
+Fatal for this recipe specifically: its stated question is whether a blueprint can tell
+**unusual** traffic from **heavy** traffic. With no bytes on any counted interface, that
+question cannot be asked.
+
+Now it sends to a separate sink container on the application's own network. Nothing leaves the
+host, no real data is read, no external address is contacted — all still true — but the bytes
+cross a real veth. The sink counts what it **receives**, and the smoke check reads that instead
+of the sender's claim. The sender's claim was 839 MB and it was true, which is exactly why it
+was not enough.
+
+### The same fault needs different host metrics on different applications
+
+`node_forks_total` under `fork_storm`:
+
+| | before | during | ratio |
+|---|---|---|---|
+| Sock Shop | 7.5/s | 106.8/s | **14.25x** |
+| Train Ticket | 112.7/s | 117.9/s | **1.05x** |
+
+Train Ticket already forks ~112/s from 40 JVMs and Nacos health checks, so the storm disappears
+into the baseline. A host-level counter cannot serve both applications here; a per-container one
+can, which is the strongest argument for the cAdvisor change above.
+
+### A bug in my own measurement
+
+`q()` took `max()` across series. On Train Ticket a `before` reading of **0.8264** appeared for
+a container that did not exist yet — a stale series winning the max. Now sums, which is also
+what "how much of this is happening" actually means.
+
+### Still open
+
+The re-run with process metrics available has not been read yet. Registration waits for it:
+only candidates that move get written into `verification_targets.json`, with these numbers.
