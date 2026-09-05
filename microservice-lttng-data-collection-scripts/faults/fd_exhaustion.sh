@@ -27,8 +27,11 @@
 #    override, and the only thing added to the trace is the fault. It also restores exactly,
 #    because the original value is read and saved before anything changes.
 #
-# MEASURED, NOT ASSUMED. The limit is set from what the service is using right now, so the
-# recipe fits whatever it is pointed at. Sock Shop's Node front-end sits at 21 descriptors idle
+# MEASURED, NOT ASSUMED, AND SET BELOW WHAT THE SERVICE NEEDS. The limit is a fraction of what
+# the service is using at inject time, so the recipe fits whatever it is pointed at and actually
+# bites. An earlier version used idle + 8 and the target calibration showed it landing ABOVE the
+# working set - container_file_descriptors read 28 -> 29 under load, meaning nothing was ever
+# refused. Sock Shop's Node front-end sits at 21 descriptors idle
 # and climbs to ~151 under 150 concurrent requests. Train Ticket's ts-gateway-service is a
 # Spring Cloud Gateway JVM and measures 125 descriptors at idle - a fixed limit of 64, tuned on
 # Sock Shop, would have been fatal there. Measured on each VM, so neither is a guess.
@@ -88,7 +91,9 @@ target_pid() {
 limit_of() { sudo awk '/open files/{print $4}' "/proc/$1/limits" 2>/dev/null || echo 0; }
 fds_of()   { sudo ls "/proc/$1/fd" 2>/dev/null | wc -l; }
 
-# GENUINE idle use, not whatever the last thing to touch the service left behind.
+# What the service is using RIGHT NOW - which during a campaign run means under load, because
+# the fault is injected 60 s into a run. The name says idle for historical reasons; the minimum
+# across several seconds is what it returns.
 #
 # A single reading taken straight after a load probe returned 147 for a service that sits at 21:
 # the probe's connections were still closing. The limit was then set to 155 and the fault barely
@@ -107,12 +112,29 @@ idle_fds() {
 case "${1:-}" in
   inject)
     INTENSITY="${2:-aggressive}"
-    # Headroom ABOVE current use, not an absolute number - see the header.
+    # A FRACTION OF WHAT THE SERVICE IS USING, NOT A HEADROOM ABOVE IT.
+    #
+    # This was `idle + 8`, and the target calibration showed why that cannot work. In a campaign
+    # run the fault is injected 60 s in, with load ALREADY RUNNING - so the "idle" reading is
+    # really the loaded working set. Measured on Sock Shop under 40 users:
+    #
+    #     container_file_descriptors  baseline 28  ->  during 29     ratio 1.04x
+    #
+    # The cap landed ABOVE what the service needs, so nothing was ever refused. It passed its
+    # smoke test only because `prove` drives 150 concurrent connections, pushing demand far past
+    # a ceiling the campaign's own load would never reach.
+    #
+    # A leak ends with the service unable to open what it needs, so the cap has to sit BELOW the
+    # working set. Existing descriptors stay open - RLIMIT_NOFILE only governs new allocations -
+    # so the service keeps serving what it has and fails on anything new, which is the shape of
+    # the real thing.
     case "$INTENSITY" in
-      subtle)     HEADROOM="${HEADROOM:-64}" ;;
-      aggressive) HEADROOM="${HEADROOM:-8}" ;;
+      subtle)     CAP_FRACTION="${CAP_FRACTION:-0.90}" ;;   # bites at peaks only
+      aggressive) CAP_FRACTION="${CAP_FRACTION:-0.50}" ;;   # clearly below need
       *) echo "unknown intensity: $INTENSITY"; exit 1 ;;
     esac
+    CAP_FLOOR="${CAP_FLOOR:-16}"   # below this even startup bookkeeping fails, which is a crash
+                                   # rather than a descriptor fault
 
     PID="$(target_pid)" || exit 1
     ORIG="$(limit_of "$PID")"
@@ -124,8 +146,8 @@ case "${1:-}" in
     # that merely looked right on this VM. The pid goes with it - see cleanup.
     echo "$ORIG $PID" > "$SAVED"
 
-    IDLE="$(idle_fds "$PID")"
-    NOFILE="${NOFILE:-$(( IDLE + HEADROOM ))}"
+    INUSE="$(idle_fds "$PID")"
+    NOFILE="${NOFILE:-$(python3 -c "print(max($CAP_FLOOR, int($INUSE * $CAP_FRACTION)))")}"
     if [[ "$NOFILE" -ge "$ORIG" ]]; then
         echo "[$FAULT_NAME] computed limit $NOFILE is not below the current $ORIG - nothing to do"
         exit 1
@@ -142,9 +164,9 @@ case "${1:-}" in
         echo "[$FAULT_NAME] the limit did not take: asked for $NOFILE, /proc reports $NOW"
         exit 1
     fi
-    echo "[$FAULT_NAME] $TARGET_SVC (pid $PID) limit $ORIG -> $NOFILE, using $IDLE at idle"
+    echo "[$FAULT_NAME] $TARGET_SVC (pid $PID) limit $ORIG -> $NOFILE, using $INUSE right now"
 
-    gt_begin "$INTENSITY" "{\"target_service\": \"$TARGET_SVC\", \"target_pid\": $PID, \"nofile_limit\": $NOFILE, \"nofile_original\": $ORIG, \"fds_idle\": $IDLE, \"headroom\": $HEADROOM, \"mechanism\": \"prlimit on the live process - RLIMIT_NOFILE lowered to just above measured idle use, so the service exhausts its own descriptors under normal load. No restart, so the trace contains the fault and nothing else.\"}"
+    gt_begin "$INTENSITY" "{\"target_service\": \"$TARGET_SVC\", \"target_pid\": $PID, \"nofile_limit\": $NOFILE, \"nofile_original\": $ORIG, \"fds_in_use_at_inject\": $INUSE, \"cap_fraction\": $CAP_FRACTION, \"mechanism\": \"prlimit on the live process - RLIMIT_NOFILE lowered to a FRACTION of what the service is using at inject time, so it cannot open what it needs. No restart, so the trace contains the fault and nothing else.\"}"
     ;;
 
   prove)
