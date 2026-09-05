@@ -103,7 +103,7 @@ Mistakes, not failures. Nothing is broken; something is set wrong.
 
 | Fault | Kernel-visible | Recipe risk | Note |
 |---|---|---|---|
-| `dns_delay` | yes — resolution stalls before connect | **low** | slow or unreachable resolver |
+| `dns_delay` | yes — resolution stalls before connect | **low** — but see below | slow or unreachable resolver |
 | `nagle_delayed_ack` | yes — fixed stalls, measured ~100 ms | **low** | famous, ~30 lines, everything looks healthy |
 | `wrong_timeout` | partly | medium | needs app config change |
 
@@ -132,6 +132,31 @@ Mistakes, not failures. Nothing is broken; something is set wrong.
 | G Resource leak | fd_exhaustion, conn_pool_exhaustion |
 | H Security | resource_abuse, data_exfiltration, fork_storm |
 | I Configuration | dns_delay, nagle_delayed_ack |
+
+**`dns_delay` was rated low risk and was nearly inert.** Its rule sat in the host's OUTPUT
+chain, which catches lookups leaving the machine — and these applications almost never make
+one, because they address each other by service name and Docker's embedded resolver answers
+inside the container's namespace. Measured under load: p50 67.7 → 85.2 ms (noise), **11 packets
+dropped in the entire probe**. Ten campaign runs of a fault that did nothing, and it passed
+every smoke test because the check asked whether the rule existed rather than whether anything
+happened.
+
+Moved into the target's network namespace it becomes one of the better hard cases in the
+catalogue:
+
+| | p50 | p95 | wall |
+|---|---|---|---|
+| baseline | 71.9 ms | 201.7 ms | 914 ms |
+| dropping 60% | 61.8 ms | 78.7 ms | **12,566 ms** |
+
+Median fine, p95 fine, wall-clock **15x**. A few requests wait seconds on a retry while
+everything below p95 sails through — so every summary statistic an operator would normally
+reach for reports a healthy system. Same shape as `nagle_delayed_ack`, which is why both belong
+here.
+
+One implementation trap worth carrying: Docker DNATs `127.0.0.11:53` to a high port and `nat
+OUTPUT` runs before `filter OUTPUT`, so a `--dport 53` rule inside a container matches nothing.
+Match on the resolver's address.
 
 Deliberately left out for now: `memory_leak`, `wrong_timeout`, `cold_start`, `retry_storm`.
 All are medium-risk recipes, and on a campaign we cannot repeat, an untested recipe is a
