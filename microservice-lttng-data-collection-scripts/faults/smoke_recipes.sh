@@ -26,6 +26,37 @@ RECIPES=("$@")
                                        resource_abuse data_exfiltration fork_storm \
                                        dns_delay nagle_delayed_ack)
 
+# ---- proof helpers ---------------------------------------------------------------------------
+# These are FUNCTIONS, not pipelines, on purpose.
+#
+# `cmd | grep -q` makes grep exit at the first match, which sends SIGPIPE to cmd, and with
+# `set -o pipefail` the whole check then reports failure. That is exactly how the first
+# fd_exhaustion check failed while the fault was working perfectly - the limit really was 64.
+# dns_delay survived the same shape only by luck: iptables writes its whole output in one go
+# before grep can exit. Capture first, match second, and neither depends on timing.
+dns_rule_present() {
+    local out; out=$(sudo iptables -S OUTPUT 2>/dev/null)
+    [[ "$out" == *"--dport 53"* ]]
+}
+
+fd_limit_low() {
+    local out; out=$(bash "$SD/fd_exhaustion.sh" status 2>/dev/null)
+    [[ "$out" == *"limit: 64"* || "$out" == *"limit: 256"* ]]
+}
+
+# The limit on its own is NOT proof. A ceiling the service never reaches is a fault that never
+# happened - the same trap as a code defect that builds but does nothing. So drive more
+# concurrent requests than the service has descriptors left (21 of 64 in use at idle) and
+# require it to actually fail. In a campaign run the load generator supplies this traffic.
+fd_proof() {
+    fd_limit_low || { echo "descriptor limit was not applied"; return 1; }
+    local r errs
+    r=$(python3 "$SD/code-defects/loadprobe.py" "http://localhost:80/catalogue" 300 120 2>/dev/null)
+    errs="${r##*errors=}"
+    echo "limit applied, under load: ${r:-no result}"
+    [[ -n "$errs" && "$errs" =~ ^[0-9]+$ && "$errs" -gt 0 ]]
+}
+
 # What counts as PROOF that each fault is actually doing its job.
 # container:<name>:<regex>  -> the container log must match the regex
 # command:<shell>           -> the shell command must succeed
@@ -40,11 +71,11 @@ evidence_for() {
         fork_storm)           echo "container:fork-storm:forked [1-9]" ;;
         nagle_delayed_ack)    echo "container:nagle-delayed-ack:nagle .*median" ;;
         # not a container: the proof is the rule being in the kernel
-        dns_delay)            echo "command:sudo iptables -S OUTPUT | grep -q -- '--dport 53'" ;;
-        # not a container either: the proof is descriptors held inside the target
-        # the proof is the SERVICE's own limit, applied by compose. RLIMIT_NOFILE is per
-        # process, so nothing an external process does could ever demonstrate this fault.
-        fd_exhaustion)        echo "command:bash $SD/fd_exhaustion.sh status | grep -qE 'limit: (64|256)$'" ;;
+        dns_delay)            echo "command:dns_rule_present" ;;
+        # not a container either: the proof is the SERVICE's own limit plus a service that
+        # actually runs out of descriptors. RLIMIT_NOFILE is per process, so nothing an
+        # external process does could ever demonstrate this fault.
+        fd_exhaustion)        echo "command:fd_proof" ;;
         *) echo "" ;;
     esac
 }
@@ -115,7 +146,10 @@ sys.exit(0 if d.get('injection_start_utc') and d.get('injection_end_utc') is Non
             detail=$(echo "$log" | tail -3 | tr '\n' ' ')
         fi
     elif [[ "$ev" == command:* ]]; then
-        if eval "${ev#command:}" >/dev/null 2>&1; then proved=1; detail="check passed"; else detail="check failed"; fi
+        # keep the output: "check failed" told us nothing when fd_exhaustion failed, and the
+        # real reason was in the line we were discarding.
+        if detail=$(eval "${ev#command:}" 2>&1); then proved=1; fi
+        detail="${detail:-(no output)}"
     fi
 
     if [[ "$proved" -eq 1 ]]; then
@@ -141,12 +175,12 @@ sys.exit(0 if d.get('injection_end_utc') else 1)" 2>/dev/null; then
     if [[ -n "$left" ]] && docker ps -a --format '{{.Names}}' | grep -qx "$left"; then
         echo "  FAIL  container '$left' still present after cleanup"; fail=$((fail+1)); continue
     fi
-    if [[ "$r" == "dns_delay" ]] && sudo iptables -S OUTPUT 2>/dev/null | grep -q -- "--dport 53"; then
+    if [[ "$r" == "dns_delay" ]] && dns_rule_present; then
         echo "  FAIL  dns rule survived cleanup - it would poison every later run"
         fail=$((fail+1)); continue
     fi
     # a descriptor limit left in place would quietly cap the service for every later run
-    if [[ "$r" == "fd_exhaustion" ]] && bash "$SD/fd_exhaustion.sh" status 2>/dev/null | grep -qE "limit: (64|256)$"; then
+    if [[ "$r" == "fd_exhaustion" ]] && fd_limit_low; then
         echo "  FAIL  the low descriptor limit survived cleanup"
         fail=$((fail+1)); continue
     fi
