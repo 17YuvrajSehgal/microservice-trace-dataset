@@ -42,7 +42,9 @@ evidence_for() {
         # not a container: the proof is the rule being in the kernel
         dns_delay)            echo "command:sudo iptables -S OUTPUT | grep -q -- '--dport 53'" ;;
         # not a container either: the proof is descriptors held inside the target
-        fd_exhaustion)        echo "command:docker exec \$(docker ps --format '{{.Names}}' | grep -m1 carts_1) sh -c 'ls /proc/*/fd 2>/dev/null | wc -l' | awk '{exit (\$1 > 500) ? 0 : 1}'" ;;
+        # the proof is the SERVICE's own limit, applied by compose. RLIMIT_NOFILE is per
+        # process, so nothing an external process does could ever demonstrate this fault.
+        fd_exhaustion)        echo "command:bash $SD/fd_exhaustion.sh status | grep -qE 'limit: (64|256)$'" ;;
         *) echo "" ;;
     esac
 }
@@ -141,6 +143,11 @@ sys.exit(0 if d.get('injection_end_utc') else 1)" 2>/dev/null; then
     fi
     if [[ "$r" == "dns_delay" ]] && sudo iptables -S OUTPUT 2>/dev/null | grep -q -- "--dport 53"; then
         echo "  FAIL  dns rule survived cleanup - it would poison every later run"
+        fail=$((fail+1)); continue
+    fi
+    # a descriptor limit left in place would quietly cap the service for every later run
+    if [[ "$r" == "fd_exhaustion" ]] && bash "$SD/fd_exhaustion.sh" status 2>/dev/null | grep -qE "limit: (64|256)$"; then
+        echo "  FAIL  the low descriptor limit survived cleanup"
         fail=$((fail+1)); continue
     fi
 

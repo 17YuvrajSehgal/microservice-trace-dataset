@@ -131,3 +131,50 @@ workload_status() {
     docker ps --filter "name=$1" --format '{{.Names}} {{.Status}}'
     docker logs "$1" 2>&1 | tail -5
 }
+
+# --- Compose helpers (shared by the code defects and any recipe that must swap a service) ---
+#
+# Some faults change how a service is RUN rather than what runs beside it - a different image,
+# a different resource limit. Doing that with `docker rm -f` + `docker run` is unsafe: a failed
+# create leaves the service simply gone, and the replacement carries no compose labels, so
+# compose then refuses to recreate it. That happened, and the stack had to be repaired by hand.
+#
+# Compose already knows the network, aliases, command, healthchecks and dependencies, so the
+# safe move is a one-service override applied with `up -d --no-deps`. A failure leaves the
+# previous container running.
+
+fault_repo_root() { (cd "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)" && pwd); }
+
+# compose_stack <compose args...>   - the 7-file deployment, plus $COMPOSE_OVERRIDE if set
+compose_stack() {
+    local repo sd
+    repo="$(fault_repo_root)"
+    sd="$repo/microservice-lttng-data-collection-scripts"
+    export TRACE_SCRIPTS_DIR="$sd"
+    export COMPOSE_COMPATIBILITY=true
+    ( cd "$repo/microservices-demo/deploy/docker-compose" && docker compose \
+        -f docker-compose.yml \
+        -f docker-compose.monitoring.yml \
+        -f "$sd/docker-compose.metrics.yml" \
+        -f "$sd/docker-compose.otel.yml" \
+        -f "$sd/docker-compose.frontend-otel.yml" \
+        -f "$sd/docker-compose.catalogue-otel.yml" \
+        -f "$sd/docker-compose.toxiproxy.yml" \
+        ${COMPOSE_OVERRIDE:+-f "$COMPOSE_OVERRIDE"} "$@" )
+}
+
+# compose_recreate <service> - recreate one service, clearing containers compose renamed out
+# of the way in a previous failed attempt (they shadow the expected name and break lookups).
+compose_recreate() {
+    local svc="$1"
+    docker ps -a --format '{{.Names}}' | grep -E "^[0-9a-f]{12}_.*_${svc}_1$" \
+        | xargs -r docker rm -f >/dev/null 2>&1 || true
+    compose_stack up -d --no-deps --force-recreate "$svc" >/dev/null 2>&1
+}
+
+# compose_container <service> - the container id, asked of compose rather than assumed
+compose_container() {
+    local id
+    id="$(compose_stack ps -q "$1" 2>/dev/null | head -1)"
+    [[ -n "$id" ]] && echo "$id" || resolve_container "$1"
+}

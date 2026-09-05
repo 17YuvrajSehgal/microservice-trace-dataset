@@ -1,94 +1,118 @@
 #!/bin/bash
-# Fault recipe: file-descriptor exhaustion INSIDE a target service container.
+# Fault recipe: file-descriptor exhaustion on a target service.
 #
-# A process in the service container takes descriptors until `socket` starts returning EMFILE,
-# then keeps failing for the whole window. The service is running, and failing, at a specific
-# syscall.
+# The service is given a descriptor limit low enough that its own normal traffic runs it out.
+# `accept` and `socket` then return EMFILE and the service starts refusing connections while
+# still running.
 #
-# WHY IT RUNS INSIDE THE SERVICE, unlike the concurrency recipes. Descriptor limits are
-# per-process and per-container. A standalone container would produce the signature but affect
-# nothing, and a fault that does not touch the application is not a fault for root-cause
-# purposes. `docker exec` puts the pressure inside the target so the blast radius is a real
-# service - and so the namespace ids we now record on every event can attribute it.
+# WHY NOT AN EXTERNAL PROCESS EATING DESCRIPTORS (the first design, and it was wrong)
+# ----------------------------------------------------------------------------------
+# The first version ran a loop inside the container to take descriptors until EMFILE. It could
+# not work, for a reason worth writing down: **RLIMIT_NOFILE is PER PROCESS.** A helper process
+# exhausting its own descriptors tells the service nothing - the service keeps its own budget.
+# The only shared ceiling is the system-wide file-max, which is in the millions and cannot be
+# reached safely beside a live application.
 #
-# WHY THE SIGNATURE IS UNUSUALLY CLEAN. We record every syscall WITH ITS RETURN VALUE, so
-# EMFILE (-24) is stated by the kernel on every failed call. Almost every other fault in the
-# dataset has to be diagnosed from a shifted distribution; this one announces itself.
+# The smoke test caught it, and also caught that the target has no bash, so the `exec -a` the
+# loop relied on did not exist either. Two independent reasons the same recipe could never
+# have produced the fault it claimed.
+#
+# Lowering the limit is not a workaround - it is a better model. A real descriptor leak ends
+# with the SERVICE at its ceiling, which is exactly this state, and it is the service's own
+# syscalls that fail rather than a stranger's.
+#
+# Measured at idle: front-end 21 descriptors, catalogue 9, carts 4. So a limit in the low
+# hundreds lets a service start and then fail under real load.
 #
 # PAIRS WITH dependency_outage. Both end with a service that stops serving. The difference is
-# that this service is running and FAILING, while an outage means it is not running at all.
-# F11-F13 showed a paused container is invisible in the scheduler stream; this should be loud.
-# Separating "failing" from "absent" is a discriminator we do not currently have.
+# that this one is running and FAILING at a specific syscall, while an outage means it is not
+# running at all. F11-F13 showed a paused container is invisible in the scheduler stream; this
+# should be loud, because the kernel states EMFILE on every refused call.
 #
-# SAFETY. The exhauster runs as a child process inside the container and holds everything in
-# memory only. Cleanup kills it by exact command match, which releases every descriptor at
-# once. It cannot outlive the run, and it never touches the host descriptor table.
-#
-# Pre-registered expectations: KERNEL (EMFILE returns) and LOGS (the service will complain).
+# Pre-registered expectations: KERNEL (EMFILE returns, which we capture because every syscall
+# is recorded with its return value) and LOGS (the service will complain).
 #
 # Usage:
 #   ./fd_exhaustion.sh inject [subtle|aggressive]
 #   ./fd_exhaustion.sh cleanup | status
-#   env: TARGET_SVC (default carts)
+#   env: TARGET_SVC (default front-end - it terminates every inbound connection, so it feels
+#        the limit first and its failure has a real blast radius)
 set -euo pipefail
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/fault_lib.sh"
 
 FAULT_FAMILY="G_resource_leak"
 FAULT_NAME="fd_exhaustion"
 FAULT_SCOPE="service"
-TARGET_SVC="${TARGET_SVC:-carts}"
+TARGET_SVC="${TARGET_SVC:-front-end}"
 TARGET_SERVICE="$TARGET_SVC"
-EXPECTED_BLAST_RADIUS="${EXPECTED_BLAST_RADIUS:-[\"$TARGET_SVC\", \"its callers\"]}"
+EXPECTED_BLAST_RADIUS="${EXPECTED_BLAST_RADIUS:-[\"$TARGET_SVC\", \"every caller of it\"]}"
 EXPECTED_WINNING_MODALITY="${EXPECTED_WINNING_MODALITY:-kernel}"
 TARGET_TRACE_VISIBILITY="${TARGET_TRACE_VISIBILITY:-covered}"
 REMEDIATION="close descriptors on the error path; raise the limit only after fixing the leak"
 
-CONTAINER="$(resolve_container "$TARGET_SVC")"
-MARKER="stratatrace_fd_exhaust"
+OVERRIDE_FILE="$(fault_repo_root)/microservice-lttng-data-collection-scripts/docker-compose.fdlimit.yml"
+
+apply_limit() {   # apply_limit <nofile-or-empty-to-restore>
+    local n="${1:-}"
+    if [[ -n "$n" ]]; then
+        cat > "$OVERRIDE_FILE" <<EOF
+# GENERATED by fd_exhaustion.sh. Safe to delete; regenerated on every inject.
+services:
+  $TARGET_SVC:
+    ulimits:
+      nofile:
+        soft: $n
+        hard: $n
+EOF
+        export COMPOSE_OVERRIDE="$OVERRIDE_FILE"
+    else
+        rm -f "$OVERRIDE_FILE"
+        export COMPOSE_OVERRIDE=""
+    fi
+
+    if ! compose_recreate "$TARGET_SVC"; then
+        echo "[$FAULT_NAME] compose could not recreate $TARGET_SVC - stack left as it was"
+        return 1
+    fi
+    sleep 5
+    local c; c="$(compose_container "$TARGET_SVC")"
+    if [[ "$(docker inspect -f '{{.State.Running}}' "$c" 2>/dev/null)" != "true" ]]; then
+        echo "[$FAULT_NAME] $TARGET_SVC did not stay up with nofile=$n - the limit is too low"
+        docker logs "$c" 2>&1 | tail -10
+        return 1
+    fi
+    local pid lim
+    pid="$(docker inspect -f '{{.State.Pid}}' "$c")"
+    lim="$(sudo awk '/open files/{print $4}' "/proc/$pid/limits" 2>/dev/null || echo '?')"
+    echo "[$FAULT_NAME] $TARGET_SVC running with descriptor limit ${lim}"
+}
 
 case "${1:-}" in
   inject)
     INTENSITY="${2:-aggressive}"
     case "$INTENSITY" in
-      subtle)     FDS="${FDS:-20000}" RAMP="${RAMP:-45}" ;;
-      aggressive) FDS="${FDS:-60000}" RAMP="${RAMP:-20}" ;;
+      # Chosen against measured idle usage (front-end 21). subtle leaves room for a moderate
+      # number of connections; aggressive runs out under the campaign's normal load.
+      subtle)     NOFILE="${NOFILE:-256}" ;;
+      aggressive) NOFILE="${NOFILE:-64}" ;;
       *) echo "unknown intensity: $INTENSITY"; exit 1 ;;
     esac
-    docker inspect "$CONTAINER" >/dev/null 2>&1 || { echo "no such container: $CONTAINER"; exit 1; }
-
-    # The target images are minimal and may not ship python, so the exhauster is written in
-    # shell + a tiny C-free trick: open descriptors by duplicating stdin in a loop. Portable
-    # to any container that has a shell, which all of them do.
-    docker exec -d "$CONTAINER" sh -c "
-      # marker in the command line so cleanup can find and kill exactly this
-      exec -a $MARKER sh -c '
-        i=0
-        while [ \$i -lt $FDS ]; do
-          exec 3<&0 2>/dev/null || break
-          eval \"exec \$((i+10))<&0\" 2>/dev/null || break
-          i=\$((i+1))
-        done
-        # hold them, and keep trying so refusals keep appearing through the window
-        while true; do
-          eval \"exec \$((i+10))<&0\" 2>/dev/null
-          i=\$((i+1))
-          sleep 0.01
-        done
-      '" || { echo "docker exec failed"; exit 1; }
-
-    sleep 2
-    if ! docker exec "$CONTAINER" sh -c "ps -eo args 2>/dev/null | grep -q '[s]tratatrace_fd_exhaust'"; then
-        echo "[$FAULT_NAME] WARNING: exhauster not visible in $CONTAINER - verify before trusting this run"
-    fi
-    gt_begin "$INTENSITY" "{\"target_container\": \"$CONTAINER\", \"target_fds\": $FDS, \"ramp_s\": $RAMP, \"mechanism\": \"in-container descriptor exhaustion until EMFILE\"}"
+    apply_limit "$NOFILE" || exit 1
+    gt_begin "$INTENSITY" "{\"target_service\": \"$TARGET_SVC\", \"nofile_limit\": $NOFILE, \"mechanism\": \"RLIMIT_NOFILE lowered so the service exhausts its own descriptors under normal load\"}"
     ;;
   cleanup)
-    docker exec "$CONTAINER" sh -c "pkill -f '$MARKER' 2>/dev/null" >/dev/null 2>&1 || true
+    apply_limit "" || true
     gt_end
     ;;
   status)
-    docker exec "$CONTAINER" sh -c "ls /proc/*/fd 2>/dev/null | wc -l; ps -eo args | grep '[s]tratatrace_fd_exhaust' | head -1" 2>/dev/null \
-        || echo "container not running"
+    c="$(compose_container "$TARGET_SVC" 2>/dev/null || true)"
+    if [[ -n "$c" ]]; then
+        pid="$(docker inspect -f '{{.State.Pid}}' "$c" 2>/dev/null)"
+        echo "limit: $(sudo awk '/open files/{print $4}' "/proc/$pid/limits" 2>/dev/null || echo '?')"
+        echo "in use: $(sudo ls "/proc/$pid/fd" 2>/dev/null | wc -l)"
+    else
+        echo "$TARGET_SVC not running"
+    fi
     ;;
   *) echo "usage: $0 inject [subtle|aggressive] | cleanup | status"; exit 1 ;;
 esac
