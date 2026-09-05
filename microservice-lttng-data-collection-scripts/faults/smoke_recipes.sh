@@ -43,9 +43,11 @@ RECIPES=("$@")
 # fd_exhaustion check failed while the fault was working perfectly - the limit really was 64.
 # dns_delay survived the same shape only by luck: iptables writes its whole output in one go
 # before grep can exit. Capture first, match second, and neither depends on timing.
+# The rule now lives in the TARGET's network namespace, not the host's - a host OUTPUT rule
+# caught only lookups leaving the machine, which these applications almost never make.
 dns_rule_present() {
-    local out; out=$(sudo iptables -S OUTPUT 2>/dev/null)
-    [[ "$out" == *"--dport 53"* ]]
+    local out; out=$(bash "$SD/dns_delay.sh" status 2>/dev/null)
+    [[ "$out" == *"-p udp"* ]]
 }
 
 # Not a fixed number any more. The recipe now sets the limit from what the service actually

@@ -1,89 +1,106 @@
 #!/bin/bash
-# Fault recipe: slow DNS resolution (host-level packet loss on port 53 only).
+# Fault recipe: unreliable name resolution for ONE service.
 #
-# Drops a fraction of outbound DNS queries, so resolution retries and every new connection
-# stalls before it can even start. Nothing is broken - the resolver is simply unreliable.
+# Drops a fraction of the target service's DNS queries, so resolution retries and the
+# occasional new connection stalls before it can start. Nothing is broken - the resolver is
+# simply unreliable.
 #
-# WHY IT PAIRS WITH slow_db. Both look like "waiting on the network before work starts", and
-# the evidence a caller sees is nearly identical: a socket call that takes a long time. The
-# difference is WHERE the wait happens - before `connect` for DNS, after it for a slow
-# datastore. If a blueprint cannot separate those, that is worth knowing, because the fixes
-# have nothing in common.
+# THE FIRST VERSION WAS NEARLY INERT, AND MEASUREMENT IS THE ONLY REASON WE KNOW
+# -----------------------------------------------------------------------------
+# It put the rule in the HOST's OUTPUT chain. That catches lookups leaving the machine, and our
+# applications almost never make one - they talk to each other by service name, which Docker's
+# embedded resolver answers inside the container's own network namespace.
 #
-# MECHANISM. iptables with a statistic match, dropping a proportion of outbound UDP/53. A
-# dropped query is retried by the resolver after a fixed timeout, so the visible effect is
-# occasional multi-second stalls rather than uniform slowness - which is what a flaky resolver
-# actually looks like.
+# Measured on Sock Shop under load, host-level rule:
 #
-# HOW BIG THE STALL IS VARIES ENORMOUSLY, AND WE DO NOT FULLY KNOW WHY.
+#     baseline   p50 67.7 / 80.8 ms
+#     during     p50 85.2 / 81.0 ms      <- noise
+#     dropped    11 packets in the whole probe
 #
-#     Sock Shop    front-end            52 ms -> 2555 ms   (twice)
-#     Train Ticket ts-gateway-service   58 ms ->   62-167 ms  (57 queries dropped)
-#     Sock Shop    front-end, later     53 ms ->     57 ms    (23 queries dropped)
+# Ten campaign runs of that would have been ten runs of a configuration fault that changed
+# nothing. It passed its smoke test the whole time, because the check asked whether the rule
+# existed rather than whether anything happened.
 #
-# The third reading is the important one. It is the SAME host and the SAME container that gave
-# 2555 ms earlier, so the difference cannot be the container's resolver configuration - which is
-# what I first wrote down after seeing only the first two rows. Resolver cache state is the
-# likely driver: a warm cache answers locally and generates few upstream queries to drop.
+# WHERE THE FAULT ACTUALLY LIVES
+# ------------------------------
+# Inside the container's network namespace, aimed at the embedded resolver. Counted there, the
+# application really does resolve: 54 DNS packets per 400 requests - infrequent, because
+# connections are pooled, but not zero.
 #
-# Recorded as unresolved rather than explained away. What IS dependable across all three
-# readings is that queries are being dropped, which is why the check keys on the rule's packet
-# counter rather than on a latency threshold.
+# Careful with the match. Docker DNATs 127.0.0.11:53 to a high port, and nat OUTPUT runs before
+# filter OUTPUT, so a `--dport 53` rule in the container sees the REWRITTEN port and matches
+# nothing at all. A first attempt read 0 packets and looked like proof the app never resolves.
+# Match on the resolver's ADDRESS instead, which survives the rewrite.
 #
-# CONSEQUENCE FOR THE DATASET, and it is a large one: this fault may have little or no
-# application-level signature in our deployments, because inter-service traffic resolves through
-# Docker's embedded DNS and is untouched (see below). That would make it a genuine hard case -
-# loud in the kernel, quiet everywhere else - but it must be LABELLED that way rather than
-# presented as a latency fault. Measure the application impact before drawing the conclusion.
+# WHAT IT DOES, AND WHY IT IS A GOOD HARD CASE
+# --------------------------------------------
+#     baseline   p50 71.9   p95 201.7   wall    914 ms
+#     during     p50 61.8   p95  78.7   wall 12,566 ms
 #
-# WHAT IT ACTUALLY HITS - MEASURED, and narrower than the name suggests.
+# The median is fine. The p95 is fine. Wall-clock time is 15x. A few requests waited seconds on
+# a retry while everything below p95 sailed through, so every summary statistic an operator
+# would normally reach for says the system is healthy.
 #
-# On the collection VM, from inside an application container:
+# That is the same shape as nagle_delayed_ack and the reason both are in the catalogue: faults
+# whose evidence is invisible to the aggregate. Percentile dashboards cannot see this one.
 #
-#     external name (example.com)     52 ms  ->  2555 ms      (49x)
-#     internal name (catalogue)       52 ms  ->    50 ms      (unchanged)
+# PAIRS WITH slow_db. Both look like "waiting on the network before work starts". The difference
+# is WHERE the wait happens - before `connect` for DNS, after it for a slow datastore. If a
+# blueprint cannot separate those, that is worth knowing, because the fixes have nothing in
+# common.
 #
-# Container-to-container names are answered by Docker's embedded resolver inside the container
-# network namespace and never leave as a UDP/53 packet, so the rule cannot see them. Only
-# lookups that go UPSTREAM are affected.
+# SAFETY. The rule lives in one container's namespace and is deleted by exact specification, so
+# it cannot outlive the run or touch anything else. If the container is recreated the namespace
+# goes with it, which removes the rule as a side effect.
 #
-# This matters for what the fault means. It is NOT "service discovery is broken" - inter-service
-# resolution is untouched. It is "anything reaching outside the cluster stalls", which is the
-# realistic shape of a flaky upstream resolver. A blueprint that read this as service discovery
-# failing would be keying on something that did not happen.
-#
-# It also affects the HOST, not just containers: during the window `sudo` itself logged
-# "unable to resolve host ... Temporary failure in name resolution". Harmless, and worth knowing
-# when reading anything else the host does inside the injection window.
-#
-# SAFETY. The rule is scoped to UDP port 53 and is removed in cleanup by exact match, so it
-# cannot outlive the run or affect anything else. It is inserted at the TOP of OUTPUT and
-# deleted by the same specification, so a partial cleanup is not possible - either the rule is
-# there or it is not. Docker and package tooling can be affected during the window, which is
-# expected and is the point.
-#
-# Pre-registered expectations: KERNEL (socket calls stall before connect) and TRACES if the
-# application resolves names during the window. Metrics see raised latency with no CPU, disk
-# or error correlate.
+# Pre-registered expectations: KERNEL (sendto/recvfrom on the resolver socket, retries, and the
+# stalls before connect) and TRACES if the application resolves inside the window. Metrics see
+# a raised tail with no CPU, disk or error correlate - and only if the tail is looked at.
 #
 # Usage:
 #   ./dns_delay.sh inject [subtle|aggressive]
 #   ./dns_delay.sh prove | cleanup | status
-#     prove = time real lookups from inside a container and report external vs internal
+#   env: TARGET_SVC   (default: the app's front door)
+#        STRATA_APP   sockshop | trainticket
 set -euo pipefail
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/fault_lib.sh"
 
 FAULT_FAMILY="I_configuration"
 FAULT_NAME="dns_delay"
-FAULT_SCOPE="host"
-TARGET_SERVICE="host"
-EXPECTED_BLAST_RADIUS="${EXPECTED_BLAST_RADIUS:-[\"host\", \"any service resolving a name\"]}"
+FAULT_SCOPE="service"
+if [[ "${STRATA_APP:-sockshop}" == "trainticket" ]]; then
+    TARGET_SVC="${TARGET_SVC:-ts-gateway-service}"
+else
+    TARGET_SVC="${TARGET_SVC:-front-end}"
+fi
+TARGET_SERVICE="$TARGET_SVC"
+EXPECTED_BLAST_RADIUS="${EXPECTED_BLAST_RADIUS:-[\"$TARGET_SVC\", \"whatever it calls by name\"]}"
 EXPECTED_WINNING_MODALITY="${EXPECTED_WINNING_MODALITY:-kernel}"
 TARGET_TRACE_VISIBILITY="${TARGET_TRACE_VISIBILITY:-covered}"
 REMEDIATION="fix or replace the resolver; cache resolutions; use IPs for internal service calls"
 
-# Kept in one place so inject and cleanup cannot drift apart.
-rule_args() { echo "OUTPUT -p udp --dport 53 -m statistic --mode random --probability $1 -j DROP"; }
+target_pid() {
+    local c pid
+    c="$(compose_container "$TARGET_SVC" 2>/dev/null || true)"
+    [[ -z "$c" ]] && { echo "[$FAULT_NAME] cannot find a container for $TARGET_SVC" >&2; return 1; }
+    pid="$(docker inspect -f '{{.State.Pid}}' "$c" 2>/dev/null || true)"
+    [[ -z "$pid" || "$pid" == "0" ]] && { echo "[$FAULT_NAME] $TARGET_SVC is not running" >&2; return 1; }
+    echo "$pid"
+}
+
+# The resolver the container actually uses, read from its own resolv.conf rather than assumed
+# to be 127.0.0.11 - a container on the default bridge gets the host's resolvers instead.
+resolver_ip() {
+    local c
+    c="$(compose_container "$TARGET_SVC" 2>/dev/null || true)"
+    docker exec "$c" awk '/^nameserver/{print $2; exit}' /etc/resolv.conf 2>/dev/null || echo "127.0.0.11"
+}
+
+ns() { sudo nsenter -t "$1" -n "${@:2}"; }
+
+# One place, so inject and cleanup cannot drift apart. Address, NOT --dport 53: Docker rewrites
+# the port before the filter chain sees it (see the header).
+rule_args() { echo "OUTPUT -d $1 -p udp -m statistic --mode random --probability $2 -j DROP"; }
 
 case "${1:-}" in
   inject)
@@ -93,65 +110,68 @@ case "${1:-}" in
       aggressive) PROB="${PROB:-0.60}" ;;
       *) echo "unknown intensity: $INTENSITY"; exit 1 ;;
     esac
+    PID="$(target_pid)" || exit 1
+    RESOLVER="$(resolver_ip)"
     # shellcheck disable=SC2046
-    sudo iptables -I $(rule_args "$PROB")
-    gt_begin "$INTENSITY" "{\"drop_probability\": $PROB, \"protocol\": \"udp\", \"port\": 53, \"mechanism\": \"iptables statistic random drop\"}"
-    ;;
-  cleanup)
-    # Delete by exact specification, for every probability we might have used, so cleanup is
-    # correct even if the recipe is re-run or interrupted between intensities.
-    for p in 0.25 0.60 "${PROB:-0.60}"; do
-        # shellcheck disable=SC2046
-        sudo iptables -D $(rule_args "$p") 2>/dev/null || true
-    done
-    gt_end
-    ;;
-  prove)
-    # Measure the delay, do not just confirm our own rule is loaded.
-    #
-    # "the iptables rule is present" is evidence about what WE did, not about what the system
-    # does - the same mistake that let conn_pool_exhaustion pass while occupying nothing. So
-    # time real lookups, and time an internal name too, because the difference between the two
-    # is the honest description of this fault's reach.
-    C="$(resolve_container "${PROBE_SVC:-front-end}")"
-    if [[ "${STRATA_APP:-sockshop}" == "trainticket" ]]; then
-        C="$(resolve_container "${PROBE_SVC:-ts-gateway-service}")"
-        INTERNAL="${PROBE_INTERNAL:-ts-order-service}"
-    else
-        INTERNAL="${PROBE_INTERNAL:-catalogue}"
+    if ! ns "$PID" iptables -I $(rule_args "$RESOLVER" "$PROB"); then
+        echo "[$FAULT_NAME] could not install the rule in $TARGET_SVC's namespace"
+        exit 1
     fi
-    median_ms() {   # median_ms <name> - 5 lookups from inside the container
-        local n="$1" i s e
-        for i in 1 2 3 4 5; do
-            s=$(date +%s%N)
-            docker exec "$C" getent hosts "$n" >/dev/null 2>&1 || true
-            e=$(date +%s%N)
-            echo $(( (e - s) / 1000000 ))
-        done | sort -n | sed -n 3p
-    }
-    # THE DECISIVE EVIDENCE IS THE RULE'S OWN PACKET COUNTER, not a latency threshold.
+    echo "[$FAULT_NAME] dropping ${PROB} of $TARGET_SVC's queries to $RESOLVER"
+    gt_begin "$INTENSITY" "{\"target_service\": \"$TARGET_SVC\", \"target_pid\": $PID, \"resolver\": \"$RESOLVER\", \"drop_probability\": $PROB, \"protocol\": \"udp\", \"mechanism\": \"iptables statistic random drop inside the service's network namespace, matched on the resolver address because Docker rewrites the port before the filter chain\"}"
+    ;;
+
+  prove)
+    # THE PACKET COUNTER, not a latency threshold.
     #
-    # Measured: the same fault costs 2555 ms on Sock Shop and 62-167 ms on Train Ticket. Both
-    # are working - the TT rule dropped 57 packets during five lookups. The difference is the
-    # container's resolv.conf: Sock Shop's walks three search domains before trying the name
-    # absolutely, so one lookup becomes many queries and many chances to be dropped, while the
-    # gateway image sets ndots:0 and asks once.
+    # Latency is the wrong thing to gate on here twice over. The size of the stall swung from
+    # 2555 ms to 57 ms on the SAME host and container across runs, so any threshold is a coin
+    # toss; and the application effect hides in wall-clock time while p50 and p95 stay healthy,
+    # so the obvious statistics would report "no fault" on a fault that costs 15x.
     #
-    # So the magnitude belongs to the IMAGE, not to the fault, and a fixed 300 ms threshold
-    # would have declared a working fault dead on Train Ticket - which is exactly what it did.
-    # The counter rising while a container resolves proves the fault is in the path of real DNS
-    # traffic, on any application.
-    drops() { sudo iptables -L OUTPUT -v -n -x 2>/dev/null | awk '/udp dpt:53/{print $1; exit}'; }
+    # Packets dropped while the application runs is true on both applications and on every run.
+    PID="$(target_pid)" || exit 1
+    RESOLVER="$(resolver_ip)"
+    drops() { ns "$PID" iptables -L OUTPUT -v -n -x 2>/dev/null | awk -v r="$RESOLVER" '$0 ~ r && /DROP/{print $1; exit}'; }
     D0="$(drops)"
-    EXT="$(median_ms "${PROBE_EXTERNAL:-example.com}")"
-    INT="$(median_ms "$INTERNAL")"
+    # Real application traffic, not synthetic lookups: the question is whether the fault is in
+    # the path the application uses.
+    if [[ "${STRATA_APP:-sockshop}" == "trainticket" ]]; then
+        URL="${PROBE_URL:-http://localhost:8080/api/v1/travelservice/trips/left}"
+    else
+        URL="${PROBE_URL:-http://localhost:80/catalogue}"
+    fi
+    R="$(python3 "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/code-defects/loadprobe.py" "$URL" "${PROBE_N:-400}" "${PROBE_CONC:-40}" 2>&1 | tr '\n' ' ')"
     D1="$(drops)"
     DROPPED=$(( ${D1:-0} - ${D0:-0} ))
-    echo "external ${EXT} ms, internal ${INT} ms, queries dropped during the probe: ${DROPPED}"
+    echo "queries dropped while the app ran: ${DROPPED} | ${R}"
     [[ "$DROPPED" -gt 0 ]]
     ;;
-  status)
-    sudo iptables -S OUTPUT | grep -- "--dport 53" || echo "no dns rule active"
+
+  cleanup)
+    # Delete by exact specification, for every probability we might have used, so cleanup is
+    # correct even if the recipe is re-run or interrupted between intensities. A container that
+    # was recreated takes its namespace - and the rule - with it, so a miss here is not a leak.
+    if PID="$(target_pid 2>/dev/null)"; then
+        RESOLVER="$(resolver_ip)"
+        for p in 0.25 0.60 "${PROB:-0.60}"; do
+            # shellcheck disable=SC2046
+            ns "$PID" iptables -D $(rule_args "$RESOLVER" "$p") 2>/dev/null || true
+        done
+        echo "[$FAULT_NAME] rules removed from $TARGET_SVC's namespace"
+    else
+        echo "[$FAULT_NAME] $TARGET_SVC not running - its namespace and the rule are gone with it"
+    fi
+    gt_end
     ;;
+
+  status)
+    if PID="$(target_pid 2>/dev/null)"; then
+        ns "$PID" iptables -S OUTPUT 2>/dev/null | grep -- "-p udp" || echo "no dns rule active"
+    else
+        echo "$TARGET_SVC not running"
+    fi
+    ;;
+
   *) echo "usage: $0 inject [subtle|aggressive] | prove | cleanup | status"; exit 1 ;;
 esac
