@@ -270,3 +270,69 @@ runs — as much as the collection itself.
 
 The audit does not have to be inline. We keep the raw traces, so it can run on the cluster
 afterwards. Worth moving before the campaign starts.
+
+## All 15 new recipes written; the 5 code defects verified end to end
+
+### The ten fault recipes
+
+`F_concurrency` lock_contention, priority_inversion, deadlock ·
+`G_resource_leak` fd_exhaustion, conn_pool_exhaustion ·
+`H_security` resource_abuse, data_exfiltration, fork_storm ·
+`I_configuration` dns_delay, nagle_delayed_ack
+
+Same shape as every v1 recipe. Programs live in `faults/workloads/` and run in CPU-capped
+containers beside the application, like `noisy_neighbor`. `workload_start` fails loudly if the
+container dies on startup, because a fault that never ran produces a **mislabelled** run and
+nothing downstream can tell.
+
+### The five code defects: 5 passed, 0 failed
+
+| Defect | Control | With defect | |
+|---|---|---|---|
+| `code_event_loop_block` | 95 ms | **3695 ms** | 38.9x |
+| `code_serial_awaits` | 97 ms | 1524 ms | 15.7x |
+| `code_lock_across_io` | 6 ms | 37 ms | 6.2x |
+| `code_n_plus_one` | 7 ms | 37 ms | 5.3x |
+| `code_unbounded_cache` | — | — | memory is the signal |
+
+All measured against `STRATA_BUG=none` **on the same image**, so the comparison isolates the
+defect rather than the rebuild.
+
+### Four measurements were wrong before one was right
+
+This is the part worth remembering. `code_lock_across_io` was reported as doing nothing four
+times, and each time the fault was in the measurement:
+
+| Attempt | Why it saw nothing |
+|---|---|
+| sequential curl | a lock costs nothing when one request is in flight |
+| curl via the front end | the proxy added ~35 ms, swamping a 1.7 ms critical section |
+| `xargs -P` with curl | 300 process spawns dominated; on and off differed by 1 ms |
+| threads, no keep-alive | 25 ms per connection hid the whole serialised cost |
+
+Only one process, real threads and reused connections could see it — and then it was 6.2x.
+
+The instinct on a 1.00x result is to tune the defect or drop it. That would have thrown away a
+correct defect four times over. **Before believing a null result, check the measurement can
+detect the thing at all.**
+
+### Three infrastructure bugs the smoke run exposed
+
+- **Remove-then-create left the stack broken.** The first version did `docker rm -f` then
+  `docker run`; when the run failed the front-end was simply gone, and the containers it did
+  create had no compose labels so compose then refused to recreate them. Now compose owns the
+  swap via a one-service override file, and a failure leaves the previous container running.
+- **Compose renames containers it cannot remove.** After a failed recreate the old container
+  becomes `0425f955070a_docker-compose_front-end_1`. Looking up the exact name then finds
+  nothing and reports "did not stay up" for a healthy service — that turned three working
+  defects into failures in one run. The container is now resolved through compose itself.
+- **A green result on zero evidence.** A mangled `sed` returned an empty p50, every comparison
+  became an empty-operand error, and the run printed "0 passed, 0 failed / every defect builds,
+  serves and measurably misbehaves". Guarded so an empty measurement can never read as a pass.
+
+### Anchored injection, not patch files
+
+`inject_defects.py` inserts at exact anchor strings and refuses if one is missing or ambiguous.
+It earned that on the first run: the front-end anchor was wrong (the real signature is
+`helpers.simpleHttpRequest = function(...)`, not an object member) and it stopped rather than
+half-applying. Cost: one check cycle, zero builds.
