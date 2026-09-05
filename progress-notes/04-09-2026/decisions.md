@@ -336,3 +336,116 @@ detect the thing at all.**
 It earned that on the first run: the front-end anchor was wrong (the real signature is
 `helpers.simpleHttpRequest = function(...)`, not an object member) and it stopped rather than
 half-applying. Cost: one check cycle, zero builds.
+
+---
+
+## Smoke-testing the ten new fault recipes
+
+Nine passed first time with real evidence: lock_contention 36,073 acquisitions in 10 s,
+priority_inversion 115 high-priority waits at 86 ms mean, deadlock 6 stuck pairs,
+conn_pool_exhaustion 400 connections held, resource_abuse 29.4 M hashes + 3 beacons,
+data_exfiltration 839 MB at 41.9 MB/s, fork_storm 2000 forked / 200 live, dns_delay rule
+present, nagle_delayed_ack median 99.48 ms against p95 100.66 ms.
+
+`fd_exhaustion` failed, and then failed twice more. Each failure was a different mistake and
+all three are worth keeping.
+
+### 1. The mechanism could never have worked
+
+The recipe ran a loop inside the container taking descriptors until EMFILE. **RLIMIT_NOFILE is
+per process.** A helper exhausting its own descriptors tells the service nothing — the service
+keeps its own budget. The only shared ceiling is the system-wide file-max, in the millions, and
+not reachable safely beside a live application.
+
+The same run also showed the target has no bash, so the `exec -a` the loop depended on did not
+exist there either. Two independent reasons one recipe could not do its job.
+
+Measured idle use while diagnosing: front-end 21 descriptors (limit 524288), catalogue 9,
+carts 4 (limit 1024).
+
+### 2. A check that fails on SIGPIPE reports a working fault as broken
+
+The replacement lowered the service's own limit, and the smoke check was
+`fd_exhaustion.sh status | grep -q 'limit: (64|256)$'`. It failed on a VM where the limit
+really was 64.
+
+`grep -q` exits at the first match, the script died writing its second line, and `pipefail`
+turned that into a failed check. Same class as the pilot's exit 141.
+
+`dns_delay` had the identical shape and passed only by luck — iptables writes its whole output
+in one go before grep can exit. A check whose verdict depends on timing is not a check. Both
+are now functions that capture first and match second.
+
+### 3. The measurement asked for the wrong symptom
+
+Fixed check, limit applied, and still: `errors=0` under 120 concurrent requests.
+
+Not a dead fault. Node does not refuse the connection — the kernel completes the handshake into
+the listen backlog and the app accepts as descriptors free up. The requests get **slow** rather
+than failing: p95 went 95 → 590 ms with the cap on. A check keyed on errors would have thrown
+away a working fault, the mirror image of mistake 2.
+
+What is true regardless of how the application reacts is that the descriptor count reaches the
+ceiling. That *is* the fault, so that is what `prove` measures now: drive load, sample
+`/proc/<pid>/fd`, report peak against limit.
+
+### 4. Applying the limit by recreating the container pollutes the run
+
+This one is a methodology problem, not a bug, and it would have shipped in the dataset.
+
+The compose-override version worked, but it restarts the service in the middle of a traced run.
+A restart is an enormous event in the kernel stream — process exit, process start, every
+descriptor closed and reopened. The signature we would then be studying could be the restart
+rather than the exhaustion, and nothing downstream could separate them.
+
+`prlimit` changes RLIMIT_NOFILE on the live process. No restart, nothing recreated, and the
+only thing added to the trace is the fault.
+
+### 5. "Idle" measured once, straight after load, is not idle
+
+First prlimit run set the cap from a single reading of 147 for a service that sits at 21 — the
+previous probe's connections were still closing. Cap came out at 155 and the fault barely bit:
+peak 148 against a ceiling of 155.
+
+Sockets in flight only ever *add* to the count, so idle is now the minimum across several
+seconds.
+
+### What this cost and what it bought
+
+Five rounds on one recipe. Every round was caught by a check that asked the fault to prove
+itself, rather than by trusting that `inject` exiting 0 meant anything. Nine recipes passed
+that same bar first time, so the bar is not the problem — the recipe was.
+
+The baseline number worth keeping: under 150 concurrent requests the Sock Shop front-end peaks
+at **151 descriptors** against its stock limit of 524288. That is why aggressive (idle + 8)
+bites and why a fixed number tuned on one service would be wrong on the other application.
+
+## Two things now shared instead of duplicated
+
+- `compose_stack` in `fault_lib.sh` is app-aware (`STRATA_APP`), so a recipe built on it works
+  on either application. A recipe that only speaks Sock Shop's compose files cannot give both
+  apps the same matrix, which is the entire point of the v2 design.
+- `code_defect_lib.sh` had its own copy of the 7-file invocation and now calls `compose_stack`.
+  Two copies of an ordering that matters is how the v1 drivers drifted into two different
+  matrices — the reason Sock Shop has 50 runs and Train Ticket 43.
+
+## Corrected: the Nagle stall is ~100 ms, not 40 ms
+
+Measured on the VM: median 99.48, p95 100.66. The textbook 40 ms is the BSD delayed-ACK timer;
+Linux uses a quantised minimum RTO and lands near 100 ms on a Docker bridge.
+
+The recipe writes `expected_stall_ms` into ground truth, so quoting 40 ms from memory would
+have shipped a wrong threshold with the dataset. Corrected in the recipe, the workload
+docstring, `FAULT-CATEGORIES-V2.md` and `COLLECTION-PLAN.md`.
+
+The magnitude is platform-dependent, so the text now leans on the property that is not: 99.48
+median against 100.66 p95 is barely 1 ms of spread, which no queue can produce.
+
+## Open: the new recipes are proven on Sock Shop only
+
+`stratatrace-tt` exists but is stopped and was never bootstrapped, so none of the ten has run
+against Train Ticket. They are written to be app-independent — workload containers plus
+auto-detected network — but "written to be" is not "shown to be", and that distinction is what
+this whole day was about.
+
+`CAMPAIGN_NEW_FAULTS` stays empty until they pass a Train Ticket smoke run too.
