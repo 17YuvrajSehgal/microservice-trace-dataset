@@ -97,6 +97,7 @@ applies to chat replies AND to any document/report written for the user.
 
 | Path | What |
 |---|---|
+| `CAMPAIGN-ISSUES.md` | **v2 campaign problems, live** — what needs re-collecting vs re-scoring. Read before trusting any run |
 | `msr-research.md` | The research plan (phases in §10) |
 | `fault_catalog.md` | Pre-registered predictions, scoring rules, H1–H4 |
 | `progress-notes/` | Daily decision log — **read latest day first** |
