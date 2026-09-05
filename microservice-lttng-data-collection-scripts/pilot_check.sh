@@ -24,6 +24,13 @@ else
     METRICS_DIR="$HOME/${RUN}_metrics"
 fi
 
+# Read the first N decoded lines into a file. NOT a pipeline into head: `set -o pipefail`
+# turns the SIGPIPE that head causes into exit 141, which made a check that was FINDING its
+# match report failure. Measured: exit 141 on the pilot run.
+sample_trace() {   # sample_trace <ctf> <lines> <outfile>
+    babeltrace2 "$1" 2>/dev/null | head -n "$2" > "$3" 2>/dev/null || true
+}
+
 pass=0; fail=0; warn=0
 ok()   { echo "  PASS  $*"; pass=$((pass+1)); }
 bad()  { echo "  FAIL  $*"; fail=$((fail+1)); }
@@ -48,7 +55,8 @@ for c in "$RUN_DIR/kernel/kernel" "$RUN_DIR/kernel"; do
 done
 if [[ -n "$KCTF" ]]; then
     nstream=$(ls "$KCTF"/channel0_* 2>/dev/null | wc -l)
-    nev=$(babeltrace2 "$KCTF" 2>/dev/null | head -200000 | wc -l)
+    sample_trace "$KCTF" 200000 /tmp/pilot_sample.txt
+    nev=$(wc -l < /tmp/pilot_sample.txt)
     if [[ "$nev" -gt 1000 ]]; then
         ok "kernel: $nstream per-CPU streams, $nev+ events decode"
     else
@@ -62,7 +70,24 @@ fi
 SPANS="$RUN_DIR/otlp/spans.jsonl"
 if [[ -s "$SPANS" ]]; then
     n=$(wc -l < "$SPANS")
-    svc=$(grep -o '"serviceName":"[^"]*"' "$SPANS" 2>/dev/null | sort -u | wc -l)
+    # OTLP format: the top-level key is resourceSpans and the service name lives in
+    # resource.attributes, not at the top level. A flat grep for "serviceName" finds nothing
+    # and reports 0 services on a perfectly good file.
+    svc=$(python3 - "$SPANS" <<'PYS' 2>/dev/null || echo 0
+import json, sys
+names = set()
+for line in open(sys.argv[1], encoding="utf-8", errors="replace"):
+    try:
+        d = json.loads(line)
+    except Exception:
+        continue
+    for rs in d.get("resourceSpans", []):
+        for a in (rs.get("resource") or {}).get("attributes", []):
+            if a.get("key") == "service.name":
+                names.add(str((a.get("value") or {}).get("stringValue")))
+print(len(names))
+PYS
+)
     [[ "$n" -gt 10 ]] && ok "spans: $n spans from $svc services" \
                       || bad "spans: only $n lines - the collector may not be exporting"
 else
@@ -97,22 +122,19 @@ fi
 echo
 echo "--- 2. CONTAINER ATTRIBUTION (v2: three blueprints could not name a service) ---"
 ENABLED="$RUN_DIR/meta/lttng_enabled_kernel.txt"
-if [[ -s "$ENABLED" ]]; then
-    ok "the enabled-event list was recorded"
-    if grep -qE "cgroup_ns|pid_ns|net_ns" "$ENABLED"; then
-        ok "namespace contexts are configured on the kernel channel"
-    else
-        bad "namespace contexts NOT in the session - attribution fix did not apply"
-    fi
-else
-    bad "meta/lttng_enabled_kernel.txt missing"
-fi
+[[ -s "$ENABLED" ]] && ok "the enabled-event list was recorded"                     || bad "meta/lttng_enabled_kernel.txt missing"
 
+# Check the DECODED EVENTS, not `lttng list`. Measured on the pilot: `lttng list <session>`
+# prints channels and events but NOT contexts, so grepping it reported the attribution fix as
+# missing when every event carried it. The events are the only authoritative answer.
 if [[ -n "$KCTF" ]]; then
-    if babeltrace2 "$KCTF" 2>/dev/null | head -2000 | grep -qE "cgroup_ns|pid_ns|net_ns"; then
-        ok "namespace ids are present ON EVENTS (not just configured)"
+    [[ -s /tmp/pilot_sample.txt ]] || sample_trace "$KCTF" 2000 /tmp/pilot_sample.txt
+    found=$(grep -oE "cgroup_ns|pid_ns|net_ns|ipc_ns|user_ns" /tmp/pilot_sample.txt 2>/dev/null             | sort -u | tr "
+" " ")
+    if [[ -n "$found" ]]; then
+        ok "namespace ids ARE on events: $found"
     else
-        bad "namespace ids do NOT appear on decoded events"
+        bad "namespace ids do NOT appear on decoded events - attribution fix did not apply"
     fi
 fi
 
