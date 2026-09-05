@@ -35,19 +35,37 @@ endpoint_for() {
     esac
 }
 
-# Median of N sequential requests, in milliseconds. Sequential on purpose: a serialising
-# defect shows up in the median of concurrent load, but we want a signal that does not depend
-# on us generating load correctly during a smoke test.
-measure() {   # measure <path> <n>
-    local path="$1" n="${2:-25}" i t0 t1
-    local times=()
+# Median request time in ms, at a given concurrency.
+#
+# CONCURRENCY IS NOT OPTIONAL for the serialising defects. The first version of this test
+# measured sequentially and reported code_lock_across_io at 1.00x - "indistinguishable from
+# its control" - which is exactly what a lock held across I/O looks like when only one request
+# is ever in flight. Nothing is waiting, so nothing is slow. The defect was fine; the
+# measurement could not see it, and it nearly got dropped as broken.
+measure() {   # measure <path> <n> <concurrency>
+    local path="$1" n="${2:-40}" conc="${3:-1}" i
+    local tmp; tmp=$(mktemp)
     for ((i = 0; i < n; i++)); do
-        t0=$(date +%s%N)
-        curl -sf -m 10 -o /dev/null "${FRONTEND}${path}" 2>/dev/null || true
-        t1=$(date +%s%N)
-        times+=($(( (t1 - t0) / 1000000 )))
+        {
+            local t0 t1
+            t0=$(date +%s%N)
+            curl -sf -m 15 -o /dev/null "${FRONTEND}${path}" 2>/dev/null || true
+            t1=$(date +%s%N)
+            echo $(( (t1 - t0) / 1000000 )) >> "$tmp"
+        } &
+        while [[ $(jobs -rp | wc -l) -ge $conc ]]; do wait -n 2>/dev/null || break; done
     done
-    printf '%s\n' "${times[@]}" | sort -n | awk '{a[NR]=$1} END {print a[int(NR/2)+1]}'
+    wait
+    sort -n "$tmp" | awk '{a[NR]=$1} END {print (NR ? a[int(NR/2)+1] : 0)}'
+    rm -f "$tmp"
+}
+
+# Which defects only reveal themselves when requests overlap.
+concurrency_for() {
+    case "$1" in
+        code_lock_across_io|code_event_loop_block|code_serial_awaits) echo 12 ;;
+        *) echo 1 ;;
+    esac
 }
 
 pass=0; fail=0
@@ -62,6 +80,7 @@ for d in "${DEFECTS[@]}"; do
     # recipes MISSING when every one was present.
     [[ -f "$recipe" ]] || { echo "  MISSING $d"; fail=$((fail+1)); continue; }
     path=$(endpoint_for "$d")
+    conc=$(concurrency_for "$d")
 
     echo
     echo "--- $d ---"
@@ -69,8 +88,8 @@ for d in "${DEFECTS[@]}"; do
     # control first: same image, defect off. This is the number the fault is compared against.
     bash "$recipe" control >/dev/null 2>&1 || { echo "  FAIL  control would not start"; fail=$((fail+1)); continue; }
     sleep 6
-    base=$(measure "$path" 25)
-    echo "  control (STRATA_BUG=none): median ${base} ms"
+    base=$(measure "$path" 40 "$conc")
+    echo "  control (STRATA_BUG=none): median ${base} ms  (concurrency $conc)"
 
     if ! bash "$recipe" inject aggressive >/dev/null 2>&1; then
         echo "  FAIL  inject failed"
@@ -87,7 +106,7 @@ for d in "${DEFECTS[@]}"; do
     fi
 
     # 2. does it change anything?
-    with=$(measure "$path" 25)
+    with=$(measure "$path" 40 "$conc")
     echo "  defect  (STRATA_BUG on):   median ${with} ms"
 
     if [[ "$base" -gt 0 ]]; then
