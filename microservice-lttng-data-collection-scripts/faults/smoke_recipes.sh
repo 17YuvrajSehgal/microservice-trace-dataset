@@ -39,21 +39,30 @@ dns_rule_present() {
     [[ "$out" == *"--dport 53"* ]]
 }
 
+# Not a fixed number any more. The recipe now sets the limit from what the service actually
+# uses, so it lands on whatever idle+headroom comes to - 29 on Sock Shop's front-end, something
+# larger on a JVM. What makes it a fault is that it is far below the stock 524288, so that is
+# what to test.
 fd_limit_low() {
-    local out; out=$(bash "$SD/fd_exhaustion.sh" status 2>/dev/null)
-    [[ "$out" == *"limit: 64"* || "$out" == *"limit: 256"* ]]
+    local out lim
+    out=$(bash "$SD/fd_exhaustion.sh" status 2>/dev/null)
+    lim="${out#*limit: }"; lim="${lim%%$'
+'*}"
+    [[ "$lim" =~ ^[0-9]+$ && "$lim" -lt 4096 ]]
 }
 
 # The limit on its own is NOT proof. A ceiling the service never reaches is a fault that never
-# happened - the same trap as a code defect that builds but does nothing. So drive more
-# concurrent requests than the service has descriptors left (21 of 64 in use at idle) and
-# require it to actually fail. In a campaign run the load generator supplies this traffic.
+# happened - the same trap as a code defect that builds but does nothing. So drive far more
+# concurrent requests than the service has descriptors left and require it to actually fail.
+# In a campaign run the load generator supplies this traffic.
 fd_proof() {
     fd_limit_low || { echo "descriptor limit was not applied"; return 1; }
     local r errs
     r=$(python3 "$SD/code-defects/loadprobe.py" "http://localhost:80/catalogue" 300 120 2>/dev/null)
     errs="${r##*errors=}"
-    echo "limit applied, under load: ${r:-no result}"
+    local st; st=$(bash "$SD/fd_exhaustion.sh" status 2>/dev/null | tr '
+' ' ')
+    echo "${st}| under load: ${r:-no result}"
     [[ -n "$errs" && "$errs" =~ ^[0-9]+$ && "$errs" -gt 0 ]]
 }
 

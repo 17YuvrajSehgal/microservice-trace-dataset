@@ -35,22 +35,45 @@
 # Usage:
 #   ./fd_exhaustion.sh inject [subtle|aggressive]
 #   ./fd_exhaustion.sh cleanup | status
-#   env: TARGET_SVC (default front-end - it terminates every inbound connection, so it feels
-#        the limit first and its failure has a real blast radius)
+#   env: TARGET_SVC   (default: the deployed app's front door - front-end on Sock Shop,
+#                      ts-gateway-service on Train Ticket)
+#        STRATA_APP   sockshop | trainticket
 set -euo pipefail
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/fault_lib.sh"
 
 FAULT_FAMILY="G_resource_leak"
 FAULT_NAME="fd_exhaustion"
 FAULT_SCOPE="service"
-TARGET_SVC="${TARGET_SVC:-front-end}"
+# The front door of whichever application is deployed: it terminates every inbound connection,
+# so it feels the limit first and its failure has a real blast radius. TT's analogue of
+# front-end is ts-gateway-service (FAULTS-TT.md).
+if [[ "${STRATA_APP:-sockshop}" == "trainticket" ]]; then
+    TARGET_SVC="${TARGET_SVC:-ts-gateway-service}"
+else
+    TARGET_SVC="${TARGET_SVC:-front-end}"
+fi
 TARGET_SERVICE="$TARGET_SVC"
 EXPECTED_BLAST_RADIUS="${EXPECTED_BLAST_RADIUS:-[\"$TARGET_SVC\", \"every caller of it\"]}"
 EXPECTED_WINNING_MODALITY="${EXPECTED_WINNING_MODALITY:-kernel}"
 TARGET_TRACE_VISIBILITY="${TARGET_TRACE_VISIBILITY:-covered}"
 REMEDIATION="close descriptors on the error path; raise the limit only after fixing the leak"
 
-OVERRIDE_FILE="$(fault_repo_root)/microservice-lttng-data-collection-scripts/docker-compose.fdlimit.yml"
+# Generated, so it lives with the other generated state and NOT in the git checkout. The
+# campaign pulls the repo between runs; a stray file in the working tree is one more way for an
+# unattended run to fail. Absolute path, and the file contains no relative paths, so it does not
+# matter that compose resolves relative mounts against the project dir.
+OVERRIDE_FILE="${FAULT_STATE_DIR:-$HOME/fault-state}/docker-compose.fdlimit.yml"
+mkdir -p "$(dirname "$OVERRIDE_FILE")"
+
+# How many descriptors the service is using RIGHT NOW. Returns empty if it cannot tell.
+current_fds() {
+    local c pid
+    c="$(compose_container "$TARGET_SVC" 2>/dev/null || true)"
+    [[ -z "$c" ]] && return 1
+    pid="$(docker inspect -f '{{.State.Pid}}' "$c" 2>/dev/null || true)"
+    [[ -z "$pid" || "$pid" == "0" ]] && return 1
+    sudo ls "/proc/$pid/fd" 2>/dev/null | wc -l
+}
 
 apply_limit() {   # apply_limit <nofile-or-empty-to-restore>
     local n="${1:-}"
@@ -90,15 +113,52 @@ EOF
 case "${1:-}" in
   inject)
     INTENSITY="${2:-aggressive}"
+    # HEADROOM above what the service already uses, not an absolute number.
+    #
+    # A fixed 64 was calibrated against Sock Shop's Node front-end, which sits at 21 descriptors
+    # idle. Train Ticket's front door is a Spring Cloud Gateway JVM, and a JVM opens far more
+    # than that just loading jars - the same 64 would very likely stop it booting. That would
+    # turn a fault run into a failed run, on a campaign we cannot repeat.
+    #
+    # Measuring first makes the recipe fit whatever it is pointed at. aggressive leaves barely
+    # any room, so normal traffic runs it out; subtle leaves enough for moderate load and only
+    # bites at peak.
     case "$INTENSITY" in
-      # Chosen against measured idle usage (front-end 21). subtle leaves room for a moderate
-      # number of connections; aggressive runs out under the campaign's normal load.
-      subtle)     NOFILE="${NOFILE:-256}" ;;
-      aggressive) NOFILE="${NOFILE:-64}" ;;
+      subtle)     HEADROOM="${HEADROOM:-64}" ;;
+      aggressive) HEADROOM="${HEADROOM:-8}" ;;
       *) echo "unknown intensity: $INTENSITY"; exit 1 ;;
     esac
-    apply_limit "$NOFILE" || exit 1
-    gt_begin "$INTENSITY" "{\"target_service\": \"$TARGET_SVC\", \"nofile_limit\": $NOFILE, \"mechanism\": \"RLIMIT_NOFILE lowered so the service exhausts its own descriptors under normal load\"}"
+
+    IDLE="$(current_fds || true)"
+    if [[ -z "$IDLE" || "$IDLE" == "0" ]]; then
+        # Could not read it: fall back to the numbers measured on Sock Shop rather than guess.
+        IDLE=21
+        echo "[$FAULT_NAME] could not read $TARGET_SVC descriptor use - assuming $IDLE"
+    fi
+    NOFILE="${NOFILE:-$(( IDLE + HEADROOM ))}"
+    REQUESTED="$NOFILE"
+
+    # A LADDER, because "the service did not start" must not end a campaign run.
+    #
+    # Steady-state usage is not startup usage - a JVM opens a burst of files loading classes and
+    # then settles. If the service will not come up, double the limit and try again rather than
+    # abort. Whatever it settles on is what goes into ground truth, so the label always matches
+    # what actually happened, even when it is not what we asked for.
+    ok=0
+    for _try in 1 2 3 4 5 6; do
+        if apply_limit "$NOFILE"; then ok=1; break; fi
+        echo "[$FAULT_NAME] $TARGET_SVC would not run at nofile=$NOFILE - doubling"
+        NOFILE=$(( NOFILE * 2 ))
+    done
+    if [[ "$ok" -ne 1 ]]; then
+        echo "[$FAULT_NAME] gave up after 6 attempts; restoring the service"
+        apply_limit "" || true
+        exit 1
+    fi
+    [[ "$NOFILE" != "$REQUESTED" ]] &&         echo "[$FAULT_NAME] NOTE: settled at $NOFILE, not the requested $REQUESTED"
+
+    SETTLED="$(current_fds || echo 0)"
+    gt_begin "$INTENSITY" "{\"target_service\": \"$TARGET_SVC\", \"nofile_limit\": $NOFILE, \"nofile_requested\": $REQUESTED, \"fds_idle_before\": $IDLE, \"fds_idle_after\": $SETTLED, \"headroom\": $HEADROOM, \"mechanism\": \"RLIMIT_NOFILE lowered to just above measured idle use, so the service exhausts its own descriptors under normal load\"}"
     ;;
   cleanup)
     apply_limit "" || true

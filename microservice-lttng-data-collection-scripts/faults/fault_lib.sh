@@ -145,10 +145,29 @@ workload_status() {
 
 fault_repo_root() { (cd "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)" && pwd); }
 
-# compose_stack <compose args...>   - the 7-file deployment, plus $COMPOSE_OVERRIDE if set
+# compose_stack <compose args...>   - the deployed stack, plus $COMPOSE_OVERRIDE if set
+#
+# APP-AWARE ON PURPOSE. A recipe that can only talk to Sock Shop's compose files is a recipe
+# that can only run on Sock Shop, and the whole point of the v2 matrix is that both
+# applications carry the SAME families. v1's uneven 50/43 split came from exactly this kind of
+# quiet asymmetry. STRATA_APP picks the deployment; every recipe built on this helper then
+# works on either.
+#
+# Overlay order matters in both stacks and is copied from the bootstrap scripts, which are the
+# authority - Sock Shop's from docker-compose.toxiproxy.yml's header, Train Ticket's from
+# vm_bootstrap_tt.sh (nacos -> dbenv -> toxiproxy, so the MYSQL_HOST repoint wins).
 compose_stack() {
     local repo sd
     repo="$(fault_repo_root)"
+
+    if [[ "${STRATA_APP:-sockshop}" == "trainticket" ]]; then
+        local ttd="$repo/train-ticket-collection-scripts"
+        export TT_SCRIPTS_DIR="$ttd"
+        export COMPOSE_COMPATIBILITY=true
+        ( cd "${TT_DIR:-$HOME/train-ticket}" && docker compose             -f docker-compose.yml             -f "$ttd/docker-compose.nacos.yml"             -f "$ttd/docker-compose.dbenv.yml"             -f "$ttd/docker-compose.toxiproxy.yml"             -f "$ttd/docker-compose.metrics.yml"             -f "$ttd/docker-compose.otel.yml"             ${COMPOSE_OVERRIDE:+-f "$COMPOSE_OVERRIDE"} "$@" )
+        return
+    fi
+
     sd="$repo/microservice-lttng-data-collection-scripts"
     export TRACE_SCRIPTS_DIR="$sd"
     export COMPOSE_COMPATIBILITY=true
