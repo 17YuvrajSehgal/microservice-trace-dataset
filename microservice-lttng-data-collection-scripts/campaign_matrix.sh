@@ -51,7 +51,21 @@ CAMPAIGN_REPEATS_VARIANT="${CAMPAIGN_REPEATS_VARIANT:-3}"
 #
 # `conn_pool_exhaustion` (proposed for v2) is the closer analogue and would give Train Ticket
 # a saturation fault of its own - see FAULT-CATEGORIES-V2.md.
-CAMPAIGN_TT_EXCLUDE=(queue_backlog)
+#
+# `dns_delay` added 5 Sept, MEASURED not assumed. Six Train Ticket containers - ui-dashboard,
+# gateway, travel, order, basic, station - were instrumented with a counting iptables rule and
+# sent ZERO DNS packets across 600 requests. TT resolves peers through Nacos over HTTP, so name
+# resolution is simply not in its request path. Sock Shop, by contrast, sends 54 packets per 400
+# requests to Docker's embedded resolver.
+#
+# So this is not a recipe that needs fixing - it is an architectural difference, and it is a
+# result worth reporting: DNS faults are meaningless on discovery-service architectures. Running
+# it on TT would produce 5 runs labelled as a fault that provably did nothing.
+#
+# The equal-counts fix, if we want one, is a TT-native member of the same family: impair NACOS
+# (netem or toxiproxy in front of it) so discovery is slow there in the way DNS is slow here.
+# Not written yet - see progress-notes/04-09-2026.
+CAMPAIGN_TT_EXCLUDE=(queue_backlog dns_delay)
 
 # --- v2 CANDIDATE FAMILIES (see FAULT-CATEGORIES-V2.md) ----------------------------------
 # Naser, 4 Sept: "latency is only the first step. we will cover around 10 different issue

@@ -627,3 +627,75 @@ a service.
 Every one is now derived from the system at inject time: measure the service's descriptors, ask
 the server for `max_connections`, count dropped packets. That is the same discipline the
 blueprints are built on, applied to the injectors instead of the analysis.
+
+---
+
+## dns_delay: two redesigns, and an architectural finding
+
+### The host-level rule was nearly inert
+
+It sat in the host's OUTPUT chain, which catches lookups **leaving the machine** — and these
+applications almost never make one. Measured on Sock Shop under load:
+
+| | p50 | dropped |
+|---|---|---|
+| baseline | 67.7 / 80.8 ms | — |
+| during | 85.2 / 81.0 ms (noise) | **11 packets in the whole probe** |
+
+Ten campaign runs of a fault that changed nothing. It had passed every smoke test, because the
+check asked whether the rule existed rather than whether anything happened.
+
+### Moved into the container namespace it becomes one of the best hard cases we have
+
+Counted there, Sock Shop really does resolve: **54 DNS packets per 400 requests** — infrequent
+because connections are pooled, but not zero. Dropping 60% of them:
+
+| | p50 | p95 | wall | errors |
+|---|---|---|---|---|
+| baseline | 71.9 ms | 201.7 ms | 914 ms | 0 |
+| during | **3.9 ms** | **8.0 ms** | **20,034 ms** | **31/400** |
+
+Median and p95 look *better* than baseline while wall-clock time is 22x and 8% of requests
+fail. A handful of requests wait seconds on a retry; everything else sails through. Every
+summary statistic an operator would normally reach for says the system is healthy.
+
+That is the same shape as `nagle_delayed_ack`, and it is why both belong in the catalogue.
+
+**Implementation trap worth keeping:** Docker DNATs `127.0.0.11:53` to a high port, and `nat
+OUTPUT` runs *before* `filter OUTPUT`, so a `--dport 53` rule inside a container matches
+nothing. My first attempt read 0 packets and looked like proof the app never resolves. Match on
+the resolver's **address**, which survives the rewrite.
+
+### Train Ticket sends no DNS at all — and that is a result, not a bug
+
+Six containers instrumented with a counting rule (ui-dashboard, gateway, travel, order, basic,
+station), 600 requests driven through the dashboard:
+
+```
+ts-ui-dashboard          0 packets
+ts-gateway-service       0 packets
+ts-travel-service        0 packets
+ts-order-service         0 packets
+ts-basic-service         0 packets
+ts-station-service       0 packets
+```
+
+Train Ticket resolves peers through **Nacos over HTTP**. Name resolution is not in its request
+path. Sock Shop sends 54 packets per 400 requests to Docker's embedded resolver.
+
+So `dns_delay` is excluded from the Train Ticket matrix — measured, not assumed — and the
+reason is itself worth reporting: **DNS faults are meaningless on discovery-service
+architectures.** Running it there would produce 5 runs labelled as a fault that provably did
+nothing.
+
+**Open proposal:** the equal-counts fix is a TT-native member of the same family — impair
+**Nacos** (netem or toxiproxy in front of it) so discovery is slow there in the way DNS is slow
+here. Same fault class, each expressed in the architecture that has it. Not written; it is a
+scope decision.
+
+### Two recipes rated "low risk" both turned out to do nothing
+
+`fd_exhaustion` and `dns_delay`. In both cases the rating was about the *idea*, the
+implementation was inert, and only a measurement told us. The smoke suite now has a
+`--negative` mode and every check reads the system rather than the injector — but the deeper
+lesson is that "low risk" describes the concept, never the code.
