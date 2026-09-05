@@ -14,11 +14,20 @@
 # Point 3 is per-fault on purpose. Every workload reports what it is doing, so the honest check
 # is to read what it actually did rather than assume a running container means a working fault.
 #
-#   ./smoke_recipes.sh [recipe ...]      default: all ten
+#   ./smoke_recipes.sh [recipe ...]              default: all ten
+#   ./smoke_recipes.sh --negative [recipe ...]   nothing injected; every check must FAIL
 set -uo pipefail
 SD=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 STATE="${FAULT_STATE_DIR:-$HOME/fault-state}"
 SETTLE="${SETTLE:-25}"      # seconds to let a workload produce evidence
+
+# --negative: run every evidence check with NOTHING injected. All of them must FAIL.
+#
+# A check that passes when no fault is active is not a check, and this suite shipped two of
+# them. It is the cheapest possible guard against the failure that costs the most: a run
+# labelled as a fault that never happened.
+NEGATIVE=0
+if [[ "${1:-}" == "--negative" ]]; then NEGATIVE=1; shift; fi
 
 RECIPES=("$@")
 [[ ${#RECIPES[@]} -eq 0 ]] && RECIPES=(lock_contention priority_inversion deadlock \
@@ -109,6 +118,36 @@ leftovers_for() {   # what must be GONE after cleanup
 
 pass=0; fail=0
 APP="${STRATA_APP:-sockshop}"
+
+if [[ "$NEGATIVE" -eq 1 ]]; then
+    echo "=============================================================="
+    echo " NEGATIVE CONTROL  -  app: $APP  (nothing injected; every check must FAIL)"
+    echo "=============================================================="
+    for r in "${RECIPES[@]}"; do
+        ev="$(evidence_for "$r")"
+        [[ -z "$ev" ]] && { echo "  SKIP  $r (no check defined)"; continue; }
+        detail=""
+        if [[ "$ev" == container:* ]]; then
+            cname="${ev#container:}"; pat="${cname#*:}"; cname="${cname%%:*}"
+            if docker logs "$cname" 2>&1 | tail -40 | grep -qE "$pat"; then ok=0; else ok=1; fi
+        else
+            if detail=$(eval "${ev#command:}" 2>&1); then ok=0; else ok=1; fi
+        fi
+        if [[ "$ok" -eq 1 ]]; then
+            printf "  ok    %-22s check correctly fails with no fault
+" "$r"
+            pass=$((pass+1))
+        else
+            printf "  BAD   %-22s check PASSES with nothing injected: %s
+" "$r" "${detail:-(container log still matches)}"
+            fail=$((fail+1))
+        fi
+    done
+    echo
+    printf " NEGATIVE CONTROL: %d correct, %d vacuous
+" "$pass" "$fail"
+    exit $(( fail > 0 ? 1 : 0 ))
+fi
 echo "=============================================================="
 echo " FAULT RECIPE SMOKE TEST  -  app: $APP  (settle ${SETTLE}s per recipe)"
 echo "=============================================================="
