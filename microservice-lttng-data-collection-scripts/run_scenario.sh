@@ -68,6 +68,32 @@ echo "[$RUN] scenario=$RECIPE intensity=$INTENSITY workload=$PROFILE duration=${
 ( cd "$SD" && ./collect_trace.sh "$RECIPE" "$RUN" "$DURATION" ) &
 TRACE_PID=$!
 
+# ALWAYS undo, however this script ends.
+#
+# The load generator used to be killed only on the happy path, and the recipe's cleanup only ran
+# if the script reached it. A run interrupted by Ctrl-C, a dropped SSH session or a kill left
+# BOTH behind - measured after exactly that happened: two orphaned load generators still driving
+# traffic at a supposedly idle VM.
+#
+# The load is merely noise in the next run. The fault is far worse: the next run would be
+# collected with a previous run's fault still active, and labelled with its own. Nothing
+# downstream could detect it, which is the failure this whole campaign is built to avoid.
+INJECTED=0
+_run_cleanup() {
+    local rc=$?
+    trap - EXIT INT TERM
+    if [[ -n "${LOAD_PID:-}" ]]; then
+        kill "$LOAD_PID" 2>/dev/null || true
+        wait "$LOAD_PID" 2>/dev/null || true
+    fi
+    if [[ "$INJECTED" -eq 1 ]]; then
+        echo "[$RUN] EXITING WITH $RECIPE STILL INJECTED - running its cleanup"
+        bash "$RECIPE_SH" cleanup >/dev/null 2>&1 || true
+    fi
+    exit "$rc"
+}
+trap _run_cleanup EXIT INT TERM
+
 # 2) continuous load for the whole window
 python3 "$LOAD_GEN" --host "$FRONTEND" --users "$USERS" \
     --duration "$DURATION" --profile "$PROFILE" --think-min 0.1 --think-max 0.3 \
@@ -80,16 +106,19 @@ LOAD_PID=$!
 if [[ "$NORMAL" -eq 0 ]]; then
     sleep "$BASELINE_S"
     echo "[$RUN] injecting $RECIPE ($INTENSITY) at baseline+${BASELINE_S}s"
+    INJECTED=1
     bash "$RECIPE_SH" inject "$INTENSITY" || echo "[$RUN] WARN: inject returned nonzero"
     sleep "$INJECTION_S"
     echo "[$RUN] cleaning up $RECIPE"
     bash "$RECIPE_SH" cleanup || echo "[$RUN] WARN: cleanup returned nonzero"
+    INJECTED=0
 fi
 
 # recovery window elapses while tracing continues to the end
 wait "$TRACE_PID" 2>/dev/null || true
 kill "$LOAD_PID" 2>/dev/null || true
 wait "$LOAD_PID" 2>/dev/null || true
+LOAD_PID=""
 
 # 4) metrics for the exact run window (clock-anchored runinfo)
 RUN_DIR="$HOME/traces/$RECIPE/$RUN"
