@@ -38,20 +38,25 @@ fi
 candidates_for() {
     case "$1" in
       lock_contention)      echo "cpu:rate(container_cpu_usage_seconds_total{name=\"lock-contention\"}[1m])
-threads:container_tasks_state{name=\"lock-contention\"}" ;;
+threads:container_threads{name=\"lock-contention\"}" ;;
       priority_inversion)   echo "cpu:rate(container_cpu_usage_seconds_total{name=\"priority-inversion\"}[1m])" ;;
       deadlock)             echo "cpu:rate(container_cpu_usage_seconds_total{name=\"deadlock\"}[1m])
-sleeping:container_tasks_state{name=\"deadlock\",state=\"sleeping\"}" ;;
+threads:container_threads{name=\"deadlock\"}" ;;
       fd_exhaustion)        echo "front_fds:container_file_descriptors{name=~\"$FRONT\"}
 front_cpu:rate(container_cpu_usage_seconds_total{name=~\"$FRONT\"}[1m])" ;;
       conn_pool_exhaustion) echo "db_fds:container_file_descriptors{name=~\"$DB\"}
+db_socks:container_sockets{name=~\"$DB\"}
 db_cpu:rate(container_cpu_usage_seconds_total{name=~\"$DB\"}[1m])" ;;
       resource_abuse)       echo "cpu:rate(container_cpu_usage_seconds_total{name=\"resource-abuse\"}[1m])
 tx:rate(container_network_transmit_bytes_total{name=\"resource-abuse\"}[1m])" ;;
       data_exfiltration)    echo "tx:rate(container_network_transmit_bytes_total{name=\"data-exfiltration\"}[1m])
+sink_rx:rate(container_network_receive_bytes_total{name=\"data-exfiltration-sink\"}[1m])
 host_tx:rate(node_network_transmit_bytes_total{device!=\"lo\"}[1m])" ;;
+      # host_forks is 14.25x on Sock Shop and 1.05x on Train Ticket - TT already forks ~112/s
+      # from 40 JVMs and Nacos health checks, so the storm is lost in the noise. The
+      # per-container counters are immune to that, which is the argument for enabling them.
       fork_storm)           echo "procs:container_processes{name=\"fork-storm\"}
-host_procs:node_procs_running
+threads:container_threads{name=\"fork-storm\"}
 host_forks:rate(node_forks_total[1m])" ;;
       # These were written when the rule lived in the HOST's OUTPUT chain. It now lives in the
       # target container's namespace, so host UDP counters are the wrong place to look - kept
@@ -85,8 +90,11 @@ except Exception:
     sys.exit(0)
 vals = [float(r["value"][1]) for r in d.get("data", {}).get("result", [])
         if r.get("value") and r["value"][1] not in ("NaN", "+Inf", "-Inf")]
+# sum, not max. max silently picks one series, and on Train Ticket a `before` reading of 0.8264
+# appeared for a container that did not exist yet - almost certainly a stale series winning the
+# max. Summing is also what "how much of this is happening" actually means.
 if vals:
-    print(f"{max(vals):.4f}")
+    print(f"{sum(vals):.4f}")
 PY
 }
 
