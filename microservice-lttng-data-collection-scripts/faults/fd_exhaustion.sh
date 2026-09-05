@@ -29,9 +29,13 @@
 #
 # MEASURED, NOT ASSUMED. The limit is set from what the service is using right now, so the
 # recipe fits whatever it is pointed at. Sock Shop's Node front-end sits at 21 descriptors idle
-# and climbs to ~151 under 150 concurrent requests; Train Ticket's front door is a Spring Cloud
-# Gateway JVM and will sit far higher. A fixed number tuned on one of them would be either
-# harmless or fatal on the other.
+# and climbs to ~151 under 150 concurrent requests. Train Ticket's ts-gateway-service is a
+# Spring Cloud Gateway JVM and measures 125 descriptors at idle - a fixed limit of 64, tuned on
+# Sock Shop, would have been fatal there. Measured on each VM, so neither is a guess.
+#
+# The target on Train Ticket is the GATEWAY and not ts-ui-dashboard, even though the dashboard
+# is the true front door: nginx is multi-process, and RLIMIT_NOFILE is per process, so prlimit
+# on the master would leave the workers untouched. The gateway is a single JVM.
 #
 # PAIRS WITH dependency_outage. Both end with a service that stops serving. The difference is
 # that this one is running and FAILING at a specific syscall, while an outage means it is not
@@ -156,8 +160,15 @@ case "${1:-}" in
     # the ceiling. That is the fault itself, so that is what to measure.
     PID="$(target_pid)" || exit 1
     LIM="$(limit_of "$PID")"
+    # The probe must reach the TARGET, not merely the front door.
+    #
+    # Train Ticket's :8080 is ts-ui-dashboard (nginx). Asking it for /index.html is served as a
+    # static file and never touches ts-gateway-service, so the gateway's descriptor count would
+    # not move and the fault would look dead. /api/v1/* is proxied through to the gateway. The
+    # endpoint is a POST route, so a GET returns 405 - which is fine and deliberate: the
+    # descriptor is opened by the connection, not by the status code.
     if [[ "${STRATA_APP:-sockshop}" == "trainticket" ]]; then
-        URL="${PROBE_URL:-http://localhost:8080/index.html}"
+        URL="${PROBE_URL:-http://localhost:8080/api/v1/travelservice/trips/left}"
     else
         URL="${PROBE_URL:-http://localhost:80/catalogue}"
     fi

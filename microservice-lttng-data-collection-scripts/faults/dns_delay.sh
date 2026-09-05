@@ -15,6 +15,26 @@
 # occasional multi-second stalls rather than uniform slowness - which is what a flaky resolver
 # actually looks like.
 #
+# WHAT IT ACTUALLY HITS - MEASURED, and narrower than the name suggests.
+#
+# On the collection VM, from inside an application container:
+#
+#     external name (example.com)     52 ms  ->  2555 ms      (49x)
+#     internal name (catalogue)       52 ms  ->    50 ms      (unchanged)
+#
+# Container-to-container names are answered by Docker's embedded resolver inside the container
+# network namespace and never leave as a UDP/53 packet, so the rule cannot see them. Only
+# lookups that go UPSTREAM are affected.
+#
+# This matters for what the fault means. It is NOT "service discovery is broken" - inter-service
+# resolution is untouched. It is "anything reaching outside the cluster stalls", which is the
+# realistic shape of a flaky upstream resolver. A blueprint that read this as service discovery
+# failing would be keying on something that did not happen.
+#
+# It also affects the HOST, not just containers: during the window `sudo` itself logged
+# "unable to resolve host ... Temporary failure in name resolution". Harmless, and worth knowing
+# when reading anything else the host does inside the injection window.
+#
 # SAFETY. The rule is scoped to UDP port 53 and is removed in cleanup by exact match, so it
 # cannot outlive the run or affect anything else. It is inserted at the TOP of OUTPUT and
 # deleted by the same specification, so a partial cleanup is not possible - either the rule is
@@ -27,7 +47,8 @@
 #
 # Usage:
 #   ./dns_delay.sh inject [subtle|aggressive]
-#   ./dns_delay.sh cleanup | status
+#   ./dns_delay.sh prove | cleanup | status
+#     prove = time real lookups from inside a container and report external vs internal
 set -euo pipefail
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/fault_lib.sh"
 
@@ -64,8 +85,37 @@ case "${1:-}" in
     done
     gt_end
     ;;
+  prove)
+    # Measure the delay, do not just confirm our own rule is loaded.
+    #
+    # "the iptables rule is present" is evidence about what WE did, not about what the system
+    # does - the same mistake that let conn_pool_exhaustion pass while occupying nothing. So
+    # time real lookups, and time an internal name too, because the difference between the two
+    # is the honest description of this fault's reach.
+    C="$(resolve_container "${PROBE_SVC:-front-end}")"
+    if [[ "${STRATA_APP:-sockshop}" == "trainticket" ]]; then
+        C="$(resolve_container "${PROBE_SVC:-ts-gateway-service}")"
+        INTERNAL="${PROBE_INTERNAL:-ts-order-service}"
+    else
+        INTERNAL="${PROBE_INTERNAL:-catalogue}"
+    fi
+    median_ms() {   # median_ms <name> - 5 lookups from inside the container
+        local n="$1" i s e
+        for i in 1 2 3 4 5; do
+            s=$(date +%s%N)
+            docker exec "$C" getent hosts "$n" >/dev/null 2>&1 || true
+            e=$(date +%s%N)
+            echo $(( (e - s) / 1000000 ))
+        done | sort -n | sed -n 3p
+    }
+    EXT="$(median_ms "${PROBE_EXTERNAL:-example.com}")"
+    INT="$(median_ms "$INTERNAL")"
+    echo "external ${EXT} ms, internal ${INT} ms (external is the one this fault reaches)"
+    # A real stall is hundreds of ms at least - the resolver retry timer dominates.
+    [[ "$EXT" =~ ^[0-9]+$ && "$EXT" -ge 300 ]]
+    ;;
   status)
     sudo iptables -S OUTPUT | grep -- "--dport 53" || echo "no dns rule active"
     ;;
-  *) echo "usage: $0 inject [subtle|aggressive] | cleanup | status"; exit 1 ;;
+  *) echo "usage: $0 inject [subtle|aggressive] | prove | cleanup | status"; exit 1 ;;
 esac

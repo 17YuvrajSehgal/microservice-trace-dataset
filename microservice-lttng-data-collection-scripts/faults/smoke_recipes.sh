@@ -43,6 +43,11 @@ dns_rule_present() {
 # uses, so it lands on whatever idle+headroom comes to - 29 on Sock Shop's front-end, something
 # larger on a JVM. What makes it a fault is that it is far below the stock 524288, so that is
 # what to test.
+dns_proof() {
+    dns_rule_present || { echo "iptables rule was not installed"; return 1; }
+    bash "$SD/dns_delay.sh" prove
+}
+
 fd_limit_low() {
     local out lim
     out=$(bash "$SD/fd_exhaustion.sh" status 2>/dev/null)
@@ -77,8 +82,9 @@ evidence_for() {
         data_exfiltration)    echo "container:data-exfiltration:sent [1-9]" ;;
         fork_storm)           echo "container:fork-storm:forked [1-9]" ;;
         nagle_delayed_ack)    echo "container:nagle-delayed-ack:nagle .*median" ;;
-        # not a container: the proof is the rule being in the kernel
-        dns_delay)            echo "command:dns_rule_present" ;;
+        # NOT "the rule is loaded" - that is evidence about what we did, not about what the
+        # system does. The recipe times real lookups instead.
+        dns_delay)            echo "command:dns_proof" ;;
         # not a container either: the proof is the SERVICE's own limit plus a service that
         # actually runs out of descriptors. RLIMIT_NOFILE is per process, so nothing an
         # external process does could ever demonstrate this fault.
