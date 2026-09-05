@@ -15,10 +15,19 @@ export IMG_REPO="${IMG_REPO:-stratatrace-tt}" IMG_TAG="${IMG_TAG:-v1}"    # OUR 
 export COMPOSE_PROJECT_NAME=trainticket COMPOSE_COMPATIBILITY=true
 
 echo "== [1/6] apt: LTTng, Babeltrace2, stress-ng, JDK11+Maven (TT builds from source), tools =="
+# SAME LTTng as the Sock Shop VM. The two applications are being compared, so a difference in
+# tracer version would be a confound sitting underneath every result.
+sudo add-apt-repository -y ppa:lttng/stable-2.15 || true
 sudo apt-get update -qq
 sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq \
   lttng-tools lttng-modules-dkms babeltrace2 liblttng-ust-dev python3-lttngust \
-  stress-ng jq git curl python3-pip openjdk-11-jdk maven >/dev/null
+  stress-ng jq git curl python3-pip openjdk-11-jdk maven \
+  python3-matplotlib >/dev/null
+# python3-matplotlib is NOT optional despite verify_injection treating it as such. v1 asked
+# for --plot on all 50 Sock Shop runs and produced ZERO images: the package was missing and
+# the plotting code swallowed the ImportError in silence. Train Ticket ran on a machine that
+# happened to have it and produced 40. The verification image is the human-readable proof that
+# a fault took effect, and it cannot be regenerated later - Prometheus data is not kept.
 pip3 install -q --break-system-packages pandas pyarrow requests 2>/dev/null || true
 
 echo "== [2/6] Docker + overlay2 (cAdvisor 0.49 can't read the containerd snapshotter store) =="
@@ -26,7 +35,31 @@ if ! command -v docker >/dev/null; then curl -fsSL https://get.docker.com | sudo
 echo '{ "features": { "containerd-snapshotter": false } }' | sudo tee /etc/docker/daemon.json >/dev/null
 sudo systemctl restart docker; sleep 3
 sudo usermod -aG docker "$USER" || true
-sudo modprobe lttng-tracer 2>/dev/null || echo "  (lttng-tracer modprobe deferred)"
+
+# LTTNG KERNEL MODULES: build, then REGISTER, then PROVE they load.
+#
+# This used to be `modprobe || echo "(deferred)"`, which is not a check - it prints a note and
+# carries on with no kernel tracing at all, which is the entire dataset.
+#
+# Measured on stratatrace-ss (kernel 6.17.0-1022-gcp, 2026-09-04): dkms compiled and installed
+# all 44 modules and reported "installed", yet modprobe failed with "Module lttng-tracer not
+# found" and `lttng list --kernel` returned "Failed to list Linux kernel tracepoints". The
+# build was fine; the module index was stale, because dkms dropped the .ko files into
+# updates/dkms/ without a depmod. One `depmod -a` fixed it and all 233 tracepoints appeared.
+#
+# Failing here is cheap. Failing mid-campaign is not.
+echo "--- registering LTTng kernel modules ---"
+sudo depmod -a
+if sudo modprobe lttng-tracer 2>/dev/null; then
+    n_events=$(sudo lttng list --kernel 2>/dev/null | wc -l)
+    echo "    lttng-tracer loaded; $n_events kernel tracepoints available"
+    [ "$n_events" -lt 100 ] && echo "    ** WARNING: expected ~230 tracepoints, got $n_events **"
+else
+    echo "    *** FATAL: lttng-tracer will not load on kernel $(uname -r)."
+    echo "    *** There is no kernel tracing without it, so collection cannot start."
+    echo "    *** Check: sudo dkms status ; sudo find /lib/modules/\$(uname -r) -name 'lttng*'"
+    exit 1
+fi
 
 echo "== [3/6] OTel Java agent jar (copy from the Sock Shop agents dir; same repo) + jaxb-api =="
 mkdir -p "$TT_SCRIPTS_DIR/agents" "$TT_SCRIPTS_DIR/otlp-out"
