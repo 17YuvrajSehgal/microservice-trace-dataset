@@ -27,7 +27,9 @@ TARGET_TRACE_VISIBILITY="${TARGET_TRACE_VISIBILITY:-n/a}"
 REMEDIATION="tc qdisc del root in every stack container netns"
 
 IFACE="${SVC_NET_IFACE:-eth0}"
-stack_containers() { docker ps --format '{{.Names}}' | grep -E '^docker-compose_.*_1$'; }
+# stack_containers now lives in fault_lib.sh and follows STRATA_APP. Hardcoding Sock
+# Shop's compose prefix here matched zero containers on Train Ticket, so the fault
+# injected nothing and the run was labelled as a network fault that never happened.
 
 apply_each() {  # <verb: add|del>  <delay> <jitter> <loss>
     local verb="$1" n=0

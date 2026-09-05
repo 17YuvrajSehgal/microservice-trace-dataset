@@ -170,6 +170,28 @@ workload_status() {
 
 fault_repo_root() { (cd "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)" && pwd); }
 
+# WHICH CONTAINERS MAKE UP THE DEPLOYED STACK.
+#
+# anomaly_net had this hardcoded as `^docker-compose_.*_1$` and matched ZERO containers on
+# Train Ticket, whose containers are `trainticket_*_1`. The fault applied netem to nothing, its
+# ground truth recorded "containers": 0, and the run was collected and labelled as a network
+# fault that never happened.
+#
+# It was caught by verify_injection reporting unconfirmed - the QC gate doing exactly its job -
+# but only after a run had been collected. I audited the ten NEW recipes for precisely this
+# assumption and never checked the original twelve.
+#
+# Train Ticket's mysql and nacos are not prefixed, and they are part of the stack, so they are
+# matched explicitly - the same set the TT driver already lists in CONTAINER_REGEX.
+if [[ "$STRATA_APP" == "trainticket" ]]; then
+    STACK_REGEX="${STACK_REGEX:-^trainticket_.*_1$|^mysql$|^nacos$}"
+else
+    STACK_REGEX="${STACK_REGEX:-^${CONTAINER_PREFIX}_.*_1$}"
+fi
+
+# stack_containers - every container in the deployed stack, one per line
+stack_containers() { docker ps --format '{{.Names}}' | grep -E "$STACK_REGEX"; }
+
 # compose_stack <compose args...>   - the deployed stack, plus $COMPOSE_OVERRIDE if set
 #
 # APP-AWARE ON PURPOSE. A recipe that can only talk to Sock Shop's compose files is a recipe
