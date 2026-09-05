@@ -62,7 +62,7 @@ measure() {   # measure <url> <n> <concurrency>  -> p50 in ms, integer
 # Which defects only reveal themselves when requests overlap.
 concurrency_for() {
     case "$1" in
-        code_lock_across_io|code_event_loop_block|code_serial_awaits) echo 60 ;;
+        code_lock_across_io|code_event_loop_block|code_serial_awaits|code_n_plus_one) echo 60 ;;
         *) echo 1 ;;
     esac
 }

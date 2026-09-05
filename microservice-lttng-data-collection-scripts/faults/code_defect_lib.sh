@@ -78,14 +78,25 @@ EOF
         _CD_OVERRIDE=""
     fi
 
+    # Remove any container compose renamed out of the way in a previous failed recreate.
+    # They are inert but they shadow the expected name and confuse every later lookup.
+    docker ps -a --format '{{.Names}}'         | grep -E "^[0-9a-f]{12}_.*_${DEFECT_SERVICE}_1$"         | xargs -r docker rm -f >/dev/null 2>&1 || true
+
     if ! _cd_compose up -d --no-deps --force-recreate "$DEFECT_SERVICE" >/dev/null 2>&1; then
         echo "[$FAULT_NAME] compose failed to recreate $DEFECT_SERVICE - stack left as it was"
         _cd_compose up -d --no-deps "$DEFECT_SERVICE" >/dev/null 2>&1 || true
         return 1
     fi
 
-    # A defect that never actually ran produces a run labelled as a fault that did not happen.
-    local cname; cname="$(resolve_container "$DEFECT_SERVICE")"
+    # Ask COMPOSE which container is the service, rather than assuming the name.
+    #
+    # Measured: after a failed recreate, compose leaves the old container renamed with a hash
+    # prefix - `0425f955070a_docker-compose_front-end_1`. Looking up the exact name then finds
+    # nothing and reports "did not stay up" for a service that is running perfectly well. That
+    # turned three working defects into failures in one smoke run.
+    local cname
+    cname="$(_cd_compose ps -q "$DEFECT_SERVICE" 2>/dev/null | head -1)"
+    [[ -z "$cname" ]] && cname="$(resolve_container "$DEFECT_SERVICE")"
     sleep 6
     if [[ "$(docker inspect -f '{{.State.Running}}' "$cname" 2>/dev/null)" != "true" ]]; then
         echo "[$FAULT_NAME] $DEFECT_SERVICE did not stay up with STRATA_BUG=$bug - logs:"
