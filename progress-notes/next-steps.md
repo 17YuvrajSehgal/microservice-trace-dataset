@@ -1,49 +1,49 @@
-# Next steps (updated 29-08-2026, after the CPU cluster)
+# Next steps
 
-## State in one line
-Branch `blueprints`, phase 1 = kernel only. **4 blueprints** built and measured on both
-applications: co-tenant contention (v8), host CPU saturation (v2), service CPU throttle (v2),
-datastore wait. Sock Shop **89%** on covered faults, Train Ticket **79%**. Total wrong answers
-across 69 runs: **13**. Findings F1–F10 in `blueprints/docs/FINDINGS-phase1.md`.
+Updated 2026-09-05 (end of the fault-recipe session).
 
-## IMPORTANT standing decisions
-- **A blueprint is a diagnostic guide, not a classifier.** Where a fault looks different on a
-  different architecture, record BOTH pictures as `scenarios`. Do not chase one threshold
-  that fits everything, and do not re-tune per application — that is fitting.
-- **Measure first, then write.** No discriminator enters a blueprint before it is measured on
-  our own data, and every new one must be checked against the OTHER families, not just its
-  own. That check is what E1 exists for.
-- **Runqueue delay is corroboration, never a deciding signal** (F2/F3). Retracted in all
-  three CPU blueprints; do not reinstate without new evidence.
+## Done and verified
 
-## Next (ordered)
-1. **A3 `service-network-path` + A4 `frozen-dependency`, built as one pair.** They own
-   **11 of the 13 remaining errors**. Build together — their discriminators only exist
-   relative to each other and to the datastore blueprint, which is the lesson from F1.
-2. **Fix socket peer attribution first**, since A3/A4 depend on it. F5 says what to change:
-   normalise the flow to a 5-tuple and key on the well-known port; cap gaps at ~200 ms so
-   idle time cannot enter; only measure where our process is the client; and account for
-   **toxiproxy sitting in the datastore path** — the kernel-visible peer is the proxy.
-3. **A5 `healthy-baseline`** — the no-fault runs now pass, but "nothing matches" should be a
-   verdict the library reaches on purpose rather than by nothing firing.
-4. **E3 relative discriminators** — express each signal against the system's own baseline and
-   spread. Absolute cores already transfer; percentages do not.
-5. Tier B when Tier A closes: host memory pressure, host disk saturation, async queue backlog
-   (Sock-Shop-only, so it cannot be cross-app validated — state that limit).
+- **Both VMs are up and bootstrapped.** `stratatrace-ss` (Sock Shop, 21 containers) and
+  `stratatrace-tt` (Train Ticket, 49 containers), same zone `us-east1-d`, same LTTng 2.15.
+- **Ten new fault recipes pass on both applications**, each with a negative control (every
+  check re-run with nothing injected must FAIL): Sock Shop 10/10, Train Ticket 9/9 —
+  `dns_delay` is excluded there, measured, see below.
+- **Five code defects pass on Sock Shop** against their own `STRATA_BUG=none` control:
+  5.14x, 6.14x, 39.98x, 16.41x, plus memory growth.
+- **Matrix populated**: 169 Sock Shop + 134 Train Ticket = 303 runs.
 
-## Don't rediscover
-- **`anomaly_mem` reading as co-tenant is not a rule defect.** The memory-stress recipe runs a
-  `stress-ng` container that genuinely takes ~1 core. Our traces have **no `mm_*` or `kmem_*`
-  tracepoints**, so this cannot be separated from kernel data alone. Waits for a later phase.
-- **Train Ticket CPU caps have no host-level signal at all** (0.8314 → 0.8316). Recorded as a
-  blueprint scenario pointing at cgroup `cpu.stat`. Do not go looking for it in host aggregates.
-- **babeltrace accepts an end hour past 24** and reads it as the next day, but rejects a window
-  whose end is earlier than its begin. Do not "fix" `shift()` with a modulo — that breaks it.
-- Baselines differ per app: Sock Shop idles at 0.48 utilisation on 12 CPUs, Train Ticket at
-  0.82 on 16.
-- Public RCA datasets (RCAEval 735 cases, LEMMA-RCA, LO2) carry **no kernel traces**, verified.
-  Phase-1 external validation is not available; robustness comes from our own 110 runs.
-- Cluster cost: kernel-only pack ~279 s per run against 367–539 s with spans. Re-deciding is
-  free once packs carry `oncpu` — only decoding is expensive.
-- Installing cluster scripts: use `wsl ssh trillium 'cat > path' <<'EOF'`. Inline `$VAR` and
-  `$(...)` through `wsl ssh` get eaten (hit this 3 times this session).
+## Blocking the campaign
+
+1. **Verification targets for the 15 new faults.** They currently record `no_targets`.
+   `faults/measure_targets.sh` is written and needs one calibration pass per app (~1 h each).
+   Register only what measurably moves — plausible PromQL would look like verification while
+   confirming nothing.
+2. **Train Ticket has no seeded data.** Its bootstrap ends with "seed TT data (empty DBs →
+   search returns [])". No seeding script exists. `load_generator.py --probe` has never been
+   run against this stack.
+3. **Pre-registration.** `fault_catalog.md` has cards for F1–F12 only. The 15 new families have
+   no pre-registered modality predictions, and predictions freeze when Phase 2 starts. This is
+   a research decision, not an implementation one.
+
+## Open decisions
+
+- **Run counts are uneven: 169 vs 134.** The gap is code defects (25, they patch Sock Shop's
+  own source), `queue_backlog` (5, no broker in TT), `dns_delay` (5, TT sends no DNS).
+  The clean fix for the last is a TT-native member of the same family — impair **Nacos** so
+  discovery is slow there in the way DNS is slow here. Not written.
+- **Archive disks.** Both VMs have a 1 TB `archive` disk attached; neither appears mounted.
+  v1 was 1.19 TB gzipped, which will not fit 1 TB — transfer to Trillium has to be incremental.
+- **`AUDIT_KERNEL_TIMEOUT` is deliberately unset.** The kernel step is the only part of the
+  audit whose cost scales with the whole trace. Measure it on the first real v2 run and set it
+  then; guessing wastes hours or truncates every audit.
+
+## Facts measured this session, worth not rediscovering
+
+| | Sock Shop | Train Ticket |
+|---|---|---|
+| front-door idle descriptors | 21 | 125 (JVM) |
+| MySQL `max_connections` | 151 (5.7) | 2000 (8.0) |
+| DNS packets / 400 requests | 54 | **0** (Nacos discovery) |
+| compose network | `docker-compose_default` | `trainticket_my-network` |
+| `fd_exhaustion` symptom | slows, 0 errors | fails, 357/600 errors |
