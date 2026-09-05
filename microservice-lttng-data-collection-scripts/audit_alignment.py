@@ -32,6 +32,7 @@ import os
 import re
 import shutil
 import subprocess
+import time
 import sys
 
 UTC = dt.timezone.utc
@@ -237,7 +238,7 @@ def container_tid_map(meta_dir):
     return tids
 
 
-def audit_kernel(kernel_dir, t0, t1, tid_map, max_lines):
+def audit_kernel(kernel_dir, t0, t1, tid_map, max_lines, timeout_s=None):
     bt = shutil.which("babeltrace2")
     if not bt:
         return None, "babeltrace2 not on PATH - run this on the collection VM"
@@ -254,9 +255,26 @@ def audit_kernel(kernel_dir, t0, t1, tid_map, max_lines):
     ev_re = re.compile(r"(\w+): \{ cpu_id = \d+ \}, \{ pid = (\d+), tid = (\d+), procname = \"([^\"]*)\"")
     tid_to_container = {t: c for c, ts in (tid_map or {}).items() for t in ts}
     counts, samples, total = {}, [], 0
+    cut_short = False
+    # A TIME BOUND, because this is the only step in the audit whose cost scales with the whole
+    # trace rather than with the window it is auditing.
+    #
+    # The trimmer takes --begin/--end, but babeltrace still reads the CTF sequentially to reach
+    # them, so the cost follows total events (millions) and not the couple of seconds we care
+    # about. Unbounded, one slow run stalls an unattended campaign, and across 308 runs this is
+    # the largest single cost in the collection.
+    #
+    # NOT TUNED YET - a sensible default needs a measurement on a real v2 bundle, and the pilot
+    # runs were deleted. This only stops it running away. The verdict says PARTIAL when it
+    # fires, so a cut-short audit can never be mistaken for a clean one.
+    deadline = (time.monotonic() + timeout_s) if timeout_s else None
     try:
         proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, errors="replace")
         for line in proc.stdout:
+            if deadline and time.monotonic() > deadline:
+                cut_short = True
+                proc.kill()
+                break
             m = ev_re.search(line)
             if not m:
                 continue
@@ -270,13 +288,15 @@ def audit_kernel(kernel_dir, t0, t1, tid_map, max_lines):
         proc.wait(timeout=600)
     except (OSError, subprocess.TimeoutExpired) as e:
         return None, f"babeltrace2 failed: {e}"
+    if cut_short:
+        return (total, counts, samples, True), None
     if total == 0:
         # Surface the cause instead of a silent empty result: usually a
         # root-owned CTF (needs the collect_trace.sh chown) or a bt2 error.
         hint = stderr.strip().splitlines()[-1] if stderr.strip() else \
             "0 events in window (check CTF is user-readable and window overlaps the trace)"
-        return (0, counts, samples), hint
-    return (total, counts, samples), None
+        return (0, counts, samples, False), hint
+    return (total, counts, samples, False), None
 
 
 # ----------------------------------------------------------------- meta ----
@@ -308,6 +328,10 @@ def main():
     ap.add_argument("--metrics-dir", default=None)
     ap.add_argument("--pad-s", type=float, default=2.0)
     ap.add_argument("--kernel-max-lines", type=int, default=12)
+    ap.add_argument("--kernel-timeout", type=float, default=None,
+                    help="stop reading the kernel trace after N seconds and report PARTIAL. "
+                         "Unset = read it all. Use inline in a campaign so one slow run cannot "
+                         "stall the queue.")
     args = ap.parse_args()
 
     run = args.run_dir
@@ -377,18 +401,23 @@ def main():
     kernel_dir = os.path.join(run, "kernel", "kernel")
     if os.path.isdir(kernel_dir):
         tid_map = container_tid_map(os.path.join(run, "meta"))
-        result, err = audit_kernel(kernel_dir, t0, t1, tid_map, args.kernel_max_lines)
+        result, err = audit_kernel(kernel_dir, t0, t1, tid_map, args.kernel_max_lines,
+                                   args.kernel_timeout)
         if err:
             verdict["kernel"] = f"SKIPPED ({err})"
             print(f"  ({err})")
         else:
-            total, counts, samples = result
+            total, counts, samples, cut_short = result
             top = sorted(counts.items(), key=lambda kv: -kv[1])[:12]
             for (who, event), n in top:
                 print(f"    {n:>8}  {who:<40} {event}")
             for s in samples:
                 print(f"    | {s}")
-            verdict["kernel"] = f"OK ({total} events in window, {len(counts)} (container,event) groups)"
+            if cut_short:
+                verdict["kernel"] = (f"PARTIAL (stopped after {args.kernel_timeout}s; {total}+ events, "
+                                     f"{len(counts)} (container,event) groups - counts are a LOWER BOUND)")
+            else:
+                verdict["kernel"] = f"OK ({total} events in window, {len(counts)} (container,event) groups)"
     else:
         verdict["kernel"] = "MISSING (no kernel/ dir)"
         print("  (absent)")

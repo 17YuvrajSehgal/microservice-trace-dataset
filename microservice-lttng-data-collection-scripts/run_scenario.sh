@@ -112,7 +112,13 @@ if [[ "$NORMAL" -eq 0 ]]; then
 fi
 
 # 6) cross-modality alignment audit
+# The kernel step is the only part of the audit whose cost scales with the whole trace rather
+# than with the window it audits, so it gets a bound the rest does not need. Left UNSET by
+# default on purpose: the right value needs a measurement on a real v2 bundle, and guessing it
+# would either waste hours or silently truncate every audit. Set AUDIT_KERNEL_TIMEOUT once
+# measured - no code change needed.
 python3 "$SD/audit_alignment.py" "$RUN_DIR" \
-    --load-csv "$HOME/${RUN}_load.csv" --metrics-dir "$HOME/${RUN}_metrics" || true
+    --load-csv "$HOME/${RUN}_load.csv" --metrics-dir "$HOME/${RUN}_metrics" \
+    ${AUDIT_KERNEL_TIMEOUT:+--kernel-timeout "$AUDIT_KERNEL_TIMEOUT"} || true
 
 echo "[$RUN] DONE. bundle=$RUN_DIR verification=$(python3 -c "import json,sys; print(json.load(open('$RUN_DIR/verification.json')).get('verification_status','n/a'))" 2>/dev/null || echo n/a)"
