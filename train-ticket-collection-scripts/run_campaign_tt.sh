@@ -62,11 +62,16 @@ BLAST[error_storm]="$_DB_BLAST"; MODALITY[error_storm]=logs; TRACEVIS[error_stor
 # v2: the matrix lives in ONE file, sourced by both application drivers. v1 had two drivers
 # with two different matrices - 8 of 12 families here, 11 of 12 on the other application - and
 # that, not any deliberate choice, is why the stored run counts came out uneven.
-source "$SD/../microservice-lttng-data-collection-scripts/campaign_matrix.sh"
-# The shared collection tooling lives in the Sock Shop scripts dir. Derived from THIS
-# script's location rather than an env var: STRATA_REPO is not set here, and an unset
-# variable would have made SDD an absolute path to a directory that does not exist.
+# The shared collection tooling lives in the Sock Shop scripts dir. Defined HERE, before first
+# use, and derived from this script's own location.
+#
+# This line used to read `source "$SD/../..."` - and $SD is never set in this script, which
+# defines TTD. Under `set -u` that is a hard failure on the first statement that matters, so the
+# Train Ticket campaign driver has not been runnable since the matrix moved into a shared file.
+# Nothing caught it because nobody had run it: a --dry-run before starting collection did, in
+# about four seconds.
 SDD="$(cd "$TTD/../microservice-lttng-data-collection-scripts" && pwd)"
+source "$SDD/campaign_matrix.sh"
 build_matrix "trainticket"
 
 echo "=== Train Ticket Phase-2 campaign: ${#MATRIX[@]} runs "\
