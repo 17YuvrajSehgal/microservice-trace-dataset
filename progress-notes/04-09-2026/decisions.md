@@ -699,3 +699,42 @@ scope decision.
 implementation was inert, and only a measurement told us. The smoke suite now has a
 `--negative` mode and every check reads the system rather than the injector — but the deeper
 lesson is that "low risk" describes the concept, never the code.
+
+---
+
+## Train Ticket did not need seeding, and I said it did
+
+`vm_bootstrap_tt.sh` ended with *"Next: seed TT data (empty DBs → search returns [])"*. I
+reported that as a campaign blocker without testing it.
+
+Measured on the live stack:
+
+```
+LOGIN   200  {"status":1,"msg":"login success","token":"eyJ..."}
+SEARCH  200  {"data":[{"tripId":{"type":"D","number":"1345"},
+             "startStation":"shanghai","terminalStation":"suzhou",
+             "priceForEconomyClass":"22.5"}]}
+```
+
+Databases: 13 stations, 72 route rows, 10 prices, 5 travels, 2 contacts, 1 user. The services
+self-seed through their own `InitData` classes on first boot against the per-service databases
+`tt-init.sql` creates. The note was stale; it is now corrected in the script, along with the
+symptom to look for if a future stack really does come up empty.
+
+### The booking flow validated under real load
+
+90 s, 20 users: **3725 requests, 3719 ok**.
+
+| journey | endpoint | n | ok |
+|---|---|---|---|
+| search | `trips/left` | 1427 | 100% |
+| search2 | `travel2service/trips/left` | 121 | 100% |
+| browse_orders | `order/refresh` | 541 | 100% |
+| book_pay | `preserve` | 164 | 100% |
+| book_pay | `inside_payment` | 164 | **96%** |
+| login | `users/login` | 20 | 100% |
+
+**Baseline fact that must not be mistaken for a fault later:** `inside_payment` fails about 4%
+of the time at rest under 20 users, and the failures arrive in a tight burst — six 500s inside
+4 ms. Any analysis that treats payment errors during an injection window as evidence of the
+fault has to clear this floor first.
