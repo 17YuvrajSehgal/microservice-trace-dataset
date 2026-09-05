@@ -15,6 +15,17 @@
 # occasional multi-second stalls rather than uniform slowness - which is what a flaky resolver
 # actually looks like.
 #
+# HOW BIG THE STALL IS DEPENDS ON THE IMAGE, NOT ON THE FAULT.
+#
+#     Sock Shop  front-end            52 ms -> 2555 ms
+#     Train Ticket ts-gateway-service 58 ms ->   62-167 ms   (57 queries dropped)
+#
+# Both are working. Sock Shop's container walks three search domains before trying a name
+# absolutely, so one lookup becomes several queries and several chances to be dropped; the
+# gateway image sets `ndots:0` and asks once. Worth knowing before comparing the two
+# applications on this family - the difference is their resolver configuration, not their
+# sensitivity to DNS trouble.
+#
 # WHAT IT ACTUALLY HITS - MEASURED, and narrower than the name suggests.
 #
 # On the collection VM, from inside an application container:
@@ -108,11 +119,26 @@ case "${1:-}" in
             echo $(( (e - s) / 1000000 ))
         done | sort -n | sed -n 3p
     }
+    # THE DECISIVE EVIDENCE IS THE RULE'S OWN PACKET COUNTER, not a latency threshold.
+    #
+    # Measured: the same fault costs 2555 ms on Sock Shop and 62-167 ms on Train Ticket. Both
+    # are working - the TT rule dropped 57 packets during five lookups. The difference is the
+    # container's resolv.conf: Sock Shop's walks three search domains before trying the name
+    # absolutely, so one lookup becomes many queries and many chances to be dropped, while the
+    # gateway image sets ndots:0 and asks once.
+    #
+    # So the magnitude belongs to the IMAGE, not to the fault, and a fixed 300 ms threshold
+    # would have declared a working fault dead on Train Ticket - which is exactly what it did.
+    # The counter rising while a container resolves proves the fault is in the path of real DNS
+    # traffic, on any application.
+    drops() { sudo iptables -L OUTPUT -v -n -x 2>/dev/null | awk '/udp dpt:53/{print $1; exit}'; }
+    D0="$(drops)"
     EXT="$(median_ms "${PROBE_EXTERNAL:-example.com}")"
     INT="$(median_ms "$INTERNAL")"
-    echo "external ${EXT} ms, internal ${INT} ms (external is the one this fault reaches)"
-    # A real stall is hundreds of ms at least - the resolver retry timer dominates.
-    [[ "$EXT" =~ ^[0-9]+$ && "$EXT" -ge 300 ]]
+    D1="$(drops)"
+    DROPPED=$(( ${D1:-0} - ${D0:-0} ))
+    echo "external ${EXT} ms, internal ${INT} ms, queries dropped during the probe: ${DROPPED}"
+    [[ "$DROPPED" -gt 0 ]]
     ;;
   status)
     sudo iptables -S OUTPUT | grep -- "--dport 53" || echo "no dns rule active"
