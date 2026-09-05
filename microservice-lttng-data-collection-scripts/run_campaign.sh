@@ -72,9 +72,20 @@ for entry in "${MATRIX[@]}"; do
     loss=$(bash "$SD/campaign_finish_run.sh" "$RUN_DIR" "$RUN" | tail -1)
     ARCHIVED="${ARCHIVE_DIR:-/mnt/archive/runs}/${recipe}/${RUN}"
 
+    # Read the verdict from wherever the bundle now lives.
+    #
+    # This read $RUN_DIR only. Once runs started being archived, $RUN_DIR no longer exists by
+    # this point, so every fault run recorded n/a in the manifest while its bundle contained a
+    # perfectly good `confirmed`. The data was never affected - only the index - but the
+    # campaign summary and any monitoring built on it were reporting fiction.
     verdict="n/a"
-    [[ -f "$RUN_DIR/verification.json" ]] && verdict=$(python3 -c \
-        "import json;print(json.load(open('$RUN_DIR/verification.json')).get('verification_status','n/a'))" 2>/dev/null || echo n/a)
+    for d in "$RUN_DIR" "$ARCHIVED"; do
+        if [[ -f "$d/verification.json" ]]; then
+            verdict=$(python3 -c \
+                "import json;print(json.load(open('$d/verification.json')).get('verification_status','n/a'))" 2>/dev/null || echo n/a)
+            break
+        fi
+    done
     echo "${RUN},${recipe},${intensity},${workload},${repeat},${verdict},${loss},$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$MANIFEST"
     echo "[$idx/${#MATRIX[@]}] DONE $RUN -> verification=$verdict"
 done
