@@ -54,7 +54,8 @@ for entry in "${MATRIX[@]}"; do
     RUN="${recipe}_${intensity}_${workload}_r${repeat}"
     RUN_DIR="$HOME/traces/${recipe}/${RUN}"
 
-    if [[ -f "$RUN_DIR/meta/runinfo_end.txt" ]]; then
+    # Resumable: a finished run may already have been moved to the archive, so check both.
+    if [[ -f "$RUN_DIR/meta/runinfo_end.txt" ]] ||        [[ -f "${ARCHIVE_DIR:-/mnt/archive/runs}/${recipe}/${RUN}/meta/runinfo_end.txt" ]]; then
         echo "[$idx/${#MATRIX[@]}] SKIP $RUN (already collected)"
         continue
     fi
@@ -66,23 +67,10 @@ for entry in "${MATRIX[@]}"; do
     PROFILE="$workload" "$SD/run_scenario.sh" "$recipe" "$intensity" "$RUN" "$USERS" \
         > "$HOME/${RUN}.log" 2>&1 || echo "[$idx] WARN: run_scenario returned nonzero for $RUN"
 
-    # Compress the kernel CTF streams (~3-4x) now the inline audit has run, so
-    # the campaign footprint stays ~3 GB/run instead of ~9-10 GB and fits the
-    # SSD quota. metadata/index stay uncompressed; derivers gunzip on demand.
-    # Runs sequentially (between runs), so it never perturbs live tracing.
-    if [[ -d "$RUN_DIR/kernel/kernel" ]]; then
-        gzip -q "$RUN_DIR"/kernel/kernel/channel0_* 2>/dev/null || true
-    fi
-
-    # v2: surface event loss in the campaign manifest. LTTng reports discarded events only
-    # at `lttng stop`, and v1 threw that away - so a run that dropped a third of its events
-    # was indistinguishable from a clean one, and every ratio from it was wrong.
-    loss="n/a"
-    [[ -f "$RUN_DIR/meta/event_loss.json" ]] && loss=$(python3 -c \
-        "import json;d=json.load(open('$RUN_DIR/meta/event_loss.json'));print('clean' if d.get('clean') else 'LOSSY:%d' % d.get('discarded_events',0))" 2>/dev/null || echo n/a)
-
-    # v2: package the run so it arrives self-describing, with checksums and a usable/not verdict
-    bash "$SD/package_run.sh" "$RUN_DIR" >/dev/null 2>&1 || true
+    # Package, record event loss, and move off the collection disk - one implementation,
+    # shared with the Train Ticket driver so they cannot drift apart again.
+    loss=$(bash "$SD/campaign_finish_run.sh" "$RUN_DIR" "$RUN" | tail -1)
+    ARCHIVED="${ARCHIVE_DIR:-/mnt/archive/runs}/${recipe}/${RUN}"
 
     verdict="n/a"
     [[ -f "$RUN_DIR/verification.json" ]] && verdict=$(python3 -c \

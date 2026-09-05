@@ -63,12 +63,16 @@ BLAST[error_storm]="$_DB_BLAST"; MODALITY[error_storm]=logs; TRACEVIS[error_stor
 # with two different matrices - 8 of 12 families here, 11 of 12 on the other application - and
 # that, not any deliberate choice, is why the stored run counts came out uneven.
 source "$SD/../microservice-lttng-data-collection-scripts/campaign_matrix.sh"
+# The shared collection tooling lives in the Sock Shop scripts dir. Derived from THIS
+# script's location rather than an env var: STRATA_REPO is not set here, and an unset
+# variable would have made SDD an absolute path to a directory that does not exist.
+SDD="$(cd "$TTD/../microservice-lttng-data-collection-scripts" && pwd)"
 build_matrix "trainticket"
 
 echo "=== Train Ticket Phase-2 campaign: ${#MATRIX[@]} runs "\
 "(baseline ${BASELINE_S}s / injection ${INJECTION_S}s / recovery ${RECOVERY_S}s) ==="
 echo "    (slow_db + error_storm need the stack deployed WITH docker-compose.toxiproxy.yml)"
-[[ ! -f "$MANIFEST" ]] && echo "run_id,recipe,intensity,workload,repeat,target,verification,timestamp_utc" > "$MANIFEST"
+[[ ! -f "$MANIFEST" ]] && echo "run_id,recipe,intensity,workload,repeat,target,verification,event_loss,timestamp_utc" > "$MANIFEST"
 
 idx=0
 for entry in "${MATRIX[@]}"; do
@@ -78,7 +82,9 @@ for entry in "${MATRIX[@]}"; do
 
     RUN="tt_${recipe}_${intensity}_${workload}_r${repeat}"
     RUN_DIR="$HOME/traces/${recipe}/${RUN}"
-    if [[ -f "$RUN_DIR/meta/runinfo_end.txt" ]]; then
+    # Resumable: a finished run may already sit in the archive, so check both.
+    if [[ -f "$RUN_DIR/meta/runinfo_end.txt" ]] || \
+       [[ -f "${ARCHIVE_DIR:-/mnt/archive/runs}/${recipe}/${RUN}/meta/runinfo_end.txt" ]]; then
         echo "[$idx/${#MATRIX[@]}] SKIP $RUN (already collected)"; continue
     fi
     if [[ "$workload" == "burst" ]]; then USERS="$USERS_BURST"; else USERS="$USERS_STEADY"; fi
@@ -101,15 +107,22 @@ for entry in "${MATRIX[@]}"; do
         bash "$TTD/run_scenario_tt.sh" "$recipe" "$intensity" "$RUN" "$USERS" \
         > "$HOME/${RUN}.log" 2>&1 || echo "[$idx] WARN: run_scenario_tt returned nonzero for $RUN"
 
-    # gzip the kernel CTF (~3-4x) between runs so the footprint fits the SSD quota.
-    if [[ -d "$RUN_DIR/kernel/kernel" ]]; then
-        gzip -q "$RUN_DIR"/kernel/kernel/channel0_* 2>/dev/null || true
-    fi
+    # Package, record event loss, move off the collection disk - the SAME step the Sock Shop
+    # driver runs. This driver previously only gzipped: no MANIFEST.json, no checksums, no
+    # usable/not verdict and no event-loss record, so Train Ticket runs would have arrived
+    # materially poorer than Sock Shop ones - the same silent divergence that gave v1 two
+    # different fault matrices.
+    loss=$(bash "$SDD/campaign_finish_run.sh" "$RUN_DIR" "$RUN" | tail -1)
 
+    ARCHIVED="${ARCHIVE_DIR:-/mnt/archive/runs}/${recipe}/${RUN}"
     verdict="n/a"
-    [[ -f "$RUN_DIR/verification.json" ]] && verdict=$(python3 -c \
-        "import json;print(json.load(open('$RUN_DIR/verification.json')).get('verification_status','n/a'))" 2>/dev/null || echo n/a)
-    echo "${RUN},${recipe},${intensity},${workload},${repeat},${disp_target},${verdict},$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$MANIFEST"
+    for d in "$RUN_DIR" "$ARCHIVED"; do
+        if [[ -f "$d/verification.json" ]]; then
+            verdict=$(python3 -c "import json;print(json.load(open('$d/verification.json')).get('verification_status','n/a'))" 2>/dev/null || echo n/a)
+            break
+        fi
+    done
+    echo "${RUN},${recipe},${intensity},${workload},${repeat},${disp_target},${verdict},${loss},$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$MANIFEST"
     echo "[$idx/${#MATRIX[@]}] DONE $RUN -> verification=$verdict"
 done
 
