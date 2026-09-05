@@ -176,8 +176,13 @@ print(f"[pack] {run_id:44s} {gb:6.2f} GB  "
       f"verif={quality['verification']}  "
       f"ns={quality['has_namespace_context']}  mem={quality['has_memory_tracepoints']}  "
       f"img={quality['has_verification_image']}{flag}")
-if not quality["has_verification_image"]:
-    print("       ^ NO verification.png - is matplotlib installed on this VM?")
+# Only warn where an image was actually expected. A `normal` run injects nothing, so it has no
+# verification and no plot - warning there fires on every reference run in the campaign, and a
+# warning that cries wolf 20 times teaches people to skip the column that matters. v1's real
+# failure - matplotlib missing, zero images across 50 Sock Shop runs - is exactly what this
+# line is for, so it has to stay meaningful.
+if quality["verification"] not in ("n/a", "no_targets") and not quality["has_verification_image"]:
+    print("       ^ NO verification.png despite a verified fault - is matplotlib installed?")
 PY
 
 if [[ "$TAR" -eq 1 ]]; then
