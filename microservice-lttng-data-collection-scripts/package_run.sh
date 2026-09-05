@@ -156,8 +156,13 @@ with open(os.path.join(run_dir, "SHA256SUMS"), "w", encoding="utf-8") as f:
 
 gb = total / 1e9
 flag = "" if usable else f"   ** NOT USABLE: {quality['why_not']} **"
+# `loss={clean}` printed True when the trace was CLEAN. Read literally that says the opposite of
+# what it means, and over 300 runs the one line an operator actually scans must not be
+# ambiguous - especially when the dangerous value (loss=False) was the one that looked fine.
+_clean = quality["event_loss"].get("clean")
+_trace = "clean" if _clean is True else ("LOST EVENTS" if _clean is False else "unrecorded")
 print(f"[pack] {run_id:44s} {gb:6.2f} GB  "
-      f"loss={quality['event_loss'].get('clean')}  "
+      f"trace={_trace}  "
       f"verif={quality['verification']}  "
       f"ns={quality['has_namespace_context']}  mem={quality['has_memory_tracepoints']}  "
       f"img={quality['has_verification_image']}{flag}")
