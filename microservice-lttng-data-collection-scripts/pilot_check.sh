@@ -129,8 +129,8 @@ ENABLED="$RUN_DIR/meta/lttng_enabled_kernel.txt"
 # missing when every event carried it. The events are the only authoritative answer.
 if [[ -n "$KCTF" ]]; then
     [[ -s /tmp/pilot_sample.txt ]] || sample_trace "$KCTF" 2000 /tmp/pilot_sample.txt
-    found=$(grep -oE "cgroup_ns|pid_ns|net_ns|ipc_ns|user_ns" /tmp/pilot_sample.txt 2>/dev/null             | sort -u | tr "
-" " ")
+    found=$(grep -oE "cgroup_ns|pid_ns|net_ns|ipc_ns|user_ns" /tmp/pilot_sample.txt 2>/dev/null \
+            | sort -u | tr '\n' ' ')
     if [[ -n "$found" ]]; then
         ok "namespace ids ARE on events: $found"
     else
@@ -158,16 +158,14 @@ fi
 echo
 echo "--- 4. MEMORY + POWER TRACEPOINTS (v2 additions) ---"
 if [[ -n "$KCTF" ]]; then
-    if babeltrace2 "$KCTF" 2>/dev/null | head -400000 | grep -qE "vmscan|writeback"; then
-        ok "memory tracepoints are firing (vmscan/writeback seen)"
-    else
-        note "no vmscan/writeback in the first 400k events - expected on an idle healthy run"
-    fi
-    if babeltrace2 "$KCTF" 2>/dev/null | head -400000 | grep -q "power_cpu"; then
-        ok "power_* tracepoints are firing"
-    else
-        note "no power_cpu events in the first 400k - may be idle-state dependent"
-    fi
+    # same SIGPIPE trap as above: sample to a file, then grep the file
+    sample_trace "$KCTF" 400000 /tmp/pilot_sample_big.txt
+    grep -qE "vmscan|writeback" /tmp/pilot_sample_big.txt \
+        && ok "memory tracepoints are firing (vmscan/writeback seen)" \
+        || note "no vmscan/writeback in the first 400k events - expected on an idle healthy run"
+    grep -q "power_cpu" /tmp/pilot_sample_big.txt \
+        && ok "power_* tracepoints are firing" \
+        || note "no power_cpu events in the first 400k - may be idle-state dependent"
 fi
 
 echo
