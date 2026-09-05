@@ -814,3 +814,48 @@ what "how much of this is happening" actually means.
 
 The re-run with process metrics available has not been read yet. Registration waits for it:
 only candidates that move get written into `verification_targets.json`, with these numbers.
+
+---
+
+## An interrupted run leaves the fault injected
+
+A driver script was killed mid-run, and the Train Ticket VM was left with **two orphaned load
+generators** still driving traffic at a supposedly idle system.
+
+`run_scenario.sh` killed the load generator only on the happy path, and ran the recipe's
+cleanup only if it reached that line. Ctrl-C, a dropped SSH session or a kill left both behind.
+
+The stray load is noise. The stray **fault** is the real problem: the next run would be
+collected with the previous run's fault still active and labelled with its own — a mislabelled
+run nothing downstream can detect, which is the exact failure this campaign is built to avoid.
+Over 300 unattended runs, one dropped connection is enough.
+
+Fixed with an `EXIT`/`INT`/`TERM` trap that kills the load generator and, if the injection
+window is still open, runs the recipe's cleanup. `INJECTED` is set only between inject and
+cleanup, so the trap is a no-op on a normal run.
+
+**Operational note:** drive long runs on the VM with `nohup ... &` rather than through a
+foreground SSH command. The trap makes an interruption safe; not being interrupted is better.
+CLAUDE.md already said this and I had not been doing it.
+
+## End-to-end verification, Sock Shop
+
+A real `run_scenario.sh` with `conn_pool_exhaustion`:
+
+| modality | result |
+|---|---|
+| trace | 50 spans |
+| logs | 5117 lines in window, 23 carrying the trace id |
+| load | 464 client requests |
+| metrics | 1111 series |
+| kernel | 1,885,520 events, 2083 (container,event) groups |
+| clocks | drift **0.002 ms** |
+
+`verification: confirmed` — `db_sockets_held` baseline 4.0 → injection 154.0, and
+`verification.png` written at 21 KB. v1 produced zero such images on Sock Shop; this one is
+real.
+
+Note `sigma=None` on both checks: the baseline is perfectly flat (4 sockets, no variance), so
+the absolute-threshold fallback decided it. That path exists precisely for metrics that sit at a
+constant until a fault moves them, and this is the first time it has been exercised on a v2
+target.
