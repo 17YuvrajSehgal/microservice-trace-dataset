@@ -137,13 +137,33 @@
  "anomaly_disk": [
   {
    "canonical": true,
-   "name": "host_disk_io_time",
-   "promql": "rate(node_disk_io_time_seconds_total[1m])",
+   "name": "host_disk_write_ops",
+   "promql": "rate(node_disk_writes_completed_total[1m])",
    "direction": "increase",
-   "threshold_sigma": 4,
-   "abs_threshold": 0.5,
-   "min_fraction": 0.6,
-   "why": "stress-ng --hdd saturates block I/O. CALIBRATED (wave-2): io_time 0.04->0.66 (16x); 0.5 confirms the containerized fsync stressor; direct I/O added to the recipe for margin."
+   "threshold_sigma": 3,
+   "abs_threshold": 1200,
+   "min_fraction": 0.7,
+   "why": "MEASURED 5 Sept during campaign run anomaly_disk_r5: 578 -> 2058 writes/s (3.56x). Replaces rate(node_disk_io_time_seconds_total[1m]), which failed on all five repeats with a ratio of 0.95x - not because the fault was weak but because io_time is a UTILISATION metric and utilisation was already spoken for. LTTng writes the kernel trace continuously throughout every run at ~53 MB/s, which is exactly the measured baseline of node_disk_written_bytes_total, so the disk is near-saturated before the fault starts and 'fraction of time busy' has nowhere left to climb. Unbounded counters - operations, bytes, queue depth - show the fault plainly."
+  },
+  {
+   "canonical": false,
+   "name": "host_disk_queue_depth",
+   "promql": "rate(node_disk_io_time_weighted_seconds_total[1m])",
+   "direction": "increase",
+   "threshold_sigma": 3,
+   "abs_threshold": 9,
+   "min_fraction": 0.7,
+   "why": "MEASURED: 5.49 -> 12.95 (2.36x). Weighted io_time is queue depth x time, so unlike plain io_time it keeps rising after the device is already busy."
+  },
+  {
+   "canonical": false,
+   "name": "host_disk_write_bytes",
+   "promql": "rate(node_disk_written_bytes_total[1m])",
+   "direction": "increase",
+   "threshold_sigma": 3,
+   "abs_threshold": 90000000.0,
+   "min_fraction": 0.7,
+   "why": "MEASURED: 53.3 -> 133.4 MB/s (2.50x). The 53.3 MB/s baseline is the kernel trace itself."
   }
  ],
  "anomaly_mem": [
