@@ -449,3 +449,102 @@ auto-detected network — but "written to be" is not "shown to be", and that dis
 this whole day was about.
 
 `CAMPAIGN_NEW_FAULTS` stays empty until they pass a Train Ticket smoke run too.
+
+---
+
+## The smoke test was passing faults that occupied nothing
+
+After fd_exhaustion, I asked the same question of every other recipe: **is the evidence coming
+from the thing being attacked, or from the thing attacking it?** Two recipes failed that
+question, and one of them had already passed the suite.
+
+### conn_pool_exhaustion held 400 connections and occupied zero
+
+Measured on the VM while the workload reported "still holding 400/400":
+
+| | |
+|---|---|
+| `max_connections` | 151 |
+| `Threads_connected` | **3** |
+| `Aborted_connects` | **750** |
+| application | HTTP 200 |
+| a fresh external connection | succeeded |
+
+It held raw TCP sockets. MySQL sends its greeting, waits for an auth packet, and aborts the
+connection when none arrives — **a pre-auth socket never counts against `max_connections`**. And
+`getpeername()` still succeeds on a locally-open socket, so the workload's "still holding
+400/400" was simply false.
+
+It passed its smoke test because the evidence check matched the workload's own log line. That
+is the worst failure mode this project has: a run labelled as a fault that never happened,
+undetectable downstream.
+
+Fixed by logging in properly, proving liveness by *using* each connection, and asking the
+server for `max_connections` rather than assuming 151. After:
+
+```
+REFUSED after 149 connections: (1040, 'Too many connections')
+server reports Threads_connected=152/151
+new external connection: ERROR 1040 (HY000): Too many connections
+after cleanup: Threads_connected 3
+```
+
+This needs a MySQL driver, so workloads now run `stratatrace-workload:v1` instead of stock
+`python:3.12-slim`. `cryptography` is in the image because MySQL 8 (Train Ticket) defaults to
+`caching_sha2_password` — without it the recipe would work on Sock Shop and fail on Train
+Ticket, the exact asymmetry v2 exists to remove.
+
+### dns_delay works, but reaches less than its name suggests
+
+| lookup from inside a container | before | during |
+|---|---|---|
+| external (`example.com`) | 52 ms | **2555 ms** |
+| internal (`catalogue`) | 52 ms | 50 ms |
+
+Docker's embedded resolver answers container-to-container names inside the network namespace,
+so they never leave as a UDP/53 packet and an OUTPUT rule cannot see them.
+
+So this is **not** "service discovery is broken" — inter-service resolution is untouched. It is
+"anything reaching outside the cluster stalls". A blueprint reading it as service discovery
+failing would key on something that never happened.
+
+Its check was `iptables -S | grep --dport 53` — evidence about what *we* did, not what the
+system does. Same mistake as conn_pool_exhaustion. It now times real lookups.
+
+Side effect worth knowing: the host's own resolution fails during the window too (`sudo` logged
+"unable to resolve host"). Harmless, but it means host-side measurements inside an injection
+window are suspect.
+
+### The two that were fine, checked rather than assumed
+
+- **lock_contention** genuinely reaches the kernel: **201,149 futex syscall events in 5 s**
+  across 17 threads, counted with LTTng itself. Uncontended mutexes never leave userspace, so
+  this was a real risk, not a formality.
+- **nagle_delayed_ack** carries its own control in the same run: stalled median **99.30 ms**
+  against `TCP_NODELAY` at **0.51 ms**.
+
+### The rule this produced
+
+A recipe's evidence must come from the system, not from the recipe. Three of ten checks were
+reading the injector's self-report, and two of those three were reporting fiction.
+
+## Train Ticket VM bootstrapped
+
+49 containers up. Two measurements that immediately changed the plan:
+
+- The network is **`trainticket_my-network`**, not `trainticket_default`.
+- `ts-gateway-service` sits at **125 descriptors at idle** against a 524288 limit. The fixed
+  `nofile=64` that suited Sock Shop's Node front-end (21 idle) would have killed it outright —
+  which is exactly why fd_exhaustion now measures before it sets.
+
+Also caught before running: fd_exhaustion's Train Ticket probe pointed at `:8080/index.html`,
+which nginx serves as a static file without ever touching the gateway. The target's descriptor
+count would not have moved and the fault would have looked dead. It goes through `/api/v1/*`
+now.
+
+The Sock Shop bootstrap's two hard-won fixes were missing from the Train Ticket one and are now
+ported: `depmod -a` with a real failure gate (the old code was `modprobe || echo "(deferred)"`,
+which carries on with no kernel tracing at all), and `python3-matplotlib` (v1 produced zero
+verification images on Sock Shop because of its absence). Plus the LTTng 2.15 PPA, so both VMs
+run the same tracer — comparing two applications across two tracer versions would put a
+confound under every result.
