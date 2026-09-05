@@ -123,6 +123,35 @@ Two things that bite: `data/packs/allpacks` is 86 **symlinks** into the other pa
 its paths go stale it silently falls back to babeltrace 2.0.4, which cannot read our traces.
 Check `tools/bt21.sh --version` says 2.1.2.
 
+## v2 collection VMs (as of 2026-09-04)
+
+Project **`teleeporter`**, zone **us-east1-d**, billing account 017712-7348A8-7FAB01.
+
+| VM | Machine | Disks | State |
+|---|---|---|---|
+| `stratatrace-ss` | n2-custom-12-40960 (12 vCPU / 40 GB) | 200 GB pd-balanced + 1 TB pd-standard archive | RUNNING |
+| `stratatrace-tt` | n2-standard-16 (16 vCPU / 64 GB) | 200 GB pd-balanced + 1 TB pd-standard archive | STOPPED until Sock Shop finishes |
+
+Both match v1's machine shapes. **Both are in the same zone**, which v1 was not (Sock Shop
+us-east1, Train Ticket us-east4) - that removes a confound, since v1 could not tell an
+application difference from a machine/region difference.
+
+Why `teleeporter` and not a fresh project: quota. A new project starts at 12 CPUs all-regions
+and 250 GB SSD; `teleeporter` already has 32 CPUs, 500 GB SSD, 4096 GB disk, so both VMs fit
+with no quota request. The v1 project `yuvraj-msc` is unrecoverable - its owner account
+`yuvraj.sehgal.gcp@gmail.com` has been deleted.
+
+Disk split is deliberate: LTTng writes to the fast pd-balanced boot disk, gzipped runs are
+moved to the pd-standard archive between runs. pd-standard counts against DISKS_TOTAL_GB
+rather than the much smaller SSD quota.
+
+Two things measured on the VM that change the plan:
+- **no `lock_*` tracepoints** (stock Ubuntu kernels lack the lock debugging). Kernel lock
+  contention is not collectable; the lock blueprint is about user-level `futex` locks.
+- **`power_cpu_frequency` / `power_cpu_idle` ARE available** and are now in the profile.
+- LTTng 2.15 builds on kernel 6.17, but needs `depmod -a` after the dkms install or
+  `lttng list --kernel` fails - vm_bootstrap.sh now does this and verifies it.
+
 ## Environment note
 
 The dataset collection VM is a GCP Ubuntu 24.04 box with LTTng 2.15,
