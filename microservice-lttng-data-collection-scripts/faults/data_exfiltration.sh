@@ -37,6 +37,13 @@ TARGET_TRACE_VISIBILITY="${TARGET_TRACE_VISIBILITY:-blind_spot}"
 REMEDIATION="identify the process and its destination; egress filtering"
 
 CONTAINER="data-exfiltration"
+SINK="data-exfiltration-sink"
+# The bytes have to cross a real interface or the fault has no network signature at all - the
+# first version sent to 127.0.0.1 inside its own container and measured 0.0000 on
+# container_network_transmit_bytes_total while reporting 839 MB sent. Same network the
+# application uses, so the traffic is carried the same way its traffic is.
+NETWORK="${NETWORK:-$(docker network ls --format '{{.Name}}' | grep -m1 -E '^(docker-compose|trainticket).*|.*_default$' || echo bridge)}"
+SINK_PORT="${SINK_PORT:-18097}"
 
 case "${1:-}" in
   inject)
@@ -48,10 +55,14 @@ case "${1:-}" in
       aggressive) RATE="${RATE:-40}" CHUNK="${CHUNK:-64}" CPUS="${CPUS:-1.0}" ;;
       *) echo "unknown intensity: $INTENSITY"; exit 1 ;;
     esac
-    workload_start "$CONTAINER" data_exfiltration.py "$CPUS" -- "$RATE" "$CHUNK"
-    gt_begin "$INTENSITY" "{\"rate_mb_per_s\": $RATE, \"chunk_kb\": $CHUNK, \"cpus_cap\": $CPUS, \"container\": \"$CONTAINER\", \"note\": \"benign simulation; sink is a local listener, nothing leaves the host\"}"
+    # The sink first, so the sender has somewhere to go the moment it starts.
+    workload_start "$SINK" data_exfiltration.py 0.5 \
+        --network "$NETWORK" -- 1 1 - "$SINK_PORT"
+    workload_start "$CONTAINER" data_exfiltration.py "$CPUS" \
+        --network "$NETWORK" -- "$RATE" "$CHUNK" "$SINK" "$SINK_PORT"
+    gt_begin "$INTENSITY" "{\"rate_mb_per_s\": $RATE, \"chunk_kb\": $CHUNK, \"cpus_cap\": $CPUS, \"container\": \"$CONTAINER\", \"sink_container\": \"$SINK\", \"network\": \"$NETWORK\", \"note\": \"benign simulation; the sink is a container on this host, so nothing leaves it - but the bytes cross a real veth, which the first version did not\"}"
     ;;
-  cleanup)  workload_stop "$CONTAINER"; gt_end ;;
-  status)   workload_status "$CONTAINER" ;;
+  cleanup)  workload_stop "$CONTAINER"; workload_stop "$SINK"; gt_end ;;
+  status)   workload_status "$CONTAINER"; workload_status "$SINK" ;;
   *) echo "usage: $0 inject [subtle|aggressive] | cleanup | status"; exit 1 ;;
 esac

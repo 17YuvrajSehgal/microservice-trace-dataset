@@ -93,7 +93,9 @@ evidence_for() {
         # left 39% of capacity free.
         conn_pool_exhaustion) echo "container:conn-pool-exhaustion:saturated=yes" ;;
         resource_abuse)       echo "container:resource-abuse:hashes [1-9]" ;;
-        data_exfiltration)    echo "container:data-exfiltration:sent [1-9]" ;;
+        # The SINK's count, not the sender's. Same rule as everywhere else today: the sender
+        # reported 839 MB while zero bytes crossed any interface.
+        data_exfiltration)    echo "container:data-exfiltration-sink:received [1-9]" ;;
         fork_storm)           echo "container:fork-storm:forked [1-9]" ;;
         nagle_delayed_ack)    echo "container:nagle-delayed-ack:nagle .*median" ;;
         # NOT "the rule is loaded" - that is evidence about what we did, not about what the
@@ -114,7 +116,7 @@ leftovers_for() {   # what must be GONE after cleanup
         deadlock)             echo "deadlock" ;;
         conn_pool_exhaustion) echo "conn-pool-exhaustion" ;;
         resource_abuse)       echo "resource-abuse" ;;
-        data_exfiltration)    echo "data-exfiltration" ;;
+        data_exfiltration)    echo "data-exfiltration data-exfiltration-sink" ;;
         fork_storm)           echo "fork-storm" ;;
         nagle_delayed_ack)    echo "nagle-delayed-ack" ;;
         *) echo "" ;;
@@ -229,9 +231,16 @@ d=json.load(open('$gt'))['fault']
 sys.exit(0 if d.get('injection_end_utc') else 1)" 2>/dev/null; then
         echo "  FAIL  cleanup did not close the injection window"; fail=$((fail+1)); continue
     fi
-    left=$(leftovers_for "$r")
-    if [[ -n "$left" ]] && docker ps -a --format '{{.Names}}' | grep -qx "$left"; then
-        echo "  FAIL  container '$left' still present after cleanup"; fail=$((fail+1)); continue
+    # leftovers_for may name MORE THAN ONE container - data_exfiltration runs a sender and a
+    # sink. `grep -qx` against the whole string matched neither, so a leaked sink would have
+    # gone unnoticed.
+    leftover_found=""
+    for left in $(leftovers_for "$r"); do
+        if docker ps -a --format '{{.Names}}' | grep -qx "$left"; then leftover_found="$left"; fi
+    done
+    if [[ -n "$leftover_found" ]]; then
+        echo "  FAIL  container '$leftover_found' still present after cleanup"
+        fail=$((fail+1)); continue
     fi
     if [[ "$r" == "dns_delay" ]] && dns_rule_present; then
         echo "  FAIL  dns rule survived cleanup - it would poison every later run"
