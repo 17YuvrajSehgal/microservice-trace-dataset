@@ -207,3 +207,66 @@ Worth recording, because a checker that cries wolf is worse than no checker.
 
 2.25 GB uncompressed for a 60 s run, so roughly 9 GB for a 240 s campaign run and ~2.8 TB
 across 308 runs, gzipping to ~700–900 GB. That fits the 1 TB archive disk.
+
+### The fault pilot: 16 passed, 0 failed, 0 warnings
+
+`svc_mem_cap aggressive`, `KERNEL_MEM=1`, 165 s. This is the run that exercises everything the
+healthy run could not.
+
+| | |
+|---|---|
+| kernel | 12 streams, 200k+ events |
+| spans | 768 from 6 services |
+| logs | 12 containers, 458,854 lines |
+| metrics | 430 series files |
+| event loss | **zero** |
+| namespace ids on events | cgroup_ns, ipc_ns, net_ns, pid_ns, user_ns |
+| memory tracepoints | **firing** (vmscan/writeback seen) |
+| power tracepoints | **firing** |
+| cgroup counters | 14 containers, `memory.events` present |
+| `ground_truth.json` | present |
+| **`verification.png`** | **present** |
+
+That last line closes the v1 gap for good: Sock Shop produced **zero** images across 50 runs,
+and now produces one on the first fault run attempted.
+
+### Size, measured rather than estimated — and it changes the disk plan
+
+| | |
+|---|---|
+| 165 s run, memory tracepoints on | **18.9 GB raw** |
+| kernel streams gzipped | 18.1 GB → **1.8 GB (10.1x)** |
+| a 240 s campaign run | **28 GB raw, 3.9 GB gzipped** |
+| 308 runs | **8.5 TB raw, 1.19 TB gzipped** |
+| what the 1 TB archive holds | **~259 gzipped runs** |
+
+Two things follow.
+
+**Memory tracepoints roughly triple the volume.** The healthy 60 s run without them was
+2.25 GB; scaled to 165 s that would be ~6 GB, against 18.9 GB measured. That is the real cost
+of answering the memory question.
+
+**gzip does better than we assumed** — 10.1x on the CTF streams, not the 3–4x written in the
+spec. That is what makes this affordable at all.
+
+**But 1.19 TB gzipped does not fit the 1 TB archive.** The campaign cannot simply accumulate
+locally. Options, cheapest first:
+
+1. transfer to Trillium incrementally and delete locally as we go (the archive then only needs
+   to hold a working window, not the whole campaign)
+2. grow the archive disk — `pd-standard` counts against DISKS_TOTAL_GB (4096), so there is
+   room without a quota request
+3. enable memory tracepoints only on the families that need them, which halves the total but
+   reintroduces a profile split
+
+Recommendation: (1) plus (2). Incremental transfer is needed anyway, and growing the disk is
+free of quota friction.
+
+### A campaign-duration finding
+
+`audit_alignment.py` took **over 6 minutes** on this run, because it decodes the trace and the
+trace is 3x bigger with memory events on. Run inline per run, that is ~30 hours across 308
+runs — as much as the collection itself.
+
+The audit does not have to be inline. We keep the raw traces, so it can run on the cluster
+afterwards. Worth moving before the campaign starts.
