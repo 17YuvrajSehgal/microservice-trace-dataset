@@ -109,10 +109,10 @@
    "name": "host_cpu_nonidle",
    "promql": "100 - (avg(rate(node_cpu_seconds_total{mode=\"idle\"}[1m])) * 100)",
    "direction": "increase",
-   "threshold_sigma": 5,
+   "threshold_sigma": 2.5,
    "abs_threshold": 80,
    "min_fraction": 0.8,
-   "why": "host-wide stress-ng saturates all cores (node-exporter, app-agnostic - identical to Sock Shop)."
+   "why": "MEASURED 5 Sept on stratatrace-tt run r1: baseline 51.1% CPU with std 14.75, injection 97.3%, and 100% of injection samples above the 80% absolute threshold. It read `borderline` on sigma alone.\nThe 5-sigma gate is UNSATISFIABLE here, not merely strict: 51.1 + 5 x 14.75 = 124.9% CPU, and CPU stops at 100. Train Ticket runs 40 JVMs, so its idle CPU varies by +/-15 points where Sock Shop's barely moves - and sigma is delta divided by that noise, so the same real saturation scores far lower here. Lowered to 2.5 (measured 3.13), which is a reachable gate rather than a looser one.\nhost-wide stress-ng saturates all cores (node-exporter, app-agnostic - identical to Sock Shop)."
   }
  ],
  "anomaly_mem": [

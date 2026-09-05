@@ -135,6 +135,18 @@ def analyze(samples, t_start, t_end, baseline_s, recovery_s, target, settle_s=0)
         "delta_sigma": (round(delta_sigma, 3) if delta_sigma is not None else None),
         "fraction_above_threshold": round(fraction, 3),
         "n_baseline": len(base), "n_injection": len(inj), "n_recovery": len(rec),
+        # WHAT VALUE THE SIGMA GATE ACTUALLY DEMANDS.
+        #
+        # Two families read `borderline` on sigma while their faults were unmistakable, and in
+        # both cases the gate was not strict but IMPOSSIBLE: Train Ticket's anomaly_cpu needed
+        # 124.9% CPU (baseline 51.1, std 14.75, 5 sigma) and Sock Shop's dependency_outage
+        # needed -0.0008 cores. Sigma is delta divided by baseline noise, so a noisy baseline
+        # silently raises the bar past the metric's own range.
+        #
+        # Recording the demanded value makes that visible in the bundle instead of requiring
+        # someone to recompute it from three other fields.
+        "sigma_required_value": (round(b_mean + sig_thr * b_std, 6) if direction == "increase"
+                                 else round(b_mean - sig_thr * b_std, 6)),
         "direction_ok": direction_ok, "sigma_ok": sigma_ok,
         "fraction_ok": fraction_ok, "passed": passed,
         "expected_to_fail": target.get("expected_to_fail", False),

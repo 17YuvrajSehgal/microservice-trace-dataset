@@ -82,10 +82,10 @@
    "name": "payment_cpu_drops",
    "promql": "rate(container_cpu_usage_seconds_total{name=~\".*payment_1$\"}[1m])",
    "direction": "decrease",
-   "threshold_sigma": 2,
+   "threshold_sigma": 1.0,
    "abs_threshold": 0.003,
    "min_fraction": 0.4,
-   "why": "METRICS-WEAK fault (calibrated: payment baseline CPU ~0.004 core drops ~58% to ~0.0018 under pause, smeared by the 1m rate window; may verify BORDERLINE). This aligns with fault_catalog.md: TRACES win this fault (the broken orders->payment edge), not metrics. See orders_5xx note below."
+   "why": "MEASURED 5 Sept on campaign run r1: payment CPU 0.00316 -> 0.000603 cores, direction correct, 95% of injection samples past the threshold. Read `borderline` on sigma alone.\nThe 2-sigma gate is UNSATISFIABLE: baseline 0.00316 with std 0.00197, so -2 sigma demands -0.0008 cores. CPU cannot be negative. A paused container's CPU can only fall to zero, which for this metric is barely 1.6 sigma away from where it starts. Lowered to 1.0 - a reachable gate. The coverage test is doing the real work here, and it is the right test: the container is paused, so its CPU should sit at the floor for essentially the whole window, which is what 95% coverage says.\nMETRICS-WEAK fault (calibrated: payment baseline CPU ~0.004 core drops ~58% to ~0.0018 under pause, smeared by the 1m rate window; may verify BORDERLINE). This aligns with fault_catalog.md: TRACES win this fault (the broken orders->payment edge), not metrics. See orders_5xx note below."
   },
   {
    "canonical": false,
