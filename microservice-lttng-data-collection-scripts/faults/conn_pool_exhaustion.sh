@@ -94,8 +94,15 @@ case "${1:-}" in
       aggressive) CONNS="${CONNS:-auto}" ;;
       *) echo "unknown intensity: $INTENSITY"; exit 1 ;;
     esac
+    # THE HOLDER NEEDS MORE DESCRIPTORS THAN THE SERVER HAS SLOTS.
+    #
+    # Docker gives a container nofile=1024 by default. On Train Ticket, MySQL 8 allows 2000
+    # connections, so the holder ran out of its OWN descriptors at 1020 and left the server
+    # 39% free - a fault that reported a big number and squeezed nothing. Sock Shop hid this
+    # because its MySQL 5.7 stops at 151, well under the default.
     workload_start "$CONTAINER" conn_pool_exhaustion.py 1.0 \
-        --network "$NETWORK" -- "$DB_HOST" "$DB_PORT" "$CONNS" "$DB_USER" "$DB_PASSWORD"
+        --network "$NETWORK" --ulimit "nofile=${HOLDER_NOFILE:-8192}:${HOLDER_NOFILE:-8192}" \
+        -- "$DB_HOST" "$DB_PORT" "$CONNS" "$DB_USER" "$DB_PASSWORD"
     gt_begin "$INTENSITY" "{\"db_host\": \"$DB_HOST\", \"db_port\": $DB_PORT, \"connections_target\": \"$CONNS\", \"db_user\": \"$DB_USER\", \"container\": \"$CONTAINER\", \"network\": \"$NETWORK\", \"mechanism\": \"authenticated connections held until the server refuses; counts read back from the server with SHOW STATUS, not from the holder\"}"
     ;;
   cleanup)  workload_stop "$CONTAINER"; gt_end ;;

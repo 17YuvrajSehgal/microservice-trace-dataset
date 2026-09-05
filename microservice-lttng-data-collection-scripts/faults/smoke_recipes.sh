@@ -86,7 +86,10 @@ evidence_for() {
         # The first version held pre-auth sockets that MySQL threw away; it reported holding 400
         # while the server reported Threads_connected=3. The evidence has to come from the thing
         # being attacked, so match on the server's own SHOW STATUS reading.
-        conn_pool_exhaustion) echo "container:conn-pool-exhaustion:server Threads_connected=[1-9][0-9]" ;;
+        # saturated=yes means the SERVER refused a connection. A large Threads_connected does
+        # not: on Train Ticket it read 1221 against a 2000 ceiling, which looks like success and
+        # left 39% of capacity free.
+        conn_pool_exhaustion) echo "container:conn-pool-exhaustion:saturated=yes" ;;
         resource_abuse)       echo "container:resource-abuse:hashes [1-9]" ;;
         data_exfiltration)    echo "container:data-exfiltration:sent [1-9]" ;;
         fork_storm)           echo "container:fork-storm:forked [1-9]" ;;

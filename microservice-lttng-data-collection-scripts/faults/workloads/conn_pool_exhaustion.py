@@ -118,10 +118,23 @@ def main():
                 break
             time.sleep(0.05)
 
+    # SATURATED means the SERVER refused, not that we opened a lot of sockets.
+    #
+    # Measured on Train Ticket: MySQL 8 allows 2000 connections and the holder container's own
+    # RLIMIT_NOFILE is 1024, so it topped out at 1020 held / 1221 connected and never reached
+    # the ceiling. "1221" is a big number that looks like success and is not - the server had
+    # 39% of its capacity free and the application was never squeezed. The recipe raises the
+    # holder's own limit now, and this line reports the honest verdict either way.
     st = server_status(monitor)
-    print(f"  holding {len(held)} connections, {refused} refusals; "
+    saturated = "yes" if refused > 0 else "no"
+    print(f"  holding {len(held)} connections, {refused} refusals, saturated={saturated}; "
           f"server reports Threads_connected={st.get('Threads_connected', '?')}/"
           f"{st.get('max_connections', '?')}", flush=True)
+    if saturated == "no":
+        print(f"  WARNING: the server never refused. It has "
+              f"{st.get('max_connections', 0) - st.get('Threads_connected', 0)} slots free, so "
+              f"the application is NOT being squeezed. Raise the holder's nofile or CONNS.",
+              flush=True)
 
     if not held:
         # A fault that injected nothing is worse than one that failed loudly, because the run
@@ -143,9 +156,9 @@ def main():
                 except Exception:                                      # noqa: BLE001
                     pass
             st = server_status(monitor)
-            print(f"  still holding {alive}/{len(held)}; server Threads_connected="
-                  f"{st.get('Threads_connected', '?')}/{st.get('max_connections', '?')}",
-                  flush=True)
+            print(f"  still holding {alive}/{len(held)}, saturated={saturated}; "
+                  f"server Threads_connected={st.get('Threads_connected', '?')}/"
+                  f"{st.get('max_connections', '?')}", flush=True)
     except KeyboardInterrupt:
         pass
 
