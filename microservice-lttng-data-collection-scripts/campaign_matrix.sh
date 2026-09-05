@@ -58,9 +58,17 @@ CAMPAIGN_TT_EXCLUDE=(queue_backlog)
 # types." Our 12 families sit in 5 categories and are nearly all "slow because a resource is
 # scarce". These ten add concurrency, resource leaks, security/abuse and configuration.
 #
-# INTENTIONALLY EMPTY until each recipe exists in faults/ AND has passed a pilot smoke run.
-# On a campaign we cannot repeat, an untested recipe is a worse risk than a missing family -
-# so a name only moves into this array once it has been shown to actually inject.
+# All ten now pass the Sock Shop smoke test with per-fault evidence (see faults/smoke_recipes.sh
+# and progress-notes/04-09-2026). STILL EMPTY, on purpose:
+#
+# these families run on BOTH applications, and none of them has been run against Train Ticket.
+# stratatrace-tt exists but is stopped and was never bootstrapped. The recipes are WRITTEN to be
+# app-independent - workload containers, auto-detected network, STRATA_APP in compose_stack -
+# but "written to be" is not "shown to be", and fd_exhaustion needed five rounds to go from the
+# first to the second.
+#
+# On a campaign we cannot repeat, an untested recipe is a worse risk than a missing family.
+# Fill this in after a Train Ticket smoke run, not before.
 CAMPAIGN_NEW_FAULTS=()
 # candidates, in the order they should be written:
 #   concurrency   lock_contention priority_inversion deadlock
@@ -87,10 +95,19 @@ CAMPAIGN_NEW_FAULTS=()
 #   code_serial_awaits     (Node)  pairs with slow_db
 #   code_unbounded_cache   (Node)  pairs with svc_mem_cap
 #
-# EMPTY until each branch builds, starts, serves traffic and shows its symptom in a pilot
-# smoke run. Note these are single-app: the defect lives in one service, so a code bug is
-# 5 runs, not 10.
-CAMPAIGN_CODE_BUGS=()
+# VERIFIED 5 Sept on stratatrace-ss. Each one builds, starts, serves traffic, and measurably
+# misbehaves against its OWN control - the same image with STRATA_BUG=none, so the comparison
+# isolates the defect rather than the rebuild:
+#
+#   code_lock_across_io     5.14x slower  (7 -> 36 ms median, concurrency 60)
+#   code_n_plus_one         6.14x slower  (7 -> 43 ms)
+#   code_event_loop_block  39.98x slower  (93 -> 3718 ms)
+#   code_serial_awaits     16.41x slower  (95 -> 1559 ms)
+#   code_unbounded_cache    memory, not latency - growth is the signal, measured in the run
+#
+# Single-app: the defect lives in one service's source, so a code bug is 5 runs, not 10.
+CAMPAIGN_CODE_BUGS=(code_lock_across_io code_n_plus_one code_event_loop_block
+                    code_serial_awaits code_unbounded_cache)
 
 # build_matrix <app>   ->  fills the array MATRIX with "recipe intensity workload repeat"
 build_matrix() {
