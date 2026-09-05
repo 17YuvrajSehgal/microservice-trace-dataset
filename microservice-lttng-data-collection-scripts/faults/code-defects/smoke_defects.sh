@@ -26,12 +26,20 @@ DEFECTS=("$@")
                                        code_event_loop_block code_serial_awaits \
                                        code_unbounded_cache)
 
-# Which endpoint exercises each defect. catalogue defects sit on the List query path; the
-# front-end ones sit on the shared helper every API module goes through.
-endpoint_for() {
+# Which URL exercises each defect.
+#
+# MEASURE THE CATALOGUE DEFECTS DIRECTLY, NOT THROUGH THE FRONT END. Going via the proxy on
+# port 80 added roughly 35 ms of its own, which completely swamped a serialised 2 ms query -
+# code_lock_across_io measured 0.84x and looked broken. The lock was working; the proxy was
+# louder than the defect. Docker bridge networks are routable from the host on Linux, so we
+# talk to the container directly and the defect is the only thing in the path.
+target_url_for() {
     case "$1" in
-        code_lock_across_io|code_n_plus_one) echo "/catalogue" ;;
-        *) echo "/catalogue" ;;
+        code_lock_across_io|code_n_plus_one)
+            local ip
+            ip=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}'                  "$(docker ps --format '{{.Names}}' | grep -m1 'catalogue_1')" 2>/dev/null)
+            if [[ -n "$ip" ]]; then echo "http://${ip}/catalogue"; else echo "${FRONTEND}/catalogue"; fi ;;
+        *) echo "${FRONTEND}/catalogue" ;;
     esac
 }
 
@@ -49,7 +57,7 @@ measure() {   # measure <path> <n> <concurrency>
         {
             local t0 t1
             t0=$(date +%s%N)
-            curl -sf -m 15 -o /dev/null "${FRONTEND}${path}" 2>/dev/null || true
+            curl -sf -m 15 -o /dev/null "${path}" 2>/dev/null || true
             t1=$(date +%s%N)
             echo $(( (t1 - t0) / 1000000 )) >> "$tmp"
         } &
@@ -79,7 +87,7 @@ for d in "${DEFECTS[@]}"; do
     # survive a checkout made from a Windows working tree. Testing for it reported all five
     # recipes MISSING when every one was present.
     [[ -f "$recipe" ]] || { echo "  MISSING $d"; fail=$((fail+1)); continue; }
-    path=$(endpoint_for "$d")
+    path=$(target_url_for "$d")
     conc=$(concurrency_for "$d")
 
     echo
@@ -88,6 +96,7 @@ for d in "${DEFECTS[@]}"; do
     # control first: same image, defect off. This is the number the fault is compared against.
     bash "$recipe" control >/dev/null 2>&1 || { echo "  FAIL  control would not start"; fail=$((fail+1)); continue; }
     sleep 6
+    path=$(target_url_for "$d")   # re-resolve: the container was just recreated
     base=$(measure "$path" 40 "$conc")
     echo "  control (STRATA_BUG=none): median ${base} ms  (concurrency $conc)"
 
@@ -99,13 +108,14 @@ for d in "${DEFECTS[@]}"; do
     sleep 6
 
     # 1. still up?
-    if ! curl -sf -m 10 -o /dev/null "${FRONTEND}${path}" 2>/dev/null; then
+    if ! curl -sf -m 10 -o /dev/null "${path}" 2>/dev/null; then
         echo "  FAIL  service does not SERVE with the defect on - that is a different fault"
         bash "$recipe" cleanup >/dev/null 2>&1 || true
         fail=$((fail+1)); continue
     fi
 
     # 2. does it change anything?
+    path=$(target_url_for "$d")   # re-resolve after the swap
     with=$(measure "$path" 40 "$conc")
     echo "  defect  (STRATA_BUG on):   median ${with} ms"
 
