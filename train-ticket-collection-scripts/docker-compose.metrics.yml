@@ -28,6 +28,30 @@ services:
   cadvisor:
     image: gcr.io/cadvisor/cadvisor:v0.49.1
     container_name: cadvisor
+    # ENABLE THE `process` METRIC GROUP. cAdvisor v0.49 disables it by default, and its absence
+    # was measured rather than guessed: a calibration pass looking for verification targets found
+    # `container_file_descriptors` and `container_processes` simply not present, which left four
+    # of the new faults with no metric signature at all.
+    #
+    # The default --disable_metrics is:
+    #   advtcp,cpu_topology,cpuset,hugetlb,memory_numa,process,referenced_memory,resctrl,sched,tcp,udp
+    # The flag REPLACES that list rather than adding to it, so re-enabling something means
+    # writing the list back out without it.
+    #
+    # Turned on: process (file descriptors, processes, threads, sockets), tcp and udp (per
+    # container socket-state counts). Left off: sched and referenced_memory, which are the
+    # expensive ones, plus the NUMA/cpuset/hugetlb groups this hardware makes meaningless.
+    #
+    # What this buys, per fault:
+    #   fd_exhaustion         container_file_descriptors pinned at the cap
+    #   conn_pool_exhaustion  the DB's descriptor and socket counts climbing
+    #   fork_storm            container_processes / container_threads
+    #   deadlock              container_threads with none of them running
+    #
+    # Cheap to add now, impossible to add later - the metrics modality of every run in the
+    # campaign is whatever cAdvisor was configured to emit at collection time.
+    command:
+      - --disable_metrics=advtcp,cpu_topology,cpuset,hugetlb,memory_numa,referenced_memory,resctrl,sched
     privileged: true
     volumes:
       - /:/rootfs:ro
