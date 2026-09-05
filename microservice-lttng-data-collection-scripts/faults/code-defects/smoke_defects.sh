@@ -55,8 +55,8 @@ target_url_for() {
 # A defect wrongly declared dead gets tuned or dropped. The measurement has to be trustworthy
 # before its verdict means anything.
 measure() {   # measure <url> <n> <concurrency>  -> p50 in ms, integer
-    python3 "$SD/loadprobe.py" "$1" "${2:-400}" "${3:-60}" 2>/dev/null \n        | tr ' ' '
-' | grep '^p50=' | cut -d= -f2 | cut -d. -f1
+    python3 "$SD/loadprobe.py" "$1" "${2:-400}" "${3:-60}" 2>/dev/null | tr " " "
+" | grep "^p50=" | cut -d= -f2 | cut -d. -f1
 }
 
 # Which defects only reveal themselves when requests overlap.
