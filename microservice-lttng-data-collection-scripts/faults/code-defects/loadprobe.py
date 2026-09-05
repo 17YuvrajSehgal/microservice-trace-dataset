@@ -18,11 +18,12 @@ One process, real threads, keep-alive connections, and only summary numbers on s
     python3 loadprobe.py <url> [requests] [concurrency]
 """
 from __future__ import annotations
+import http.client
 import statistics
 import sys
 import threading
 import time
-import urllib.request
+import urllib.parse
 
 URL = sys.argv[1]
 N = int(sys.argv[2]) if len(sys.argv) > 2 else 400
@@ -35,23 +36,37 @@ work = list(range(N))
 idx = [0]
 
 
+# KEEP-ALIVE MATTERS. Opening a fresh connection per request costs ~25 ms, which is more than
+# ten times the 1.7 ms critical section we are trying to observe. With one connection per
+# thread, request time is dominated by the service - so a lock held across the query shows up
+# instead of hiding inside connection setup.
+_u = urllib.parse.urlparse(URL)
+_HOST, _PORT, _PATH = _u.hostname, _u.port or 80, _u.path or "/"
+
+
 def worker():
-    opener = urllib.request.build_opener()
+    conn = http.client.HTTPConnection(_HOST, _PORT, timeout=20)
     while True:
         with lock:
             if idx[0] >= N:
-                return
+                break
             idx[0] += 1
         t0 = time.perf_counter()
         try:
-            with opener.open(URL, timeout=20) as r:
-                r.read()
+            conn.request("GET", _PATH)
+            conn.getresponse().read()
             dt = (time.perf_counter() - t0) * 1000.0
             with lock:
                 lat.append(dt)
         except Exception:                                              # noqa: BLE001
             with lock:
                 errors[0] += 1
+            try:
+                conn.close()
+                conn = http.client.HTTPConnection(_HOST, _PORT, timeout=20)
+            except Exception:                                          # noqa: BLE001
+                return
+    conn.close()
 
 
 def main():
