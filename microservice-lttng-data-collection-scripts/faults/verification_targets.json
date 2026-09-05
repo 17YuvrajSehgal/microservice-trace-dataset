@@ -1,103 +1,345 @@
 {
-  "_comment": "Pre-registered per-fault target-metric panel (fault_catalog.md §6 realized). For each fault, the Prometheus signal(s) that MUST move if the injection actually took effect. verify_injection.py evaluates these over the baseline vs injection windows and writes a confirmed|borderline|unconfirmed verdict. One target per fault is marked canonical=true (drives the verdict); others are corroborating. Direction: 'increase'|'decrease'. threshold_sigma = min standardized delta over baseline stdev; min_fraction = min share of the injection window past the raw threshold. These are QC gates, NOT the study's modality claims (those live in fault_catalog.md).",
-
-  "_windows": {"baseline_s": 60, "recovery_s": 60, "rate_window": "1m", "settle_s": 30, "_settle_note": "skip the first 30s of the injection window when scoring: 1m-rate-windowed metrics take ~a rate-window to ramp after onset. Campaign runs should use INJECTION_S >= 120 so a clean settled segment remains."},
-
-  "_metric_naming": "CALIBRATED 2026-07-28 against the live stack. Request-duration metric name differs by service runtime: Go/Node services (catalogue, frontend) expose 'http_request_duration_seconds'; Java/Spring services (cart, orders, payment, user, shipping) expose 'request_duration_seconds'. Prometheus job labels are singular for carts ('cart'). cAdvisor container 'name' labels are 'docker-compose_<svc>_1'; carts=docker-compose_carts_1 (regex '.*carts_1$' excludes carts-db). NOTE: this cAdvisor build exposes NO cfs-throttle metric, so svc_cpu_cap verifies via app latency, not throttle counters.",
-
-  "slow_db_catalogue": [
-    {"canonical": true, "name": "catalogue_p95_latency",
-     "promql": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"catalogue\"}[1m])) by (le))",
-     "direction": "increase", "threshold_sigma": 4, "abs_threshold": 0.05, "min_fraction": 0.7,
-     "why": "added DB latency inflates catalogue request duration; DB container metrics stay flat (blind spot)"}
-  ],
-
-  "error_storm_catalogue": [
-    {"canonical": true, "name": "catalogue_5xx_rate",
-     "promql": "sum(rate(http_request_duration_seconds_count{job=\"catalogue\",status_code=~\"5..\"}[1m]))",
-     "direction": "increase", "threshold_sigma": 4, "abs_threshold": 0.5, "min_fraction": 0.6,
-     "why": "broken DB connections surface as 5xx on catalogue-backed routes"}
-  ],
-
-  "svc_cpu_cap_carts": [
-    {"canonical": true, "name": "carts_p95_latency",
-     "promql": "histogram_quantile(0.95, sum(rate(request_duration_seconds_bucket{job=\"cart\"}[1m])) by (le))",
-     "direction": "increase", "threshold_sigma": 3, "abs_threshold": 0.05, "min_fraction": 0.5,
-     "why": "throttled service serves requests slower (this cadvisor build has no cfs-throttle metric, so latency is the QC signal)"},
-    {"canonical": false, "name": "carts_cpu_usage_capped",
-     "promql": "rate(container_cpu_usage_seconds_total{name=~\".*carts_1$\"}[1m])",
-     "direction": "decrease", "threshold_sigma": 2, "abs_threshold": 0.25, "min_fraction": 0.5,
-     "why": "usage pinned at/below the imposed quota"}
-  ],
-
-  "svc_mem_cap_carts": [
-    {"canonical": true, "name": "carts_memory_limit_dropped",
-     "promql": "min(container_spec_memory_limit_bytes{name=~\".*carts_1$\"})",
-     "direction": "decrease", "threshold_sigma": 3, "abs_threshold": 1000000000, "min_fraction": 0.8,
-     "why": "the cap is applied: limit drops from host-total (~42GB) to the cap (<=300MB). Reliable for both intensities. (usage/limit ratio is unusable: uncapped baseline limit = host total.) carts working set is ~545MB, so any cap <=300MB necessarily constrains it."},
-    {"canonical": false, "name": "carts_oom_kills",
-     "promql": "increase(container_oom_events_total{name=~\".*carts_1$\"}[2m])",
-     "direction": "increase", "threshold_sigma": 2, "abs_threshold": 1, "min_fraction": 0.2,
-     "why": "aggressive cap (160MB, below the working set) forces OOM kills; subtle cap causes GC pressure without necessarily OOMing"}
-  ],
-
-  "dependency_outage_payment": [
-    {"canonical": true, "name": "payment_cpu_drops",
-     "promql": "rate(container_cpu_usage_seconds_total{name=~\".*payment_1$\"}[1m])",
-     "direction": "decrease", "threshold_sigma": 2, "abs_threshold": 0.003, "min_fraction": 0.4,
-     "why": "METRICS-WEAK fault (calibrated: payment baseline CPU ~0.004 core drops ~58% to ~0.0018 under pause, smeared by the 1m rate window; may verify BORDERLINE). This aligns with fault_catalog.md: TRACES win this fault (the broken orders->payment edge), not metrics. See orders_5xx note below."},
-    {"canonical": false, "name": "orders_5xx_rate_EXPECTED_BLIND",
-     "promql": "sum(rate(request_duration_seconds_count{job=\"orders\",status_code=~\"5..\"}[1m]))",
-     "direction": "increase", "threshold_sigma": 3, "abs_threshold": 0.1, "min_fraction": 0.3,
-     "why": "CALIBRATION FINDING: stays ~0. docker pause FREEZES payment, so orders' HTTP call HANGS (blocked socket read) rather than fail-fast - the request never completes with an error status inside the window. A frozen dependency is metrics/logs-INVISIBLE while the kernel sees orders threads blocked in read() on the payment socket. This is a concrete instance of the study's kernel-wins thesis; kept as documentation, not a verification gate."}
-  ],
-
-  "queue_backlog": [
-    {"canonical": true, "name": "queue_master_cpu_drops",
-     "promql": "rate(container_cpu_usage_seconds_total{name=~\".*queue-master_1$\"}[1m])",
-     "direction": "decrease", "threshold_sigma": 2, "abs_threshold": 0.004, "min_fraction": 0.5,
-     "why": "calibrated: queue-master baseline CPU ~0.008 core drops ~77% to ~0.0019 under pause (1m-rate-smeared). METRICS-WEAK silent-failure fault: orders keep succeeding, no error anywhere; the real signal is the KERNEL (queue-master cgroup goes quiet while rabbitmq keeps taking inbound) - matches fault_catalog.md's kernel-wins prediction."}
-  ],
-
-  "noisy_neighbor": [
-    {"canonical": true, "name": "neighbor_cpu_active",
-     "promql": "rate(container_cpu_usage_seconds_total{name=~\".*noisy-neighbor.*\"}[1m])",
-     "direction": "increase", "threshold_sigma": 3, "abs_threshold": 0.5, "min_fraction": 0.8,
-     "why": "CALIBRATED & PREMISE VALIDATED (subtle, 1.0-cpu cap): neighbor consumes ~0.75 core (fired; host CPU 28%->45%) while service KPIs stay within normal variance - carts p95 21.8ms->23.1ms (+6%), catalogue p95 4.75ms->4.75ms (0%). The kernel-only showcase: CPU contention is host/kernel-visible but app-metric-blind. This target verifies the fault FIRED; the KPIs-stay-flat premise is the study finding, not a verification gate."}
-  ],
-
-  "anomaly_cpu": [
-    {"canonical": true, "name": "host_cpu_nonidle",
-     "promql": "100 - (avg(rate(node_cpu_seconds_total{mode=\"idle\"}[1m])) * 100)",
-     "direction": "increase", "threshold_sigma": 5, "abs_threshold": 80, "min_fraction": 0.8,
-     "why": "host-wide stress-ng saturates all cores"}
-  ],
-
-  "anomaly_disk": [
-    {"canonical": true, "name": "host_disk_io_time",
-     "promql": "rate(node_disk_io_time_seconds_total[1m])",
-     "direction": "increase", "threshold_sigma": 4, "abs_threshold": 0.5, "min_fraction": 0.6,
-     "why": "stress-ng --hdd saturates block I/O. CALIBRATED (wave-2): io_time 0.04->0.66 (16x); 0.5 confirms the containerized fsync stressor; direct I/O added to the recipe for margin."}
-  ],
-
-  "anomaly_mem": [
-    {"canonical": true, "name": "host_mem_available_drop",
-     "promql": "node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes",
-     "direction": "decrease", "threshold_sigma": 5, "abs_threshold": 0.25, "min_fraction": 0.8,
-     "why": "stress-ng --vm drives MemAvailable down; aggressive ~78% RAM (bounded to avoid OOM-killing lttng) -> MemAvailable ratio < 0.25. Finalize on VM calibration."}
-  ],
-
-  "anomaly_net": [
-    {"canonical": true, "name": "catalogue_p95_latency_net",
-     "promql": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"catalogue\"}[1m])) by (le))",
-     "direction": "increase", "threshold_sigma": 3, "abs_threshold": 0.05, "min_fraction": 0.5,
-     "why": "CALIBRATED (wave-2): host-bridge netem (100ms delay + 3% loss on br-<compose>) inflates every inter-service hop; catalogue p95 (front-end->catalogue->DB) rises. node-NIC throughput is NOT a reliable signal for added latency (internal bridge traffic doesn't traverse the physical NIC)."}
-  ],
-
-  "svc_net_carts": [
-    {"canonical": true, "name": "carts_p95_latency",
-     "promql": "histogram_quantile(0.95, sum(rate(request_duration_seconds_bucket{job=\"cart\"}[1m])) by (le))",
-     "direction": "increase", "threshold_sigma": 3, "abs_threshold": 0.03, "min_fraction": 0.5,
-     "why": "per-container netem inside carts' netns inflates carts request latency; single-service impairment (front-end sees it upstream). Calibrate on the VM."}
-  ]
+ "_comment": "Pre-registered per-fault target-metric panel (fault_catalog.md \u00a76 realized). For each fault, the Prometheus signal(s) that MUST move if the injection actually took effect. verify_injection.py evaluates these over the baseline vs injection windows and writes a confirmed|borderline|unconfirmed verdict. One target per fault is marked canonical=true (drives the verdict); others are corroborating. Direction: 'increase'|'decrease'. threshold_sigma = min standardized delta over baseline stdev; min_fraction = min share of the injection window past the raw threshold. These are QC gates, NOT the study's modality claims (those live in fault_catalog.md). | 5 Sept 2026: entries for the ten new fault families added, every threshold MEASURED with faults/measure_targets.sh on both applications rather than written from the mechanism. Two calibration passes were needed: the first found cAdvisor's process metric group disabled by default, the second found those same metrics reading 0.0000 without pid:host. A metric that exists and is always zero is more dangerous than one that is missing.",
+ "_windows": {
+  "baseline_s": 60,
+  "recovery_s": 60,
+  "rate_window": "1m",
+  "settle_s": 30,
+  "_settle_note": "skip the first 30s of the injection window when scoring: 1m-rate-windowed metrics take ~a rate-window to ramp after onset. Campaign runs should use INJECTION_S >= 120 so a clean settled segment remains."
+ },
+ "_metric_naming": "CALIBRATED 2026-07-28 against the live stack. Request-duration metric name differs by service runtime: Go/Node services (catalogue, frontend) expose 'http_request_duration_seconds'; Java/Spring services (cart, orders, payment, user, shipping) expose 'request_duration_seconds'. Prometheus job labels are singular for carts ('cart'). cAdvisor container 'name' labels are 'docker-compose_<svc>_1'; carts=docker-compose_carts_1 (regex '.*carts_1$' excludes carts-db). NOTE: this cAdvisor build exposes NO cfs-throttle metric, so svc_cpu_cap verifies via app latency, not throttle counters.",
+ "slow_db_catalogue": [
+  {
+   "canonical": true,
+   "name": "catalogue_p95_latency",
+   "promql": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"catalogue\"}[1m])) by (le))",
+   "direction": "increase",
+   "threshold_sigma": 4,
+   "abs_threshold": 0.05,
+   "min_fraction": 0.7,
+   "why": "added DB latency inflates catalogue request duration; DB container metrics stay flat (blind spot)"
+  }
+ ],
+ "error_storm_catalogue": [
+  {
+   "canonical": true,
+   "name": "catalogue_5xx_rate",
+   "promql": "sum(rate(http_request_duration_seconds_count{job=\"catalogue\",status_code=~\"5..\"}[1m]))",
+   "direction": "increase",
+   "threshold_sigma": 4,
+   "abs_threshold": 0.5,
+   "min_fraction": 0.6,
+   "why": "broken DB connections surface as 5xx on catalogue-backed routes"
+  }
+ ],
+ "svc_cpu_cap_carts": [
+  {
+   "canonical": true,
+   "name": "carts_p95_latency",
+   "promql": "histogram_quantile(0.95, sum(rate(request_duration_seconds_bucket{job=\"cart\"}[1m])) by (le))",
+   "direction": "increase",
+   "threshold_sigma": 3,
+   "abs_threshold": 0.05,
+   "min_fraction": 0.5,
+   "why": "throttled service serves requests slower (this cadvisor build has no cfs-throttle metric, so latency is the QC signal)"
+  },
+  {
+   "canonical": false,
+   "name": "carts_cpu_usage_capped",
+   "promql": "rate(container_cpu_usage_seconds_total{name=~\".*carts_1$\"}[1m])",
+   "direction": "decrease",
+   "threshold_sigma": 2,
+   "abs_threshold": 0.25,
+   "min_fraction": 0.5,
+   "why": "usage pinned at/below the imposed quota"
+  }
+ ],
+ "svc_mem_cap_carts": [
+  {
+   "canonical": true,
+   "name": "carts_memory_limit_dropped",
+   "promql": "min(container_spec_memory_limit_bytes{name=~\".*carts_1$\"})",
+   "direction": "decrease",
+   "threshold_sigma": 3,
+   "abs_threshold": 1000000000,
+   "min_fraction": 0.8,
+   "why": "the cap is applied: limit drops from host-total (~42GB) to the cap (<=300MB). Reliable for both intensities. (usage/limit ratio is unusable: uncapped baseline limit = host total.) carts working set is ~545MB, so any cap <=300MB necessarily constrains it."
+  },
+  {
+   "canonical": false,
+   "name": "carts_oom_kills",
+   "promql": "increase(container_oom_events_total{name=~\".*carts_1$\"}[2m])",
+   "direction": "increase",
+   "threshold_sigma": 2,
+   "abs_threshold": 1,
+   "min_fraction": 0.2,
+   "why": "aggressive cap (160MB, below the working set) forces OOM kills; subtle cap causes GC pressure without necessarily OOMing"
+  }
+ ],
+ "dependency_outage_payment": [
+  {
+   "canonical": true,
+   "name": "payment_cpu_drops",
+   "promql": "rate(container_cpu_usage_seconds_total{name=~\".*payment_1$\"}[1m])",
+   "direction": "decrease",
+   "threshold_sigma": 2,
+   "abs_threshold": 0.003,
+   "min_fraction": 0.4,
+   "why": "METRICS-WEAK fault (calibrated: payment baseline CPU ~0.004 core drops ~58% to ~0.0018 under pause, smeared by the 1m rate window; may verify BORDERLINE). This aligns with fault_catalog.md: TRACES win this fault (the broken orders->payment edge), not metrics. See orders_5xx note below."
+  },
+  {
+   "canonical": false,
+   "name": "orders_5xx_rate_EXPECTED_BLIND",
+   "promql": "sum(rate(request_duration_seconds_count{job=\"orders\",status_code=~\"5..\"}[1m]))",
+   "direction": "increase",
+   "threshold_sigma": 3,
+   "abs_threshold": 0.1,
+   "min_fraction": 0.3,
+   "why": "CALIBRATION FINDING: stays ~0. docker pause FREEZES payment, so orders' HTTP call HANGS (blocked socket read) rather than fail-fast - the request never completes with an error status inside the window. A frozen dependency is metrics/logs-INVISIBLE while the kernel sees orders threads blocked in read() on the payment socket. This is a concrete instance of the study's kernel-wins thesis; kept as documentation, not a verification gate."
+  }
+ ],
+ "queue_backlog": [
+  {
+   "canonical": true,
+   "name": "queue_master_cpu_drops",
+   "promql": "rate(container_cpu_usage_seconds_total{name=~\".*queue-master_1$\"}[1m])",
+   "direction": "decrease",
+   "threshold_sigma": 2,
+   "abs_threshold": 0.004,
+   "min_fraction": 0.5,
+   "why": "calibrated: queue-master baseline CPU ~0.008 core drops ~77% to ~0.0019 under pause (1m-rate-smeared). METRICS-WEAK silent-failure fault: orders keep succeeding, no error anywhere; the real signal is the KERNEL (queue-master cgroup goes quiet while rabbitmq keeps taking inbound) - matches fault_catalog.md's kernel-wins prediction."
+  }
+ ],
+ "noisy_neighbor": [
+  {
+   "canonical": true,
+   "name": "neighbor_cpu_active",
+   "promql": "rate(container_cpu_usage_seconds_total{name=~\".*noisy-neighbor.*\"}[1m])",
+   "direction": "increase",
+   "threshold_sigma": 3,
+   "abs_threshold": 0.5,
+   "min_fraction": 0.8,
+   "why": "CALIBRATED & PREMISE VALIDATED (subtle, 1.0-cpu cap): neighbor consumes ~0.75 core (fired; host CPU 28%->45%) while service KPIs stay within normal variance - carts p95 21.8ms->23.1ms (+6%), catalogue p95 4.75ms->4.75ms (0%). The kernel-only showcase: CPU contention is host/kernel-visible but app-metric-blind. This target verifies the fault FIRED; the KPIs-stay-flat premise is the study finding, not a verification gate."
+  }
+ ],
+ "anomaly_cpu": [
+  {
+   "canonical": true,
+   "name": "host_cpu_nonidle",
+   "promql": "100 - (avg(rate(node_cpu_seconds_total{mode=\"idle\"}[1m])) * 100)",
+   "direction": "increase",
+   "threshold_sigma": 5,
+   "abs_threshold": 80,
+   "min_fraction": 0.8,
+   "why": "host-wide stress-ng saturates all cores"
+  }
+ ],
+ "anomaly_disk": [
+  {
+   "canonical": true,
+   "name": "host_disk_io_time",
+   "promql": "rate(node_disk_io_time_seconds_total[1m])",
+   "direction": "increase",
+   "threshold_sigma": 4,
+   "abs_threshold": 0.5,
+   "min_fraction": 0.6,
+   "why": "stress-ng --hdd saturates block I/O. CALIBRATED (wave-2): io_time 0.04->0.66 (16x); 0.5 confirms the containerized fsync stressor; direct I/O added to the recipe for margin."
+  }
+ ],
+ "anomaly_mem": [
+  {
+   "canonical": true,
+   "name": "host_mem_available_drop",
+   "promql": "node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes",
+   "direction": "decrease",
+   "threshold_sigma": 5,
+   "abs_threshold": 0.25,
+   "min_fraction": 0.8,
+   "why": "stress-ng --vm drives MemAvailable down; aggressive ~78% RAM (bounded to avoid OOM-killing lttng) -> MemAvailable ratio < 0.25. Finalize on VM calibration."
+  }
+ ],
+ "anomaly_net": [
+  {
+   "canonical": true,
+   "name": "catalogue_p95_latency_net",
+   "promql": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"catalogue\"}[1m])) by (le))",
+   "direction": "increase",
+   "threshold_sigma": 3,
+   "abs_threshold": 0.05,
+   "min_fraction": 0.5,
+   "why": "CALIBRATED (wave-2): host-bridge netem (100ms delay + 3% loss on br-<compose>) inflates every inter-service hop; catalogue p95 (front-end->catalogue->DB) rises. node-NIC throughput is NOT a reliable signal for added latency (internal bridge traffic doesn't traverse the physical NIC)."
+  }
+ ],
+ "svc_net_carts": [
+  {
+   "canonical": true,
+   "name": "carts_p95_latency",
+   "promql": "histogram_quantile(0.95, sum(rate(request_duration_seconds_bucket{job=\"cart\"}[1m])) by (le))",
+   "direction": "increase",
+   "threshold_sigma": 3,
+   "abs_threshold": 0.03,
+   "min_fraction": 0.5,
+   "why": "per-container netem inside carts' netns inflates carts request latency; single-service impairment (front-end sees it upstream). Calibrate on the VM."
+  }
+ ],
+ "lock_contention": [
+  {
+   "canonical": true,
+   "name": "lock_contention_threads",
+   "promql": "container_threads{name=\"lock-contention\"}",
+   "direction": "increase",
+   "threshold_sigma": 3,
+   "abs_threshold": 8,
+   "min_fraction": 0.6,
+   "why": "MEASURED 5 Sept: 17 threads on both applications, and the series does not exist before injection, so the baseline is 0. A co-located workload fault is confirmed by the workload being there and doing its characteristic thing; the contention itself is a kernel claim, not a metrics one."
+  },
+  {
+   "canonical": false,
+   "name": "lock_contention_cpu",
+   "promql": "sum(rate(container_cpu_usage_seconds_total{name=\"lock-contention\"}[1m]))",
+   "direction": "increase",
+   "threshold_sigma": 3,
+   "abs_threshold": 0.5,
+   "min_fraction": 0.6,
+   "why": "MEASURED: 1.03 cores Sock Shop, 0.95 Train Ticket, against a 1.0 cap."
+  }
+ ],
+ "priority_inversion": [
+  {
+   "canonical": true,
+   "name": "priority_inversion_cpu",
+   "promql": "sum(rate(container_cpu_usage_seconds_total{name=\"priority-inversion\"}[1m]))",
+   "direction": "increase",
+   "threshold_sigma": 3,
+   "abs_threshold": 0.5,
+   "min_fraction": 0.6,
+   "why": "MEASURED: 1.03 cores Sock Shop, 0.98 Train Ticket. The inversion itself is only visible in the wait times the workload reports and in the kernel stream."
+  }
+ ],
+ "deadlock": [
+  {
+   "canonical": true,
+   "name": "deadlock_threads",
+   "promql": "container_threads{name=\"deadlock\"}",
+   "direction": "increase",
+   "threshold_sigma": 3,
+   "abs_threshold": 12,
+   "min_fraction": 0.6,
+   "why": "MEASURED: 25 threads on both applications. CPU is deliberately NOT a target here - it reads 0.0001, because deadlocked threads consume nothing. That is the fault's whole character and the reason it is hard: a stuck system looks like an idle one."
+  }
+ ],
+ "fd_exhaustion": [
+  {
+   "canonical": true,
+   "name": "front_end_fd_ceiling",
+   "promql": "container_file_descriptors{name=~\".*front-end_1$\"}",
+   "direction": "decrease",
+   "threshold_sigma": 3,
+   "abs_threshold": null,
+   "min_fraction": 0.6,
+   "why": "The cap is set to a fraction of what the service is using at inject time, so the descriptor count is forced DOWN and then pinned. MEASURED on Train Ticket: 305 in use, capped to 183, count fell to 257. Deliberately has no abs_threshold - the absolute number depends entirely on the service (21 idle on Sock Shop's Node front-end, 175 on Train Ticket's JVM gateway), so only the direction and the sigma are portable."
+  }
+ ],
+ "conn_pool_exhaustion": [
+  {
+   "canonical": true,
+   "name": "db_sockets_held",
+   "promql": "container_sockets{name=~\".*catalogue-db_1$\"}",
+   "direction": "increase",
+   "threshold_sigma": 3,
+   "abs_threshold": 100,
+   "min_fraction": 0.6,
+   "why": "MEASURED 5 Sept: 4 -> 154 sockets on Sock Shop (38.5x) and 204 -> 2005 on Train Ticket (9.8x). The strongest signal of the whole panel, and it comes from the server rather than from the holder."
+  },
+  {
+   "canonical": false,
+   "name": "db_file_descriptors",
+   "promql": "container_file_descriptors{name=~\".*catalogue-db_1$\"}",
+   "direction": "increase",
+   "threshold_sigma": 3,
+   "abs_threshold": 100,
+   "min_fraction": 0.6,
+   "why": "MEASURED: 45 -> 195 Sock Shop (4.3x), 452 -> 2253 Train Ticket (5.0x)."
+  }
+ ],
+ "resource_abuse": [
+  {
+   "canonical": true,
+   "name": "resource_abuse_cpu",
+   "promql": "sum(rate(container_cpu_usage_seconds_total{name=\"resource-abuse\"}[1m]))",
+   "direction": "increase",
+   "threshold_sigma": 3,
+   "abs_threshold": 0.5,
+   "min_fraction": 0.6,
+   "why": "MEASURED: 1.01 cores Sock Shop, 0.97 Train Ticket. Volume of CPU is the only thing metrics can see; whether it is ABUSE rather than work is the question the study asks, and no metric answers it."
+  }
+ ],
+ "data_exfiltration": [
+  {
+   "canonical": true,
+   "name": "exfil_bytes_out",
+   "promql": "sum(rate(container_network_transmit_bytes_total{name=\"data-exfiltration\"}[1m]))",
+   "direction": "increase",
+   "threshold_sigma": 3,
+   "abs_threshold": 10000000.0,
+   "min_fraction": 0.6,
+   "why": "MEASURED 5 Sept: 42.0 MB/s on both applications. This read 0.0000 until the recipe was changed to send to a separate sink container - the first version sent to 127.0.0.1 inside its own container, so 839 MB crossed no interface and no counter saw it."
+  },
+  {
+   "canonical": false,
+   "name": "exfil_bytes_in_at_sink",
+   "promql": "sum(rate(container_network_receive_bytes_total{name=\"data-exfiltration-sink\"}[1m]))",
+   "direction": "increase",
+   "threshold_sigma": 3,
+   "abs_threshold": 10000000.0,
+   "min_fraction": 0.6,
+   "why": "MEASURED: 41.7 MB/s Sock Shop, 42.0 Train Ticket. The receiving end, on purpose - the sender's own claim was 839 MB and was true while nothing left the container."
+  }
+ ],
+ "fork_storm": [
+  {
+   "canonical": true,
+   "name": "fork_storm_processes",
+   "promql": "container_processes{name=\"fork-storm\"}",
+   "direction": "increase",
+   "threshold_sigma": 3,
+   "abs_threshold": 100,
+   "min_fraction": 0.6,
+   "why": "MEASURED: 201 processes on both applications. Per-container rather than host-wide, which matters: node_forks_total is 12.2x on Sock Shop but only 7.2x on Train Ticket, and in an earlier pass 1.05x, because TT already forks ~112/s from 40 JVMs and Nacos health checks. A host counter cannot serve both applications; this one does."
+  },
+  {
+   "canonical": false,
+   "name": "host_fork_rate",
+   "promql": "rate(node_forks_total[1m])",
+   "direction": "increase",
+   "threshold_sigma": 3,
+   "abs_threshold": 50,
+   "min_fraction": 0.6,
+   "why": "MEASURED: 8.7 -> 106.5/s Sock Shop (12.2x), 15.7 -> 113.1 Train Ticket (7.2x). Corroborating only - see above for why it cannot be canonical."
+  }
+ ],
+ "nagle_delayed_ack": [
+  {
+   "canonical": true,
+   "name": "nagle_workload_present",
+   "promql": "sum(rate(container_cpu_usage_seconds_total{name=\"nagle-delayed-ack\"}[1m]))",
+   "direction": "increase",
+   "threshold_sigma": 3,
+   "abs_threshold": 0.5,
+   "min_fraction": 0.6,
+   "why": "MEASURED: 1.00 cores on both. This is a PRESENCE check and nothing more. The fault's actual signature - a ~99 ms stall clustered within 1 ms of itself, against a TCP_NODELAY control at 0.51 ms in the same run - is invisible to every metric we collect, which is precisely why the family is in the catalogue."
+  }
+ ],
+ "dns_delay": [
+  {
+   "canonical": false,
+   "name": "dns_delay_no_metric_signature",
+   "promql": "sum(rate(container_cpu_usage_seconds_total{name=~\".*front-end_1$\"}[1m]))",
+   "direction": "increase",
+   "threshold_sigma": 3,
+   "abs_threshold": null,
+   "min_fraction": 0.6,
+   "why": "REGISTERED AS A KNOWN NEGATIVE. Two calibration passes found nothing that moves: host UDP counters 1.00x, front-end receive rate 0.58-0.83x (down, not up). The fault is real - the iptables rule drops 24 queries while the app runs, wall-clock time goes 914 ms -> 20,034 ms and 31 of 400 requests fail - but p50 reads 3.9 ms and p95 8.0 ms, BOTH BETTER than baseline. It hides in the tail, where no aggregate metric looks. Expect this check to fail; the failure is the finding, and verify_injection will report borderline rather than silently passing."
+  }
+ ]
 }
