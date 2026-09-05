@@ -137,19 +137,32 @@ def analyze(samples, t_start, t_end, baseline_s, recovery_s, target, settle_s=0)
         "n_baseline": len(base), "n_injection": len(inj), "n_recovery": len(rec),
         "direction_ok": direction_ok, "sigma_ok": sigma_ok,
         "fraction_ok": fraction_ok, "passed": passed,
+        "expected_to_fail": target.get("expected_to_fail", False),
     }
 
 
 def overall_verdict(checks):
     """confirmed if the canonical target passes; borderline if it has the
     right direction and coverage but a sub-threshold magnitude; else
-    unconfirmed. Runs with no canonical target fall back to 'any passed'."""
+    unconfirmed. Runs with no canonical target fall back to 'any passed'.
+
+    A target marked expected_to_fail records a fault we have MEASURED to have
+    no metric signature - dns_delay is the case in hand: two calibration passes
+    found nothing that moves, while the fault demonstrably works (24 queries
+    dropped, wall-clock 914 ms -> 20,034 ms, 31 of 400 requests failed) because
+    it hides in the tail where p50 and p95 cannot see it. Reporting that as
+    'unconfirmed' would put it in the same bucket as a fault that should have
+    moved something and did not, and those need opposite responses: one is a
+    finding, the other is a broken run.
+    """
     canon = [c for c in checks if c["canonical"]] or checks
     if not canon:
         return "unconfirmed"
     c = canon[0]
     if c["passed"]:
         return "confirmed"
+    if c.get("expected_to_fail"):
+        return "no_metric_signature"
     if c["direction_ok"] and c["fraction_ok"]:
         return "borderline"
     return "unconfirmed"
@@ -363,6 +376,10 @@ def main():
     # log that conflates them cannot tell you which runs need attention.
     if result["verification_status"] == "no_targets":
         sys.exit(4)
+    # no_metric_signature is exit 0: the run is GOOD, and the absence of a metric signature is
+    # the pre-registered expectation rather than a problem with the run.
+    if result["verification_status"] == "no_metric_signature":
+        sys.exit(0)
     sys.exit(0 if result["verification_status"] != "unconfirmed" else 3)
 
 

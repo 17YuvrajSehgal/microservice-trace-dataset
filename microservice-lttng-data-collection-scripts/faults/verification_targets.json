@@ -339,7 +339,8 @@
    "threshold_sigma": 3,
    "abs_threshold": null,
    "min_fraction": 0.6,
-   "why": "REGISTERED AS A KNOWN NEGATIVE. Two calibration passes found nothing that moves: host UDP counters 1.00x, front-end receive rate 0.58-0.83x (down, not up). The fault is real - the iptables rule drops 24 queries while the app runs, wall-clock time goes 914 ms -> 20,034 ms and 31 of 400 requests fail - but p50 reads 3.9 ms and p95 8.0 ms, BOTH BETTER than baseline. It hides in the tail, where no aggregate metric looks. Expect this check to fail; the failure is the finding, and verify_injection will report borderline rather than silently passing."
+   "why": "REGISTERED AS A KNOWN NEGATIVE. Two calibration passes found nothing that moves: host UDP counters 1.00x, front-end receive rate 0.58-0.83x (down, not up). The fault is real - the iptables rule drops 24 queries while the app runs, wall-clock time goes 914 ms -> 20,034 ms and 31 of 400 requests fail - but p50 reads 3.9 ms and p95 8.0 ms, BOTH BETTER than baseline. It hides in the tail, where no aggregate metric looks. Expect this check to fail; the failure is the finding, and verify_injection will report borderline rather than silently passing.",
+   "expected_to_fail": true
   }
  ]
 }
