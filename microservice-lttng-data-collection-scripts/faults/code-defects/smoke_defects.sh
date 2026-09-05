@@ -57,7 +57,10 @@ echo "=============================================================="
 
 for d in "${DEFECTS[@]}"; do
     recipe="$FAULTS/$d.sh"
-    [[ -x "$recipe" ]] || { echo "  MISSING $d"; fail=$((fail+1)); continue; }
+    # -f, not -x: the recipes are always invoked through `bash`, and the exec bit does not
+    # survive a checkout made from a Windows working tree. Testing for it reported all five
+    # recipes MISSING when every one was present.
+    [[ -f "$recipe" ]] || { echo "  MISSING $d"; fail=$((fail+1)); continue; }
     path=$(endpoint_for "$d")
 
     echo
