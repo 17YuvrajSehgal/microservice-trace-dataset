@@ -54,8 +54,9 @@ target_url_for() {
 #
 # A defect wrongly declared dead gets tuned or dropped. The measurement has to be trustworthy
 # before its verdict means anything.
-measure() {   # measure <url> <n> <concurrency>  -> p50 in ms
-    python3 "$SD/loadprobe.py" "$1" "${2:-400}" "${3:-60}" 2>/dev/null         | sed -n 's/.*p50=\([0-9.]*\).*//p' | cut -d. -f1
+measure() {   # measure <url> <n> <concurrency>  -> p50 in ms, integer
+    python3 "$SD/loadprobe.py" "$1" "${2:-400}" "${3:-60}" 2>/dev/null \n        | tr ' ' '
+' | grep '^p50=' | cut -d= -f2 | cut -d. -f1
 }
 
 # Which defects only reveal themselves when requests overlap.
@@ -114,6 +115,7 @@ for d in "${DEFECTS[@]}"; do
     else
         ratio="?"
     fi
+    base=${base:-0}; with=${with:-0}
     delta=$(( with - base ))
 
     # unbounded_cache is a MEMORY defect - it need not change latency at all, and demanding it
