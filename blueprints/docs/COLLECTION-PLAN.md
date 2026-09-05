@@ -112,7 +112,8 @@ to guess this. It is a famous bug and about 30 lines of code.
 
 ### Nagle plus delayed ACK
 
-Small writes without `TCP_NODELAY` hit a fixed ~40 ms stall. CPU idle, disk idle, **no packets
+Small writes without `TCP_NODELAY` hit a fixed stall — measured ~100 ms on our VM, not the
+textbook 40 ms. CPU idle, disk idle, **no packets
 lost**, nothing retransmitted. Every signal we have says the system is healthy.
 
 Also famous, also easy to write.

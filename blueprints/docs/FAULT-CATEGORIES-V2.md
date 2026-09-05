@@ -84,7 +84,7 @@ Mistakes, not failures. Nothing is broken; something is set wrong.
 | Fault | Kernel-visible | Recipe risk | Note |
 |---|---|---|---|
 | `dns_delay` | yes — resolution stalls before connect | **low** | slow or unreachable resolver |
-| `nagle_delayed_ack` | yes — fixed ~40 ms stalls | **low** | famous, ~30 lines, everything looks healthy |
+| `nagle_delayed_ack` | yes — fixed stalls, measured ~100 ms | **low** | famous, ~30 lines, everything looks healthy |
 | `wrong_timeout` | partly | medium | needs app config change |
 
 ### J. Lifecycle

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Nagle plus delayed ACK: fixed ~40 ms stalls while every resource looks idle.
+"""Nagle plus delayed ACK: fixed ~100 ms stalls while every resource looks idle.
 
 THE INTERACTION
 ---------------
@@ -7,11 +7,11 @@ Two TCP features that are individually sensible and together pathological:
 
     Nagle          the sender holds a small write until the previous data is ACKed,
                    to avoid flooding the network with tiny packets
-    delayed ACK    the receiver holds the ACK for up to ~40 ms, hoping to piggyback it
+    delayed ACK    the receiver holds the ACK on a timer, hoping to piggyback it
                    on a reply
 
 So the sender waits for an ACK that the receiver is deliberately delaying. The result is a
-fixed stall - about 40 ms on Linux - on a write-write-read pattern, which is exactly what a
+fixed stall on a write-write-read pattern, which is exactly what a
 request built from a small header followed by a small body looks like.
 
 WHY IT IS THE HARDEST CASE WE CAN INJECT
@@ -30,7 +30,11 @@ should win.
 WHAT THE KERNEL SHOWS
 ---------------------
 The stall is visible as the gap between `net_dev_queue` on the sender and the response, and as
-a sendto/recvfrom pair whose duration clusters tightly around 40 ms. Clustering is the tell -
+MEASURED, NOT ASSUMED: median 99.48 ms, p95 100.66 ms on the collection VM. The textbook
+figure is 40 ms - the BSD delayed-ACK timer - but Linux uses a quantised minimum RTO and lands
+near 100 ms here. The magnitude is platform-dependent; the tight clustering is not.
+
+a sendto/recvfrom pair whose duration clusters tightly around one value. Clustering is the tell -
 a queue or a slow service gives a spread, this gives a spike at one value.
 
 The control side runs the identical exchange WITH TCP_NODELAY, so the trace contains the
