@@ -58,18 +58,28 @@ CAMPAIGN_TT_EXCLUDE=(queue_backlog)
 # types." Our 12 families sit in 5 categories and are nearly all "slow because a resource is
 # scarce". These ten add concurrency, resource leaks, security/abuse and configuration.
 #
-# All ten now pass the Sock Shop smoke test with per-fault evidence (see faults/smoke_recipes.sh
-# and progress-notes/04-09-2026). STILL EMPTY, on purpose:
+# VERIFIED 5 Sept on BOTH applications: 10/10 pass on stratatrace-ss and on stratatrace-tt,
+# each with a 10/10 negative control (every check run with nothing injected must FAIL - two of
+# them used to pass vacuously).
 #
-# these families run on BOTH applications, and none of them has been run against Train Ticket.
-# stratatrace-tt exists but is stopped and was never bootstrapped. The recipes are WRITTEN to be
-# app-independent - workload containers, auto-detected network, STRATA_APP in compose_stack -
-# but "written to be" is not "shown to be", and fd_exhaustion needed five rounds to go from the
-# first to the second.
+# Running them on Train Ticket was not a formality. Three recipes behaved differently there, and
+# every time the cause was a constant measured on Sock Shop:
 #
-# On a campaign we cannot repeat, an untested recipe is a worse risk than a missing family.
-# Fill this in after a Train Ticket smoke run, not before.
-CAMPAIGN_NEW_FAULTS=()
+#   fd_exhaustion         21 idle descriptors there, 125 here - a fixed nofile=64 kills the JVM
+#   conn_pool_exhaustion  MySQL 5.7 stops at 151, MySQL 8 allows 2000; the holder's own
+#                         nofile=1024 capped it at 1020 and left the server 39% free
+#   dns_delay             52 -> 2555 ms there, 58 -> 62-167 ms here; a 300 ms threshold failed
+#                         a fault that was working
+#
+# All three now derive their numbers from the system at inject time.
+#
+# Worth carrying into the analysis: fd_exhaustion produces OPPOSITE application symptoms on the
+# two apps. Node queues in the listen backlog and slows (p50 28 ms, 0 errors); the Spring
+# gateway fails outright (p50 15,673 ms, 357 of 600 requests failed). Same injection, same
+# measured mechanism.
+CAMPAIGN_NEW_FAULTS=(lock_contention priority_inversion deadlock fd_exhaustion
+                     conn_pool_exhaustion resource_abuse data_exfiltration fork_storm
+                     dns_delay nagle_delayed_ack)
 # candidates, in the order they should be written:
 #   concurrency   lock_contention priority_inversion deadlock
 #   leaks         fd_exhaustion conn_pool_exhaustion
