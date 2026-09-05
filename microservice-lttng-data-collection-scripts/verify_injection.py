@@ -209,7 +209,31 @@ def run_verification(gt, targets_all, prom_url, step, out_json, out_png):
 
     targets = targets_all.get(name)
     if not targets:
-        sys.exit(f"no verification targets registered for fault '{name}'")
+        # WRITE THE FILE ANYWAY, and say why it is empty.
+        #
+        # This used to sys.exit, and run_scenario.sh calls this with `|| true` - so a fault with
+        # no registered target produced NO verification.json and NO verification.png, and the
+        # run looked complete. That is the v1 matplotlib failure again: a missing artefact that
+        # nothing complains about until the campaign is over and the data cannot be recollected.
+        #
+        # A bundle must describe its own gaps. "unverifiable, and here is the reason" is a
+        # usable record; a missing file is not.
+        result = {
+            "fault": name,
+            "injection_window_utc": [fault["injection_start_utc"], fault["injection_end_utc"]],
+            "verification_status": "no_targets",
+            "operator_review_required": True,
+            "checks": [],
+            "why": (f"no verification targets registered for '{name}' in the targets file. "
+                    "The fault was injected and its ground truth is present; only the "
+                    "metric-level confirmation is missing."),
+        }
+        if out_json:
+            with open(out_json, "w") as f:
+                json.dump(result, f, indent=2)
+        print(f"[{name}] NO_TARGETS - injected, but nothing registered to confirm it by metrics",
+              file=sys.stderr)
+        return result
     win = targets_all.get("_windows", {})
     baseline_s = win.get("baseline_s", 60)
     recovery_s = win.get("recovery_s", 60)
@@ -334,6 +358,11 @@ def main():
         print(f" {flag} {c['name']}: {'PASS' if c['passed'] else 'fail'} "
               f"(dir_ok={c['direction_ok']} sigma={c['delta_sigma']} "
               f"frac={c['fraction_above_threshold']} base={c['baseline_mean']} inj={c['injection_mean']})")
+    # no_targets is exit 4, distinct from unconfirmed (3): "nothing registered to check" and
+    # "checked and it did not move" are different problems with different fixes, and a campaign
+    # log that conflates them cannot tell you which runs need attention.
+    if result["verification_status"] == "no_targets":
+        sys.exit(4)
     sys.exit(0 if result["verification_status"] != "unconfirmed" else 3)
 
 
