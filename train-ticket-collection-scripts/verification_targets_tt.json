@@ -143,30 +143,31 @@
    "name": "host_disk_write_ops",
    "promql": "rate(node_disk_writes_completed_total[1m])",
    "direction": "increase",
-   "threshold_sigma": 3,
-   "abs_threshold": 1200,
-   "min_fraction": 0.7,
-   "why": "NOT YET CALIBRATED ON THIS MACHINE - thresholds carried from Sock Shop. At rest Train Ticket shows 23.6 writes/s against Sock Shop's 578 under tracing, but that comparison is meaningless: the Sock Shop figure was taken DURING a run with LTTng writing 53 MB/s, and Train Ticket's tracing writes ~211 MB/s. The traced baseline here is unknown and could sit either side of these thresholds - and if it sits above them the check passes vacuously. Measure on the first anomaly_disk run on this machine and re-derive. MEASURED 5 Sept during campaign run anomaly_disk_r5: 578 -> 2058 writes/s (3.56x). Replaces rate(node_disk_io_time_seconds_total[1m]), which failed on all five repeats with a ratio of 0.95x - not because the fault was weak but because io_time is a UTILISATION metric and utilisation was already spoken for. LTTng writes the kernel trace continuously throughout every run at ~53 MB/s, which is exactly the measured baseline of node_disk_written_bytes_total, so the disk is near-saturated before the fault starts and 'fraction of time busy' has nowhere left to climb. Unbounded counters - operations, bytes, queue depth - show the fault plainly."
-  },
-  {
-   "canonical": false,
-   "name": "host_disk_queue_depth",
-   "promql": "rate(node_disk_io_time_weighted_seconds_total[1m])",
-   "direction": "increase",
-   "threshold_sigma": 3,
-   "abs_threshold": 9,
-   "min_fraction": 0.7,
-   "why": "NOT YET CALIBRATED ON THIS MACHINE - thresholds carried from Sock Shop. At rest Train Ticket shows 23.6 writes/s against Sock Shop's 578 under tracing, but that comparison is meaningless: the Sock Shop figure was taken DURING a run with LTTng writing 53 MB/s, and Train Ticket's tracing writes ~211 MB/s. The traced baseline here is unknown and could sit either side of these thresholds - and if it sits above them the check passes vacuously. Measure on the first anomaly_disk run on this machine and re-derive. MEASURED: 5.49 -> 12.95 (2.36x). Weighted io_time is queue depth x time, so unlike plain io_time it keeps rising after the device is already busy."
+   "threshold_sigma": 1.2,
+   "abs_threshold": 2400,
+   "min_fraction": 0.6,
+   "why": "MEASURED 5 Sept on tt_anomaly_disk_r1, this machine, during a real run: 1563 -> 2950 writes/s (1.89x), baseline std 830.\nThe Sock Shop threshold of 1200 sits BELOW Train Ticket's resting 1563, so it scored frac=1.0 with nothing injected - it would have passed on coverage alone had sigma not held it back. A threshold carried between machines is a guess, and the dangerous direction is when the new machine's baseline already satisfies it. 2400 sits clearly above the resting value and below the injected mean."
   },
   {
    "canonical": false,
    "name": "host_disk_write_bytes",
    "promql": "rate(node_disk_written_bytes_total[1m])",
    "direction": "increase",
-   "threshold_sigma": 3,
-   "abs_threshold": 90000000.0,
-   "min_fraction": 0.7,
-   "why": "NOT YET CALIBRATED ON THIS MACHINE - thresholds carried from Sock Shop. At rest Train Ticket shows 23.6 writes/s against Sock Shop's 578 under tracing, but that comparison is meaningless: the Sock Shop figure was taken DURING a run with LTTng writing 53 MB/s, and Train Ticket's tracing writes ~211 MB/s. The traced baseline here is unknown and could sit either side of these thresholds - and if it sits above them the check passes vacuously. Measure on the first anomaly_disk run on this machine and re-derive. MEASURED: 53.3 -> 133.4 MB/s (2.50x). The 53.3 MB/s baseline is the kernel trace itself."
+   "threshold_sigma": 1.0,
+   "abs_threshold": 240000000.0,
+   "min_fraction": 0.4,
+   "why": "MEASURED: 175.8 -> 199.8 MB/s, only 1.14x, and the 90 MB threshold from Sock Shop is far below the 175.8 MB baseline. Corroborating only, because the effect here is genuinely small - see the note on the canonical target."
+  },
+  {
+   "canonical": false,
+   "name": "host_disk_queue_depth_NOT_A_TARGET",
+   "promql": "rate(node_disk_io_time_weighted_seconds_total[1m])",
+   "direction": "decrease",
+   "threshold_sigma": 1.0,
+   "abs_threshold": 50,
+   "min_fraction": 0.5,
+   "expected_to_fail": false,
+   "why": "MEASURED, and it moves the WRONG WAY on this machine: 65.7 -> 42.3. Kept with direction=decrease because that is what actually happens, and recorded rather than dropped because it is the most interesting number in this family.\nTrain Ticket's tracing writes ~176 MB/s of a disk that sustains 206, leaving ~30 MB/s of headroom - so stress-ng's direct+fsync writes add only ~24 MB/s here against ~80 MB/s on Sock Shop, and the synchronous writes appear to displace queued asynchronous ones rather than pile on top of them. The disk is already saturated by the collection before the fault starts.\nThat is the same lesson as the Sock Shop io_time finding, one step further: it is not only that BOUNDED metrics go blind, it is that on a busy enough application the fault itself has almost no room to act."
   }
  ],
  "anomaly_net": [
