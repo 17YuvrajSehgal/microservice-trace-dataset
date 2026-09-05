@@ -117,8 +117,8 @@ case "${1:-}" in
         exit 1
     fi
     # Saved BEFORE anything changes, so cleanup restores the real value rather than a default
-    # that merely looked right on this VM.
-    echo "$ORIG" > "$SAVED"
+    # that merely looked right on this VM. The pid goes with it - see cleanup.
+    echo "$ORIG $PID" > "$SAVED"
 
     IDLE="$(idle_fds "$PID")"
     NOFILE="${NOFILE:-$(( IDLE + HEADROOM ))}"
@@ -187,19 +187,44 @@ case "${1:-}" in
     # Restore whatever was saved at inject time. If the container has restarted since, its new
     # process already has the stock limit and there is nothing to undo - say so rather than
     # fail, because a cleanup that exits nonzero stops a campaign run.
+    SURVIVED="unknown"
     if [[ -f "$SAVED" ]]; then
-        ORIG="$(cat "$SAVED")"
+        read -r ORIG WAS_PID < "$SAVED"
         if PID="$(target_pid 2>/dev/null)"; then
             sudo prlimit --pid "$PID" --nofile="$ORIG:$ORIG" 2>/dev/null || true
             echo "[$FAULT_NAME] $TARGET_SVC (pid $PID) limit restored to $(limit_of "$PID")"
+            # DID THE FAULT LAST THE WHOLE WINDOW?
+            #
+            # prlimit applies to ONE process. If the container restarted mid-run the new process
+            # got the stock limit and the fault quietly ended partway through, while ground truth
+            # would still claim a full injection window. That is a mislabelled run, so record the
+            # answer instead of assuming it.
+            # `if`, not `x && y`: with set -e a standalone AND-list whose test is false exits
+            # the script, which here would abort cleanup exactly when nothing was wrong.
+            if [[ "$PID" == "$WAS_PID" ]]; then
+                SURVIVED="true"
+            else
+                SURVIVED="false"
+                echo "[$FAULT_NAME] WARNING: pid changed $WAS_PID -> $PID; the service restarted and the fault ended early"
+            fi
         else
             echo "[$FAULT_NAME] $TARGET_SVC not running at cleanup - nothing to restore"
+            SURVIVED="false"
         fi
         rm -f "$SAVED"
     else
         echo "[$FAULT_NAME] no saved limit - nothing to restore"
     fi
     gt_end
+    # Never let bookkeeping fail a cleanup: a nonzero exit here would stop a campaign run.
+    GTF="$(gt_file)"
+    if [[ -f "$GTF" ]]; then
+        python3 -c 'import json,sys
+p,v=sys.argv[1],sys.argv[2]
+d=json.load(open(p))
+d["fault"]["target_pid_survived_window"]={"true":True,"false":False}.get(v)
+json.dump(d,open(p,"w"),indent=2)' "$GTF" "$SURVIVED" || true
+    fi
     ;;
 
   status)
