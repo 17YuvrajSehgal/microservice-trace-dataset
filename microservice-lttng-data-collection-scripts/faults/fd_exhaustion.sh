@@ -34,7 +34,8 @@
 #
 # Usage:
 #   ./fd_exhaustion.sh inject [subtle|aggressive]
-#   ./fd_exhaustion.sh cleanup | status
+#   ./fd_exhaustion.sh prove | cleanup | status
+#     prove = drive load and report the peak descriptor count against the limit
 #   env: TARGET_SVC   (default: the deployed app's front door - front-end on Sock Shop,
 #                      ts-gateway-service on Train Ticket)
 #        STRATA_APP   sockshop | trainticket
@@ -164,6 +165,48 @@ case "${1:-}" in
     apply_limit "" || true
     gt_end
     ;;
+  prove)
+    # Does the service ACTUALLY run out of descriptors, or is the cap just decoration?
+    #
+    # The first version of this check asked for failed requests and got errors=0, which looked
+    # like a dead fault. It was not. Node does not refuse the connection - the kernel completes
+    # the handshake into the listen backlog and the app accepts as descriptors free up. So the
+    # requests get SLOW (p95 went 95 -> 590 ms) rather than failing, and any check keyed on
+    # errors would have thrown away a working fault.
+    #
+    # What is true regardless of how the application reacts is that the descriptor count reaches
+    # the ceiling. That is the fault itself, so that is what to measure. Sample it while load
+    # runs and report the peak.
+    c="$(compose_container "$TARGET_SVC")"
+    pid="$(docker inspect -f '{{.State.Pid}}' "$c")"
+    LIM="$(sudo awk '/open files/{print $4}' "/proc/$pid/limits" 2>/dev/null || echo 0)"
+    if [[ "${STRATA_APP:-sockshop}" == "trainticket" ]]; then
+        URL="${PROBE_URL:-http://localhost:8080/index.html}"
+    else
+        URL="${PROBE_URL:-http://localhost:80/catalogue}"
+    fi
+
+    OUT="$(mktemp)"
+    python3 "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/code-defects/loadprobe.py"         "$URL" "${PROBE_N:-600}" "${PROBE_CONC:-150}" >"$OUT" 2>&1 &
+    probe=$!
+
+    # `if`, not `&&`, and `|| true` on the sample. With `set -e` a false `[[ ]]` at the end of a
+    # loop body kills the shell, and so does a command substitution whose pipeline fails when
+    # the process has gone. Either would abort the probe and read as "the fault did nothing".
+    peak=0
+    while kill -0 "$probe" 2>/dev/null; do
+        n="$(sudo ls "/proc/$pid/fd" 2>/dev/null | wc -l || true)"
+        if [[ "$n" =~ ^[0-9]+$ ]] && [[ "$n" -gt "$peak" ]]; then peak="$n"; fi
+        sleep 0.2
+    done
+    wait "$probe" 2>/dev/null || true
+
+    result="$(tr '
+' ' ' <"$OUT" 2>/dev/null || true)"; rm -f "$OUT"
+    echo "peak fds $peak of limit $LIM | $result"
+    # within 4 of the ceiling counts as reached - a 0.2 s sampler cannot catch every instant
+    [[ "$LIM" -gt 0 && "$peak" -ge $(( LIM - 4 )) ]]
+    ;;
   status)
     c="$(compose_container "$TARGET_SVC" 2>/dev/null || true)"
     if [[ -n "$c" ]]; then
@@ -174,5 +217,5 @@ case "${1:-}" in
         echo "$TARGET_SVC not running"
     fi
     ;;
-  *) echo "usage: $0 inject [subtle|aggressive] | cleanup | status"; exit 1 ;;
+  *) echo "usage: $0 inject [subtle|aggressive] | prove | cleanup | status"; exit 1 ;;
 esac

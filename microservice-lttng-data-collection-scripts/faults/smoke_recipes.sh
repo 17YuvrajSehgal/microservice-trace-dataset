@@ -52,18 +52,12 @@ fd_limit_low() {
 }
 
 # The limit on its own is NOT proof. A ceiling the service never reaches is a fault that never
-# happened - the same trap as a code defect that builds but does nothing. So drive far more
-# concurrent requests than the service has descriptors left and require it to actually fail.
-# In a campaign run the load generator supplies this traffic.
+# happened - the same trap as a code defect that builds but does nothing. The recipe knows how
+# to prove itself, so ask it: it drives load and reports the peak descriptor count against the
+# limit. In a campaign run the load generator supplies the traffic instead.
 fd_proof() {
     fd_limit_low || { echo "descriptor limit was not applied"; return 1; }
-    local r errs
-    r=$(python3 "$SD/code-defects/loadprobe.py" "http://localhost:80/catalogue" 300 120 2>/dev/null)
-    errs="${r##*errors=}"
-    local st; st=$(bash "$SD/fd_exhaustion.sh" status 2>/dev/null | tr '
-' ' ')
-    echo "${st}| under load: ${r:-no result}"
-    [[ -n "$errs" && "$errs" =~ ^[0-9]+$ && "$errs" -gt 0 ]]
+    bash "$SD/fd_exhaustion.sh" prove
 }
 
 # What counts as PROOF that each fault is actually doing its job.
