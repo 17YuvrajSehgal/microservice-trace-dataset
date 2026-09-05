@@ -118,23 +118,23 @@
  "anomaly_mem": [
   {
    "canonical": true,
-   "name": "host_mem_available_drop",
-   "promql": "node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes",
-   "direction": "decrease",
-   "threshold_sigma": 5,
-   "abs_threshold": 0.3,
-   "min_fraction": 0.5,
-   "why": "MEASURED 5 Sept on stratatrace-tt: available sits at 0.4141 AT REST - 40 JVMs, MySQL and Nacos hold ~35 GB of the 62 GB. Sock Shop's calibrated 0.60 threshold is already satisfied here before any fault runs, so it would have reported `confirmed` on every anomaly_mem run whether or not the injection did anything. A false positive certifies a fault that never happened, which is strictly worse than the false negatives this file has been throwing: those cost a re-score, this one corrupts the label. 0.30 sits clearly below the resting value and still leaves room for stress-ng to reach it. If it turns out to be unreachable on this machine the runs read unconfirmed, which is recoverable offline - the failure mode is deliberately biased towards under-claiming."
-  },
-  {
-   "canonical": false,
    "name": "host_major_page_faults",
    "promql": "rate(node_vmstat_pgmajfault[1m])",
    "direction": "increase",
    "threshold_sigma": 3,
-   "abs_threshold": 30,
-   "min_fraction": 0.4,
-   "why": "MEASURED at rest on this machine: 2.255/s, against Sock Shop's 0. Threshold raised from 10 to 30 so it still discriminates here."
+   "abs_threshold": 100,
+   "min_fraction": 0.6,
+   "why": "MEASURED 5 Sept on tt_anomaly_mem_r1 during a real run: 7.7 -> 650/s, sigma 193, frac 1.0. Clean separation with the threshold sitting well above the loaded baseline and far below the injected value.\nPROMOTED TO CANONICAL over the memory-available ratio, which cannot work on this machine - see below. It is also the better measurement: major faults are the CONSEQUENCE of memory pressure, the system going to disk for pages, rather than a level that has to be compared against a moving floor."
+  },
+  {
+   "canonical": false,
+   "name": "host_mem_available_drop",
+   "promql": "node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes",
+   "direction": "decrease",
+   "threshold_sigma": 1.0,
+   "abs_threshold": 0.13,
+   "min_fraction": 0.6,
+   "why": "MEASURED under load: baseline 0.1881, injection 0.0923.\nI set this to 0.30 earlier today from a reading taken AT REST, where it was 0.4141. Under campaign load - 40 JVMs plus LTTng - the resting figure is meaningless: the real baseline is 0.1881, already below 0.30, so the check was vacuous for the second time in one day. An IDLE BASELINE IS NOT A RUN BASELINE, and every threshold in this file has to be derived from a measurement taken while the collection is running.\n0.13 sits below the loaded baseline and above the injected value. Corroborating only, because a level compared against a floor that moves with load is inherently fragile here - the page-fault rate is not."
   }
  ],
  "anomaly_disk": [
