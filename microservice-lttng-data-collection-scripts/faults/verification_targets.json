@@ -173,9 +173,19 @@
    "promql": "node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes",
    "direction": "decrease",
    "threshold_sigma": 5,
-   "abs_threshold": 0.25,
-   "min_fraction": 0.8,
-   "why": "stress-ng --vm drives MemAvailable down; aggressive ~78% RAM (bounded to avoid OOM-killing lttng) -> MemAvailable ratio < 0.25. Finalize on VM calibration."
+   "abs_threshold": 0.6,
+   "min_fraction": 0.5,
+   "why": "MEASURED 5 Sept on campaign run anomaly_mem_r1: available goes 0.79 -> 0.40 (33.7 GB -> 19.9 GB), sigma -14.6. The previous entry demanded < 0.25 and its own comment said 'Finalize on VM calibration' - nobody did, and 0.25 is unreachable: stress-ng vm-hang asks for 88% of RAM but MemAvailable bottoms out near 0.40. All four collected repeats read unconfirmed on fraction alone, with direction correct and sigma at -14.6. min_fraction is 0.5 rather than 0.8 because the allocation RAMPS - the first part of the injection window is still filling, so early samples legitimately sit above any floor. A threshold that assumes a step change cannot score a fault that ramps."
+  },
+  {
+   "canonical": false,
+   "name": "host_major_page_faults",
+   "promql": "rate(node_vmstat_pgmajfault[1m])",
+   "direction": "increase",
+   "threshold_sigma": 3,
+   "abs_threshold": 10,
+   "min_fraction": 0.4,
+   "why": "MEASURED: 0 -> 73/s. The system is genuinely short of memory and going to disk for pages, which is the consequence that matters rather than the allocation itself."
   }
  ],
  "anomaly_net": [
