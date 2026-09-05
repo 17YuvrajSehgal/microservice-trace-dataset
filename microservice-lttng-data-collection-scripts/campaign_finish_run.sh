@@ -71,5 +71,29 @@ if [[ "${KEEP_LOCAL:-0}" != "1" ]]; then
     fi
 fi
 
+# 4. Truncate the container logs, BETWEEN runs.
+#
+# Docker's json-file driver is unbounded by default. Measured on stratatrace-tt four runs into
+# the campaign: /var/lib/docker/containers had reached 79 GB - more than half the root disk -
+# against 8.9 GB of images and 12 GB of overlay2. Train Ticket runs 40 JVMs and every one of
+# them dual-exports spans to stdout, because the otel-to-lttng UST relay reads them for the
+# cross-layer clock bridge. That traffic has to exist during a run; it does not have to survive
+# one.
+#
+# Each run's logs are already captured into its bundle by collect_trace.sh, so what is on disk
+# afterwards is a duplicate. Left alone it would have filled the disk somewhere in the twenties
+# and killed the campaign.
+#
+# Truncation ONLY happens here, between runs. Doing it mid-run would cut the log capture of the
+# run in flight.
+if [[ "${TRUNCATE_CONTAINER_LOGS:-1}" == "1" ]]; then
+    before=$(sudo du -sm /var/lib/docker/containers 2>/dev/null | cut -f1)
+    for f in $(sudo find /var/lib/docker/containers -name "*-json.log" 2>/dev/null); do
+        sudo truncate -s 0 "$f" 2>/dev/null || true
+    done
+    after=$(sudo du -sm /var/lib/docker/containers 2>/dev/null | cut -f1)
+    echo "[finish] container logs ${before:-?} MB -> ${after:-?} MB"
+fi
+
 echo "[finish] $RUN_ID  trace=$LOSS  -> $MOVED"
 echo "$LOSS"   # last line, so a caller can capture it
