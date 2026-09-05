@@ -599,16 +599,24 @@ container's `resolv.conf`: Sock Shop's image walks three search domains before t
 absolutely, so one lookup becomes several queries and several chances to be dropped. The
 gateway image sets `ndots:0` and asks once.
 
-**The magnitude belongs to the image, not to the fault.** My 300 ms threshold — set from the
+**Correction, one run later.** A third reading on Sock Shop — same host, same container that
+gave 2555 ms twice — came back at **57 ms with 23 queries dropped**. So the cross-VM difference
+is *not* the container's resolver configuration, which is what I wrote after seeing only the
+first two rows. Resolver cache state is the likely driver. Left recorded as unresolved rather
+than explained away.
+
+What survives all three readings: queries are being dropped. My 300 ms threshold — set from the
 only VM I could test at the time — failed a fault that was working fine.
 
 The check is now the packet counter rising while a container resolves: system-side evidence
 that works on either application. Latencies are still reported, because the size of the effect
 is worth recording even when it is not what decides the verdict.
 
-Carry into the analysis: the two applications differ on this family because of their **resolver
-configuration**, not their sensitivity to DNS trouble. A comparison that missed that would draw
-the wrong conclusion.
+**The bigger consequence, and it needs measuring before the campaign:** internal service names
+are unaffected, and inter-service traffic is all this deployment does during a run. So
+`dns_delay` may have little or no application-level signature here — loud in the kernel, quiet
+everywhere else. That is a legitimate and interesting dataset entry, a genuine hard case, but it
+has to be *labelled* that way rather than presented as a latency fault.
 
 ### The pattern
 

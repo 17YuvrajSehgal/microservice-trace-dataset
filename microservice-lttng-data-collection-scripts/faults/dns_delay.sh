@@ -15,16 +15,26 @@
 # occasional multi-second stalls rather than uniform slowness - which is what a flaky resolver
 # actually looks like.
 #
-# HOW BIG THE STALL IS DEPENDS ON THE IMAGE, NOT ON THE FAULT.
+# HOW BIG THE STALL IS VARIES ENORMOUSLY, AND WE DO NOT FULLY KNOW WHY.
 #
-#     Sock Shop  front-end            52 ms -> 2555 ms
-#     Train Ticket ts-gateway-service 58 ms ->   62-167 ms   (57 queries dropped)
+#     Sock Shop    front-end            52 ms -> 2555 ms   (twice)
+#     Train Ticket ts-gateway-service   58 ms ->   62-167 ms  (57 queries dropped)
+#     Sock Shop    front-end, later     53 ms ->     57 ms    (23 queries dropped)
 #
-# Both are working. Sock Shop's container walks three search domains before trying a name
-# absolutely, so one lookup becomes several queries and several chances to be dropped; the
-# gateway image sets `ndots:0` and asks once. Worth knowing before comparing the two
-# applications on this family - the difference is their resolver configuration, not their
-# sensitivity to DNS trouble.
+# The third reading is the important one. It is the SAME host and the SAME container that gave
+# 2555 ms earlier, so the difference cannot be the container's resolver configuration - which is
+# what I first wrote down after seeing only the first two rows. Resolver cache state is the
+# likely driver: a warm cache answers locally and generates few upstream queries to drop.
+#
+# Recorded as unresolved rather than explained away. What IS dependable across all three
+# readings is that queries are being dropped, which is why the check keys on the rule's packet
+# counter rather than on a latency threshold.
+#
+# CONSEQUENCE FOR THE DATASET, and it is a large one: this fault may have little or no
+# application-level signature in our deployments, because inter-service traffic resolves through
+# Docker's embedded DNS and is untouched (see below). That would make it a genuine hard case -
+# loud in the kernel, quiet everywhere else - but it must be LABELLED that way rather than
+# presented as a latency fault. Measure the application impact before drawing the conclusion.
 #
 # WHAT IT ACTUALLY HITS - MEASURED, and narrower than the name suggests.
 #
