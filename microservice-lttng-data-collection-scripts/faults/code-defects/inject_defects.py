@@ -94,8 +94,12 @@ FRONTEND = [
     ),
     (
         "helpers/index.js",
-        "  simpleHttpRequest: function(url, res, next) {",
-        "  simpleHttpRequest: function(url, res, next) {\n"
+        # The real signature, read off the checkout: an assignment onto `helpers`, not an
+        # object-literal member. Guessing it cost one anchor-check cycle and zero builds,
+        # which is exactly what checking anchors before building is for.
+        "  helpers.simpleHttpRequest = function(url, res, next) {\n"
+        "    request.get(url, function(error, response, body) {",
+        "  helpers.simpleHttpRequest = function(url, res, next) {\n"
         "    var _bug = strataBug();\n"
         "    if (_bug === 'event_loop_block') {\n"
         # DEFECT 3: synchronous CPU work inside a request handler. Node has ONE thread, so the
@@ -113,7 +117,8 @@ FRONTEND = [
         # with the number of items, which looks exactly like a slow dependency.
         "      var _t = Date.now() + 40;\n"
         "      while (Date.now() < _t) { /* serialised wait, as if awaiting in a loop */ }\n"
-        "    }",
+        "    }\n"
+        "    request.get(url, function(error, response, body) {",
         "event_loop_block, unbounded_cache and serial_awaits on the shared request path",
     ),
 ]
