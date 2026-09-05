@@ -121,3 +121,89 @@ than one: a small one for the programs, the usual shape for the microservice run
 
 `lttng list --kernel | grep -i lock` on the new VM. Naser asked for KERNEL lock contention;
 today we can only see user-level locks through futex. That one command decides what B1 is.
+
+## v2 VMs created and the pilot passed
+
+### Where the VMs are, and why not a new project
+
+Project **`teleeporter`**, zone **us-east1-d**:
+
+| VM | Machine | Disks | State |
+|---|---|---|---|
+| `stratatrace-ss` | 12 vCPU / 40 GB | 200 GB pd-balanced + 1 TB pd-standard | running |
+| `stratatrace-tt` | 16 vCPU / 64 GB | 200 GB pd-balanced + 1 TB pd-standard | stopped until SS finishes |
+
+A **new** project starts at 12 CPUs all-regions and 250 GB SSD, so Train Ticket's 16 vCPU
+could not be created at all and a 1 TB disk was refused. We never hit this before because
+quotas rise with a project's own age and billing history — the v1 project had earned higher
+limits over months. It is unrecoverable: its owner account has been deleted.
+
+`teleeporter` already had 32 CPUs / 500 GB SSD / 4096 GB disk on the same billing account,
+so nothing had to be requested or waited for.
+
+**Two things are better than v1 by accident.** Both VMs are in the **same zone** — v1 ran Sock
+Shop in us-east1 and Train Ticket in us-east4, so a signal that failed to transfer between
+applications could equally have been a machine or region difference. That confound is gone.
+And disks are split by role: LTTng writes to the fast pd-balanced disk, gzipped runs move to
+the pd-standard archive, which counts against a different and much larger quota.
+
+### Two things measured on the VM that changed the plan
+
+- **No `lock_*` tracepoints.** Stock Ubuntu kernels lack the lock debugging they need. Naser
+  asked for kernel lock contention; it is not collectable without a custom kernel, so the lock
+  blueprint is about **user-level `futex`** locks and says so.
+- **`power_cpu_frequency` and `power_cpu_idle` ARE available** and are now in the profile.
+  CPU frequency moves from "never tried" to collectable — it was never invisible, we simply
+  were not recording it.
+
+### The bootstrap bug that would have wasted the campaign
+
+LTTng 2.15 builds fine on the newer 6.17 kernel, but after the dkms install `modprobe
+lttng-tracer` failed and `lttng list --kernel` returned "Failed to list Linux kernel
+tracepoints". The build was fine; the **module index was stale**. One `depmod -a` fixed it and
+all 233 tracepoints appeared. `vm_bootstrap.sh` now does the depmod, loads the module, counts
+the tracepoints, and exits 1 if it cannot.
+
+### Pilot result: 13 passed, 0 failed
+
+Measured on a real 60 s run, all four modalities:
+
+| | |
+|---|---|
+| kernel | 12 per-CPU streams, 200k+ events decode |
+| spans | 253 spans from 6 services |
+| logs | 11 containers, 65,506 lines |
+| metrics | 429 non-empty series files |
+| event loss | **zero discarded** |
+| cgroup counters | 14 containers, `memory.events` present |
+| clocks | anchors recorded |
+| matplotlib | importable — the v1 missing-image cause is fixed |
+
+**The v2 headline feature works.** Every event now carries container identity:
+
+```
+sched_waking: { cpu_id = 9 }, { pid = 0, tid = 0, procname = "swapper/9",
+  cgroup_ns = 4026531835, pid_ns = 4026531836, net_ns = 4026531833,
+  ipc_ns = 4026531839, user_ns = 4026531837 }, { comm = "node", ... }
+```
+
+Five of six namespace types attached; only `mnt_ns` is unavailable on this kernel, and adding
+each type best-effort meant losing it cost nothing.
+
+### The first pilot said 2 FAILED, and all of it was my checker
+
+Worth recording, because a checker that cries wolf is worse than no checker.
+
+1. **SIGPIPE vs `pipefail`.** `babeltrace2 ... | head | grep -q` returns **141** under
+   `set -o pipefail`, because `head` closing the pipe kills babeltrace. The check was *finding*
+   its match and reporting failure.
+2. **`lttng list <session>` does not print contexts.** Grepping it reported the attribution fix
+   as missing while every event carried it. The decoded events are the only authoritative
+   answer, and that is what it checks now.
+3. **Spans are OTLP**, so the top-level key is `resourceSpans` and `service.name` sits in
+   `resource.attributes`. A flat grep reported 0 services on a good file — now 6.
+
+### Size
+
+2.25 GB uncompressed for a 60 s run, so roughly 9 GB for a 240 s campaign run and ~2.8 TB
+across 308 runs, gzipping to ~700–900 GB. That fits the 1 TB archive disk.
