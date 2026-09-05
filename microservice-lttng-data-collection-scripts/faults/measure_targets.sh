@@ -21,7 +21,9 @@ set -uo pipefail
 SD="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROM="${PROMETHEUS:-http://localhost:9090}"
 HOLD_S="${HOLD_S:-60}"
-APP="${STRATA_APP:-sockshop}"
+# Same fallback chain as fault_lib.sh - this script does not source it. The TT driver exports
+# STRATATRACE_APP and TRACE_APP, not STRATA_APP.
+APP="${STRATA_APP:-${STRATATRACE_APP:-${TRACE_APP:-sockshop}}}"
 
 # Container name patterns differ per app; everything else is the same.
 if [[ "$APP" == "trainticket" ]]; then
@@ -51,8 +53,14 @@ host_tx:rate(node_network_transmit_bytes_total{device!=\"lo\"}[1m])" ;;
       fork_storm)           echo "procs:container_processes{name=\"fork-storm\"}
 host_procs:node_procs_running
 host_forks:rate(node_forks_total[1m])" ;;
+      # These were written when the rule lived in the HOST's OUTPUT chain. It now lives in the
+      # target container's namespace, so host UDP counters are the wrong place to look - kept
+      # only to confirm that. Expect no Prometheus signature at all: cAdvisor does not expose
+      # per-container UDP drops, and the application effect hides in the tail (p50 and p95 both
+      # read BETTER than baseline while wall-clock time is 22x). If nothing moves, that is the
+      # answer, and verify_injection records it as no_targets rather than pretending.
       dns_delay)            echo "host_udp_out:rate(node_netstat_Udp_OutDatagrams[1m])
-host_udp_err:rate(node_netstat_Udp_SndbufErrors[1m])" ;;
+front_net_rx:rate(container_network_receive_packets_total{name=~\"$FRONT\"}[1m])" ;;
       nagle_delayed_ack)    echo "tx_pkts:rate(container_network_transmit_packets_total{name=\"nagle-delayed-ack\"}[1m])
 cpu:rate(container_cpu_usage_seconds_total{name=\"nagle-delayed-ack\"}[1m])" ;;
       code_lock_across_io|code_n_plus_one)

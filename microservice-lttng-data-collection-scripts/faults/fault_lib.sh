@@ -15,11 +15,18 @@
 #   TOXIPROXY_API     Toxiproxy admin API (default http://localhost:8474)
 
 FAULT_STATE_DIR="${FAULT_STATE_DIR:-$HOME/fault-state}"
-# Derived from the app rather than left to the caller. Sock Shop's compose project is
-# `docker-compose` and Train Ticket's is `trainticket`; a recipe that needs the caller to
-# remember which is a recipe that gets run wrong once, and a fault aimed at a container name
-# that does not exist fails loudly at best and silently at worst.
-if [[ "${STRATA_APP:-sockshop}" == "trainticket" ]]; then
+# WHICH APPLICATION IS DEPLOYED - resolved from any of the three names already in use.
+#
+# The Train Ticket driver has exported STRATATRACE_APP and TRACE_APP since v1; the new recipes
+# were written against STRATA_APP. Nobody would notice the mismatch until a campaign run
+# targeted `front-end` on a stack that has no such service. Reading all three here means the
+# existing driver works unchanged and there is one place that decides.
+if [[ -z "${STRATA_APP:-}" ]]; then
+    STRATA_APP="${STRATATRACE_APP:-${TRACE_APP:-sockshop}}"
+fi
+export STRATA_APP
+
+if [[ "$STRATA_APP" == "trainticket" ]]; then
     CONTAINER_PREFIX="${CONTAINER_PREFIX:-trainticket}"
 else
     CONTAINER_PREFIX="${CONTAINER_PREFIX:-docker-compose}"

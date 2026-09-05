@@ -122,7 +122,7 @@ leftovers_for() {   # what must be GONE after cleanup
 }
 
 pass=0; fail=0
-APP="${STRATA_APP:-sockshop}"
+APP="${STRATA_APP:-${STRATATRACE_APP:-${TRACE_APP:-sockshop}}}"
 
 if [[ "$NEGATIVE" -eq 1 ]]; then
     echo "=============================================================="

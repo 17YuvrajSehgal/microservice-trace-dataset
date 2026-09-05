@@ -19,6 +19,11 @@ SD="$STRATA_REPO/microservice-lttng-data-collection-scripts"        # shared col
 # fault recipes (CONTAINER_PREFIX -> trainticket_<svc>_1), and the derivers (service_map).
 export TRACE_APP=trainticket
 export STRATATRACE_APP=trainticket
+# STRATA_APP is what the v2 fault recipes read. fault_lib.sh falls back to STRATATRACE_APP
+# and TRACE_APP, so this line is belt and braces - but on a campaign we cannot repeat, a
+# recipe silently targeting `front-end` on a stack that has no such service is not worth
+# saving one line over.
+export STRATA_APP=trainticket
 export CONTAINER_PREFIX=trainticket
 export CONTAINER_REGEX="${CONTAINER_REGEX:-trainticket_.*_1|^mysql$|^nacos$}"
 export LOG_CONTAINER_REGEX="${LOG_CONTAINER_REGEX:-trainticket_.*_1|^mysql$|^nacos$|^otel-collector$}"
