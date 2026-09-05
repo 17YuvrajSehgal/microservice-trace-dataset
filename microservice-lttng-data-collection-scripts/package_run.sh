@@ -19,10 +19,28 @@ TAR=0
 [[ -d "$RUN_DIR" ]] || { echo "no such run: $RUN_DIR"; exit 1; }
 RUN_ID=$(basename "$RUN_DIR")
 
-# Compress the CTF streams if the campaign driver has not already. ~3-4x, and the derivers
-# gunzip on demand. metadata and index stay uncompressed so a reader can open the trace.
+# Compress the CTF streams if the campaign driver has not already. metadata and index stay
+# uncompressed so a reader can open the trace.
+#
+# MEASURED 5 Sept on a real Train Ticket bundle, not estimated. The comment used to say ~3-4x:
+#
+#   raw bundle          34.9 GB for a 165 s run   (49 containers, 40 of them JVMs)
+#   gzip -1 ratio       8.26x                     (better than the 3-4x assumed here)
+#   gzip -1 rate        120 MB/s single-threaded
+#
+# 8.26x is what makes the campaign fit at all: a 240 s Train Ticket run is ~51 GB raw and
+# ~6 GB packed, so 134 of them come to roughly 820 GB on a 1 TB archive.
+#
+# PIGZ, NOT GZIP. At 120 MB/s a single run takes ~7 minutes to compress, and 134 runs is nearly
+# 16 hours of the campaign spent waiting on one core out of sixteen. pigz does the same work in
+# parallel for the same bytes - gzip format, same ratio, readable by everything downstream.
+GZIP_BIN="$(command -v pigz || command -v gzip)"
+GZIP_ARGS="-1"
+[[ "$GZIP_BIN" == *pigz ]] && GZIP_ARGS="-1 -p $(nproc)"
 if [[ -d "$RUN_DIR/kernel/kernel" ]]; then
-    gzip -q "$RUN_DIR"/kernel/kernel/channel0_* 2>/dev/null || true
+    echo "[pack] compressing CTF streams with $(basename "$GZIP_BIN") $GZIP_ARGS"
+    # shellcheck disable=SC2086
+    "$GZIP_BIN" $GZIP_ARGS -q "$RUN_DIR"/kernel/kernel/channel0_* 2>/dev/null || true
 fi
 
 python3 - "$RUN_DIR" "$RUN_ID" <<'PY'
