@@ -173,13 +173,14 @@
  "anomaly_net": [
   {
    "canonical": true,
-   "name": "mysql_net_recv_drop_hostnet",
-   "promql": "rate(container_network_receive_bytes_total{name=\"mysql\"}[1m])",
+   "name": "anomaly_net_no_metric_signature",
+   "promql": "sum(rate(container_network_receive_bytes_total{name=~\"trainticket_.*\"}[1m]))",
    "direction": "decrease",
    "threshold_sigma": 3,
-   "abs_threshold": 1000,
-   "min_fraction": 0.4,
-   "why": "CALIBRATE. host-bridge netem (delay + loss) inflates every inter-container hop -> the closed loop slows -> fewer queries reach the shared mysql -> inbound bytes drop. No app-latency metric on TT (Sock Shop used catalogue p95); a container-throughput proxy is the closest Prometheus signal, traces carry the real latency."
+   "abs_threshold": null,
+   "min_fraction": 0.9,
+   "expected_to_fail": true,
+   "why": "REGISTERED AS A KNOWN NEGATIVE, measured on tt_anomaly_net_r3 (42 containers, netem 80 ms delay / 20 ms jitter / 2% loss). Nothing in Prometheus moves:\n  tcp retransmits            0 -> 0        host netstat cannot see container netns\n  tcp out segments           2 -> 2        same reason\n  container tcp sockets      306.8 -> 302.9   0.99x\n  tx/rx packets dropped      0 -> 0        netem drops in the qdisc, not the iface\n  gateway recv bytes         1456 -> 1539  1.06x\n\nThe reason is structural rather than a missing threshold. netem adds LATENCY, and Sock Shop's target for this family is application latency - histogram_quantile(0.95, http_request_duration_seconds_bucket) - which its services expose and Train Ticket's do not. The same fault is metrics-visible on one application and metrics-invisible on the other because of how the applications are instrumented, not because of anything about the fault.\n\nTHE PREVIOUS TARGET PRODUCED A FALSE POSITIVE. It was mysql's receive-byte rate with direction=decrease, and mysql's inbound traffic drifts with load: run r2, which injected into ZERO containers, was certified `confirmed` on a 1665 -> 864 drop with frac=1.0 and sigma=-3.09. A target that moves on its own can confirm a fault that never happened, which is the one outcome worse than confirming nothing.\n\nThe fault IS observable here - just not in this modality. The load generator's CSV records per-request latency, so the effect is in the dataset; it is the metrics modality that is blind, which is precisely the kind of claim the ablation study exists to make."
   }
  ],
  "lock_contention": [
