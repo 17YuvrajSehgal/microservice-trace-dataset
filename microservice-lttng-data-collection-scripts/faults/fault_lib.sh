@@ -9,13 +9,21 @@
 #
 # Env knobs:
 #   FAULT_STATE_DIR   where ground-truth JSON lands (default ~/fault-state)
-#   CONTAINER_PREFIX  compose project prefix (default docker-compose, the
-#                     COMPOSE_COMPATIBILITY naming used by the deployment)
+#   STRATA_APP        sockshop (default) | trainticket - sets the per-app defaults below
+#   CONTAINER_PREFIX  compose project prefix (derived from STRATA_APP; override to force)
 #   TARGET_CONTAINER  override full container name (local testing)
 #   TOXIPROXY_API     Toxiproxy admin API (default http://localhost:8474)
 
 FAULT_STATE_DIR="${FAULT_STATE_DIR:-$HOME/fault-state}"
-CONTAINER_PREFIX="${CONTAINER_PREFIX:-docker-compose}"
+# Derived from the app rather than left to the caller. Sock Shop's compose project is
+# `docker-compose` and Train Ticket's is `trainticket`; a recipe that needs the caller to
+# remember which is a recipe that gets run wrong once, and a fault aimed at a container name
+# that does not exist fails loudly at best and silently at worst.
+if [[ "${STRATA_APP:-sockshop}" == "trainticket" ]]; then
+    CONTAINER_PREFIX="${CONTAINER_PREFIX:-trainticket}"
+else
+    CONTAINER_PREFIX="${CONTAINER_PREFIX:-docker-compose}"
+fi
 TOXIPROXY_API="${TOXIPROXY_API:-http://localhost:8474}"
 
 now_utc() { date -u +%Y-%m-%dT%H:%M:%SZ; }

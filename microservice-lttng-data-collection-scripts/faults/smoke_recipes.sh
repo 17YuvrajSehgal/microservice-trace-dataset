@@ -98,8 +98,9 @@ leftovers_for() {   # what must be GONE after cleanup
 }
 
 pass=0; fail=0
+APP="${STRATA_APP:-sockshop}"
 echo "=============================================================="
-echo " FAULT RECIPE SMOKE TEST  (settle ${SETTLE}s per recipe)"
+echo " FAULT RECIPE SMOKE TEST  -  app: $APP  (settle ${SETTLE}s per recipe)"
 echo "=============================================================="
 
 for r in "${RECIPES[@]}"; do

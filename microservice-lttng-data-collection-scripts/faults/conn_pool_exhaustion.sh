@@ -33,14 +33,26 @@
 # Usage:
 #   ./conn_pool_exhaustion.sh inject [subtle|aggressive]
 #   ./conn_pool_exhaustion.sh cleanup | status
-#   env: DB_HOST (default catalogue-db) DB_PORT (3306)
+#   env: DB_HOST  (default: the deployed app's datastore - catalogue-db on Sock Shop,
+#                  the shared mysql on Train Ticket)
+#        DB_PORT  (3306)
+#        STRATA_APP  sockshop | trainticket
 set -euo pipefail
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/fault_lib.sh"
 
 FAULT_FAMILY="G_resource_leak"
 FAULT_NAME="conn_pool_exhaustion"
 FAULT_SCOPE="service"
-DB_HOST="${DB_HOST:-catalogue-db}"
+# App-aware default, for the same reason as fd_exhaustion: this family has to run on BOTH
+# applications or the matrices cannot match, and a recipe that needs the caller to remember
+# per-app env is a recipe that will be run wrong once. Train Ticket's 20 DB services share ONE
+# mysql (FAULTS-TT.md), which makes it a far bigger blast radius than Sock Shop's per-service db
+# - worth noting when the two are compared.
+if [[ "${STRATA_APP:-sockshop}" == "trainticket" ]]; then
+    DB_HOST="${DB_HOST:-mysql}"
+else
+    DB_HOST="${DB_HOST:-catalogue-db}"
+fi
 DB_PORT="${DB_PORT:-3306}"
 TARGET_SERVICE="${TARGET_SERVICE:-$DB_HOST}"
 EXPECTED_BLAST_RADIUS="${EXPECTED_BLAST_RADIUS:-[\"$DB_HOST\", \"every service that queries it\"]}"
@@ -49,7 +61,9 @@ TARGET_TRACE_VISIBILITY="${TARGET_TRACE_VISIBILITY:-covered}"
 REMEDIATION="raise max_connections, or fix the client that is not returning connections"
 
 CONTAINER="conn-pool-exhaustion"
-NETWORK="${NETWORK:-$(docker network ls --format '{{.Name}}' | grep -m1 -E 'docker-compose|default' || echo bridge)}"
+# Sock Shop's compose project is `docker-compose`, Train Ticket's is `trainticket`, so match on
+# the project network by suffix rather than by name. `bridge`/`host`/`none` do not match.
+NETWORK="${NETWORK:-$(docker network ls --format '{{.Name}}' | grep -m1 -E '^(docker-compose|trainticket).*|.*_default$' || echo bridge)}"
 
 case "${1:-}" in
   inject)
