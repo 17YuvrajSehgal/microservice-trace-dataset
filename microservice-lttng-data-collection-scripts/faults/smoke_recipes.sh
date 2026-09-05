@@ -250,7 +250,12 @@ done
 echo
 echo "=============================================================="
 printf " RECIPE SMOKE: %d passed, %d failed\n" "$pass" "$fail"
-[[ "$fail" -eq 0 ]] && echo " all ten recipes are campaign-ready" \
-                    || echo " *** fix the failures before the campaign ***"
+# Report the count that actually RAN. "all ten" printed after a nine-recipe run on Train
+# Ticket, where dns_delay is excluded - a small lie, but this suite exists to stop small lies.
+if [[ "$fail" -eq 0 ]]; then
+    echo " all $pass recipe(s) run on $APP are campaign-ready"
+else
+    echo " *** fix the failures before the campaign ***"
+fi
 echo "=============================================================="
 exit $(( fail > 0 ? 1 : 0 ))
