@@ -82,3 +82,52 @@ toxic_del() {
 toxiproxy_status() {
     curl -s "$TOXIPROXY_API/proxies" | tr ',' '\n' | grep -E '"name"|"type"' || true
 }
+
+# --- Co-located workload helpers (the v2 concurrency / security / config recipes) --------
+#
+# Several v2 faults are not "squeeze a resource" but "run a program that behaves badly":
+# lock contention, priority inversion, deadlock, a mining-style CPU burner, a fork storm.
+# Each is a small Python program under faults/workloads/, run in its own container beside the
+# application - the same shape as noisy_neighbor, which is already the kernel-only showcase.
+#
+# Why a container rather than patching a service: these are the SYNTHETIC reference version of
+# each signature. The realistic version lives in the code-defect branches, which patch the
+# real service. Having both is the point - the pairing is the experiment (CODE-BUGS-V2.md).
+#
+# Every workload container is CPU-capped so a runaway program cannot take the host, and is
+# named so cleanup is unambiguous.
+
+WORKLOAD_IMAGE="${WORKLOAD_IMAGE:-python:3.12-slim}"
+WORKLOAD_DIR="${WORKLOAD_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/workloads}"
+
+# workload_start <container-name> <script.py> <cpus> [extra docker args...] [-- prog args...]
+workload_start() {
+    local name="$1" script="$2" cpus="$3"; shift 3
+    local dockerargs=() progargs=() seen=0
+    for a in "$@"; do
+        if [[ "$a" == "--" ]]; then seen=1; continue; fi
+        if [[ "$seen" -eq 0 ]]; then dockerargs+=("$a"); else progargs+=("$a"); fi
+    done
+    [[ -f "$WORKLOAD_DIR/$script" ]] || { echo "missing workload: $WORKLOAD_DIR/$script"; exit 1; }
+    docker rm -f "$name" >/dev/null 2>&1 || true
+    docker run -d --name "$name" --cpus="$cpus" \
+        -v "$WORKLOAD_DIR/$script:/w/$script:ro" \
+        "${dockerargs[@]}" \
+        "$WORKLOAD_IMAGE" python3 -u "/w/$script" "${progargs[@]}" >/dev/null
+    # Fail loudly if it died on startup: a fault that never ran produces a mislabelled run,
+    # which is worse than a failed one because nothing downstream can tell.
+    sleep 2
+    if [[ "$(docker inspect -f '{{.State.Running}}' "$name" 2>/dev/null)" != "true" ]]; then
+        echo "[$FAULT_NAME] WORKLOAD FAILED TO START - logs follow:"
+        docker logs "$name" 2>&1 | tail -15
+        docker rm -f "$name" >/dev/null 2>&1 || true
+        exit 1
+    fi
+}
+
+workload_stop() { docker rm -f "$1" >/dev/null 2>&1 || true; }
+
+workload_status() {
+    docker ps --filter "name=$1" --format '{{.Names}} {{.Status}}'
+    docker logs "$1" 2>&1 | tail -5
+}
