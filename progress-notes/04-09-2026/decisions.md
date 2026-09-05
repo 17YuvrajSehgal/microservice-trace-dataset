@@ -548,3 +548,74 @@ which carries on with no kernel tracing at all), and `python3-matplotlib` (v1 pr
 verification images on Sock Shop because of its absence). Plus the LTTng 2.15 PPA, so both VMs
 run the same tracer — comparing two applications across two tracer versions would put a
 confound under every result.
+
+---
+
+## Train Ticket smoke: every number calibrated on one application was wrong on the other
+
+The ten recipes were written to be app-independent and had passed 10/10 on Sock Shop. On Train
+Ticket, three of them behaved differently, and in each case the culprit was a **constant
+measured on Sock Shop**.
+
+### 1. fd_exhaustion — same fault, completely different symptom
+
+| | Sock Shop (Node front-end) | Train Ticket (Spring Cloud Gateway) |
+|---|---|---|
+| idle descriptors | 21 | 125 |
+| limit applied | 29 | 183 |
+| peak reached | 29/29 | 183/183 |
+| p50 under load | 38.8 ms | **15,551 ms** |
+| errors / 600 | 0 | **409** |
+
+Node queues in the listen backlog and gets slow. The JVM **fails outright**. Same injection,
+same measured mechanism, two entirely different application-level signatures — which is exactly
+the kind of cross-application contrast the two-app design exists to produce.
+
+It also confirms the earlier decision: a fixed `nofile=64`, fine for a service sitting at 21
+descriptors, would have been fatal for one sitting at 125.
+
+### 2. conn_pool_exhaustion passed while squeezing nothing
+
+Train Ticket's MySQL 8 allows **2000** connections. Docker gives a container **nofile=1024**. So
+the holder ran out of its *own* descriptors at 1020 held / 1221 connected and left the server
+39% free.
+
+It passed because the check matched `Threads_connected=[1-9][0-9]`, and 1221 is a big number
+that looks like success. Sock Shop hid the whole problem, because MySQL 5.7 stops at 151 —
+comfortably under the default limit.
+
+Fixed: the holder gets `nofile=8192`, and `saturated=yes/no` is decided by whether the **server
+refused**, not by how many sockets we opened.
+
+### 3. dns_delay — a working fault declared dead by a threshold
+
+| | before | during | queries dropped |
+|---|---|---|---|
+| Sock Shop `front-end` | 52 ms | **2555 ms** | — |
+| Train Ticket `ts-gateway-service` | 58 ms | **62–167 ms** | **57** |
+
+Both work — the rule's own packet counter proves it on Train Ticket. The difference is the
+container's `resolv.conf`: Sock Shop's image walks three search domains before trying a name
+absolutely, so one lookup becomes several queries and several chances to be dropped. The
+gateway image sets `ndots:0` and asks once.
+
+**The magnitude belongs to the image, not to the fault.** My 300 ms threshold — set from the
+only VM I could test at the time — failed a fault that was working fine.
+
+The check is now the packet counter rising while a container resolves: system-side evidence
+that works on either application. Latencies are still reported, because the size of the effect
+is worth recording even when it is not what decides the verdict.
+
+Carry into the analysis: the two applications differ on this family because of their **resolver
+configuration**, not their sensitivity to DNS trouble. A comparison that missed that would draw
+the wrong conclusion.
+
+### The pattern
+
+`nofile=64`. `400 connections`. `300 ms`. Three constants, each measured honestly on Sock Shop,
+each wrong on Train Ticket. Two would have produced mislabelled runs and one would have killed
+a service.
+
+Every one is now derived from the system at inject time: measure the service's descriptors, ask
+the server for `max_connections`, count dropped packets. That is the same discipline the
+blueprints are built on, applied to the injectors instead of the analysis.
