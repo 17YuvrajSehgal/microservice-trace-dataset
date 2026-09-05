@@ -54,9 +54,29 @@ most of the window, which is a genuinely different detection problem.
 
 | Fault | Kernel-visible | Recipe risk | Note |
 |---|---|---|---|
-| `fd_exhaustion` | **yes, clearly** — `open` starts returning EMFILE | **low** | we record every syscall including its return |
+| `fd_exhaustion` | **yes, clearly** — `accept`/`socket` start returning EMFILE | **low** — but see below | we record every syscall including its return |
 | `conn_pool_exhaustion` | yes — connects queue, then fail | **low** | toxiproxy connection cap; we already run toxiproxy |
 | `memory_leak` | partly — reclaim rises late | medium | needs a leaking sidecar; slow to show |
+
+**`fd_exhaustion` was rated "low risk" and took five rounds to get right.** Worth recording,
+because the rating was about the *idea*, not the implementation, and the two are not the same
+thing:
+
+1. An external process eating descriptors cannot work — **RLIMIT_NOFILE is per process**, so a
+   helper exhausting its own budget tells the service nothing.
+2. The smoke check used `status | grep -q`, which fails on SIGPIPE and reported a working fault
+   as broken.
+3. The check then asked for failed requests and got `errors=0` — Node queues in the listen
+   backlog rather than refusing, so requests get slow (p95 95 → 590 ms) instead of failing.
+4. Applying the limit by recreating the container **restarts the service mid-run**, putting a
+   process exit and start into the very trace we are collecting. That is a methodology problem,
+   not a bug, and it would have shipped in the dataset.
+5. "Idle" measured once, right after load, read 147 for a service that sits at 21.
+
+Final mechanism: `prlimit` on the live process, limit set to measured idle plus headroom, with
+the recipe able to prove itself by driving load and watching the descriptor count reach the
+ceiling. Sock Shop's front-end peaks at **151 descriptors** under 150 concurrent requests
+against a stock limit of 524288.
 
 **`conn_pool_exhaustion` is worth singling out.** `FAULTS-TT.md` already proposed it as the
 Train Ticket analogue of `queue_backlog`. Adding it as its own family gives Train Ticket a
