@@ -18,8 +18,23 @@ Before 2026-09-03 it was spread across the scratch root, mixed with four other p
 ├── tools/         bt21.sh, local-bt21/ (babeltrace 2.1.2), src/ (its source)
 ├── scripts/       loose helper scripts from past sessions
 ├── slurm-logs/    job .out / .err / .log files
-└── misc/          leftover odds and ends
+├── misc/          leftover odds and ends
+└── v2/            the v2 release, pushed 2026-09-06
+    ├── sockshop/      28 per-recipe tar.gz + _prometheus_snapshot.tar.gz  (464 GB, 169 runs)
+    └── trainticket/   21 per-recipe tar.gz + _prometheus_snapshot.tar.gz  (315 GB, 134 runs)
 ```
+
+**v2 is deliberately NOT under `data/`.** It reuses every v1 recipe name, so sharing a root would
+let one release's archives overwrite the other's with no way to tell them apart afterwards.
+
+## Retention
+
+`/scratch` is safe for this data for **at least a year** (confirmed 2026-09-06). No need to chase
+`/project` quota for the v2 release - which is just as well, since `/project` has ~705 GB free
+against a 1024 GB quota and could not hold v2's 779 GB alongside what is already there.
+
+Space as of the v2 push: **4.8 TB of 25 TB**, and **~1.0M files of 10M**. The per-recipe tarball
+design is why the file count barely moved - v2 is 831,416 source files stored as **51 archives**.
 
 ## Not ours — do not move or delete
 
