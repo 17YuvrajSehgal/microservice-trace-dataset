@@ -372,5 +372,75 @@
    "why": "REGISTERED AS A KNOWN NEGATIVE. Two calibration passes found nothing that moves: host UDP counters 1.00x, front-end receive rate 0.58-0.83x (down, not up). The fault is real - the iptables rule drops 24 queries while the app runs, wall-clock time goes 914 ms -> 20,034 ms and 31 of 400 requests fail - but p50 reads 3.9 ms and p95 8.0 ms, BOTH BETTER than baseline. It hides in the tail, where no aggregate metric looks. Expect this check to fail; the failure is the finding, and verify_injection will report borderline rather than silently passing.",
    "expected_to_fail": true
   }
+ ],
+ "code_lock_across_io": [
+  {
+   "canonical": true,
+   "name": "catalogue_throughput_collapse",
+   "promql": "sum(rate(http_request_duration_seconds_count{job=\"catalogue\"}[1m]))",
+   "direction": "decrease",
+   "threshold_sigma": 2,
+   "abs_threshold": 70,
+   "min_fraction": 0.6,
+   "why": "MEASURED for this family: 106.2 -> 47.8  (0.45x). Baselines across the five defects run 104-143 req/s and injections 47-54, so 70 separates them cleanly.\n\nMEASURED 5 Sept from the collected campaign runs (r1 of each family, 187 s window). The canonical signal is THROUGHPUT COLLAPSE, not latency: the load generator is closed-loop, so a slower service completes fewer requests per second.\n\nWHAT THIS CHECK CANNOT DO, stated plainly. All five code defects produce the SAME signature - catalogue request rate falling to 0.33-0.47x - so this gate confirms that the image swap took effect and the service slowed. It does NOT identify which defect is active, and it does not separate the defect from the container restart that applying it requires. Ground truth names the defect; the smoke test proved each one misbehaves against its own STRATA_BUG=none control (5.14x, 6.14x, 39.98x, 16.41x, plus memory growth) on a direct latency probe.\n\nThat the metrics modality cannot tell these five apart is a RESULT, not a gap to paper over - it is the kind of claim the modality-ablation study exists to make. The kernel and trace modalities are where any discrimination will have to come from.\n\nLatency is deliberately NOT the target: catalogue p95 measured 0.72-0.98x, flat or DOWN, because the surviving requests are the fast ones. A latency threshold would have failed on every one of these runs while the defects were working."
+  },
+  {
+   "canonical": false,
+   "name": "front_end_descriptor_growth",
+   "promql": "sum(container_file_descriptors{name=~\".*front-end_1$\"})",
+   "direction": "increase",
+   "threshold_sigma": 2,
+   "abs_threshold": 300,
+   "min_fraction": 0.5,
+   "why": "MEASURED, and the one defect with a signature of its own: catalogue fds 127 -> 411 (3.23x), memory 3.17x. Holding a lock across I/O serialises the catalogue call, so front-end connections pile up waiting. The other four show no comparable per-defect signal."
+  }
+ ],
+ "code_n_plus_one": [
+  {
+   "canonical": true,
+   "name": "catalogue_throughput_collapse",
+   "promql": "sum(rate(http_request_duration_seconds_count{job=\"catalogue\"}[1m]))",
+   "direction": "decrease",
+   "threshold_sigma": 2,
+   "abs_threshold": 70,
+   "min_fraction": 0.6,
+   "why": "MEASURED for this family: 104.4 -> 48.9  (0.47x). Baselines across the five defects run 104-143 req/s and injections 47-54, so 70 separates them cleanly.\n\nMEASURED 5 Sept from the collected campaign runs (r1 of each family, 187 s window). The canonical signal is THROUGHPUT COLLAPSE, not latency: the load generator is closed-loop, so a slower service completes fewer requests per second.\n\nWHAT THIS CHECK CANNOT DO, stated plainly. All five code defects produce the SAME signature - catalogue request rate falling to 0.33-0.47x - so this gate confirms that the image swap took effect and the service slowed. It does NOT identify which defect is active, and it does not separate the defect from the container restart that applying it requires. Ground truth names the defect; the smoke test proved each one misbehaves against its own STRATA_BUG=none control (5.14x, 6.14x, 39.98x, 16.41x, plus memory growth) on a direct latency probe.\n\nThat the metrics modality cannot tell these five apart is a RESULT, not a gap to paper over - it is the kind of claim the modality-ablation study exists to make. The kernel and trace modalities are where any discrimination will have to come from.\n\nLatency is deliberately NOT the target: catalogue p95 measured 0.72-0.98x, flat or DOWN, because the surviving requests are the fast ones. A latency threshold would have failed on every one of these runs while the defects were working."
+  }
+ ],
+ "code_event_loop_block": [
+  {
+   "canonical": true,
+   "name": "catalogue_throughput_collapse",
+   "promql": "sum(rate(http_request_duration_seconds_count{job=\"catalogue\"}[1m]))",
+   "direction": "decrease",
+   "threshold_sigma": 2,
+   "abs_threshold": 70,
+   "min_fraction": 0.6,
+   "why": "MEASURED for this family: 136.1 -> 53.8  (0.40x). Baselines across the five defects run 104-143 req/s and injections 47-54, so 70 separates them cleanly.\n\nMEASURED 5 Sept from the collected campaign runs (r1 of each family, 187 s window). The canonical signal is THROUGHPUT COLLAPSE, not latency: the load generator is closed-loop, so a slower service completes fewer requests per second.\n\nWHAT THIS CHECK CANNOT DO, stated plainly. All five code defects produce the SAME signature - catalogue request rate falling to 0.33-0.47x - so this gate confirms that the image swap took effect and the service slowed. It does NOT identify which defect is active, and it does not separate the defect from the container restart that applying it requires. Ground truth names the defect; the smoke test proved each one misbehaves against its own STRATA_BUG=none control (5.14x, 6.14x, 39.98x, 16.41x, plus memory growth) on a direct latency probe.\n\nThat the metrics modality cannot tell these five apart is a RESULT, not a gap to paper over - it is the kind of claim the modality-ablation study exists to make. The kernel and trace modalities are where any discrimination will have to come from.\n\nLatency is deliberately NOT the target: catalogue p95 measured 0.72-0.98x, flat or DOWN, because the surviving requests are the fast ones. A latency threshold would have failed on every one of these runs while the defects were working."
+  }
+ ],
+ "code_serial_awaits": [
+  {
+   "canonical": true,
+   "name": "catalogue_throughput_collapse",
+   "promql": "sum(rate(http_request_duration_seconds_count{job=\"catalogue\"}[1m]))",
+   "direction": "decrease",
+   "threshold_sigma": 2,
+   "abs_threshold": 70,
+   "min_fraction": 0.6,
+   "why": "MEASURED for this family: 136.8 -> 52.4  (0.38x). Baselines across the five defects run 104-143 req/s and injections 47-54, so 70 separates them cleanly.\n\nMEASURED 5 Sept from the collected campaign runs (r1 of each family, 187 s window). The canonical signal is THROUGHPUT COLLAPSE, not latency: the load generator is closed-loop, so a slower service completes fewer requests per second.\n\nWHAT THIS CHECK CANNOT DO, stated plainly. All five code defects produce the SAME signature - catalogue request rate falling to 0.33-0.47x - so this gate confirms that the image swap took effect and the service slowed. It does NOT identify which defect is active, and it does not separate the defect from the container restart that applying it requires. Ground truth names the defect; the smoke test proved each one misbehaves against its own STRATA_BUG=none control (5.14x, 6.14x, 39.98x, 16.41x, plus memory growth) on a direct latency probe.\n\nThat the metrics modality cannot tell these five apart is a RESULT, not a gap to paper over - it is the kind of claim the modality-ablation study exists to make. The kernel and trace modalities are where any discrimination will have to come from.\n\nLatency is deliberately NOT the target: catalogue p95 measured 0.72-0.98x, flat or DOWN, because the surviving requests are the fast ones. A latency threshold would have failed on every one of these runs while the defects were working."
+  }
+ ],
+ "code_unbounded_cache": [
+  {
+   "canonical": true,
+   "name": "catalogue_throughput_collapse",
+   "promql": "sum(rate(http_request_duration_seconds_count{job=\"catalogue\"}[1m]))",
+   "direction": "decrease",
+   "threshold_sigma": 2,
+   "abs_threshold": 70,
+   "min_fraction": 0.6,
+   "why": "MEASURED for this family: 143.3 -> 46.9  (0.33x). Baselines across the five defects run 104-143 req/s and injections 47-54, so 70 separates them cleanly.\n\nMEASURED 5 Sept from the collected campaign runs (r1 of each family, 187 s window). The canonical signal is THROUGHPUT COLLAPSE, not latency: the load generator is closed-loop, so a slower service completes fewer requests per second.\n\nWHAT THIS CHECK CANNOT DO, stated plainly. All five code defects produce the SAME signature - catalogue request rate falling to 0.33-0.47x - so this gate confirms that the image swap took effect and the service slowed. It does NOT identify which defect is active, and it does not separate the defect from the container restart that applying it requires. Ground truth names the defect; the smoke test proved each one misbehaves against its own STRATA_BUG=none control (5.14x, 6.14x, 39.98x, 16.41x, plus memory growth) on a direct latency probe.\n\nThat the metrics modality cannot tell these five apart is a RESULT, not a gap to paper over - it is the kind of claim the modality-ablation study exists to make. The kernel and trace modalities are where any discrimination will have to come from.\n\nLatency is deliberately NOT the target: catalogue p95 measured 0.72-0.98x, flat or DOWN, because the surviving requests are the fast ones. A latency threshold would have failed on every one of these runs while the defects were working."
+  }
  ]
 }
