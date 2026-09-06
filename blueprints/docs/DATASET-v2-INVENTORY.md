@@ -144,7 +144,7 @@ stopped** so the TSDB is consistent rather than mid-write.
 | | on the VM | local copy | TSDB | verified |
 |---|---|---|---|---|
 | Sock Shop | `/mnt/archive/prometheus/` | `C:\workplace\stratatrace-v2-prometheus\sockshop-prometheus.tar` | 362 MB | sha256 OK |
-| Train Ticket | `/mnt/archive/prometheus/` | `…	rainticket-prometheus.tar` | 582 MB | sha256 OK |
+| Train Ticket | `/mnt/archive/prometheus/` | `C:\workplace\stratatrace-v2-prometheus	rainticket-prometheus.tar` | 582 MB | sha256 OK |
 
 Each archive holds `tsdb.tar.gz`, the `prometheus.yml` it was scraped with, `SHA256SUMS`, and a
 README with the restore command:
