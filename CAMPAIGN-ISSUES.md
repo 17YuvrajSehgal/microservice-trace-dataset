@@ -4,14 +4,22 @@
 runs are affected and whether they need **re-collecting** (the data is wrong) or only
 **re-scoring** (the data is fine, the verdict is not).
 
-Regenerate the machine-checkable part at any time, on either VM:
+**The authoritative list is generated, not written here.** This prose went stale within two
+hours of being written — the campaign kept producing runs. Run this on either VM:
 
 ```bash
-python3 ~/microservice-trace-dataset/microservice-lttng-data-collection-scripts/rebuild_manifest.py
+python3 ~/microservice-trace-dataset/microservice-lttng-data-collection-scripts/campaign_issues.py
 ```
 
-It reads the bundles, not the campaign manifest — the driver's manifest is unreliable for this
-campaign (see issue 7).
+It reads the bundles and groups everything as RE-COLLECT / RE-SCORE / ACCEPTED, and it
+classifies conservatively: anything it cannot prove is a data problem is reported as a
+re-score, because that is the cheap remedy and the honest default.
+
+`rebuild_manifest.py` gives the full per-run index. Neither uses the driver's own manifest,
+which is unreliable for this campaign (issue 7).
+
+The sections below explain **why** each class of problem exists — the generated list says which
+runs are affected right now.
 
 ---
 
@@ -164,7 +172,49 @@ and `~/tt_campaign_manifest.csv` are unreliable for this campaign.
 
 ---
 
-## 8. Things to verify before the campaign ends
+## 8. RE-SCORE — the five code defects have no verification targets at all
+
+**25 Sock Shop runs report `no_targets`** (5 defects x 5 repeats).
+
+I calibrated the ten new *fault* families on 4 Sept and prepared the same calibration pass for
+the code defects — then never ran it; the cAdvisor findings took over. The defects were verified
+to work (5/5 smoke, 5.14x / 6.14x / 39.98x / 16.41x plus memory growth against their own
+`STRATA_BUG=none` controls), so the runs contain real defects. Nothing checks them.
+
+`no_targets` is the honest status and it did its job: the gap is visible in every bundle rather
+than silently absent. Candidate metrics are already defined in
+`faults/measure_targets.sh` (`code_lock_across_io`, `code_n_plus_one` -> catalogue and DB CPU;
+`code_event_loop_block`, `code_serial_awaits` -> front-end CPU and descriptors;
+`code_unbounded_cache` -> front-end memory).
+
+**Affected:** all `code_*_aggressive_steady_r1..r5` on Sock Shop.
+
+---
+
+## 9. RE-SCORE — Train Ticket families that were never calibrated
+
+`slow_db` (5/5), `svc_cpu_cap` (5/5), `svc_net` (5/5), `error_storm` (2) are failing on Train
+Ticket. All four were on the never-calibrated list, and all four use container CPU or network
+byte rates as proxies — the same class of target that produced a false positive for
+`anomaly_net` (issue 2), because those rates drift with load on their own.
+
+Measure each against a completed run's own window before re-scoring, exactly as was done for
+`anomaly_disk` and `anomaly_mem`. Do **not** carry Sock Shop's numbers across (standing rule 2).
+
+---
+
+## 10. Partial failures in calibrated families — check whether it is the threshold or variation
+
+`fd_exhaustion` 3 of 5, `lock_contention` 3 of 5, `deadlock` 1 of 5 on Sock Shop.
+
+These families *were* calibrated (4 Sept) and most repeats confirm, so this looks like
+thresholds sitting too close to the effect rather than being wrong. Worth one look at a failing
+and a passing repeat side by side before changing anything — `queue_backlog` showed the same
+shape and turned out to be ordinary variation (issue 4).
+
+---
+
+## 11. Things to verify before the campaign ends
 
 - [ ] `anomaly_net` **burst** runs on TT record `containers > 0`
 - [ ] `queue_backlog` r3–r5 on SS confirm (issue 4)
