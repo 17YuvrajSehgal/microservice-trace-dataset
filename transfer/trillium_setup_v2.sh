@@ -1,12 +1,24 @@
 #!/bin/bash
 # Run this ON TRILLIUM (login node), once, before the v2 push.
 #
-# WHY IT HAS TO BE RUN BY A HUMAN
-# -------------------------------
-# Trillium accepts publickey or keyboard-interactive (MFA) and nothing else. Neither collector VM
-# has a key registered here, and registering one requires a login that only the account holder can
-# complete. So the two things that need a Trillium session - authorising the VMs and reading the
-# quota - cannot be done from the VMs or from a laptop that is not already enrolled.
+# HOW TRILLIUM AUTH ACTUALLY WORKS - measured 6 Sept 2026, not assumed
+# --------------------------------------------------------------------
+# Registering the VM keys in CCDB works: `ssh -vv` from the VM reports
+#
+#     debug1: Server accepts key: ~/.ssh/trillium ED25519 SHA256:MQR4JE50...
+#     Authenticated using "publickey" with partial success.
+#     debug1: Authentications that can continue: keyboard-interactive
+#
+# The key is a FIRST factor, never a whole login. Trillium then demands MFA, every time. There is
+# no key-only route: no data-transfer node resolves in DNS (trillium-dtn, dtn.trillium,
+# trillium-dtn1, nia-dtn1, datamover - all NXDOMAIN), and nothing is offered before auth.
+#
+# That is why push_to_trillium.sh multiplexes over ONE ssh ControlMaster: a human does the MFA
+# once per VM, and every push stream reuses that master for 12h. Key registration is still
+# required - it is just not sufficient.
+#
+# So step 1 below is a FALLBACK. If the keys were added through the CCDB web UI (the normal route)
+# they are already live and step 1 will simply say "already authorised".
 #
 # It does three things and reports what it found:
 #   1. authorises both v2 collector VMs to push here (idempotent - safe to re-run)

@@ -19,11 +19,6 @@
 set -uo pipefail
 TRILLIUM_USER="${TRILLIUM_USER:-yuvraj17}"
 TRILLIUM_HOST="${TRILLIUM_HOST:-trillium.scinet.utoronto.ca}"
-# DELIBERATELY HAS NO DEFAULT. It used to default to /scratch/yuvraj17/stratatrace/repo, which
-# is where the v1 release already lives (CLUSTER-LAYOUT.md). v2 has the same recipe names, so a
-# default push would have written v2 tarballs over v1's with no warning and no way to tell which
-# release a file came from. Name the release you are pushing.
-DEST_ROOT="${DEST_ROOT:?set DEST_ROOT to the release root, e.g. /scratch/yuvraj17/stratatrace/v2 (v1 occupies /scratch/yuvraj17/stratatrace/repo - do not push v2 there)}"
 PAR="${PAR:-4}"                 # parallel recipe streams (each fills one WAN connection)
 PIGZ_P="${PIGZ_P:-4}"           # cores per pigz worker (PAR*PIGZ_P <= vCPUs)
 # default to the per-VM transfer key if present (SciNet/Alliance = key + MFA); override with SSH_KEY=
@@ -46,7 +41,17 @@ if ! ssh -o ControlPath=$CM_PATH -O check "$REMOTE" 2>/dev/null; then
   echo "   bash $0 --setup-master        # or: ssh -fNM -o ControlPath=$CM_PATH -o ControlPersist=12h ${SSH_KEY:+-i $SSH_KEY} $REMOTE"
   echo "Then re-run the push."; exit 1
 fi
-# from here on we actually push, so require SRC/APP
+# from here on we actually push, so require SRC/APP/DEST_ROOT.
+#
+# DEST_ROOT DELIBERATELY HAS NO DEFAULT. It used to default to /scratch/yuvraj17/stratatrace/repo,
+# which is where the v1 release already lives (CLUSTER-LAYOUT.md). v2 reuses every v1 recipe name,
+# so a default push would have written v2 tarballs over v1's with no warning and no way to tell
+# afterwards which release a file came from. Name the release you are pushing.
+#
+# It is required HERE and not at the top of the file: --setup-master only opens the MFA'd ssh
+# master and has no destination to speak of, so requiring it earlier made the one command you must
+# run first fail on the one variable it does not use.
+DEST_ROOT="${DEST_ROOT:?set DEST_ROOT to the release root, e.g. /scratch/yuvraj17/stratatrace/v2 (v1 occupies /scratch/yuvraj17/stratatrace/repo - do not push v2 there)}"
 SRC="${SRC:?set SRC to the traces dir (e.g. /mnt/data/traces or \$HOME/traces)}"
 APP="${APP:?set APP to sockshop|trainticket}"
 DEST="$DEST_ROOT/$APP"
