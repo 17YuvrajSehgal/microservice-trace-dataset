@@ -22,9 +22,12 @@ drivers' own manifests (which are unreliable for this campaign — see
 The single lossy run is `tt_anomaly_disk_aggressive_steady_r4` (2,481,855 discarded, ~0.25% of
 that run). It is kept deliberately — see [caveats](#caveats-that-affect-analysis).
 
-Every run carries: kernel CTF trace, OTLP spans, container logs, meta/clock anchors, plus a
-per-run Prometheus export (~440 metric series) and the load generator's request CSV alongside
-the bundle.
+Every run carries: kernel CTF trace, OTLP spans, container logs, meta/clock anchors, and a
+per-run Prometheus export (~440 metric series) alongside the bundle.
+
+The client-side request CSV is **complete on Sock Shop (169/169) and partial on Train Ticket
+(31/134)** — see [the load CSV gap](#the-train-ticket-load-csv-gap). The four trace modalities
+are unaffected.
 
 ## Verification verdicts
 
@@ -92,8 +95,10 @@ across applications without saying so:
 - **`svc_cpu_cap`** — `ts-travel-service` uses **0.0033 cores** against a 0.2-core cap, 60x
   headroom, because Train Ticket spreads 20 users across 40 services. The cap never binds.
 - **`anomaly_net`** — no metrics signature on Train Ticket at all. netem adds *latency*, and
-  Sock Shop's services expose a latency histogram while Train Ticket's do not. The fault is
-  still observable in the load-generator CSV and the kernel trace.
+  Sock Shop's services expose a latency histogram while Train Ticket's do not. On Sock Shop the
+  fault is still visible in the load-generator CSV and the kernel trace. **On Train Ticket that
+  CSV is missing for all 8 runs** (below), leaving the kernel trace and spans as the only
+  evidence there.
 
 **`dns_delay` reaches only external lookups.** Container-to-container names are answered by
 Docker's embedded resolver inside the netns. On Sock Shop the effect is a tail effect: p50 and
@@ -116,6 +121,39 @@ snapshot. Sock Shop: 256 MB/CPU throughout. Train Ticket: 384 MB/CPU for `anomal
 MB/CPU otherwise. The two faults want opposite things — the disk fault starves the consumer of
 *disk*, the memory fault starves it of *memory*, and LTTng's buffers **are** memory. Buffer size
 affects only whether an event was dropped, never what a kept event contains.
+
+### The Train Ticket load CSV gap
+
+**103 of 134 Train Ticket runs have no client-side request CSV.** Sock Shop has all 169. The
+kernel trace, spans, container logs and Prometheus export are complete in every one of the 303
+runs — only the load generator's own record is affected.
+
+Which runs kept theirs is not random. It is exactly the families whose fault does **not** block a
+request:
+
+| kept the CSV | lost it |
+|---|---|
+| `normal` 10/10, `anomaly_cpu` 5/5, `anomaly_disk` 5/5 | every other family, 0 or 1 of each |
+
+The cause, read off the empty `_load.log` files (no error, no completion line — the process was
+killed mid-flight): Train Ticket's `load_generator.py` wrote the CSV only after
+`with ThreadPoolExecutor(...) as ex:` exited, and that block waits for every worker with no
+timeout. A worker checks the clock only *between* journeys, and a journey is ~5 sequential
+requests at a 30 s timeout — so under a fault that blocks requests a worker overshoots the run by
+up to ~150 s. `run_scenario.sh`'s cleanup trap killed the generator long before that, with every
+row still in memory. Sock Shop's generator bounds its join at 15 s and always writes, which is
+why it lost nothing.
+
+**Fixed 6 Sept** in `train-ticket-collection-scripts/load_generator.py`: the write is now a
+shared function reachable from three paths — normal completion, a bounded `duration + 20 s`
+deadline, and a `SIGTERM` handler. Verified against a host that accepts and never answers: the
+CSV lands at the deadline and the process exits immediately instead of hanging for the request
+timeout.
+
+**The lost CSVs are not recoverable** — the rows only ever existed in the killed process's
+memory. Re-collecting 103 Train Ticket runs costs roughly 620 GB and a day of VM time, for one
+modality of four. Whether that is worth it depends on whether the ablation study needs a
+client-side view on Train Ticket; it is a research call, not a defect to quietly patch.
 
 **10 Train Ticket verdicts are outstanding** (`slow_db` ×5, `svc_net` ×5). Their data is intact.
 `svc_net`'s candidate metrics rise *uniformly* ~2.1x across unrelated services, which reads as
@@ -179,6 +217,50 @@ existing.
   verification.png     metric plot over the injection window
   MANIFEST.json        checksums, sizes, usable/not verdict
 ```
+
+## Moving it to Trillium
+
+Checked 6 Sept on both VMs. The layout is uniform and nothing is left unarchived:
+
+| check | Sock Shop | Train Ticket |
+|---|---|---|
+| runs under `/mnt/archive/runs/<recipe>/<run_id>/` | 169 | 134 |
+| packaged (`MANIFEST.json` + `SHA256SUMS`) | 169 | 134 |
+| still sitting in `~/traces` | 0 | 0 |
+| CTF streams gzipped (`.idx` left plain, as required) | yes | yes |
+| aux `_metrics/` + `_load.*` beside each bundle | yes | yes |
+| archive disk | 692 GB used / 293 GB free | 497 GB used / 487 GB free |
+
+`transfer/push_to_trillium.sh` needed three fixes before it would work against this layout — the
+archive move was added mid-campaign and the script still assumed v1's:
+
+1. **`DEST_ROOT` no longer has a default.** It used to default to
+   `/scratch/yuvraj17/stratatrace/repo`, which is where v1 lives. v2 uses the same recipe names,
+   so the default would have overwritten v1's tarballs silently. It is now required.
+2. **`--verify` counted directories, not runs.** Each recipe dir now also holds a
+   `<run_id>_metrics/` per run, so `ls -d */` returned exactly twice the run count and every
+   recipe reported `MISMATCH`. It now counts `meta/runinfo_end.txt`.
+3. **The Prometheus snapshot was not being shipped.** It lives at `/mnt/archive/prometheus`,
+   outside `SRC`, so nothing carried it. It now goes as `_prometheus_snapshot.tar.gz`.
+
+The per-run aux files need no separate archive any more — they sit inside `SRC/<recipe>/`, so the
+per-recipe tarball already carries them.
+
+```bash
+# once, interactively (does the MFA)
+bash transfer/push_to_trillium.sh --setup-master
+
+# then, per application
+DEST_ROOT=/scratch/yuvraj17/stratatrace/v2 SRC=/mnt/archive/runs APP=sockshop   bash transfer/push_to_trillium.sh
+DEST_ROOT=/scratch/yuvraj17/stratatrace/v2 SRC=/mnt/archive/runs APP=trainticket   bash transfer/push_to_trillium.sh
+
+DEST_ROOT=/scratch/yuvraj17/stratatrace/v2 SRC=/mnt/archive/runs APP=sockshop   bash transfer/push_to_trillium.sh --verify
+```
+
+**Open before pushing:** 1.18 TB has to fit the `/scratch` quota alongside v1, and the two halves
+were sized against 1 TB archives individually, never together. Confirm free space and inode
+budget on Trillium first — the push is resumable (it skips archives that already exist), so a
+quota stop is recoverable, but it is cheaper to check.
 
 ## Reproducing the numbers here
 

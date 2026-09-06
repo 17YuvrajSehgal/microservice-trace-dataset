@@ -271,6 +271,47 @@ position.
 
 ---
 
+## 14. ACCEPTED (not recoverable) — 103 Train Ticket runs have no load CSV
+
+Found 6 Sept while checking the archive was ready to move. Sock Shop: 169 CSVs for 169 runs.
+Train Ticket: **31 for 134**.
+
+Which runs kept theirs is not random — it is exactly the families whose fault does not block a
+request:
+
+| kept | lost |
+|---|---|
+| `normal` 10/10, `anomaly_cpu` 5/5, `anomaly_disk` 5/5 | every other family, 0 or 1 each |
+
+The `_load.log` for a lost run is **empty** — no traceback, no `[load] N requests` completion
+line. The process was killed before reaching its final print. All 134 logs are in the archive, so
+this was readable directly rather than inferred.
+
+**Cause.** Train Ticket's `load_generator.py` wrote its CSV only after
+`with ThreadPoolExecutor(...) as ex:` exited. That block waits for every worker with no timeout.
+A worker checks the clock only *between* journeys, and a journey is ~5 sequential requests at a
+30 s timeout — so under a fault that blocks requests it overshoots the run by up to ~150 s.
+`run_scenario.sh`'s cleanup trap killed the generator well before that, with every row still in
+memory. Sock Shop's generator sets a stop event and bounds its join at 15 s, then always writes;
+it lost nothing. The two generators were written to share a CLI and a CSV schema, and nobody
+compared their shutdown paths.
+
+**Fixed** in `train-ticket-collection-scripts/load_generator.py`: the write is a shared function
+reachable from three paths — normal completion, a bounded `duration + 20 s` deadline, and a
+`SIGTERM` handler. Verified against a host that accepts connections and never answers: the CSV
+lands at the deadline and the process exits at once instead of hanging for the request timeout.
+
+**Why ACCEPTED and not RE-COLLECT.** The rows only ever existed in the killed process's memory,
+so nothing can be reconstructed from what is on disk. Re-collecting 103 Train Ticket runs is
+~620 GB and about a day of VM time to recover one modality of four. The kernel trace, spans,
+container logs and Prometheus export are complete in all 134 runs. It bites hardest on
+`anomaly_net`, where the load CSV was the stated fallback for a fault with no metrics signature
+(issue 5) — that fallback does not exist on Train Ticket, and the inventory has been corrected.
+Whether to re-collect is a research call about what the ablation study needs, not a defect to
+patch quietly.
+
+---
+
 ## 11. Things to verify before the campaign ends
 
 - [ ] `anomaly_net` **burst** runs on TT record `containers > 0`
@@ -297,3 +338,9 @@ position.
    `git checkout origin/<branch> -- <one file>`. Per-run scripts are safe; the drivers are not.
 5. **Every edit to a file you cannot immediately re-read needs an assert.** One unasserted
    `.replace()` matched nothing, changed nothing, and said nothing.
+6. **Two ports of the same tool need their shutdown paths compared, not just their CLIs.** The
+   Train Ticket load generator matched Sock Shop's flags and CSV schema exactly and still lost
+   77% of its output, because only the teardown differed.
+7. **Count every artefact per run, not just the bundle.** 303 bundles were complete and audited
+   while a whole modality was missing from a third of them. Nothing failed loudly; the file was
+   simply absent.

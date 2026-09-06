@@ -65,6 +65,15 @@ def classify(run_dir, run_id):
         kind = "RE-COLLECT" if n > 20_000_000 else "ACCEPTED"
         issues.append((kind, f"event loss {n:,} discarded"))
 
+    # EVERY ARTEFACT, NOT JUST THE BUNDLE. 303 runs passed packaging and audit while the client
+    # -side request CSV was missing from 103 of them - nothing failed, the file was simply absent
+    # and nothing counted it. The aux files sit beside the bundle, not inside it.
+    # The bucket key is the message's FIRST WORD, so lead with the artefact name.
+    for aux, what in ((run_dir + "_load.csv", "load-CSV"),
+                      (run_dir + "_metrics", "metrics-export")):
+        if not os.path.exists(aux):
+            issues.append(("ACCEPTED", f"{what} missing - the fault is intact, the record is not"))
+
     if recipe != "normal":
         if status == "no_targets":
             issues.append(("RE-SCORE", "no verification target registered for this family"))

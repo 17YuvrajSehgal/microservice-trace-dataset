@@ -8,8 +8,10 @@
 #   * parallel across recipes + a fast AES-NI cipher to fill the WAN pipe
 #   * atomic (.partial -> mv) and resumable (skip archives that already exist)
 #
-#   TRILLIUM_USER=yuvraj17 SRC=/mnt/data/traces APP=trainticket ./push_to_trillium.sh
-#   TRILLIUM_USER=yuvraj17 SRC=$HOME/traces    APP=sockshop    ./push_to_trillium.sh
+#   v2 (runs live on the archive disk, one dir per recipe):
+#     DEST_ROOT=/scratch/yuvraj17/stratatrace/v2 SRC=/mnt/archive/runs APP=sockshop    ./push_to_trillium.sh
+#     DEST_ROOT=/scratch/yuvraj17/stratatrace/v2 SRC=/mnt/archive/runs APP=trainticket ./push_to_trillium.sh
+#   v1 kept its runs in $HOME/traces; the layout below $SRC is the same either way.
 #   ./push_to_trillium.sh --verify        # after a run: tar-test every remote archive + count runs
 #
 # Needs key-based SSH from THIS VM to Trillium. Test first:
@@ -17,7 +19,11 @@
 set -uo pipefail
 TRILLIUM_USER="${TRILLIUM_USER:-yuvraj17}"
 TRILLIUM_HOST="${TRILLIUM_HOST:-trillium.scinet.utoronto.ca}"
-DEST_ROOT="${DEST_ROOT:-/scratch/yuvraj17/stratatrace/repo}"
+# DELIBERATELY HAS NO DEFAULT. It used to default to /scratch/yuvraj17/stratatrace/repo, which
+# is where the v1 release already lives (CLUSTER-LAYOUT.md). v2 has the same recipe names, so a
+# default push would have written v2 tarballs over v1's with no warning and no way to tell which
+# release a file came from. Name the release you are pushing.
+DEST_ROOT="${DEST_ROOT:?set DEST_ROOT to the release root, e.g. /scratch/yuvraj17/stratatrace/v2 (v1 occupies /scratch/yuvraj17/stratatrace/repo - do not push v2 there)}"
 PAR="${PAR:-4}"                 # parallel recipe streams (each fills one WAN connection)
 PIGZ_P="${PIGZ_P:-4}"           # cores per pigz worker (PAR*PIGZ_P <= vCPUs)
 # default to the per-VM transfer key if present (SciNet/Alliance = key + MFA); override with SSH_KEY=
@@ -54,7 +60,9 @@ mapfile -t RECIPES < <(cd "$SRC" && ls -d */ 2>/dev/null | sed 's#/##')
 if [ "${1:-}" = "--verify" ]; then
   echo "== verify $APP archives on $REMOTE:$DEST =="
   for rec in "${RECIPES[@]}"; do
-    local_runs=$(cd "$SRC/$rec" && ls -d */ 2>/dev/null | wc -l)
+    # Count BUNDLES, not directories. Each recipe dir also holds a <run_id>_metrics/ aux dir per
+    # run, so `ls -d */` reports exactly twice the run count and every recipe reads MISMATCH.
+    local_runs=$(find "$SRC/$rec" -mindepth 2 -maxdepth 3 -path "*/meta/runinfo_end.txt" 2>/dev/null | wc -l)
     remote_runs=$($SSH "$REMOTE" "zcat '$DEST/${rec}.tar.gz' 2>/dev/null | tar -tf - 2>/dev/null | grep -cE '^${rec}/[^/]+/meta/runinfo_end.txt$'" 2>/dev/null || echo ERR)
     ok="OK "; [ "$local_runs" = "$remote_runs" ] || ok="MISMATCH"; echo "  $ok $rec: local=$local_runs remote=$remote_runs"
   done
@@ -78,11 +86,27 @@ push_recipe() {
 export -f push_recipe; export SRC DEST REMOTE SSH COMP
 printf '%s\n' "${RECIPES[@]}" | xargs -P "$PAR" -I{} bash -c 'push_recipe "$@"' _ {}
 
-# aux: per-run Prometheus metrics + client load CSVs (they live in $HOME, not in the trace bundles)
+# aux: per-run Prometheus metrics + client load CSVs.
+#
+# In v1 these sat loose in $HOME and needed their own archive. Since v2, campaign_finish_run.sh
+# moves them next to the bundle, INSIDE $SRC/<recipe>/ - so the per-recipe tar above already
+# carries them and no separate _aux archive is produced. The $HOME sweep stays only to catch a
+# run finished before that change.
 AUX=$(cd "$HOME" && ls -d *_metrics *_load.csv 2>/dev/null)
 if [ -n "$AUX" ]; then
-  echo "== aux (metrics + load CSVs) =="
+  echo "== aux left in \$HOME (pre-archive-move runs) =="
   tar cf - -C "$HOME" $AUX 2>/dev/null | $COMP | $SSH "$REMOTE" "cat > '$DEST/_aux_metrics_load.tar.gz.partial' && mv '$DEST/_aux_metrics_load.tar.gz.partial' '$DEST/_aux_metrics_load.tar.gz'" && echo "OK aux"
+else
+  echo "== aux travels inside the per-recipe archives (nothing loose in \$HOME) =="
+fi
+
+# The Prometheus TSDB snapshot is NOT under $SRC, so nothing above would have carried it. It is
+# the continuous record - the gaps between runs and the cross-run baselines that the per-run
+# exports cannot reconstruct - and it is what the outstanding verdicts get re-scored against.
+PROM_SNAP="${PROM_SNAP:-/mnt/archive/prometheus}"
+if [ -d "$PROM_SNAP" ]; then
+  echo "== prometheus snapshot =="
+  tar cf - -C "$(dirname "$PROM_SNAP")" "$(basename "$PROM_SNAP")" 2>/dev/null | $COMP     | $SSH "$REMOTE" "cat > '$DEST/_prometheus_snapshot.tar.gz.partial' && mv '$DEST/_prometheus_snapshot.tar.gz.partial' '$DEST/_prometheus_snapshot.tar.gz'"     && echo "OK prometheus"
 fi
 # ship the dataset manifest too if present
 [ -f "$HOME/tt_dataset_manifest.csv" ] && $SSH "$REMOTE" "cat > '$DEST/manifest.csv'" < "$HOME/tt_dataset_manifest.csv" && echo "OK manifest"

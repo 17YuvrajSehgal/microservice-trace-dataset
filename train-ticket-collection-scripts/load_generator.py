@@ -27,7 +27,9 @@ from __future__ import annotations
 import argparse
 import csv
 import datetime as dt
+import os
 import random
+import signal
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
@@ -69,6 +71,29 @@ PROFILES = {
 _rows_lock = threading.Lock()
 _rows: list = []
 _stop = threading.Event()
+_written = threading.Event()
+
+# How long past --duration to wait for workers to finish the journey they are in before writing
+# the CSV anyway. Generous for a healthy journey, far short of 5 x the 30 s request timeout.
+WRITE_GRACE_S = 20
+
+
+def _write_csv(path):
+    """Write the rows collected so far. Safe to call twice, and from a signal handler."""
+    if _written.is_set():
+        return
+    _written.set()
+    with _rows_lock:
+        rows = list(_rows)
+    with open(path, "w", newline="") as fh:
+        w = csv.DictWriter(fh, fieldnames=["timestamp", "user_id", "scenario", "method",
+                                           "endpoint", "status_code", "latency_ms", "success",
+                                           "error"])
+        w.writeheader()
+        w.writerows(rows)
+    ok = sum(1 for r in rows if r["success"])
+    print("[load] %d requests (%d ok, %d fail) -> %s" % (len(rows), ok, len(rows) - ok, path),
+          flush=True)
 
 
 def _now_iso():
@@ -241,16 +266,45 @@ def main():
         return
 
     think = (a.think_min, a.think_max)
-    with ThreadPoolExecutor(max_workers=a.users) as ex:
-        for uid in range(a.users):
-            ex.submit(worker, uid, a.host, a.duration, think, a.profile, a.user, a.password)
-    with open(a.output, "w", newline="") as fh:
-        w = csv.DictWriter(fh, fieldnames=["timestamp", "user_id", "scenario", "method",
-                                           "endpoint", "status_code", "latency_ms", "success", "error"])
-        w.writeheader()
-        w.writerows(_rows)
-    ok = sum(1 for r in _rows if r["success"])
-    print(f"[load] {len(_rows)} requests ({ok} ok, {len(_rows)-ok} fail) -> {a.output}")
+
+    # A SIGTERM from run_scenario.sh's cleanup trap must still leave a CSV behind.
+    def _on_signal(_signum, _frame):
+        _stop.set()
+        _write_csv(a.output)
+        os._exit(0)
+
+    for sig in (signal.SIGTERM, signal.SIGINT):
+        signal.signal(sig, _on_signal)
+
+    # WHY THIS IS NOT `with ThreadPoolExecutor(...) as ex:`
+    # ----------------------------------------------------
+    # The context manager waits for every worker, with no timeout, before anything is written. A
+    # worker checks the clock only BETWEEN journeys, and a journey is ~5 sequential requests at a
+    # 30 s timeout each - so under a fault that blocks requests a worker overshoots the run by up
+    # to ~150 s. The EXIT trap kills the generator well before that, with every row still in
+    # memory, and no CSV is written.
+    #
+    # Measured over the v2 campaign: Train Ticket produced 31 CSVs for 134 runs. The families
+    # that kept theirs are exactly the ones that do not block a request - normal, anomaly_cpu,
+    # anomaly_disk. Every blocking fault lost its client-side record, which is the modality that
+    # mattered most for the faults metrics were blind to. Sock Shop's generator bounds its join
+    # at 15 s and always writes, and kept 169/169.
+    #
+    # So: bound the wait, and make the write reachable from every exit path.
+    ex = ThreadPoolExecutor(max_workers=a.users)
+    for uid in range(a.users):
+        ex.submit(worker, uid, a.host, a.duration, think, a.profile, a.user, a.password)
+
+    deadline = time.time() + a.duration + WRITE_GRACE_S
+    while time.time() < deadline and not _stop.is_set():
+        time.sleep(0.5)
+    _stop.set()
+    ex.shutdown(wait=False)      # abandon in-flight requests rather than block on them
+    _write_csv(a.output)
+    # The CSV is closed and on disk. os._exit skips the interpreter's atexit hook, which would
+    # otherwise JOIN the pool threads and hold the process open for the rest of a blocked
+    # request's 30 s timeout - the lingering generator run_scenario.sh's trap had to kill.
+    os._exit(0)
 
 
 if __name__ == "__main__":
