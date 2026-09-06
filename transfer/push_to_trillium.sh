@@ -68,7 +68,11 @@ if [ "${1:-}" = "--verify" ]; then
     # Count BUNDLES, not directories. Each recipe dir also holds a <run_id>_metrics/ aux dir per
     # run, so `ls -d */` reports exactly twice the run count and every recipe reads MISMATCH.
     local_runs=$(find "$SRC/$rec" -mindepth 2 -maxdepth 3 -path "*/meta/runinfo_end.txt" 2>/dev/null | wc -l)
-    remote_runs=$($SSH "$REMOTE" "zcat '$DEST/${rec}.tar.gz' 2>/dev/null | tar -tf - 2>/dev/null | grep -cE '^${rec}/[^/]+/meta/runinfo_end.txt$'" 2>/dev/null || echo ERR)
+    # nice/ionice on the REMOTE side: verifying means decompressing every archive, which for a
+    # full release is hundreds of GB of CPU and I/O on a shared LOGIN node. The check is worth
+    # running - it is the only thing that would catch a silently truncated archive - but it should
+    # never be the reason someone else's login node crawls.
+    remote_runs=$($SSH "$REMOTE" "nice -n 19 ionice -c3 sh -c \"zcat '$DEST/${rec}.tar.gz' 2>/dev/null | tar -tf - 2>/dev/null | grep -cE '^${rec}/[^/]+/meta/runinfo_end.txt\$'\"" 2>/dev/null || echo ERR)
     ok="OK "; [ "$local_runs" = "$remote_runs" ] || ok="MISMATCH"; echo "  $ok $rec: local=$local_runs remote=$remote_runs"
   done
   exit 0
