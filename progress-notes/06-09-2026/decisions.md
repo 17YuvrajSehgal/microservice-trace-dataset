@@ -87,6 +87,44 @@ The archive move was added mid-campaign; `push_to_trillium.sh` still assumed v1'
 The per-run aux files need no separate archive now — they sit inside `SRC/<recipe>/`, so the
 per-recipe tarball already carries them.
 
+## 7. Transferred v2 to Trillium, and what the auth actually required
+
+303 runs, 1.18 TB of bundles, compressed to **779 GB in 51 files**. Verified 169 → 169 and
+134 → 134, zero mismatches, in ~75 minutes at ~125 MB/s combined.
+
+**Why key registration was not enough.** The measured evidence, not the assumption:
+
+    debug1: Server accepts key: ~/.ssh/trillium ED25519 SHA256:MQR4JE50...
+    Authenticated using "publickey" with partial success.
+    debug1: Authentications that can continue: keyboard-interactive
+
+Trillium takes the key as a FIRST factor and then demands MFA regardless. No key-only route
+exists — five candidate data-transfer hostnames all NXDOMAIN. So the ControlMaster design the push
+script already carried is not an optimisation, it is the only way through: a human does the MFA
+once per VM and every stream reuses that master for 12h.
+
+**Why 51 files matters as much as 779 GB.** SciNet quotas inodes as well as bytes. 831,416 source
+files arriving as one tarball per recipe moved `/scratch` from 967K files to ~1.0M against a 10M
+limit. Loose rsync of the same data would have consumed 8% of the inode budget in one release.
+
+**Verification is not a stream checksum.** It decompresses every archive on the far side and
+counts `meta/runinfo_end.txt` against the source, which is the only thing that would catch a
+silently truncated archive. Added `nice -n 19 ionice -c3` to the remote side first — 779 GB of
+decompression on a shared SciNet login node is otherwise antisocial, and a login node that kills
+the job would have produced a false MISMATCH.
+
+**Two of my own bugs, worth recording because they are the same shape.** The `--verify` run count
+read `ls -d */`, which after the mid-campaign archive move counted each run's `_metrics/` dir too
+and would have reported MISMATCH on every recipe — a verifier that always cries wolf is worse than
+none. And the `DEST_ROOT` guard I added sat with the top-of-file settings, so it fired before the
+`--setup-master` branch and made the one command you must run *first* fail on the one variable it
+does not use. Both are the same mistake: a check placed without asking which code paths run
+through it.
+
+**Retention** confirmed safe for at least a year, so `/project` quota is not worth chasing — it
+has ~705 GB free against a 1024 GB quota and could not hold v2's 779 GB anyway. Recorded in
+CLUSTER-LAYOUT.md rather than here, because that is where someone will look for it.
+
 ## Still open
 
 - **Trillium capacity.** 1.18 TB alongside v1. The two halves were sized against 1 TB archives

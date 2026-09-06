@@ -218,9 +218,33 @@ existing.
   MANIFEST.json        checksums, sizes, usable/not verdict
 ```
 
-## Moving it to Trillium
+## On Trillium
 
-Checked 6 Sept on both VMs. The layout is uniform and nothing is left unarchived:
+**Transferred and verified 6 September 2026.** Both applications now live at
+`/scratch/yuvraj17/stratatrace/v2/{sockshop,trainticket}/`, kept apart from v1 because the two
+releases share every recipe name.
+
+| | recipes | runs source → Trillium | mismatches | size |
+|---|---|---|---|---|
+| Sock Shop | 28 / 28 | 169 → **169** | 0 | 464 GB |
+| Train Ticket | 21 / 21 | 134 → **134** | 0 | 315 GB |
+
+1.18 TB of bundles compressed to **779 GB** in **51 files** — one `tar.gz` per recipe plus a
+Prometheus snapshot each. The file count matters as much as the bytes: SciNet quotas inodes, and
+831,416 source files arriving as 51 archives moved `/scratch` from 967K files to ~1.0M against a
+10M limit. Space after the push: 4.8 TB of 25 TB.
+
+Verification is not a checksum of the stream — it decompresses every archive on the far side and
+counts `meta/runinfo_end.txt` entries against the source, so a silently truncated archive cannot
+pass. It runs `nice -n 19 ionice -c3`, because 779 GB of decompression on a shared login node is
+otherwise antisocial.
+
+`/scratch` retention is confirmed safe for at least a year, so there is no need to chase
+`/project` quota — which could not have held v2 anyway (~705 GB free against a 1024 GB quota).
+
+### What it took to get there
+
+The layout on the VMs was uniform and nothing was left unarchived:
 
 | check | Sock Shop | Train Ticket |
 |---|---|---|
@@ -231,7 +255,7 @@ Checked 6 Sept on both VMs. The layout is uniform and nothing is left unarchived
 | aux `_metrics/` + `_load.*` beside each bundle | yes | yes |
 | archive disk | 692 GB used / 293 GB free | 497 GB used / 487 GB free |
 
-`transfer/push_to_trillium.sh` needed three fixes before it would work against this layout — the
+`transfer/push_to_trillium.sh` needed four fixes before it would work against this layout — the
 archive move was added mid-campaign and the script still assumed v1's:
 
 1. **`DEST_ROOT` no longer has a default.** It used to default to
@@ -242,12 +266,21 @@ archive move was added mid-campaign and the script still assumed v1's:
    recipe reported `MISMATCH`. It now counts `meta/runinfo_end.txt`.
 3. **The Prometheus snapshot was not being shipped.** It lives at `/mnt/archive/prometheus`,
    outside `SRC`, so nothing carried it. It now goes as `_prometheus_snapshot.tar.gz`.
+4. **`--setup-master` required a destination it never uses.** Fix 1 put the `DEST_ROOT` guard with
+   the top-of-file settings, so it fired before the `--setup-master` branch — making the one
+   command you must run *first* fail on the one variable it does not need.
+
+**Auth, measured rather than assumed.** Registering the VM keys in CCDB is necessary but not
+sufficient: `ssh -vv` reports `Server accepts key … Authenticated using "publickey" with partial
+success`, then Trillium demands `keyboard-interactive` MFA anyway. No key-only route exists — five
+candidate data-transfer hostnames are all NXDOMAIN. Hence the ControlMaster design: one human MFA
+per VM, and every push stream reuses that master.
 
 The per-run aux files need no separate archive any more — they sit inside `SRC/<recipe>/`, so the
 per-recipe tarball already carries them.
 
 ```bash
-# once, interactively (does the MFA)
+# once per VM, interactively - the only step a human must do (MFA)
 bash transfer/push_to_trillium.sh --setup-master
 
 # then, per application
@@ -257,10 +290,9 @@ DEST_ROOT=/scratch/yuvraj17/stratatrace/v2 SRC=/mnt/archive/runs APP=trainticket
 DEST_ROOT=/scratch/yuvraj17/stratatrace/v2 SRC=/mnt/archive/runs APP=sockshop   bash transfer/push_to_trillium.sh --verify
 ```
 
-**Open before pushing:** 1.18 TB has to fit the `/scratch` quota alongside v1, and the two halves
-were sized against 1 TB archives individually, never together. Confirm free space and inode
-budget on Trillium first — the push is resumable (it skips archives that already exist), so a
-quota stop is recoverable, but it is cheaper to check.
+Measured throughput: ~125 MB/s combined across both VMs, the whole 1.18 TB in about 75 minutes.
+The push is atomic (`.partial` → `mv`) and resumable — it skips archives that already exist, so an
+interruption costs only the archive in flight.
 
 ## Reproducing the numbers here
 
