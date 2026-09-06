@@ -136,6 +136,33 @@ GCP project `teleeporter`, zone `us-east1-d`. Each run directory also has siblin
 **Not yet transferred to Trillium.** At 1.18 TB the two halves fit their own 1 TB archives but
 not a single one; plan the move per application.
 
+### Prometheus snapshots
+
+The full series database from each VM, taken 6 Sept after collection finished, **with Prometheus
+stopped** so the TSDB is consistent rather than mid-write.
+
+| | on the VM | local copy | TSDB | verified |
+|---|---|---|---|---|
+| Sock Shop | `/mnt/archive/prometheus/` | `C:\workplace\stratatrace-v2-prometheus\sockshop-prometheus.tar` | 362 MB | sha256 OK |
+| Train Ticket | `/mnt/archive/prometheus/` | `…	rainticket-prometheus.tar` | 582 MB | sha256 OK |
+
+Each archive holds `tsdb.tar.gz`, the `prometheus.yml` it was scraped with, `SHA256SUMS`, and a
+README with the restore command:
+
+```bash
+tar xf tsdb.tar.gz
+docker run --rm -p 9090:9090 -v $PWD/tsdb:/prometheus   -v $PWD/prometheus.yml:/etc/prometheus/prometheus.yml   prom/prometheus --config.file=/etc/prometheus/prometheus.yml --storage.tsdb.path=/prometheus
+```
+
+**Why, when every bundle already has its own metrics export.** The per-run exports cover each
+run's own window and were never at risk. The snapshot preserves the *continuous* record — the
+gaps between runs, cross-run baselines, and any question of the whole campaign nobody has
+thought of yet. Retention was the 15-day default, so this would have aged out regardless of what
+happened to the VMs.
+
+It also means the 10 outstanding Train Ticket verdicts can be calibrated later without the VMs
+existing.
+
 ### Bundle layout
 
 ```
