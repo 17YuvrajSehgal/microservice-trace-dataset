@@ -214,6 +214,63 @@ shape and turned out to be ordinary variation (issue 4).
 
 ---
 
+## 12. ACCEPTED — `svc_cpu_cap` does not bite on Train Ticket
+
+Measured on `tt_svc_cpu_cap_aggressive_steady_r1`:
+
+```
+ts-travel-service CPU   0.0033 -> 0.0060 cores      the cap is 0.2 cores
+```
+
+**The service uses 60x less CPU than the cap allows**, so the quota never binds. Train Ticket
+spreads 20 users across 40 services, leaving each one nearly idle; Sock Shop concentrates the
+same style of load on far fewer services. The fault is applied correctly and simply has nothing
+to constrain.
+
+Neither available metric can verify it:
+
+- **usage** does not fall, because the cap is above the working set
+- **`container_spec_cpu_quota`** persists after cleanup (see below), so it cannot time the
+  injection window — it reads the same value before, during and after
+
+`svc_cpu_cap` is therefore **not the same experiment on the two applications**, in the same way
+`anomaly_disk` is not (issue 6). Worth stating in the paper rather than treating the Train
+Ticket runs as comparable.
+
+**Restore leaves Docker metadata behind, but the cgroup is clean.** Checked after the campaign:
+
+```
+docker inspect  ts-travel-service   NanoCpus=500000000   (0.5 cores)
+cgroup          cpu.max             max 100000           (UNLIMITED)
+docker inspect  ts-order-service    Memory=67418689536   (67 GB > the VM's 62 GB)
+```
+
+This is the documented trap — `--cpus=0` and `-m 0` are silent no-ops, so the recipes restore by
+other means and `docker inspect` keeps a stale value. **CLAUDE.md's rule to verify restores
+against `/sys/fs/cgroup/*` rather than `docker inspect` is correct and was worth following:** no
+run was contaminated by a leftover cap.
+
+---
+
+## 13. RE-SCORE — `slow_db` and `svc_net` on Train Ticket still need calibration
+
+Measured on r1 of each, and neither is conclusive from these candidates:
+
+| family | strongest candidate | reading |
+|---|---|---|
+| `slow_db` | ts-travel-service CPU | 0.0030 → 0.0067 (2.22x) |
+| `svc_net` | everything | **uniformly 2.1x** |
+
+`svc_net`'s uniform rise across unrelated services (mysql 2.36x, travel 2.13x, basic 2.07x,
+gateway 2.12x) looks like load variation over the window rather than a targeted network fault —
+the same drift that produced the `anomaly_net` false positive. **Do not register it without
+separating fault from drift**, e.g. by comparing against a `normal` run over the same clock
+position.
+
+10 runs affected (`slow_db` ×5, `svc_net` ×5). Data intact; verdicts outstanding.
+
+---
+
 ## 11. Things to verify before the campaign ends
 
 - [ ] `anomaly_net` **burst** runs on TT record `containers > 0`
