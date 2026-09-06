@@ -52,6 +52,29 @@ PROFILE="${PROFILE:-steady}"
 # CONTAINER_REGEX, LOG_CONTAINER_REGEX, OTLP_SRC) and CONTAINER_PREFIX for the fault recipes.
 LOAD_GEN="${LOAD_GEN:-$SD/load_generator.py}"
 
+# RING BUFFER SIZE IS PER FAULT FAMILY, because two faults want opposite things.
+#
+# Measured on stratatrace-tt, same stack, same load:
+#
+#   anomaly_disk   256 MB/CPU -> LOSSY 27,132,559      768 MB/CPU -> clean (1 of 5 marginal)
+#   anomaly_mem    768 MB/CPU -> LOSSY 33,939,476      384 MB/CPU -> clean
+#
+# The disk fault steals DISK from the consumer, so it needs more buffer to ride out the deficit.
+# The memory fault steals MEMORY, and LTTng's buffers are memory - 768 MB/CPU is 12 GB of the
+# 62 GB on that machine, so raising them to fix the disk case is exactly what broke the memory
+# case. All three anomaly_mem subtle runs were lost that way, and the fix was mine.
+#
+# There is no single value that is right for both, so the family picks. Sock Shop is unaffected
+# either way: it traces at 53 MB/s with four times the disk headroom and has shown no loss at
+# 256 MB/CPU on any family.
+if [[ -z "${KERNEL_NUM_SUBBUF:-}" && "${STRATA_APP:-${STRATATRACE_APP:-${TRACE_APP:-sockshop}}}" == "trainticket" ]]; then
+    case "$RECIPE" in
+        anomaly_mem) export KERNEL_NUM_SUBBUF=48 ;;   # 384 MB/CPU - leave RAM for the fault
+        *)           export KERNEL_NUM_SUBBUF=96 ;;   # 768 MB/CPU - ride out disk contention
+    esac
+    echo "[$RUN] ring buffers: ${KERNEL_NUM_SUBBUF} sub-buffers/CPU (chosen for $RECIPE)"
+fi
+
 # Per-run fault-state dir so exactly one ground_truth.json belongs to this run.
 export FAULT_STATE_DIR="$HOME/fault-state/$RUN"
 rm -rf "$FAULT_STATE_DIR" "$HOME/traces/$RECIPE/$RUN" "$HOME/${RUN}_metrics"
