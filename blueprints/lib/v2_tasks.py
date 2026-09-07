@@ -34,6 +34,11 @@ APPS = ("sockshop", "trainticket")
 NOT_A_FAMILY = {"prometheus"}
 
 
+def is_aux(name):
+    """Per-run sidecars, not runs. They sit at run depth inside each family directory."""
+    return name.endswith("_metrics") or name.endswith("_load.csv") or name.endswith("_load.log")
+
+
 def ctf_dir(app, fam, run):
     return os.path.join(V2, app, fam, run, "kernel", "kernel")
 
@@ -65,6 +70,7 @@ def main():
 
     apps = [s.strip() for s in a.apps.split(",") if s.strip()]
     rows, dropped = [], []
+    aux = 0            # per-run sidecars: counted, not listed
     per_family = {}
 
     for app in apps:
@@ -88,6 +94,13 @@ def main():
             runs = sorted(r for r in os.listdir(fam_dir)
                           if os.path.isdir(os.path.join(fam_dir, r)))
             for run in runs:
+                # Sidecars are skipped SILENTLY. Listing them as drops was worse than
+                # useless: 62 aux directories buried the report in noise, and a genuinely
+                # broken run would have been invisible among them - the one thing this
+                # check exists to catch.
+                if is_aux(run):
+                    aux += 1
+                    continue
                 why = check(app, fam, run)
                 if why:
                     dropped.append((app, fam, run, why))
@@ -108,8 +121,10 @@ def main():
     print(f"{len(rows)} runs -> {a.out}")
     for (app, fam), n in sorted(per_family.items()):
         print(f"  {app:12s} {fam:22s} {n:3d}")
+    if aux:
+        print(f"  ({aux} per-run sidecar dirs skipped - _metrics, _load.*)")
     if dropped:
-        print(f"\n{len(dropped)} dropped:")
+        print(f"\n{len(dropped)} DROPPED - runs that cannot be measured:")
         for app, fam, run, why in dropped[:20]:
             print(f"  {app:12s} {fam:22s} {run:44s} {why}")
         if len(dropped) > 20:
