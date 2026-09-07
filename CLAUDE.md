@@ -97,7 +97,7 @@ applies to chat replies AND to any document/report written for the user.
 
 | Path | What |
 |---|---|
-| `blueprints/docs/DATASET-v2-INVENTORY.md` | **What v2 actually contains** — 303 runs, sizes, per-family counts, and the caveats that affect analysis. Start here |
+| `blueprints/docs/DATASET-v2-INVENTORY.md` | **What v2 actually contains** — 303 runs, sizes, per-family counts, where it lives on Trillium, and the caveats that affect analysis. Start here |
 | `CAMPAIGN-ISSUES.md` | **v2 campaign problems, live** — what needs re-collecting vs re-scoring. Read before trusting any run |
 | `msr-research.md` | The research plan (phases in §10) |
 | `fault_catalog.md` | Pre-registered predictions, scoring rules, H1–H4 |
@@ -125,14 +125,23 @@ Two things that bite: `data/packs/allpacks` is 86 **symlinks** into the other pa
 its paths go stale it silently falls back to babeltrace 2.0.4, which cannot read our traces.
 Check `tools/bt21.sh --version` says 2.1.2.
 
-## v2 collection VMs (as of 2026-09-04)
+## v2 collection VMs (as of 2026-09-06)
 
 Project **`teleeporter`**, zone **us-east1-d**, billing account 017712-7348A8-7FAB01.
 
 | VM | Machine | Disks | State |
 |---|---|---|---|
-| `stratatrace-ss` | n2-custom-12-40960 (12 vCPU / 40 GB) | 200 GB pd-balanced + 1 TB pd-standard archive | RUNNING |
-| `stratatrace-tt` | n2-standard-16 (16 vCPU / 64 GB) | 200 GB pd-balanced + 1 TB pd-standard archive | STOPPED until Sock Shop finishes |
+| `stratatrace-ss` | n2-custom-12-40960 (12 vCPU / 40 GB) | 200 GB pd-balanced + 1 TB pd-standard archive | STOPPED 2026-09-06 |
+| `stratatrace-tt` | n2-standard-16 (16 vCPU / 64 GB) | 200 GB pd-balanced + 1 TB pd-standard archive | STOPPED 2026-09-06 |
+
+**Collection is finished and the data is off the VMs.** Both stopped once v2 was verified on
+Trillium (303/303 runs, zero mismatches). Disks persist, so the `/mnt/archive` copies are still
+there as a second copy - the VMs are the only thing switched off. Restart either with:
+
+    gcloud compute instances start stratatrace-ss --project=teleeporter --zone=us-east1-d
+
+Anything that needs a live Prometheus is better served by the TSDB snapshots in each release than
+by restarting a VM - the scrape targets are gone either way.
 
 Both match v1's machine shapes. **Both are in the same zone**, which v1 was not (Sock Shop
 us-east1, Train Ticket us-east4) - that removes a confound, since v1 could not tell an
