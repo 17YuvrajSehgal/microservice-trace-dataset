@@ -4,9 +4,20 @@
 # RUNS ON TRILLIUM. The Trillium -> Nibi hop authenticates with your FORWARDED ssh agent, which is
 # why the session you launch this from must be opened with `ssh -A`.
 #
-#   bash trillium_to_nibi.sh --check      # reachability + quota on both ends, transfers nothing
-#   bash trillium_to_nibi.sh              # do the copy (backgrounded, logged, resumable)
-#   bash trillium_to_nibi.sh --verify     # compare file count and bytes end to end
+#   bash trillium_to_nibi.sh --setup-master   # ONCE: opens the MFA'd connection to Nibi
+#   bash trillium_to_nibi.sh --check          # reachability + quota on both ends, transfers nothing
+#   bash trillium_to_nibi.sh                  # do the copy (backgrounded, logged, resumable)
+#   bash trillium_to_nibi.sh --verify         # compare file count and bytes end to end
+#
+# MFA IS MANDATORY ON NIBI, so agent forwarding alone is not enough - measured 2026-09-07:
+#
+#     yuvraj17@nibi.alliancecan.ca: Permission denied (publickey,keyboard-interactive,hostbased)
+#     Multifactor authentication is now mandatory
+#
+# A key buys partial success and Nibi then wants a second factor, exactly like Trillium. An rsync
+# cannot answer an MFA prompt, so the transfer multiplexes over ONE connection you authenticate
+# interactively (--setup-master) and that every later command reuses. Same shape
+# push_to_trillium.sh uses for the GCP -> Trillium leg, and for the same reason.
 #
 #   env: SRC (default /scratch/$USER/stratatrace/v2)  DEST (default same path on Nibi)
 #
@@ -22,15 +33,34 @@
 # payload is 51 large files, which is the case rsync handles well.
 set -uo pipefail
 
-SRC="${SRC:-/scratch/$USER/stratatrace/v2}"
-DEST="${DEST:-/scratch/$USER/stratatrace/v2}"
-NIBI="${NIBI:-$USER@nibi.alliancecan.ca}"
+ME="${USER:-$(id -un)}"
+SRC="${SRC:-/scratch/$ME/stratatrace/v2}"
+DEST="${DEST:-/scratch/$ME/stratatrace/v2}"
+NIBI="${NIBI:-$ME@nibi.alliancecan.ca}"
 LOG="${LOG:-$HOME/trillium_to_nibi.log}"
 # No compression (payload is gzip), fast cipher, keep the connection alive through long file
 # transfers where the control channel would otherwise look idle.
-RSH="${RSH:-ssh -o Compression=no -c aes128-gcm@openssh.com -o ServerAliveInterval=30 -o ServerAliveCountMax=10}"
+CM_PATH="${CM_PATH:-$HOME/.ssh/cm-nibi}"
+RSH="${RSH:-ssh -o Compression=no -c aes128-gcm@openssh.com -o ServerAliveInterval=30 -o ServerAliveCountMax=10 -o ControlMaster=no -o ControlPath=$CM_PATH}"
 
 say() { printf '%s\n' "$*"; }
+
+if [[ "${1:-}" == "--setup-master" ]]; then
+    say "== opening the MFA'd master to $NIBI (persists 12h; answer the second factor when asked) =="
+    say "   If it says 'Permission denied (publickey,...)' with NO second-factor prompt, Nibi has"
+    say "   no key for this host yet. Make one here and register it in CCDB:"
+    say "       ssh-keygen -t ed25519 -N '' -f ~/.ssh/nibi -C trillium-to-nibi && cat ~/.ssh/nibi.pub"
+    exec ssh -fNM -o ControlPath="$CM_PATH" -o ControlPersist=12h \
+        -o StrictHostKeyChecking=accept-new ${NIBI_KEY:+-i $NIBI_KEY} "$NIBI"
+fi
+
+# Refuse to start rather than die partway through 778 GB.
+if ! ssh -o ControlPath="$CM_PATH" -O check "$NIBI" 2>/dev/null; then
+    say "No live connection to $NIBI. Do this first (interactive, once - it does the MFA):"
+    say "    bash $0 --setup-master"
+    say "Then re-run. The connection persists 12h and every stream reuses it."
+    exit 1
+fi
 
 [[ -d "$SRC" ]] || { say "FATAL: no such source dir: $SRC"; exit 1; }
 
