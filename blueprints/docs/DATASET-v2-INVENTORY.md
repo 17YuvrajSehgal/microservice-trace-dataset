@@ -210,7 +210,7 @@ the driver's own narrative.
 | | local copy |
 |---|---|
 | Sock Shop | `C:\workplace\stratatrace-v2-campaign-logs\sockshop-campaign-logs.tar.gz` (259 MB) |
-| Train Ticket | `C:\workplace\stratatrace-v2-campaign-logs	rainticket-campaign-logs.tar.gz` (0.4 MB) |
+| Train Ticket | `C:\workplace\stratatrace-v2-campaign-logs\trainticket-campaign-logs.tar.gz` (0.4 MB) |
 
 Holds `campaign_*.out` (every run announced with its verdict, in order, plus the `[matrix] SKIP`
 lines saying which families were deliberately not run on Train Ticket), the per-run driver log for
