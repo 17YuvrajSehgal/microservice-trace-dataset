@@ -125,6 +125,30 @@ through it.
 has ~705 GB free against a 1024 GB quota and could not hold v2's 779 GB anyway. Recorded in
 CLUSTER-LAYOUT.md rather than here, because that is where someone will look for it.
 
+## 8. Attempted a Nibi second copy, abandoned - three findings worth keeping
+
+Tried to rsync the 778 GB release from Trillium to Nibi for a copy on independent hardware.
+Stopped before any data moved. What it taught:
+
+**The v1 recipe no longer works, and not because it was remembered wrong.** `ssh -A` then rsync
+straight through worked before MFA became mandatory. Now Nibi answers a key with *partial*
+success and demands a second factor, exactly like Trillium - and an rsync cannot answer an MFA
+prompt. Any unattended cluster-to-cluster transfer now needs a ControlMaster the human
+authenticates once, which is what `trillium_to_nibi.sh --setup-master` does.
+
+**Nibi's `/scratch` is 100% full** - 1024 GiB of a 1024 GiB quota, flagged over. Worth checking
+before planning anything, not after. `/project` had 912 GiB free and `/nearline` 9.5 TB.
+
+**Nearline and project quotas are charged to the PROJECT GROUP, and `rsync -a` fights that.**
+The write failed instantly with `Disk quota exceeded` on a filesystem with 9.5 TB free, because
+`-a` implies `-g`, which forces the destination file's group back to the source's (`yuvraj17`) -
+a group with no nearline allocation. The fix is `-rlt --no-g --no-p` onto a setgid directory owned
+by the project group. Not confirmed on the live system, since the copy was dropped first.
+
+**Also worth keeping: the file-count design paid off twice.** Nearline caps the whole *group* at
+1025 files. The 51 per-recipe tarballs fit with room to spare; the 831,416 loose bundle files
+could not have gone there at all.
+
 ## Still open
 
 - **Trillium capacity.** 1.18 TB alongside v1. The two halves were sized against 1 TB archives

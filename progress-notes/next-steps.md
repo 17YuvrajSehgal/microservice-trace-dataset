@@ -15,6 +15,11 @@ keep them up.
 
 ## Next, in order
 
+0. **The copy situation, decided or not.** v2 exists on Trillium `/scratch` (verified 303/303) and
+   on the GCP archive disks. A Nibi second copy was attempted and dropped (decisions 06-09 §8).
+   If the VM disks go, Trillium is the only copy of data that cost a full campaign to collect.
+   GCS Archive is ~$1.50/month for the same 778 GB against ~$120/month for the disks.
+
 1. **Stop the two VMs.** `--verify` passed 303/303 with zero mismatches, so nothing outstanding
    needs them. Disks persist, so this is reversible.
 
