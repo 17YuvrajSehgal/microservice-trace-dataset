@@ -129,19 +129,18 @@ Check `tools/bt21.sh --version` says 2.1.2.
 
 Project **`teleeporter`**, zone **us-east1-d**, billing account 017712-7348A8-7FAB01.
 
-| VM | Machine | Disks | State |
-|---|---|---|---|
-| `stratatrace-ss` | n2-custom-12-40960 (12 vCPU / 40 GB) | 200 GB pd-balanced + 1 TB pd-standard archive | STOPPED 2026-09-06 |
-| `stratatrace-tt` | n2-standard-16 (16 vCPU / 64 GB) | 200 GB pd-balanced + 1 TB pd-standard archive | STOPPED 2026-09-06 |
+**BOTH VMs AND ALL FOUR DISKS WERE DELETED 2026-09-07.** `stratatrace-ss`
+(n2-custom-12-40960) and `stratatrace-tt` (n2-standard-16), each with a 200 GB pd-balanced boot
+disk and a 1 TB pd-standard archive disk, are gone. Nothing of this project remains in
+`teleeporter`; GCP cost is zero. No snapshots or images were kept.
 
-**Collection is finished and the data is off the VMs.** Both stopped once v2 was verified on
-Trillium (303/303 runs, zero mismatches). Disks persist, so the `/mnt/archive` copies are still
-there as a second copy - the VMs are the only thing switched off. Restart either with:
+**So Trillium is the only copy of v2.** Before deleting, everything unique was swept off - see
+`blueprints/docs/DATASET-v2-INVENTORY.md` under "Campaign logs". Everything else already existed
+on Trillium (the 303 verified bundles), in git (all scripts), or locally (the Prometheus TSDBs).
 
-    gcloud compute instances start stratatrace-ss --project=teleeporter --zone=us-east1-d
-
-Anything that needs a live Prometheus is better served by the TSDB snapshots in each release than
-by restarting a VM - the scrape targets are gone either way.
+Re-collecting needs a fresh VM: `git clone --recursive`, then
+`microservice-lttng-data-collection-scripts/vm_bootstrap.sh`, then `run_gate.sh gate01`.
+Gotchas are in that directory's TROUBLESHOOTING.md.
 
 Both match v1's machine shapes. **Both are in the same zone**, which v1 was not (Sock Shop
 us-east1, Train Ticket us-east4) - that removes a confound, since v1 could not tell an

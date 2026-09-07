@@ -164,12 +164,15 @@ would risk certifying noise.
 
 | | location |
 |---|---|
-| Sock Shop | `stratatrace-ss:/mnt/archive/runs/<family>/<run_id>/` |
-| Train Ticket | `stratatrace-tt:/mnt/archive/runs/<family>/<run_id>/` |
+| archives (authoritative) | Trillium `/scratch/yuvraj17/stratatrace/v2/{sockshop,trainticket}/` |
+| working copy | Trillium `/scratch/yuvraj17/stratatrace/data/stratatrace-v2/<app>/<recipe>/<run_id>/` |
+| Prometheus TSDBs | `C:\workplace\stratatrace-v2-prometheus\` |
+| campaign logs | `C:\workplace\stratatrace-v2-campaign-logs\` |
 
-GCP project `teleeporter`, zone `us-east1-d`. Each run directory also has sibling
-`<run_id>_metrics/` and `<run_id>_load.csv` — the transfer layer packages those into
-`_aux_metrics_load.tar.gz` (see `transfer/`).
+**The collection VMs were deleted on 2026-09-07**, along with all four disks, so
+`stratatrace-ss:/mnt/archive` no longer exists. **Trillium holds the only copy of the dataset.**
+`/scratch` retention there is confirmed safe for at least a year; `/project` could not hold it
+(705 GiB free against 778 GiB needed) and a Nibi copy was attempted and abandoned.
 
 **Not yet transferred to Trillium.** At 1.18 TB the two halves fit their own 1 TB archives but
 not a single one; plan the move per application.
