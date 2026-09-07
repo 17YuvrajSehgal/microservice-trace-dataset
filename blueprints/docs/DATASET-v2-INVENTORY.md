@@ -201,6 +201,26 @@ happened to the VMs.
 It also means the 10 outstanding Train Ticket verdicts can be calibrated later without the VMs
 existing.
 
+### Campaign logs
+
+Swept off both VMs on 6 Sept before deleting them, because they were the one thing that existed
+*only* there — the run bundles carry container logs, `meta/`, ground truth and verdicts, but not
+the driver's own narrative.
+
+| | local copy |
+|---|---|
+| Sock Shop | `C:\workplace\stratatrace-v2-campaign-logs\sockshop-campaign-logs.tar.gz` (259 MB) |
+| Train Ticket | `C:\workplace\stratatrace-v2-campaign-logs	rainticket-campaign-logs.tar.gz` (0.4 MB) |
+
+Holds `campaign_*.out` (every run announced with its verdict, in order, plus the `[matrix] SKIP`
+lines saying which families were deliberately not run on Train Ticket), the per-run driver log for
+all 303 runs, and the recipes' `fault-state/` directory. Both sha256-verified after transfer.
+
+Sock Shop's is 100x larger for a dull reason: the OTel Java agent's `logging` exporter writes every
+span to stdout and the driver captured it, so 16 runs have ~140 MB logs (one is 659,118 lines).
+That content is redundant with each bundle's `otlp/spans.jsonl`; it compresses ~9x and was not
+worth separating.
+
 ### Bundle layout
 
 ```
