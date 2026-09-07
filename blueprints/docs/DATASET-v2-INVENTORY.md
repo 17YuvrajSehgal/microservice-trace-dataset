@@ -165,7 +165,7 @@ would risk certifying noise.
 | | location |
 |---|---|
 | archives (authoritative) | Trillium `/scratch/yuvraj17/stratatrace/v2/{sockshop,trainticket}/` |
-| working copy | Trillium `/scratch/yuvraj17/stratatrace/data/stratatrace-v2/<app>/<recipe>/<run_id>/` |
+| working copy | Trillium `/scratch/yuvraj17/stratatrace/data/stratatrace-v2/<app>/<recipe>/<run_id>/` — extracted and **fully decompressed** |
 | Prometheus TSDBs | `C:\workplace\stratatrace-v2-prometheus\` |
 | campaign logs | `C:\workplace\stratatrace-v2-campaign-logs\` |
 
@@ -223,6 +223,37 @@ Sock Shop's is 100x larger for a dull reason: the OTel Java agent's `logging` ex
 span to stdout and the driver captured it, so 16 runs have ~140 MB logs (one is 659,118 lines).
 That content is redundant with each bundle's `otlp/spans.jsonl`; it compresses ~9x and was not
 worth separating.
+
+### The working copy
+
+Extracted and decompressed 7 September 2026, so everything is directly readable — no decode cache,
+no `.gz` anywhere.
+
+    /scratch/yuvraj17/stratatrace/data/stratatrace-v2/<app>/<recipe>/<run_id>/
+
+| | |
+|---|---|
+| runs | **303** (169 sockshop + 134 trainticket) |
+| files | 831,475 |
+| size | **7.3 TB** (from 778 GB of archives) |
+| `.gz` remaining | **0** |
+
+Verified by opening a trace with babeltrace 2.1.2 rather than by counting files:
+
+    [04:12:53.521030424] ... net_dev_queue: { cpu_id = 2 }, { pid = 18364, procname = "conn62" ...
+    [04:12:53.521030652] (+0.000000228) ... power_cpu_idle: { cpu_id = 0 }, ...
+
+**Decompressing was not just the kernel traces.** 145,981 of the ~150,000 `.gz` files were the
+per-run Prometheus export — roughly 440 metric series per run, each its own gzipped JSON. Only
+~4,000 were kernel `channelN_N.gz`. Doing "the traces" alone would have left 97% of them in place.
+
+The apps stay in separate trees because both use the same recipe names; merging them would put
+Sock Shop's `anomaly_cpu` and Train Ticket's in one directory. Run ids differ (`tt_` prefix), so
+nothing would be lost, but "how many `anomaly_cpu` runs are there" would stop having one answer.
+
+Reproduce with `transfer/extract_v2_job.sbatch` then `transfer/decompress_v2_job.sbatch`
+(chain the second with `--dependency=afterok:<jobid>`). Both are resumable and took 19 and 16
+minutes on one 192-core node.
 
 ### Bundle layout
 
