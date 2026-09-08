@@ -7,41 +7,9 @@ Software systems are increasingly diagnosed by AI agents rather than by human en
 
 Software systems are increasingly diagnosed by AI agents rather than by human engineers. This research develops agentic software observability: how an autonomous agent acquires, retains, and applies diagnostic expertise derived from past incidents and historical root-cause analyses. Diagnosing an issue across metrics, logs, distributed traces, and kernel events requires determining which signals isolate a root cause, which events warrant collection, and which thresholds matter for a specific system, and that expertise is rarely retained: it stays tacit knowledge held by individual engineers, or is discarded once an incident is resolved. Current approaches do not close this gap. Automated root-cause analysis localises faults from metrics, logs, and application traces, and recent LLM-based agents perform the same task with tool access, but in both the reusable asset is a model or a prompt; the reasoning that resolved one incident is not preserved in a form a later investigation can run, and the datasets these methods are evaluated on stop at the application boundary. What is missing is expertise that survives an incident in executable form, evidence that it transfers to an unseen system, and a path from diagnosis back into collection. Central to the approach is the observability blueprint, which makes the investigation itself durable by recording the condition it applies to, the telemetry needed, the analysis as runnable steps, the decision rule, and the boundaries under which it must not be trusted; blueprints accumulate into a curated library an agent selects from and executes unaided, admitted only once their signals are measured against every issue class under study. Across roughly ten classes of operational issue and microservice, monolithic, and agentic architectures, comparative evaluation runs the same agent with and without the library against a strong deterministic baseline, characterising where captured expertise accelerates diagnosis, where a capable agent succeeds without it, and where it misleads, moving trace analysis from work that is repeated toward work that accumulates.
 
+============= Final Version =====================
 
-=== NOTES ====================================================================
-
-The framing line now sits at sentence 2, right after the context line, so a
-reader knows what the research is before meeting the problem. Order:
-
-  1        context (Naser: "the first line is good already")
-  2        THIS RESEARCH DEVELOPS AGENTIC SOFTWARE OBSERVABILITY - moved up
-  3        the problem - the expertise is system-specific and rarely retained
-  4-5      what current methods do, and why what they leave behind cannot be
-           re-run
-  6        the gap, three items named
-  7-8      the artifact, the library, the surrounding components
-  9-10     scope, evaluation, and what it characterises
-
-Two edits to the line you supplied:
-
-  "This develops ..."          -> "This research develops ..."
-                                  Naser asked for "this research", and "This
-                                  develops" has no subject.
-  "past incidents, and         -> comma removed. It is a two-item list, so the
-   historical root-cause           comma before "and" reads as a splice.
-   analyses"
-
-One knock-on change: the mechanism sentence used to open "This research
-develops...", which would now repeat. It opens "Central to the approach is the
-observability blueprint..." instead, so the early sentence states the field and
-the later one introduces the instrument.
-
-Two claims still need citations before this goes in the proposal:
-  - what automated RCA does (RCAEval, LEMMA-RCA, OpenRCA)
-  - that public incident datasets stop at the application boundary
-Both are argued in PROPOSAL.md section 3 against its dataset comparison table.
-Neither is asserted from memory.
-
-Still no numbers and no findings. The verbs are "establishes" and
-"characterises", never "found", so every sentence stays true whichever way the
-study lands. A findings sentence gets added once results are final.
+"Software observability is increasingly being augmented with AI agents that can analyze metrics, logs, distributed traces, and kernel events to diagnose operational problems. However, these agents typically reconstruct their reasoning for each incident and rarely preserve the diagnostic expertise developed through previous investigations. As a result, knowledge about which signals to collect, which analyses to perform, and which thresholds indicate a particular failure remains largely tacit or is lost after the incident. Available incident datasets compound the problem: they capture metrics, logs, and application traces but stop at the application boundary, so faults originating below it fall outside the reach of both the analysis and its evaluation.
+This project will develop agentic software observability, a framework for preserving and reusing diagnostic expertise in executable form. Its central artifact is an observability blueprint: a structured representation of the conditions under which a diagnostic method applies, the telemetry it requires, the analysis steps it performs, the decision rule used to reach a conclusion, and the boundaries beyond which it should not be trusted. Blueprints will form a curated library from which an AI agent can select and execute appropriate diagnostic procedures. The framework will also include evidence-based blueprint selection, a hierarchy for narrowing from issue classes to root causes, and a feedback mechanism through which diagnosis informs subsequent telemetry collection.
+The approach will be evaluated across approximately ten operational issue classes and microservice, monolithic, and agent-based software architectures. Experiments will use labelled fault injection and a dataset that aligns kernel events with metrics, logs, and distributed traces, supplying the layer existing corpora omit. The same diagnostic agent will be evaluated with and without the blueprint library and compared with a deterministic baseline. The evaluation will examine whether blueprints transfer across services and systems, whether the agent abstains when no suitable blueprint exists, whether executable diagnostic procedures outperform prose-based knowledge, and whether available evidence is sufficient for reliable blueprint selection.
+The project will establish how durable, executable diagnostic expertise can improve the reliability, efficiency, and adaptability of AI-assisted software observability."
