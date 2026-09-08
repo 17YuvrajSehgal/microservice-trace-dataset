@@ -300,7 +300,7 @@ def cpu_throttle_rule(cpu, rq):
                     f"holding work back")}
 
 
-def co_tenant_rule(cpu, rq, blk):
+def co_tenant_rule(cpu, rq, blk, io=None):
     if not cpu["available"]:
         return {"fires": False, "why": "on-CPU attribution not in the pack"}
     has_thief = cpu["thief_cores"] >= THIEF_CORES and not is_infra(cpu["thief_comm"])
@@ -322,12 +322,35 @@ def co_tenant_rule(cpu, rq, blk):
     # got busier. An absolute level cannot transfer from a 12-vCPU host to a 16-vCPU host
     # running 40 JVMs - and CAMPAIGN-ISSUES 15 shows host utilisation drifted 4.6x DURING
     # collection, so it partly measures when a run happened rather than what happened in it.
-    fires = has_thief and bounded and headroom and rising
+    # MEMORY-CAP VETO.
+    #
+    # Removing `busy` did not create this confusion, it revealed it. A container working against
+    # its memory limit runs a stress tool that EATS A CORE, so it presents a thief in exactly the
+    # co-tenant band with utilisation rising - LATENCY-CAUSES lists "memory stress -> CPU" as a
+    # known look-alike and attributes three earlier wrong answers to it. On Train Ticket the old
+    # `busy` clause happened to suppress it, because TT utilisation sits below 0.55; that was
+    # luck, not discrimination, and it cost all eight true positives to buy.
+    #
+    # The veto is the memory-cap signature itself, which is now measured and separates 16/16 on
+    # both applications with no false fires: interrupt time up with few disk requests per unit of
+    # that rise. It cannot touch a real co-tenant run - noisy_neighbor measures hardirq 0.74-0.91
+    # on Sock Shop and 0.91-1.18 on Train Ticket, all far below IRQ_X.
+    #
+    # Same shape as the retransmission veto the datastore rule already carries (F15): when two
+    # faults share a signature, the one with the sharper discriminator vetoes the other.
+    memcap_shape = bool(io) and io.get("available") and (io.get("hardirq_x") or 0.0) >= IRQ_X \
+        and (io.get("iops_per_irq") is None or io["iops_per_irq"] <= DISK_IOPS_PER_IRQ)
+    fires = has_thief and bounded and headroom and rising and not memcap_shape
     return {"fires": fires, **_cpu_fields(cpu, rq),
+            "memcap_shape_vetoed": memcap_shape,
             "why": (f"{cpu['thief_comm']} took {cpu['thief_cores']} cores it was not using "
                     f"before, raising host CPU to {cpu['util_incident']:.3f} - busier, but "
                     f"still with headroom"
                     if fires else
+                    f"{cpu['thief_comm']} took {cpu['thief_cores']} cores, but interrupt time "
+                    f"is also raised with the disk quiet - that is a container against its "
+                    f"memory limit whose stress tool happens to eat a core, not a co-tenant"
+                    if memcap_shape else
                     f"thief {cpu['thief_comm']} {cpu['thief_cores']} cores, host "
                     f"{cpu['util_incident']} - does not match a bounded co-tenant workload")}
 
@@ -479,7 +502,7 @@ def decide(pack):
     results = {
         "host-cpu-saturation": host_saturation_rule(cpu, rq),
         "service-cpu-throttle": cpu_throttle_rule(cpu, rq),
-        "cpu-contention-co-tenant": co_tenant_rule(cpu, rq, blk),
+        "cpu-contention-co-tenant": co_tenant_rule(cpu, rq, blk, io),
         "datastore-wait": datastore_rule(cpu, rq, blk, net),
         "network-path-degradation": network_rule(net, rq),
         "host-disk-saturation": disk_saturation_rule(io),
