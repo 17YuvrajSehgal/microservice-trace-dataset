@@ -64,8 +64,14 @@ import blueprint_decide as BD                                          # noqa: E
 Z_ANOMALOUS = 3.0      # sigma at which a signal counts as moved. One number, every signal.
 MATCH_MIN = 0.60       # fraction of a signature's signals that must be moved the right way.
 
-# MAD of zero happens when healthy runs agree exactly. Floor it relative to the median so the
-# score stays finite without inventing a scale.
+# MAD of zero happens when healthy runs agree exactly - `thief_cores` is 0.0 in every healthy
+# run, for instance. Flooring it relative to the median then divides by ~zero and reports any
+# deviation as astronomically many sigma, which is how `thief_cores: flat` vetoed every
+# datastore-wait run (0/22) on a signal that was doing nothing wrong.
+#
+# A signal whose healthy runs show no spread cannot tell us how UNUSUAL a change is. The honest
+# answer is that it is unmeasurable here, and unmeasurable signals are skipped - not scored,
+# not counted against. The fallback ladder is MAD, then standard deviation, then skip.
 MAD_FLOOR_FRAC = 0.02
 
 
@@ -162,7 +168,12 @@ SIGNATURES = {
         "util_ratio": "up",          # ...and the host gets busier
         "hardirq_x": "flat",         # VETO: the memory cap's stress tool also eats a core
                                      # (LATENCY-CAUSES: "memory stress -> CPU")
-        "util_incident": "flat",     # VETO: not saturated, or it is host saturation
+        # `util_incident: flat` WAS HERE and took this rule to 0/16. "Not saturated" and
+        # "unchanged" are different claims, and co-tenant contention RAISES utilisation by
+        # design - Sock Shop 0.75-0.889 against a healthy 0.53-0.58, which is many sigma. The
+        # veto was vetoing the fault's own signature. Separating co-tenant from host saturation
+        # is what top-1 selection does: saturation matches on four clauses at the ceiling and
+        # outranks it.
     },
     "service-cpu-throttle": {
         "util_ratio": "down",        # the quota makes the system do LESS
@@ -186,9 +197,12 @@ SIGNATURES = {
     },
     "datastore-wait": {
         "n_slowed_2x": "up",         # endpoints answer slower
+        "socket_block_x": "up",      # something is blocked in a socket call, where measurable
         "retrans_pct": "flat",       # VETO: not packet loss (F15)
         "rq_max": "flat",            # VETO: not CPU starvation
-        "thief_cores": "flat",       # VETO: nobody took the CPU
+        # `thief_cores: flat` WAS HERE. thief_cores is 0.0 in every healthy run, so its healthy
+        # spread is zero and the sigma score was meaningless - see MAD_FLOOR_FRAC. It vetoed all
+        # 22 runs.
     },
 }
 
@@ -237,8 +251,13 @@ def build_reference(packs, truth, healthy="normal"):
         med = statistics.median(xs)
         mad = statistics.median([abs(x - med) for x in xs])
         scale = 1.4826 * mad                       # MAD -> sigma for a normal distribution
-        floor = abs(med) * MAD_FLOOR_FRAC
-        ref[key] = {"median": med, "sigma": max(scale, floor, 1e-9), "n": len(xs)}
+        if scale <= 0:
+            scale = statistics.pstdev(xs) if len(xs) > 1 else 0.0
+        if scale <= 0:
+            scale = abs(med) * MAD_FLOOR_FRAC
+        if scale <= 0:
+            continue                               # no healthy spread: unmeasurable, so skipped
+        ref[key] = {"median": med, "sigma": scale, "n": len(xs)}
     return ref
 
 
@@ -315,10 +334,17 @@ def match(profile, signature):
 def decide(pack, app, ref):
     profile = z_profile(pack, app, ref)
     scored = {name: match(profile, sig) for name, sig in SIGNATURES.items()}
-    fired = [n for n, m in scored.items() if m["score"] >= MATCH_MIN and m["n_signals"] >= 2]
-    fired.sort(key=lambda n: -scored[n]["score"])
-    return {"profile": profile, "scored": scored, "fired": fired,
-            "best": fired[0] if fired else None}
+    passing = [n for n, m in scored.items() if m["score"] >= MATCH_MIN and m["n_signals"] >= 2]
+    passing.sort(key=lambda n: (-scored[n]["score"], -scored[n]["n_signals"], n))
+    # TOP-1, not every rule that clears the bar. Several faults legitimately move overlapping
+    # signal sets - host saturation and co-tenant contention both show a thief and rising
+    # utilisation - so "everything above a bar" reports ambiguity where a diagnosis is available.
+    # Reporting the best-matching hypothesis is also what an agent handed this profile would do.
+    # Ties are broken by how many signals the signature could actually check, then by name, so
+    # the answer is deterministic.
+    best = passing[0] if passing else None
+    return {"profile": profile, "scored": scored, "fired": ([best] if best else []),
+            "also_passing": passing[1:], "best": best}
 
 
 def main():
