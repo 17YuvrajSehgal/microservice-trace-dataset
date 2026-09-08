@@ -74,6 +74,21 @@ MATCH_MIN = 0.60       # fraction of a signature's signals that must be moved th
 # not counted against. The fallback ladder is MAD, then standard deviation, then skip.
 MAD_FLOOR_FRAC = 0.02
 
+# THE ONE ABSOLUTE THAT SURVIVES, AND WHY.
+#
+# Not every constant is equally fragile. CONTENDED = 0.55 failed because it encoded a
+# deployment's TYPICAL LEVEL, which differs per host and drifted 4.6x during collection.
+# SATURATED = 0.95 encodes a PHYSICAL BOUND: CPU utilisation cannot exceed 1.0, so "within 5% of
+# the ceiling" means the same thing on a 12-vCPU host and a 16-vCPU one. Measured on v2:
+# anomaly_cpu 0.993-0.998 on BOTH applications, nothing else above 0.889.
+#
+# A sigma score cannot express this. "Near the bound" is not "unusual relative to healthy" - a
+# co-tenant run is also unusual, it just has headroom left. So the framework keeps one clause
+# kind for bounded quantities, and the distinction it draws is the one the thesis should make:
+# constants tied to a physical bound transfer, constants tied to a deployment's normal level do
+# not.
+SATURATED = 0.95
+
 
 def _sig(pack, section, key):
     return ((pack.get(section) or {}).get("signature") or {}).get(key)
@@ -158,7 +173,7 @@ SIGNALS = {
 #    = 450 expressed as a magnitude, without the magnitude.
 SIGNATURES = {
     "host-cpu-saturation": {
-        "util_incident": "up",       # a bounded quantity: it runs into its ceiling
+        "util_incident": "ceiling",  # GATE: no headroom left. A physical bound, see SATURATED.
         "thief_cores": "up",         # something took the CPU
         "util_ratio": "up",
         ("gt", "hardirq_x"): "thief_cores",   # CPU was taken, not reclaimed
@@ -168,6 +183,10 @@ SIGNATURES = {
         "util_ratio": "up",          # ...and the host gets busier
         "hardirq_x": "flat",         # VETO: the memory cap's stress tool also eats a core
                                      # (LATENCY-CAUSES: "memory stress -> CPU")
+        "util_incident": "below_ceiling",   # GATE: busier but with headroom. This is what
+                                     # separates a co-tenant from host saturation, and it is the
+                                     # claim `flat` could not make - both faults raise
+                                     # utilisation, only one runs out of room.
         # `util_incident: flat` WAS HERE and took this rule to 0/16. "Not saturated" and
         # "unchanged" are different claims, and co-tenant contention RAISES utilisation by
         # design - Sock Shop 0.75-0.889 against a healthy 0.53-0.58, which is many sigma. The
@@ -310,11 +329,23 @@ def match(profile, signature):
         if p is None:
             continue
         z = p["z"]
-        if direction == "flat":
-            ok = abs(z) < Z_ANOMALOUS
+        if direction in ("flat", "ceiling", "below_ceiling"):
+            # GATES. All three must hold and none earns score. `flat` is relative to healthy;
+            # the other two are absolute because they describe a bounded quantity against its
+            # bound - see SATURATED.
+            if direction == "flat":
+                ok = abs(z) < Z_ANOMALOUS
+                msg = f"{name} moved {z:+.1f} sigma when this fault leaves it flat"
+            elif direction == "ceiling":
+                ok = p["value"] >= SATURATED
+                msg = f"{name} is {p['value']:.3f}, below the {SATURATED} ceiling"
+            else:
+                ok = p["value"] < SATURATED
+                msg = (f"{name} is {p['value']:.3f}, at the {SATURATED} ceiling - no headroom "
+                       f"left, so this is saturation rather than bounded contention")
             if not ok and vetoed is None:
-                vetoed = f"{name} moved {z:+.1f} sigma when this fault leaves it flat"
-            evidence.append({"signal": name, "expected": "flat (veto)", "z": z,
+                vetoed = msg
+            evidence.append({"signal": name, "expected": f"{direction} (gate)", "z": z,
                              "value": p["value"], "healthy_median": p["healthy_median"],
                              "satisfied": ok})
             continue
