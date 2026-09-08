@@ -1,51 +1,38 @@
-=== VERSION A (432 words) - full structure Naser asked for ===================
+=== VERSION A - single paragraph, full structure =============================
 
-Software systems are increasingly diagnosed by AI agents rather than by human engineers. Diagnosing an issue across metrics, logs, distributed traces, and kernel events requires determining which signals isolate a root cause, which events warrant collection, and which thresholds matter for a specific system. That determination is system-specific expertise, and it is not retained: it stays tacit knowledge held by individual engineers, or is discarded once an incident is resolved.
-
-Current approaches do not close this gap. Automated root-cause analysis localises faults from metrics, logs, and application traces, and recent LLM-based agents perform the same task with tool access. In both, the reusable asset is a model or a prompt: the reasoning that resolved one incident is not preserved in a form a later investigation can run, so an agent rebuilds each one from first principles, with little insight into how faults manifest below the application layer. The datasets these methods are evaluated on stop at that same boundary. Three things are missing: expertise that survives an incident in executable form, evidence that it transfers to an unseen service or system, and a path by which a diagnosis determines what telemetry is collected next.
-
-This research develops agentic software observability: how an autonomous agent acquires, retains, and applies diagnostic expertise derived from past incidents and historical root-cause analyses. An observability blueprint makes the investigation durable: a self-contained, executable record of a solved issue stating the condition it applies to, the telemetry needed to observe it, the analysis as runnable steps, the decision rule that produces a verdict, and the boundaries under which it must not be trusted. Blueprints accumulate into a curated library an agent selects from and executes unaided, admitted only after their signals are measured against every issue class under study, not the one they target alone. Around it sit evidence-based selection, a hierarchy narrowing from issue class to cause, and a feedback path from diagnosis into collection, supported by a dataset aligning kernel events with metrics, logs, and distributed traces under labelled fault injection.
-
-The work spans roughly ten classes of operational issue across microservice, monolithic, and agentic architectures. Comparative evaluation runs the same agent on the same incidents with and without the library, against a strong deterministic baseline, establishing whether a blueprint transfers across services and systems, whether the library abstains on uncovered problems, whether executable steps outperform prose, and whether evidence alone suffices to select the right blueprint. It characterises where captured expertise accelerates diagnosis, where a capable agent succeeds without it, and where it misleads - moving trace analysis from work that is repeated toward work that accumulates.
+Software systems are increasingly diagnosed by AI agents rather than by human engineers. Diagnosing an issue across metrics, logs, distributed traces, and kernel events requires determining which signals isolate a root cause, which events warrant collection, and which thresholds matter for a specific system, and that determination is system-specific expertise that is rarely retained: it stays tacit knowledge held by individual engineers, or is discarded once an incident is resolved. Current approaches do not close this gap. Automated root-cause analysis localises faults from metrics, logs, and application traces, and recent LLM-based agents perform the same task with tool access, but in both the reusable asset is a model or a prompt; the reasoning that resolved one incident is not preserved in a form a later investigation can run, so an agent rebuilds each one from first principles, with little insight into how faults manifest below the application layer, a boundary at which the datasets these methods are evaluated on also stop. What is missing is expertise that survives an incident in executable form, evidence that it transfers to an unseen service or system, and a path by which a diagnosis determines what telemetry is collected next. This research develops agentic software observability: how an autonomous agent acquires, retains, and applies diagnostic expertise derived from past incidents and historical root-cause analyses. An observability blueprint makes the investigation itself durable, recording the condition it applies to, the telemetry needed to observe it, the analysis as runnable steps, the decision rule that produces a verdict, and the boundaries under which it must not be trusted. Blueprints accumulate into a curated library an agent selects from and executes unaided, admitted only once their signals are measured against every issue class under study rather than the one they target alone, and surrounded by the components this form of observability requires: evidence-based selection, a hierarchy narrowing from issue class to cause, and a feedback path from diagnosis into collection. Across roughly ten classes of operational issue and microservice, monolithic, and agentic architectures, comparative evaluation runs the same agent on the same incidents with and without the library against a strong deterministic baseline, on a dataset that aligns kernel events with metrics, logs, and distributed traces under labelled fault injection. It establishes whether a blueprint transfers across services and systems, whether the library abstains on uncovered problems, whether executable steps outperform prose, and whether evidence alone suffices to select the right blueprint, and characterises where captured expertise accelerates diagnosis, where a capable agent succeeds without it, and where it misleads, moving trace analysis from work that is repeated toward work that accumulates.
 
 
-=== VERSION B (309 words) - same structure, for a 300-350 word cap ===========
+=== VERSION B - single paragraph, for a 300-350 word cap =====================
 
-Software systems are increasingly diagnosed by AI agents rather than by human engineers. Diagnosing an issue across metrics, logs, distributed traces, and kernel events requires determining which signals isolate a root cause, which events warrant collection, and which thresholds matter for a specific system. That expertise is not retained: it stays tacit knowledge held by individual engineers, or is discarded once an incident is resolved.
-
-Current approaches do not close this gap. Automated root-cause analysis localises faults from metrics, logs, and application traces, and recent LLM-based agents do the same with tool access, but in both the reusable asset is a model or a prompt. The reasoning that resolved one incident is not preserved in a form a later investigation can run, and the datasets these methods are evaluated on stop at the application boundary. Missing are expertise that survives an incident in executable form, evidence that it transfers to an unseen system, and a path from diagnosis back into collection.
-
-This research develops agentic software observability: how an autonomous agent acquires, retains, and applies diagnostic expertise derived from past incidents and historical root-cause analyses. An observability blueprint makes the investigation durable - an executable record of a solved issue stating the condition it applies to, the telemetry needed, the analysis as runnable steps, the decision rule, and the boundaries under which it must not be trusted. Blueprints accumulate into a library an agent selects from and executes unaided, admitted only after their signals are measured against every issue class under study.
-
-Across roughly ten classes of operational issue and microservice, monolithic, and agentic architectures, comparative evaluation runs the same agent with and without the library against a strong deterministic baseline, characterising where captured expertise accelerates diagnosis, where a capable agent succeeds without it, and where it misleads - moving trace analysis from work that is repeated toward work that accumulates.
+Software systems are increasingly diagnosed by AI agents rather than by human engineers. Diagnosing an issue across metrics, logs, distributed traces, and kernel events requires determining which signals isolate a root cause, which events warrant collection, and which thresholds matter for a specific system, and that expertise is rarely retained: it stays tacit knowledge held by individual engineers, or is discarded once an incident is resolved. Current approaches do not close this gap. Automated root-cause analysis localises faults from metrics, logs, and application traces, and recent LLM-based agents perform the same task with tool access, but in both the reusable asset is a model or a prompt; the reasoning that resolved one incident is not preserved in a form a later investigation can run, and the datasets these methods are evaluated on stop at the application boundary. What is missing is expertise that survives an incident in executable form, evidence that it transfers to an unseen system, and a path from diagnosis back into collection. This research develops agentic software observability: how an autonomous agent acquires, retains, and applies diagnostic expertise derived from past incidents and historical root-cause analyses. An observability blueprint makes the investigation itself durable, recording the condition it applies to, the telemetry needed, the analysis as runnable steps, the decision rule, and the boundaries under which it must not be trusted; blueprints accumulate into a curated library an agent selects from and executes unaided, admitted only once their signals are measured against every issue class under study. Across roughly ten classes of operational issue and microservice, monolithic, and agentic architectures, comparative evaluation runs the same agent with and without the library against a strong deterministic baseline, characterising where captured expertise accelerates diagnosis, where a capable agent succeeds without it, and where it misleads, moving trace analysis from work that is repeated toward work that accumulates.
 
 
 === NOTES ====================================================================
 
-What changed against Naser's feedback:
+Now one paragraph, which is how an abstract is normally set. The four moves are
+still there, carried by sentence order and connectives instead of paragraph
+breaks:
 
-  "the first line is good already"      kept verbatim
-  "what is the problem?"                para 1 now ends on it: the expertise is
-                                        system-specific and it is not retained
-  "what do the current methods do?"     NEW para 2, sentence 1-2: automated RCA
-                                        localises faults from metrics/logs/traces;
-                                        LLM agents do the same with tool access
-  "what is missing and what is the      NEW para 2, closing: three named gaps -
-   gap?"                                executable survival, transfer evidence,
-                                        and diagnosis feeding collection
-  "this research (not this thesis)"     every "this thesis" replaced; para 3 opens
-                                        "This research develops..."
+  sentence 1        context (Naser: "the first line is good already")
+  sentence 2        the problem - the expertise is system-specific, not retained
+  sentences 3-4     what current methods do, and why the asset they leave behind
+                    cannot be re-run
+  sentence 5        the gap, three items named
+  sentence 6        "This research develops agentic software observability"
+  sentences 7-8     the artifact, the library, the surrounding components
+  sentences 9-10    scope, evaluation, and what it characterises
 
-Length: Version A is 432 words because paragraph 2 is new - it did not exist
-before this feedback. Version B keeps the same four moves at 309. Pick by
-whatever cap the department sets.
-
-Two claims in para 2 that need a citation when this goes into the proposal:
+Two claims still need citations before this goes in the proposal:
   - what automated RCA does (RCAEval, LEMMA-RCA, OpenRCA)
   - that public incident datasets stop at the application boundary
-Both are already argued in PROPOSAL.md section 3, where the comparison table lists
-each dataset and its modalities. Neither is asserted from memory.
+Both are argued in PROPOSAL.md section 3 against its dataset comparison table.
+Neither is asserted from memory.
 
-Still no numbers and no findings. Sentences say what the work "establishes" and
-"characterises", never what it found, so they stay true whichever way the study
-lands. A findings sentence gets added once results are final.
+Still no numbers and no findings. The verbs are "establishes" and
+"characterises", never "found", so every sentence stays true whichever way the
+study lands. A findings sentence gets added once results are final.
+
+One wording change worth knowing: "is not retained" became "is rarely
+retained". Runbooks and postmortems do exist, so the absolute claim was too
+strong and a committee would push on it.
