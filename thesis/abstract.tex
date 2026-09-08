@@ -5,10 +5,10 @@
 \usepackage{graphicx}
 \usepackage[margin=1in]{geometry}
 
-\title{Agentic Software Observability:\\
+\title{Agentic Software Observability:\
        Capturing, Transferring, and Re-executing Diagnostic Expertise}
-\author{Yuvraj Sehgal\\
-        \small Department of Computer Science, Brock University\\
+\author{Yuvraj Sehgal\
+        \small Department of Computer Science, Brock University\
         \small Supervisor: Dr.\ Naser Ezzati-Jivan}
 \date{September 2026}
 
@@ -17,69 +17,27 @@
 \maketitle
 
 \begin{abstract}
-Software systems are increasingly diagnosed by AI agents rather than by people.
-This thesis develops \emph{agentic software observability}: how an autonomous agent acquires,
-retains, and applies the expertise that diagnosis from telemetry demands.
-From metrics, logs, distributed traces, and kernel-level traces, a diagnosis requires judging
-which signal distinguishes one cause from another, which events are worth recording, and which
-thresholds mean something on this system rather than in general.
-Engineering practice discards that judgement: an investigation runs once and its reasoning does
-not survive.
-Agents inherit the same statelessness, rebuilding every investigation from first principles while
-bringing broad reasoning but little knowledge of how a fault appears below the application layer.
+Software systems are increasingly diagnosed by AI agents rather than by human engineers. Diagnosing an issue across metrics, logs, distributed traces, and kernel events requires determining which signals isolate a root cause, which events warrant collection, and which thresholds matter for a specific system. That determination is system-specific expertise, and it is not retained: it stays tacit knowledge held by individual engineers, or is discarded once an incident is resolved.
 
-The thesis makes the investigation itself the durable artifact.
-An \emph{observability blueprint} is a self-contained, executable record of one solved problem:
-the condition it applies to, the telemetry needed to observe it, the analysis as runnable steps,
-the decision rule that produces a verdict, and the circumstances under which it must not be
-trusted.
-Blueprints accumulate into a library an agent selects from and executes without human direction,
-admitted only after their signals are measured against every class of issue under study---not
-merely the one they were written for---so the library does not accumulate rules that fail
-elsewhere.
+Current approaches do not close this gap. Automated root-cause analysis localises faults from metrics, logs, and application traces, and recent LLM-based agents perform the same task with tool access. In both, the reusable asset is a model or a prompt: the reasoning that resolved one incident is not preserved in a form a later investigation can run, so an agent rebuilds each one from first principles, with little insight into how faults manifest below the application layer. The datasets these methods are evaluated on stop at that same boundary. Three things are missing: expertise that survives an incident in executable form, evidence that it transfers to an unseen service or system, and a path by which a diagnosis determines what telemetry is collected next.
 
-Around it sit the parts agentic observability needs in practice: evidence-based selection that
-routes an incident to the right blueprint, a hierarchy that narrows from problem class to cause,
-and a feedback path from diagnosis back into collection.
-A supporting dataset time-aligns kernel traces with metrics, logs, and distributed traces under
-labelled fault injection, the layer public incident corpora omit.
+This research develops \emph{agentic software observability}: how an autonomous agent acquires, retains, and applies diagnostic expertise derived from past incidents and historical root-cause analyses. An \emph{observability blueprint} makes the investigation durable: a self-contained, executable record of a solved issue stating the condition it applies to, the telemetry needed to observe it, the analysis as runnable steps, the decision rule that produces a verdict, and the boundaries under which it must not be trusted. Blueprints accumulate into a curated library an agent selects from and executes unaided, admitted only after their signals are measured against every issue class under study, not the one they target alone. Around it sit evidence-based selection, a hierarchy narrowing from issue class to cause, and a feedback path from diagnosis into collection, supported by a dataset aligning kernel events with metrics, logs, and distributed traces under labelled fault injection.
 
-The work spans roughly ten classes of operational issue and microservice, monolithic, and agentic
-systems, in which an agent is both the consumer of the library and the system under observation.
-Evaluation is comparative and deliberately unkind: the same agent, the same incidents, with and
-without the library, measured against a strong deterministic control rather than an unaided
-baseline.
-It establishes whether a blueprint transfers to another service and another system, whether the
-library abstains on problems it does not cover, whether executable steps outperform prose
-describing the same procedure, and whether the right blueprint can be identified from evidence
-alone.
-The thesis characterises where captured expertise helps, where it is unnecessary because a
-capable agent already succeeds, and where it misleads---moving trace analysis from work that is
-repeated toward work that accumulates.
+The work spans roughly ten classes of operational issue across microservice, monolithic, and agentic architectures. Comparative evaluation runs the same agent on the same incidents with and without the library, against a strong deterministic baseline, establishing whether a blueprint transfers across services and systems, whether the library abstains on uncovered problems, whether executable steps outperform prose, and whether evidence alone suffices to select the right blueprint. It characterises where captured expertise accelerates diagnosis, where a capable agent succeeds without it, and where it misleads---moving trace analysis from work that is repeated toward work that accumulates.
 \end{abstract}
 
 % ---------------------------------------------------------------------------
-% SHORTER VARIANT, for repositories and forms that cap the abstract length.
-% To use it: comment out the long version above and uncomment this block,
-% keeping both inside the single abstract environment.
+% SHORTER VARIANT, for a 300-350 word cap. Same four moves: context and
+% problem, what current methods do and the gap, "this research ...", then
+% scope and evaluation. Swap by commenting out the version above.
 %
-% Software systems are increasingly diagnosed by AI agents rather than by people. This thesis
-% develops \emph{agentic software observability}: how an autonomous agent acquires, retains, and
-% applies the expertise that diagnosis from telemetry demands. Engineering practice discards that
-% expertise---an investigation runs once and its reasoning does not survive---and agents inherit
-% the same statelessness, rebuilding every investigation from first principles.
-%
-% The thesis makes the investigation itself the durable artifact. An \emph{observability
-% blueprint} is a self-contained, executable record of one solved problem, stating what to
-% collect, how to analyse it, how to decide, and when not to trust it. Blueprints accumulate into
-% a library an agent selects from and executes unaided, admitted only after their signals are
-% measured against every class of issue under study. Around it sit the parts agentic
-% observability needs: evidence-based selection, a hierarchy from problem class to cause, and a
-% feedback path from diagnosis back into collection.
-%
-% Spanning roughly ten classes of operational issue across microservice, monolithic, and agentic
-% systems, the work characterises where captured expertise helps, where it is unnecessary, and
-% where it misleads.
+% Software systems are increasingly diagnosed by AI agents rather than by human engineers. Diagnosing an issue across metrics, logs, distributed traces, and kernel events requires determining which signals isolate a root cause, which events warrant collection, and which thresholds matter for a specific system. That expertise is not retained: it stays tacit knowledge held by individual engineers, or is discarded once an incident is resolved.
+% 
+% Current approaches do not close this gap. Automated root-cause analysis localises faults from metrics, logs, and application traces, and recent LLM-based agents do the same with tool access, but in both the reusable asset is a model or a prompt. The reasoning that resolved one incident is not preserved in a form a later investigation can run, and the datasets these methods are evaluated on stop at the application boundary. Missing are expertise that survives an incident in executable form, evidence that it transfers to an unseen system, and a path from diagnosis back into collection.
+% 
+% This research develops \emph{agentic software observability}: how an autonomous agent acquires, retains, and applies diagnostic expertise derived from past incidents and historical root-cause analyses. An \emph{observability blueprint} makes the investigation durable---an executable record of a solved issue stating the condition it applies to, the telemetry needed, the analysis as runnable steps, the decision rule, and the boundaries under which it must not be trusted. Blueprints accumulate into a library an agent selects from and executes unaided, admitted only after their signals are measured against every issue class under study.
+% 
+% Across roughly ten classes of operational issue and microservice, monolithic, and agentic architectures, comparative evaluation runs the same agent with and without the library against a strong deterministic baseline, characterising where captured expertise accelerates diagnosis, where a capable agent succeeds without it, and where it misleads---moving trace analysis from work that is repeated toward work that accumulates.
 % ---------------------------------------------------------------------------
 
 \end{document}
