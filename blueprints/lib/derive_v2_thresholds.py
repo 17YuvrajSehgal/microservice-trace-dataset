@@ -54,6 +54,22 @@ def socket_max(pack):
     return max(hits) if hits else None
 
 
+def iops_per_irq(pack):
+    """Disk arrivals per unit of interrupt rise.
+
+    `anomaly_disk` and `svc_mem_cap` are the only pair these two rules confuse, and NO single
+    signal separates them on both applications - the overlap is in opposite directions
+    (arrivals separate them on Sock Shop, interrupt time on Train Ticket). Both faults raise
+    both numbers; what differs is the mix. A disk flood is many requests for a modest
+    interrupt rise; reclaim inside a cgroup is a large interrupt rise for few requests.
+    """
+    g = sig(pack, "blockio", "io_newcomer_iops_gained")
+    x = sig(pack, "irq", "hardirq_x")
+    if g is None or not x:
+        return None
+    return round(g / x, 1)
+
+
 def util_ratio(pack):
     b, i = sig(pack, "oncpu", "host_util_baseline"), sig(pack, "oncpu", "host_util_incident")
     return round(i / b, 4) if (b and i is not None) else None
@@ -65,12 +81,14 @@ RULES = {
         ("total_iops_x", lambda p: sig(p, "blockio", "total_iops_x"), ">=", None),
         ("queue_depth_x", lambda p: sig(p, "blockio", "queue_depth_x"), ">=", None),
         ("hardirq_x", lambda p: sig(p, "irq", "hardirq_x"), ">=", None),
+        ("iops_per_irq", iops_per_irq, ">=", None),
     ]),
     "service-memory-cap": ({"svc_mem_cap"}, [
         ("hardirq_x", lambda p: sig(p, "irq", "hardirq_x"), ">=", 2.5),
         ("iops_gained", lambda p: sig(p, "blockio", "io_newcomer_iops_gained"), "<=", 500.0),
         ("softirq_x", lambda p: sig(p, "irq", "softirq_x"), ">=", None),
         ("total_iops_x", lambda p: sig(p, "blockio", "total_iops_x"), ">=", None),
+        ("iops_per_irq", iops_per_irq, "<=", None),
     ]),
     "service-cpu-throttle": ({"svc_cpu_cap"}, [
         ("util_ratio", util_ratio, "<=", 0.80),
@@ -133,6 +151,28 @@ def best_cut(pos, neg, direction):
             "separates": hits == len(pos)}
 
 
+def band_cut(pos, neg):
+    """A two-sided rule: does the positives' range exclude every negative?
+
+    The one-sided cut misreports any rule whose family sits BETWEEN two others. The co-tenant
+    rule is exactly that - `anomaly_cpu` steals more CPU than a co-tenant, not less - so its
+    shipped `0.5 <= thief < 4.0` is a band and reporting it as "overlaps" says nothing.
+
+    Edges are placed midway to the nearest negative, not on the positives' extremes, so a run
+    slightly outside the observed range still lands inside.
+    """
+    if not pos or not neg:
+        return None
+    lo, hi = min(pos), max(pos)
+    inside = [v for v in neg if lo <= v <= hi]
+    below = max([v for v in neg if v < lo], default=None)
+    above = min([v for v in neg if v > hi], default=None)
+    return {
+        "band": [round((below + lo) / 2, 4) if below is not None else None,
+                 round((above + hi) / 2, 4) if above is not None else None],
+        "pos_range": [lo, hi], "n_neg_inside": len(inside), "separates": not inside}
+
+
 def fmt(vals):
     if not vals:
         return "        (none)"
@@ -185,7 +225,7 @@ def main():
                     mark = " <-- OWNS" if fam in owns else ""
                     print(f"    {app:12s} {fam:16s} {fmt(per_fam[(app, fam)])}{mark}")
 
-            res = {}
+            res, bands = {}, {}
             for app in ("sockshop", "trainticket", "both"):
                 if app == "both":
                     pos = vals[("sockshop", True)] + vals[("trainticket", True)]
@@ -193,11 +233,18 @@ def main():
                 else:
                     pos, neg = vals[(app, True)], vals[(app, False)]
                 c = best_cut(pos, neg, direction)
-                res[app] = c
+                b = band_cut(pos, neg)
+                res[app], bands[app] = c, b
                 if c:
                     ok = "CLEAN" if c["separates"] else "overlaps"
                     print(f"      [{app:11s}] cut {c['rule']:>14s}  "
                           f"recall {c['recall'][0]}/{c['recall'][1]}  {ok}")
+                if b and not (c and c["separates"]) and b["separates"]:
+                    lo, hi = b["band"]
+                    lo_s = "-inf" if lo is None else f"{lo:.4g}"
+                    hi_s = "+inf" if hi is None else f"{hi:.4g}"
+                    print(f"      [{app:11s}] BAND {lo_s} .. {hi_s}  "
+                          f"holds all {len(pos)} positives, 0 negatives inside")
             # A cut that works on one application and not the other is the failure mode this
             # whole exercise exists to catch, so name it rather than reporting an average.
             s, t = res.get("sockshop"), res.get("trainticket")
@@ -210,7 +257,12 @@ def main():
                     print(f"      => ONE APP ONLY ({who}). Do not ship this as a single cut.")
                 else:
                     print("      => separates on neither application.")
-            out[rule][label] = {"direction": direction, "current": current, "cuts": res}
+            sb, tb = bands.get("sockshop"), bands.get("trainticket")
+            if sb and tb and sb["separates"] and tb["separates"] and not (
+                    res.get("sockshop", {}) or {}).get("separates"):
+                print("      => BAND TRANSFERS on both applications.")
+            out[rule][label] = {"direction": direction, "current": current,
+                                "cuts": res, "bands": bands}
 
     if a.out:
         json.dump(out, open(a.out, "w"), indent=2, default=str)
