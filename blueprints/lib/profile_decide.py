@@ -127,42 +127,68 @@ SIGNALS = {
 # "up"/"down" is the direction the fault moves the signal away from healthy. Nothing here is a
 # magnitude, so nothing here is deployment-specific. Every direction below is either the
 # documented mechanism or measured on v2 across both applications.
+# A signature has three kinds of clause, and only the first can EARN score:
+#
+#   "up" / "down"        positive evidence, relative to HEALTHY. Contributes to the score.
+#   "flat"               a VETO. Must hold, contributes nothing.
+#   ("gt", other)        this signal is more anomalous than `other`. Contributes to the score.
+#
+# The first version of this file got two things wrong, and both are worth keeping written down.
+#
+# 1. FLAT COUNTED AS EVIDENCE. A signature of three "flat" clauses and one "up" would score 0.75
+#    on any run where nothing much happened, so `datastore-wait` fired on 14 of 20 healthy runs
+#    and 62% of its fires were false. Absence of a contradicting signal is not evidence FOR a
+#    diagnosis. Vetoes now gate the verdict without contributing to it.
+#
+# 2. DIRECTIONS WERE WRITTEN RELATIVE TO A LOOK-ALIKE, NOT TO HEALTHY. `iops_per_irq` was marked
+#    "down" for the memory cap because it is lower than the DISK fault. Against healthy it is
+#    UP - healthy sits near 40-66, the memory cap at 62-352, the disk at 546-719. Both faults
+#    move it the same way. So service-memory-cap scored 0/16: the one signal it was counting on
+#    was pointing the wrong way by construction.
+#
+#    That exposes a real limit of direction-only signatures: they cannot say "up, but less up
+#    than the other fault". Hence ("gt", other) - a comparison between two sigma scores, which
+#    is dimensionless and needs no constant. It is the same discriminator that DISK_IOPS_PER_IRQ
+#    = 450 expressed as a magnitude, without the magnitude.
 SIGNATURES = {
     "host-cpu-saturation": {
         "util_incident": "up",       # a bounded quantity: it runs into its ceiling
         "thief_cores": "up",         # something took the CPU
         "util_ratio": "up",
+        ("gt", "hardirq_x"): "thief_cores",   # CPU was taken, not reclaimed
     },
     "cpu-contention-co-tenant": {
         "thief_cores": "up",         # a newcomer appears...
-        "util_ratio": "up",         # ...and the host gets busier
-        "hardirq_x": "flat",         # separates it from the memory cap, whose stress tool also
-                                     # eats a core (LATENCY-CAUSES: "memory stress -> CPU")
+        "util_ratio": "up",          # ...and the host gets busier
+        "hardirq_x": "flat",         # VETO: the memory cap's stress tool also eats a core
+                                     # (LATENCY-CAUSES: "memory stress -> CPU")
+        "util_incident": "flat",     # VETO: not saturated, or it is host saturation
     },
     "service-cpu-throttle": {
         "util_ratio": "down",        # the quota makes the system do LESS
         "loser_cores": "down",       # someone loses CPU
         "rq_max": "up",              # while threads wait longer - working less, waiting more
-        "thief_cores": "flat",       # nobody took it
+        "thief_cores": "flat",       # VETO: nobody took it
     },
     "host-disk-saturation": {
-        "iops_per_irq": "up",        # many requests per unit of interrupt rise: a flood
-        "iops_gained": "up",
+        "iops_gained": "up",         # requests arrive
         "total_iops_x": "up",
+        ("gt", "hardirq_x"): "iops_per_irq",  # a FLOOD: arrivals outrun the interrupt rise
     },
     "service-memory-cap": {
         "hardirq_x": "up",           # reclaim drives device interrupts
-        "iops_per_irq": "down",      # but few requests per unit of it: not a flood
+        ("gt", "iops_per_irq"): "hardirq_x",  # RECLAIM: the interrupt rise outruns arrivals.
+                                     # This is the disk/memcap discriminator with no magnitude.
     },
     "network-path-degradation": {
         "retrans_pct": "up",         # the path is losing packets
         "n_slowed_2x": "up",         # and endpoints answer slower
     },
     "datastore-wait": {
-        "n_slowed_2x": "up",         # endpoints answer slower...
-        "endpoint_x": "up",
-        "retrans_pct": "flat",       # ...without packet loss (F15 veto, as a direction)
-        "rq_max": "flat",            # and without CPU starvation
+        "n_slowed_2x": "up",         # endpoints answer slower
+        "retrans_pct": "flat",       # VETO: not packet loss (F15)
+        "rq_max": "flat",            # VETO: not CPU starvation
+        "thief_cores": "flat",       # VETO: nobody took the CPU
     },
 }
 
@@ -233,30 +259,57 @@ def z_profile(pack, app, ref):
 def match(profile, signature):
     """How much of a signature the profile shows, and the evidence for it.
 
-    A "flat" expectation is satisfied by NOT being anomalous - that is how the vetoes are
-    expressed without a magnitude. Unmeasurable signals are skipped rather than counted against,
-    so a deployment that cannot produce one signal is not penalised for it.
+    Three clause kinds, handled differently on purpose:
+
+      "up"/"down"     positive evidence against HEALTHY. Earns score.
+      "flat"          a VETO. Must hold or the whole signature fails; earns nothing. Absence of
+                      a contradicting signal is not evidence for a diagnosis.
+      ("gt", other)   this signal is more anomalous than `other`. Earns score. This is how "up,
+                      but less up than the look-alike" is expressed with no magnitude.
+
+    Unmeasurable signals are skipped rather than counted against, so a deployment that cannot
+    produce one signal is not penalised for it - the failure mode that took datastore-wait to
+    1/11 on Train Ticket, where all 40 Java services report under one comm.
     """
-    hits, total, evidence = 0.0, 0, []
-    for name, direction in signature.items():
+    hits, total, evidence, vetoed = 0.0, 0, [], None
+    for key, spec in signature.items():
+        if isinstance(key, tuple) and key[0] == "gt":
+            # spec is the signal that must exceed key[1]
+            a, b = profile.get(spec), profile.get(key[1])
+            if a is None or b is None:
+                continue
+            total += 1
+            ok = a["z"] > b["z"]
+            hits += 1.0 if ok else 0.0
+            evidence.append({"signal": f"{spec} vs {key[1]}", "expected": "more anomalous",
+                             "z": round(a["z"] - b["z"], 2), "value": a["value"],
+                             "healthy_median": a["healthy_median"], "satisfied": ok})
+            continue
+
+        name, direction = key, spec
         p = profile.get(name)
         if p is None:
-            continue                                # absent evidence is not evidence against
-        total += 1
+            continue
         z = p["z"]
         if direction == "flat":
             ok = abs(z) < Z_ANOMALOUS
-            strength = 1.0 if ok else 0.0
-        else:
-            signed = z if direction == "up" else -z
-            strength = min(signed / Z_ANOMALOUS, 1.0) if signed > 0 else 0.0
-            ok = signed >= Z_ANOMALOUS
+            if not ok and vetoed is None:
+                vetoed = f"{name} moved {z:+.1f} sigma when this fault leaves it flat"
+            evidence.append({"signal": name, "expected": "flat (veto)", "z": z,
+                             "value": p["value"], "healthy_median": p["healthy_median"],
+                             "satisfied": ok})
+            continue
+
+        total += 1
+        signed = z if direction == "up" else -z
+        strength = min(signed / Z_ANOMALOUS, 1.0) if signed > 0 else 0.0
         hits += strength
         evidence.append({"signal": name, "expected": direction, "z": z,
                          "value": p["value"], "healthy_median": p["healthy_median"],
-                         "satisfied": ok})
-    return {"score": round(hits / total, 3) if total else 0.0,
-            "n_signals": total, "evidence": evidence}
+                         "satisfied": signed >= Z_ANOMALOUS})
+    score = round(hits / total, 3) if total else 0.0
+    return {"score": 0.0 if vetoed else score, "raw_score": score,
+            "n_signals": total, "vetoed": vetoed, "evidence": evidence}
 
 
 def decide(pack, app, ref):
@@ -302,10 +355,12 @@ def main():
         for n, m in sorted(d["scored"].items(), key=lambda kv: -kv[1]["score"]):
             mark = "  <== best match" if n == d["best"] else ""
             print(f"  {n:28s} score {m['score']:.2f} over {m['n_signals']} signals{mark}")
+            if m.get("vetoed"):
+                print(f"      VETOED: {m['vetoed']}")
             for e in m["evidence"]:
                 tick = "yes" if e["satisfied"] else "no "
-                print(f"      {tick}  {e['signal']:16s} expected {e['expected']:5s} "
-                      f"got {e['z']:+.1f} sigma")
+                print(f"      {tick}  {e['signal']:24s} expected {e['expected']:14s} "
+                      f"got {e['z']:+.1f}")
         return 0
 
     # ---- score every run ------------------------------------------------------------------
