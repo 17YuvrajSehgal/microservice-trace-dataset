@@ -50,18 +50,26 @@ def load_tasks(path):
 
 
 def rq_for(rq_dir, run):
-    """The shape blueprint_decide's rules expect. Absent rq is None, not a zero - a zero would
-    quietly make `waiting_for_cpu` false and turn 'we did not measure it' into 'it did not
-    happen'."""
+    """Runqueue stats in the exact shape the rules read.
+
+    Built with blueprint_decide's own _rq() rather than assembled here: the first version of
+    this function invented the dict and missed the `median` key, which the shared field
+    formatter reads. Hand-shaping a structure the callee owns is how that happens.
+
+    Absent rq returns None, not zeroes. Zeroes would quietly make `waiting_for_cpu` false and
+    turn "we did not measure it" into "it did not happen".
+    """
     if not rq_dir:
         return None
     p = os.path.join(rq_dir, f"{run}.json")
     if not os.path.exists(p):
         return None
-    d = json.load(open(p))
-    rows = d.get("services") or d.get("rows") or []
-    xs = [r.get("p95_x") for r in rows if isinstance(r.get("p95_x"), (int, float))]
-    return {"max": max(xs) if xs else 0.0, "rows": rows}
+    return BD._rq(json.load(open(p)))
+
+
+# The same empty shape BD._rq returns when a pack has no runqueue rows, so the rules that only
+# report these fields still run when only on-CPU data exists.
+RQ_ABSENT = BD._rq({})
 
 
 def main():
@@ -87,7 +95,7 @@ def main():
         pack = {"oncpu": json.load(open(p))}
         cpu = BD._cpu(pack)
         rq = rq_for(a.rq, run)
-        rq_in = rq or {"max": 0.0, "rows": []}
+        rq_in = rq or RQ_ABSENT
 
         sat = BD.host_saturation_rule(cpu, rq_in)
         cot = BD.co_tenant_rule(cpu, rq_in, {})
