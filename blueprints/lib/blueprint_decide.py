@@ -447,10 +447,26 @@ def datastore_rule(cpu, rq, blk, net):
         why = (f"{comm} is blocked in {call} at {top['p95_x']}x, but the slowest endpoint is "
                f"only {net['worst_endpoint_x']}x - something is waiting, but nothing is "
                f"answering slowly enough for the datastore to be the cause")
-    elif top:
+    elif top and not rq_ok:
         why = f"runqueue delay {rq['max']}x indicates CPU starvation, not dependency wait"
     else:
-        why = "no socket-waiting syscall inflated enough"
+        # MEASURED on Train Ticket: this branch used to be `elif top:` and printed the
+        # CPU-starvation message whenever a socket row existed but was not inflated enough -
+        # regardless of what runqueue delay actually was. Seven tt_slow_db runs were reported as
+        # "runqueue delay 1.41x indicates CPU starvation" with runqueue delay FLAT at 1.0-1.6x.
+        # A verdict that names the wrong cause is worse than one that says nothing, because a
+        # reader has no way to tell it apart from a real starvation finding.
+        #
+        # The honest message names what is actually missing. On Train Ticket that is the
+        # per-process view: all ~40 Java services report as one comm `java`, so the p95 of one
+        # blocked service is averaged into thirty-nine unblocked ones and no row clears the bar.
+        # The endpoint measurement, which keys on address/port rather than process name, sees
+        # the same runs at 10.3-4836x.
+        best = f"{top['p95_x']}x" if top else "none found"
+        why = (f"no socket-waiting syscall reached {BLOCK_X}x (best {best}); on a fleet where "
+               f"many services share one process name this view averages the blocked service "
+               f"into its idle peers - check the endpoint evidence, which does not use process "
+               f"names")
 
     return {"fires": fires, "blocked_process": comm, "blocking_call": call,
             "blocking_x": top["p95_x"] if top else None,
