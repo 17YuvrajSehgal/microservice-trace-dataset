@@ -312,6 +312,45 @@ patch quietly.
 
 ---
 
+## 15. ACCEPTED (affects analysis) - baseline host CPU drifted during the campaign
+
+Found 7 Sept while testing blueprint 1, from 62 runs measured with `oncpu_share.py`. Ordering
+every run by its collection timestamp shows baseline host utilisation moving with **time, not
+family**, on both applications and in opposite directions.
+
+**Train Ticket - a sharp step, 4.6x:**
+
+| collected | families | baseline util |
+|---|---|---|
+| 07:37 - 12:02, 5 Sept | `normal`, `anomaly_cpu` | 0.626 - 0.709 |
+| 18:08 onward | `noisy_neighbor`, `svc_cpu_cap` | **0.138 - 0.145** |
+
+**Sock Shop - a gradual rise, 1.6x:** 0.514 -> 0.549 (`normal`), 0.567-0.592 (`noisy_neighbor`,
+5 Sept), 0.609-0.624 (`svc_cpu_cap`), **0.794-0.814** (the 6 Sept re-collected runs).
+
+**Why it matters, twice over.**
+
+1. **Any threshold on ABSOLUTE host utilisation is partly measuring collection time.** This is
+   not hypothetical - it is what broke the co-tenant blueprint's `CONTENDED = 0.55` clause on
+   Train Ticket, where healthy runs sit at 0.66-0.71 and genuinely contended runs at 0.21-0.28.
+   The ordering inverts. Deltas (thief cores gained, utilisation ratio) are unaffected and
+   scored 100%.
+2. **A fault's measured magnitude depends on when it ran.** Sock Shop `svc_cpu_cap` collapsed
+   host CPU to 0.25x of baseline on 5 Sept and only 0.87x on 6 Sept - same recipe, same
+   intensity, same target. Any cross-run comparison of effect size on Sock Shop has to state
+   the collection time.
+
+**The data is not wrong** - every run is internally consistent, with its own baseline window
+measured beside its own incident window. What cannot be done is comparing absolute utilisation
+across runs collected hours apart.
+
+**Cause not established.** The Train Ticket step falls in the gap where the campaign was
+stopped, reset and restarted (issue 17), which is suggestive and not evidence. Recorded as an
+open question. The remedy for analysis is available now and costs nothing: prefer within-run
+ratios over absolute levels.
+
+---
+
 ## 11. Things to verify before the campaign ends
 
 - [ ] `anomaly_net` **burst** runs on TT record `containers > 0`
