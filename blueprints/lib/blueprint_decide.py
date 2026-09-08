@@ -92,18 +92,36 @@ STARVED_RQ_X = 5.0
 # floor across both applications is 4724 req/s; the next highest of any other family is
 # 1142-1170 (host memory pressure), then 250-282, then everything under 128. A 4.0x gap that
 # holds on both applications (F18).
-DISK_IOPS_GAINED = 2000.0
+# RE-DERIVED on v2, 136 runs, both applications (derive_v2_thresholds.py).
+#
+# DISK_IOPS_GAINED = 2000 was read off Sock Shop v1 and scored 1/10 on v2. Sock Shop's disk
+# fault gains 1893-2015 req/s, so exactly one run cleared 2000; Train Ticket's gains 698-897,
+# because TT's own tracing already writes 176 MB/s of a 206 MB/s disk and the instrument caps
+# how large the fault can be. No single arrival count holds both.
+#
+# The pair that actually confuses this rule and service-memory-cap is anomaly_disk against
+# svc_mem_cap, and the overlap runs in OPPOSITE directions: arrivals separate them on Sock Shop
+# (disk 1893-2015 vs memcap 287-873), interrupt time separates them on Train Ticket (memcap
+# 2.73-5.55 vs disk 1.18-1.49). Both faults raise both numbers; what differs is the MIX. A disk
+# flood is many requests per unit of interrupt rise; reclaim in one cgroup is the reverse.
+#
+#     iops_gained / hardirq_x       anomaly_disk        svc_mem_cap
+#         Sock Shop                568.3 - 719.1       62.6 - 234.7
+#         Train Ticket             545.8 - 602.0      136.3 - 352.4
+#
+# One cut holds both applications: highest negative anywhere 352.4, lowest positive 545.8. 450
+# is the midpoint, so it has margin in both directions.
+DISK_IOPS_PER_IRQ = 450.0
 
-# Device interrupt time, incident against baseline. This does NOT identify a fault on its own:
-# the disk fault goes higher (5.78-14.27x) and host memory pressure on the first application
-# reaches 3.45x, above the second application's memory-cap floor of 3.23x. The bar sits
-# between the highest healthy run measured (1.81x) and the lowest memory cap (3.23x) (F20).
-IRQ_X = 2.5
-
-# ...so a container memory cap is the PAIR: interrupts up while the disk stays quiet. This
-# fault gains at most 282 req/s; host memory pressure gains at least 1142. The bar sits
-# between them (F23).
-MEMCAP_IOPS_MAX = 500.0
+# Once the disk fault is excluded by the ratio above, interrupt time separates svc_mem_cap
+# from everything remaining on BOTH applications: the highest non-disk negative is 1.19 (Train
+# Ticket slow_db) against memcap floors of 3.21 on Sock Shop and 2.73 on Train Ticket. 2.0 sits
+# clear of both.
+#
+# The old pair was IRQ_X = 2.5 with MEMCAP_IOPS_MAX = 500, and the second half is what broke it:
+# Sock Shop memcap gains a median 553 req/s and Train Ticket 1033, so most runs of the family
+# this rule owns were vetoed by their own disk activity. It scored 3/16.
+IRQ_X = 2.0
 
 SOCKET_CALLS = ("poll", "epoll_wait", "epoll_pwait", "recvfrom", "recvmsg", "read", "select")
 INFRA = ("kworker", "ksoftirqd", "rcu_", "kswapd", "kcompactd", "migration", "watchdog",
@@ -193,7 +211,11 @@ def _io(pack):
             "io_newcomer": b.get("io_newcomer"),
             "total_iops_x": b.get("total_iops_x"),
             "device_p95_x": b.get("worst_device_p95_x"),
-            "hardirq_x": i.get("hardirq_x")}
+            "hardirq_x": i.get("hardirq_x"),
+            # The MIX, not either level on its own. See DISK_IOPS_PER_IRQ.
+            "iops_per_irq": (round(b["io_newcomer_iops_gained"] / i["hardirq_x"], 1)
+                             if b.get("io_newcomer_iops_gained") is not None
+                             and i.get("hardirq_x") else None)}
 
 
 # ----------------------------------------------------------------- storage / container mem
@@ -203,15 +225,18 @@ def disk_saturation_rule(io):
     if not io["io_available"]:
         return {"fires": False, "why": "block-layer evidence not in the pack"}
     g = io["iops_gained"] or 0.0
-    fires = g >= DISK_IOPS_GAINED
-    return {"fires": fires, "iops_gained": g, "io_newcomer": io["io_newcomer"],
-            "device_p95_x": io["device_p95_x"],
-            "why": (f"{io['io_newcomer']} arrived on the disk with {g:.0f} more requests/s "
-                    f"than its baseline, while per-request service time stayed at "
-                    f"{io['device_p95_x']}x - a flood, not a slow device"
+    r = io["iops_per_irq"]
+    fires = r is not None and r > DISK_IOPS_PER_IRQ
+    shown = "n/a" if r is None else format(r, ".0f")
+    return {"fires": fires, "iops_gained": g, "iops_per_irq": r,
+            "io_newcomer": io["io_newcomer"], "device_p95_x": io["device_p95_x"],
+            "why": (f"{io['io_newcomer']} arrived on the disk with {g:.0f} more requests/s, "
+                    f"{shown} per unit of interrupt rise, while per-request service time "
+                    f"stayed at {io['device_p95_x']}x - a flood, not a slow device, and not "
+                    f"the reclaim shape a memory cap gives"
                     if fires else
-                    f"largest disk arrival gain {g:.0f} req/s, below the "
-                    f"{DISK_IOPS_GAINED:.0f} bar")}
+                    f"disk arrivals per unit of interrupt rise {shown}, below the "
+                    f"{DISK_IOPS_PER_IRQ:.0f} bar")}
 
 
 def service_memory_cap_rule(io):
@@ -222,17 +247,20 @@ def service_memory_cap_rule(io):
         missing = "interrupt" if io["io_available"] else "block-layer"
         return {"fires": False, "why": f"{missing} evidence not in the pack"}
     x, g = io["hardirq_x"] or 0.0, io["iops_gained"] or 0.0
-    fires = x >= IRQ_X and g < MEMCAP_IOPS_MAX
+    r = io["iops_per_irq"]
+    shown = "n/a" if r is None else format(r, ".0f")
+    not_a_disk_flood = r is None or r <= DISK_IOPS_PER_IRQ
+    fires = x >= IRQ_X and not_a_disk_flood
     if fires:
-        why = (f"device interrupt time rose {x:.2f}x while the disk stayed quiet "
-               f"({g:.0f} req/s gained) - reclaim inside one cgroup, not host-wide "
-               f"pressure and not a disk flood")
+        why = (f"device interrupt time rose {x:.2f}x with only {shown} disk requests per unit "
+               f"of that rise - reclaim inside one cgroup, not the flood shape a disk fault "
+               f"gives")
     elif x < IRQ_X:
         why = f"interrupt time {x:.2f}x, below the {IRQ_X} bar"
     else:
-        why = (f"interrupt time {x:.2f}x is raised, but {g:.0f} req/s of new disk work "
-               f"means the pressure reached the device - host-wide, not one container")
-    return {"fires": fires, "hardirq_x": x, "iops_gained": g, "why": why}
+        why = (f"interrupt time {x:.2f}x is raised, but {shown} disk requests per unit of it "
+               f"is the flood shape - the pressure reached the device, so this is the disk")
+    return {"fires": fires, "hardirq_x": x, "iops_gained": g, "iops_per_irq": r, "why": why}
 
 
 # --------------------------------------------------------------------------- CPU family
@@ -277,10 +305,24 @@ def co_tenant_rule(cpu, rq, blk):
         return {"fires": False, "why": "on-CPU attribution not in the pack"}
     has_thief = cpu["thief_cores"] >= THIEF_CORES and not is_infra(cpu["thief_comm"])
     bounded = cpu["thief_cores"] < BIG_THIEF
-    busy = cpu["util_incident"] >= CONTENDED
     headroom = cpu["util_incident"] < SATURATED
     rising = cpu["util_ratio"] is not None and cpu["util_ratio"] > 1.0
-    fires = has_thief and bounded and busy and headroom and rising
+    # `busy = util_incident >= CONTENDED` WAS HERE AND HAS BEEN REMOVED.
+    #
+    # CONTENDED = 0.55 was read off Sock Shop v1, where co-tenant runs floor at 0.619 and
+    # healthy ones ceiling at 0.531. On Train Ticket the ordering INVERTS: noisy_neighbor runs
+    # at 0.213-0.282 while healthy runs sit at 0.657-0.710, so the clause called every healthy
+    # run contended and every contended run healthy. It scored 8/16, all eight misses on TT.
+    #
+    # It only ever failed SAFE because has_thief vetoed the false fires, which made it harder to
+    # notice rather than less wrong.
+    #
+    # What survives is a delta, and deltas travel: the thief band 0.9084 .. 4.172 holds all 16
+    # positives on both applications with no negative inside, and `rising` already says the host
+    # got busier. An absolute level cannot transfer from a 12-vCPU host to a 16-vCPU host
+    # running 40 JVMs - and CAMPAIGN-ISSUES 15 shows host utilisation drifted 4.6x DURING
+    # collection, so it partly measures when a run happened rather than what happened in it.
+    fires = has_thief and bounded and headroom and rising
     return {"fires": fires, **_cpu_fields(cpu, rq),
             "why": (f"{cpu['thief_comm']} took {cpu['thief_cores']} cores it was not using "
                     f"before, raising host CPU to {cpu['util_incident']:.3f} - busier, but "
