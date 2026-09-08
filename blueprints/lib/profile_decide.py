@@ -69,9 +69,18 @@ MATCH_MIN = 0.60       # fraction of a signature's signals that must be moved th
 # deviation as astronomically many sigma, which is how `thief_cores: flat` vetoed every
 # datastore-wait run (0/22) on a signal that was doing nothing wrong.
 #
-# A signal whose healthy runs show no spread cannot tell us how UNUSUAL a change is. The honest
-# answer is that it is unmeasurable here, and unmeasurable signals are skipped - not scored,
-# not counted against. The fallback ladder is MAD, then standard deviation, then skip.
+# But a signal that is CONSTANT across healthy runs is the most informative kind, not the least.
+# `thief_cores` is exactly 0.0 in every healthy run and 1.0-9.8 under the CPU faults. Skipping it
+# as "unmeasurable" - which the previous pass did - removed the single most reliable signal in
+# the library and took BOTH CPU rules to 0/10 and 0/16, because their remaining clause count fell
+# below the minimum.
+#
+# A sigma score is the wrong instrument for such a signal, not a reason to discard it. When
+# healthy is invariant, the right test is PRESENCE: does this run differ from the invariant, in
+# the expected direction? That is threshold-free - there is no magnitude to choose - and it is
+# strictly more decisive than a sigma score.
+#
+# So the ladder is: MAD, then standard deviation, then INVARIANT (presence test).
 MAD_FLOOR_FRAC = 0.02
 
 # THE ONE ABSOLUTE THAT SURVIVES, AND WHY.
@@ -272,11 +281,13 @@ def build_reference(packs, truth, healthy="normal"):
         scale = 1.4826 * mad                       # MAD -> sigma for a normal distribution
         if scale <= 0:
             scale = statistics.pstdev(xs) if len(xs) > 1 else 0.0
-        if scale <= 0:
+        if scale <= 0 and abs(med) > 0:
             scale = abs(med) * MAD_FLOOR_FRAC
         if scale <= 0:
-            continue                               # no healthy spread: unmeasurable, so skipped
-        ref[key] = {"median": med, "sigma": scale, "n": len(xs)}
+            # Invariant in healthy runs: presence test, no sigma.
+            ref[key] = {"median": med, "sigma": None, "invariant": True, "n": len(xs)}
+        else:
+            ref[key] = {"median": med, "sigma": scale, "invariant": False, "n": len(xs)}
     return ref
 
 
@@ -288,9 +299,16 @@ def z_profile(pack, app, ref):
         if v is None or r is None:
             out[name] = None
             continue
-        out[name] = {"value": float(v),
-                     "z": round((float(v) - r["median"]) / r["sigma"], 2),
-                     "healthy_median": round(r["median"], 4)}
+        if r.get("invariant"):
+            # No spread to divide by. Report the deviation itself, and mark it so `match` uses a
+            # presence test rather than pretending to a sigma.
+            out[name] = {"value": float(v), "z": None, "invariant": True,
+                         "delta": round(float(v) - r["median"], 4),
+                         "healthy_median": round(r["median"], 4)}
+        else:
+            out[name] = {"value": float(v), "invariant": False,
+                         "z": round((float(v) - r["median"]) / r["sigma"], 2),
+                         "healthy_median": round(r["median"], 4)}
     return out
 
 
@@ -314,8 +332,8 @@ def match(profile, signature):
         if isinstance(key, tuple) and key[0] == "gt":
             # spec is the signal that must exceed key[1]
             a, b = profile.get(spec), profile.get(key[1])
-            if a is None or b is None:
-                continue
+            if a is None or b is None or a.get("z") is None or b.get("z") is None:
+                continue        # a comparison of sigma scores needs a sigma on both sides
             total += 1
             ok = a["z"] > b["z"]
             hits += 1.0 if ok else 0.0
@@ -329,6 +347,36 @@ def match(profile, signature):
         if p is None:
             continue
         z = p["z"]
+        if p.get("invariant"):
+            # Presence test. Healthy never varies, so any move in the expected direction is the
+            # signal, and "flat" means it did not move at all.
+            d = p["delta"]
+            if direction == "flat":
+                ok = d == 0
+                if not ok and vetoed is None:
+                    vetoed = (f"{name} moved to {p['value']:g} when every healthy run holds "
+                              f"{p['healthy_median']:g}, and this fault leaves it alone")
+                evidence.append({"signal": name, "expected": "unchanged (gate)", "z": None,
+                                 "value": p["value"], "healthy_median": p["healthy_median"],
+                                 "satisfied": ok})
+                continue
+            if direction in ("ceiling", "below_ceiling"):
+                ok = (p["value"] >= SATURATED) if direction == "ceiling" \
+                    else (p["value"] < SATURATED)
+                if not ok and vetoed is None:
+                    vetoed = f"{name} is {p['value']:.3f} against the {SATURATED} ceiling"
+                evidence.append({"signal": name, "expected": f"{direction} (gate)", "z": None,
+                                 "value": p["value"], "healthy_median": p["healthy_median"],
+                                 "satisfied": ok})
+                continue
+            total += 1
+            ok = (d > 0) if direction == "up" else (d < 0)
+            hits += 1.0 if ok else 0.0
+            evidence.append({"signal": name, "expected": f"{direction} (presence)", "z": None,
+                             "value": p["value"], "healthy_median": p["healthy_median"],
+                             "satisfied": ok})
+            continue
+
         if direction in ("flat", "ceiling", "below_ceiling"):
             # GATES. All three must hold and none earns score. `flat` is relative to healthy;
             # the other two are absolute because they describe a bounded quantity against its
