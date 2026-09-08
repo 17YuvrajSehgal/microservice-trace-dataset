@@ -1,7 +1,7 @@
 # M.Sc. Thesis Proposal (draft v1)
 
-**Agentic Software Observability: Capturing, Transferring, and Re-executing
-Diagnostic Expertise**
+**Agentic Software Observability: Preserving and Reusing Diagnostic Expertise
+in Executable Form**
 
 Yuvraj Sehgal · Department of Computer Science, Brock University
 Supervisor: Dr. Naser Ezzati-Jivan

@@ -11,5 +11,42 @@ Software systems are increasingly diagnosed by AI agents rather than by human en
 
 "Software observability is increasingly being augmented with AI agents that can analyze metrics, logs, distributed traces, and kernel events to diagnose operational problems. However, these agents typically reconstruct their reasoning for each incident and rarely preserve the diagnostic expertise developed through previous investigations. As a result, knowledge about which signals to collect, which analyses to perform, and which thresholds indicate a particular failure remains largely tacit or is lost after the incident. Available incident datasets compound the problem: they capture metrics, logs, and application traces but stop at the application boundary, so faults originating below it fall outside the reach of both the analysis and its evaluation.
 This project will develop agentic software observability, a framework for preserving and reusing diagnostic expertise in executable form. Its central artifact is an observability blueprint: a structured representation of the conditions under which a diagnostic method applies, the telemetry it requires, the analysis steps it performs, the decision rule used to reach a conclusion, and the boundaries beyond which it should not be trusted. Blueprints will form a curated library from which an AI agent can select and execute appropriate diagnostic procedures. The framework will also include evidence-based blueprint selection, a hierarchy for narrowing from issue classes to root causes, and a feedback mechanism through which diagnosis informs subsequent telemetry collection.
-The approach will be evaluated across approximately ten operational issue classes and microservice, monolithic, and agent-based software architectures. Experiments will use labelled fault injection and a dataset that aligns kernel events with metrics, logs, and distributed traces, supplying the layer existing corpora omit. The same diagnostic agent will be evaluated with and without the blueprint library and compared with a deterministic baseline. The evaluation will examine whether blueprints transfer across services and systems, whether the agent abstains when no suitable blueprint exists, whether executable diagnostic procedures outperform prose-based knowledge, and whether available evidence is sufficient for reliable blueprint selection.
+The approach will be evaluated across approximately ten operational issue classes and microservice, monolithic, and agent-based software architectures. Experiments will use labelled fault injection and a dataset with kernel events, metrics, logs, and distributed traces, supplying the layer existing corpora omit. The same diagnostic agent will be evaluated with and without the blueprint library and compared with a deterministic baseline. The evaluation will examine whether blueprints transfer across services and systems, whether the agent abstains when no suitable blueprint exists, whether executable diagnostic procedures outperform prose-based knowledge, and whether available evidence is sufficient for reliable blueprint selection.
 The project will establish how durable, executable diagnostic expertise can improve the reliability, efficiency, and adaptability of AI-assisted software observability."
+
+============= TITLE =====================
+
+RECOMMENDED
+
+  Agentic Software Observability: Preserving and Reusing Diagnostic Expertise
+  in Executable Form
+
+  Echoes the abstract's own second sentence almost word for word, which is what
+  a title should do. Names the field first (Naser's framing), then the point.
+
+
+ALTERNATIVES
+
+  Shorter, artifact-forward:
+    Agentic Software Observability: Executable Blueprints for Reusing
+    Diagnostic Expertise
+
+  Formal, spells out that it is a framework:
+    Agentic Software Observability: A Framework for Capturing and Reusing
+    Diagnostic Expertise in Executable Form
+
+  Contrast-forward, easiest to remember when presenting:
+    Agentic Software Observability: From Repeated Investigations to Reusable
+    Diagnostic Expertise
+
+
+NOT RECOMMENDED, and why
+
+  Anything led by "Root Cause Analysis"       Naser: too small a name.
+  Anything led by "Observability Blueprints"  puts the instrument before the
+                                              field; he asked for the reverse.
+  Anything naming the kernel or LTTng         kernel traces are where the work
+                                              starts, not what it is about, and
+                                              the scope now covers telemetry
+                                              generally.
+  Anything naming the industry partner        explicitly ruled out.
