@@ -149,6 +149,34 @@ def scan(ctf, begin, end):
     return out
 
 
+def newcomer(base, inc, span_b, span_i):
+    """The key whose rate rose most between the windows, and by how much.
+
+    MEASURED, not assumed. The smoke test on fork_storm_aggressive_steady_r1 showed why a total
+    cannot carry these faults:
+
+        host forks/s            134.31 -> 237.07     ratio 1.77
+        top forking process     java   -> python3
+
+    The recipe predicted `sched_process_fork` would be "unmistakable". At the host level it is
+    not - the machine already forks 134 times a second from Java and from our own collection
+    script, so the fault adds 77% to a busy baseline. What IS unmistakable is that the process
+    doing the forking changes completely.
+
+    Same shape as `thief_cores` for CPU and `io_newcomer` for disk, both of which separate
+    cleanly where their host totals do not. Three faults, one lesson: measure the arrival, not
+    the level.
+    """
+    rate_b = {k: v / span_b for k, v in base.items()}
+    rate_i = {k: v / span_i for k, v in inc.items()}
+    gains = [(k, rate_i[k] - rate_b.get(k, 0.0)) for k in rate_i]
+    if not gains:
+        return {"comm": None, "gained_per_s": 0.0, "was_per_s": 0.0, "now_per_s": 0.0}
+    k, g = max(gains, key=lambda kv: kv[1])
+    return {"comm": k, "gained_per_s": round(g, 2),
+            "was_per_s": round(rate_b.get(k, 0.0), 2), "now_per_s": round(rate_i[k], 2)}
+
+
 def rates(raw, span):
     top_tx = raw["tx_bytes"].most_common(1)
     top_fork = raw["fork_by_child"].most_common(1)
@@ -160,6 +188,9 @@ def rates(raw, span):
         "econnrefused_per_s": round(raw["errors_by_name"].get("ECONNREFUSED", 0) / span, 3),
         "etimedout_per_s": round(raw["errors_by_name"].get("ETIMEDOUT", 0) / span, 3),
         "errors_top": dict(raw["errors"].most_common(6)),
+        "_fork_by_child": raw["fork_by_child"],      # kept for the newcomer comparison
+        "_errors": raw["errors"],
+        "_tx_bytes": raw["tx_bytes"],
         "tx_bytes_per_s": round(sum(raw["tx_bytes"].values()) / span, 1),
         "top_tx_comm": top_tx[0][0] if top_tx else None,
         "top_tx_bytes_per_s": round(top_tx[0][1] / span, 1) if top_tx else 0.0,
@@ -203,6 +234,18 @@ def main():
         result["windows"][name] = {"range": [b, e], **per[name]}
 
     base, inc = per["baseline"], per["incident"]
+
+    # The three newcomers. A total says how busy the host is; a newcomer says what arrived.
+    fork_new = newcomer(base["_fork_by_child"], inc["_fork_by_child"], a.baseline_s, a.incident_s)
+    err_new = newcomer(base["_errors"], inc["_errors"], a.baseline_s, a.incident_s)
+    tx_new = newcomer(base["_tx_bytes"], inc["_tx_bytes"], a.baseline_s, a.incident_s)
+    for w in per.values():
+        for k in ("_fork_by_child", "_errors", "_tx_bytes"):
+            w.pop(k, None)
+    for w in result["windows"].values():
+        for k in ("_fork_by_child", "_errors", "_tx_bytes"):
+            w.pop(k, None)
+
     sig = {}
     for k in ("forks_per_s", "syscall_errors_per_s", "emfile_per_s", "econnrefused_per_s",
               "etimedout_per_s", "tx_bytes_per_s", "top_tx_bytes_per_s", "dns_packets_per_s",
@@ -216,6 +259,13 @@ def main():
     sig["prio_min_incident"] = inc.get("prio_min")
     sig["prio_max_incident"] = inc.get("prio_max")
     sig["errors_top_incident"] = inc.get("errors_top")
+    sig["fork_newcomer_comm"] = fork_new["comm"]
+    sig["fork_newcomer_per_s"] = fork_new["gained_per_s"]
+    sig["fork_newcomer_was_per_s"] = fork_new["was_per_s"]
+    sig["error_newcomer"] = err_new["comm"]
+    sig["error_newcomer_per_s"] = err_new["gained_per_s"]
+    sig["tx_newcomer_comm"] = tx_new["comm"]
+    sig["tx_newcomer_bytes_per_s"] = tx_new["gained_per_s"]
     result["signature"] = sig
 
     os.makedirs(os.path.dirname(a.out) or ".", exist_ok=True)
@@ -233,6 +283,11 @@ def main():
     print(f"  non-default prio  {sig['prio_non_default_pct_baseline']}% -> "
           f"{sig['prio_non_default_pct_incident']}%  "
           f"(priorities seen: {sig['prio_min_incident']}..{sig['prio_max_incident']})")
+    print(f"  NEWCOMERS - what arrived, rather than how busy the host is:")
+    print(f"    forks   {fork_new['comm']}  +{fork_new['gained_per_s']}/s "
+          f"(was {fork_new['was_per_s']}/s)")
+    print(f"    errors  {err_new['comm']}  +{err_new['gained_per_s']}/s")
+    print(f"    bytes   {tx_new['comm']}  +{tx_new['gained_per_s']}/s")
     return 0
 
 
