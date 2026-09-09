@@ -56,6 +56,10 @@ STEPS = [
     ("endpoints", f"{HERE}/endpoint_latency.py", []),
     ("blockio", f"{BP}/problems/host-disk-saturation/scripts/block_io_signature.py", []),
     ("irq", f"{HERE}/futex_irq_probe.py", []),
+    # Added 2026-09-09 for the fault families that have no blueprint: fork rate, syscall
+    # errors, bytes sent, DNS traffic, scheduling priority. All already recorded; none of
+    # it was being extracted.
+    ("process", f"{HERE}/process_probe.py", []),
 ]
 
 # Train Ticket reports every Java service as `java`, so that one comm covers ~39 services;
@@ -212,6 +216,10 @@ def main():
             "irq": {
                 "what": "hard and soft interrupt time per second, and futex wait shape",
                 "signature": irq_signature(d["irq"])},
+            "process": {
+                "what": "process creation rate, failing syscalls by errno, bytes sent per "
+                        "process, DNS packet rate, and the spread of scheduling priorities",
+                "signature": (d["process"] or {}).get("signature", {})},
         }
         json.dump(pack, open(pack_path, "w"), indent=2)
         note = f"  ({len(failed)} failed: {','.join(failed)})" if failed else ""

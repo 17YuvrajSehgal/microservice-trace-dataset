@@ -55,7 +55,12 @@ BT2 = os.environ.get("BT2", "/scratch/yuvraj17/stratatrace/tools/bt21.sh")
 #   syscall   blocking_syscall                                              40.9%
 #   block     block_io_signature                                             0.2%
 FAMILIES = {
-    "sched":   "sched_waking|sched_switch",
+    # sched_process_fork added 2026-09-09 for process_probe. It is rare (a few per second
+    # even during fork_storm) so it costs almost nothing to carry, and without it in the
+    # family pattern process_probe would miss the cache and decode the whole trace again.
+    # Every consumer greps for what it wants on top, so the extra events are invisible to
+    # oncpu_share and runqueue_delay.
+    "sched":   "sched_waking|sched_switch|sched_process_fork",
     "net":     "net_dev_queue|net_dev_xmit|net_if_receive_skb",
     "syscall": "syscall_entry_|syscall_exit_",
     "block":   "block_rq_issue|block_rq_complete",
