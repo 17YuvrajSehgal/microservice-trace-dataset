@@ -1,6 +1,6 @@
 # Next steps
 
-_Updated 7 September 2026. Collection, transfer and extraction are all finished._
+_Updated 9 September 2026. Waiting on Trillium, back on 10 September._
 
 ## Where things stand
 
@@ -15,23 +15,58 @@ keep them up.
 
 ## Next, in order
 
-Everything left is research. No logistics outstanding.
+Everything below is ready. Nothing is blocked except by the cluster.
 
-1. **Decide on the 103 Train Ticket load CSVs** (CAMPAIGN-ISSUES issue 14). Not recoverable, and
-   re-collecting now needs a fresh VM too, since the collectors are deleted. ~620 GB and about a
-   day, for one modality of four. Hits `anomaly_net` hardest: the CSV was its stated fallback for
-   a fault with no metrics signature.
+### When Trillium is back (10 Sept), do this first
 
-2. **Write the offline re-scoring adapter** (issue 3): read each bundle's own metrics export
-   instead of live Prometheus. Those exports are now decompressed and sitting in the working copy,
-   and nothing reads them. Then settle the 10 outstanding Train Ticket verdicts (`slow_db` x5,
-   `svc_net` x5) - remembering that `svc_net` candidates rise uniformly ~2.1x across unrelated
-   services, which reads as load drift, so fault and drift must be separated first.
+    wsl.exe -d Ubuntu -- bash -lc "ssh -fNM trillium"     # one Duo login, from the laptop
+    cd /scratch/yuvraj17/stratatrace/repo && git pull
+    sbatch blueprints/lib/cluster-v2_packs.sbatch blueprints/lib/tasks-v2-uncovered.txt
 
-3. **`fault_catalog.md` pre-registration for the 15 new v2 families.** Never done; predictions
-   froze at campaign start. Pre-registration after seeing the data is not pre-registration, so the
-   honest options are to register them as exploratory or to state plainly when each was written.
+That builds 156 evidence packs for the fault families with no blueprint. About 45 minutes on one
+node. It skips packs that already exist, so it is safe to resubmit.
 
-4. **Start the modality-ablation study** - the point of all of this. The working copy is ready at
-   `/scratch/yuvraj17/stratatrace/data/stratatrace-v2/<app>/<recipe>/<run_id>/`, decompressed and
-   babeltrace-readable.
+The previous job (2280376) was cancelled while the cluster was in maintenance.
+
+### Then, in order
+
+1. **Measure before writing anything.**
+
+       python blueprints/lib/derive_v2_thresholds.py --packs <packs> --tasks <tasks-v2-uncovered>
+
+   Add the new families to `RULES` in that script first. It reports, per signal per application,
+   whether a cut separates the fault from every other family. A signal that works on one
+   application is reported as failing, never averaged.
+
+2. **Write blueprints only for what separates.** A fault with no separating signal is a result to
+   report, not a gap to hide.
+
+3. **The five likely-easy ones**, because their signals are already extracted:
+   `resource_abuse` (thief_cores), `lock_contention` and `deadlock` (futex shape), `anomaly_mem`
+   (interrupt time), the five `code_*` (endpoint slowdown).
+
+4. **The five needing the new probe**: `fork_storm`, `fd_exhaustion`, `conn_pool_exhaustion`,
+   `data_exfiltration`, `dns_delay`, `priority_inversion`. `process_probe.py` is written and
+   verified on a real run.
+
+5. **Run the with/without agent comparison on v2.** Everything measured so far is the rule engine.
+   This is what the demo needs.
+
+6. **The parent/child blueprint hierarchy.** Agreed at the 2 Sept meeting, never added to the task
+   list, never started.
+
+7. **fault_catalog.md pre-registration** for the 15 new families.
+
+### Out of scope, decided and measured
+
+`dependency_outage`, `queue_backlog` and `error_storm` cannot be seen in kernel traces. They
+belong on the out-of-scope list, not the backlog. That leaves 16 problems to cover, not 19.
+
+### Known limits to carry
+
+- `service-cpu-throttle` and `datastore-wait` cannot be re-derived: Train Ticket has zero
+  confirmed runs for `svc_cpu_cap` or `slow_db`.
+- Train Ticket reports all ~40 Java services as one process name, so per-process signals are
+  diluted there. Flow-based signals (endpoint latency) are not.
+- Baseline host load drifted 4.6x during collection, so absolute levels partly measure when a run
+  happened. Within-run ratios are unaffected.
