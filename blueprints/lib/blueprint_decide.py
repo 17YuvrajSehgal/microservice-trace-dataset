@@ -134,6 +134,32 @@ def is_infra(name):
     return any(k in n for k in INFRA)
 
 
+# ------------------------------------------------------------------------------- gates
+# Every rule below is a chain of AND conditions, and until now only the final `fires` and a
+# prose `why` came out of it. That is enough to score a run and not enough to show anyone WHY
+# the rule landed where it did - which is the thing the 9 Sept meeting asked for.
+#
+# These two helpers record each condition as it is tested: its name, the number, the bar it had
+# to clear, and whether it cleared. Purely additive - no rule's `fires` value changes. The
+# margin matters as much as the pass: a gate that cleared 0.96 against a 0.95 bar and a gate
+# that cleared 4.17 against 0.50 are both "pass", and a reader needs to see which is which.
+_OPS = {">=": lambda v, b: v >= b, ">": lambda v, b: v > b,
+        "<=": lambda v, b: v <= b, "<": lambda v, b: v < b}
+
+
+def gate(name, value, op, bar, unit="", kind="require"):
+    """One measured condition inside a rule. `kind` is "require" or "veto"."""
+    ok = False if value is None else _OPS[op](value, bar)
+    return {"name": name, "value": value, "op": op, "bar": bar, "unit": unit,
+            "kind": kind, "pass": bool(ok)}
+
+
+def gate_bool(name, ok, detail="", kind="require"):
+    """A condition with no number behind it - a name test, or a check we could not run."""
+    return {"name": name, "value": None, "op": None, "bar": None, "unit": "",
+            "detail": detail, "kind": kind, "pass": bool(ok)}
+
+
 def _rq(pack):
     """Runqueue statistics. Corroboration only; no rule may decide on these."""
     rows = pack.get("runqueue_delay", {}).get("top_by_inflation", [])
@@ -228,7 +254,9 @@ def disk_saturation_rule(io):
     r = io["iops_per_irq"]
     fires = r is not None and r > DISK_IOPS_PER_IRQ
     shown = "n/a" if r is None else format(r, ".0f")
-    return {"fires": fires, "iops_gained": g, "iops_per_irq": r,
+    gates = [gate("disk requests per unit of interrupt rise", r, ">", DISK_IOPS_PER_IRQ,
+                  "req/s per x")]
+    return {"fires": fires, "gates": gates, "iops_gained": g, "iops_per_irq": r,
             "io_newcomer": io["io_newcomer"], "device_p95_x": io["device_p95_x"],
             "why": (f"{io['io_newcomer']} arrived on the disk with {g:.0f} more requests/s, "
                     f"{shown} per unit of interrupt rise, while per-request service time "
@@ -251,6 +279,10 @@ def service_memory_cap_rule(io):
     shown = "n/a" if r is None else format(r, ".0f")
     not_a_disk_flood = r is None or r <= DISK_IOPS_PER_IRQ
     fires = x >= IRQ_X and not_a_disk_flood
+    gates = [gate("device interrupt time rose", x, ">=", IRQ_X, "x baseline"),
+             gate("and the disk stayed quiet", r, "<=", DISK_IOPS_PER_IRQ, "req/s per x")
+             if r is not None else
+             gate_bool("and the disk stayed quiet", True, "no disk arrivals to compare")]
     if fires:
         why = (f"device interrupt time rose {x:.2f}x with only {shown} disk requests per unit "
                f"of that rise - reclaim inside one cgroup, not the flood shape a disk fault "
@@ -260,7 +292,8 @@ def service_memory_cap_rule(io):
     else:
         why = (f"interrupt time {x:.2f}x is raised, but {shown} disk requests per unit of it "
                f"is the flood shape - the pressure reached the device, so this is the disk")
-    return {"fires": fires, "hardirq_x": x, "iops_gained": g, "iops_per_irq": r, "why": why}
+    return {"fires": fires, "gates": gates, "hardirq_x": x, "iops_gained": g,
+            "iops_per_irq": r, "why": why}
 
 
 # --------------------------------------------------------------------------- CPU family
@@ -268,7 +301,9 @@ def host_saturation_rule(cpu, rq):
     if not cpu["available"]:
         return {"fires": False, "why": "on-CPU attribution not in the pack"}
     fires = cpu["util_incident"] >= SATURATED
-    return {"fires": fires, **_cpu_fields(cpu, rq),
+    gates = [gate("host CPU reached capacity", cpu["util_incident"], ">=", SATURATED,
+                  "of all cores")]
+    return {"fires": fires, "gates": gates, **_cpu_fields(cpu, rq),
             "why": (f"host CPU reached {cpu['util_incident']:.3f} of capacity with "
                     f"{cpu['thief_comm']} taking {cpu['thief_cores']} cores - no headroom left"
                     if fires else
@@ -289,7 +324,11 @@ def cpu_throttle_rule(cpu, rq):
     # less" clause the blueprint already states; it was missing from the code.
     waiting_for_cpu = (rq["max"] or 0) >= STARVED_RQ_X
     fires = collapsed and no_thief and lost and waiting_for_cpu
-    return {"fires": fires, **_cpu_fields(cpu, rq),
+    gates = [gate("CPU use collapsed", cpu["util_ratio"], "<=", COLLAPSE_RATIO, "x baseline"),
+             gate("no new process took the CPU", cpu["thief_cores"], "<", THIEF_CORES, "cores"),
+             gate("a service lost CPU it had", cpu["loser_cores"], "<=", LOSER_CORES, "cores"),
+             gate("threads waited longer to run", rq["max"], ">=", STARVED_RQ_X, "x baseline")]
+    return {"fires": fires, "gates": gates, **_cpu_fields(cpu, rq),
             "why": (f"host CPU FELL to {cpu['util_ratio']:.2f} of its baseline "
                     f"({cpu['util_baseline']:.3f} -> {cpu['util_incident']:.3f}) with no new "
                     f"process, while threads waited {rq['max']}x longer - the system is doing "
@@ -341,7 +380,17 @@ def co_tenant_rule(cpu, rq, blk, io=None):
     memcap_shape = bool(io) and io.get("available") and (io.get("hardirq_x") or 0.0) >= IRQ_X \
         and (io.get("iops_per_irq") is None or io["iops_per_irq"] <= DISK_IOPS_PER_IRQ)
     fires = has_thief and bounded and headroom and rising and not memcap_shape
-    return {"fires": fires, **_cpu_fields(cpu, rq),
+    gates = [gate("a new process took CPU", cpu["thief_cores"], ">=", THIEF_CORES, "cores"),
+             gate_bool("and it is not infrastructure", not is_infra(cpu["thief_comm"]),
+                       cpu["thief_comm"] or "none"),
+             gate("its appetite is bounded", cpu["thief_cores"], "<", BIG_THIEF, "cores"),
+             gate("the host still has headroom", cpu["util_incident"], "<", SATURATED,
+                  "of all cores"),
+             gate("the host got busier", cpu["util_ratio"], ">", 1.0, "x baseline"),
+             gate_bool("not a memory cap in disguise", not memcap_shape,
+                       "interrupt time up with the disk quiet" if memcap_shape
+                       else "interrupt time is not raised", kind="veto")]
+    return {"fires": fires, "gates": gates, **_cpu_fields(cpu, rq),
             "memcap_shape_vetoed": memcap_shape,
             "why": (f"{cpu['thief_comm']} took {cpu['thief_cores']} cores it was not using "
                     f"before, raising host CPU to {cpu['util_incident']:.3f} - busier, but "
@@ -383,8 +432,14 @@ def network_rule(net, rq):
     # the loss must have happened in the queue, not in a receive buffer (F17)
     lost_in_queue = drop is not None and drop > QUEUE_DROP_MIN
     fires = worst >= RETRANS_FIRE_PCT and quiet_baseline and lost_in_queue
+    gates = [gate("segments being retransmitted", worst, ">=", RETRANS_FIRE_PCT, "%"),
+             gate("the baseline was quiet", base, "<=", RETRANS_BASELINE_MAX, "%")
+             if base is not None else
+             gate_bool("the baseline was quiet", True, "no baseline retransmission recorded"),
+             gate("the loss happened in the queue", drop, ">", QUEUE_DROP_MIN,
+                  "% of buffers dropped")]
     return {
-        "fires": fires,
+        "fires": fires, "gates": gates,
         "worst_retrans_pct": worst,
         "baseline_retrans_pct": base,
         "n_impaired_ifaces": net["n_impaired_ifaces"],
@@ -468,7 +523,20 @@ def datastore_rule(cpu, rq, blk, net):
                f"into its idle peers - check the endpoint evidence, which does not use process "
                f"names")
 
-    return {"fires": fires, "blocked_process": comm, "blocking_call": call,
+    gates = [gate("a socket wait inflated", top["p95_x"] if top else None, ">=", BLOCK_X,
+                  "x baseline"),
+             gate("threads are not starved of CPU", rq["max"], "<", STARVED_RQ_X, "x baseline"),
+             gate("an endpoint really is answering slowly",
+                  net["worst_endpoint_x"], ">=", ENDPOINT_SLOWDOWN_MIN, "x baseline")
+             if net["endpoint_available"] else
+             gate_bool("an endpoint really is answering slowly", True,
+                       "endpoint timing not in the pack - not checked"),
+             gate("the path is not losing packets", net["worst_retrans_pct"], "<",
+                  RETRANS_VETO_PCT, "% retransmitted", kind="veto")
+             if net["retrans_available"] else
+             gate_bool("the path is not losing packets", True,
+                       "packet loss not in the pack - not checked", kind="veto")]
+    return {"fires": fires, "gates": gates, "blocked_process": comm, "blocking_call": call,
             "blocking_x": top["p95_x"] if top else None,
             "max_runqueue_x": rq["max"],
             "worst_endpoint_x": net["worst_endpoint_x"],
