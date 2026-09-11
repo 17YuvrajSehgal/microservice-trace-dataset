@@ -353,9 +353,19 @@ def main():
                 else:
                     print("      => separates on neither application.")
             sb, tb = bands.get("sockshop"), bands.get("trainticket")
-            if sb and tb and sb["separates"] and tb["separates"] and not (
-                    res.get("sockshop", {}) or {}).get("separates"):
-                print("      => BAND TRANSFERS on both applications.")
+            # A band per application is NOT a band that transfers. The first version of this
+            # check said BAND TRANSFERS whenever each app had its own clean band, which is a
+            # different and much weaker claim - priority_inversion and lock_contention both
+            # passed it while having no single band that holds on both. Only the combined band
+            # counts.
+            bb = bands.get("both")
+            if bb and bb["separates"] and not (res.get("both", {}) or {}).get("separates"):
+                lo, hi = bb["band"]
+                lo_s = "-inf" if lo is None else f"{lo:.4g}"
+                hi_s = "+inf" if hi is None else f"{hi:.4g}"
+                print(f"      => ONE BAND HOLDS BOTH APPLICATIONS: {lo_s} .. {hi_s}")
+            elif sb and tb and sb["separates"] and tb["separates"]:
+                print("      => a band works on each application, but NOT one shared band.")
             out[rule][label] = {"direction": direction, "current": current,
                                 "cuts": res, "bands": bands}
 
