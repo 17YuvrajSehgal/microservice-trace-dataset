@@ -55,8 +55,12 @@ Each step names the capability it needs. The command shown is the binding resolv
 5. State the recommended action alongside the diagnosis
    run: `python3 blueprints/lib/recommend_action.py --verdict <out>/verdict.json --blueprint service-cpu-throttle --out <out>/recommended_action.txt`
    expect: inspect cgroup cpu.max and cpu.stat throttling counters for the services on the stalled path, and raise or remove the quota on the one that is throttling
+6. draw the decision card
+   run: `python3 blueprints/lib/blueprint_card.py --pack <pack.json> --ruler blueprints/results/ruler.json --blueprint service-cpu-throttle --problems blueprints/problems --out <out>/card.svg`
+   expect: one page showing where every fault family sits on this blueprint's deciding number, which gates passed and by how much, and what else was ruled out
 
 ## What to produce
+- xy_chart: the decision itself: every fault family on the deciding axis with the cut drawn, the closest fault to that cut, each gate with its measured value and its bar, and the other blueprints with the number that ruled each one out
 - json: verdict, host utilisation both windows, per-process losses, runqueue corroboration, and an explicit statement that the throttled service is not identified
 - xy_chart: per-process cores baseline against incident, showing system-wide withdrawal with no newcomer
 - text: that a CPU quota is throttling some service, why the host looks quiet, and what evidence would name the service

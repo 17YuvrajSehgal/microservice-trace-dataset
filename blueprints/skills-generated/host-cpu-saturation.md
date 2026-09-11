@@ -54,8 +54,12 @@ Each step names the capability it needs. The command shown is the binding resolv
 5. State the recommended action alongside the diagnosis
    run: `python3 blueprints/lib/recommend_action.py --verdict <out>/verdict.json --blueprint host-cpu-saturation --out <out>/recommended_action.txt`
    expect: cap or relocate the offending workload; if the load is legitimate, report the host as undersized for it
+6. draw the decision card
+   run: `python3 blueprints/lib/blueprint_card.py --pack <pack.json> --ruler blueprints/results/ruler.json --blueprint host-cpu-saturation --problems blueprints/problems --out <out>/card.svg`
+   expect: one page showing where every fault family sits on this blueprint's deciding number, which gates passed and by how much, and what else was ruled out
 
 ## What to produce
+- xy_chart: the decision itself: every fault family on the deciding axis with the cut drawn, the closest fault to that cut, each gate with its measured value and its bar, and the other blueprints with the number that ruled each one out
 - json: verdict, host utilisation both windows, the newcomer and cores it took, and the runqueue corroboration
 - xy_chart: per-process cores baseline against incident, with the CPU ceiling drawn
 - text: which workload exhausted the host, how much it took, and what remains for everything else

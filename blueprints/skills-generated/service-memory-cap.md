@@ -51,8 +51,12 @@ Each step names the capability it needs. The command shown is the binding resolv
 4. combine into the verdict and its artifacts
    run: `python3 blueprints/lib/blueprint_decide.py --pack <pack.json> --out <out>/verdict.json`
    expect: a verdict naming the capped service, or a refusal to decide
+5. draw the decision card
+   run: `python3 blueprints/lib/blueprint_card.py --pack <pack.json> --ruler blueprints/results/ruler.json --blueprint service-memory-cap --problems blueprints/problems --out <out>/card.svg`
+   expect: one page showing where every fault family sits on this blueprint's deciding number, which gates passed and by how much, and what else was ruled out
 
 ## What to produce
+- xy_chart: the decision itself: every fault family on the deciding axis with the cut drawn, the closest fault to that cut, each gate with its measured value and its bar, and the other blueprints with the number that ruled each one out
 - json: verdict, the interrupt ratio that fired it, the disk arrivals that stayed flat, and which of the two tests carried the decision on this application
 - xy_chart: interrupt ratio against disk requests gained, one point per family, so the separation is visible rather than asserted
 - text: why interrupts rose while the disk stayed quiet, and why that pair points at a container limit rather than a host-wide shortage

@@ -51,8 +51,12 @@ Each step names the capability it needs. The command shown is the binding resolv
 4. State the recommended action alongside the diagnosis
    run: `python3 blueprints/lib/recommend_action.py --verdict <out>/verdict.json --blueprint host-disk-saturation --out <out>/recommended_action.txt`
    expect: identify the container owning the flooding process, then throttle its I/O or move it off this device
+5. draw the decision card
+   run: `python3 blueprints/lib/blueprint_card.py --pack <pack.json> --ruler blueprints/results/ruler.json --blueprint host-disk-saturation --problems blueprints/problems --out <out>/card.svg`
+   expect: one page showing where every fault family sits on this blueprint's deciding number, which gates passed and by how much, and what else was ruled out
 
 ## What to produce
+- xy_chart: the decision itself: every fault family on the deciding axis with the cut drawn, the closest fault to that cut, each gate with its measured value and its bar, and the other blueprints with the number that ruled each one out
 - json: verdict, the flooding process, requests per second gained, its share of all disk work, total I/O change, and the device latency that deliberately did not decide it
 - xy_chart: requests per second per process, baseline against incident
 - text: which process flooded the disk and why per-request latency looks normal despite the device being overwhelmed

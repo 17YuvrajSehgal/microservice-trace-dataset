@@ -119,6 +119,16 @@ def fmt(v, unit=""):
     return "%.3g" % v
 
 
+def clip(s, n):
+    """Cut at a word boundary. Cutting mid-word reads like the number was truncated too."""
+    s = str(s or "")
+    if len(s) <= n:
+        return s
+    cut = s[:n]
+    sp = cut.rfind(" ")
+    return (cut[:sp] if sp > n * 0.6 else cut).rstrip(" ,;-") + "..."
+
+
 def wrap(s, n, lines=2):
     """Break a gate name over at most `lines` lines so it stays inside its box."""
     words, out, cur = str(s).split(), [], ""
@@ -294,7 +304,9 @@ def draw_ruler(s, y, cfg, ruler, this_run, app_of_run):
         if gx0 is not None:
             s.rect(gx0, top, gx1 - gx0, lane_h * len(apps) + 6, "#1a7f37", op=0.07)
             if ratio and ratio > 1.05:
-                s.text((gx0 + gx1) / 2.0, top - 6, "%.3gx gap" % ratio, 10, FIRE,
+                # keep the label off the zero lane, where it would sit on top of its caption
+                lx = max((gx0 + gx1) / 2.0, ax.px0 + 26)
+                s.text(lx, top - 6, "%.3gx gap" % ratio, 10, FIRE,
                        anchor="middle", weight="bold")
                 lines.append("The gap between the nearest other fault and this one is %.3gx."
                              % ratio)
@@ -307,10 +319,16 @@ def draw_ruler(s, y, cfg, ruler, this_run, app_of_run):
         if ax.has_zero:
             s.line(ax.x0 + ax.zw, ly, ax.x0 + ax.zw, ly + lane_h - 6, FAINT, 1)
         rows = [p for p in pts if p["app"] == app]
-        for j, p in enumerate(rows):
+        # Stack runs that land on the same spot instead of jittering blindly, or the many
+        # families that measure exactly zero pile into one unreadable blob.
+        seen = {}
+        rows.sort(key=lambda p: (p["family"] not in owns, p["v"]))
+        for p in rows:
             own = p["family"] in owns
             cx = ax.x(p["v"])
-            cy = ly + 8 + ((j * 7) % (lane_h - 22))            # jitter so runs do not hide
+            b = int(cx / 5.0)
+            seen[b] = seen.get(b, 0) + 1
+            cy = ly + 9 + ((seen[b] - 1) % 5) * 5.4
             if own:
                 s.circle(cx, cy, 4.6, ACCENT, stroke="#ffffff", sw=1.2, op=0.95)
             else:
@@ -333,12 +351,13 @@ def draw_ruler(s, y, cfg, ruler, this_run, app_of_run):
     if cfg.get("ceiling"):
         cutline(cfg["ceiling"], "< %s" % fmt(cfg["ceiling"], unit))
 
-    # axis ticks
+    # axis ticks - skip a tick at zero when zero has its own lane, or it reads twice
     for v in ax.ticks():
+        if ax.has_zero and v == 0:
+            continue
         s.text(ax.x(v), bottom + 30, fmt(v, unit), 9, MUTED, anchor="middle")
     if ax.has_zero:
         s.text(ax.x0 + ax.zw / 2.0, bottom + 30, "0", 9, MUTED, anchor="middle")
-        s.text(ax.x0 + ax.zw / 2.0, top - 6, "exactly 0", 8, MUTED, anchor="middle")
     s.text(W - PAD - 16, bottom + 44, unit + ("  (log scale)" if ax.log else ""), 9, MUTED,
            anchor="end")
 
@@ -349,25 +368,48 @@ def draw_ruler(s, y, cfg, ruler, this_run, app_of_run):
         mx = ax.x(v)
         s.line(mx, top - 26, mx, bottom + 4, ACCENT, 1.4, op=0.75)
         s.poly([(mx - 5, top - 30), (mx + 5, top - 30), (mx, top - 21)], ACCENT)
-        s.text(mx + 9, top - 22, "this run  %s" % fmt(v, unit), 10.5, ACCENT, weight="bold")
+        lab = "this run  %s" % fmt(v, unit)
+        if mx > W - 190:                      # flip the label inwards near the right edge
+            s.text(mx - 9, top - 22, lab, 10.5, ACCENT, weight="bold", anchor="end")
+        else:
+            s.text(mx + 9, top - 22, lab, 10.5, ACCENT, weight="bold")
         lines.append("This run measured %s %s on \"%s\"; the cut is at %s."
                      % (fmt(v, unit), unit, sig["label"],
                         fmt(bar[0], unit) + "-" + fmt(bar[1], unit) if band else fmt(bar, unit)))
 
     if near is not None:
-        s.text(PAD, bottom + 44,
+        s.text(PAD, bottom + 56,
                "closest other fault to the cut:  %s on %s at %s"
                % (near["family"], near["app"], fmt(near["v"], unit)), 10, MUTED)
         lines.append("The fault that comes closest to breaking this cut is %s on %s at %s."
                      % (near["family"], near["app"], fmt(near["v"], unit)))
 
-    # honesty line: does the cut actually hold over everything we measured?
+    # Honesty line, and the most useful thing on the card.
+    #
+    # One number almost never separates a fault on its own - that is exactly why a blueprint
+    # is a set of gates and not a threshold. So report BOTH: how far this single signal gets,
+    # and how far the complete rule gets. A card that showed only the first would look like
+    # the blueprint is broken; one that showed only the second would hide the reason it needs
+    # every gate it has.
     wrong = [p for p in pts if fires(p["v"]) != (p["family"] in owns)]
-    msg = ("this cut separates all %d runs" % len(pts) if not wrong
-           else "%d of %d runs fall on the wrong side of this cut" % (len(wrong), len(pts)))
-    s.text(W - PAD - 16, bottom + 56, msg, 10, FIRE if not wrong else VETO, anchor="end",
+    alone = ("this number alone separates all %d runs" % len(pts) if not wrong
+             else "this number alone: %d of %d runs land on the wrong side"
+                  % (len(wrong), len(pts)))
+    s.text(W - PAD - 16, bottom + 56, alone, 10, FIRE if not wrong else VETO, anchor="end",
            weight="bold")
-    lines.append(msg.capitalize() + ".")
+    lines.append(alone.capitalize() + ".")
+
+    vs = ruler.get("verdicts") or []
+    if vs and cfg.get("rule"):
+        bid = RULE_TO_CARD[cfg["rule"]]
+        sel = "datastore-wait" if bid == "db-latency-dependency-wait" else bid
+        bad = [v for v in vs if (v.get("selected") == sel) != (v["family"] in owns)]
+        hit = len(vs) - len(bad)
+        full = "every gate together: %d of %d runs correct" % (hit, len(vs))
+        s.text(W - PAD - 16, bottom + 70, full, 10.5,
+               FIRE if not bad else INK, anchor="end", weight="bold")
+        lines.append(full.capitalize() + ".")
+        return bottom + 82, lines
     return bottom + 68, lines
 
 
@@ -401,7 +443,7 @@ def draw_gates(s, y, gates, note):
         for k, ln in enumerate(wrap(g["name"], chars)):
             s.text(x + 8, top + 38 + k * 12, ln, 9.5, MUTED)
         if g["value"] is None:
-            s.text(x + 8, top + 74, (g.get("detail") or "")[:chars], 11, INK, weight="bold")
+            s.text(x + 8, top + 74, clip(g.get("detail"), chars), 11, INK, weight="bold")
             s.text(x + 8, top + 89, "no number to compare", 8.5, MUTED)
         else:
             s.text(x + 8, top + 76, fmt(g["value"], g["unit"]), 19, INK, weight="bold",
@@ -450,7 +492,7 @@ def draw_field(s, y, verdict, selected):
                  stroke=FIRE if fired else FAINT, sw=1.6)
         s.text(PAD + 20, ry + 13, name, 11.5, INK if fired else MUTED,
                weight="bold" if mine else "normal")
-        s.text(PAD + 250, ry + 13, (why or "")[:118], 10, MUTED)
+        s.text(PAD + 250, ry + 13, clip(why, 112), 10, MUTED)
         lines.append("%s %s - %s" % ("FIRED " if fired else "no    ", name, (why or "")[:150]))
     return top + len(rows) * rh + 10, lines
 
@@ -482,7 +524,7 @@ def build(pack, ruler, blueprint_id=None, problems=""):
     title = (bp_json or {}).get("title") if bp_json else None
     s.text(PAD, 34, (bid or "no blueprint matched").upper(), 17, INK, weight="bold",
            spacing="0.6")
-    s.text(PAD, 55, (title or "")[:104], 11, MUTED)
+    s.text(PAD, 55, clip(title, 100), 11, MUTED)
     s.text(PAD, 76, "run %s  ·  %s" % (pack.get("run_id", "?"), pack.get("app", "?")),
            10.5, MUTED, font=MONO)
 
@@ -493,13 +535,13 @@ def build(pack, ruler, blueprint_id=None, problems=""):
     s.text(W - PAD - bw / 2.0, 42, badge, 12, bcol, anchor="middle", weight="bold",
            spacing="0.8")
     if fired:
-        rc = ((bp_json or {}).get("decision") or {}).get("root_cause_is")
+        rc = ((bp_json or {}).get("decision") or {}).get("root_cause_is") or ""
         svc = verdict.get("root_cause_service")
-        s.text(W - PAD, 70, ("root cause: " + (rc or "see the verdict line"))[:74], 10,
-               MUTED, anchor="end")
-        s.text(W - PAD, 85, ("named: %s  ·  confidence %.2f"
-                             % (svc or "not resolvable from the kernel trace",
-                                verdict.get("confidence") or 0.0)), 10, MUTED, anchor="end")
+        for k, ln in enumerate(wrap("root cause: " + (rc or "see the verdict line"), 62, 2)):
+            s.text(W - PAD, 62 + k * 12, ln, 9.5, MUTED, anchor="end")
+        s.text(W - PAD, 88, ("names: %s  ·  confidence %.2f"
+                             % (svc or "not resolvable from the kernel trace alone",
+                                verdict.get("confidence") or 0.0)), 9.5, MUTED, anchor="end")
     s.line(0, head_h, W, head_h, FAINT, 1)
 
     desc = ["%s on run %s (%s): %s."
@@ -531,7 +573,7 @@ def build(pack, ruler, blueprint_id=None, problems=""):
     s.text(PAD, y + 24, "StrataTrace blueprint card · drawn from the kernel trace only · "
                         "ruler built from %d runs" % ruler.get("n_packs", 0), 9, MUTED)
     if (rule_res or {}).get("why"):
-        s.text(PAD, y + 40, ("verdict: " + rule_res["why"])[:166], 9.5, INK)
+        s.text(PAD, y + 40, clip("verdict: " + rule_res["why"], 158), 9.5, INK)
     H = y + 52
 
     body = ('<svg xmlns="http://www.w3.org/2000/svg" width="%d" height="%d" '

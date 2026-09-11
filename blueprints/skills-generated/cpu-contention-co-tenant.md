@@ -67,8 +67,12 @@ Each step names the capability it needs. The command shown is the binding resolv
    needs: `metrics.container.cpu_attribution`
    run [prometheus-cadvisor]: `python3 blueprints/problems/cpu-contention-co-tenant/scripts/cpu_attribution.py --run <run_dir> --out <out>/verdict.json --chart <out>/runqueue.svg --text <out>/explanation.txt`
    expect: a concrete action naming the container to constrain, not a generic suggestion
+7. draw the decision card
+   run: `python3 blueprints/lib/blueprint_card.py --pack <pack.json> --ruler blueprints/results/ruler.json --blueprint cpu-contention-co-tenant --problems blueprints/problems --out <out>/card.svg`
+   expect: one page showing where every fault family sits on this blueprint's deciding number, which gates passed and by how much, and what else was ruled out
 
 ## What to produce
+- xy_chart: the decision itself: every fault family on the deciding axis with the cut drawn, the closest fault to that cut, each gate with its measured value and its bar, and the other blueprints with the number that ruled each one out
 - json: culprit container, per-service runnable-wait share baseline versus incident, host CPU headroom
 - xy_chart: runnable-wait share per service over time, with the incident window shaded
 - text: which container took the CPU, which services waited, and why this is contention rather than saturation

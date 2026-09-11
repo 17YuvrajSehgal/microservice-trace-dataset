@@ -1,0 +1,851 @@
+
+AI-generated content may be incorrect
+
+Naser Ezzati-Jivan started transcription
+
+Naser Ezzati-Jivan
+0 minutes 3 seconds0:03
+Naser Ezzati-Jivan 0 minutes 3 seconds
+So multiple executions of each problem. So you create this problem several times, you trace each of them, and then you need a procedure, exact procedure to get to that problem to detect and then find the root cause. The root cause, I mean, inside the system, if there is like external
+Naser Ezzati-Jivan 0 minutes 23 seconds
+Root cause, we're not talking about this. You may say that, look, system is under pressure. The root cause will not be, hey, someone is bombarded. No, we'll say that, look, the root cause here from the system is, there is a file, or there is a heavy request for this specific resource. That's the root cause.
+
+Yuvraj Sehgal
+0 minutes 41 seconds0:41
+Yuvraj Sehgal 0 minutes 41 seconds
+Mhm.
+
+Naser Ezzati-Jivan
+0 minutes 43 seconds0:43
+Naser Ezzati-Jivan 0 minutes 43 seconds
+Then who is making that is a different story. We don't know. It can be external, right? It can be external entity doing that. I'm not talking about that level, because I'm talking internal. Just saying that the system is under contention is not known. It's detection. But then what is the exact contention that's happening in the system now? That's the root.
+
+Yuvraj Sehgal
+0 minutes 47 seconds0:47
+Yuvraj Sehgal 0 minutes 47 seconds
+Yeah, yeah.
+Yuvraj Sehgal 0 minutes 52 seconds
+Right.
+Yuvraj Sehgal 1 minute 2 seconds
+Mhm.
+
+Naser Ezzati-Jivan
+1 minute 2 seconds1:02
+Naser Ezzati-Jivan 1 minute 2 seconds
+Let's call it the root cause. This is how we define root cause. All right. So for each case, we have multiple cases, multiple traces, a systematic method or a procedure, detailed procedure, detecting the symptoms, early detection and root cause detection, and visualization. We need to visualise all the visualisation for each of them. See how you can visualize. I think
+Naser Ezzati-Jivan 1 minute 22 seconds
+Don't go through like trace compass, it's going to be difficult. Use Babel trace to just create some graph for each part. Then see how you can show them, like a timeline, resources, waiting, or sometimes it can be just a CPU usage, when it looks, CPU goes high or goes up, or they can be different kind of visualization.
+
+Yuvraj Sehgal
+1 minute 29 seconds1:29
+Yuvraj Sehgal 1 minute 29 seconds
+Okay, sure.
+Yuvraj Sehgal 6 minutes 46 seconds
+Yeah.
+Yuvraj Sehgal 6 minutes 48 seconds
+Yeah, also, yeah.
+
+Naser Ezzati-Jivan
+6 minutes 56 seconds6:56
+Naser Ezzati-Jivan 6 minutes 56 seconds
+After doing all of this work, you will see, you will see, we will get to the point that you have a lot of results and you can easily publish in top events.
+
+Yuvraj Sehgal
+7 minutes 3 seconds7:03
+Yuvraj Sehgal 7 minutes 3 seconds
+Yeah, regarding the publish, I think Mahsa and myself, we are not clear which one are we focusing on right now. FSC is coming. And then last time we were also discussing NIER, IXEN, NIER.
+Yuvraj Sehgal 7 minutes 19 seconds
+Uh, I think...
+
+Naser Ezzati-Jivan
+7 minutes 19 seconds7:19
+Naser Ezzati-Jivan 7 minutes 19 seconds
+Near, we talked about near for which part, for blueprint part, right? I think we can still go for near. I think we can still go for near. You know, this is great enough, I believe, and we have early results for that, right? But we need to be clear about the story.
+
+Yuvraj Sehgal
+7 minutes 23 seconds7:23
+Yuvraj Sehgal 7 minutes 23 seconds
+Yes.
+MP
+Mahsa Panahandeh
+7 minutes 24 seconds7:24
+Mahsa Panahandeh 7 minutes 24 seconds
+Yeah, I think just kind of.
+
+Yuvraj Sehgal
+7 minutes 36 seconds7:36
+Yuvraj Sehgal 7 minutes 36 seconds
+Yeah.
+
+Naser Ezzati-Jivan
+7 minutes 39 seconds7:39
+Naser Ezzati-Jivan 7 minutes 39 seconds
+That we want to publish, we want to talk, right?
+
+Yuvraj Sehgal
+7 minutes 39 seconds7:39
+Yuvraj Sehgal 7 minutes 39 seconds
+Mhm.
+MP
+Mahsa Panahandeh
+7 minutes 41 seconds7:41
+Mahsa Panahandeh 7 minutes 41 seconds
+For which venue Yuvraj? We typed, we typed for, no, no, no, another track, the venue, it's a center, MSR, FSC, which one?
+
+Naser Ezzati-Jivan
+7 minutes 45 seconds7:45
+Naser Ezzati-Jivan 7 minutes 45 seconds
+Near.
+
+Yuvraj Sehgal
+7 minutes 51 seconds7:51
+Yuvraj Sehgal 7 minutes 51 seconds
+If I think XCX near.
+
+Naser Ezzati-Jivan
+7 minutes 52 seconds7:52
+Naser Ezzati-Jivan 7 minutes 52 seconds
+Exceed, this is exceed, yeah, this is exceed, exceed near 2020. When is the deadline?
+MP
+Mahsa Panahandeh
+7 minutes 53 seconds7:53
+Mahsa Panahandeh 7 minutes 53 seconds
+FS.
+Mahsa Panahandeh 7 minutes 54 seconds
+Okay, okay, yeah. Oh, yeah, we have XC2.
+
+Yuvraj Sehgal
+8 minutes8:00
+Yuvraj Sehgal 8 minutes
+23rd October if I'm not wrong, last time we checked it. Let me recheck it.
+MP
+Mahsa Panahandeh
+8 minutes8:00
+Mahsa Panahandeh 8 minutes
+Um...
+
+Naser Ezzati-Jivan
+8 minutes 4 seconds8:04
+Naser Ezzati-Jivan 8 minutes 4 seconds
+Near, near, yeah.
+
+Yuvraj Sehgal
+8 minutes 6 seconds8:06
+Yuvraj Sehgal 8 minutes 6 seconds
+Yeah, 23rd October submission deadline. Yeah.
+
+Naser Ezzati-Jivan
+8 minutes 8 seconds8:08
+Naser Ezzati-Jivan 8 minutes 8 seconds
+October? October you said? Okay, it's good. It's good enough.
+Naser Ezzati-Jivan 8 minutes 13 seconds
+Far enough to practice.
+
+Yuvraj Sehgal
+8 minutes 15 seconds8:15
+Yuvraj Sehgal 8 minutes 15 seconds
+Yeah.
+
+Naser Ezzati-Jivan
+8 minutes 15 seconds8:15
+Naser Ezzati-Jivan 8 minutes 15 seconds
+Yeah, yeah, October 23rd, one and a half months. I think it's good enough. We can make a good paper. Sure. Yeah, it's very like competitive. It's not easy, but we can do it.
+
+Yuvraj Sehgal
+8 minutes 30 seconds8:30
+Yuvraj Sehgal 8 minutes 30 seconds
+Should try our best.
+
+Naser Ezzati-Jivan
+8 minutes 30 seconds8:30
+Naser Ezzati-Jivan 8 minutes 30 seconds
+You can do it, and hope by Daniel you can do it.
+MP
+Mahsa Panahandeh
+8 minutes 32 seconds8:32
+Mahsa Panahandeh 8 minutes 32 seconds
+Yes.
+
+Yuvraj Sehgal
+8 minutes 34 seconds8:34
+Yuvraj Sehgal 8 minutes 34 seconds
+Sounds good.
+
+Naser Ezzati-Jivan
+8 minutes 35 seconds8:35
+Naser Ezzati-Jivan 8 minutes 35 seconds
+If we can finish this work by, you know, end of this semester, fully, that would be good, right? And easily, easily we can publish, you know, three, four good papers out of this work. I'm sure about that. I'm sure about, I know, I know that the work, right? I know the scope and the domain. So, because they publish and then
+
+Yuvraj Sehgal
+8 minutes 40 seconds8:40
+Yuvraj Sehgal 8 minutes 40 seconds
+Mhm.
+Yuvraj Sehgal 8 minutes 41 seconds
+Yeah, yeah.
+MP
+Mahsa Panahandeh
+8 minutes 47 seconds8:47
+Mahsa Panahandeh 8 minutes 47 seconds
+Yes.
+
+Yuvraj Sehgal
+8 minutes 52 seconds8:52
+Yuvraj Sehgal 8 minutes 52 seconds
+Yeah, yeah.
+
+Naser Ezzati-Jivan
+8 minutes 56 seconds8:56
+Naser Ezzati-Jivan 8 minutes 56 seconds
+We can do something else after this, after the for the next. Alright, thank you. Yuvraj, you want to say something else? So, conference, this is about the conference, right? We also talked about, you said.
+
+Yuvraj Sehgal
+9 minutes 3 seconds9:03
+Yuvraj Sehgal 9 minutes 3 seconds
+No, I think.
+Yuvraj Sehgal 9 minutes 7 seconds
+About what?
+
+Naser Ezzati-Jivan
+9 minutes 9 seconds9:09
+Naser Ezzati-Jivan 9 minutes 9 seconds
+Sainer, Sainer, Sainer, Sainer. How do you pronounce it, Mahsa?
+MP
+Mahsa Panahandeh
+9 minutes 9 seconds9:09
+Mahsa Panahandeh 9 minutes 9 seconds
+Sun.
+
+Yuvraj Sehgal
+9 minutes 13 seconds9:13
+Yuvraj Sehgal 9 minutes 13 seconds
+No, I think we only discussed FSC and this XC near.
+
+
+Sneh Patel 13 minutes 5 seconds
+Also, that that's if it's that's also if the trace is long. I've also collected a trace on my own and then ran like run a critical path analysis on that using the same technology. It takes under 30 seconds or something with like 500 spans, for example. And majority of the time for the 30 seconds it takes, majority of the time is connecting the API calls for that.
+Sneh Patel 13 minutes 28 seconds
+The other five, the other, so it was, from what I remember, it was 29 seconds, the whole thing took 29 seconds, out of which 20 seconds was the API call that the LLM makes, 5 seconds was the TM on the rag, and then the other two to three seconds was the critical.
+Sneh Patel 13 minutes 46 seconds
+about the analysis that it did.
+
+Naser Ezzati-Jivan
+13 minutes 51 seconds13:51
+Naser Ezzati-Jivan 13 minutes 51 seconds
+Okay.
+Naser Ezzati-Jivan 13 minutes 53 seconds
+Good, done.
+SP
+Sneh Patel
+13 minutes 55 seconds13:55
+Sneh Patel 13 minutes 55 seconds
+Yeah.
+
+Naser Ezzati-Jivan
+13 minutes 55 seconds13:55
+Naser Ezzati-Jivan 13 minutes 55 seconds
+Yeah.
+Naser Ezzati-Jivan 13 minutes 58 seconds
+I think at the critical path analysis part, can you just summarise what you said? You said that you did some analysis on critical path and you were able to find some problems using that?
+SP
+Sneh Patel
+14 minutes 7 seconds14:07
+Sneh Patel 14 minutes 7 seconds
+Yeah, so like you mentioned, the time filtering thing, I looked into it. The module that Trace Compass has that uses the, which is the OS critical path module, that's the little name for it that it uses to create it. It has a default function where it uses the whole, the trace timeline for it.
+
+Naser Ezzati-Jivan
+14 minutes 19 seconds14:19
+Naser Ezzati-Jivan 14 minutes 19 seconds
+Mhm.
+Naser Ezzati-Jivan 14 minutes 26 seconds
+Do you want to add the time? Did you add it?
+SP
+Sneh Patel
+14 minutes 29 seconds14:29
+Sneh Patel 14 minutes 29 seconds
+Yeah.
+
+Naser Ezzati-Jivan
+14 minutes 31 seconds14:31
+Naser Ezzati-Jivan 14 minutes 31 seconds
+It works now? Does it work now?
+SP
+Sneh Patel
+14 minutes 32 seconds14:32
+Sneh Patel 14 minutes 32 seconds
+Yeah, it works. Yeah, it works now. It has the time for, I have the time.
+
+Naser Ezzati-Jivan
+14 minutes 34 seconds14:34
+Naser Ezzati-Jivan 14 minutes 34 seconds
+So you can in the prompt, the user can give time or the system always includes time automatically.
+SP
+Sneh Patel
+14 minutes 43 seconds14:43
+Sneh Patel 14 minutes 43 seconds
+Sorry, I'm confused. Can you repeat that?
+
+Naser Ezzati-Jivan
+14 minutes 45 seconds14:45
+Naser Ezzati-Jivan 14 minutes 45 seconds
+So how can you, how we can use the time now in the queries? Should I, as a user, should I input the time, say, hey, from this time to that time, search for that, or the system, the data analyzer, your TML, I think that you have will automatically add the time to the queries. It otherwise that?
+SP
+Sneh Patel
+15 minutes 1 second15:01
+Sneh Patel 15 minutes 1 second
+It automatically adds it. It automatically adds it. So, so I'll give you an example. For example, before, like the, the, like I mentioned, the trace that I was using, the trace that I collected, it was around 8 seconds long. And before, when I was using the normal method, it would use the whole 8 seconds in the critical path analysis to analyse the whole thing.
+Sneh Patel 15 minutes 23 seconds
+However, after adding the time philtre with the OS critic path module, like I said, I had to override one of the functions on the thing. But after doing that, like the LLM is able to give the specifics, able to figure out like exactly what time it should be giving it to. It takes a bit longer on the LLM side, but it's shorter overall.
+Sneh Patel 15 minutes 44 seconds
+It decides like it doesn't need the whole 8 seconds, it only needs the five seconds, for example, and based on that, it's able to give the answer.
+
+Naser Ezzati-Jivan
+15 minutes 48 seconds15:48
+Naser Ezzati-Jivan 15 minutes 48 seconds
+Okay.
+Naser Ezzati-Jivan 15 minutes 50 seconds
+Okay, great. So now you have the time module as well.
+SP
+Sneh Patel
+15 minutes 55 seconds15:55
+Sneh Patel 15 minutes 55 seconds
+Yep.
+
+Naser Ezzati-Jivan
+15 minutes 55 seconds15:55
+Naser Ezzati-Jivan 15 minutes 55 seconds
+Right. But if the time is very long, let's say my question, I'm asking, hey, what is the problem at this time to that time? Let's say very short time. But let's say another question I ask, hey, what's the problem in the whole trace? I include the whole time span. What happens there? System is able to go that far to work.
+SP
+Sneh Patel
+16 minutes 15 seconds16:15
+Sneh Patel 16 minutes 15 seconds
+If it's the whole thing, I've never actually asked it that question, to be honest. I don't really know what I want to do if you ask, hey, what's the thing for the whole trades?
+
+Naser Ezzati-Jivan
+16 minutes 22 seconds16:22
+Naser Ezzati-Jivan 16 minutes 22 seconds
+You treat your agent nicely. That's fine. Yeah. So, you know, why I'm asking this, we need to have a solution for that. We cannot just rely on the TML or agent, they do that. We need to, you know, do like that level of time analysis, that big time analysis, and then...
+SP
+Sneh Patel
+16 minutes 25 seconds16:25
+Sneh Patel 16 minutes 25 seconds
+Yeah.
+
+Naser Ezzati-Jivan
+16 minutes 40 seconds16:40
+Naser Ezzati-Jivan 16 minutes 40 seconds
+go down and see if we can either like go to different time spans and so on. This needs a strategy cannot be random.
+SP
+Sneh Patel
+16 minutes 51 seconds16:51
+Sneh Patel 16 minutes 51 seconds
+Okay, so I was thinking, so do you want to make it so we compare the whole trace and then with the whole time and then?
+
+Naser Ezzati-Jivan
+16 minutes 52 seconds16:52
+Naser Ezzati-Jivan 16 minutes 52 seconds
+No.
+Naser Ezzati-Jivan 16 minutes 59 seconds
+Yeah. So what we are doing now is we are trying to find the technical, I mean, research questions for your watch. That's what we are doing, right? This is what are you doing so far? It's just been like playing with the tool and things, right? You added graph rag and so on. These are good. But now we want to find what are the technical challenges that you're trying to solve.
+SP
+Sneh Patel
+17 minutes 8 seconds17:08
+Sneh Patel 17 minutes 8 seconds
+Mhm.
+Sneh Patel 17 minutes 13 seconds
+Yep.
+
+Naser Ezzati-Jivan
+17 minutes 21 seconds17:21
+Naser Ezzati-Jivan 17 minutes 21 seconds
+Just playing with Tamara is not a challenge, is not a problem. Or even adding the rag is not a problem. We added rag for what, for fun, or we wanted to solve the problem. What is that problem? What are those problems they're trying to solve? Right? I believe in your case, one big problem is, I would say there are three problems. This is what I see now. We may want to change it later.
+SP
+Sneh Patel
+17 minutes 24 seconds17:24
+Sneh Patel 17 minutes 24 seconds
+Yeah, yeah.
+Sneh Patel 17 minutes 30 seconds
+Oh.
+
+Naser Ezzati-Jivan
+17 minutes 42 seconds17:42
+Naser Ezzati-Jivan 17 minutes 42 seconds
+One problem is, we are transcribing, right? Yeah, one problem is the time, so we call it temporal analysis.
+SP
+Sneh Patel
+17 minutes 45 seconds17:45
+Sneh Patel 17 minutes 45 seconds
+Mhm.
+
+Naser Ezzati-Jivan
+17 minutes 50 seconds17:50
+Naser Ezzati-Jivan 17 minutes 50 seconds
+No, we want to be able to answer questions for, let's say...
+Naser Ezzati-Jivan 17 minutes 55 seconds
+like a 10 minutes window. Let's say we have trace and telemetry data. Now, question, if you ask about 10 minutes, what's what happened in that 10 minutes duration? What happened between these two threads in that 10 minutes? Your system should be able to ask, right? When I'm saying 10, 10 minutes, 10 minutes using kernel trace,
+SP
+Sneh Patel
+18 minutes 12 seconds18:12
+Sneh Patel 18 minutes 12 seconds
+Mhm.
+
+SP
+Sneh Patel
+18 minutes 49 seconds18:49
+Sneh Patel 18 minutes 49 seconds
+Mm.
+
+Naser Ezzati-Jivan
+18 minutes 50 seconds18:50
+Naser Ezzati-Jivan 18 minutes 50 seconds
+And I believe we solved this in TAF. TAF talks about that problem, right? How we did that, we use the trace compass attribute tree and the state system tree to solve this. So we filtered the trace based on the system state tree, they call it SHT.
+SP
+Sneh Patel
+18 minutes 50 seconds18:50
+Sneh Patel 18 minutes 50 seconds
+If.
+Sneh Patel 18 minutes 56 seconds
+Right, yeah.
+
+Naser Ezzati-Jivan
+19 minutes 10 seconds19:10
+Naser Ezzati-Jivan 19 minutes 10 seconds
+System History Tree, SHT, right? So behind the scene, behind the scene of Trace Compass, there are two trees, two structure, two database systems. One is attribute tree, one is hierarchy of attributes and system resources.
+Naser Ezzati-Jivan 19 minutes 29 seconds
+And another one is called SHT, System History Tree, or State History Tree, not a system, State History Tree, which is a key value table. So key value, time. So there are two time, time, one time, two key and value. So using these two, this is already implemented in trace compass. We have this.
+SP
+Sneh Patel
+19 minutes 36 seconds19:36
+Sneh Patel 19 minutes 36 seconds
+Okay.
+
+Naser Ezzati-Jivan
+19 minutes 50 seconds19:50
+Naser Ezzati-Jivan 19 minutes 50 seconds
+So in TAF, we use that to answer time-sensitive questions. So you may want to look into that as well.
+SP
+Sneh Patel
+19 minutes 55 seconds19:55
+Sneh Patel 19 minutes 55 seconds
+Right.
+Sneh Patel 19 minutes 59 seconds
+Also, I was thinking, can we, like, this is a sorry, go ahead.
+
+Naser Ezzati-Jivan
+20 minutes20:00
+Naser Ezzati-Jivan 20 minutes
+But wait, wait, but wait, wait, wait, wait. Let me finish this first. Okay, so this is the first thing, temporal analysis. The second thing that you need to address here is...
+Naser Ezzati-Jivan 20 minutes 10 seconds
+The.
+Naser Ezzati-Jivan 20 minutes 12 seconds
+is the critical path. Okay, so you need to work more on the critical path for the next week and soon, the next week's event. You need to clearly understand how trace from paths computes the critical path.
+SP
+Sneh Patel
+20 minutes 24 seconds20:24
+Sneh Patel 20 minutes 24 seconds
+Mhm.
+
+Naser Ezzati-Jivan
+20 minutes 32 seconds20:32
+Naser Ezzati-Jivan 20 minutes 32 seconds
+And the critical part itself is not enough in our analysis. Critical part comes from something called execution graph. So there is a huge graph behind the scene, which actually, or dependency graph. They call it execution graph, but it's kind of dependency graph. So it shows how threads work.
+SP
+Sneh Patel
+20 minutes 42 seconds20:42
+Sneh Patel 20 minutes 42 seconds
+Right, yeah.
+
+Naser Ezzati-Jivan
+20 minutes 51 seconds20:51
+Naser Ezzati-Jivan 20 minutes 51 seconds
+to each other, they interact with each other, everything, right? And then from this huge graph, critical path is the longest path of that graph.
+Naser Ezzati-Jivan 21 minutes 1 second
+Right, so most of the time we base our analysis on that longest time.
+Naser Ezzati-Jivan 21 minutes 7 seconds
+But most of the time, that longest path is not a problem. Let's say there's one longest path, but there's only one longest path always, like one critical path always. But let's say just next to that, or before that longest path, there are many interesting paths. We want to analyse them as well.
+Naser Ezzati-Jivan 21 minutes 26 seconds
+Right, we want to analyse the paths that are close to the critical path, not necessarily the critical path, they are close to the critical path.
+SP
+Sneh Patel
+21 minutes 27 seconds21:27
+Sneh Patel 21 minutes 27 seconds
+Okay.
+Sneh Patel 21 minutes 35 seconds
+Mhm.
+
+Naser Ezzati-Jivan
+21 minutes 35 seconds21:35
+Naser Ezzati-Jivan 21 minutes 35 seconds
+You know what I'm saying?
+SP
+Sneh Patel
+21 minutes 37 seconds21:37
+Sneh Patel 21 minutes 37 seconds
+Right, like, uh, like even the trace compass one, we do like the followed.
+
+Naser Ezzati-Jivan
+21 minutes 40 seconds21:40
+Naser Ezzati-Jivan 21 minutes 40 seconds
+For example, the critical path, wait, the critical path is like, critical path is a like execution path between different things. It takes, let's say, 10 seconds, for example. That is for sure important, but we have many papers about that critical path. But let's say cases which are not critical, but close to that, and they all take 9 seconds.
+Naser Ezzati-Jivan 22 minutes
+These are also very important to analysis. Let's say the normal case takes only four seconds. We don't talk about them. We talk critical about which takes 10 seconds. But there are many other interesting cases that take less than that 10 seconds, but they're very close. So they're also important to analysis. We have never talked about these things in trace complex and trace analysis. All right. So
+Naser Ezzati-Jivan 22 minutes 22 seconds
+For this second thing, you need to understand the critical path algorithm. There is a teases about that. This guy wrote the teases, but you can analyse the code and ask AI to explain it to you. Yeah, this guy. This teases is about...
+SP
+Sneh Patel
+22 minutes 29 seconds22:29
+Sneh Patel 22 minutes 29 seconds
+Mhm.
+
+Naser Ezzati-Jivan
+22 minutes 42 seconds22:42
+Naser Ezzati-Jivan 22 minutes 42 seconds
+To go.
+Naser Ezzati-Jivan 22 minutes 47 seconds
+This, Jesus, and it's not working, putting this thing down.
+Naser Ezzati-Jivan 22 minutes 52 seconds
+Yes, here. So this guy is about critical path. You need to understand the algorithm itself, right? And also the execution graph that is behind the critical path.
+Naser Ezzati-Jivan 23 minutes 8 seconds
+Trace compass has a function, has modules to do that execution graph.
+Naser Ezzati-Jivan 23 minutes 16 seconds
+But it does not have a visualisation for that because it's very difficult to visualise a very heavy graph. There might be thousands of entities and nodes there.
+SP
+Sneh Patel
+23 minutes 24 seconds23:24
+Sneh Patel 23 minutes 24 seconds
+If it's.
+Sneh Patel 23 minutes 28 seconds
+Okay.
+
+Naser Ezzati-Jivan
+23 minutes 29 seconds23:29
+Naser Ezzati-Jivan 23 minutes 29 seconds
+All right. This is the second thing. I was talking about the research questions or research directions that you should, you might need to, you know, pursue in this work. One was the temporal analysis, supporting time-based analysis. The second thing was this critical pattern and execution graph.
+SP
+Sneh Patel
+23 minutes 42 seconds23:42
+Sneh Patel 23 minutes 42 seconds
+Po.
+
+Naser Ezzati-Jivan
+23 minutes 49 seconds23:49
+Naser Ezzati-Jivan 23 minutes 49 seconds
+And the third thing is the question types. Now, using the temporal and critical and dependency graph or rejection graph, what kind of analysis we can do?
+Naser Ezzati-Jivan 24 minutes 2 seconds
+All right.
+SP
+Sneh Patel
+24 minutes 3 seconds24:03
+Sneh Patel 24 minutes 3 seconds
+Mhm.
+
+
+Naser Ezzati-Jivan
+30 minutes 38 seconds30:38
+Naser Ezzati-Jivan 30 minutes 38 seconds
+And this paper that I shared with you, the link I shared, there is a paper about just that few texts. I think it was weight, you know, the 2016 few texts weight analysis of this root system.
+SP
+Sneh Patel
+30 minutes 44 seconds30:44
+Sneh Patel 30 minutes 44 seconds
+Okay.
+
+Naser Ezzati-Jivan
+30 minutes 51 seconds30:51
+Naser Ezzati-Jivan 30 minutes 51 seconds
+This paper.
+Naser Ezzati-Jivan 30 minutes 53 seconds
+Has a few text-related problems, you know, the second thing in the list.
+SP
+Sneh Patel
+31 minutes31:00
+Sneh Patel 31 minutes
+Mhm.
+
+Naser Ezzati-Jivan
+31 minutes31:00
+Naser Ezzati-Jivan 31 minutes
+It's an ITB transactional parallel system. This is the paper that you need to review. You need to take a look.
+Naser Ezzati-Jivan 31 minutes 9 seconds
+Find the problem, you know, I think this is a good paper to read. First, I'll read this paper, okay, and then get one of those use cases from the paper and try to generate it, try to get the trace, generate the trace of it.
+SP
+Sneh Patel
+31 minutes 20 seconds31:20
+Sneh Patel 31 minutes 20 seconds
+And implement it.
+
+Naser Ezzati-Jivan
+31 minutes 25 seconds31:25
+Naser Ezzati-Jivan 31 minutes 25 seconds
+OK, and then, but in that paper, they talk about like the one use cases about network. You don't have it, you don't need it because you need multiple machines. But one of the, I don't remember the other cases, but there are cases from inside one machine, so you can do it. So try to generate trace and then use your existing system. You have a system, right, that could the TML-based system.
+SP
+Sneh Patel
+31 minutes 43 seconds31:43
+Sneh Patel 31 minutes 43 seconds
+Mhm.
+
+Naser Ezzati-Jivan
+31 minutes 45 seconds31:45
+Naser Ezzati-Jivan 31 minutes 45 seconds
+So see if you can answer the question, if you can find the root cause. So there's one question, one technique question. What's happening here? Why this is slow? This is going to be the question you will get from one of the use cases of this page. And then see if your team is able to answer. I'm sure it won't be able to answer. Then the question now is what we can do to be able to answer those kinds of questions.
+SP
+Sneh Patel
+31 minutes 45 seconds31:45
+Sneh Patel 31 minutes 45 seconds
+Yeah.
+Sneh Patel 31 minutes 57 seconds
+Azizi.
+
+Naser Ezzati-Jivan
+32 minutes 7 seconds32:07
+Naser Ezzati-Jivan 32 minutes 7 seconds
+So we need to analyse those again, going back to the three questions, 3 detections. We need to understand clearly the critical path, execution graph, and include them in our analysis. You have already done this part, right? And then if the data is so long, what will happen? How we should handle that? Should we use a...
+SP
+Sneh Patel
+32 minutes 20 seconds32:20
+Sneh Patel 32 minutes 20 seconds
+Mm-hmm.
+
+Naser Ezzati-Jivan
+32 minutes 26 seconds32:26
+Naser Ezzati-Jivan 32 minutes 26 seconds
+like TAF model, TAF uses like system, SHG and the H2 base, or I need a new technique for that. I don't know about this. But first of all, I think you don't understand the problem yet, okay? Because this is a new problem that I just mentioned, right? Don't understand me, you know, is a new problem for you, okay? You need to understand clearly the problem.
+Naser Ezzati-Jivan 32 minutes 45 seconds
+What problem are you going to address? So have one question about like dependency, and then see if your current system is able to answer. If not, then see how you can solve it.
+Naser Ezzati-Jivan 32 minutes 56 seconds
+Okay.
+Naser Ezzati-Jivan 32 minutes 58 seconds
+So you need to read this paper. This is a very important paper, the last week that I shared with you. It talks exactly about what I explained today.
+SP
+Sneh Patel
+33 minutes 5 seconds33:05
+Sneh Patel 33 minutes 5 seconds
+The weight analysis.
+Sneh Patel 33 minutes 9 seconds
+Okay.
+Sneh Patel 33 minutes 11 seconds
+Yep, I will look into that.
+
+Naser Ezzati-Jivan
+33 minutes 13 seconds33:13
+Naser Ezzati-Jivan 33 minutes 13 seconds
+Yeah. And in his thesis, there are other papers. Let me see. You know, there are two papers I think you need to read. One paper won't be enough. One of them is just about host level critical path. Another one adds network level critical path. Let me just...
+Naser Ezzati-Jivan 33 minutes 32 seconds
+See the paper here, just give me a second. I think there are two papers there.
+Naser Ezzati-Jivan 33 minutes 41 seconds
+Yeah, this one. You should look at this paper.
+Naser Ezzati-Jivan 33 minutes 45 seconds
+This teases, and then let me tell you the chapters, exact chapters, so I'm gonna even remove the other paper, you don't need it, and remove the other thing.
+Naser Ezzati-Jivan 33 minutes 57 seconds
+But let me show it's off here.
+Naser Ezzati-Jivan 34 minutes 3 seconds
+I can see it, but OK, it's here now, so the chapters, chapter.
+Naser Ezzati-Jivan 34 minutes 13 seconds
+We we started the my I started my PhD with this person together, we started the same time.
+Naser Ezzati-Jivan 34 minutes 19 seconds
+And we kind of finish at the same time. Do I finish a bit earlier?
+SP
+Sneh Patel
+34 minutes 20 seconds34:20
+Sneh Patel 34 minutes 20 seconds
+Mhm.
+
+Naser Ezzati-Jivan
+34 minutes 24 seconds34:24
+Naser Ezzati-Jivan 34 minutes 24 seconds
+Yeah, so chapter, this is, you know, the thesis in French, but the chapters are in English, so you can easily read them. You don't need to know French. Yeah, so the chapter 4, okay, this thesis chapter 4, which is about this. Read both papers, please.
+Naser Ezzati-Jivan 34 minutes 47 seconds
+In the papers, it's very, very important to understand what's happening.
+SP
+Sneh Patel
+34 minutes 50 seconds34:50
+Sneh Patel 34 minutes 50 seconds
+So.
+
+Naser Ezzati-Jivan
+34 minutes 52 seconds34:52
+Naser Ezzati-Jivan 34 minutes 52 seconds
+OK, so Chapter Five.
+Naser Ezzati-Jivan 34 minutes 55 seconds
+Is exactly what you are doing, but using like LLM's agents, and so on.
+SP
+Sneh Patel
+35 minutes 3 seconds35:03
+Sneh Patel 35 minutes 3 seconds
+Did you remove one paper?
+
+Naser Ezzati-Jivan
+35 minutes 5 seconds35:05
+Naser Ezzati-Jivan 35 minutes 5 seconds
+Yeah, I removed that. You don't need that one. It's going to confuse you. I'm sending you now the new link, the new chapters that are like the exact places to look at execution pack profiling and hardware performance. Yeah, just these two chapters from that thesis. Now, can you click on the PDM and see if you can see the last one that I shared?
+SP
+Sneh Patel
+35 minutes 8 seconds35:08
+Sneh Patel 35 minutes 8 seconds
+Okay.
+Sneh Patel 35 minutes 23 seconds
+Mhm.
+
+MP
+Mahsa Panahandeh
+41 minutes 30 seconds41:30
+Mahsa Panahandeh 41 minutes 30 seconds
+Yeah, see you.
+
+Naser Ezzati-Jivan
+41 minutes 33 seconds41:33
+Naser Ezzati-Jivan 41 minutes 33 seconds
+In the kitchen.
+Naser Ezzati-Jivan 41 minutes 36 seconds
+OK, I mean, have to be so I can now then put it.
+MP
+Mahsa Panahandeh
+41 minutes 38 seconds41:38
+Mahsa Panahandeh 41 minutes 38 seconds
+Mahsa.
+
+Naser Ezzati-Jivan
+41 minutes 47 seconds41:47
+Naser Ezzati-Jivan 41 minutes 47 seconds
+My dog, I did the, the, but yeah, I was.
+MP
+Mahsa Panahandeh
+41 minutes 51 seconds41:51
+Mahsa Panahandeh 41 minutes 51 seconds
+Nah, my fake child is my very friends are my fake poem. *** *** short please.
+
+Naser Ezzati-Jivan
+41 minutes 59 seconds41:59
+Naser Ezzati-Jivan 41 minutes 59 seconds
+I am Anteneh.
+Naser Ezzati-Jivan 42 minutes 3 seconds
+Yeah.
+MP
+Mahsa Panahandeh
+42 minutes 9 seconds42:09
+Mahsa Panahandeh 42 minutes 9 seconds
+Mm.
+Mahsa Panahandeh 42 minutes 13 seconds
+Doros Sabadam Parinaz Santo Tun per se. Berry recorded at the rest. Sana Faro Damn. Damn. I'm.
+
+Naser Ezzati-Jivan
+42 minutes 21 seconds42:21
+Naser Ezzati-Jivan 42 minutes 21 seconds
+Yeah.
+Naser Ezzati-Jivan 42 minutes 32 seconds
+There's that indication.
+MP
+Mahsa Panahandeh
+42 minutes 39 seconds42:39
+Mahsa Panahandeh 42 minutes 39 seconds
+Uh.
+Mahsa Panahandeh 42 minutes 44 seconds
+How you can you can call them?
+
+Naser Ezzati-Jivan
+42 minutes 49 seconds42:49
+Naser Ezzati-Jivan 42 minutes 49 seconds
+In Canada.
+MP
+Mahsa Panahandeh
+42 minutes 51 seconds42:51
+Mahsa Panahandeh 42 minutes 51 seconds
+Bad value in your position that.
+
+Naser Ezzati-Jivan
+42 minutes 51 seconds42:51
+Naser Ezzati-Jivan 42 minutes 51 seconds
+I.
+Naser Ezzati-Jivan 42 minutes 53 seconds
+It is wrong that we log into this.
+MP
+Mahsa Panahandeh
+42 minutes 56 seconds42:56
+Mahsa Panahandeh 42 minutes 56 seconds
+Did I?
+
+Naser Ezzati-Jivan
+43 minutes 1 second43:01
+Naser Ezzati-Jivan 43 minutes 1 second
+Value positioning.
+MP
+Mahsa Panahandeh
+43 minutes 4 seconds43:04
+Mahsa Panahandeh 43 minutes 4 seconds
+Yeah.
+Mahsa Panahandeh 43 minutes 7 seconds
+Show Bharoon in Kalasha Nahid ke Babaei.
+
+Naser Ezzati-Jivan
+43 minutes 9 seconds43:09
+Naser Ezzati-Jivan 43 minutes 9 seconds
+Okay, so, I know.
+MP
+Mahsa Panahandeh
+43 minutes 15 seconds43:15
+Mahsa Panahandeh 43 minutes 15 seconds
+Wait.
+Mahsa Panahandeh 43 minutes 27 seconds
+Become. Maybe I'm one.
+
+Naser Ezzati-Jivan
+43 minutes 29 seconds43:29
+Naser Ezzati-Jivan 43 minutes 29 seconds
+I'm applying for a tenure tech position in software engineering at the UCAM Department of Computer Science.
+MP
+Mahsa Panahandeh
+43 minutes 41 seconds43:41
+Mahsa Panahandeh 43 minutes 41 seconds
+Uh-huh.
+
+Naser Ezzati-Jivan
+43 minutes 41 seconds43:41
+Naser Ezzati-Jivan 43 minutes 41 seconds
+We, we thought it was showing the customer service amount, chat questions, so, chat, so...
+Naser Ezzati-Jivan 43 minutes 48 seconds
+Ohh, that's all.
+Naser Ezzati-Jivan 43 minutes 51 seconds
+You know, deadline is some.
+MP
+Mahsa Panahandeh
+43 minutes 53 seconds43:53
+Mahsa Panahandeh 43 minutes 53 seconds
+Merci.
+
+Naser Ezzati-Jivan
+43 minutes 58 seconds43:58
+Naser Ezzati-Jivan 43 minutes 58 seconds
+I...
+MP
+Mahsa Panahandeh
+43 minutes 59 seconds43:59
+Mahsa Panahandeh 43 minutes 59 seconds
+Full stop.
+
+Naser Ezzati-Jivan
+44 minutes 2 seconds44:02
+Naser Ezzati-Jivan 44 minutes 2 seconds
+Ohh.
+Naser Ezzati-Jivan 44 minutes 6 seconds
+Thank you for stage answers.
+MP
+Mahsa Panahandeh
+44 minutes 7 seconds44:07
+Mahsa Panahandeh 44 minutes 7 seconds
+Cortana, I'm gonna be so I can't really. I'm sure the other one, John.
+
+Naser Ezzati-Jivan
+44 minutes 19 seconds44:19
+Naser Ezzati-Jivan 44 minutes 19 seconds
+Play.
+MP
+Mahsa Panahandeh
+44 minutes 29 seconds44:29
+Mahsa Panahandeh 44 minutes 29 seconds
+Hiya, Jonny. Let me go on the call, John. Short track.
+
+Naser Ezzati-Jivan
+45 minutes 1 second45:01
+Naser Ezzati-Jivan 45 minutes 1 second
+Kwok.
+
+Naser Ezzati-Jivan stopped transcription

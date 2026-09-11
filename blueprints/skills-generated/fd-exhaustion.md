@@ -47,8 +47,12 @@ Each step names the capability it needs. The command shown is the binding resolv
 3. combine into the verdict and its artifacts
    run: `python3 blueprints/lib/blueprint_decide.py --pack <pack.json> --out <out>/verdict.json`
    expect: a verdict naming the refusing syscalls, or an explicit non-fire with the reason
+4. draw the decision card
+   run: `python3 blueprints/lib/blueprint_card.py --pack <pack.json> --ruler blueprints/results/ruler.json --blueprint fd-exhaustion --problems blueprints/problems --out <out>/card.svg`
+   expect: one page showing where every fault family sits on this blueprint's deciding number, which gates passed and by how much, and what else was ruled out
 
 ## What to produce
+- xy_chart: the decision itself: every fault family on the deciding axis with the cut drawn, the closest fault to that cut, each gate with its measured value and its bar, and the other blueprints with the number that ruled each one out
 - json: verdict, EMFILE per second, which syscalls returned it, and the total error rate that deliberately did not decide it
 - xy_chart: failing syscalls per second by errno, baseline against incident
 - text: why some requests fail and others succeed, and how to tell a descriptor cap from an upstream stall that exhausts descriptors as a side effect

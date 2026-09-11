@@ -99,7 +99,7 @@ def main():
     a = ap.parse_args()
 
     files = sorted(glob.glob(os.path.join(a.packs, "*.json")))
-    out = {"n_packs": 0, "source": a.packs, "signals": {}}
+    out = {"n_packs": 0, "source": a.packs, "signals": {}, "verdicts": []}
     for key, spec in SIGNALS.items():
         out["signals"][key] = {"label": spec["label"], "unit": spec["unit"], "points": []}
 
@@ -115,6 +115,16 @@ def main():
             continue
         out["n_packs"] += 1
         row = {"app": pack.get("app"), "family": family_of(pack), "run": pack["run_id"]}
+
+        # What the COMPLETE rule decided, not just the one number. The card needs both:
+        # a single signal usually does not separate a fault on its own, and saying so - then
+        # showing that the full set of gates does - is the argument for having a blueprint
+        # at all rather than a threshold.
+        try:
+            out["verdicts"].append(dict(row, selected=BD.decide(pack).get("selected")))
+        except Exception as e:
+            out["verdicts"].append(dict(row, selected=None, error=type(e).__name__))
+
         for key, spec in SIGNALS.items():
             try:
                 v = spec["get"](pack)

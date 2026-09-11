@@ -51,8 +51,12 @@ Each step names the capability it needs. The command shown is the binding resolv
 4. combine into the verdict and its artifacts
    run: `python3 blueprints/lib/blueprint_decide.py --pack <pack.json> --out <out>/verdict.json`
    expect: a verdict naming the sending process, or an explicit non-fire with the reason
+5. draw the decision card
+   run: `python3 blueprints/lib/blueprint_card.py --pack <pack.json> --ruler blueprints/results/ruler.json --blueprint data-exfiltration --problems blueprints/problems --out <out>/card.svg`
+   expect: one page showing where every fault family sits on this blueprint's deciding number, which gates passed and by how much, and what else was ruled out
 
 ## What to produce
+- xy_chart: the decision itself: every fault family on the deciding axis with the cut drawn, the closest fault to that cut, each gate with its measured value and its bar, and the other blueprints with the number that ruled each one out
 - json: verdict, the sending process, bytes per second gained, the destination ports it used, and the retransmission rate that rules out a network fault
 - xy_chart: outbound bytes per second per process, baseline against incident
 - text: which process started sending, how much, and why this is heavy traffic rather than a degraded path

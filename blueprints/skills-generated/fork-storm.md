@@ -47,8 +47,12 @@ Each step names the capability it needs. The command shown is the binding resolv
 3. combine into the verdict and its artifacts
    run: `python3 blueprints/lib/blueprint_decide.py --pack <pack.json> --out <out>/verdict.json`
    expect: a verdict naming the forking process, or an explicit non-fire with the reason
+4. draw the decision card
+   run: `python3 blueprints/lib/blueprint_card.py --pack <pack.json> --ruler blueprints/results/ruler.json --blueprint fork-storm --problems blueprints/problems --out <out>/card.svg`
+   expect: one page showing where every fault family sits on this blueprint's deciding number, which gates passed and by how much, and what else was ruled out
 
 ## What to produce
+- xy_chart: the decision itself: every fault family on the deciding axis with the cut drawn, the closest fault to that cut, each gate with its measured value and its bar, and the other blueprints with the number that ruled each one out
 - json: verdict, the forking process, forks per second gained, what it was forking before, and the host total that deliberately did not decide it
 - xy_chart: forks per second per command name, baseline against incident
 - text: which process started forking, and why the host-wide rate looks almost normal while one process changed by 27x

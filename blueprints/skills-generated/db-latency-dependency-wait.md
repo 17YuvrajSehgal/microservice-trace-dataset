@@ -66,8 +66,12 @@ Each step names the capability it needs. The command shown is the binding resolv
    needs: `verdict.dependency_wait`
    run [local]: `python3 blueprints/problems/db-latency-dependency-wait/scripts/dependency_verdict.py --convergence <out>/convergence.json --blocking <out>/blocking.json --rq <out>/rq.json --out <out>/verdict.json --chart <out>/blocking.svg --text <out>/explanation.txt`
    expect: an action aimed at the blocked component or its dependency, explicitly not at the victims named by the call graph
+7. draw the decision card
+   run: `python3 blueprints/lib/blueprint_card.py --pack <pack.json> --ruler blueprints/results/ruler.json --blueprint db-latency-dependency-wait --problems blueprints/problems --out <out>/card.svg`
+   expect: one page showing where every fault family sits on this blueprint's deciding number, which gates passed and by how much, and what else was ruled out
 
 ## What to produce
+- xy_chart: the decision itself: every fault family on the deciding axis with the cut drawn, the closest fault to that cut, each gate with its measured value and its bar, and the other blueprints with the number that ruled each one out
 - json: the blocked component, the syscall and its inflation, the convergence point, and the runqueue-delay control
 - xy_chart: syscall duration p95 baseline vs incident, per component and syscall
 - text: what was waiting, on what, and why its callers are victims

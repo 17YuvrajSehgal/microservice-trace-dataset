@@ -115,9 +115,24 @@
         "<out>/blockio.json"
       ],
       "expect": "a verdict naming the capped service, or a refusal to decide"
+    },
+    {
+      "step": "draw the decision card",
+      "run": "python3 blueprints/lib/blueprint_card.py --pack <pack.json> --ruler blueprints/results/ruler.json --blueprint service-memory-cap --problems blueprints/problems --out <out>/card.svg",
+      "produces": "<out>/card.svg",
+      "reads": [
+        "<pack.json>",
+        "blueprints/results/ruler.json"
+      ],
+      "expect": "one page showing where every fault family sits on this blueprint's deciding number, which gates passed and by how much, and what else was ruled out"
     }
   ],
   "outputs": [
+    {
+      "kind": "xy_chart",
+      "path": "<out>/card.svg",
+      "contains": "the decision itself: every fault family on the deciding axis with the cut drawn, the closest fault to that cut, each gate with its measured value and its bar, and the other blueprints with the number that ruled each one out"
+    },
     {
       "kind": "json",
       "path": "<out>/verdict.json",
