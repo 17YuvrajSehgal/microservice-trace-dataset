@@ -1,0 +1,427 @@
+{
+  "signal": "fork_newcomer_per_s",
+  "measured_utc": "2026-09-11",
+  "source": "blueprints/lib/derive_v2_thresholds.py over 303 v2 runs, all 27 families, both applications",
+  "packs": "/scratch/yuvraj17/stratatrace/results/v2-blueprints-all/packs",
+  "positives": [
+    {
+      "app": "sockshop",
+      "family": "fork_storm",
+      "owns": true,
+      "n": 5,
+      "min": 96.36,
+      "median": 96.36,
+      "max": 96.36
+    },
+    {
+      "app": "trainticket",
+      "family": "fork_storm",
+      "owns": true,
+      "n": 5,
+      "min": 96.22,
+      "median": 96.22,
+      "max": 96.22
+    }
+  ],
+  "highest_negative": 26.34,
+  "lowest_positive": 96.22,
+  "all_families": [
+    {
+      "app": "sockshop",
+      "family": "anomaly_cpu",
+      "owns": false,
+      "n": 5,
+      "min": 2.03,
+      "median": 4.88,
+      "max": 5.09
+    },
+    {
+      "app": "sockshop",
+      "family": "anomaly_disk",
+      "owns": false,
+      "n": 5,
+      "min": 3.95,
+      "median": 4.48,
+      "max": 4.65
+    },
+    {
+      "app": "sockshop",
+      "family": "anomaly_mem",
+      "owns": false,
+      "n": 8,
+      "min": 3.47,
+      "median": 4.3,
+      "max": 4.76
+    },
+    {
+      "app": "sockshop",
+      "family": "anomaly_net",
+      "owns": false,
+      "n": 8,
+      "min": 4.35,
+      "median": 12.61,
+      "max": 16.34
+    },
+    {
+      "app": "sockshop",
+      "family": "code_event_loop_block",
+      "owns": false,
+      "n": 5,
+      "min": 3.83,
+      "median": 6.06,
+      "max": 11.05
+    },
+    {
+      "app": "sockshop",
+      "family": "code_lock_across_io",
+      "owns": false,
+      "n": 5,
+      "min": 1.21,
+      "median": 1.65,
+      "max": 2.06
+    },
+    {
+      "app": "sockshop",
+      "family": "code_n_plus_one",
+      "owns": false,
+      "n": 5,
+      "min": 1.21,
+      "median": 2.05,
+      "max": 2.06
+    },
+    {
+      "app": "sockshop",
+      "family": "code_serial_awaits",
+      "owns": false,
+      "n": 5,
+      "min": 6.06,
+      "median": 10.95,
+      "max": 14.83
+    },
+    {
+      "app": "sockshop",
+      "family": "code_unbounded_cache",
+      "owns": false,
+      "n": 5,
+      "min": 2.77,
+      "median": 11.28,
+      "max": 15.17
+    },
+    {
+      "app": "sockshop",
+      "family": "conn_pool_exhaustion",
+      "owns": false,
+      "n": 5,
+      "min": 2.25,
+      "median": 3.46,
+      "max": 4.36
+    },
+    {
+      "app": "sockshop",
+      "family": "data_exfiltration",
+      "owns": false,
+      "n": 5,
+      "min": 0.01,
+      "median": 0.02,
+      "max": 0.05
+    },
+    {
+      "app": "sockshop",
+      "family": "deadlock",
+      "owns": false,
+      "n": 5,
+      "min": 3.34,
+      "median": 3.98,
+      "max": 4.52
+    },
+    {
+      "app": "sockshop",
+      "family": "dns_delay",
+      "owns": false,
+      "n": 5,
+      "min": 6.77,
+      "median": 7.33,
+      "max": 8.27
+    },
+    {
+      "app": "sockshop",
+      "family": "fd_exhaustion",
+      "owns": false,
+      "n": 5,
+      "min": 8.95,
+      "median": 14.19,
+      "max": 14.47
+    },
+    {
+      "app": "sockshop",
+      "family": "fork_storm",
+      "owns": true,
+      "n": 5,
+      "min": 96.36,
+      "median": 96.36,
+      "max": 96.36
+    },
+    {
+      "app": "sockshop",
+      "family": "lock_contention",
+      "owns": false,
+      "n": 5,
+      "min": 0.02,
+      "median": 0.46,
+      "max": 3.89
+    },
+    {
+      "app": "sockshop",
+      "family": "nagle_delayed_ack",
+      "owns": false,
+      "n": 5,
+      "min": 3.79,
+      "median": 4.02,
+      "max": 4.44
+    },
+    {
+      "app": "sockshop",
+      "family": "noisy_neighbor",
+      "owns": false,
+      "n": 8,
+      "min": 3.53,
+      "median": 4.52,
+      "max": 5.55
+    },
+    {
+      "app": "sockshop",
+      "family": "normal",
+      "owns": false,
+      "n": 10,
+      "min": -0.0,
+      "median": 3.96,
+      "max": 7.26
+    },
+    {
+      "app": "sockshop",
+      "family": "priority_inversion",
+      "owns": false,
+      "n": 5,
+      "min": 3.0,
+      "median": 4.08,
+      "max": 4.54
+    },
+    {
+      "app": "sockshop",
+      "family": "resource_abuse",
+      "owns": false,
+      "n": 5,
+      "min": 3.46,
+      "median": 3.91,
+      "max": 4.24
+    },
+    {
+      "app": "sockshop",
+      "family": "slow_db",
+      "owns": false,
+      "n": 11,
+      "min": 6.95,
+      "median": 9.88,
+      "max": 22.42
+    },
+    {
+      "app": "sockshop",
+      "family": "svc_cpu_cap",
+      "owns": false,
+      "n": 8,
+      "min": 2.49,
+      "median": 7.1,
+      "max": 7.62
+    },
+    {
+      "app": "sockshop",
+      "family": "svc_mem_cap",
+      "owns": false,
+      "n": 8,
+      "min": 3.45,
+      "median": 6.07,
+      "max": 7.17
+    },
+    {
+      "app": "sockshop",
+      "family": "svc_net",
+      "owns": false,
+      "n": 5,
+      "min": 6.6,
+      "median": 6.92,
+      "max": 7.4
+    },
+    {
+      "app": "trainticket",
+      "family": "anomaly_cpu",
+      "owns": false,
+      "n": 5,
+      "min": 0.53,
+      "median": 0.53,
+      "max": 0.64
+    },
+    {
+      "app": "trainticket",
+      "family": "anomaly_disk",
+      "owns": false,
+      "n": 5,
+      "min": 0.27,
+      "median": 0.44,
+      "max": 1.2
+    },
+    {
+      "app": "trainticket",
+      "family": "anomaly_mem",
+      "owns": false,
+      "n": 8,
+      "min": 0.44,
+      "median": 0.44,
+      "max": 0.6
+    },
+    {
+      "app": "trainticket",
+      "family": "anomaly_net",
+      "owns": false,
+      "n": 8,
+      "min": 0.53,
+      "median": 7.5,
+      "max": 20.18
+    },
+    {
+      "app": "trainticket",
+      "family": "conn_pool_exhaustion",
+      "owns": false,
+      "n": 5,
+      "min": 0.4,
+      "median": 12.99,
+      "max": 20.95
+    },
+    {
+      "app": "trainticket",
+      "family": "data_exfiltration",
+      "owns": false,
+      "n": 5,
+      "min": 0.03,
+      "median": 0.28,
+      "max": 1.16
+    },
+    {
+      "app": "trainticket",
+      "family": "deadlock",
+      "owns": false,
+      "n": 5,
+      "min": 9.15,
+      "median": 14.03,
+      "max": 16.88
+    },
+    {
+      "app": "trainticket",
+      "family": "fd_exhaustion",
+      "owns": false,
+      "n": 5,
+      "min": 0.03,
+      "median": 2.39,
+      "max": 13.66
+    },
+    {
+      "app": "trainticket",
+      "family": "fork_storm",
+      "owns": true,
+      "n": 5,
+      "min": 96.22,
+      "median": 96.22,
+      "max": 96.22
+    },
+    {
+      "app": "trainticket",
+      "family": "lock_contention",
+      "owns": false,
+      "n": 5,
+      "min": 0.11,
+      "median": 0.96,
+      "max": 8.01
+    },
+    {
+      "app": "trainticket",
+      "family": "nagle_delayed_ack",
+      "owns": false,
+      "n": 5,
+      "min": 2.82,
+      "median": 13.12,
+      "max": 15.42
+    },
+    {
+      "app": "trainticket",
+      "family": "noisy_neighbor",
+      "owns": false,
+      "n": 8,
+      "min": 10.99,
+      "median": 14.79,
+      "max": 16.43
+    },
+    {
+      "app": "trainticket",
+      "family": "normal",
+      "owns": false,
+      "n": 10,
+      "min": 0.48,
+      "median": 5.72,
+      "max": 11.33
+    },
+    {
+      "app": "trainticket",
+      "family": "priority_inversion",
+      "owns": false,
+      "n": 5,
+      "min": 0.08,
+      "median": 0.35,
+      "max": 18.3
+    },
+    {
+      "app": "trainticket",
+      "family": "resource_abuse",
+      "owns": false,
+      "n": 5,
+      "min": 7.8,
+      "median": 15.7,
+      "max": 26.34
+    },
+    {
+      "app": "trainticket",
+      "family": "slow_db",
+      "owns": false,
+      "n": 11,
+      "min": 0.28,
+      "median": 15.12,
+      "max": 20.11
+    },
+    {
+      "app": "trainticket",
+      "family": "svc_cpu_cap",
+      "owns": false,
+      "n": 8,
+      "min": 10.89,
+      "median": 17.09,
+      "max": 19.62
+    },
+    {
+      "app": "trainticket",
+      "family": "svc_mem_cap",
+      "owns": false,
+      "n": 8,
+      "min": 1.72,
+      "median": 3.25,
+      "max": 3.78
+    },
+    {
+      "app": "trainticket",
+      "family": "svc_net",
+      "owns": false,
+      "n": 5,
+      "min": 0.28,
+      "median": 13.68,
+      "max": 17.06
+    }
+  ],
+  "note": "Positives here include runs the campaign could not confirm; the derivation excludes those, so its n may be lower."
+}

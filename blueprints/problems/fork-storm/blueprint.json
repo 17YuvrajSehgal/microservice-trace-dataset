@@ -1,0 +1,223 @@
+{
+  "id": "fork-storm",
+  "version": 1,
+  "title": "A workload creates processes far faster than the machine normally does",
+  "problem": {
+    "summary": "One workload spawns processes in a tight loop. Each child is short-lived, so at any instant nothing looks unusual: CPU is busy but not saturated, memory is fine, the disk and network are idle. What is abnormal is the RATE of process creation, and the cost lands on the scheduler and on every fork's page-table work rather than on any one resource. The machine already forks constantly, so the host total barely moves. The process doing the forking changes completely.",
+    "symptoms": [
+      "services slow across the board with no single resource saturated",
+      "CPU busy but with headroom left",
+      "process counts churn rather than grow",
+      "nothing in the disk or network layer is unusual"
+    ],
+    "discriminators": [
+      {
+        "signal": "processes per second gained by a process that was barely forking before, from sched_process_fork",
+        "this_problem": "one process arrives forking ~96 times a second when it was doing 3.6",
+        "not_this_problem": "no other fault family gains more than 26.3 forks per second on either application",
+        "evidence": "MEASURED across 303 runs covering ALL 27 fault families on two applications. The fault gains 96.36 forks/s on Sock Shop and 96.22 on Train Ticket; the highest gain in any other family is 22.42 and 26.34 respectively. A 3.7x gap that holds on both. 10 of 10 confirmed runs separated, no false fire. See evidence/fork-storm_separation.json",
+        "confused_with": [
+          "cpu-contention-co-tenant",
+          "host-cpu-saturation"
+        ]
+      },
+      {
+        "signal": "host fork rate, incident against baseline",
+        "this_problem": "rises 1.51x to 1.77x",
+        "not_this_problem": "no other family exceeds 1.23x",
+        "evidence": "MEASURED and kept only as corroboration. The host fork rate rises 1.51-1.77x while no other family exceeds 1.23x, so it does separate - but the margin is thin because the machine already forks ~134 times a second from Java thread pools and from the trace collector itself. The recipe predicted this signal would be 'unmistakable'; at the host level it is not. See evidence/fork-storm_separation.json",
+        "confused_with": [
+          "healthy-baseline"
+        ]
+      }
+    ]
+  },
+  "reproduction": {
+    "system": "Sock Shop or Train Ticket on Ubuntu 24.04, LTTng 2.15, Docker 27+, single GCP n2 VM",
+    "recipe": "microservice-lttng-data-collection-scripts/faults/fork_storm.sh",
+    "invoke": "./fork_storm.sh inject aggressive",
+    "teardown": "./fork_storm.sh cleanup",
+    "labelled_examples": [
+      "sockshop/fork_storm/fork_storm_aggressive_steady_r1",
+      "sockshop/fork_storm/fork_storm_aggressive_steady_r2",
+      "trainticket/fork_storm/tt_fork_storm_aggressive_steady_r1"
+    ],
+    "harness_only": [
+      "A bounded spawner in a co-located container, not a fork bomb: the number of live children is capped, each child exits by itself, and the container carries a hard PID limit as a second guard. The cap is what makes it safe to run beside a live application for 120 s."
+    ]
+  },
+  "collection_order": {
+    "window": {
+      "baseline_s": 60,
+      "incident_s": 120,
+      "recovery_s": 60
+    },
+    "kernel_events": [
+      "sched_process_fork"
+    ],
+    "metrics": [],
+    "logs": [],
+    "traces": [],
+    "why_these": "MEASURED BASIS. sched_process_fork carries the parent and the child command name, which is everything needed to say who started forking and how much they brought. One event type decides this blueprint. Nothing else in the kernel trace is required: the fault changes neither what reaches the disk nor what crosses the network, and while it does add scheduler work, the scheduler signals it moves are the same ones every CPU fault moves and therefore cannot identify it."
+  },
+  "processing": [
+    {
+      "step": "stage the stored kernel trace for reading",
+      "run": "bash /scratch/yuvraj17/stratatrace/scripts/extract_l0.sh <app> <family> <run_id>",
+      "produces": "<out>/ctf",
+      "reads": [],
+      "expect": "a CTF directory the trace reader can open"
+    },
+    {
+      "step": "measure process creation per command name, both windows, and report the newcomer",
+      "run": "python3 blueprints/lib/process_probe.py --ctf <ctf> --gt <window> --out <out>/process.json",
+      "produces": "<out>/process.json",
+      "reads": [
+        "<out>/ctf"
+      ],
+      "expect": "forks per second in each window, and the process whose fork rate rose most"
+    },
+    {
+      "step": "combine into the verdict and its artifacts",
+      "run": "python3 blueprints/lib/blueprint_decide.py --pack <pack.json> --out <out>/verdict.json",
+      "produces": "<out>/verdict.json, <out>/forks.svg, <out>/explanation.txt, <out>/recommended_action.txt",
+      "reads": [
+        "<out>/process.json"
+      ],
+      "expect": "a verdict naming the forking process, or an explicit non-fire with the reason"
+    }
+  ],
+  "outputs": [
+    {
+      "kind": "json",
+      "path": "<out>/verdict.json",
+      "contains": "verdict, the forking process, forks per second gained, what it was forking before, and the host total that deliberately did not decide it"
+    },
+    {
+      "kind": "xy_chart",
+      "path": "<out>/forks.svg",
+      "contains": "forks per second per command name, baseline against incident"
+    },
+    {
+      "kind": "text",
+      "path": "<out>/explanation.txt",
+      "contains": "which process started forking, and why the host-wide rate looks almost normal while one process changed by 27x"
+    },
+    {
+      "kind": "text",
+      "path": "<out>/recommended_action.txt",
+      "contains": "map the command name to its container, then cap its PIDs with a cgroup pids.max limit rather than killing it"
+    }
+  ],
+  "decision": {
+    "verdict_when": [
+      "a process gains more than 26 forks per second over its baseline",
+      "that process was forking little or nothing before",
+      "the process is not part of the trace collector or the container runtime"
+    ],
+    "rule_out": [
+      {
+        "instead": "cpu-contention-co-tenant",
+        "when": "a process takes CPU it was not using but its fork rate is flat. A co-tenant burns CPU inside one long-lived process; this fault burns it creating new ones."
+      },
+      {
+        "instead": "host-cpu-saturation",
+        "when": "host CPU is at its ceiling. A fork storm leaves headroom, because each child does almost nothing before exiting."
+      },
+      {
+        "instead": "healthy-baseline",
+        "when": "no process gains meaningful fork rate, even when the host total looks raised. The host total alone is not evidence - see the discriminator note."
+      }
+    ],
+    "root_cause_is": "a workload creating processes in a loop, identified by the command name of the child it spawns"
+  },
+  "applicability": {
+    "apply_when": [
+      "several services slow with no single resource saturated",
+      "CPU is busy but not at its ceiling",
+      "process creation is measurable from the kernel trace"
+    ],
+    "do_not_apply_when": [
+      "fork rate is flat",
+      "one component is blocked on a socket or on storage",
+      "host CPU is at its ceiling"
+    ],
+    "cheap_precheck": "count sched_process_fork per second in the incident window and compare against the baseline window. If no single child command gained more than ~26 per second, this blueprint does not apply."
+  },
+  "capabilities_required": [
+    {
+      "id": "trace.stage_ctf",
+      "why": "the stored kernel trace must be readable"
+    },
+    {
+      "id": "process.creation_attribution",
+      "why": "the deciding signal: forks per second per command name, and who arrived"
+    }
+  ],
+  "stopping_conditions": {
+    "conclude": "one process gained tens of forks per second it was not making before",
+    "stop_and_switch": "fork rate flat but a process gained CPU -> cpu-contention-co-tenant; host CPU at its ceiling -> host-cpu-saturation",
+    "stop_insufficient": "sched_process_fork was not recorded, so creation cannot be attributed -> request it and re-run. Do NOT fall back to the host fork total, which was measured to move only 1.77x under this fault and is therefore not decisive.",
+    "max_evidence_rounds": 2
+  },
+  "evidence_sufficiency": {
+    "confidence_floor": 0.7,
+    "if_below_floor": "name the unresolved question, pick the ONE additional capability that would settle it, check it against the overhead budget, and request it.",
+    "report_when_stuck": "if the floor is still not met after the allowed rounds, report the best-supported hypothesis, its confidence, and precisely what evidence is missing - never present a guess as a diagnosis"
+  },
+  "taxonomy": {
+    "domain": "Performance",
+    "category": "Throughput / latency degradation",
+    "subcategory": "Scheduler pressure from process churn",
+    "sibling_causes": [
+      "a CI runner or build script looping over short-lived commands",
+      "a health check or cron job misconfigured to run continuously",
+      "a shell loop in a container entrypoint",
+      "a supervisor restarting a crashing process in a tight loop"
+    ],
+    "note": "Covers any case where process creation itself is the load. Authored from an injected spawner, but the deciding fact - a command name arriving with tens of forks per second it was not making before - does not depend on what the process is."
+  },
+  "selection": {
+    "supported_goals": [
+      "diagnose_throughput_degradation",
+      "diagnose_host_capacity",
+      "diagnose_scheduler_pressure"
+    ],
+    "supported_environments": [
+      "linux",
+      "container",
+      "virtual_machine",
+      "kubernetes"
+    ],
+    "applicable_symptoms": [
+      "many_services_slow_simultaneously",
+      "cpu_busy_without_saturation",
+      "throughput_drop_without_errors"
+    ],
+    "preconditions": [
+      "sched_process_fork is collectable or already collected"
+    ],
+    "estimated_overhead_pct": {
+      "min": 0,
+      "max": 2
+    },
+    "historical_effectiveness": {
+      "runs_validated": 10,
+      "note": "10 labelled fork_storm runs across two applications, separated from 293 runs of the other 26 families. The deciding signal has a 3.7x gap between the lowest positive (96.22/s) and the highest negative (26.34/s), and both applications agree to within 0.15%."
+    }
+  },
+  "mutually_exclusive_with": [
+    "healthy-baseline"
+  ],
+  "related_blueprints": [
+    "cpu-contention-co-tenant",
+    "host-cpu-saturation",
+    "healthy-baseline"
+  ],
+  "provenance": {
+    "authored_by": "measured across all 303 v2 runs and all 27 fault families, both applications",
+    "verified_by": "derive_v2_thresholds.py, 2026-09-11; per-run values in results/v2-blueprints-all/derived_uncovered.json",
+    "authored_utc": "2026-09-11T00:00:00Z",
+    "notes": "The recipe predicted this signal would be 'unmistakable and nothing else in our dataset produces it in volume'. Half right, and the wrong half is worth keeping: at the HOST level it is not unmistakable at all, because the machine already forks ~134 times a second from Java thread pools and from the trace collector itself, so the fault only adds 77%. What is unmistakable is the newcomer - 3.64 forks/s to 100/s for one process. This is the third fault where the host total is weak and the arrival is decisive, after thief_cores for CPU and io_newcomer for disk. The threshold was placed against the other families' highest value, never fitted to the positives."
+  }
+}

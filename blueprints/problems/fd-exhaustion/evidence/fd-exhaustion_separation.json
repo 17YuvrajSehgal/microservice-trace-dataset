@@ -1,0 +1,427 @@
+{
+  "signal": "emfile_per_s",
+  "measured_utc": "2026-09-11",
+  "source": "blueprints/lib/derive_v2_thresholds.py over 303 v2 runs, all 27 families, both applications",
+  "packs": "/scratch/yuvraj17/stratatrace/results/v2-blueprints-all/packs",
+  "positives": [
+    {
+      "app": "sockshop",
+      "family": "fd_exhaustion",
+      "owns": true,
+      "n": 5,
+      "min": 0.033,
+      "median": 0.833,
+      "max": 1.783
+    },
+    {
+      "app": "trainticket",
+      "family": "fd_exhaustion",
+      "owns": true,
+      "n": 5,
+      "min": 8.517,
+      "median": 8.65,
+      "max": 8.65
+    }
+  ],
+  "highest_negative": 310.15,
+  "lowest_positive": 0.033,
+  "all_families": [
+    {
+      "app": "sockshop",
+      "family": "anomaly_cpu",
+      "owns": false,
+      "n": 5,
+      "min": 0.0,
+      "median": 0.0,
+      "max": 0.0
+    },
+    {
+      "app": "sockshop",
+      "family": "anomaly_disk",
+      "owns": false,
+      "n": 5,
+      "min": 0.0,
+      "median": 0.0,
+      "max": 0.0
+    },
+    {
+      "app": "sockshop",
+      "family": "anomaly_mem",
+      "owns": false,
+      "n": 8,
+      "min": 0.0,
+      "median": 0.0,
+      "max": 0.0
+    },
+    {
+      "app": "sockshop",
+      "family": "anomaly_net",
+      "owns": false,
+      "n": 8,
+      "min": 0.0,
+      "median": 0.0,
+      "max": 63.833
+    },
+    {
+      "app": "sockshop",
+      "family": "code_event_loop_block",
+      "owns": false,
+      "n": 5,
+      "min": 0.0,
+      "median": 0.0,
+      "max": 0.0
+    },
+    {
+      "app": "sockshop",
+      "family": "code_lock_across_io",
+      "owns": false,
+      "n": 5,
+      "min": 0.0,
+      "median": 0.0,
+      "max": 0.0
+    },
+    {
+      "app": "sockshop",
+      "family": "code_n_plus_one",
+      "owns": false,
+      "n": 5,
+      "min": 0.0,
+      "median": 0.0,
+      "max": 0.0
+    },
+    {
+      "app": "sockshop",
+      "family": "code_serial_awaits",
+      "owns": false,
+      "n": 5,
+      "min": 0.0,
+      "median": 0.0,
+      "max": 0.0
+    },
+    {
+      "app": "sockshop",
+      "family": "code_unbounded_cache",
+      "owns": false,
+      "n": 5,
+      "min": 0.0,
+      "median": 0.0,
+      "max": 0.0
+    },
+    {
+      "app": "sockshop",
+      "family": "conn_pool_exhaustion",
+      "owns": false,
+      "n": 5,
+      "min": 0.0,
+      "median": 0.0,
+      "max": 0.0
+    },
+    {
+      "app": "sockshop",
+      "family": "data_exfiltration",
+      "owns": false,
+      "n": 5,
+      "min": 0.0,
+      "median": 0.0,
+      "max": 0.0
+    },
+    {
+      "app": "sockshop",
+      "family": "deadlock",
+      "owns": false,
+      "n": 5,
+      "min": 0.0,
+      "median": 0.0,
+      "max": 0.0
+    },
+    {
+      "app": "sockshop",
+      "family": "dns_delay",
+      "owns": false,
+      "n": 5,
+      "min": 0.0,
+      "median": 234.383,
+      "max": 310.15
+    },
+    {
+      "app": "sockshop",
+      "family": "fd_exhaustion",
+      "owns": true,
+      "n": 5,
+      "min": 0.033,
+      "median": 0.833,
+      "max": 1.783
+    },
+    {
+      "app": "sockshop",
+      "family": "fork_storm",
+      "owns": false,
+      "n": 5,
+      "min": 0.0,
+      "median": 0.0,
+      "max": 0.0
+    },
+    {
+      "app": "sockshop",
+      "family": "lock_contention",
+      "owns": false,
+      "n": 5,
+      "min": 0.0,
+      "median": 0.0,
+      "max": 0.0
+    },
+    {
+      "app": "sockshop",
+      "family": "nagle_delayed_ack",
+      "owns": false,
+      "n": 5,
+      "min": 0.0,
+      "median": 0.0,
+      "max": 0.0
+    },
+    {
+      "app": "sockshop",
+      "family": "noisy_neighbor",
+      "owns": false,
+      "n": 8,
+      "min": 0.0,
+      "median": 0.0,
+      "max": 0.0
+    },
+    {
+      "app": "sockshop",
+      "family": "normal",
+      "owns": false,
+      "n": 10,
+      "min": 0.0,
+      "median": 0.0,
+      "max": 0.0
+    },
+    {
+      "app": "sockshop",
+      "family": "priority_inversion",
+      "owns": false,
+      "n": 5,
+      "min": 0.0,
+      "median": 0.0,
+      "max": 0.0
+    },
+    {
+      "app": "sockshop",
+      "family": "resource_abuse",
+      "owns": false,
+      "n": 5,
+      "min": 0.0,
+      "median": 0.0,
+      "max": 0.0
+    },
+    {
+      "app": "sockshop",
+      "family": "slow_db",
+      "owns": false,
+      "n": 11,
+      "min": 0.0,
+      "median": 0.0,
+      "max": 0.0
+    },
+    {
+      "app": "sockshop",
+      "family": "svc_cpu_cap",
+      "owns": false,
+      "n": 8,
+      "min": 0.0,
+      "median": 0.0,
+      "max": 0.0
+    },
+    {
+      "app": "sockshop",
+      "family": "svc_mem_cap",
+      "owns": false,
+      "n": 8,
+      "min": 0.0,
+      "median": 0.0,
+      "max": 0.0
+    },
+    {
+      "app": "sockshop",
+      "family": "svc_net",
+      "owns": false,
+      "n": 5,
+      "min": 0.0,
+      "median": 0.0,
+      "max": 0.0
+    },
+    {
+      "app": "trainticket",
+      "family": "anomaly_cpu",
+      "owns": false,
+      "n": 5,
+      "min": 0.0,
+      "median": 0.0,
+      "max": 0.0
+    },
+    {
+      "app": "trainticket",
+      "family": "anomaly_disk",
+      "owns": false,
+      "n": 5,
+      "min": 0.0,
+      "median": 0.0,
+      "max": 0.0
+    },
+    {
+      "app": "trainticket",
+      "family": "anomaly_mem",
+      "owns": false,
+      "n": 8,
+      "min": 0.0,
+      "median": 0.0,
+      "max": 0.0
+    },
+    {
+      "app": "trainticket",
+      "family": "anomaly_net",
+      "owns": false,
+      "n": 8,
+      "min": 0.0,
+      "median": 0.0,
+      "max": 0.0
+    },
+    {
+      "app": "trainticket",
+      "family": "conn_pool_exhaustion",
+      "owns": false,
+      "n": 5,
+      "min": 0.0,
+      "median": 0.0,
+      "max": 0.0
+    },
+    {
+      "app": "trainticket",
+      "family": "data_exfiltration",
+      "owns": false,
+      "n": 5,
+      "min": 0.0,
+      "median": 0.0,
+      "max": 0.0
+    },
+    {
+      "app": "trainticket",
+      "family": "deadlock",
+      "owns": false,
+      "n": 5,
+      "min": 0.0,
+      "median": 0.0,
+      "max": 0.0
+    },
+    {
+      "app": "trainticket",
+      "family": "fd_exhaustion",
+      "owns": true,
+      "n": 5,
+      "min": 8.517,
+      "median": 8.65,
+      "max": 8.65
+    },
+    {
+      "app": "trainticket",
+      "family": "fork_storm",
+      "owns": false,
+      "n": 5,
+      "min": 0.0,
+      "median": 0.0,
+      "max": 0.0
+    },
+    {
+      "app": "trainticket",
+      "family": "lock_contention",
+      "owns": false,
+      "n": 5,
+      "min": 0.0,
+      "median": 0.0,
+      "max": 0.0
+    },
+    {
+      "app": "trainticket",
+      "family": "nagle_delayed_ack",
+      "owns": false,
+      "n": 5,
+      "min": 0.0,
+      "median": 0.0,
+      "max": 0.0
+    },
+    {
+      "app": "trainticket",
+      "family": "noisy_neighbor",
+      "owns": false,
+      "n": 8,
+      "min": 0.0,
+      "median": 0.0,
+      "max": 0.0
+    },
+    {
+      "app": "trainticket",
+      "family": "normal",
+      "owns": false,
+      "n": 10,
+      "min": 0.0,
+      "median": 0.0,
+      "max": 0.0
+    },
+    {
+      "app": "trainticket",
+      "family": "priority_inversion",
+      "owns": false,
+      "n": 5,
+      "min": 0.0,
+      "median": 0.0,
+      "max": 0.0
+    },
+    {
+      "app": "trainticket",
+      "family": "resource_abuse",
+      "owns": false,
+      "n": 5,
+      "min": 0.0,
+      "median": 0.0,
+      "max": 0.0
+    },
+    {
+      "app": "trainticket",
+      "family": "slow_db",
+      "owns": false,
+      "n": 11,
+      "min": 0.0,
+      "median": 0.0,
+      "max": 0.0
+    },
+    {
+      "app": "trainticket",
+      "family": "svc_cpu_cap",
+      "owns": false,
+      "n": 8,
+      "min": 0.0,
+      "median": 0.0,
+      "max": 0.0
+    },
+    {
+      "app": "trainticket",
+      "family": "svc_mem_cap",
+      "owns": false,
+      "n": 8,
+      "min": 0.0,
+      "median": 0.0,
+      "max": 0.0
+    },
+    {
+      "app": "trainticket",
+      "family": "svc_net",
+      "owns": false,
+      "n": 5,
+      "min": 0.0,
+      "median": 0.0,
+      "max": 0.0
+    }
+  ],
+  "note": "Positives here include runs the campaign could not confirm; the derivation excludes those, so its n may be lower."
+}

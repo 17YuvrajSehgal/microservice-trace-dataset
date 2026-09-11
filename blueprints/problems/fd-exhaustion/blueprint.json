@@ -1,0 +1,227 @@
+{
+  "id": "fd-exhaustion",
+  "version": 1,
+  "title": "A service runs out of file descriptors and refuses new connections while still serving old ones",
+  "problem": {
+    "summary": "A service hits its own file-descriptor limit. Connections it already holds keep working, so most requests succeed and every resource measure looks normal. New connections fail at accept or socket with EMFILE. From the outside this reads as intermittent errors under load; from the kernel it is unmistakable, because the failure has its own errno and nothing else in a healthy system produces it.",
+    "symptoms": [
+      "some requests fail while others on the same service succeed",
+      "errors cluster on new connections, not on established ones",
+      "CPU, memory, disk and network all look normal",
+      "the service stays up - it is failing, not down"
+    ],
+    "discriminators": [
+      {
+        "signal": "syscalls returning EMFILE per second, from syscall_exit_* with ret = -24",
+        "this_problem": "a low but persistent rate - between a fraction of one per second and about nine per second, differing several-fold between deployments",
+        "not_this_problem": "exactly zero in 24 of the 27 families, on both applications",
+        "evidence": "MEASURED across 303 runs covering ALL 27 fault families on two applications. EMFILE is exactly zero in 24 of the 27 families on both applications, which is what makes its absence strong evidence. The band 0.13 to 9.28 per second holds all 7 campaign-confirmed positives with no run of any other family inside it. CAVEAT FOUND WHILE BUILDING THE EVIDENCE FILE: including the runs the campaign could NOT confirm, the lowest positive is 0.033/s, below the band floor. The band is therefore calibrated on confirmed runs and would miss a weaker injection. See evidence/fd-exhaustion_separation.json",
+        "confused_with": [
+          "healthy-baseline"
+        ]
+      },
+      {
+        "signal": "the SAME EMFILE rate, as an upper bound",
+        "this_problem": "stays below ~9/s",
+        "not_this_problem": "a fault that adds latency to name lookups reaches hundreds per second, and one that adds network latency reaches tens - both far above this fault",
+        "evidence": "MEASURED, and the reason this is a band rather than a floor. dns_delay reaches 234-310 EMFILE/s on Sock Shop and anomaly_net reaches 63.8, against 0.27-1.78 from the descriptor cap itself - a factor of 170. Slow lookups make the front-end pile up sockets waiting for answers, so an upstream stall exhausts descriptors far harder than the fault built to exhaust them. EMFILE proves descriptors ran out; it does not say why. See evidence/fd-exhaustion_separation.json",
+        "confused_with": [
+          "dns-delay",
+          "network-path-degradation"
+        ]
+      }
+    ]
+  },
+  "reproduction": {
+    "system": "Sock Shop or Train Ticket on Ubuntu 24.04, LTTng 2.15, Docker 27+, single GCP n2 VM",
+    "recipe": "microservice-lttng-data-collection-scripts/faults/fd_exhaustion.sh",
+    "invoke": "./fd_exhaustion.sh inject aggressive",
+    "teardown": "./fd_exhaustion.sh cleanup",
+    "labelled_examples": [
+      "sockshop/fd_exhaustion/fd_exhaustion_aggressive_steady_r1",
+      "trainticket/fd_exhaustion/tt_fd_exhaustion_aggressive_steady_r1",
+      "trainticket/fd_exhaustion/tt_fd_exhaustion_aggressive_steady_r2"
+    ],
+    "harness_only": [
+      "prlimit lowers RLIMIT_NOFILE on the LIVE process to a fraction of what it is already using, so the service's own normal traffic runs it out. Deliberately not done by recreating the container: a restart mid-run is a huge event in the kernel stream - process exit, process start, every descriptor closed and reopened - and the signature being studied would then be the restart rather than the exhaustion."
+    ]
+  },
+  "collection_order": {
+    "window": {
+      "baseline_s": 60,
+      "incident_s": 120,
+      "recovery_s": 60
+    },
+    "kernel_events": [
+      "syscall_exit_accept",
+      "syscall_exit_accept4",
+      "syscall_exit_socket",
+      "syscall_exit_open",
+      "syscall_exit_openat"
+    ],
+    "metrics": [],
+    "logs": [],
+    "traces": [],
+    "why_these": "MEASURED BASIS. The deciding fact is a syscall RETURN VALUE, not a duration, so the exit events are what matter and the entry events are not needed. These five are where EMFILE actually appears when a service runs out of descriptors under load. Collecting all syscall exits also works and is what our own runs did, but it is 41% of all events for a signal that lives in five of them."
+  },
+  "processing": [
+    {
+      "step": "stage the stored kernel trace for reading",
+      "run": "bash /scratch/yuvraj17/stratatrace/scripts/extract_l0.sh <app> <family> <run_id>",
+      "produces": "<out>/ctf",
+      "reads": [],
+      "expect": "a CTF directory the trace reader can open"
+    },
+    {
+      "step": "count failing syscalls by errno and by call, both windows",
+      "run": "python3 blueprints/lib/process_probe.py --ctf <ctf> --gt <window> --out <out>/process.json",
+      "produces": "<out>/process.json",
+      "reads": [
+        "<out>/ctf"
+      ],
+      "expect": "EMFILE per second in each window, and which syscalls returned it"
+    },
+    {
+      "step": "combine into the verdict and its artifacts",
+      "run": "python3 blueprints/lib/blueprint_decide.py --pack <pack.json> --out <out>/verdict.json",
+      "produces": "<out>/verdict.json, <out>/errors.svg, <out>/explanation.txt, <out>/recommended_action.txt",
+      "reads": [
+        "<out>/process.json"
+      ],
+      "expect": "a verdict naming the refusing syscalls, or an explicit non-fire with the reason"
+    }
+  ],
+  "outputs": [
+    {
+      "kind": "json",
+      "path": "<out>/verdict.json",
+      "contains": "verdict, EMFILE per second, which syscalls returned it, and the total error rate that deliberately did not decide it"
+    },
+    {
+      "kind": "xy_chart",
+      "path": "<out>/errors.svg",
+      "contains": "failing syscalls per second by errno, baseline against incident"
+    },
+    {
+      "kind": "text",
+      "path": "<out>/explanation.txt",
+      "contains": "why some requests fail and others succeed, and how to tell a descriptor cap from an upstream stall that exhausts descriptors as a side effect"
+    },
+    {
+      "kind": "text",
+      "path": "<out>/recommended_action.txt",
+      "contains": "find the leak on the error path before raising the limit; raising it alone moves the failure later"
+    }
+  ],
+  "decision": {
+    "verdict_when": [
+      "syscalls return EMFILE at between 0.13 and 9.3 per second. The floor is calibrated on campaign-confirmed runs; a weaker descriptor cap can sit below it, so a rate between 0 and 0.13 is inconclusive rather than negative",
+      "the rate is sustained across the incident window rather than a single burst",
+      "DNS and network latency are normal, so descriptors are not being consumed by upstream stalls"
+    ],
+    "rule_out": [
+      {
+        "instead": "dns-delay",
+        "when": "EMFILE is very high - hundreds per second - AND name lookups are slow. Measured, slow lookups produced roughly 170x more EMFILE than a descriptor cap does. The descriptors ran out either way; what differs is why."
+      },
+      {
+        "instead": "network-path-degradation",
+        "when": "EMFILE is raised and retransmission is high. Added network latency makes sockets accumulate the same way slow name lookups do, reaching tens of EMFILE per second."
+      },
+      {
+        "instead": "healthy-baseline",
+        "when": "EMFILE is zero. It is zero in 24 of 27 families on both applications, so its absence is strong evidence."
+      }
+    ],
+    "root_cause_is": "a service at its file-descriptor limit, identified by the process whose accept or socket calls are returning EMFILE"
+  },
+  "applicability": {
+    "apply_when": [
+      "some requests fail while others to the same service succeed",
+      "no resource looks saturated",
+      "syscall return values are available from the kernel trace"
+    ],
+    "do_not_apply_when": [
+      "no syscall is returning EMFILE",
+      "DNS or network latency is raised, which exhausts descriptors as a side effect",
+      "the service is down rather than failing"
+    ],
+    "cheap_precheck": "count syscall exits with ret = -24 in the incident window. Zero means this blueprint does not apply; hundreds per second means look upstream first."
+  },
+  "capabilities_required": [
+    {
+      "id": "trace.stage_ctf",
+      "why": "the stored kernel trace must be readable"
+    },
+    {
+      "id": "syscall.error_attribution",
+      "why": "the deciding signal: syscall return values by errno, which requires exit events rather than durations"
+    }
+  ],
+  "stopping_conditions": {
+    "conclude": "syscalls are returning EMFILE at a low sustained rate with no upstream latency to explain it",
+    "stop_and_switch": "EMFILE in the hundreds per second with slow DNS -> dns-delay; EMFILE raised with heavy retransmission -> network-path-degradation",
+    "stop_insufficient": "syscall exit events were not recorded, so return values are unavailable -> request them and re-run. Do NOT fall back to the total failing-syscall rate: the baseline already runs ~16,000 failing syscalls per second, almost all EAGAIN on non-blocking reads, and EMFILE drowns in it.",
+    "max_evidence_rounds": 2
+  },
+  "evidence_sufficiency": {
+    "confidence_floor": 0.7,
+    "if_below_floor": "name the unresolved question, pick the ONE additional capability that would settle it, check it against the overhead budget, and request it.",
+    "report_when_stuck": "if the floor is still not met after the allowed rounds, report the best-supported hypothesis, its confidence, and precisely what evidence is missing - never present a guess as a diagnosis"
+  },
+  "taxonomy": {
+    "domain": "Reliability",
+    "category": "Resource exhaustion",
+    "subcategory": "File descriptors",
+    "sibling_causes": [
+      "a descriptor leak on an error path",
+      "a connection pool that never closes idle sockets",
+      "an ulimit set too low for the workload",
+      "an upstream stall causing sockets to accumulate"
+    ],
+    "note": "The last sibling is the interesting one, and it is also the main limitation: an upstream stall exhausts descriptors too, and harder. This blueprint separates the two by RATE, which is a weaker basis than a distinct signal, so the ceiling is stated explicitly rather than hidden in a threshold."
+  },
+  "selection": {
+    "supported_goals": [
+      "diagnose_partial_failure",
+      "diagnose_resource_exhaustion",
+      "diagnose_connection_errors"
+    ],
+    "supported_environments": [
+      "linux",
+      "container",
+      "virtual_machine",
+      "kubernetes"
+    ],
+    "applicable_symptoms": [
+      "some_requests_fail_others_succeed",
+      "errors_on_new_connections",
+      "no_resource_saturated"
+    ],
+    "preconditions": [
+      "syscall exit events with return values are collectable or already collected"
+    ],
+    "estimated_overhead_pct": {
+      "min": 2,
+      "max": 15
+    },
+    "historical_effectiveness": {
+      "runs_validated": 7,
+      "note": "7 campaign-confirmed fd_exhaustion runs - 2 of 5 on Sock Shop, 5 of 5 on Train Ticket - separated from 296 runs of the other 26 families by a band with no negative inside it. The Sock Shop sample is small because the campaign confirmed only 2 of its 5 runs, and that is stated rather than worked around. Building the evidence file surfaced that an unconfirmed run sits at 0.033/s, below the band floor - so the floor is a property of how hard we injected, not of the fault."
+    }
+  },
+  "mutually_exclusive_with": [
+    "healthy-baseline"
+  ],
+  "related_blueprints": [
+    "dns-delay",
+    "network-path-degradation",
+    "healthy-baseline"
+  ],
+  "provenance": {
+    "authored_by": "measured across all 303 v2 runs and all 27 fault families, both applications",
+    "verified_by": "derive_v2_thresholds.py, 2026-09-11; per-run values in results/v2-blueprints-all/derived_uncovered.json",
+    "authored_utc": "2026-09-11T00:00:00Z",
+    "notes": "WEAKEST OF THE THREE AUTHORED TOGETHER, and the reasons are recorded rather than smoothed over. First, it is a band and not a floor, because dns_delay produces 170x more EMFILE than this fault does - the signal proves descriptors ran out but not why, and the upper edge exists solely to exclude an upstream stall. A more aggressive descriptor cap would cross that edge and be misread as slow DNS. Second, the fault's own rate differs 5x between applications (0.27-1.78/s against 8.5-8.65/s), so the band is wide. Third, only 2 of 5 Sock Shop runs are campaign-confirmed, so the evidence is 2+5 rather than 5+5. It is shipped because a band with zero negatives inside across 296 negative runs is still a real result, and because EMFILE is exactly zero in 24 of 27 families, which makes its absence strong evidence even where its presence is ambiguous."
+  }
+}

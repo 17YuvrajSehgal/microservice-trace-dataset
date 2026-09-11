@@ -1,0 +1,427 @@
+{
+  "signal": "tx_newcomer_bytes_per_s",
+  "measured_utc": "2026-09-11",
+  "source": "blueprints/lib/derive_v2_thresholds.py over 303 v2 runs, all 27 families, both applications",
+  "packs": "/scratch/yuvraj17/stratatrace/results/v2-blueprints-all/packs",
+  "positives": [
+    {
+      "app": "sockshop",
+      "family": "data_exfiltration",
+      "owns": true,
+      "n": 5,
+      "min": 81121550.63,
+      "median": 81235377.03,
+      "max": 81302803.05
+    },
+    {
+      "app": "trainticket",
+      "family": "data_exfiltration",
+      "owns": true,
+      "n": 5,
+      "min": 81094372.81,
+      "median": 81241837.95,
+      "max": 81319472.06
+    }
+  ],
+  "highest_negative": 3636811.01,
+  "lowest_positive": 81094372.81,
+  "all_families": [
+    {
+      "app": "sockshop",
+      "family": "anomaly_cpu",
+      "owns": false,
+      "n": 5,
+      "min": 127942.26,
+      "median": 167725.0,
+      "max": 427061.33
+    },
+    {
+      "app": "sockshop",
+      "family": "anomaly_disk",
+      "owns": false,
+      "n": 5,
+      "min": 674273.42,
+      "median": 726825.24,
+      "max": 808333.72
+    },
+    {
+      "app": "sockshop",
+      "family": "anomaly_mem",
+      "owns": false,
+      "n": 8,
+      "min": 368447.94,
+      "median": 442808.07,
+      "max": 566262.74
+    },
+    {
+      "app": "sockshop",
+      "family": "anomaly_net",
+      "owns": false,
+      "n": 8,
+      "min": 85888.62,
+      "median": 108321.94,
+      "max": 123183.6
+    },
+    {
+      "app": "sockshop",
+      "family": "code_event_loop_block",
+      "owns": false,
+      "n": 5,
+      "min": 50838.32,
+      "median": 61811.88,
+      "max": 64668.16
+    },
+    {
+      "app": "sockshop",
+      "family": "code_lock_across_io",
+      "owns": false,
+      "n": 5,
+      "min": 63072.57,
+      "median": 78349.58,
+      "max": 83646.48
+    },
+    {
+      "app": "sockshop",
+      "family": "code_n_plus_one",
+      "owns": false,
+      "n": 5,
+      "min": 74877.5,
+      "median": 85936.69,
+      "max": 87446.32
+    },
+    {
+      "app": "sockshop",
+      "family": "code_serial_awaits",
+      "owns": false,
+      "n": 5,
+      "min": 41468.53,
+      "median": 61247.72,
+      "max": 67886.62
+    },
+    {
+      "app": "sockshop",
+      "family": "code_unbounded_cache",
+      "owns": false,
+      "n": 5,
+      "min": 48671.25,
+      "median": 58194.12,
+      "max": 67858.82
+    },
+    {
+      "app": "sockshop",
+      "family": "conn_pool_exhaustion",
+      "owns": false,
+      "n": 5,
+      "min": 831605.63,
+      "median": 1058880.07,
+      "max": 1086577.58
+    },
+    {
+      "app": "sockshop",
+      "family": "data_exfiltration",
+      "owns": true,
+      "n": 5,
+      "min": 81121550.63,
+      "median": 81235377.03,
+      "max": 81302803.05
+    },
+    {
+      "app": "sockshop",
+      "family": "deadlock",
+      "owns": false,
+      "n": 5,
+      "min": 661463.22,
+      "median": 787046.13,
+      "max": 894208.4
+    },
+    {
+      "app": "sockshop",
+      "family": "dns_delay",
+      "owns": false,
+      "n": 5,
+      "min": 11411.36,
+      "median": 44547.85,
+      "max": 53135.04
+    },
+    {
+      "app": "sockshop",
+      "family": "fd_exhaustion",
+      "owns": false,
+      "n": 5,
+      "min": 44525.27,
+      "median": 51878.78,
+      "max": 64222.82
+    },
+    {
+      "app": "sockshop",
+      "family": "fork_storm",
+      "owns": false,
+      "n": 5,
+      "min": 640179.25,
+      "median": 706653.65,
+      "max": 759209.07
+    },
+    {
+      "app": "sockshop",
+      "family": "lock_contention",
+      "owns": false,
+      "n": 5,
+      "min": 579868.04,
+      "median": 597773.2,
+      "max": 690459.2
+    },
+    {
+      "app": "sockshop",
+      "family": "nagle_delayed_ack",
+      "owns": false,
+      "n": 5,
+      "min": 1843979.71,
+      "median": 1913920.34,
+      "max": 1978787.06
+    },
+    {
+      "app": "sockshop",
+      "family": "noisy_neighbor",
+      "owns": false,
+      "n": 8,
+      "min": 307586.87,
+      "median": 468496.62,
+      "max": 516099.11
+    },
+    {
+      "app": "sockshop",
+      "family": "normal",
+      "owns": false,
+      "n": 10,
+      "min": 307644.37,
+      "median": 367141.35,
+      "max": 434642.87
+    },
+    {
+      "app": "sockshop",
+      "family": "priority_inversion",
+      "owns": false,
+      "n": 5,
+      "min": 556325.34,
+      "median": 628561.33,
+      "max": 692402.75
+    },
+    {
+      "app": "sockshop",
+      "family": "resource_abuse",
+      "owns": false,
+      "n": 5,
+      "min": 469753.79,
+      "median": 570886.22,
+      "max": 610491.4
+    },
+    {
+      "app": "sockshop",
+      "family": "slow_db",
+      "owns": false,
+      "n": 11,
+      "min": 2720.4,
+      "median": 127607.52,
+      "max": 480315.68
+    },
+    {
+      "app": "sockshop",
+      "family": "svc_cpu_cap",
+      "owns": false,
+      "n": 8,
+      "min": 4786.72,
+      "median": 10788.07,
+      "max": 231842.85
+    },
+    {
+      "app": "sockshop",
+      "family": "svc_mem_cap",
+      "owns": false,
+      "n": 8,
+      "min": 14316.6,
+      "median": 18529.7,
+      "max": 19878.77
+    },
+    {
+      "app": "sockshop",
+      "family": "svc_net",
+      "owns": false,
+      "n": 5,
+      "min": 15696.92,
+      "median": 18421.57,
+      "max": 20604.68
+    },
+    {
+      "app": "trainticket",
+      "family": "anomaly_cpu",
+      "owns": false,
+      "n": 5,
+      "min": 332278.78,
+      "median": 473296.78,
+      "max": 536152.83
+    },
+    {
+      "app": "trainticket",
+      "family": "anomaly_disk",
+      "owns": false,
+      "n": 5,
+      "min": 59517.43,
+      "median": 1541275.16,
+      "max": 2259595.64
+    },
+    {
+      "app": "trainticket",
+      "family": "anomaly_mem",
+      "owns": false,
+      "n": 8,
+      "min": 4142.61,
+      "median": 12130.57,
+      "max": 24599.72
+    },
+    {
+      "app": "trainticket",
+      "family": "anomaly_net",
+      "owns": false,
+      "n": 8,
+      "min": 7332.12,
+      "median": 11000.59,
+      "max": 14640.92
+    },
+    {
+      "app": "trainticket",
+      "family": "conn_pool_exhaustion",
+      "owns": false,
+      "n": 5,
+      "min": 25889.29,
+      "median": 35956.17,
+      "max": 40540.88
+    },
+    {
+      "app": "trainticket",
+      "family": "data_exfiltration",
+      "owns": true,
+      "n": 5,
+      "min": 81094372.81,
+      "median": 81241837.95,
+      "max": 81319472.06
+    },
+    {
+      "app": "trainticket",
+      "family": "deadlock",
+      "owns": false,
+      "n": 5,
+      "min": 4174.96,
+      "median": 10054.79,
+      "max": 11952.38
+    },
+    {
+      "app": "trainticket",
+      "family": "fd_exhaustion",
+      "owns": false,
+      "n": 5,
+      "min": 156.23,
+      "median": 7161.12,
+      "max": 10219.29
+    },
+    {
+      "app": "trainticket",
+      "family": "fork_storm",
+      "owns": false,
+      "n": 5,
+      "min": 2096.97,
+      "median": 12230.37,
+      "max": 12957.38
+    },
+    {
+      "app": "trainticket",
+      "family": "lock_contention",
+      "owns": false,
+      "n": 5,
+      "min": 2620.63,
+      "median": 8110.09,
+      "max": 14529.79
+    },
+    {
+      "app": "trainticket",
+      "family": "nagle_delayed_ack",
+      "owns": false,
+      "n": 5,
+      "min": 914865.06,
+      "median": 922774.35,
+      "max": 941229.29
+    },
+    {
+      "app": "trainticket",
+      "family": "noisy_neighbor",
+      "owns": false,
+      "n": 8,
+      "min": 6218.32,
+      "median": 12136.63,
+      "max": 15785.51
+    },
+    {
+      "app": "trainticket",
+      "family": "normal",
+      "owns": false,
+      "n": 10,
+      "min": 69522.19,
+      "median": 634244.21,
+      "max": 2736314.29
+    },
+    {
+      "app": "trainticket",
+      "family": "priority_inversion",
+      "owns": false,
+      "n": 5,
+      "min": 2257.58,
+      "median": 6392.71,
+      "max": 9697.36
+    },
+    {
+      "app": "trainticket",
+      "family": "resource_abuse",
+      "owns": false,
+      "n": 5,
+      "min": 2113.81,
+      "median": 9289.58,
+      "max": 22913.22
+    },
+    {
+      "app": "trainticket",
+      "family": "slow_db",
+      "owns": false,
+      "n": 11,
+      "min": 88.0,
+      "median": 8544.48,
+      "max": 24601.58
+    },
+    {
+      "app": "trainticket",
+      "family": "svc_cpu_cap",
+      "owns": false,
+      "n": 8,
+      "min": 8387.08,
+      "median": 12861.01,
+      "max": 14138.84
+    },
+    {
+      "app": "trainticket",
+      "family": "svc_mem_cap",
+      "owns": false,
+      "n": 8,
+      "min": 1380891.42,
+      "median": 3500589.88,
+      "max": 3636811.01
+    },
+    {
+      "app": "trainticket",
+      "family": "svc_net",
+      "owns": false,
+      "n": 5,
+      "min": 5039.23,
+      "median": 8997.68,
+      "max": 2171869.69
+    }
+  ],
+  "note": "Positives here include runs the campaign could not confirm; the derivation excludes those, so its n may be lower."
+}
