@@ -70,6 +70,20 @@ def iops_per_irq(pack):
     return round(g / x, 1)
 
 
+def num(v):
+    """Ratios can be the string "from_zero" - a rate that was zero and is not any more. That is
+    a fact, not a number, so it is excluded from cut-finding rather than coerced into one."""
+    return v if isinstance(v, (int, float)) else None
+
+
+def proc(pack, key):
+    return num(((pack.get("process") or {}).get("signature") or {}).get(key))
+
+
+def irq(pack, key):
+    return num(((pack.get("irq") or {}).get("signature") or {}).get(key))
+
+
 def util_ratio(pack):
     b, i = sig(pack, "oncpu", "host_util_baseline"), sig(pack, "oncpu", "host_util_incident")
     return round(i / b, 4) if (b and i is not None) else None
@@ -105,6 +119,87 @@ RULES = {
         ("thief_cores", lambda p: sig(p, "oncpu", "thief_cores_gained"), ">=", 0.50),
         ("util_ratio", util_ratio, ">=", None),
         ("util_incident", lambda p: sig(p, "oncpu", "host_util_incident"), ">=", 0.55),
+    ]),
+
+    # ---------------------------------------------------------------------------------------
+    # THE 16 FAMILIES WITH NO BLUEPRINT. Everything below is a CANDIDATE TO TEST, not a claim.
+    #
+    # Each signal is here because the fault's own recipe describes a mechanism that should move
+    # it, or because the signal is the same shape as one that already works. Neither is
+    # evidence. The tool decides: a cut is reported only if it separates the family from every
+    # other family, and a cut that works on one application is reported as FAILING.
+    #
+    # A family whose signals all overlap is a result - it says this fault has no kernel-trace
+    # signature we can find - and belongs in the write-up rather than in a blueprint.
+    # ---------------------------------------------------------------------------------------
+    "fork-storm": ({"fork_storm"}, [
+        # The recipe predicts this one is obvious. Measured on one run it is not: the host total
+        # moves 1.77x because the machine already forks 134/s. The newcomer moved 27x.
+        ("fork_newcomer_per_s", lambda p: proc(p, "fork_newcomer_per_s"), ">=", None),
+        ("forks_per_s_x", lambda p: proc(p, "forks_per_s_x"), ">=", None),
+    ]),
+    "fd-exhaustion": ({"fd_exhaustion"}, [
+        # The recipe says accept and socket return EMFILE while the process keeps running.
+        ("emfile_per_s", lambda p: proc(p, "emfile_per_s_incident"), ">=", None),
+        ("error_newcomer_per_s", lambda p: proc(p, "error_newcomer_per_s"), ">=", None),
+    ]),
+    "conn-pool-exhaustion": ({"conn_pool_exhaustion"}, [
+        # Connections are refused or time out at connect().
+        ("econnrefused_per_s", lambda p: proc(p, "econnrefused_per_s_incident"), ">=", None),
+        ("etimedout_per_s", lambda p: proc(p, "etimedout_per_s_incident"), ">=", None),
+        ("error_newcomer_per_s", lambda p: proc(p, "error_newcomer_per_s"), ">=", None),
+    ]),
+    "data-exfiltration": ({"data_exfiltration"}, [
+        # The recipe already doubts itself: "the honest answer may be not from volume alone".
+        ("tx_newcomer_bytes_per_s", lambda p: proc(p, "tx_newcomer_bytes_per_s"), ">=", None),
+        ("tx_bytes_per_s_x", lambda p: proc(p, "tx_bytes_per_s_x"), ">=", None),
+    ]),
+    "dns-delay": ({"dns_delay"}, [
+        # Slower lookups in a closed loop mean FEWER complete, so the rate may fall rather than
+        # rise. Both directions are worth looking at, which is why the table prints the range.
+        ("dns_packets_per_s_x", lambda p: proc(p, "dns_packets_per_s_x"), "<=", None),
+    ]),
+    "priority-inversion": ({"priority_inversion"}, [
+        ("prio_non_default_pct", lambda p: proc(p, "prio_non_default_pct_incident"), ">=", None),
+        ("n_distinct_prio", lambda p: proc(p, "n_distinct_prio_incident"), ">=", None),
+        ("futex_p95_x", lambda p: irq(p, "futex_p95_x"), ">=", None),
+    ]),
+    "lock-contention": ({"lock_contention"}, [
+        # LATENCY-CAUSES: key on the SHAPE, never the total. Idle thread pools park in futex for
+        # ~300 ms each and drown any total; real contention is many SHORT waits.
+        ("futex_short_waits_x", lambda p: irq(p, "futex_short_waits_x"), ">=", None),
+        ("futex_p95_x", lambda p: irq(p, "futex_p95_x"), ">=", None),
+        ("futex_wait_x", lambda p: irq(p, "futex_wait_x"), ">=", None),
+    ]),
+    "deadlock": ({"deadlock"}, [
+        # Threads block in futex and never return, so the tail should stretch rather than the
+        # count rise - the opposite shape to lock_contention, which is the interesting part.
+        ("futex_p95_x", lambda p: irq(p, "futex_p95_x"), ">=", None),
+        ("futex_wait_x", lambda p: irq(p, "futex_wait_x"), ">=", None),
+        ("futex_short_waits_x", lambda p: irq(p, "futex_short_waits_x"), "<=", None),
+    ]),
+    "resource-abuse": ({"resource_abuse"}, [
+        # A hidden CPU loop: the same shape as noisy_neighbor, which thief_cores already gets
+        # 26/26. If it separates here too, the two faults may not be separable from each other,
+        # and that would be the finding.
+        ("thief_cores", lambda p: sig(p, "oncpu", "thief_cores_gained"), ">=", None),
+        ("tx_newcomer_bytes_per_s", lambda p: proc(p, "tx_newcomer_bytes_per_s"), ">=", None),
+    ]),
+    "host-memory-pressure": ({"anomaly_mem"}, [
+        # LATENCY-CAUSES cause 8 records this as working on ONE application only. Retested here
+        # against every family rather than against its own control.
+        ("hardirq_x", lambda p: irq(p, "hardirq_x"), ">=", None),
+        ("iops_gained", lambda p: sig(p, "blockio", "io_newcomer_iops_gained"), ">=", None),
+        ("total_iops_x", lambda p: sig(p, "blockio", "total_iops_x"), ">=", None),
+    ]),
+    # The five code defects share one metrics signature (DATASET-v2-INVENTORY). Whether the
+    # kernel can tell them apart is the open question the ablation study exists to answer, so
+    # they are tested as one family first: can we even see that SOMETHING is wrong?
+    "code-defects": ({"code_event_loop_block", "code_lock_across_io", "code_n_plus_one",
+                      "code_serial_awaits", "code_unbounded_cache"}, [
+        ("n_slowed_2x", lambda p: sig(p, "endpoints", "n_slowed_2x"), ">=", None),
+        ("socket_block_x", socket_max, ">=", None),
+        ("futex_p95_x", lambda p: irq(p, "futex_p95_x"), ">=", None),
     ]),
 }
 
