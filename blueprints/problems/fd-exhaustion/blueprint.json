@@ -133,7 +133,8 @@
         "when": "EMFILE is zero. It is zero in 24 of 27 families on both applications, so its absence is strong evidence."
       }
     ],
-    "root_cause_is": "a service at its file-descriptor limit, identified by the process whose accept or socket calls are returning EMFILE"
+    "root_cause_is": "a service at its file-descriptor limit, identified by the process whose accept or socket calls are returning EMFILE",
+    "fault_type": "fd_exhaustion"
   },
   "applicability": {
     "apply_when": [

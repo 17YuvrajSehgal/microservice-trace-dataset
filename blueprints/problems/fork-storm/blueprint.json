@@ -129,7 +129,8 @@
         "when": "no process gains meaningful fork rate, even when the host total looks raised. The host total alone is not evidence - see the discriminator note."
       }
     ],
-    "root_cause_is": "a workload creating processes in a loop, identified by the command name of the child it spawns"
+    "root_cause_is": "a workload creating processes in a loop, identified by the command name of the child it spawns",
+    "fault_type": "fork_storm"
   },
   "applicability": {
     "apply_when": [

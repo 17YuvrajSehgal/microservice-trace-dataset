@@ -3,7 +3,7 @@ name: fork-storm
 version: 1
 authored_by: measured across all 303 v2 runs and all 27 fault families, both applications
 generated_from: blueprints/fork-storm.json
-covers: 
+covers: fork_storm
 mutually_exclusive_with: healthy-baseline
 ---
 ## When this applies

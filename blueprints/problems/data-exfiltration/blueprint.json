@@ -148,7 +148,8 @@
         "when": "no process gains meaningful outbound volume, even if the host total looks raised. The host total is application-specific - see the retracted discriminator."
       }
     ],
-    "root_cause_is": "a process sending bulk data it does not normally send, identified by its command name and destination port"
+    "root_cause_is": "a process sending bulk data it does not normally send, identified by its command name and destination port",
+    "fault_type": "data_exfiltration"
   },
   "applicability": {
     "apply_when": [

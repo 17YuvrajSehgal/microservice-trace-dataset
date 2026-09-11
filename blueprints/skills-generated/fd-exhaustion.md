@@ -3,7 +3,7 @@ name: fd-exhaustion
 version: 1
 authored_by: measured across all 303 v2 runs and all 27 fault families, both applications
 generated_from: blueprints/fd-exhaustion.json
-covers: 
+covers: fd_exhaustion
 mutually_exclusive_with: healthy-baseline
 ---
 ## When this applies
