@@ -13,10 +13,30 @@
 #
 # Resumable: a run whose pack exists is skipped. Stage 2 and 3 are cheap and always re-run, so
 # a resubmit after a wall-clock timeout costs only the packs that were still missing.
+#
+# WALLTIME IS MEASURED, NOT GUESSED. A long request sits in the queue far longer than a
+# short one, so over-asking costs wall-clock time even when the cluster is free. Measured on
+# Trillium, one whole node, PAR=24:
+#
+#     156 packs (7 measurements each)      0:57:48
+#     136 packs + decide + score           1:00:14
+#     62 runs, on-CPU attribution only     0:20:37
+#     extract 303 run bundles              0:18:39
+#     decompress the whole tree            0:16:05
+#     2-run smoke                          0:07:30
+#
+# That is about 7.4 min of work per run, divided by PAR. So:
+#
+#     walltime = runs * 7.4 min / PAR * 1.5   + 10 min
+#
+# The 1.5 covers a slower node and a busier filesystem; the 10 min covers startup and the
+# report at the end. Earlier versions of these files asked for 6-8 hours for jobs that took
+# under an hour, which is 6-22x over.
+# This file: 136 packs plus decide and score measured 1:00:14, so 1h45 with margin.
 #SBATCH --account=def-naser2
 #SBATCH --job-name=bp-v2-all
 #SBATCH --nodes=1
-#SBATCH --time=08:00:00
+#SBATCH --time=01:45:00
 #SBATCH --output=/scratch/yuvraj17/stratatrace/slurm-logs/bp-v2-all-%j.out
 set -uo pipefail
 
