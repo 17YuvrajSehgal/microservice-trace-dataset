@@ -1,34 +1,39 @@
-"""Draw one picture that shows WHY a blueprint decided what it decided.
+"""One analysis page per blueprint, drawn from the kernel trace.
 
-The 9 Sept meeting asked for a picture per problem, made from the trace, not from Trace
-Compass. Every blueprint already declared an `.svg` output and none of them drew one, because
-the two attempts used matplotlib inside a try/except and it silently skipped. This draws raw
-SVG from the standard library, so it cannot skip.
+WHAT THIS IS FOR
+----------------
+Two readers, both technical: someone reading the paper, and someone using the blueprint to
+work an incident. Neither needs it to look nice. Both need numbers they can act on, so this
+page is dense, plain, and has no decoration in it.
 
-WHAT MAKES THIS CARD DIFFERENT FROM A METRICS CHART
----------------------------------------------------
-A dashboard shows the number that moved. That is detection. The meeting was explicit that
-detection is not root cause: "just saying the system is under contention is not known".
+WHAT IS ON IT
+-------------
+Naser asked on 9 Sept for "a timeline, resources, waiting, or sometimes just a CPU usage".
+Three of those four are drawn here, straight from the pack:
 
-So the card shows the DECISION instead, in three bands:
+  A  THE RULER          every fault family on the one number this blueprint decides on, both
+                        applications, with the cut. Needs 272 labelled runs - it is the one
+                        panel that cannot be drawn from a single incident.
+  B  RESOURCES          CPU per process, baseline against incident.
+  C  WAITING FOR CPU    runqueue delay per service, baseline against incident.
+  D  WAITING ON SOMETHING ELSE   blocking syscall p95 per process and call.
+  E  GATES              every condition the rule tested, its value, its bar, its margin.
+  F  THE FIELD          the other blueprints and the number that ruled each one out.
 
-  1. THE RULER   Every fault family we have, on the one axis this blueprint decides on, with
-                 the cut drawn. You can see the gap the blueprint relies on, which family came
-                 closest to breaking it, and whether the cut lands the same way on both
-                 applications. Only possible because we have 273 labelled runs over 27
-                 families - nobody can draw this from one incident.
+B, C and D are dumbbells: hollow dot = baseline, filled dot = incident, on a log axis. A log
+axis because the ratios run from 1x to 5000x and a linear one would show a single spike and
+eight flat lines.
 
-  2. THE GATES   Every condition the rule tested, with the measured number, the bar, and how
-                 much room it had. A rule that passed by a hair and a rule that passed by 8x
-                 both read "fired"; here they look different.
+THE TIMELINE IS NOT HERE, and that is a real gap rather than an oversight. The packs hold
+baseline-vs-incident aggregates, not a series, so there is no time axis to draw. Getting one
+means a new pass over the traces (G2, early detection). Faking it from two points would be
+worse than leaving it out.
 
-  3. THE FIELD   The other blueprints and the single number that ruled each one out. Ruling
-                 out is most of what root-cause work actually is.
+No libraries. Raw SVG from the standard library - the earlier attempts used matplotlib inside
+a try/except, which is why ten blueprints declared a chart and none produced one.
 
-The SVG also carries a plain-text <desc> summarising all three bands, so an agent reading the
-file gets the same story as a person looking at it.
-
-    python3 blueprints/lib/blueprint_card.py --pack <pack.json> --ruler blueprints/results/ruler.json --out card.svg
+    python3 blueprints/lib/blueprint_card.py --pack <pack.json> \
+        --ruler blueprints/results/ruler.json --out card.svg
 """
 import argparse
 import io
@@ -40,23 +45,21 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import blueprint_decide as BD  # noqa: E402
 
-W = 1060
-PAD = 28
-INK = "#1b1f24"
-MUTED = "#6a737d"
-FAINT = "#d0d7de"
-PANEL = "#f6f8fa"
-ACCENT = "#0b6bcb"
-FIRE = "#1a7f37"
-FAIL = "#cf222e"
-VETO = "#9a6700"
+W = 1100
+PAD = 24
+INK = "#111111"
+MUTED = "#666666"
+FAINT = "#cccccc"
+ACCENT = "#0050b3"
+WARN = "#b34700"
+BAD = "#b3001b"
+OK = "#1a7f37"
 FONT = "DejaVu Sans,Segoe UI,Helvetica,Arial,sans-serif"
 MONO = "DejaVu Sans Mono,Consolas,monospace"
 
-# Which number each blueprint decides on, which family owns it, and where the cut sits.
-# `bar` is a single value with a direction, or a (low, high) band. These are the SAME
-# constants the rules use, imported rather than retyped, so the drawn line cannot drift
-# away from the line the code actually applies.
+# Which number each blueprint decides on, which family owns it, where the cut sits.
+# The bars come from blueprint_decide rather than being retyped, so the drawn line cannot
+# drift away from the line the code applies.
 CARDS = {
     "host-cpu-saturation": dict(
         signal="host_util_incident", owns=["anomaly_cpu"], op=">=", bar=BD.SATURATED,
@@ -79,8 +82,8 @@ CARDS = {
     "db-latency-dependency-wait": dict(
         signal="socket_block_x", owns=["slow_db"], op=">=", bar=BD.BLOCK_X,
         rule="datastore_wait"),
-    # These three are measured and written up, but no rule implements them yet. The card says
-    # so rather than drawing a decision the engine cannot make.
+    # Measured and written up, but no rule implements them yet. The card says so rather than
+    # drawing a decision the engine cannot make.
     "fork-storm": dict(
         signal="fork_newcomer_per_s", owns=["fork_storm"], op=">", bar=26.34, rule=None),
     "data-exfiltration": dict(
@@ -94,18 +97,17 @@ RULE_TO_CARD = {v["rule"]: k for k, v in CARDS.items() if v["rule"]}
 
 
 def esc(s):
-    return (str(s).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;"))
+    return str(s).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
 
 def fmt(v, unit=""):
-    """Short, readable numbers. Bytes get their own treatment or the axis is unreadable."""
     if v is None:
         return "n/a"
     if unit == "bytes/s":
-        for div, suf in ((1e9, " GB/s"), (1e6, " MB/s"), (1e3, " kB/s")):
+        for div, suf in ((1e9, "G"), (1e6, "M"), (1e3, "k")):
             if abs(v) >= div:
                 return "%.3g%s" % (v / div, suf)
-        return "%.0f B/s" % v
+        return "%.0f" % v
     if v == 0:
         return "0"
     if abs(v) >= 1e6:
@@ -120,29 +122,12 @@ def fmt(v, unit=""):
 
 
 def clip(s, n):
-    """Cut at a word boundary. Cutting mid-word reads like the number was truncated too."""
     s = str(s or "")
     if len(s) <= n:
         return s
     cut = s[:n]
     sp = cut.rfind(" ")
     return (cut[:sp] if sp > n * 0.6 else cut).rstrip(" ,;-") + "..."
-
-
-def wrap(s, n, lines=2):
-    """Break a gate name over at most `lines` lines so it stays inside its box."""
-    words, out, cur = str(s).split(), [], ""
-    for w in words:
-        if cur and len(cur) + 1 + len(w) > n:
-            out.append(cur)
-            cur = w
-            if len(out) == lines:
-                break
-        else:
-            cur = (cur + " " + w).strip()
-    if cur and len(out) < lines:
-        out.append(cur)
-    return out or [""]
 
 
 class Svg(object):
@@ -152,58 +137,50 @@ class Svg(object):
     def add(self, s):
         self.parts.append(s)
 
-    def rect(self, x, y, w, h, fill, rx=0, stroke="none", sw=1, op=1.0):
-        self.add('<rect x="%.1f" y="%.1f" width="%.1f" height="%.1f" rx="%d" fill="%s" '
-                 'stroke="%s" stroke-width="%s" opacity="%s"/>'
-                 % (x, y, max(w, 0), max(h, 0), rx, fill, stroke, sw, op))
+    def rect(self, x, y, w, h, fill, stroke="none", sw=1, op=1.0):
+        self.add('<rect x="%.1f" y="%.1f" width="%.1f" height="%.1f" fill="%s" stroke="%s" '
+                 'stroke-width="%s" opacity="%s"/>'
+                 % (x, y, max(w, 0), max(h, 0), fill, stroke, sw, op))
 
     def line(self, x1, y1, x2, y2, stroke, sw=1, dash=None, op=1.0):
         d = ' stroke-dasharray="%s"' % dash if dash else ""
         self.add('<line x1="%.1f" y1="%.1f" x2="%.1f" y2="%.1f" stroke="%s" '
                  'stroke-width="%s"%s opacity="%s"/>' % (x1, y1, x2, y2, stroke, sw, d, op))
 
-    def text(self, x, y, s, size=12, fill=INK, anchor="start", weight="normal",
-             font=FONT, op=1.0, spacing=None):
-        ls = ' letter-spacing="%s"' % spacing if spacing else ""
+    def text(self, x, y, s, size=10, fill=INK, anchor="start", weight="normal",
+             font=FONT, op=1.0):
         self.add('<text x="%.1f" y="%.1f" font-family="%s" font-size="%s" fill="%s" '
-                 'text-anchor="%s" font-weight="%s" opacity="%s"%s>%s</text>'
-                 % (x, y, font, size, fill, anchor, weight, op, ls, esc(s)))
+                 'text-anchor="%s" font-weight="%s" opacity="%s">%s</text>'
+                 % (x, y, font, size, fill, anchor, weight, op, esc(s)))
 
     def circle(self, cx, cy, r, fill, stroke="none", sw=1, op=1.0):
         self.add('<circle cx="%.2f" cy="%.2f" r="%.2f" fill="%s" stroke="%s" '
                  'stroke-width="%s" opacity="%s"/>' % (cx, cy, r, fill, stroke, sw, op))
 
     def poly(self, pts, fill, op=1.0):
-        p = " ".join("%.1f,%.1f" % xy for xy in pts)
-        self.add('<polygon points="%s" fill="%s" opacity="%s"/>' % (p, fill, op))
+        self.add('<polygon points="%s" fill="%s" opacity="%s"/>'
+                 % (" ".join("%.1f,%.1f" % xy for xy in pts), fill, op))
 
 
-# ----------------------------------------------------------------------------- the ruler
 class Axis(object):
-    """Maps a measured value to an x position.
+    """Value to x position. Zero gets its own slot at the left, because many families measure
+    EXACTLY zero on a signal and that fact is evidence, not a gap to hide."""
 
-    Two things make this awkward and both are real, so both are handled rather than hidden:
-    many families measure EXACTLY zero on a signal (that is the point - it is why absence is
-    evidence), and the spans reach six orders of magnitude. So zero gets its own lane at the
-    left, clearly separated, and everything else is log-scaled when the span demands it.
-    """
-
-    def __init__(self, values, x0, x1):
+    def __init__(self, values, x0, x1, force_log=None):
         self.x0, self.x1 = x0, x1
-        pos = [v for v in values if v is not None and v > 0]
-        self.has_zero = any(v == 0 for v in values if v is not None)
-        if not pos:
-            pos = [1.0]
+        vals = [v for v in values if v is not None]
+        pos = [v for v in vals if v > 0] or [1.0]
+        self.has_zero = any(v == 0 for v in vals)
         lo, hi = min(pos), max(pos)
-        self.log = (hi / lo) > 50 if lo > 0 else True
+        self.log = force_log if force_log is not None else ((hi / lo) > 50 if lo > 0 else True)
         if self.log:
             self.lo, self.hi = lo / 2.0, hi * 2.0
         else:
             span = (hi - lo) or abs(hi) or 1.0
-            self.lo, self.hi = lo - span * 0.12, hi + span * 0.12
-            if min(values or [0]) >= 0 and self.lo < 0:
-                self.lo = 0.0                      # a count never goes below zero
-        self.zw = 44 if self.has_zero else 0        # width of the zero lane
+            self.lo, self.hi = lo - span * 0.10, hi + span * 0.10
+            if min(vals or [0]) >= 0 and self.lo < 0:
+                self.lo = 0.0
+        self.zw = 34 if self.has_zero else 0
         self.px0 = x0 + self.zw
 
     def x(self, v):
@@ -212,7 +189,8 @@ class Axis(object):
         if v <= 0:
             return self.x0 + self.zw / 2.0 if self.has_zero else self.px0
         if self.log:
-            f = (math.log10(v) - math.log10(self.lo)) / (math.log10(self.hi) - math.log10(self.lo))
+            f = ((math.log10(v) - math.log10(self.lo))
+                 / (math.log10(self.hi) - math.log10(self.lo)))
         else:
             f = (v - self.lo) / (self.hi - self.lo)
         return self.px0 + max(0.0, min(1.0, f)) * (self.x1 - self.px0)
@@ -241,40 +219,35 @@ class Axis(object):
         return out
 
 
-def draw_ruler(s, y, cfg, ruler, this_run, app_of_run):
-    """Band 1. Every family on one axis, with the cut, the gap, and the closest miss."""
+def panel(s, y, letter, title, note=""):
+    s.line(PAD, y, W - PAD, y, FAINT, 1)
+    s.text(PAD, y + 14, letter, 9.5, MUTED, weight="bold")
+    s.text(PAD + 14, y + 14, title, 10.5, INK, weight="bold")
+    if note:
+        s.text(W - PAD, y + 14, note, 9, MUTED, anchor="end")
+    return y + 22
+
+
+# --------------------------------------------------------------------------------- ruler
+def draw_ruler(s, y, cfg, ruler, this_run):
     sig = ruler["signals"].get(cfg["signal"])
     lines = []
     if not sig or not sig["points"]:
-        s.text(PAD, y + 18, "No measurement of this signal in the ruler file.", 12, MUTED)
-        return y + 34, lines
+        s.text(PAD, y + 12, "no measurement of this signal in the ruler file", 10, WARN)
+        return y + 24, lines
 
-    pts = sig["points"]
-    unit = sig["unit"]
-    owns = set(cfg["owns"])
+    pts, unit, owns = sig["points"], sig["unit"], set(cfg["owns"])
     apps = sorted(set(p["app"] for p in pts))
-    band = cfg["op"] == "band"
-    bar = cfg["bar"]
+    band, bar, ceil = cfg["op"] == "band", cfg["bar"], cfg.get("ceiling")
 
-    s.text(PAD, y + 14, "1 · THE RULER", 11, MUTED, weight="bold", spacing="1.4")
-    s.text(PAD + 118, y + 14, "where every fault we have measured sits on this one number",
-           11, MUTED)
-    s.text(PAD, y + 38, sig["label"], 15, INK, weight="bold")
-    s.text(PAD, y + 56, "%d runs · %d fault families · %d applications"
-           % (len(pts), len(set(p["family"] for p in pts)), len(apps)), 11, MUTED)
+    y = panel(s, y, "A", "DECIDING SIGNAL, EVERY RUN WE HAVE  -  " + sig["label"],
+              "%d runs · %d families · %d applications"
+              % (len(pts), len(set(p["family"] for p in pts)), len(apps)))
 
-    ax = Axis([p["v"] for p in pts] + ([bar[0], bar[1]] if band else [bar]),
-              PAD + 96, W - PAD - 16)
-    lane_h = 42
-    top = y + 74
+    ax = Axis([p["v"] for p in pts] + (list(bar) if band else [bar]), PAD + 74, W - PAD - 8)
+    lane_h = 30
+    top = y + 16
 
-    # the margin: how much room the cut has before a negative run crosses it
-    posv = [p["v"] for p in pts if p["family"] in owns]
-    negv = [p["v"] for p in pts if p["family"] not in owns]
-    # The ceiling is part of the cut wherever a rule has one (a co-tenant is bounded; a
-    # process taking six cores is host saturation). Leaving it out of this test would let the
-    # card claim a clean separation the rule does not actually make.
-    ceil = cfg.get("ceiling")
     if band:
         fires = lambda v: bar[0] <= v <= bar[1]                          # noqa: E731
     elif cfg["op"] in (">=", ">"):
@@ -282,222 +255,236 @@ def draw_ruler(s, y, cfg, ruler, this_run, app_of_run):
     else:
         fires = lambda v: v <= bar                                       # noqa: E731
 
-    # closest negative to the cut, on the side that would break the rule
     near = None
-    if negv and not band:
-        if cfg["op"] in (">=", ">"):
-            below = [p for p in pts if p["family"] not in owns and p["v"] < bar]
-            near = max(below, key=lambda p: p["v"]) if below else None
-        else:
-            above = [p for p in pts if p["family"] not in owns and p["v"] > bar]
-            near = min(above, key=lambda p: p["v"]) if above else None
+    if not band:
+        side = ([p for p in pts if p["family"] not in owns and p["v"] < bar]
+                if cfg["op"] in (">=", ">") else
+                [p for p in pts if p["family"] not in owns and p["v"] > bar])
+        if side:
+            near = (max if cfg["op"] in (">=", ">") else min)(side, key=lambda p: p["v"])
 
-    # the gap corridor, drawn only when it is real
-    if posv and near is not None:
-        lo_p, hi_n = min(posv), near["v"]
-        if cfg["op"] in (">=", ">") and lo_p > hi_n:
-            gx0, gx1, ratio = ax.x(hi_n), ax.x(lo_p), lo_p / hi_n if hi_n else None
-        elif cfg["op"] in ("<=", "<") and max(posv) < hi_n:
-            gx0, gx1, ratio = ax.x(max(posv)), ax.x(hi_n), hi_n / max(posv) if posv else None
-        else:
-            gx0 = None
-        if gx0 is not None:
-            s.rect(gx0, top, gx1 - gx0, lane_h * len(apps) + 6, "#1a7f37", op=0.07)
-            if ratio and ratio > 1.05:
-                # keep the label off the zero lane, where it would sit on top of its caption
-                lx = max((gx0 + gx1) / 2.0, ax.px0 + 26)
-                s.text(lx, top - 6, "%.3gx gap" % ratio, 10, FIRE,
-                       anchor="middle", weight="bold")
-                lines.append("The gap between the nearest other fault and this one is %.3gx."
-                             % ratio)
-
-    # one lane per application - this is where "does the cut transfer?" is answered
     for i, app in enumerate(apps):
         ly = top + i * lane_h
-        s.rect(PAD + 96, ly, W - PAD - 16 - (PAD + 96), lane_h - 6, PANEL, rx=4)
-        s.text(PAD + 88, ly + lane_h / 2.0, app, 11, MUTED, anchor="end")
+        s.rect(ax.px0, ly, W - PAD - 8 - ax.px0, lane_h - 5, "#f4f4f4")
         if ax.has_zero:
-            s.line(ax.x0 + ax.zw, ly, ax.x0 + ax.zw, ly + lane_h - 6, FAINT, 1)
-        rows = [p for p in pts if p["app"] == app]
-        # Stack runs that land on the same spot instead of jittering blindly, or the many
-        # families that measure exactly zero pile into one unreadable blob.
+            s.rect(ax.x0, ly, ax.zw - 4, lane_h - 5, "#f4f4f4")
+        s.text(PAD + 68, ly + lane_h / 2.0, app, 9, MUTED, anchor="end")
+        rows = sorted([p for p in pts if p["app"] == app],
+                      key=lambda p: (p["family"] not in owns, p["v"]))
         seen = {}
-        rows.sort(key=lambda p: (p["family"] not in owns, p["v"]))
         for p in rows:
-            own = p["family"] in owns
             cx = ax.x(p["v"])
             b = int(cx / 5.0)
             seen[b] = seen.get(b, 0) + 1
-            cy = ly + 9 + ((seen[b] - 1) % 5) * 5.4
-            if own:
-                s.circle(cx, cy, 4.6, ACCENT, stroke="#ffffff", sw=1.2, op=0.95)
+            cy = ly + 6 + ((seen[b] - 1) % 4) * 4.6
+            if p["family"] in owns:
+                s.circle(cx, cy, 3.4, ACCENT, stroke="#ffffff", sw=0.8)
             else:
-                s.circle(cx, cy, 2.7, "#57606a", op=0.42)
-
+                s.circle(cx, cy, 2.2, "#555555", op=0.40)
     bottom = top + lane_h * len(apps)
 
-    # the cut
-    def cutline(v, label):
+    def cut(v, lab):
         cx = ax.x(v)
-        s.line(cx, top - 14, cx, bottom + 4, FAIL, 1.6, dash="5,3")
-        s.text(cx, bottom + 17, label, 10, FAIL, anchor="middle", weight="bold")
+        s.line(cx, top - 10, cx, bottom, BAD, 1.3, dash="4,3")
+        s.text(cx, bottom + 11, lab, 9, BAD, anchor="middle", weight="bold")
 
     if band:
-        cutline(bar[0], "cut %s" % fmt(bar[0], unit))
-        cutline(bar[1], "cut %s" % fmt(bar[1], unit))
-        s.rect(ax.x(bar[0]), top, ax.x(bar[1]) - ax.x(bar[0]), bottom - top, FAIL, op=0.05)
+        cut(bar[0], "cut " + fmt(bar[0], unit))
+        cut(bar[1], "cut " + fmt(bar[1], unit))
     else:
-        cutline(bar, "%s %s" % (cfg["op"], fmt(bar, unit)))
-    if cfg.get("ceiling"):
-        cutline(cfg["ceiling"], "< %s" % fmt(cfg["ceiling"], unit))
+        cut(bar, "%s %s" % (cfg["op"], fmt(bar, unit)))
+    if ceil:
+        cut(ceil, "< " + fmt(ceil, unit))
 
-    # axis ticks - skip a tick at zero when zero has its own lane, or it reads twice
     for v in ax.ticks():
-        if ax.has_zero and v == 0:
-            continue
-        s.text(ax.x(v), bottom + 30, fmt(v, unit), 9, MUTED, anchor="middle")
+        if not (ax.has_zero and v == 0):
+            s.text(ax.x(v), bottom + 22, fmt(v, unit), 8.5, MUTED, anchor="middle")
     if ax.has_zero:
-        s.text(ax.x0 + ax.zw / 2.0, bottom + 30, "0", 9, MUTED, anchor="middle")
-    s.text(W - PAD - 16, bottom + 44, unit + ("  (log scale)" if ax.log else ""), 9, MUTED,
+        s.text(ax.x0 + ax.zw / 2.0 - 2, bottom + 22, "0", 8.5, MUTED, anchor="middle")
+    s.text(W - PAD - 8, bottom + 33, unit + (", log scale" if ax.log else ""), 8.5, MUTED,
            anchor="end")
 
-    # this run
     mine = [p for p in pts if p["run"] == this_run]
     if mine:
         v = mine[0]["v"]
         mx = ax.x(v)
-        s.line(mx, top - 26, mx, bottom + 4, ACCENT, 1.4, op=0.75)
-        s.poly([(mx - 5, top - 30), (mx + 5, top - 30), (mx, top - 21)], ACCENT)
-        lab = "this run  %s" % fmt(v, unit)
-        if mx > W - 190:                      # flip the label inwards near the right edge
-            s.text(mx - 9, top - 22, lab, 10.5, ACCENT, weight="bold", anchor="end")
+        s.line(mx, top - 14, mx, bottom, ACCENT, 1.2)
+        s.poly([(mx - 4, top - 18), (mx + 4, top - 18), (mx, top - 11)], ACCENT)
+        lab = "this run " + fmt(v, unit)
+        if mx > W - 170:
+            s.text(mx - 7, top - 12, lab, 9.5, ACCENT, weight="bold", anchor="end")
         else:
-            s.text(mx + 9, top - 22, lab, 10.5, ACCENT, weight="bold")
-        lines.append("This run measured %s %s on \"%s\"; the cut is at %s."
-                     % (fmt(v, unit), unit, sig["label"],
-                        fmt(bar[0], unit) + "-" + fmt(bar[1], unit) if band else fmt(bar, unit)))
+            s.text(mx + 7, top - 12, lab, 9.5, ACCENT, weight="bold")
+        lines.append("This run measured %s on %s. Cut at %s."
+                     % (fmt(v, unit), sig["label"],
+                        "%s-%s" % (fmt(bar[0]), fmt(bar[1])) if band else fmt(bar, unit)))
 
+    # margin to the nearest fault that would break the cut - the number that matters most
     if near is not None:
-        s.text(PAD, bottom + 56,
-               "closest other fault to the cut:  %s on %s at %s"
-               % (near["family"], near["app"], fmt(near["v"], unit)), 10, MUTED)
-        lines.append("The fault that comes closest to breaking this cut is %s on %s at %s."
-                     % (near["family"], near["app"], fmt(near["v"], unit)))
+        try:
+            margin = (bar / near["v"]) if cfg["op"] in (">=", ">") else (near["v"] / bar)
+        except ZeroDivisionError:
+            margin = None
+        mt = ("nearest other fault: %s / %s at %s"
+              % (near["family"], near["app"], fmt(near["v"], unit)))
+        if margin:
+            mt += "   margin %.2fx" % margin
+        s.text(PAD, bottom + 33, mt, 9, WARN if (margin and margin < 1.25) else MUTED)
+        lines.append(mt)
 
-    # Honesty line, and the most useful thing on the card.
-    #
-    # One number almost never separates a fault on its own - that is exactly why a blueprint
-    # is a set of gates and not a threshold. So report BOTH: how far this single signal gets,
-    # and how far the complete rule gets. A card that showed only the first would look like
-    # the blueprint is broken; one that showed only the second would hide the reason it needs
-    # every gate it has.
     wrong = [p for p in pts if fires(p["v"]) != (p["family"] in owns)]
-    alone = ("this number alone separates all %d runs" % len(pts) if not wrong
-             else "this number alone: %d of %d runs land on the wrong side"
-                  % (len(wrong), len(pts)))
-    s.text(W - PAD - 16, bottom + 56, alone, 10, FIRE if not wrong else VETO, anchor="end",
-           weight="bold")
-    lines.append(alone.capitalize() + ".")
+    a = ("this signal alone separates all %d" % len(pts) if not wrong
+         else "this signal alone: %d of %d runs on the wrong side" % (len(wrong), len(pts)))
+    s.text(W - PAD - 8, bottom + 45, a, 9.5, OK if not wrong else WARN, anchor="end")
+    lines.append(a)
 
     vs = ruler.get("verdicts") or []
     if vs and cfg.get("rule"):
         bid = RULE_TO_CARD[cfg["rule"]]
         sel = "datastore-wait" if bid == "db-latency-dependency-wait" else bid
         bad = [v for v in vs if (v.get("selected") == sel) != (v["family"] in owns)]
-        hit = len(vs) - len(bad)
-        full = "every gate together: %d of %d runs correct" % (hit, len(vs))
-        s.text(W - PAD - 16, bottom + 70, full, 10.5,
-               FIRE if not bad else INK, anchor="end", weight="bold")
-        lines.append(full.capitalize() + ".")
-        return bottom + 82, lines
-    return bottom + 68, lines
+        f = "every gate together: %d of %d correct" % (len(vs) - len(bad), len(vs))
+        s.text(W - PAD - 8, bottom + 57, f, 9.5, INK, anchor="end", weight="bold")
+        lines.append(f)
+        return bottom + 66, lines
+    return bottom + 54, lines
 
 
-# ----------------------------------------------------------------------------- the gates
+# ----------------------------------------------------------------------------- dumbbells
+def draw_pairs(s, y, letter, title, unit, rows, limit=7):
+    """Baseline -> incident, one row per entity, on a shared log axis.
+
+    A dumbbell rather than paired bars because these ratios run from 1x to 5000x. Paired bars
+    on a linear axis would show one spike and six flat lines; on a log axis a bar has no
+    meaningful origin. Two dots and the distance between them survive both problems.
+    """
+    lines = []
+    rows = [r for r in rows if r[1] is not None and r[2] is not None]
+    if not rows:
+        y = panel(s, y, letter, title)
+        s.text(PAD, y + 10, "not in this pack", 9, MUTED)
+        return y + 20, lines
+
+    # Sort by ABSOLUTE change, not by ratio. Ratio puts a process that went from 0.0003 to
+    # 0.03 cores at the top - a 100x rise that means nothing - and pushes the service that
+    # actually moved to the bottom. What an analyst needs first is what moved most in real
+    # units; the ratio is still shown on every row.
+    rows.sort(key=lambda r: -abs(r[2] - r[1]))
+    rows = rows[:limit]
+    y = panel(s, y, letter, title, unit)
+
+    ax = Axis([r[1] for r in rows] + [r[2] for r in rows], PAD + 210, W - PAD - 56)
+    rh = 13
+    top = y + 6
+    for i, (name, b, inc) in enumerate(rows):
+        ry = top + i * rh + 6
+        s.text(PAD + 204, ry + 3, clip(name, 34), 9, INK, anchor="end", font=MONO)
+        xb, xi = ax.x(b), ax.x(inc)
+        rat = (inc / b) if b else None
+        up = xi >= xb
+        col = BAD if (rat and rat >= 2.0) else (ACCENT if up else MUTED)
+        s.line(xb, ry + 3, xi, ry + 3, col, 1.2, op=0.55)
+        s.circle(xb, ry + 3, 2.8, "#ffffff", stroke=MUTED, sw=1.2)
+        s.circle(xi, ry + 3, 3.2, col)
+        # A zero baseline is not a missing ratio - it means this entity was not there before,
+        # which is usually the most interesting row on the panel.
+        rs = "new" if rat is None else ("%.0fx" % rat if rat >= 100 else "%.2fx" % rat)
+        s.text(W - PAD, ry + 6, rs, 9, col if (rat is None or rat >= 2.0) else MUTED,
+               anchor="end", font=MONO)
+        lines.append("%s: %s -> %s (%s)" % (name, fmt(b), fmt(inc), rs))
+    bottom = top + len(rows) * rh + 8
+    for v in ax.ticks():
+        if not (ax.has_zero and v == 0):
+            s.text(ax.x(v), bottom + 8, fmt(v), 8, MUTED, anchor="middle")
+    if ax.has_zero:
+        s.text(ax.x0 + ax.zw / 2.0 - 2, bottom + 8, "0", 8, MUTED, anchor="middle")
+    s.circle(PAD + 6, bottom + 5, 2.8, "#ffffff", stroke=MUTED, sw=1.2)
+    s.text(PAD + 13, bottom + 8, "baseline", 8, MUTED)
+    s.circle(PAD + 62, bottom + 5, 3.2, INK)
+    s.text(PAD + 69, bottom + 8, "during the fault", 8, MUTED)
+    if ax.log:
+        s.text(W - PAD, bottom + 8, "log scale", 8, MUTED, anchor="end")
+    return bottom + 16, lines
+
+
+def series_for(pack):
+    g = (pack.get("oncpu") or {}).get("top_gainers") or []
+    rq = (pack.get("runqueue_delay") or {}).get("top_by_inflation") or []
+    bs = (pack.get("blocking_syscall") or {}).get("top_by_inflation") or []
+    return [
+        ("B", "RESOURCES  -  CPU held by each process", "cores",
+         [(r.get("comm"), r.get("cores_baseline"), r.get("cores_incident")) for r in g]),
+        ("C", "WAITING FOR CPU  -  runqueue delay per service", "p95 milliseconds",
+         [(r.get("service"), r.get("p95_baseline_ms"), r.get("p95_incident_ms")) for r in rq]),
+        ("D", "WAITING ON SOMETHING ELSE  -  time blocked in a syscall", "p95 milliseconds",
+         [(r.get("comm_syscall"), r.get("p95_baseline_ms"), r.get("p95_incident_ms"))
+          for r in bs]),
+    ]
+
+
+# --------------------------------------------------------------------------------- gates
 def draw_gates(s, y, gates, note):
-    s.text(PAD, y + 14, "2 · THE GATES", 11, MUTED, weight="bold", spacing="1.4")
-    s.text(PAD + 118, y + 14, "every test the rule had to pass, and by how much", 11, MUTED)
+    y = panel(s, y, "E", "GATES  -  every condition the rule tested")
     lines = []
     if not gates:
-        s.rect(PAD, y + 26, W - 2 * PAD, 40, PANEL, rx=6)
-        s.text(PAD + 14, y + 51, note or "no rule implements this blueprint yet", 12, VETO)
-        return y + 80, [note] if note else []
-
-    n = len(gates)
-    gap = 11
-    bw = (W - 2 * PAD - gap * (n - 1)) / float(n)
-    chars = max(12, int(bw / 5.2))
-    top = y + 30
-    h = 96
+        s.text(PAD, y + 10, note or "no rule implements this blueprint yet", 9.5, WARN)
+        return y + 20, lines
+    rh = 15
+    s.text(PAD, y + 8, "condition", 8, MUTED)
+    s.text(PAD + 300, y + 8, "measured", 8, MUTED, anchor="end")
+    s.text(PAD + 316, y + 8, "needs", 8, MUTED)
+    s.text(PAD + 560, y + 8, "margin", 8, MUTED, anchor="end")
+    s.text(PAD + 600, y + 8, "result", 8, MUTED)
     for i, g in enumerate(gates):
-        x = PAD + i * (bw + gap)
+        ry = y + 18 + i * rh
         ok, veto = g["pass"], g.get("kind") == "veto"
-        col = (VETO if veto else FIRE) if ok else FAIL
-        s.rect(x, top, bw, h, "#ffffff", rx=6, stroke=col, sw=1.5)
-        s.rect(x, top, bw, 3.5, col)
-        s.rect(x, top, bw, 22, col, op=0.07)
-        s.text(x + bw - 8, top + 16, "PASS" if ok else "FAIL", 9.5, col, anchor="end",
-               weight="bold", spacing="0.5")
-        if veto:
-            s.text(x + 8, top + 16, "VETO", 9, VETO, weight="bold", spacing="0.5")
-        for k, ln in enumerate(wrap(g["name"], chars)):
-            s.text(x + 8, top + 38 + k * 12, ln, 9.5, MUTED)
+        col = OK if ok else BAD
+        s.text(PAD, ry, ("veto: " if veto else "") + clip(g["name"], 46), 9.5, INK)
         if g["value"] is None:
-            s.text(x + 8, top + 74, clip(g.get("detail"), chars), 11, INK, weight="bold")
-            s.text(x + 8, top + 89, "no number to compare", 8.5, MUTED)
+            s.text(PAD + 300, ry, clip(g.get("detail"), 26), 9.5, INK, anchor="end", font=MONO)
+            s.text(PAD + 316, ry, "no number to compare", 9, MUTED)
         else:
-            s.text(x + 8, top + 76, fmt(g["value"], g["unit"]), 19, INK, weight="bold",
+            s.text(PAD + 300, ry, fmt(g["value"], g["unit"]), 9.5, INK, anchor="end",
                    font=MONO)
-            s.text(x + 8, top + 90, "needs %s %s %s" % (g["op"], fmt(g["bar"], g["unit"]),
-                                                        g["unit"])[:chars + 6], 8.5, MUTED)
-            try:                                   # how close this gate came to failing
+            s.text(PAD + 316, ry, "%s %s %s" % (g["op"], fmt(g["bar"], g["unit"]), g["unit"]),
+                   9, MUTED)
+            try:
                 room = (g["value"] / g["bar"]) if g["op"] in (">=", ">") \
                     else (g["bar"] / g["value"])
-                if room and 0 < room < 999:
-                    s.text(x + bw - 8, top + 76, "%.2gx" % room, 10,
-                           MUTED if room > 1.3 else VETO, anchor="end", weight="bold")
-                    s.text(x + bw - 8, top + 90, "room", 8.5, MUTED, anchor="end")
+                if room and 0 < room < 9999:
+                    s.text(PAD + 560, ry, "%.2fx" % room, 9, WARN if room < 1.3 else MUTED,
+                           anchor="end", font=MONO)
             except (TypeError, ZeroDivisionError):
                 pass
-        if i < n - 1:
-            s.text(x + bw + gap / 2.0, top + h / 2.0 + 5, "›", 15, FAINT,
-                   anchor="middle")
-        lines.append("%s: %s (%s)" % (g["name"], "pass" if ok else "FAIL",
-                                      "%s needs %s %s" % (fmt(g["value"]), g["op"],
-                                                          fmt(g["bar"]))
-                                      if g["value"] is not None else (g.get("detail") or "")))
-    return top + h + 18, lines
+        s.text(PAD + 600, ry, "PASS" if ok else "FAIL", 9.5, col, weight="bold")
+        lines.append("%s: %s %s" % (g["name"], "pass" if ok else "FAIL",
+                                    ("(%s needs %s %s)" % (fmt(g["value"]), g["op"],
+                                                           fmt(g["bar"])))
+                                    if g["value"] is not None else (g.get("detail") or "")))
+    return y + 22 + len(gates) * rh, lines
 
 
-# ----------------------------------------------------------------------------- the field
+# --------------------------------------------------------------------------------- field
 def draw_field(s, y, verdict, selected):
-    s.text(PAD, y + 14, "3 · THE FIELD", 11, MUTED, weight="bold", spacing="1.4")
-    s.text(PAD + 118, y + 14, "what else was considered, and the number that settled it",
-           11, MUTED)
+    y = panel(s, y, "F", "OTHER BLUEPRINTS CONSIDERED  -  and the number that ruled each out")
     rows, lines = [], []
     for rule_key, card_id in RULE_TO_CARD.items():
         r = verdict.get(rule_key)
-        if not isinstance(r, dict):
-            continue
-        rows.append((card_id, bool(r.get("fires")), r.get("why", "")))
+        if isinstance(r, dict):
+            rows.append((card_id, bool(r.get("fires")), r.get("why", "")))
     rows.sort(key=lambda t: (not t[1], t[0]))
-    top = y + 28
-    rh = 26
+    rh = 14
     for i, (name, fired, why) in enumerate(rows):
-        ry = top + i * rh
-        mine = (name == selected)
-        if mine:
-            s.rect(PAD - 6, ry - 4, W - 2 * PAD + 12, rh - 2, "#0b6bcb", rx=5, op=0.07)
-        s.circle(PAD + 6, ry + 9, 5, FIRE if fired else "#ffffff",
-                 stroke=FIRE if fired else FAINT, sw=1.6)
-        s.text(PAD + 20, ry + 13, name, 11.5, INK if fired else MUTED,
-               weight="bold" if mine else "normal")
-        s.text(PAD + 250, ry + 13, clip(why, 112), 10, MUTED)
-        lines.append("%s %s - %s" % ("FIRED " if fired else "no    ", name, (why or "")[:150]))
-    return top + len(rows) * rh + 10, lines
+        ry = y + 12 + i * rh
+        s.text(PAD, ry, ">" if fired else " ", 9.5, OK, weight="bold")
+        s.text(PAD + 10, ry, name, 9.5, INK if fired else MUTED,
+               weight="bold" if name == selected else "normal")
+        s.text(PAD + 220, ry, clip(why, 118), 9, MUTED)
+        lines.append("%s %s - %s" % ("FIRED" if fired else "no   ", name, clip(why, 150)))
+    return y + 18 + len(rows) * rh, lines
 
 
-# ----------------------------------------------------------------------------------- card
+# ---------------------------------------------------------------------------------- card
 def build(pack, ruler, blueprint_id=None, problems=""):
     verdict = BD.decide(pack)
     selected = verdict.get("selected")
@@ -507,93 +494,77 @@ def build(pack, ruler, blueprint_id=None, problems=""):
     if bid not in CARDS:
         bid = selected if selected in CARDS else None
 
-    bp_json = None
+    bp = None
     if problems and bid:
         p = os.path.join(problems, bid, "blueprint.json")
         if os.path.exists(p):
-            bp_json = json.load(io.open(p, encoding="utf-8"))
+            bp = json.load(io.open(p, encoding="utf-8"))
 
     s = Svg()
     cfg = CARDS.get(bid)
     fired = bool(bid and selected == bid)
 
-    # -------- header
-    head_h = 92
-    s.rect(0, 0, W, head_h, "#ffffff")
-    s.rect(0, 0, 6, head_h, ACCENT if fired else "#8c959f")
-    title = (bp_json or {}).get("title") if bp_json else None
-    s.text(PAD, 34, (bid or "no blueprint matched").upper(), 17, INK, weight="bold",
-           spacing="0.6")
-    s.text(PAD, 55, clip(title, 100), 11, MUTED)
-    s.text(PAD, 76, "run %s  ·  %s" % (pack.get("run_id", "?"), pack.get("app", "?")),
-           10.5, MUTED, font=MONO)
-
-    badge = "FIRES" if fired else ("DID NOT FIRE" if bid else "NOTHING MATCHED")
-    bcol = FIRE if fired else MUTED
-    bw = 132
-    s.rect(W - PAD - bw, 22, bw, 30, bcol, rx=15, op=0.12)
-    s.text(W - PAD - bw / 2.0, 42, badge, 12, bcol, anchor="middle", weight="bold",
-           spacing="0.8")
+    s.text(PAD, 20, (bid or "no blueprint matched").upper(), 13, INK, weight="bold")
+    s.text(PAD + 300, 20, "FIRES" if fired else "DID NOT FIRE", 11,
+           OK if fired else MUTED, weight="bold")
     if fired:
-        rc = ((bp_json or {}).get("decision") or {}).get("root_cause_is") or ""
-        svc = verdict.get("root_cause_service")
-        for k, ln in enumerate(wrap("root cause: " + (rc or "see the verdict line"), 62, 2)):
-            s.text(W - PAD, 62 + k * 12, ln, 9.5, MUTED, anchor="end")
-        s.text(W - PAD, 88, ("names: %s  ·  confidence %.2f"
-                             % (svc or "not resolvable from the kernel trace alone",
-                                verdict.get("confidence") or 0.0)), 9.5, MUTED, anchor="end")
-    s.line(0, head_h, W, head_h, FAINT, 1)
+        s.text(PAD + 380, 20, "confidence %.2f" % (verdict.get("confidence") or 0.0), 9.5,
+               MUTED)
+    s.text(W - PAD, 20, "%s  ·  %s" % (pack.get("run_id", "?"), pack.get("app", "?")), 9.5,
+           MUTED, anchor="end", font=MONO)
+    rc = ((bp or {}).get("decision") or {}).get("root_cause_is") or ""
+    svc = verdict.get("root_cause_service")
+    s.text(PAD, 34, clip("root cause: " + (rc or "see the verdict line"), 108), 9.5, INK)
+    s.text(W - PAD, 34, "names: %s" % (svc or "not resolvable from the kernel trace alone"),
+           9, MUTED, anchor="end")
 
     desc = ["%s on run %s (%s): %s."
-            % (bid, pack.get("run_id"), pack.get("app"), badge.lower())]
-
-    y = head_h + 16
+            % (bid, pack.get("run_id"), pack.get("app"),
+               "fires" if fired else "did not fire")]
+    y = 44
     if cfg:
-        y, l1 = draw_ruler(s, y, cfg, ruler, pack.get("run_id"), pack.get("app"))
-        desc += l1
-    s.line(PAD, y, W - PAD, y, FAINT, 1)
+        y, l = draw_ruler(s, y, cfg, ruler, pack.get("run_id"))
+        desc += l
+    for letter, title, unit, rows in series_for(pack):
+        y, l = draw_pairs(s, y, letter, title, unit, rows)
+        desc += l
 
     rule_res = verdict.get(cfg["rule"]) if (cfg and cfg["rule"]) else None
-    gates = (rule_res or {}).get("gates") or []
     note = None
     if cfg and not cfg["rule"]:
-        note = ("This blueprint's rule is written and measured, but the rule engine does not "
-                "implement it yet - so there are no gates to show.")
-    elif rule_res and not gates:
+        note = ("this blueprint's rule is written and measured, but the rule engine does not "
+                "implement it yet - there are no gates to show")
+    elif rule_res and not (rule_res.get("gates") or []):
         note = rule_res.get("why")
-    y, l2 = draw_gates(s, y + 10, gates, note)
-    desc += l2
+    y, l = draw_gates(s, y, (rule_res or {}).get("gates") or [], note)
+    desc += l
+    y, l = draw_field(s, y, verdict, bid)
+    desc += l
+
     s.line(PAD, y, W - PAD, y, FAINT, 1)
-
-    y, l3 = draw_field(s, y + 10, verdict, bid)
-    desc += l3
-
-    # -------- footer
-    s.line(0, y + 4, W, y + 4, FAINT, 1)
-    s.text(PAD, y + 24, "StrataTrace blueprint card · drawn from the kernel trace only · "
-                        "ruler built from %d runs" % ruler.get("n_packs", 0), 9, MUTED)
+    s.text(PAD, y + 13, "kernel trace only · ruler from %d runs · no time axis yet: the packs "
+                        "hold baseline-vs-incident totals, not a series"
+           % ruler.get("n_packs", 0), 8.5, MUTED)
     if (rule_res or {}).get("why"):
-        s.text(PAD, y + 40, clip("verdict: " + rule_res["why"], 158), 9.5, INK)
-    H = y + 52
+        s.text(PAD, y + 26, clip("verdict: " + rule_res["why"], 150), 9, INK)
+    H = y + 34
 
-    body = ('<svg xmlns="http://www.w3.org/2000/svg" width="%d" height="%d" '
-            'viewBox="0 0 %d %d" font-family="%s">' % (W, H, W, H, FONT))
-    body += "<title>%s</title>" % esc("blueprint card: %s / %s" % (bid, pack.get("run_id")))
-    body += "<desc>%s</desc>" % esc(chr(10).join(desc))
-    body += '<rect width="%d" height="%d" fill="#ffffff"/>' % (W, H)
-    return body + "".join(s.parts) + "</svg>"
+    out = ('<svg xmlns="http://www.w3.org/2000/svg" width="%d" height="%d" '
+           'viewBox="0 0 %d %d" font-family="%s">' % (W, H, W, H, FONT))
+    out += "<title>%s</title>" % esc("blueprint card: %s / %s" % (bid, pack.get("run_id")))
+    out += "<desc>%s</desc>" % esc(chr(10).join(desc))
+    out += '<rect width="%d" height="%d" fill="#ffffff"/>' % (W, H)
+    return out + "".join(s.parts) + "</svg>"
 
 
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--pack", required=True)
     ap.add_argument("--ruler", required=True)
-    ap.add_argument("--blueprint", default="", help="which blueprint to show; default is "
-                                                    "whichever one fired")
-    ap.add_argument("--problems", default="", help="blueprints/problems, for titles")
+    ap.add_argument("--blueprint", default="")
+    ap.add_argument("--problems", default="")
     ap.add_argument("--out", required=True)
     a = ap.parse_args()
-
     pack = json.load(io.open(a.pack, encoding="utf-8"))
     ruler = json.load(io.open(a.ruler, encoding="utf-8"))
     svg = build(pack, ruler, a.blueprint or None, a.problems)

@@ -18,7 +18,7 @@ Naser wants **five things for every problem**. We have three. Two are missing.
 | An exact procedure to detect it | **Done.** Every blueprint lists its steps |
 | Root cause named inside the system | **Done.** All 10 name a process, container or device |
 | **Early detection** | **Not started.** We only compare whole windows, after the fact |
-| **A picture per problem** | **Missing.** 10 blueprints promise a chart. Only 2 can draw one |
+| **A picture per problem** | **Done 11 Sept.** All 10 draw one. Timeline still missing |
 
 So the direction is right. Two gaps are real. He asked for both by name.
 
@@ -97,15 +97,20 @@ He also said: finish the whole thing by end of semester and it is three or four 
 
 ### G. New, from this meeting
 
-- [ ] **G1. Draw a picture for every blueprint.** One helper script, used by all 10.
-      Each picture shows the deciding number over time — baseline against incident.
-      Babeltrace only, no Trace Compass. Copy the shape of the 2 that already work.
-      *This is the clearest single ask from the meeting.*
+- [x] **G1. Draw a picture for every blueprint. DONE 11 Sept.** All ten have one:
+      `problems/<id>/evidence/<id>_card.svg`. Six panels - the deciding signal across all
+      272 runs, CPU per process, runqueue wait, syscall wait, the gates, the field.
+      Raw SVG, no library. Write-up: `blueprints/docs/RESULTS-blueprint-cards.md`.
+      **Three of Naser's four visual asks are met: resources, waiting, CPU usage.**
+      The timeline is not, and that is real - see G2.
 
-- [ ] **G2. Add early detection.** We now compare a 60s baseline against a whole 120s
-      incident window. That answers "did it happen", not "how soon could we tell".
-      Cut the incident window into slices. Find the first slice where the signal crosses.
-      **We can do this on data we already have** — no new collection needed.
+- [ ] **G2. Add early detection — and the timeline.** Now carries two asks, not one.
+      We compare a 60s baseline against a whole 120s incident window. That answers "did it
+      happen", never "how soon could we tell". Cut the incident window into slices and find
+      the first slice where the signal crosses.
+      **This also unlocks the timeline Naser named first.** The cards have no time axis
+      because the packs hold baseline-vs-incident totals, not a series. Same fix serves both.
+      Needs a change to the pack builder, then one cluster pass. No new collection.
 
 - [ ] **G3. Check the verdict actually names the culprit.** Blueprints claim they name a
       process or container. Confirm the output file really carries the name, on a few runs.
