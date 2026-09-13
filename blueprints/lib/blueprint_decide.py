@@ -66,6 +66,9 @@ BIG_THIEF_SHARE = _t("BIG_THIEF_SHARE")   # was BIG_THIEF in cores; see threshol
 LOSER_CORES = _t("LOSER_CORES")
 
 BLOCK_X = _t("BLOCK_X")
+# The other end of the same measurement. See thresholds.json: waiting a thousand
+# times longer than baseline is not a slow callee, it is a caller that stopped.
+BLOCK_PARKED_X = _t("BLOCK_PARKED_X")
 
 # ---- the two checks that fix the datastore rule's false fires (finding F13/F15) ----
 # The rule fires on socket blocking alone, which every impostor also trips. Two additions,
@@ -150,7 +153,12 @@ IRQ_X = _t("IRQ_X")
 SOCKET_CALLS = ("poll", "epoll_wait", "epoll_pwait", "recvfrom", "recvmsg", "read", "select")
 INFRA = ("kworker", "ksoftirqd", "rcu_", "kswapd", "kcompactd", "migration", "watchdog",
          "systemd", "containerd", "dockerd", "cadvisor", "prometheus", "node_export",
-         "google_guest", "runc", "sshd", "irq/")
+         "google_guest", "runc", "sshd", "irq/",
+         # OUR OWN INSTRUMENT. lttng-consumerd writes the trace to disk, so it appears as a
+         # process "arriving on the disk" in most runs. It was missing from this list and the
+         # disk rule never checked the list at all, which is how a network stall came to be
+         # diagnosed as a disk flood in 10 runs out of 10.
+         "lttng")
 
 
 def is_infra(name):
@@ -282,17 +290,33 @@ def disk_saturation_rule(io):
         return {"fires": False, "why": "block-layer evidence not in the pack"}
     g = io["iops_gained"] or 0.0
     r = io["iops_per_irq"]
-    fires = r is not None and r > DISK_IOPS_PER_IRQ
+    # THE FLOODER MUST BE SOMETHING WE ARE MEASURING, NOT THE THING DOING THE MEASURING.
+    #
+    # MEASURED over 272 runs: in every one of the 10 nagle_delayed_ack runs the process that
+    # "arrived on the disk" was lttng-consumerd - our own trace collector - gaining ~1000
+    # requests/s against 37-66 in a healthy run. A network stall was reported as a disk flood
+    # 10 times out of 10 because the instrument's own writes cleared the bar.
+    #
+    # The real disk fault is unaffected: its newcomer is stress-ng-hdd in every run.
+    instrument = is_infra(io["io_newcomer"])
+    fires = r is not None and r > DISK_IOPS_PER_IRQ and not instrument
     shown = "n/a" if r is None else format(r, ".0f")
     gates = [gate("disk requests per unit of interrupt rise", r, ">", DISK_IOPS_PER_IRQ,
-                  "req/s per x")]
+                  "req/s per x"),
+             gate_bool("and the process flooding it is not our own tracer", not instrument,
+                       io["io_newcomer"] or "none", kind="veto")]
     return {"fires": fires, "gates": gates, "iops_gained": g, "iops_per_irq": r,
+            "newcomer_is_instrument": instrument,
             "io_newcomer": io["io_newcomer"], "device_p95_x": io["device_p95_x"],
             "why": (f"{io['io_newcomer']} arrived on the disk with {g:.0f} more requests/s, "
                     f"{shown} per unit of interrupt rise, while per-request service time "
                     f"stayed at {io['device_p95_x']}x - a flood, not a slow device, and not "
                     f"the reclaim shape a memory cap gives"
                     if fires else
+                    f"the only process that arrived on the disk is {io['io_newcomer']}, which "
+                    f"is the trace collector itself - that is the instrument writing, not the "
+                    f"application, so there is no evidence of a disk flood here"
+                    if instrument else
                     f"disk arrivals per unit of interrupt rise {shown}, below the "
                     f"{DISK_IOPS_PER_IRQ:.0f} bar")}
 
@@ -512,18 +536,33 @@ def datastore_rule(cpu, rq, blk, net):
     top = blk["socket_hits"][0] if blk["socket_hits"] else None
     rq_ok = (rq["max"] or 0) < STARVED_RQ_X
     blocked = bool(top) and top["p95_x"] >= BLOCK_X
+    # ANTI-PATTERN VETO. A slow dependency still answers, so its caller keeps working - just
+    # more slowly, and socket wait tops out at 144x across 22 runs. Broken code in the CALLER
+    # (a blocked event loop, serialised awaits, a lock held across I/O) stops the service doing
+    # work at all, so its poll call sits parked for most of the window: 651x at the very
+    # lowest, across all 25 code-defect runs. Without this, the datastore blueprint claimed a
+    # healthy datastore was the cause in 14 runs where the caller was at fault.
+    parked = bool(top) and top["p95_x"] >= BLOCK_PARKED_X
 
     # the path is losing packets -> a network fault, whatever else is true
     path_lossy = (net["retrans_available"]
                   and (net["worst_retrans_pct"] or 0) >= RETRANS_VETO_PCT)
     # something must actually be answering slowly, not merely be blocked
-    answers_slowly = (not net["endpoint_available"]
-                      or (net["worst_endpoint_x"] or 0) >= ENDPOINT_SLOWDOWN_MIN)
+    # FAILS CLOSED. This used to read `not endpoint_available or ...`, so a run with no
+    # endpoint timing PASSED the check that something is actually answering slowly. Three false
+    # fires came in exactly that way. An unavailable measurement is not evidence of anything.
+    answers_slowly = (net["endpoint_available"]
+                      and (net["worst_endpoint_x"] or 0) >= ENDPOINT_SLOWDOWN_MIN)
 
-    fires = blocked and rq_ok and not path_lossy and answers_slowly
+    fires = blocked and not parked and rq_ok and not path_lossy and answers_slowly
     comm = top["comm_syscall"].split("|")[0] if top else None
     call = top["comm_syscall"].split("|")[-1] if top else None
-    if fires:
+    if parked and blocked:
+        why = (f"{comm} sat in {call} for {top['p95_x']}x its baseline - it is parked, not "
+               f"waiting. A slow dependency still answers and tops out near "
+               f"{BLOCK_PARKED_X / 2:.0f}x; this is the caller having stopped doing work, so "
+               f"the defect is in the caller rather than in what it calls")
+    elif fires:
         why = (f"{comm} blocked in {call} for {top['p95_x']}x baseline, its endpoint answering "
                f"{net['worst_endpoint_x']}x slower, with runqueue delay flat at {rq['max']}x "
                f"and no packet loss on the path")
@@ -558,12 +597,14 @@ def datastore_rule(cpu, rq, blk, net):
 
     gates = [gate("a socket wait inflated", top["p95_x"] if top else None, ">=", BLOCK_X,
                   "x baseline"),
+             gate("but the caller is waiting, not parked", top["p95_x"] if top else None,
+                  "<", BLOCK_PARKED_X, "x baseline", kind="veto"),
              gate("threads are not starved of CPU", rq["max"], "<", STARVED_RQ_X, "x baseline"),
              gate("an endpoint really is answering slowly",
                   net["worst_endpoint_x"], ">=", ENDPOINT_SLOWDOWN_MIN, "x baseline")
              if net["endpoint_available"] else
-             gate_bool("an endpoint really is answering slowly", True,
-                       "endpoint timing not in the pack - not checked"),
+             gate_bool("an endpoint really is answering slowly", False,
+                       "endpoint timing not in the pack - cannot confirm"),
              gate("the path is not losing packets", net["worst_retrans_pct"], "<",
                   RETRANS_VETO_PCT, "% retransmitted", kind="veto")
              if net["retrans_available"] else

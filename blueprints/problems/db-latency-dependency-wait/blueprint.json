@@ -37,6 +37,15 @@
           "cpu-contention-co-tenant"
         ],
         "evidence": "MEASURED: convergence on a single component at 717.7x incoming with zero slow outgoing edges. CONTROL, co-tenant run: converged_on = null, max 1.7x. See evidence/L0_edge_convergence_slowdb.json"
+      },
+      {
+        "signal": "the SAME socket wait, as an upper bound",
+        "this_problem": "inflates into the tens - at most 144x across 22 runs",
+        "not_this_problem": "a defect in the calling service parks it at 651x or more, in every one of 25 runs on five different defects",
+        "evidence": "MEASURED across 272 runs and 25 families. A slow dependency still answers, so its caller keeps doing work - socket wait 1.07 to 144x. Five code-defect families (a blocked event loop, serialised awaits, an unbounded cache, a lock held across I/O, and N+1 queries) all park the caller instead: 651x at the very lowest. A ceiling at the geometric midpoint keeps 22 of 22 owned runs and excludes 25 of 25 defect runs, 2.13x clear on both sides. Before this, the blueprint named a healthy datastore as the cause in 14 such runs. See results/RESULTS-antipattern-ceiling.md",
+        "confused_with": [
+          "a defect in the calling service"
+        ]
       }
     ],
     "unverified_do_not_claim": [
@@ -191,13 +200,18 @@
   ],
   "decision": {
     "verdict_when": [
-      "one component's socket-waiting syscall inflates to at least {BLOCK_X}x its baseline",
+      "one component's socket-waiting syscall inflates to at least {BLOCK_X}x its baseline, but stays below {BLOCK_PARKED_X}x. Both ends matter: below the floor nothing is waiting, and above the ceiling the caller is not waiting for an answer, it has stopped working",
       "that component's runqueue delay stays below {STARVED_RQ_X}x, so it is not short of CPU - it is blocked, not starved",
       "an endpoint really is answering slowly, at least {ENDPOINT_SLOWDOWN_MIN}x its baseline. Blocking says a process is waiting; this says something is answering slowly",
       "retransmission stays below {RETRANS_VETO_PCT}%, so the path is not losing packets",
-      "traffic continues to succeed, so error rates barely move"
+      "traffic continues to succeed, so error rates barely move",
+      "the endpoint measurement is actually available. If it is missing the answer is 'cannot confirm', not 'assume yes' - an absent measurement is not evidence"
     ],
     "rule_out": [
+      {
+        "instead": "a defect in the calling service, not in what it calls",
+        "when": "the socket wait is enormous - {BLOCK_PARKED_X}x baseline or more. A slow dependency still ANSWERS, so its caller keeps working and tops out near half that. A caller parked in one poll call for most of the window has stopped doing work: a blocked event loop, a chain of awaits that no longer overlap, or a lock held across I/O. The thing it calls is healthy."
+      },
       {
         "instead": "co-tenant CPU contention",
         "when": "runqueue delay inflates broadly across many processes while no syscall inflates much"
@@ -215,6 +229,7 @@
     "fault_type": "slow_db",
     "uses_thresholds": [
       "BLOCK_X",
+      "BLOCK_PARKED_X",
       "STARVED_RQ_X",
       "RETRANS_VETO_PCT",
       "ENDPOINT_SLOWDOWN_MIN"
@@ -287,8 +302,8 @@
   ],
   "stopping_conditions": {
     "conclude": "one component's socket-waiting syscall is inflated by roughly an order of magnitude while its runqueue delay stays flat",
-    "stop_and_switch": "runqueue delay is broadly inflated instead -> use the CPU-contention blueprint",
-    "stop_insufficient": "the suspect emits no spans AND no kernel trace is available for it -> the culprit cannot be identified from the traced layer alone; request kernel collection for that component",
+    "stop_and_switch": "socket wait at or above {BLOCK_PARKED_X}x baseline -> the caller has stopped working; look for a defect in the calling service, not in the dependency. Runqueue delay at or above {STARVED_RQ_X}x -> the component is starved of CPU. Retransmission at or above {RETRANS_VETO_PCT}% -> the path is losing packets. IMPORTANT: switching away does not mean the investigation is over. Each of these names a DIFFERENT cause for the same symptom, so carry the measurement across rather than starting again - the wait you measured here is still real, it just has another source.",
+    "stop_insufficient": "the endpoint measurement is missing, so 'something is answering slowly' cannot be confirmed -> request it and re-run. Do NOT treat an unavailable check as passed: three false diagnoses were produced exactly that way before this was changed.",
     "max_evidence_rounds": 2
   },
   "adaptation_rules": [

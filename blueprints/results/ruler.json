@@ -21138,14 +21138,14 @@
    "family": "code_event_loop_block",
    "run": "code_event_loop_block_aggressive_steady_r1",
    "n_cpus": 12,
-   "selected": "datastore-wait"
+   "selected": null
   },
   {
    "app": "sockshop",
    "family": "code_event_loop_block",
    "run": "code_event_loop_block_aggressive_steady_r2",
    "n_cpus": 12,
-   "selected": "datastore-wait"
+   "selected": null
   },
   {
    "app": "sockshop",
@@ -21159,28 +21159,28 @@
    "family": "code_event_loop_block",
    "run": "code_event_loop_block_aggressive_steady_r4",
    "n_cpus": 12,
-   "selected": "datastore-wait"
+   "selected": null
   },
   {
    "app": "sockshop",
    "family": "code_event_loop_block",
    "run": "code_event_loop_block_aggressive_steady_r5",
    "n_cpus": 12,
-   "selected": "datastore-wait"
+   "selected": null
   },
   {
    "app": "sockshop",
    "family": "code_lock_across_io",
    "run": "code_lock_across_io_aggressive_steady_r1",
    "n_cpus": 12,
-   "selected": "datastore-wait"
+   "selected": null
   },
   {
    "app": "sockshop",
    "family": "code_lock_across_io",
    "run": "code_lock_across_io_aggressive_steady_r2",
    "n_cpus": 12,
-   "selected": "datastore-wait"
+   "selected": null
   },
   {
    "app": "sockshop",
@@ -21236,28 +21236,28 @@
    "family": "code_n_plus_one",
    "run": "code_n_plus_one_aggressive_steady_r5",
    "n_cpus": 12,
-   "selected": "datastore-wait"
+   "selected": null
   },
   {
    "app": "sockshop",
    "family": "code_serial_awaits",
    "run": "code_serial_awaits_aggressive_steady_r1",
    "n_cpus": 12,
-   "selected": "datastore-wait"
+   "selected": null
   },
   {
    "app": "sockshop",
    "family": "code_serial_awaits",
    "run": "code_serial_awaits_aggressive_steady_r2",
    "n_cpus": 12,
-   "selected": "datastore-wait"
+   "selected": null
   },
   {
    "app": "sockshop",
    "family": "code_serial_awaits",
    "run": "code_serial_awaits_aggressive_steady_r3",
    "n_cpus": 12,
-   "selected": "datastore-wait"
+   "selected": null
   },
   {
    "app": "sockshop",
@@ -21271,7 +21271,7 @@
    "family": "code_serial_awaits",
    "run": "code_serial_awaits_aggressive_steady_r5",
    "n_cpus": 12,
-   "selected": "datastore-wait"
+   "selected": null
   },
   {
    "app": "sockshop",
@@ -21285,21 +21285,21 @@
    "family": "code_unbounded_cache",
    "run": "code_unbounded_cache_aggressive_steady_r2",
    "n_cpus": 12,
-   "selected": "datastore-wait"
+   "selected": null
   },
   {
    "app": "sockshop",
    "family": "code_unbounded_cache",
    "run": "code_unbounded_cache_aggressive_steady_r3",
    "n_cpus": 12,
-   "selected": "datastore-wait"
+   "selected": null
   },
   {
    "app": "sockshop",
    "family": "code_unbounded_cache",
    "run": "code_unbounded_cache_aggressive_steady_r4",
    "n_cpus": 12,
-   "selected": "datastore-wait"
+   "selected": null
   },
   {
    "app": "sockshop",
@@ -21320,7 +21320,7 @@
    "family": "conn_pool_exhaustion",
    "run": "conn_pool_exhaustion_aggressive_steady_r2",
    "n_cpus": 12,
-   "selected": "datastore-wait"
+   "selected": null
   },
   {
    "app": "sockshop",
@@ -21334,7 +21334,7 @@
    "family": "conn_pool_exhaustion",
    "run": "conn_pool_exhaustion_aggressive_steady_r4",
    "n_cpus": 12,
-   "selected": "datastore-wait"
+   "selected": null
   },
   {
    "app": "sockshop",
@@ -21439,7 +21439,7 @@
    "family": "dns_delay",
    "run": "dns_delay_aggressive_steady_r4",
    "n_cpus": 12,
-   "selected": "datastore-wait"
+   "selected": null
   },
   {
    "app": "sockshop",
@@ -21460,7 +21460,7 @@
    "family": "fd_exhaustion",
    "run": "fd_exhaustion_aggressive_steady_r2",
    "n_cpus": 12,
-   "selected": null
+   "selected": "service-memory-cap"
   },
   {
    "app": "sockshop",
@@ -21558,35 +21558,35 @@
    "family": "nagle_delayed_ack",
    "run": "nagle_delayed_ack_aggressive_steady_r1",
    "n_cpus": 12,
-   "selected": "host-disk-saturation"
+   "selected": null
   },
   {
    "app": "sockshop",
    "family": "nagle_delayed_ack",
    "run": "nagle_delayed_ack_aggressive_steady_r2",
    "n_cpus": 12,
-   "selected": "host-disk-saturation"
+   "selected": null
   },
   {
    "app": "sockshop",
    "family": "nagle_delayed_ack",
    "run": "nagle_delayed_ack_aggressive_steady_r3",
    "n_cpus": 12,
-   "selected": "host-disk-saturation"
+   "selected": null
   },
   {
    "app": "sockshop",
    "family": "nagle_delayed_ack",
    "run": "nagle_delayed_ack_aggressive_steady_r4",
    "n_cpus": 12,
-   "selected": "host-disk-saturation"
+   "selected": null
   },
   {
    "app": "sockshop",
    "family": "nagle_delayed_ack",
    "run": "nagle_delayed_ack_aggressive_steady_r5",
    "n_cpus": 12,
-   "selected": "host-disk-saturation"
+   "selected": null
   },
   {
    "app": "sockshop",
@@ -22195,7 +22195,7 @@
    "family": "conn_pool_exhaustion",
    "run": "tt_conn_pool_exhaustion_aggressive_steady_r1",
    "n_cpus": 16,
-   "selected": "datastore-wait"
+   "selected": null
   },
   {
    "app": "trainticket",
@@ -22405,35 +22405,35 @@
    "family": "nagle_delayed_ack",
    "run": "tt_nagle_delayed_ack_aggressive_steady_r1",
    "n_cpus": 16,
-   "selected": "host-disk-saturation"
+   "selected": null
   },
   {
    "app": "trainticket",
    "family": "nagle_delayed_ack",
    "run": "tt_nagle_delayed_ack_aggressive_steady_r2",
    "n_cpus": 16,
-   "selected": "host-disk-saturation"
+   "selected": null
   },
   {
    "app": "trainticket",
    "family": "nagle_delayed_ack",
    "run": "tt_nagle_delayed_ack_aggressive_steady_r3",
    "n_cpus": 16,
-   "selected": "host-disk-saturation"
+   "selected": null
   },
   {
    "app": "trainticket",
    "family": "nagle_delayed_ack",
    "run": "tt_nagle_delayed_ack_aggressive_steady_r4",
    "n_cpus": 16,
-   "selected": "host-disk-saturation"
+   "selected": null
   },
   {
    "app": "trainticket",
    "family": "nagle_delayed_ack",
    "run": "tt_nagle_delayed_ack_aggressive_steady_r5",
    "n_cpus": 16,
-   "selected": "host-disk-saturation"
+   "selected": null
   },
   {
    "app": "trainticket",

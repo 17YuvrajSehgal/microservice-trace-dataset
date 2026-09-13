@@ -278,6 +278,17 @@
         "fd-exhaustion"
       ],
       "measured": "REPLACES EMFILE_PER_S_MAX. The ceiling still exists only to exclude an upstream stall, which exhausts descriptors far harder than the descriptor cap itself."
+    },
+    "BLOCK_PARKED_X": {
+      "value": 306.0,
+      "unit": "x its own baseline",
+      "op": "<",
+      "transfers": "yes",
+      "why_transfers": "a ratio to the same run's baseline",
+      "used_by": [
+        "db-latency-dependency-wait"
+      ],
+      "measured": "THE ANTI-PATTERN CEILING. Measured over 272 runs: a genuinely slow dependency inflates its caller's socket wait to at most 144x, while every one of the 25 code-defect runs reaches 651x or more. 306 is the geometric midpoint, 2.13x clear on both sides. It keeps 22 of 22 slow-datastore runs and excludes 25 of 25 anti-pattern runs. WHY THE MECHANISM WORKS: a slow dependency still ANSWERS, so the caller keeps doing work, just more slowly. A blocked event loop or a serialised await chain means the service has stopped doing work at all, so its poll call sits parked for most of the window. Waiting a thousand times longer than normal is not a slower callee - it is a caller that stopped. It also excludes 5/5 dns_delay, 5/10 fd_exhaustion and 1/10 conn_pool_exhaustion runs, all of which were false fires too."
     }
   }
 }

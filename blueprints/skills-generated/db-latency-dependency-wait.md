@@ -28,6 +28,7 @@ Telling it apart from its look-alikes:
 - **blocking-syscall duration of the suspect component** — this problem: ONE socket-waiting syscall inflates by an order of magnitude while everything else stays flat. Not this problem: no syscall inflates by more than about 2x.
 - **runqueue delay of the suspect** — this problem: flat - the component is not waiting for a CPU, it is waiting for a reply. Not this problem: runqueue delay inflates several-fold across many processes.
 - **call-graph convergence** — this problem: slow edges converge on ONE component that has no slow outgoing edges of its own. Not this problem: nothing converges; edge slowdowns stay near 1x.
+- **the SAME socket wait, as an upper bound** — this problem: inflates into the tens - at most 144x across 22 runs. Not this problem: a defect in the calling service parks it at 651x or more, in every one of 25 runs on five different defects.
 
 ## What to look at first
 The signals below are sufficient for this problem; you do not need everything.
@@ -80,13 +81,15 @@ Each step names the capability it needs. The command shown is the binding resolv
 
 ## Resolution template
 Conclude this problem when ALL of:
-- one component's socket-waiting syscall inflates to at least 5x its baseline
+- one component's socket-waiting syscall inflates to at least 5x its baseline, but stays below 306x. Both ends matter: below the floor nothing is waiting, and above the ceiling the caller is not waiting for an answer, it has stopped working
 - that component's runqueue delay stays below 5x, so it is not short of CPU - it is blocked, not starved
 - an endpoint really is answering slowly, at least 18x its baseline. Blocking says a process is waiting; this says something is answering slowly
 - retransmission stays below 12%, so the path is not losing packets
 - traffic continues to succeed, so error rates barely move
+- the endpoint measurement is actually available. If it is missing the answer is 'cannot confirm', not 'assume yes' - an absent measurement is not evidence
 
 Prefer a different explanation when:
+- a defect in the calling service, not in what it calls — the socket wait is enormous - 306x baseline or more. A slow dependency still ANSWERS, so its caller keeps working and tops out near half that. A caller parked in one poll call for most of the window has stopped doing work: a blocked event loop, a chain of awaits that no longer overlap, or a lock held across I/O. The thing it calls is healthy.
 - co-tenant CPU contention — runqueue delay inflates broadly across many processes while no syscall inflates much
 - a frozen dependency — calls fail or hang to timeout instead of returning slowly
 - host disk saturation — the inflated wait is a disk syscall and other disk users degrade too
@@ -95,8 +98,8 @@ Root cause is: the converged-on datastore component itself, never its callers, w
 
 ## When to stop
 - Conclude when: one component's socket-waiting syscall is inflated by roughly an order of magnitude while its runqueue delay stays flat
-- Stop and switch: runqueue delay is broadly inflated instead -> use the CPU-contention blueprint
-- Evidence insufficient: the suspect emits no spans AND no kernel trace is available for it -> the culprit cannot be identified from the traced layer alone; request kernel collection for that component
+- Stop and switch: socket wait at or above {BLOCK_PARKED_X}x baseline -> the caller has stopped working; look for a defect in the calling service, not in the dependency. Runqueue delay at or above {STARVED_RQ_X}x -> the component is starved of CPU. Retransmission at or above {RETRANS_VETO_PCT}% -> the path is losing packets. IMPORTANT: switching away does not mean the investigation is over. Each of these names a DIFFERENT cause for the same symptom, so carry the measurement across rather than starting again - the wait you measured here is still real, it just has another source.
+- Evidence insufficient: the endpoint measurement is missing, so 'something is answering slowly' cannot be confirmed -> request it and re-run. Do NOT treat an unavailable check as passed: three false diagnoses were produced exactly that way before this was changed.
 - Do not exceed 2 rounds of gathering more evidence before reporting what is missing.
 
 ## Constraints you must respect

@@ -127,3 +127,72 @@ new. Not measured yet - flagged as a hypothesis.
 - `service-memory-cap` vs `anomaly_mem` remain inseparable (15 of 16 false fires).
 - G2 early detection, which also unlocks the timeline Naser asked for first.
 - The with/without agent comparison on v2 is still not run.
+
+---
+
+# Point 4 — anti-pattern vs actual problem (done)
+
+**46 false fires -> 19. Recall unchanged at 85/116.** Three separate causes, one of them bad.
+
+## The hypothesis was wrong, and untestable here
+
+"An anti-pattern is in the baseline window too; a fault is not." `code_defect_lib.sh` restarts
+the container with `STRATA_BUG` set **at the incident boundary**, so in our runs a defect is
+absent from baseline exactly like a fault. Recorded rather than dropped - it may still be right
+on production data.
+
+## What worked was backwards from what I expected
+
+I assumed anti-patterns would look WEAKER than a real fault. They look much stronger.
+
+| | socket wait, x baseline |
+|---|---|
+| `slow_db`, 22 runs | 1.07 - 144 |
+| five code-defect families, 25 runs | **651 - 2462** |
+
+A ceiling at 306 (geometric midpoint) keeps 22/22 owned and excludes 25/25 defects, 2.13x clear
+both ways.
+
+**The mechanism is the point.** A slow dependency still ANSWERS - the caller keeps working, just
+slower. Broken code in the caller stops the work, so its poll call sits parked for most of the
+window. **Waiting a thousand times longer than normal is not a slower callee, it is a caller
+that stopped.**
+
+## A gate that passed when it could not run
+
+`answers_slowly = (not endpoint_available or ...)`. A run with no endpoint timing PASSED the
+check that something is answering slowly. Three false diagnoses came in that way. Now fails
+closed. Endpoint timing is missing in 14 of 20 healthy runs, so this was not a corner case.
+
+## The worst one: we were diagnosing our own instrument
+
+`nagle_delayed_ack` fired `host-disk-saturation` **10 of 10**. The process "arriving on the
+disk" in every one was **`lttng-consumerd`** - our trace collector - gaining ~1000 req/s
+against 37-66 in a healthy run.
+
+The tracer was missing from the INFRA list, and the disk rule never consulted that list anyway.
+Excluding it removed all 10, cost no recall (the real disk fault names the injected load
+generator in all 10 of its runs).
+
+**Observer effect: for one fault family we were measuring the measurement.** It hid because the
+rule produced a confident, well-formed, completely wrong answer. Logged as CAMPAIGN-ISSUES 16.
+
+## Stopping conditions, which is what was actually asked
+
+`stop_and_switch` used to just name another blueprint. It now says **switching away does not end
+the investigation** - each alternative names a different cause for the same symptom, so the
+measurement carries across rather than being thrown away.
+
+## Method note worth keeping
+
+My first attempt invented a new signal - per-call latency against call count - and found total
+overlap. The reason: "the slowest endpoint" is a DIFFERENT endpoint in every run, so it never
+compared like with like. Looking at what the rule actually measured on the runs it got wrong
+took ten minutes and pointed straight at the answer. **Diagnose the rule before inventing a
+signal.**
+
+## What is left
+
+19 false fires, both already-known: `anomaly_mem -> service-memory-cap` x15 and
+`fd_exhaustion -> service-memory-cap` x4. Both need the memory-cap rule re-derived against
+`anomaly_mem`, which is still open from 8 Sept.

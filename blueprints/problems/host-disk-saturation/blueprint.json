@@ -36,6 +36,16 @@
         "not_this_problem": "n/a - this identifies the culprit once the problem is established; it does not decide whether the problem is present",
         "confused_with": [],
         "evidence": "MEASURED and worth stating as a capability rather than a test: block_rq_issue carries a comm field naming the issuing process. This is unlike the network events, where the process field holds whatever was on-CPU when the interrupt fired and no culprit can be named. Here the culprit comes free with the measurement."
+      },
+      {
+        "signal": "the identity of the process that arrived on the disk",
+        "this_problem": "an application or workload process - in our runs, the injected disk load generator, in every single run",
+        "not_this_problem": "the trace collector itself. Our own instrument writes the trace to disk and shows up as a process arriving on it",
+        "evidence": "MEASURED across 272 runs. In every one of the 10 nagle_delayed_ack runs the process that 'arrived on the disk' was lttng-consumerd, the trace collector, gaining around 1000 requests/s against 37-66 in a healthy run - so a network stall was diagnosed as a disk flood 10 times out of 10. The real disk fault is unaffected: its newcomer is the injected load generator in all 10 runs. Excluding the instrument removed all 10 false diagnoses and cost no recall. See results/RESULTS-antipattern-ceiling.md",
+        "confused_with": [
+          "nagle-delayed-ack",
+          "healthy-baseline"
+        ]
       }
     ],
     "unverified_do_not_claim": [
@@ -161,9 +171,14 @@
     "verdict_when": [
       "the process arriving on the disk brings more than {DISK_IOPS_PER_IRQ} requests per second for each unit of rise in device interrupt time. It is the MIX that decides, not the arrival count: a flood is many requests per unit of interrupt rise, reclaim inside one cgroup is the reverse",
       "total host disk requests rise several-fold over the same window",
-      "that process was doing little or no disk work before"
+      "that process was doing little or no disk work before",
+      "the process doing the flooding is not the trace collector. Our own instrument writes to the same disk, and measuring the observer instead of the system is not a diagnosis"
     ],
     "rule_out": [
+      {
+        "instead": "nothing - there is no disk fault here",
+        "when": "the only process that arrived on the disk is the trace collector. That is the instrument writing, not the application."
+      },
       {
         "instead": "host-memory-pressure",
         "when": "disk arrivals rise only moderately - around a thousand requests per second - but device latency rises sharply and queue depth roughly doubles. That is reclaim and swap reaching the disk, not a workload flooding it"
@@ -236,7 +251,7 @@
   "stopping_conditions": {
     "conclude": "a process gained thousands of disk requests per second it was not making before, and total host I/O rose several-fold",
     "stop_and_switch": "arrivals rise only moderately while device latency and queue depth rise sharply -> host-memory-pressure; arrivals flat and a component blocked on a socket -> the dependency-wait blueprint",
-    "stop_insufficient": "block_rq_issue was not recorded, so arrivals cannot be attributed -> request it and re-run. Do NOT fall back to device latency, which was measured to move the wrong way under this fault",
+    "stop_insufficient": "block_rq_issue was not recorded, so arrivals cannot be attributed -> request it and re-run. Do NOT fall back to device latency, which was measured to move the wrong way under this fault Also stop if the only process arriving on the disk is the trace collector: that is the observer, and it is evidence about the measurement rather than about the system.",
     "max_evidence_rounds": 2
   },
   "adaptation_rules": [

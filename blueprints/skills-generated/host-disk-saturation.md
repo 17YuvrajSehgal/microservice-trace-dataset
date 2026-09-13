@@ -28,6 +28,7 @@ Telling it apart from its look-alikes:
 - **requests per second gained by a process that was barely using the disk before, from block_rq_issue** — this problem: one process arrives on the disk with thousands of requests per second it was not making before - measured 4724 to 6944. Not this problem: no process gains meaningful disk work. The largest gain in any other family is 1170 requests per second, and most are under 120.
 - **total disk requests per second across the whole host** — this problem: total I/O rises several-fold - measured 4.0x to 10.1x. Not this problem: total I/O is flat or falls. Every other family measured at or below 2.9x, and most below 1.1x.
 - **which process is doing the I/O, taken from block_rq_issue** — this problem: the flooding process is named directly, because the block layer records who issued each request. Not this problem: n/a - this identifies the culprit once the problem is established; it does not decide whether the problem is present.
+- **the identity of the process that arrived on the disk** — this problem: an application or workload process - in our runs, the injected disk load generator, in every single run. Not this problem: the trace collector itself. Our own instrument writes the trace to disk and shows up as a process arriving on it.
 
 ## What to look at first
 The signals below are sufficient for this problem; you do not need everything.
@@ -72,8 +73,10 @@ Conclude this problem when ALL of:
 - the process arriving on the disk brings more than 450 requests per second for each unit of rise in device interrupt time. It is the MIX that decides, not the arrival count: a flood is many requests per unit of interrupt rise, reclaim inside one cgroup is the reverse
 - total host disk requests rise several-fold over the same window
 - that process was doing little or no disk work before
+- the process doing the flooding is not the trace collector. Our own instrument writes to the same disk, and measuring the observer instead of the system is not a diagnosis
 
 Prefer a different explanation when:
+- nothing - there is no disk fault here — the only process that arrived on the disk is the trace collector. That is the instrument writing, not the application.
 - host-memory-pressure — disk arrivals rise only moderately - around a thousand requests per second - but device latency rises sharply and queue depth roughly doubles. That is reclaim and swap reaching the disk, not a workload flooding it
 - healthy-baseline — no process gains meaningful disk work, even if some other measure looks raised
 - db-latency-dependency-wait — disk arrivals are flat and a component is blocked in a socket call - it is waiting on the network, not on storage
@@ -83,7 +86,7 @@ Root cause is: the process flooding the block device
 ## When to stop
 - Conclude when: a process gained thousands of disk requests per second it was not making before, and total host I/O rose several-fold
 - Stop and switch: arrivals rise only moderately while device latency and queue depth rise sharply -> host-memory-pressure; arrivals flat and a component blocked on a socket -> the dependency-wait blueprint
-- Evidence insufficient: block_rq_issue was not recorded, so arrivals cannot be attributed -> request it and re-run. Do NOT fall back to device latency, which was measured to move the wrong way under this fault
+- Evidence insufficient: block_rq_issue was not recorded, so arrivals cannot be attributed -> request it and re-run. Do NOT fall back to device latency, which was measured to move the wrong way under this fault Also stop if the only process arriving on the disk is the trace collector: that is the observer, and it is evidence about the measurement rather than about the system.
 - Do not exceed 2 rounds of gathering more evidence before reporting what is missing.
 
 ## Constraints you must respect

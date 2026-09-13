@@ -383,3 +383,37 @@ ratios over absolute levels.
 7. **Count every artefact per run, not just the bundle.** 303 bundles were complete and audited
    while a whole modality was missing from a third of them. Nothing failed loudly; the file was
    simply absent.
+
+---
+
+## Issue 16 — the trace collector's own disk writes contaminate the disk signal
+
+**Found 2026-09-13. Affects analysis, not collection. No re-collection needed.**
+
+`lttng-consumerd` writes the trace to the same disk it is tracing, so it appears as a process
+"arriving on the disk" in most runs. Measured over 272 runs:
+
+| | disk requests/s gained by the arriving process | who |
+|---|---|---|
+| healthy run | 37 – 66 | `lttng-consumerd` |
+| `nagle_delayed_ack` | 945 – 1058 | `lttng-consumerd` |
+| real disk fault | 698 – 2015 | the injected load generator |
+
+The tracer's writes scale with how many events the workload produces, so a fault that changes
+event volume moves the disk signal even when it touches no disk.
+
+**Consequence before the fix:** `host-disk-saturation` fired on all 10 `nagle_delayed_ack`
+runs — a network stall reported as a disk flood, 10 times out of 10, with a confident
+well-formed verdict naming the wrong process.
+
+**Fixed in analysis** (`blueprint_decide.py`): `lttng` added to the infrastructure list, and
+the disk rule now refuses to name an infrastructure process as the flooder. Removed all 10
+false diagnoses, cost no recall.
+
+**Still worth checking elsewhere:** any measure whose newcomer can be `lttng-consumerd`.
+`service-memory-cap` also reports it as the arriving process in several runs, though its ratio
+falls below the bar so it does not currently fire on it. `io_newcomer` is stored as a single
+value in the pack, so the rule can only veto — it cannot fall back to the next non-instrument
+process. Recomputing that would need a pack rebuild.
+
+Full write-up: `blueprints/docs/RESULTS-antipattern-ceiling.md`.
