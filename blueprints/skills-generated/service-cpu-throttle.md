@@ -41,22 +41,28 @@ Why this set: MEASURED BASIS. sched_switch gives on-CPU time per process per CPU
 Each step names the capability it needs. The command shown is the binding resolved for THIS environment; another environment may bind a different tool to the same capability without changing the procedure.
 
 1. stage the stored kernel trace for reading
-   run: `bash /scratch/yuvraj17/stratatrace/scripts/extract_l0.sh <app> the cgroup-cap family <run_id>`
+   needs: `trace.stage_ctf`
+   run [already-readable]: `test -f <trace_dir>/metadata && echo <trace_dir>`
    expect: a CTF directory the trace reader can open
 2. attribute on-CPU time per process, baseline window against incident window
-   run: `python3 blueprints/problems/cpu-contention-co-tenant/scripts/oncpu_share.py --ctf <ctf> --gt <window> --out <out>/oncpu.json`
+   needs: `kernel.scheduler.oncpu_attribution`
+   run [babeltrace2-cli]: `python3 $BLUEPRINT_HOME/problems/cpu-contention-co-tenant/scripts/oncpu_share.py --ctf <ctf> --gt <window> --out <out>/oncpu.json`
    expect: host_utilisation falling between windows, no newcomer, broad per-process losses
 3. measure runqueue delay as corroboration only
-   run: `python3 blueprints/problems/cpu-contention-co-tenant/scripts/runqueue_delay.py --ctf <ctf> --gt <window> --out <out>/rq.json`
+   needs: `kernel.scheduler.runqueue_delay`
+   run [babeltrace2-cli]: `python3 $BLUEPRINT_HOME/problems/cpu-contention-co-tenant/scripts/runqueue_delay.py --ctf <ctf> --gt <window> --out <out>/rq.json`
    expect: per-process p95 runqueue delay raised while utilisation falls
 4. Combine into the verdict and its artifacts: the JSON verdict, the CPU breakdown chart, and a plain-English explanation
-   run: `python3 blueprints/lib/blueprint_decide.py --pack <pack.json> --out <out>/verdict.json`
+   needs: `verdict.apply_rules`
+   run [blueprint-rules]: `python3 $BLUEPRINT_HOME/lib/blueprint_decide.py --pack <out>/pack.json --out <out>/verdict.json`
    expect: state that a CPU quota is throttling some service, why the host looks quiet, and that the service is NOT identified by this evidence
 5. State the recommended action alongside the diagnosis
-   run: `python3 blueprints/lib/recommend_action.py --verdict <out>/verdict.json --blueprint service-cpu-throttle --out <out>/recommended_action.txt`
+   needs: `report.recommended_action`
+   run [blueprint-report]: `python3 $BLUEPRINT_HOME/lib/recommend_action.py --verdict <out>/verdict.json --out <out>`
    expect: inspect cgroup cpu.max and cpu.stat throttling counters for the services on the stalled path, and raise or remove the quota on the one that is throttling
 6. draw the decision card
-   run: `python3 blueprints/lib/blueprint_card.py --pack <pack.json> --ruler blueprints/results/ruler.json --blueprint service-cpu-throttle --problems blueprints/problems --out <out>/card.svg`
+   needs: `report.decision_card`
+   run [blueprint-card]: `python3 $BLUEPRINT_HOME/lib/blueprint_card.py --pack <out>/pack.json --ruler $BLUEPRINT_HOME/results/ruler.json --problems $BLUEPRINT_HOME/problems --out <out>/card.svg`
    expect: one page showing where every fault family sits on this blueprint's deciding number, which gates passed and by how much, and what else was ruled out
 
 ## What to produce

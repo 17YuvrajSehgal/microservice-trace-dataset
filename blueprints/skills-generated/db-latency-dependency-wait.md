@@ -44,30 +44,31 @@ Each step names the capability it needs. The command shown is the binding resolv
 
 1. Make the kernel trace readable
    needs: `trace.stage_ctf`
-   run [local]: `cp -r <run_dir>/kernel/kernel <tmp>/ctf && gunzip -f <tmp>/ctf/*.gz`
+   run [already-readable]: `test -f <trace_dir>/metadata && echo <trace_dir>`
    expect: a CTF directory with metadata and channel streams
 2. Find which component the slow call paths converge on
    needs: `traces.call_graph.convergence`
-   run [otlp-spans]: `python3 blueprints/problems/db-latency-dependency-wait/scripts/edge_convergence.py --run <run_dir> --app <app> --out <out>/convergence.json`
+   run [otlp-spans]: `python3 $BLUEPRINT_HOME/problems/db-latency-dependency-wait/scripts/edge_convergence.py --traces <trace_dir> --out <out>/convergence.json`
    expect: one component with slow incoming and no slow outgoing edges; it may be the CALLER of the culprit if the culprit emits no spans
 3. Measure how long the suspect blocks inside each syscall
    needs: `kernel.syscall.blocking_duration`
-   run [babeltrace2-cli]: `python3 blueprints/problems/db-latency-dependency-wait/scripts/blocking_syscall.py --ctf <ctf> --gt <window> --comms <comms> --out <out>/blocking.json`
+   run [babeltrace2-cli]: `python3 $BLUEPRINT_HOME/problems/db-latency-dependency-wait/scripts/blocking_syscall.py --ctf <ctf> --gt <window> --comms <comms> --out <out>/blocking.json`
    expect: one socket-waiting syscall inflated by roughly an order of magnitude
 4. NEGATIVE CONTROL: confirm the suspect is not merely CPU-starved
    needs: `kernel.scheduler.runqueue_delay`
-   run [babeltrace2-cli]: `python3 blueprints/problems/cpu-contention-co-tenant/scripts/runqueue_delay.py --ctf <ctf> --gt <window> --out <out>/rq.json`
+   run [babeltrace2-cli]: `python3 $BLUEPRINT_HOME/problems/cpu-contention-co-tenant/scripts/runqueue_delay.py --ctf <ctf> --gt <window> --out <out>/rq.json`
    expect: runqueue delay flat; if it inflates broadly this is the CPU-contention blueprint instead
 5. Combine into the verdict and its artifacts
    needs: `verdict.dependency_wait`
-   run [local]: `python3 blueprints/problems/db-latency-dependency-wait/scripts/dependency_verdict.py --convergence <out>/convergence.json --blocking <out>/blocking.json --rq <out>/rq.json --out <out>/verdict.json --chart <out>/blocking.svg --text <out>/explanation.txt`
+   run [local]: `python3 $BLUEPRINT_HOME/problems/db-latency-dependency-wait/scripts/dependency_verdict.py --convergence <out>/convergence.json --blocking <out>/blocking.json --rq <out>/rq.json --out <out>/verdict.json --chart <out>/blocking.svg --text <out>/explanation.txt`
    expect: a named component, the syscall it blocked in, its inflation factor, and the flat runqueue delay that rules out CPU starvation
 6. State the recommended action alongside the diagnosis
    needs: `verdict.dependency_wait`
-   run [local]: `python3 blueprints/problems/db-latency-dependency-wait/scripts/dependency_verdict.py --convergence <out>/convergence.json --blocking <out>/blocking.json --rq <out>/rq.json --out <out>/verdict.json --chart <out>/blocking.svg --text <out>/explanation.txt`
+   run [local]: `python3 $BLUEPRINT_HOME/problems/db-latency-dependency-wait/scripts/dependency_verdict.py --convergence <out>/convergence.json --blocking <out>/blocking.json --rq <out>/rq.json --out <out>/verdict.json --chart <out>/blocking.svg --text <out>/explanation.txt`
    expect: an action aimed at the blocked component or its dependency, explicitly not at the victims named by the call graph
 7. draw the decision card
-   run: `python3 blueprints/lib/blueprint_card.py --pack <pack.json> --ruler blueprints/results/ruler.json --blueprint db-latency-dependency-wait --problems blueprints/problems --out <out>/card.svg`
+   needs: `report.decision_card`
+   run [blueprint-card]: `python3 $BLUEPRINT_HOME/lib/blueprint_card.py --pack <out>/pack.json --ruler $BLUEPRINT_HOME/results/ruler.json --problems $BLUEPRINT_HOME/problems --out <out>/card.svg`
    expect: one page showing where every fault family sits on this blueprint's deciding number, which gates passed and by how much, and what else was ruled out
 
 ## What to produce

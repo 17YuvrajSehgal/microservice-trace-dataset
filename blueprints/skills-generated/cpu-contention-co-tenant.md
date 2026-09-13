@@ -46,29 +46,31 @@ Each step names the capability it needs. The command shown is the binding resolv
 
 1. Make the kernel trace readable
    needs: `trace.stage_ctf`
-   run [local]: `cp -r <run_dir>/kernel/kernel <tmp>/ctf && gunzip -f <tmp>/ctf/*.gz`
+   run [already-readable]: `test -f <trace_dir>/metadata && echo <trace_dir>`
    expect: a CTF directory with metadata and channel streams
 2. attribute on-CPU time per process, baseline window against incident window
-   run: `python3 blueprints/problems/cpu-contention-co-tenant/scripts/oncpu_share.py --ctf <ctf> --gt <window> --out <out>/oncpu.json`
+   needs: `kernel.scheduler.oncpu_attribution`
+   run [babeltrace2-cli]: `python3 $BLUEPRINT_HOME/problems/cpu-contention-co-tenant/scripts/oncpu_share.py --ctf <ctf> --gt <window> --out <out>/oncpu.json`
    expect: host utilisation raised but below the ceiling, and one newcomer holding 1-2 cores
 3. Measure runqueue delay per process, baseline vs incident
    needs: `kernel.scheduler.runqueue_delay`
-   run [babeltrace2-cli]: `python3 blueprints/problems/cpu-contention-co-tenant/scripts/runqueue_delay.py --ctf <ctf> --gt <window> --out <out>/rq.json`
+   run [babeltrace2-cli]: `python3 $BLUEPRINT_HOME/problems/cpu-contention-co-tenant/scripts/runqueue_delay.py --ctf <ctf> --gt <window> --out <out>/rq.json`
    expect: a broad multi-process inflation of p95 indicates contention
 4. NEGATIVE CONTROL: confirm blocking-syscall durations did not inflate
    needs: `kernel.syscall.blocking_duration`
-   run [babeltrace2-cli]: `python3 blueprints/problems/db-latency-dependency-wait/scripts/blocking_syscall.py --ctf <ctf> --gt <window> --comms <comms> --out <out>/blocking.json`
+   run [babeltrace2-cli]: `python3 $BLUEPRINT_HOME/problems/db-latency-dependency-wait/scripts/blocking_syscall.py --ctf <ctf> --gt <window> --comms <comms> --out <out>/blocking.json`
    expect: no syscall inflates much; a large single-component inflation means this is the wrong blueprint
 5. Identify the off-call-path CPU consumer and emit the verdict
    needs: `metrics.container.cpu_attribution`
-   run [prometheus-cadvisor]: `python3 blueprints/problems/cpu-contention-co-tenant/scripts/cpu_attribution.py --run <run_dir> --out <out>/verdict.json --chart <out>/runqueue.svg --text <out>/explanation.txt`
+   run [prometheus-cadvisor]: `python3 $BLUEPRINT_HOME/problems/cpu-contention-co-tenant/scripts/cpu_attribution.py --run <trace_dir> --out <out>/verdict.json --chart <out>/runqueue.svg --text <out>/explanation.txt`
    expect: the top CPU consumer has no call-graph edges and was absent in the baseline
 6. State the recommended action alongside the diagnosis
    needs: `metrics.container.cpu_attribution`
-   run [prometheus-cadvisor]: `python3 blueprints/problems/cpu-contention-co-tenant/scripts/cpu_attribution.py --run <run_dir> --out <out>/verdict.json --chart <out>/runqueue.svg --text <out>/explanation.txt`
+   run [prometheus-cadvisor]: `python3 $BLUEPRINT_HOME/problems/cpu-contention-co-tenant/scripts/cpu_attribution.py --run <trace_dir> --out <out>/verdict.json --chart <out>/runqueue.svg --text <out>/explanation.txt`
    expect: a concrete action naming the container to constrain, not a generic suggestion
 7. draw the decision card
-   run: `python3 blueprints/lib/blueprint_card.py --pack <pack.json> --ruler blueprints/results/ruler.json --blueprint cpu-contention-co-tenant --problems blueprints/problems --out <out>/card.svg`
+   needs: `report.decision_card`
+   run [blueprint-card]: `python3 $BLUEPRINT_HOME/lib/blueprint_card.py --pack <out>/pack.json --ruler $BLUEPRINT_HOME/results/ruler.json --problems $BLUEPRINT_HOME/problems --out <out>/card.svg`
    expect: one page showing where every fault family sits on this blueprint's deciding number, which gates passed and by how much, and what else was ruled out
 
 ## What to produce

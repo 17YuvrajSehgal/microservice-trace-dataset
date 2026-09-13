@@ -63,38 +63,38 @@
   "processing": [
     {
       "step": "stage the stored kernel trace for reading",
-      "run": "bash /scratch/yuvraj17/stratatrace/scripts/extract_l0.sh <app> <family> <run_id>",
       "produces": "<out>/ctf",
       "reads": [],
-      "expect": "a CTF directory the trace reader can open"
+      "expect": "a CTF directory the trace reader can open",
+      "capability": "trace.stage_ctf"
     },
     {
       "step": "measure process creation per command name, both windows, and report the newcomer",
-      "run": "python3 blueprints/lib/process_probe.py --ctf <ctf> --gt <window> --out <out>/process.json",
       "produces": "<out>/process.json",
       "reads": [
         "<out>/ctf"
       ],
-      "expect": "forks per second in each window, and the process whose fork rate rose most"
+      "expect": "forks per second in each window, and the process whose fork rate rose most",
+      "capability": "process.creation_attribution"
     },
     {
       "step": "combine into the verdict and its artifacts",
-      "run": "python3 blueprints/lib/blueprint_decide.py --pack <pack.json> --out <out>/verdict.json",
       "produces": "<out>/verdict.json, <out>/forks.svg, <out>/explanation.txt, <out>/recommended_action.txt",
       "reads": [
         "<out>/process.json"
       ],
-      "expect": "a verdict naming the forking process, or an explicit non-fire with the reason"
+      "expect": "a verdict naming the forking process, or an explicit non-fire with the reason",
+      "capability": "verdict.apply_rules"
     },
     {
       "step": "draw the decision card",
-      "run": "python3 blueprints/lib/blueprint_card.py --pack <pack.json> --ruler blueprints/results/ruler.json --blueprint fork-storm --problems blueprints/problems --out <out>/card.svg",
       "produces": "<out>/card.svg",
       "reads": [
         "<pack.json>",
         "blueprints/results/ruler.json"
       ],
-      "expect": "one page showing where every fault family sits on this blueprint's deciding number, which gates passed and by how much, and what else was ruled out"
+      "expect": "one page showing where every fault family sits on this blueprint's deciding number, which gates passed and by how much, and what else was ruled out",
+      "capability": "report.decision_card"
     }
   ],
   "outputs": [
@@ -238,5 +238,12 @@
     "verified_by": "derive_v2_thresholds.py, 2026-09-11; per-run values in results/v2-blueprints-all/derived_uncovered.json",
     "authored_utc": "2026-09-11T00:00:00Z",
     "notes": "The recipe predicted this signal would be 'unmistakable and nothing else in our dataset produces it in volume'. Half right, and the wrong half is worth keeping: at the HOST level it is not unmistakable at all, because the machine already forks ~134 times a second from Java thread pools and from the trace collector itself, so the fault only adds 77%. What is unmistakable is the newcomer - 3.64 forks/s to 100/s for one process. This is the third fault where the host total is weak and the arrival is decisive, after thief_cores for CPU and io_newcomer for disk. The threshold was placed against the other families' highest value, never fitted to the positives."
+  },
+  "inputs": {
+    "trace_dir": "where the kernel traces for this incident are held",
+    "window": "baseline start/end and incident start/end, as epoch seconds or ISO times",
+    "out": "a writable directory for results",
+    "note": "These are the ONLY inputs. A blueprint must never need the application name, a run identifier, or the fault family - an agent working a live incident has none of them, and the fault family is the answer it is trying to find.",
+    "ctf": "produced by the staging step, not supplied by the caller - the readable trace directory"
   }
 }

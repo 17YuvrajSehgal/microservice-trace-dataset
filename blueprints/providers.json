@@ -14,7 +14,8 @@
     "Mahsa's finding still holds: what finally reaches the agent is an EXACT callable, not a",
     "description. The difference is that the exact callable is produced by binding, not",
     "hard-coded into the portable knowledge object.",
-    "Provider entries carry the metadata the binder needs to choose between alternatives: estimated overhead, platform, fidelity, permissions and tier. Escalation policy is cheapest-adequate-first: use evidence that already exists, then low-overhead active collection, and only escalate to high-fidelity tracing when the cheaper tier leaves the question open."
+    "Provider entries carry the metadata the binder needs to choose between alternatives: estimated overhead, platform, fidelity, permissions and tier. Escalation policy is cheapest-adequate-first: use evidence that already exists, then low-overhead active collection, and only escalate to high-fidelity tracing when the cheaper tier leaves the question open.",
+    "Every binding resolves through $BLUEPRINT_HOME, the root of a blueprints checkout. Nothing here names an absolute path, so the same blueprint runs from a checkout on a laptop, on a cluster, or on a partner's host without editing."
   ],
   "capabilities": {
     "kernel.scheduler.runqueue_delay": {
@@ -28,7 +29,7 @@
           "id": "babeltrace2-cli",
           "status": "implemented",
           "available_when": "babeltrace2 >= 2.1 on PATH and a CTF trace directory",
-          "run": "python3 blueprints/problems/cpu-contention-co-tenant/scripts/runqueue_delay.py --ctf <ctf> --gt <window> --out <out>/rq.json",
+          "run": "python3 $BLUEPRINT_HOME/problems/cpu-contention-co-tenant/scripts/runqueue_delay.py --ctf <ctf> --gt <window> --out <out>/rq.json",
           "notes": "Our traces carry CTF 2 metadata (JSON preamble). babeltrace 2.0.x rejects it; use the 2.1 wrapper so its lib directory precedes the system one.",
           "tier": "high_fidelity_active",
           "platform": [
@@ -92,7 +93,7 @@
           "id": "babeltrace2-cli",
           "status": "implemented",
           "available_when": "babeltrace2 >= 2.1 on PATH and a CTF trace directory",
-          "run": "python3 blueprints/problems/db-latency-dependency-wait/scripts/blocking_syscall.py --ctf <ctf> --gt <window> --comms <comms> --out <out>/blocking.json",
+          "run": "python3 $BLUEPRINT_HOME/problems/db-latency-dependency-wait/scripts/blocking_syscall.py --ctf <ctf> --gt <window> --comms <comms> --out <out>/blocking.json",
           "tier": "high_fidelity_active",
           "platform": [
             "linux"
@@ -120,7 +121,7 @@
           "id": "otlp-spans",
           "status": "implemented",
           "available_when": "the run carries OTLP spans",
-          "run": "python3 blueprints/problems/db-latency-dependency-wait/scripts/edge_convergence.py --run <run_dir> --app <app> --out <out>/convergence.json",
+          "run": "python3 $BLUEPRINT_HOME/problems/db-latency-dependency-wait/scripts/edge_convergence.py --traces <trace_dir> --out <out>/convergence.json",
           "tier": "existing_evidence",
           "platform": [
             "any"
@@ -132,7 +133,7 @@
           "fidelity": "medium",
           "requires_permissions": [],
           "produces_contract": "ranked convergence candidates with incoming/outgoing slowdown",
-          "notes": "Reads spans that were already collected, so it costs nothing extra. This is why it runs first in both blueprints."
+          "notes": "Reads spans that were already collected, so it costs nothing extra. This is why it runs first in both blueprints. Takes the trace directory only; it must not need an application name, which an operator working a live incident does not have."
         }
       ]
     },
@@ -147,7 +148,7 @@
           "id": "prometheus-cadvisor",
           "status": "implemented",
           "available_when": "the run carries container metrics",
-          "run": "python3 blueprints/problems/cpu-contention-co-tenant/scripts/cpu_attribution.py --run <run_dir> --out <out>/verdict.json --chart <out>/runqueue.svg --text <out>/explanation.txt",
+          "run": "python3 $BLUEPRINT_HOME/problems/cpu-contention-co-tenant/scripts/cpu_attribution.py --run <trace_dir> --out <out>/verdict.json --chart <out>/runqueue.svg --text <out>/explanation.txt",
           "tier": "existing_evidence",
           "platform": [
             "any"
@@ -157,7 +158,8 @@
             "max": 0
           },
           "fidelity": "medium",
-          "requires_permissions": []
+          "requires_permissions": [],
+          "notes": "Takes the trace directory only; it must not need an application name, which an operator working a live incident does not have."
         }
       ]
     },
@@ -169,7 +171,7 @@
           "id": "local",
           "status": "implemented",
           "available_when": "always",
-          "run": "python3 blueprints/problems/db-latency-dependency-wait/scripts/dependency_verdict.py --convergence <out>/convergence.json --blocking <out>/blocking.json --rq <out>/rq.json --out <out>/verdict.json --chart <out>/blocking.svg --text <out>/explanation.txt",
+          "run": "python3 $BLUEPRINT_HOME/problems/db-latency-dependency-wait/scripts/dependency_verdict.py --convergence <out>/convergence.json --blocking <out>/blocking.json --rq <out>/rq.json --out <out>/verdict.json --chart <out>/blocking.svg --text <out>/explanation.txt",
           "tier": "existing_evidence",
           "platform": [
             "any"
@@ -182,14 +184,15 @@
       ]
     },
     "trace.stage_ctf": {
-      "what": "Make a stored kernel trace readable by a CTF reader.",
+      "what": "Make stored kernel traces readable by a CTF reader, wherever they are held.",
       "requires_events": [],
       "providers": [
         {
-          "id": "local",
+          "id": "already-readable",
           "status": "implemented",
-          "available_when": "the run carries a raw kernel trace",
-          "run": "cp -r <run_dir>/kernel/kernel <tmp>/ctf && gunzip -f <tmp>/ctf/*.gz",
+          "available_when": "<trace_dir> already contains an uncompressed CTF directory",
+          "run": "test -f <trace_dir>/metadata && echo <trace_dir>",
+          "notes": "The common case in a live deployment: the collector wrote CTF and nothing needs staging.",
           "tier": "existing_evidence",
           "platform": [
             "any"
@@ -197,7 +200,26 @@
           "estimated_overhead_pct": {
             "min": 0,
             "max": 0
-          }
+          },
+          "fidelity": "high",
+          "requires_permissions": []
+        },
+        {
+          "id": "gzipped-archive",
+          "status": "implemented",
+          "available_when": "<trace_dir> holds a gzipped CTF archive",
+          "run": "mkdir -p <out>/ctf && cp -r <trace_dir>/. <out>/ctf/ && gunzip -f <out>/ctf/*.gz 2>/dev/null; echo <out>/ctf",
+          "notes": "Expands about sevenfold. Our own archive is stored this way.",
+          "tier": "existing_evidence",
+          "platform": [
+            "any"
+          ],
+          "estimated_overhead_pct": {
+            "min": 0,
+            "max": 0
+          },
+          "fidelity": "high",
+          "requires_permissions": []
         }
       ]
     },
@@ -211,7 +233,7 @@
           "id": "babeltrace2-cli",
           "status": "implemented",
           "available_when": "babeltrace2 >= 2.1 on PATH and a CTF trace directory",
-          "run": "python3 blueprints/problems/cpu-contention-co-tenant/scripts/oncpu_share.py --ctf <ctf> --gt <window> --out <out>/oncpu.json",
+          "run": "python3 $BLUEPRINT_HOME/problems/cpu-contention-co-tenant/scripts/oncpu_share.py --ctf <ctf> --gt <window> --out <out>/oncpu.json",
           "notes": "One tracepoint is enough. Validated by recovering the injected cgroup cap of the noisy-neighbour recipe to within 1% (1.0 -> measured 0.988-0.997; 2.0 -> measured 1.978-2.002).",
           "tier": "high_fidelity_active",
           "platform": [
@@ -257,7 +279,7 @@
           "id": "babeltrace2-cli",
           "status": "implemented",
           "available_when": "babeltrace2 >= 2.1 on PATH and a CTF trace directory",
-          "run": "python3 blueprints/problems/network-path-degradation/scripts/net_loss_signature.py --ctf <ctf> --gt <window> --out <out>/netloss.json",
+          "run": "python3 $BLUEPRINT_HOME/problems/network-path-degradation/scripts/net_loss_signature.py --ctf <ctf> --gt <window> --out <out>/netloss.json",
           "notes": "Two traps, both measured. The same packet fires the event on more than one interface (veth then bridge), so buffers must be de-duplicated by skbaddr or every run reports about 50%. And the interface field must not be matched inside `procname`.",
           "tier": "high_fidelity_active",
           "platform": [
@@ -286,7 +308,7 @@
           "id": "babeltrace2-cli",
           "status": "implemented",
           "available_when": "babeltrace2 >= 2.1 on PATH and a CTF trace directory",
-          "run": "python3 blueprints/problems/network-path-degradation/scripts/net_loss_signature.py --ctf <ctf> --gt <window> --out <out>/netloss.json",
+          "run": "python3 $BLUEPRINT_HOME/problems/network-path-degradation/scripts/net_loss_signature.py --ctf <ctf> --gt <window> --out <out>/netloss.json",
           "notes": "Both events carry skbaddr, so a queued buffer with no matching transmit was dropped. Rates are small (0.06-0.29% on impaired runs) because the trace samples the loss, so this corroborates rather than decides.",
           "tier": "high_fidelity_active",
           "platform": [
@@ -315,7 +337,7 @@
           "id": "babeltrace2-cli",
           "status": "implemented",
           "available_when": "babeltrace2 >= 2.1 on PATH and a CTF trace directory",
-          "run": "python3 blueprints/problems/host-disk-saturation/scripts/block_io_signature.py --ctf <ctf> --gt <window> --out <out>/blockio.json",
+          "run": "python3 $BLUEPRINT_HOME/problems/host-disk-saturation/scripts/block_io_signature.py --ctf <ctf> --gt <window> --out <out>/blockio.json",
           "notes": "block_rq_issue names the issuing process directly, so the culprit comes free. Requests are matched to completions by device and sector. Service time is produced but must NOT be used to decide - measured to stay flat or fall under disk flooding.",
           "tier": "high_fidelity_active",
           "platform": [
@@ -343,7 +365,7 @@
           "id": "babeltrace2-cli",
           "status": "implemented",
           "available_when": "babeltrace2 >= 2.1 on PATH and a CTF trace directory",
-          "run": "python3 blueprints/lib/process_probe.py --ctf <ctf> --gt <window> --out <out>/process.json",
+          "run": "python3 $BLUEPRINT_HOME/lib/process_probe.py --ctf <ctf> --gt <window> --out <out>/process.json",
           "notes": "The host total is not decisive: measured at 134 forks/s baseline on an idle Sock Shop, so a fork storm only lifts it 1.77x. The arriving process moves 27x. This capability therefore contracts to deliver the newcomer, not the sum.",
           "tier": "high_fidelity_active",
           "platform": [
@@ -371,7 +393,7 @@
           "id": "babeltrace2-cli",
           "status": "implemented",
           "available_when": "babeltrace2 >= 2.1 on PATH and a CTF trace directory",
-          "run": "python3 blueprints/lib/process_probe.py --ctf <ctf> --gt <window> --out <out>/process.json",
+          "run": "python3 $BLUEPRINT_HOME/lib/process_probe.py --ctf <ctf> --gt <window> --out <out>/process.json",
           "notes": "The host total is application-specific - the same absolute transfer is 6.2x on one application and 24.9x on the other - so a ratio over the host cannot transfer. The per-process gain is 8.1e7 bytes/s on both.",
           "tier": "high_fidelity_active",
           "platform": [
@@ -403,7 +425,7 @@
           "id": "babeltrace2-cli",
           "status": "implemented",
           "available_when": "babeltrace2 >= 2.1 on PATH and a CTF trace directory",
-          "run": "python3 blueprints/lib/process_probe.py --ctf <ctf> --gt <window> --out <out>/process.json",
+          "run": "python3 $BLUEPRINT_HOME/lib/process_probe.py --ctf <ctf> --gt <window> --out <out>/process.json",
           "notes": "The total failing-syscall rate is useless: the baseline already runs ~16,000 per second, almost all EAGAIN on non-blocking reads. Only the per-errno rate carries a fault.",
           "tier": "high_fidelity_active",
           "platform": [
@@ -418,6 +440,103 @@
             "root or CAP_SYS_ADMIN for kernel tracing"
           ],
           "produces_contract": "per-window rates plus the newcomer: the key whose rate rose most, what it was before, and what it is now"
+        }
+      ]
+    },
+    "verdict.apply_rules": {
+      "what": "Apply the blueprint decision rules to a finished evidence pack and return a verdict with every gate it tested, so the reasoning is inspectable rather than a bare answer.",
+      "requires_events": [],
+      "providers": [
+        {
+          "id": "blueprint-rules",
+          "status": "implemented",
+          "available_when": "python3 and an evidence pack produced by the earlier steps",
+          "run": "python3 $BLUEPRINT_HOME/lib/blueprint_decide.py --pack <out>/pack.json --out <out>/verdict.json",
+          "tier": "existing_evidence",
+          "platform": [
+            "any"
+          ],
+          "estimated_overhead_pct": {
+            "min": 0,
+            "max": 0
+          },
+          "fidelity": "high",
+          "requires_permissions": []
+        }
+      ]
+    },
+    "report.decision_card": {
+      "what": "Draw one page showing why the decision was reached: the deciding signal against every fault family known to the library, resources and waiting before and during, every gate with its margin, and what was ruled out.",
+      "requires_events": [],
+      "providers": [
+        {
+          "id": "blueprint-card",
+          "status": "implemented",
+          "available_when": "python3 and a reference distribution at $BLUEPRINT_HOME/results/ruler.json",
+          "run": "python3 $BLUEPRINT_HOME/lib/blueprint_card.py --pack <out>/pack.json --ruler $BLUEPRINT_HOME/results/ruler.json --problems $BLUEPRINT_HOME/problems --out <out>/card.svg",
+          "notes": "The SVG carries a plain-text <desc> with every number on the page, so an agent can read the findings without rendering anything.",
+          "tier": "existing_evidence",
+          "platform": [
+            "any"
+          ],
+          "estimated_overhead_pct": {
+            "min": 0,
+            "max": 0
+          },
+          "fidelity": "high",
+          "requires_permissions": []
+        }
+      ]
+    },
+    "report.recommended_action": {
+      "what": "Turn a verdict into an explanation and a recommended action, both in plain language, for a human who has to act on it.",
+      "requires_events": [],
+      "providers": [
+        {
+          "id": "blueprint-report",
+          "status": "implemented",
+          "available_when": "python3 and a verdict from verdict.apply_rules",
+          "run": "python3 $BLUEPRINT_HOME/lib/recommend_action.py --verdict <out>/verdict.json --out <out>",
+          "tier": "existing_evidence",
+          "platform": [
+            "any"
+          ],
+          "estimated_overhead_pct": {
+            "min": 0,
+            "max": 0
+          },
+          "fidelity": "high",
+          "requires_permissions": []
+        }
+      ]
+    },
+    "kernel.interrupt.time_attribution": {
+      "what": "Time spent handling device interrupts and in futex waits, baseline window against incident window.",
+      "requires_events": [
+        "irq_handler_entry",
+        "irq_handler_exit",
+        "syscall_entry_futex",
+        "syscall_exit_futex"
+      ],
+      "providers": [
+        {
+          "id": "babeltrace2-cli",
+          "status": "implemented",
+          "available_when": "babeltrace2 >= 2.1 on PATH and a CTF trace directory",
+          "run": "python3 $BLUEPRINT_HOME/lib/futex_irq_probe.py --ctf <ctf> --gt <window> --out <out>/irq.json",
+          "notes": "Interrupt time separates a container at its memory limit from a disk flood, but only in combination with disk arrivals - neither works alone.",
+          "tier": "high_fidelity_active",
+          "platform": [
+            "linux"
+          ],
+          "estimated_overhead_pct": {
+            "min": 2,
+            "max": 5
+          },
+          "fidelity": "high",
+          "requires_permissions": [
+            "root or CAP_SYS_ADMIN to record"
+          ]
         }
       ]
     }

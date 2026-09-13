@@ -106,47 +106,47 @@
   "processing": [
     {
       "step": "stage the stored kernel trace for reading",
-      "run": "bash /scratch/yuvraj17/stratatrace/scripts/extract_l0.sh <app> <family> <run_id>",
       "produces": "<out>/ctf",
       "reads": [],
-      "expect": "a CTF directory the trace reader can open"
+      "expect": "a CTF directory the trace reader can open",
+      "capability": "trace.stage_ctf"
     },
     {
       "step": "count retransmissions and queue drops per interface, baseline window against incident window",
-      "run": "python3 blueprints/problems/network-path-degradation/scripts/net_loss_signature.py --ctf <ctf> --gt <window> --out <out>/netloss.json",
       "produces": "<out>/netloss.json",
       "reads": [
         "<out>/ctf"
       ],
-      "expect": "per-interface retransmission and drop rates, and the list of impaired interfaces"
+      "expect": "per-interface retransmission and drop rates, and the list of impaired interfaces",
+      "capability": "network.retransmission_rate"
     },
     {
       "step": "Combine into the verdict and its artifacts: the JSON verdict, the per-interface chart, and a plain-English explanation",
-      "run": "python3 blueprints/lib/blueprint_decide.py --pack <pack.json> --out <out>/verdict.json",
       "produces": "<out>/verdict.json, <out>/netloss.svg, <out>/explanation.txt",
       "reads": [
         "<out>/netloss.json"
       ],
-      "expect": "name the impaired interfaces, the retransmission rate on each, and the scope"
+      "expect": "name the impaired interfaces, the retransmission rate on each, and the scope",
+      "capability": "verdict.apply_rules"
     },
     {
       "step": "State the recommended action alongside the diagnosis",
-      "run": "python3 blueprints/lib/recommend_action.py --verdict <out>/verdict.json --blueprint network-path-degradation --out <out>/recommended_action.txt",
       "produces": "<out>/recommended_action.txt",
       "reads": [
         "<out>/verdict.json"
       ],
-      "expect": "map the impaired interfaces to their containers and inspect the queueing discipline and link health on that path"
+      "expect": "map the impaired interfaces to their containers and inspect the queueing discipline and link health on that path",
+      "capability": "report.recommended_action"
     },
     {
       "step": "draw the decision card",
-      "run": "python3 blueprints/lib/blueprint_card.py --pack <pack.json> --ruler blueprints/results/ruler.json --blueprint network-path-degradation --problems blueprints/problems --out <out>/card.svg",
       "produces": "<out>/card.svg",
       "reads": [
         "<pack.json>",
         "blueprints/results/ruler.json"
       ],
-      "expect": "one page showing where every fault family sits on this blueprint's deciding number, which gates passed and by how much, and what else was ruled out"
+      "expect": "one page showing where every fault family sits on this blueprint's deciding number, which gates passed and by how much, and what else was ruled out",
+      "capability": "report.decision_card"
     }
   ],
   "outputs": [
@@ -371,5 +371,12 @@
     "verified_by": "PENDING",
     "authored_utc": "2026-08-30T00:00:00Z",
     "notes": "Written after per-endpoint LATENCY failed to separate this fault from a healthy system on either application (finding F13). The turn came from asking what is mechanically specific to a network fault: it is the only family in the catalogue that drops packets, and a dropped segment must be re-sent. Deliberately ONE blueprint rather than two: breadth separates host-wide from single-service impairment on the first application (7-12 interfaces against 1-3) and reverses on the second (0-1 against 1-2), so splitting them would assert a distinction that only holds on one system. Scope is reported as evidence instead. v2 (2026-08-31): queue drops promoted from corroboration to a required test after finding F17. Retransmission alone was measured NOT to be specific - a service memory cap retransmits harder than any network fault, because an overloaded container drops packets in its receive buffer. The first sweep had covered 8 of 13 families and missed that one, which is precisely the check the specificity protocol exists to force. v3: fault_type set to the ground-truth FAMILY name (anomaly_net). This field becomes `covers:` in the generated skill, which the harness matches against the family, and the diagnosis scorer falls back to identity for unknown labels - so a family name satisfies both, while the agent's own fault vocabulary satisfies only the second."
+  },
+  "inputs": {
+    "trace_dir": "where the kernel traces for this incident are held",
+    "window": "baseline start/end and incident start/end, as epoch seconds or ISO times",
+    "out": "a writable directory for results",
+    "note": "These are the ONLY inputs. A blueprint must never need the application name, a run identifier, or the fault family - an agent working a live incident has none of them, and the fault family is the answer it is trying to find.",
+    "ctf": "produced by the staging step, not supplied by the caller - the readable trace directory"
   }
 }

@@ -40,19 +40,24 @@ Why this set: MEASURED BASIS. net_dev_queue carries the byte count, the interfac
 Each step names the capability it needs. The command shown is the binding resolved for THIS environment; another environment may bind a different tool to the same capability without changing the procedure.
 
 1. stage the stored kernel trace for reading
-   run: `bash /scratch/yuvraj17/stratatrace/scripts/extract_l0.sh <app> <family> <run_id>`
+   needs: `trace.stage_ctf`
+   run [already-readable]: `test -f <trace_dir>/metadata && echo <trace_dir>`
    expect: a CTF directory the trace reader can open
 2. measure bytes sent per process, both windows, and report the newcomer
-   run: `python3 blueprints/lib/process_probe.py --ctf <ctf> --gt <window> --out <out>/process.json`
+   needs: `network.egress_attribution`
+   run [babeltrace2-cli]: `python3 $BLUEPRINT_HOME/lib/process_probe.py --ctf <ctf> --gt <window> --out <out>/process.json`
    expect: bytes per second per process in each window, and the process whose rate rose most
 3. confirm the path is healthy, so heavy traffic is not mistaken for a losing path
-   run: `python3 blueprints/problems/network-path-degradation/scripts/net_loss_signature.py --ctf <ctf> --gt <window> --out <out>/netloss.json`
+   needs: `network.retransmission_rate`
+   run [babeltrace2-cli]: `python3 $BLUEPRINT_HOME/problems/network-path-degradation/scripts/net_loss_signature.py --ctf <ctf> --gt <window> --out <out>/netloss.json`
    expect: retransmission percentage per interface; this fault leaves it flat
 4. combine into the verdict and its artifacts
-   run: `python3 blueprints/lib/blueprint_decide.py --pack <pack.json> --out <out>/verdict.json`
+   needs: `verdict.apply_rules`
+   run [blueprint-rules]: `python3 $BLUEPRINT_HOME/lib/blueprint_decide.py --pack <out>/pack.json --out <out>/verdict.json`
    expect: a verdict naming the sending process, or an explicit non-fire with the reason
 5. draw the decision card
-   run: `python3 blueprints/lib/blueprint_card.py --pack <pack.json> --ruler blueprints/results/ruler.json --blueprint data-exfiltration --problems blueprints/problems --out <out>/card.svg`
+   needs: `report.decision_card`
+   run [blueprint-card]: `python3 $BLUEPRINT_HOME/lib/blueprint_card.py --pack <out>/pack.json --ruler $BLUEPRINT_HOME/results/ruler.json --problems $BLUEPRINT_HOME/problems --out <out>/card.svg`
    expect: one page showing where every fault family sits on this blueprint's deciding number, which gates passed and by how much, and what else was ruled out
 
 ## What to produce

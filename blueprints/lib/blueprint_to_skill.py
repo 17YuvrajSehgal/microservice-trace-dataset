@@ -130,6 +130,19 @@ def validate(bp: dict, path: str) -> list:
             errs.append(f"processing[{i}].run does not look like a command: {run[:60]!r}")
         if not s.get("produces"):
             errs.append(f"processing[{i}] does not say what it produces")
+        # PORTABILITY, and a leak. A step may only ask for inputs an operator working a live
+        # incident actually has: where the traces are, which window, where to write. It may
+        # NOT ask for our dataset's coordinates - and <family> is the ground-truth fault name,
+        # so requiring it both breaks deployment anywhere else AND hands the answer to the
+        # model the harness is supposed to be testing.
+        blob = json.dumps(s)
+        for bad, why in (("<app>", "our dataset's application name"),
+                         ("<run_id>", "our dataset's run identifier"),
+                         ("<family>", "THE GROUND-TRUTH FAULT NAME - this is the answer"),
+                         ("/scratch/", "a path on our cluster")):
+            if bad in blob:
+                errs.append(f"processing[{i}] requires {bad} ({why}). A blueprint may only "
+                            "need <trace_dir>, <window> and <out>")
 
     for c in bp.get("capabilities_required", []):
         if c.get("id") not in providers:

@@ -102,8 +102,9 @@
     {
       "step": "Make the kernel trace readable",
       "capability": "trace.stage_ctf",
-      "produces": "<tmp>/ctf",
-      "expect": "a CTF directory with metadata and channel streams"
+      "produces": "<out>/ctf",
+      "expect": "a CTF directory with metadata and channel streams",
+      "reads": []
     },
     {
       "step": "Find which component the slow call paths converge on",
@@ -111,7 +112,7 @@
       "produces": "<out>/convergence.json",
       "expect": "one component with slow incoming and no slow outgoing edges; it may be the CALLER of the culprit if the culprit emits no spans",
       "reads": [
-        "<run_dir>/otlp"
+        "<trace_dir>/otlp"
       ]
     },
     {
@@ -120,7 +121,7 @@
       "produces": "<out>/blocking.json",
       "expect": "one socket-waiting syscall inflated by roughly an order of magnitude",
       "reads": [
-        "<tmp>/ctf"
+        "<out>/ctf"
       ]
     },
     {
@@ -129,7 +130,7 @@
       "produces": "<out>/rq.json",
       "expect": "runqueue delay flat; if it inflates broadly this is the CPU-contention blueprint instead",
       "reads": [
-        "<tmp>/ctf"
+        "<out>/ctf"
       ]
     },
     {
@@ -147,17 +148,18 @@
       "step": "State the recommended action alongside the diagnosis",
       "capability": "verdict.dependency_wait",
       "produces": "<out>/recommended_action.txt",
-      "expect": "an action aimed at the blocked component or its dependency, explicitly not at the victims named by the call graph"
+      "expect": "an action aimed at the blocked component or its dependency, explicitly not at the victims named by the call graph",
+      "reads": []
     },
     {
       "step": "draw the decision card",
-      "run": "python3 blueprints/lib/blueprint_card.py --pack <pack.json> --ruler blueprints/results/ruler.json --blueprint db-latency-dependency-wait --problems blueprints/problems --out <out>/card.svg",
       "produces": "<out>/card.svg",
       "reads": [
         "<pack.json>",
         "blueprints/results/ruler.json"
       ],
-      "expect": "one page showing where every fault family sits on this blueprint's deciding number, which gates passed and by how much, and what else was ruled out"
+      "expect": "one page showing where every fault family sits on this blueprint's deciding number, which gates passed and by how much, and what else was ruled out",
+      "capability": "report.decision_card"
     }
   ],
   "outputs": [
@@ -365,5 +367,12 @@
     "confidence_floor": 0.7,
     "if_below_floor": "name the unresolved question, pick the ONE additional capability that would settle it, check it against the overhead budget, and request it. Do not broaden collection generally.",
     "report_when_stuck": "if the floor is still not met after the allowed rounds, report the best-supported hypothesis, its confidence, and precisely what evidence is missing - never present a guess as a diagnosis"
+  },
+  "inputs": {
+    "trace_dir": "where the kernel traces for this incident are held",
+    "window": "baseline start/end and incident start/end, as epoch seconds or ISO times",
+    "out": "a writable directory for results",
+    "note": "These are the ONLY inputs. A blueprint must never need the application name, a run identifier, or the fault family - an agent working a live incident has none of them, and the fault family is the answer it is trying to find.",
+    "ctf": "produced by the staging step, not supplied by the caller - the readable trace directory"
   }
 }

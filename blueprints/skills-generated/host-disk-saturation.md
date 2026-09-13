@@ -40,19 +40,24 @@ Why this set: MEASURED BASIS. block_rq_issue carries the device, the sector, the
 Each step names the capability it needs. The command shown is the binding resolved for THIS environment; another environment may bind a different tool to the same capability without changing the procedure.
 
 1. stage the stored kernel trace for reading
-   run: `bash /scratch/yuvraj17/stratatrace/scripts/extract_l0.sh <app> <family> <run_id>`
+   needs: `trace.stage_ctf`
+   run [already-readable]: `test -f <trace_dir>/metadata && echo <trace_dir>`
    expect: a CTF directory the trace reader can open
 2. measure disk arrivals per process and service time per device, both windows
-   run: `python3 blueprints/problems/host-disk-saturation/scripts/block_io_signature.py --ctf <ctf> --gt <window> --out <out>/blockio.json`
+   needs: `storage.io_attribution`
+   run [babeltrace2-cli]: `python3 $BLUEPRINT_HOME/problems/host-disk-saturation/scripts/block_io_signature.py --ctf <ctf> --gt <window> --out <out>/blockio.json`
    expect: requests per second per process, and the newcomer if there is one
 3. Combine into the verdict and its artifacts: the JSON verdict, the per-process I/O chart, and a plain-English explanation
-   run: `python3 blueprints/lib/blueprint_decide.py --pack <pack.json> --out <out>/verdict.json`
+   needs: `verdict.apply_rules`
+   run [blueprint-rules]: `python3 $BLUEPRINT_HOME/lib/blueprint_decide.py --pack <out>/pack.json --out <out>/verdict.json`
    expect: name the flooding process, how much I/O it brought, and what share of the device it now holds
 4. State the recommended action alongside the diagnosis
-   run: `python3 blueprints/lib/recommend_action.py --verdict <out>/verdict.json --blueprint host-disk-saturation --out <out>/recommended_action.txt`
+   needs: `report.recommended_action`
+   run [blueprint-report]: `python3 $BLUEPRINT_HOME/lib/recommend_action.py --verdict <out>/verdict.json --out <out>`
    expect: identify the container owning the flooding process, then throttle its I/O or move it off this device
 5. draw the decision card
-   run: `python3 blueprints/lib/blueprint_card.py --pack <pack.json> --ruler blueprints/results/ruler.json --blueprint host-disk-saturation --problems blueprints/problems --out <out>/card.svg`
+   needs: `report.decision_card`
+   run [blueprint-card]: `python3 $BLUEPRINT_HOME/lib/blueprint_card.py --pack <out>/pack.json --ruler $BLUEPRINT_HOME/results/ruler.json --problems $BLUEPRINT_HOME/problems --out <out>/card.svg`
    expect: one page showing where every fault family sits on this blueprint's deciding number, which gates passed and by how much, and what else was ruled out
 
 ## What to produce

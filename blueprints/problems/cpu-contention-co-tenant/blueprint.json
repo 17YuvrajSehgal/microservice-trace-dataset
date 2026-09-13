@@ -135,17 +135,18 @@
     {
       "step": "Make the kernel trace readable",
       "capability": "trace.stage_ctf",
-      "produces": "<tmp>/ctf",
-      "expect": "a CTF directory with metadata and channel streams"
+      "produces": "<out>/ctf",
+      "expect": "a CTF directory with metadata and channel streams",
+      "reads": []
     },
     {
       "step": "attribute on-CPU time per process, baseline window against incident window",
-      "run": "python3 blueprints/problems/cpu-contention-co-tenant/scripts/oncpu_share.py --ctf <ctf> --gt <window> --out <out>/oncpu.json",
       "produces": "oncpu.json",
       "reads": [
         "ctf"
       ],
-      "expect": "host utilisation raised but below the ceiling, and one newcomer holding 1-2 cores"
+      "expect": "host utilisation raised but below the ceiling, and one newcomer holding 1-2 cores",
+      "capability": "kernel.scheduler.oncpu_attribution"
     },
     {
       "step": "Measure runqueue delay per process, baseline vs incident",
@@ -153,7 +154,7 @@
       "produces": "<out>/rq.json",
       "expect": "a broad multi-process inflation of p95 indicates contention",
       "reads": [
-        "<tmp>/ctf"
+        "<out>/ctf"
       ]
     },
     {
@@ -162,7 +163,7 @@
       "produces": "<out>/blocking.json",
       "expect": "no syscall inflates much; a large single-component inflation means this is the wrong blueprint",
       "reads": [
-        "<tmp>/ctf"
+        "<out>/ctf"
       ]
     },
     {
@@ -171,25 +172,26 @@
       "produces": "<out>/verdict.json, <out>/runqueue.svg, <out>/explanation.txt",
       "expect": "the top CPU consumer has no call-graph edges and was absent in the baseline",
       "reads": [
-        "<run_dir>/metrics",
-        "<run_dir>/otlp"
+        "<trace_dir>/metrics",
+        "<trace_dir>/otlp"
       ]
     },
     {
       "step": "State the recommended action alongside the diagnosis",
       "capability": "metrics.container.cpu_attribution",
       "produces": "<out>/recommended_action.txt",
-      "expect": "a concrete action naming the container to constrain, not a generic suggestion"
+      "expect": "a concrete action naming the container to constrain, not a generic suggestion",
+      "reads": []
     },
     {
       "step": "draw the decision card",
-      "run": "python3 blueprints/lib/blueprint_card.py --pack <pack.json> --ruler blueprints/results/ruler.json --blueprint cpu-contention-co-tenant --problems blueprints/problems --out <out>/card.svg",
       "produces": "<out>/card.svg",
       "reads": [
         "<pack.json>",
         "blueprints/results/ruler.json"
       ],
-      "expect": "one page showing where every fault family sits on this blueprint's deciding number, which gates passed and by how much, and what else was ruled out"
+      "expect": "one page showing where every fault family sits on this blueprint's deciding number, which gates passed and by how much, and what else was ruled out",
+      "capability": "report.decision_card"
     }
   ],
   "outputs": [
@@ -431,5 +433,12 @@
         "measured_on": "the second application, 5 labelled runs"
       }
     ]
+  },
+  "inputs": {
+    "trace_dir": "where the kernel traces for this incident are held",
+    "window": "baseline start/end and incident start/end, as epoch seconds or ISO times",
+    "out": "a writable directory for results",
+    "note": "These are the ONLY inputs. A blueprint must never need the application name, a run identifier, or the fault family - an agent working a live incident has none of them, and the fault family is the answer it is trying to find.",
+    "ctf": "produced by the staging step, not supplied by the caller - the readable trace directory"
   }
 }

@@ -87,47 +87,47 @@
   "processing": [
     {
       "step": "stage the stored kernel trace for reading",
-      "run": "bash /scratch/yuvraj17/stratatrace/scripts/extract_l0.sh <app> <family> <run_id>",
       "produces": "<out>/ctf",
       "reads": [],
-      "expect": "a CTF directory the trace reader can open"
+      "expect": "a CTF directory the trace reader can open",
+      "capability": "trace.stage_ctf"
     },
     {
       "step": "measure disk arrivals per process and service time per device, both windows",
-      "run": "python3 blueprints/problems/host-disk-saturation/scripts/block_io_signature.py --ctf <ctf> --gt <window> --out <out>/blockio.json",
       "produces": "<out>/blockio.json",
       "reads": [
         "<out>/ctf"
       ],
-      "expect": "requests per second per process, and the newcomer if there is one"
+      "expect": "requests per second per process, and the newcomer if there is one",
+      "capability": "storage.io_attribution"
     },
     {
       "step": "Combine into the verdict and its artifacts: the JSON verdict, the per-process I/O chart, and a plain-English explanation",
-      "run": "python3 blueprints/lib/blueprint_decide.py --pack <pack.json> --out <out>/verdict.json",
       "produces": "<out>/verdict.json, <out>/blockio.svg, <out>/explanation.txt",
       "reads": [
         "<out>/blockio.json"
       ],
-      "expect": "name the flooding process, how much I/O it brought, and what share of the device it now holds"
+      "expect": "name the flooding process, how much I/O it brought, and what share of the device it now holds",
+      "capability": "verdict.apply_rules"
     },
     {
       "step": "State the recommended action alongside the diagnosis",
-      "run": "python3 blueprints/lib/recommend_action.py --verdict <out>/verdict.json --blueprint host-disk-saturation --out <out>/recommended_action.txt",
       "produces": "<out>/recommended_action.txt",
       "reads": [
         "<out>/verdict.json"
       ],
-      "expect": "identify the container owning the flooding process, then throttle its I/O or move it off this device"
+      "expect": "identify the container owning the flooding process, then throttle its I/O or move it off this device",
+      "capability": "report.recommended_action"
     },
     {
       "step": "draw the decision card",
-      "run": "python3 blueprints/lib/blueprint_card.py --pack <pack.json> --ruler blueprints/results/ruler.json --blueprint host-disk-saturation --problems blueprints/problems --out <out>/card.svg",
       "produces": "<out>/card.svg",
       "reads": [
         "<pack.json>",
         "blueprints/results/ruler.json"
       ],
-      "expect": "one page showing where every fault family sits on this blueprint's deciding number, which gates passed and by how much, and what else was ruled out"
+      "expect": "one page showing where every fault family sits on this blueprint's deciding number, which gates passed and by how much, and what else was ruled out",
+      "capability": "report.decision_card"
     }
   ],
   "outputs": [
@@ -321,5 +321,12 @@
     "verified_by": "PENDING",
     "authored_utc": "2026-09-01T00:00:00Z",
     "notes": "Built after asking what in the kernel trace was still unused. The block events were present in every trace all along and had never been read. The pre-registered expectation in fault_catalog was half right: block_rq_* IS dominated by the stressor, but the predicted waits do not appear - device latency stays flat or falls, because the flooding workload writes large sequential blocks that complete quickly. Both halves are recorded, the wrong one as a retraction. All 13 families were measured from the start rather than a subset, which is the F17 lesson. v2: fault_type set to the ground-truth FAMILY name (anomaly_disk). This field becomes `covers:` in the generated skill, which the harness matches against the family, and the diagnosis scorer falls back to identity for unknown labels - so a family name satisfies both, while the agent's own fault vocabulary satisfies only the second."
+  },
+  "inputs": {
+    "trace_dir": "where the kernel traces for this incident are held",
+    "window": "baseline start/end and incident start/end, as epoch seconds or ISO times",
+    "out": "a writable directory for results",
+    "note": "These are the ONLY inputs. A blueprint must never need the application name, a run identifier, or the fault family - an agent working a live incident has none of them, and the fault family is the answer it is trying to find.",
+    "ctf": "produced by the staging step, not supplied by the caller - the readable trace directory"
   }
 }

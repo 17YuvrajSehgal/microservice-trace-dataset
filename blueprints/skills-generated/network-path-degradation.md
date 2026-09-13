@@ -41,19 +41,24 @@ Why this set: MEASURED BASIS. net_if_receive_skb carries the full IP and TCP hea
 Each step names the capability it needs. The command shown is the binding resolved for THIS environment; another environment may bind a different tool to the same capability without changing the procedure.
 
 1. stage the stored kernel trace for reading
-   run: `bash /scratch/yuvraj17/stratatrace/scripts/extract_l0.sh <app> <family> <run_id>`
+   needs: `trace.stage_ctf`
+   run [already-readable]: `test -f <trace_dir>/metadata && echo <trace_dir>`
    expect: a CTF directory the trace reader can open
 2. count retransmissions and queue drops per interface, baseline window against incident window
-   run: `python3 blueprints/problems/network-path-degradation/scripts/net_loss_signature.py --ctf <ctf> --gt <window> --out <out>/netloss.json`
+   needs: `network.retransmission_rate`
+   run [babeltrace2-cli]: `python3 $BLUEPRINT_HOME/problems/network-path-degradation/scripts/net_loss_signature.py --ctf <ctf> --gt <window> --out <out>/netloss.json`
    expect: per-interface retransmission and drop rates, and the list of impaired interfaces
 3. Combine into the verdict and its artifacts: the JSON verdict, the per-interface chart, and a plain-English explanation
-   run: `python3 blueprints/lib/blueprint_decide.py --pack <pack.json> --out <out>/verdict.json`
+   needs: `verdict.apply_rules`
+   run [blueprint-rules]: `python3 $BLUEPRINT_HOME/lib/blueprint_decide.py --pack <out>/pack.json --out <out>/verdict.json`
    expect: name the impaired interfaces, the retransmission rate on each, and the scope
 4. State the recommended action alongside the diagnosis
-   run: `python3 blueprints/lib/recommend_action.py --verdict <out>/verdict.json --blueprint network-path-degradation --out <out>/recommended_action.txt`
+   needs: `report.recommended_action`
+   run [blueprint-report]: `python3 $BLUEPRINT_HOME/lib/recommend_action.py --verdict <out>/verdict.json --out <out>`
    expect: map the impaired interfaces to their containers and inspect the queueing discipline and link health on that path
 5. draw the decision card
-   run: `python3 blueprints/lib/blueprint_card.py --pack <pack.json> --ruler blueprints/results/ruler.json --blueprint network-path-degradation --problems blueprints/problems --out <out>/card.svg`
+   needs: `report.decision_card`
+   run [blueprint-card]: `python3 $BLUEPRINT_HOME/lib/blueprint_card.py --pack <out>/pack.json --ruler $BLUEPRINT_HOME/results/ruler.json --problems $BLUEPRINT_HOME/problems --out <out>/card.svg`
    expect: one page showing where every fault family sits on this blueprint's deciding number, which gates passed and by how much, and what else was ruled out
 
 ## What to produce

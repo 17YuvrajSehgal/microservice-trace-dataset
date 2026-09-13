@@ -40,19 +40,24 @@ Why this set: MEASURED BASIS. The verdict needs one signal that rises and one th
 Each step names the capability it needs. The command shown is the binding resolved for THIS environment; another environment may bind a different tool to the same capability without changing the procedure.
 
 1. stage the stored kernel trace for reading
-   run: `bash /scratch/yuvraj17/stratatrace/scripts/extract_l0.sh <app> <family> <run_id>`
+   needs: `trace.stage_ctf`
+   run [already-readable]: `test -f <trace_dir>/metadata && echo <trace_dir>`
    expect: a CTF directory the trace reader can open
 2. measure device interrupt time in both windows
-   run: `python3 blueprints/lib/futex_irq_probe.py --ctf <ctf> --gt <window> --out <out>/irq.json`
+   needs: `kernel.interrupt.time_attribution`
+   run [babeltrace2-cli]: `python3 $BLUEPRINT_HOME/lib/futex_irq_probe.py --ctf <ctf> --gt <window> --out <out>/irq.json`
    expect: hardirq seconds per second of wall clock, baseline and incident, and their ratio
 3. measure disk arrivals per process, to show the disk stayed quiet
-   run: `python3 blueprints/problems/host-disk-saturation/scripts/block_io_signature.py --ctf <ctf> --gt <window> --out <out>/blockio.json`
+   needs: `storage.io_attribution`
+   run [babeltrace2-cli]: `python3 $BLUEPRINT_HOME/problems/host-disk-saturation/scripts/block_io_signature.py --ctf <ctf> --gt <window> --out <out>/blockio.json`
    expect: requests per second gained by any newcomer process; expected to be near zero for this fault
 4. combine into the verdict and its artifacts
-   run: `python3 blueprints/lib/blueprint_decide.py --pack <pack.json> --out <out>/verdict.json`
+   needs: `verdict.apply_rules`
+   run [blueprint-rules]: `python3 $BLUEPRINT_HOME/lib/blueprint_decide.py --pack <out>/pack.json --out <out>/verdict.json`
    expect: a verdict naming the capped service, or a refusal to decide
 5. draw the decision card
-   run: `python3 blueprints/lib/blueprint_card.py --pack <pack.json> --ruler blueprints/results/ruler.json --blueprint service-memory-cap --problems blueprints/problems --out <out>/card.svg`
+   needs: `report.decision_card`
+   run [blueprint-card]: `python3 $BLUEPRINT_HOME/lib/blueprint_card.py --pack <out>/pack.json --ruler $BLUEPRINT_HOME/results/ruler.json --problems $BLUEPRINT_HOME/problems --out <out>/card.svg`
    expect: one page showing where every fault family sits on this blueprint's deciding number, which gates passed and by how much, and what else was ruled out
 
 ## What to produce
