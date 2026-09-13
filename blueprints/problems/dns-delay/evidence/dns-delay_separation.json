@@ -1,0 +1,482 @@
+{
+ "signal": "emfile_error_share (EMFILE as a share of all failing syscalls)",
+ "gate2": "worst_retrans_pct below RETRANS_VETO_PCT",
+ "measured_utc": "2026-09-13",
+ "source": "blueprints/lib/sweep_uncovered.py plus the dns evidence sweep, 272 v2 packs",
+ "owns": "dns_delay",
+ "app_scope": "sockshop only - Train Ticket resolves nothing by name",
+ "positives": [
+  {
+   "run": "dns_delay_aggressive_steady_r1",
+   "emfile_share": 0.04755137,
+   "emfile_per_s": 310.15,
+   "retrans_pct": 0
+  },
+  {
+   "run": "dns_delay_aggressive_steady_r2",
+   "emfile_share": 0.01974845,
+   "emfile_per_s": 161.333,
+   "retrans_pct": 1.875
+  },
+  {
+   "run": "dns_delay_aggressive_steady_r3",
+   "emfile_share": 0.04557531,
+   "emfile_per_s": 285.167,
+   "retrans_pct": 0
+  },
+  {
+   "run": "dns_delay_aggressive_steady_r4",
+   "emfile_share": 0.0,
+   "emfile_per_s": 0.0,
+   "retrans_pct": 0
+  },
+  {
+   "run": "dns_delay_aggressive_steady_r5",
+   "emfile_share": 0.03085582,
+   "emfile_per_s": 234.383,
+   "retrans_pct": 0
+  }
+ ],
+ "all_families": [
+  {
+   "app": "sockshop",
+   "family": "anomaly_cpu",
+   "owns": false,
+   "n": 5,
+   "emfile_share_min": 0.0,
+   "emfile_share_max": 0.0,
+   "retrans_min": 0.546,
+   "retrans_max": 50.0
+  },
+  {
+   "app": "sockshop",
+   "family": "anomaly_disk",
+   "owns": false,
+   "n": 5,
+   "emfile_share_min": 0.0,
+   "emfile_share_max": 0.0,
+   "retrans_min": 0,
+   "retrans_max": 4.762
+  },
+  {
+   "app": "sockshop",
+   "family": "anomaly_mem",
+   "owns": false,
+   "n": 8,
+   "emfile_share_min": 0.0,
+   "emfile_share_max": 0.0,
+   "retrans_min": 0,
+   "retrans_max": 1.905
+  },
+  {
+   "app": "sockshop",
+   "family": "anomaly_net",
+   "owns": false,
+   "n": 8,
+   "emfile_share_min": 0.0,
+   "emfile_share_max": 0.01556041,
+   "retrans_min": 25.0,
+   "retrans_max": 42.105
+  },
+  {
+   "app": "sockshop",
+   "family": "code_event_loop_block",
+   "owns": false,
+   "n": 5,
+   "emfile_share_min": 0.0,
+   "emfile_share_max": 0.0,
+   "retrans_min": 0,
+   "retrans_max": 23.129
+  },
+  {
+   "app": "sockshop",
+   "family": "code_lock_across_io",
+   "owns": false,
+   "n": 5,
+   "emfile_share_min": 0.0,
+   "emfile_share_max": 0.0,
+   "retrans_min": 0,
+   "retrans_max": 1.124
+  },
+  {
+   "app": "sockshop",
+   "family": "code_n_plus_one",
+   "owns": false,
+   "n": 5,
+   "emfile_share_min": 0.0,
+   "emfile_share_max": 0.0,
+   "retrans_min": 0,
+   "retrans_max": 14.286
+  },
+  {
+   "app": "sockshop",
+   "family": "code_serial_awaits",
+   "owns": false,
+   "n": 5,
+   "emfile_share_min": 0.0,
+   "emfile_share_max": 0.0,
+   "retrans_min": 0,
+   "retrans_max": 42.938
+  },
+  {
+   "app": "sockshop",
+   "family": "code_unbounded_cache",
+   "owns": false,
+   "n": 5,
+   "emfile_share_min": 0.0,
+   "emfile_share_max": 0.0,
+   "retrans_min": 0,
+   "retrans_max": 17.172
+  },
+  {
+   "app": "sockshop",
+   "family": "conn_pool_exhaustion",
+   "owns": false,
+   "n": 5,
+   "emfile_share_min": 0.0,
+   "emfile_share_max": 0.0,
+   "retrans_min": 0,
+   "retrans_max": 3.704
+  },
+  {
+   "app": "sockshop",
+   "family": "data_exfiltration",
+   "owns": false,
+   "n": 5,
+   "emfile_share_min": 0.0,
+   "emfile_share_max": 0.0,
+   "retrans_min": 75.0,
+   "retrans_max": 96.154
+  },
+  {
+   "app": "sockshop",
+   "family": "deadlock",
+   "owns": false,
+   "n": 5,
+   "emfile_share_min": 0.0,
+   "emfile_share_max": 0.0,
+   "retrans_min": 0.98,
+   "retrans_max": 4.0
+  },
+  {
+   "app": "sockshop",
+   "family": "dns_delay",
+   "owns": true,
+   "n": 5,
+   "emfile_share_min": 0.0,
+   "emfile_share_max": 0.04755137,
+   "retrans_min": 0,
+   "retrans_max": 1.875
+  },
+  {
+   "app": "sockshop",
+   "family": "fd_exhaustion",
+   "owns": false,
+   "n": 5,
+   "emfile_share_min": 5.64e-06,
+   "emfile_share_max": 0.00028399,
+   "retrans_min": 0,
+   "retrans_max": 66.071
+  },
+  {
+   "app": "sockshop",
+   "family": "fork_storm",
+   "owns": false,
+   "n": 5,
+   "emfile_share_min": 0.0,
+   "emfile_share_max": 0.0,
+   "retrans_min": 0,
+   "retrans_max": 15.385
+  },
+  {
+   "app": "sockshop",
+   "family": "lock_contention",
+   "owns": false,
+   "n": 5,
+   "emfile_share_min": 0.0,
+   "emfile_share_max": 0.0,
+   "retrans_min": 0,
+   "retrans_max": 4.054
+  },
+  {
+   "app": "sockshop",
+   "family": "nagle_delayed_ack",
+   "owns": false,
+   "n": 5,
+   "emfile_share_min": 0.0,
+   "emfile_share_max": 0.0,
+   "retrans_min": 0,
+   "retrans_max": 1.053
+  },
+  {
+   "app": "sockshop",
+   "family": "noisy_neighbor",
+   "owns": false,
+   "n": 8,
+   "emfile_share_min": 0.0,
+   "emfile_share_max": 0.0,
+   "retrans_min": 0,
+   "retrans_max": 11.111
+  },
+  {
+   "app": "sockshop",
+   "family": "normal",
+   "owns": false,
+   "n": 10,
+   "emfile_share_min": 0.0,
+   "emfile_share_max": 0.0,
+   "retrans_min": 0,
+   "retrans_max": 4.762
+  },
+  {
+   "app": "sockshop",
+   "family": "priority_inversion",
+   "owns": false,
+   "n": 5,
+   "emfile_share_min": 0.0,
+   "emfile_share_max": 0.0,
+   "retrans_min": 0,
+   "retrans_max": 2.222
+  },
+  {
+   "app": "sockshop",
+   "family": "resource_abuse",
+   "owns": false,
+   "n": 5,
+   "emfile_share_min": 0.0,
+   "emfile_share_max": 0.0,
+   "retrans_min": 0,
+   "retrans_max": 2.439
+  },
+  {
+   "app": "sockshop",
+   "family": "slow_db",
+   "owns": false,
+   "n": 11,
+   "emfile_share_min": 0.0,
+   "emfile_share_max": 0.0,
+   "retrans_min": 0,
+   "retrans_max": 10.0
+  },
+  {
+   "app": "sockshop",
+   "family": "svc_cpu_cap",
+   "owns": false,
+   "n": 8,
+   "emfile_share_min": 0.0,
+   "emfile_share_max": 0.0,
+   "retrans_min": 0,
+   "retrans_max": 1.875
+  },
+  {
+   "app": "sockshop",
+   "family": "svc_mem_cap",
+   "owns": false,
+   "n": 8,
+   "emfile_share_min": 0.0,
+   "emfile_share_max": 0.0,
+   "retrans_min": 67.89,
+   "retrans_max": 85.135
+  },
+  {
+   "app": "sockshop",
+   "family": "svc_net",
+   "owns": false,
+   "n": 5,
+   "emfile_share_min": 0.0,
+   "emfile_share_max": 0.0,
+   "retrans_min": 16.667,
+   "retrans_max": 46.667
+  },
+  {
+   "app": "trainticket",
+   "family": "anomaly_cpu",
+   "owns": false,
+   "n": 5,
+   "emfile_share_min": 0.0,
+   "emfile_share_max": 0.0,
+   "retrans_min": 4.762,
+   "retrans_max": 43.75
+  },
+  {
+   "app": "trainticket",
+   "family": "anomaly_disk",
+   "owns": false,
+   "n": 5,
+   "emfile_share_min": 0.0,
+   "emfile_share_max": 0.0,
+   "retrans_min": 0.161,
+   "retrans_max": 0.542
+  },
+  {
+   "app": "trainticket",
+   "family": "anomaly_mem",
+   "owns": false,
+   "n": 8,
+   "emfile_share_min": 0.0,
+   "emfile_share_max": 0.0,
+   "retrans_min": 0,
+   "retrans_max": 33.333
+  },
+  {
+   "app": "trainticket",
+   "family": "anomaly_net",
+   "owns": false,
+   "n": 8,
+   "emfile_share_min": 0.0,
+   "emfile_share_max": 0.0,
+   "retrans_min": 23.171,
+   "retrans_max": 51.351
+  },
+  {
+   "app": "trainticket",
+   "family": "conn_pool_exhaustion",
+   "owns": false,
+   "n": 5,
+   "emfile_share_min": 0.0,
+   "emfile_share_max": 0.0,
+   "retrans_min": 0,
+   "retrans_max": 0
+  },
+  {
+   "app": "trainticket",
+   "family": "data_exfiltration",
+   "owns": false,
+   "n": 5,
+   "emfile_share_min": 0.0,
+   "emfile_share_max": 0.0,
+   "retrans_min": 50.0,
+   "retrans_max": 98.925
+  },
+  {
+   "app": "trainticket",
+   "family": "deadlock",
+   "owns": false,
+   "n": 5,
+   "emfile_share_min": 0.0,
+   "emfile_share_max": 0.0,
+   "retrans_min": 0,
+   "retrans_max": 0
+  },
+  {
+   "app": "trainticket",
+   "family": "fd_exhaustion",
+   "owns": false,
+   "n": 5,
+   "emfile_share_min": 0.00169878,
+   "emfile_share_max": 0.00176216,
+   "retrans_min": 0,
+   "retrans_max": 0
+  },
+  {
+   "app": "trainticket",
+   "family": "fork_storm",
+   "owns": false,
+   "n": 5,
+   "emfile_share_min": 0.0,
+   "emfile_share_max": 0.0,
+   "retrans_min": 0,
+   "retrans_max": 0
+  },
+  {
+   "app": "trainticket",
+   "family": "lock_contention",
+   "owns": false,
+   "n": 5,
+   "emfile_share_min": 0.0,
+   "emfile_share_max": 0.0,
+   "retrans_min": 0,
+   "retrans_max": 0
+  },
+  {
+   "app": "trainticket",
+   "family": "nagle_delayed_ack",
+   "owns": false,
+   "n": 5,
+   "emfile_share_min": 0.0,
+   "emfile_share_max": 0.0,
+   "retrans_min": 0,
+   "retrans_max": 0.132
+  },
+  {
+   "app": "trainticket",
+   "family": "noisy_neighbor",
+   "owns": false,
+   "n": 8,
+   "emfile_share_min": 0.0,
+   "emfile_share_max": 0.0,
+   "retrans_min": 0,
+   "retrans_max": 0
+  },
+  {
+   "app": "trainticket",
+   "family": "normal",
+   "owns": false,
+   "n": 10,
+   "emfile_share_min": 0.0,
+   "emfile_share_max": 0.0,
+   "retrans_min": 0.111,
+   "retrans_max": 1.235
+  },
+  {
+   "app": "trainticket",
+   "family": "priority_inversion",
+   "owns": false,
+   "n": 5,
+   "emfile_share_min": 0.0,
+   "emfile_share_max": 0.0,
+   "retrans_min": 0,
+   "retrans_max": 0
+  },
+  {
+   "app": "trainticket",
+   "family": "resource_abuse",
+   "owns": false,
+   "n": 5,
+   "emfile_share_min": 0.0,
+   "emfile_share_max": 0.0,
+   "retrans_min": 0,
+   "retrans_max": 0
+  },
+  {
+   "app": "trainticket",
+   "family": "slow_db",
+   "owns": false,
+   "n": 11,
+   "emfile_share_min": 0.0,
+   "emfile_share_max": 0.0,
+   "retrans_min": 0,
+   "retrans_max": 0
+  },
+  {
+   "app": "trainticket",
+   "family": "svc_cpu_cap",
+   "owns": false,
+   "n": 8,
+   "emfile_share_min": 0.0,
+   "emfile_share_max": 0.0,
+   "retrans_min": 0,
+   "retrans_max": 0
+  },
+  {
+   "app": "trainticket",
+   "family": "svc_mem_cap",
+   "owns": false,
+   "n": 8,
+   "emfile_share_min": 0.0,
+   "emfile_share_max": 0.0,
+   "retrans_min": 94.589,
+   "retrans_max": 98.12
+  },
+  {
+   "app": "trainticket",
+   "family": "svc_net",
+   "owns": false,
+   "n": 5,
+   "emfile_share_min": 0.0,
+   "emfile_share_max": 0.0,
+   "retrans_min": 0,
+   "retrans_max": 42.857
+  }
+ ]
+}

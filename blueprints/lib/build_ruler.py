@@ -83,6 +83,13 @@ SIGNALS = {
         "unit": "bytes/s",
         "get": lambda p: _proc(p, "tx_newcomer_bytes_per_s"),
     },
+    "emfile_error_share": {
+        "label": "share of all failing syscalls that ran out of file descriptors",
+        "unit": "share of failing syscalls",
+        "get": lambda p: (_proc(p, "emfile_per_s_incident")
+                          / _proc(p, "syscall_errors_per_s_incident"))
+        if _proc(p, "syscall_errors_per_s_incident") else None,
+    },
     "emfile_per_s": {
         "label": "calls per second refused for want of a file descriptor",
         "unit": "per second",

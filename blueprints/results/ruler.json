@@ -19039,6 +19039,1916 @@
     }
    ]
   },
+  "emfile_error_share": {
+   "label": "share of all failing syscalls that ran out of file descriptors",
+   "unit": "share of failing syscalls",
+   "points": [
+    {
+     "app": "sockshop",
+     "family": "anomaly_cpu",
+     "run": "anomaly_cpu_aggressive_steady_r1",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "anomaly_cpu",
+     "run": "anomaly_cpu_aggressive_steady_r2",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "anomaly_cpu",
+     "run": "anomaly_cpu_aggressive_steady_r3",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "anomaly_cpu",
+     "run": "anomaly_cpu_aggressive_steady_r4",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "anomaly_cpu",
+     "run": "anomaly_cpu_aggressive_steady_r5",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "anomaly_disk",
+     "run": "anomaly_disk_aggressive_steady_r1",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "anomaly_disk",
+     "run": "anomaly_disk_aggressive_steady_r2",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "anomaly_disk",
+     "run": "anomaly_disk_aggressive_steady_r3",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "anomaly_disk",
+     "run": "anomaly_disk_aggressive_steady_r4",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "anomaly_disk",
+     "run": "anomaly_disk_aggressive_steady_r5",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "anomaly_mem",
+     "run": "anomaly_mem_aggressive_steady_r1",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "anomaly_mem",
+     "run": "anomaly_mem_aggressive_steady_r2",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "anomaly_mem",
+     "run": "anomaly_mem_aggressive_steady_r3",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "anomaly_mem",
+     "run": "anomaly_mem_aggressive_steady_r4",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "anomaly_mem",
+     "run": "anomaly_mem_aggressive_steady_r5",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "anomaly_mem",
+     "run": "anomaly_mem_subtle_steady_r1",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "anomaly_mem",
+     "run": "anomaly_mem_subtle_steady_r2",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "anomaly_mem",
+     "run": "anomaly_mem_subtle_steady_r3",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "anomaly_net",
+     "run": "anomaly_net_aggressive_burst_r1",
+     "n_cpus": 12,
+     "v": 0.0024
+    },
+    {
+     "app": "sockshop",
+     "family": "anomaly_net",
+     "run": "anomaly_net_aggressive_burst_r2",
+     "n_cpus": 12,
+     "v": 0.0156
+    },
+    {
+     "app": "sockshop",
+     "family": "anomaly_net",
+     "run": "anomaly_net_aggressive_burst_r3",
+     "n_cpus": 12,
+     "v": 0.0131
+    },
+    {
+     "app": "sockshop",
+     "family": "anomaly_net",
+     "run": "anomaly_net_aggressive_steady_r1",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "anomaly_net",
+     "run": "anomaly_net_aggressive_steady_r2",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "anomaly_net",
+     "run": "anomaly_net_aggressive_steady_r3",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "anomaly_net",
+     "run": "anomaly_net_aggressive_steady_r4",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "anomaly_net",
+     "run": "anomaly_net_aggressive_steady_r5",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "code_event_loop_block",
+     "run": "code_event_loop_block_aggressive_steady_r1",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "code_event_loop_block",
+     "run": "code_event_loop_block_aggressive_steady_r2",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "code_event_loop_block",
+     "run": "code_event_loop_block_aggressive_steady_r3",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "code_event_loop_block",
+     "run": "code_event_loop_block_aggressive_steady_r4",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "code_event_loop_block",
+     "run": "code_event_loop_block_aggressive_steady_r5",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "code_lock_across_io",
+     "run": "code_lock_across_io_aggressive_steady_r1",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "code_lock_across_io",
+     "run": "code_lock_across_io_aggressive_steady_r2",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "code_lock_across_io",
+     "run": "code_lock_across_io_aggressive_steady_r3",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "code_lock_across_io",
+     "run": "code_lock_across_io_aggressive_steady_r4",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "code_lock_across_io",
+     "run": "code_lock_across_io_aggressive_steady_r5",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "code_n_plus_one",
+     "run": "code_n_plus_one_aggressive_steady_r1",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "code_n_plus_one",
+     "run": "code_n_plus_one_aggressive_steady_r2",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "code_n_plus_one",
+     "run": "code_n_plus_one_aggressive_steady_r3",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "code_n_plus_one",
+     "run": "code_n_plus_one_aggressive_steady_r4",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "code_n_plus_one",
+     "run": "code_n_plus_one_aggressive_steady_r5",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "code_serial_awaits",
+     "run": "code_serial_awaits_aggressive_steady_r1",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "code_serial_awaits",
+     "run": "code_serial_awaits_aggressive_steady_r2",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "code_serial_awaits",
+     "run": "code_serial_awaits_aggressive_steady_r3",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "code_serial_awaits",
+     "run": "code_serial_awaits_aggressive_steady_r4",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "code_serial_awaits",
+     "run": "code_serial_awaits_aggressive_steady_r5",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "code_unbounded_cache",
+     "run": "code_unbounded_cache_aggressive_steady_r1",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "code_unbounded_cache",
+     "run": "code_unbounded_cache_aggressive_steady_r2",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "code_unbounded_cache",
+     "run": "code_unbounded_cache_aggressive_steady_r3",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "code_unbounded_cache",
+     "run": "code_unbounded_cache_aggressive_steady_r4",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "code_unbounded_cache",
+     "run": "code_unbounded_cache_aggressive_steady_r5",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "conn_pool_exhaustion",
+     "run": "conn_pool_exhaustion_aggressive_steady_r1",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "conn_pool_exhaustion",
+     "run": "conn_pool_exhaustion_aggressive_steady_r2",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "conn_pool_exhaustion",
+     "run": "conn_pool_exhaustion_aggressive_steady_r3",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "conn_pool_exhaustion",
+     "run": "conn_pool_exhaustion_aggressive_steady_r4",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "conn_pool_exhaustion",
+     "run": "conn_pool_exhaustion_aggressive_steady_r5",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "data_exfiltration",
+     "run": "data_exfiltration_aggressive_steady_r1",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "data_exfiltration",
+     "run": "data_exfiltration_aggressive_steady_r2",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "data_exfiltration",
+     "run": "data_exfiltration_aggressive_steady_r3",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "data_exfiltration",
+     "run": "data_exfiltration_aggressive_steady_r4",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "data_exfiltration",
+     "run": "data_exfiltration_aggressive_steady_r5",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "deadlock",
+     "run": "deadlock_aggressive_steady_r1",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "deadlock",
+     "run": "deadlock_aggressive_steady_r2",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "deadlock",
+     "run": "deadlock_aggressive_steady_r3",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "deadlock",
+     "run": "deadlock_aggressive_steady_r4",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "deadlock",
+     "run": "deadlock_aggressive_steady_r5",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "dns_delay",
+     "run": "dns_delay_aggressive_steady_r1",
+     "n_cpus": 12,
+     "v": 0.0476
+    },
+    {
+     "app": "sockshop",
+     "family": "dns_delay",
+     "run": "dns_delay_aggressive_steady_r2",
+     "n_cpus": 12,
+     "v": 0.0197
+    },
+    {
+     "app": "sockshop",
+     "family": "dns_delay",
+     "run": "dns_delay_aggressive_steady_r3",
+     "n_cpus": 12,
+     "v": 0.0456
+    },
+    {
+     "app": "sockshop",
+     "family": "dns_delay",
+     "run": "dns_delay_aggressive_steady_r4",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "dns_delay",
+     "run": "dns_delay_aggressive_steady_r5",
+     "n_cpus": 12,
+     "v": 0.0309
+    },
+    {
+     "app": "sockshop",
+     "family": "fd_exhaustion",
+     "run": "fd_exhaustion_aggressive_steady_r1",
+     "n_cpus": 12,
+     "v": 0.0001
+    },
+    {
+     "app": "sockshop",
+     "family": "fd_exhaustion",
+     "run": "fd_exhaustion_aggressive_steady_r2",
+     "n_cpus": 12,
+     "v": 0.0003
+    },
+    {
+     "app": "sockshop",
+     "family": "fd_exhaustion",
+     "run": "fd_exhaustion_aggressive_steady_r3",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "fd_exhaustion",
+     "run": "fd_exhaustion_aggressive_steady_r4",
+     "n_cpus": 12,
+     "v": 0.0001
+    },
+    {
+     "app": "sockshop",
+     "family": "fd_exhaustion",
+     "run": "fd_exhaustion_aggressive_steady_r5",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "fork_storm",
+     "run": "fork_storm_aggressive_steady_r1",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "fork_storm",
+     "run": "fork_storm_aggressive_steady_r2",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "fork_storm",
+     "run": "fork_storm_aggressive_steady_r3",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "fork_storm",
+     "run": "fork_storm_aggressive_steady_r4",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "fork_storm",
+     "run": "fork_storm_aggressive_steady_r5",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "lock_contention",
+     "run": "lock_contention_aggressive_steady_r1",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "lock_contention",
+     "run": "lock_contention_aggressive_steady_r2",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "lock_contention",
+     "run": "lock_contention_aggressive_steady_r3",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "lock_contention",
+     "run": "lock_contention_aggressive_steady_r4",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "lock_contention",
+     "run": "lock_contention_aggressive_steady_r5",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "nagle_delayed_ack",
+     "run": "nagle_delayed_ack_aggressive_steady_r1",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "nagle_delayed_ack",
+     "run": "nagle_delayed_ack_aggressive_steady_r2",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "nagle_delayed_ack",
+     "run": "nagle_delayed_ack_aggressive_steady_r3",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "nagle_delayed_ack",
+     "run": "nagle_delayed_ack_aggressive_steady_r4",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "nagle_delayed_ack",
+     "run": "nagle_delayed_ack_aggressive_steady_r5",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "noisy_neighbor",
+     "run": "noisy_neighbor_aggressive_steady_r1",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "noisy_neighbor",
+     "run": "noisy_neighbor_aggressive_steady_r2",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "noisy_neighbor",
+     "run": "noisy_neighbor_aggressive_steady_r3",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "noisy_neighbor",
+     "run": "noisy_neighbor_aggressive_steady_r4",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "noisy_neighbor",
+     "run": "noisy_neighbor_aggressive_steady_r5",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "noisy_neighbor",
+     "run": "noisy_neighbor_subtle_steady_r1",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "noisy_neighbor",
+     "run": "noisy_neighbor_subtle_steady_r2",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "noisy_neighbor",
+     "run": "noisy_neighbor_subtle_steady_r3",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "normal",
+     "run": "normal_none_burst_r1",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "normal",
+     "run": "normal_none_burst_r2",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "normal",
+     "run": "normal_none_burst_r3",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "normal",
+     "run": "normal_none_burst_r4",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "normal",
+     "run": "normal_none_burst_r5",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "normal",
+     "run": "normal_none_steady_r1",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "normal",
+     "run": "normal_none_steady_r2",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "normal",
+     "run": "normal_none_steady_r3",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "normal",
+     "run": "normal_none_steady_r4",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "normal",
+     "run": "normal_none_steady_r5",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "priority_inversion",
+     "run": "priority_inversion_aggressive_steady_r1",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "priority_inversion",
+     "run": "priority_inversion_aggressive_steady_r2",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "priority_inversion",
+     "run": "priority_inversion_aggressive_steady_r3",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "priority_inversion",
+     "run": "priority_inversion_aggressive_steady_r4",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "priority_inversion",
+     "run": "priority_inversion_aggressive_steady_r5",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "resource_abuse",
+     "run": "resource_abuse_aggressive_steady_r1",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "resource_abuse",
+     "run": "resource_abuse_aggressive_steady_r2",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "resource_abuse",
+     "run": "resource_abuse_aggressive_steady_r3",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "resource_abuse",
+     "run": "resource_abuse_aggressive_steady_r4",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "resource_abuse",
+     "run": "resource_abuse_aggressive_steady_r5",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "slow_db",
+     "run": "slow_db_aggressive_burst_r1",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "slow_db",
+     "run": "slow_db_aggressive_burst_r2",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "slow_db",
+     "run": "slow_db_aggressive_burst_r3",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "slow_db",
+     "run": "slow_db_aggressive_steady_r1",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "slow_db",
+     "run": "slow_db_aggressive_steady_r2",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "slow_db",
+     "run": "slow_db_aggressive_steady_r3",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "slow_db",
+     "run": "slow_db_aggressive_steady_r4",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "slow_db",
+     "run": "slow_db_aggressive_steady_r5",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "slow_db",
+     "run": "slow_db_subtle_steady_r1",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "slow_db",
+     "run": "slow_db_subtle_steady_r2",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "slow_db",
+     "run": "slow_db_subtle_steady_r3",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "svc_cpu_cap",
+     "run": "svc_cpu_cap_aggressive_steady_r1",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "svc_cpu_cap",
+     "run": "svc_cpu_cap_aggressive_steady_r2",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "svc_cpu_cap",
+     "run": "svc_cpu_cap_aggressive_steady_r3",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "svc_cpu_cap",
+     "run": "svc_cpu_cap_aggressive_steady_r4",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "svc_cpu_cap",
+     "run": "svc_cpu_cap_aggressive_steady_r5",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "svc_cpu_cap",
+     "run": "svc_cpu_cap_subtle_steady_r1",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "svc_cpu_cap",
+     "run": "svc_cpu_cap_subtle_steady_r2",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "svc_cpu_cap",
+     "run": "svc_cpu_cap_subtle_steady_r3",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "svc_mem_cap",
+     "run": "svc_mem_cap_aggressive_steady_r1",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "svc_mem_cap",
+     "run": "svc_mem_cap_aggressive_steady_r2",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "svc_mem_cap",
+     "run": "svc_mem_cap_aggressive_steady_r3",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "svc_mem_cap",
+     "run": "svc_mem_cap_aggressive_steady_r4",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "svc_mem_cap",
+     "run": "svc_mem_cap_aggressive_steady_r5",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "svc_mem_cap",
+     "run": "svc_mem_cap_subtle_steady_r1",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "svc_mem_cap",
+     "run": "svc_mem_cap_subtle_steady_r2",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "svc_mem_cap",
+     "run": "svc_mem_cap_subtle_steady_r3",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "svc_net",
+     "run": "svc_net_aggressive_steady_r1",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "svc_net",
+     "run": "svc_net_aggressive_steady_r2",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "svc_net",
+     "run": "svc_net_aggressive_steady_r3",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "svc_net",
+     "run": "svc_net_aggressive_steady_r4",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "sockshop",
+     "family": "svc_net",
+     "run": "svc_net_aggressive_steady_r5",
+     "n_cpus": 12,
+     "v": 0.0
+    },
+    {
+     "app": "trainticket",
+     "family": "anomaly_cpu",
+     "run": "tt_anomaly_cpu_aggressive_steady_r1",
+     "n_cpus": 16,
+     "v": 0.0
+    },
+    {
+     "app": "trainticket",
+     "family": "anomaly_cpu",
+     "run": "tt_anomaly_cpu_aggressive_steady_r2",
+     "n_cpus": 16,
+     "v": 0.0
+    },
+    {
+     "app": "trainticket",
+     "family": "anomaly_cpu",
+     "run": "tt_anomaly_cpu_aggressive_steady_r3",
+     "n_cpus": 16,
+     "v": 0.0
+    },
+    {
+     "app": "trainticket",
+     "family": "anomaly_cpu",
+     "run": "tt_anomaly_cpu_aggressive_steady_r4",
+     "n_cpus": 16,
+     "v": 0.0
+    },
+    {
+     "app": "trainticket",
+     "family": "anomaly_cpu",
+     "run": "tt_anomaly_cpu_aggressive_steady_r5",
+     "n_cpus": 16,
+     "v": 0.0
+    },
+    {
+     "app": "trainticket",
+     "family": "anomaly_disk",
+     "run": "tt_anomaly_disk_aggressive_steady_r1",
+     "n_cpus": 16,
+     "v": 0.0
+    },
+    {
+     "app": "trainticket",
+     "family": "anomaly_disk",
+     "run": "tt_anomaly_disk_aggressive_steady_r2",
+     "n_cpus": 16,
+     "v": 0.0
+    },
+    {
+     "app": "trainticket",
+     "family": "anomaly_disk",
+     "run": "tt_anomaly_disk_aggressive_steady_r3",
+     "n_cpus": 16,
+     "v": 0.0
+    },
+    {
+     "app": "trainticket",
+     "family": "anomaly_disk",
+     "run": "tt_anomaly_disk_aggressive_steady_r4",
+     "n_cpus": 16,
+     "v": 0.0
+    },
+    {
+     "app": "trainticket",
+     "family": "anomaly_disk",
+     "run": "tt_anomaly_disk_aggressive_steady_r5",
+     "n_cpus": 16,
+     "v": 0.0
+    },
+    {
+     "app": "trainticket",
+     "family": "anomaly_mem",
+     "run": "tt_anomaly_mem_aggressive_steady_r1",
+     "n_cpus": 16,
+     "v": 0.0
+    },
+    {
+     "app": "trainticket",
+     "family": "anomaly_mem",
+     "run": "tt_anomaly_mem_aggressive_steady_r2",
+     "n_cpus": 16,
+     "v": 0.0
+    },
+    {
+     "app": "trainticket",
+     "family": "anomaly_mem",
+     "run": "tt_anomaly_mem_aggressive_steady_r3",
+     "n_cpus": 16,
+     "v": 0.0
+    },
+    {
+     "app": "trainticket",
+     "family": "anomaly_mem",
+     "run": "tt_anomaly_mem_aggressive_steady_r4",
+     "n_cpus": 16,
+     "v": 0.0
+    },
+    {
+     "app": "trainticket",
+     "family": "anomaly_mem",
+     "run": "tt_anomaly_mem_aggressive_steady_r5",
+     "n_cpus": 16,
+     "v": 0.0
+    },
+    {
+     "app": "trainticket",
+     "family": "anomaly_mem",
+     "run": "tt_anomaly_mem_subtle_steady_r1",
+     "n_cpus": 16,
+     "v": 0.0
+    },
+    {
+     "app": "trainticket",
+     "family": "anomaly_mem",
+     "run": "tt_anomaly_mem_subtle_steady_r2",
+     "n_cpus": 16,
+     "v": 0.0
+    },
+    {
+     "app": "trainticket",
+     "family": "anomaly_mem",
+     "run": "tt_anomaly_mem_subtle_steady_r3",
+     "n_cpus": 16,
+     "v": 0.0
+    },
+    {
+     "app": "trainticket",
+     "family": "anomaly_net",
+     "run": "tt_anomaly_net_aggressive_burst_r1",
+     "n_cpus": 16,
+     "v": 0.0
+    },
+    {
+     "app": "trainticket",
+     "family": "anomaly_net",
+     "run": "tt_anomaly_net_aggressive_burst_r2",
+     "n_cpus": 16,
+     "v": 0.0
+    },
+    {
+     "app": "trainticket",
+     "family": "anomaly_net",
+     "run": "tt_anomaly_net_aggressive_burst_r3",
+     "n_cpus": 16,
+     "v": 0.0
+    },
+    {
+     "app": "trainticket",
+     "family": "anomaly_net",
+     "run": "tt_anomaly_net_aggressive_steady_r1",
+     "n_cpus": 16,
+     "v": 0.0
+    },
+    {
+     "app": "trainticket",
+     "family": "anomaly_net",
+     "run": "tt_anomaly_net_aggressive_steady_r2",
+     "n_cpus": 16,
+     "v": 0.0
+    },
+    {
+     "app": "trainticket",
+     "family": "anomaly_net",
+     "run": "tt_anomaly_net_aggressive_steady_r3",
+     "n_cpus": 16,
+     "v": 0.0
+    },
+    {
+     "app": "trainticket",
+     "family": "anomaly_net",
+     "run": "tt_anomaly_net_aggressive_steady_r4",
+     "n_cpus": 16,
+     "v": 0.0
+    },
+    {
+     "app": "trainticket",
+     "family": "anomaly_net",
+     "run": "tt_anomaly_net_aggressive_steady_r5",
+     "n_cpus": 16,
+     "v": 0.0
+    },
+    {
+     "app": "trainticket",
+     "family": "conn_pool_exhaustion",
+     "run": "tt_conn_pool_exhaustion_aggressive_steady_r1",
+     "n_cpus": 16,
+     "v": 0.0
+    },
+    {
+     "app": "trainticket",
+     "family": "conn_pool_exhaustion",
+     "run": "tt_conn_pool_exhaustion_aggressive_steady_r2",
+     "n_cpus": 16,
+     "v": 0.0
+    },
+    {
+     "app": "trainticket",
+     "family": "conn_pool_exhaustion",
+     "run": "tt_conn_pool_exhaustion_aggressive_steady_r3",
+     "n_cpus": 16,
+     "v": 0.0
+    },
+    {
+     "app": "trainticket",
+     "family": "conn_pool_exhaustion",
+     "run": "tt_conn_pool_exhaustion_aggressive_steady_r4",
+     "n_cpus": 16,
+     "v": 0.0
+    },
+    {
+     "app": "trainticket",
+     "family": "conn_pool_exhaustion",
+     "run": "tt_conn_pool_exhaustion_aggressive_steady_r5",
+     "n_cpus": 16,
+     "v": 0.0
+    },
+    {
+     "app": "trainticket",
+     "family": "data_exfiltration",
+     "run": "tt_data_exfiltration_aggressive_steady_r1",
+     "n_cpus": 16,
+     "v": 0.0
+    },
+    {
+     "app": "trainticket",
+     "family": "data_exfiltration",
+     "run": "tt_data_exfiltration_aggressive_steady_r2",
+     "n_cpus": 16,
+     "v": 0.0
+    },
+    {
+     "app": "trainticket",
+     "family": "data_exfiltration",
+     "run": "tt_data_exfiltration_aggressive_steady_r3",
+     "n_cpus": 16,
+     "v": 0.0
+    },
+    {
+     "app": "trainticket",
+     "family": "data_exfiltration",
+     "run": "tt_data_exfiltration_aggressive_steady_r4",
+     "n_cpus": 16,
+     "v": 0.0
+    },
+    {
+     "app": "trainticket",
+     "family": "data_exfiltration",
+     "run": "tt_data_exfiltration_aggressive_steady_r5",
+     "n_cpus": 16,
+     "v": 0.0
+    },
+    {
+     "app": "trainticket",
+     "family": "deadlock",
+     "run": "tt_deadlock_aggressive_steady_r1",
+     "n_cpus": 16,
+     "v": 0.0
+    },
+    {
+     "app": "trainticket",
+     "family": "deadlock",
+     "run": "tt_deadlock_aggressive_steady_r2",
+     "n_cpus": 16,
+     "v": 0.0
+    },
+    {
+     "app": "trainticket",
+     "family": "deadlock",
+     "run": "tt_deadlock_aggressive_steady_r3",
+     "n_cpus": 16,
+     "v": 0.0
+    },
+    {
+     "app": "trainticket",
+     "family": "deadlock",
+     "run": "tt_deadlock_aggressive_steady_r4",
+     "n_cpus": 16,
+     "v": 0.0
+    },
+    {
+     "app": "trainticket",
+     "family": "deadlock",
+     "run": "tt_deadlock_aggressive_steady_r5",
+     "n_cpus": 16,
+     "v": 0.0
+    },
+    {
+     "app": "trainticket",
+     "family": "fd_exhaustion",
+     "run": "tt_fd_exhaustion_aggressive_steady_r1",
+     "n_cpus": 16,
+     "v": 0.0017
+    },
+    {
+     "app": "trainticket",
+     "family": "fd_exhaustion",
+     "run": "tt_fd_exhaustion_aggressive_steady_r2",
+     "n_cpus": 16,
+     "v": 0.0018
+    },
+    {
+     "app": "trainticket",
+     "family": "fd_exhaustion",
+     "run": "tt_fd_exhaustion_aggressive_steady_r3",
+     "n_cpus": 16,
+     "v": 0.0017
+    },
+    {
+     "app": "trainticket",
+     "family": "fd_exhaustion",
+     "run": "tt_fd_exhaustion_aggressive_steady_r4",
+     "n_cpus": 16,
+     "v": 0.0018
+    },
+    {
+     "app": "trainticket",
+     "family": "fd_exhaustion",
+     "run": "tt_fd_exhaustion_aggressive_steady_r5",
+     "n_cpus": 16,
+     "v": 0.0017
+    },
+    {
+     "app": "trainticket",
+     "family": "fork_storm",
+     "run": "tt_fork_storm_aggressive_steady_r1",
+     "n_cpus": 16,
+     "v": 0.0
+    },
+    {
+     "app": "trainticket",
+     "family": "fork_storm",
+     "run": "tt_fork_storm_aggressive_steady_r2",
+     "n_cpus": 16,
+     "v": 0.0
+    },
+    {
+     "app": "trainticket",
+     "family": "fork_storm",
+     "run": "tt_fork_storm_aggressive_steady_r3",
+     "n_cpus": 16,
+     "v": 0.0
+    },
+    {
+     "app": "trainticket",
+     "family": "fork_storm",
+     "run": "tt_fork_storm_aggressive_steady_r4",
+     "n_cpus": 16,
+     "v": 0.0
+    },
+    {
+     "app": "trainticket",
+     "family": "fork_storm",
+     "run": "tt_fork_storm_aggressive_steady_r5",
+     "n_cpus": 16,
+     "v": 0.0
+    },
+    {
+     "app": "trainticket",
+     "family": "lock_contention",
+     "run": "tt_lock_contention_aggressive_steady_r1",
+     "n_cpus": 16,
+     "v": 0.0
+    },
+    {
+     "app": "trainticket",
+     "family": "lock_contention",
+     "run": "tt_lock_contention_aggressive_steady_r2",
+     "n_cpus": 16,
+     "v": 0.0
+    },
+    {
+     "app": "trainticket",
+     "family": "lock_contention",
+     "run": "tt_lock_contention_aggressive_steady_r3",
+     "n_cpus": 16,
+     "v": 0.0
+    },
+    {
+     "app": "trainticket",
+     "family": "lock_contention",
+     "run": "tt_lock_contention_aggressive_steady_r4",
+     "n_cpus": 16,
+     "v": 0.0
+    },
+    {
+     "app": "trainticket",
+     "family": "lock_contention",
+     "run": "tt_lock_contention_aggressive_steady_r5",
+     "n_cpus": 16,
+     "v": 0.0
+    },
+    {
+     "app": "trainticket",
+     "family": "nagle_delayed_ack",
+     "run": "tt_nagle_delayed_ack_aggressive_steady_r1",
+     "n_cpus": 16,
+     "v": 0.0
+    },
+    {
+     "app": "trainticket",
+     "family": "nagle_delayed_ack",
+     "run": "tt_nagle_delayed_ack_aggressive_steady_r2",
+     "n_cpus": 16,
+     "v": 0.0
+    },
+    {
+     "app": "trainticket",
+     "family": "nagle_delayed_ack",
+     "run": "tt_nagle_delayed_ack_aggressive_steady_r3",
+     "n_cpus": 16,
+     "v": 0.0
+    },
+    {
+     "app": "trainticket",
+     "family": "nagle_delayed_ack",
+     "run": "tt_nagle_delayed_ack_aggressive_steady_r4",
+     "n_cpus": 16,
+     "v": 0.0
+    },
+    {
+     "app": "trainticket",
+     "family": "nagle_delayed_ack",
+     "run": "tt_nagle_delayed_ack_aggressive_steady_r5",
+     "n_cpus": 16,
+     "v": 0.0
+    },
+    {
+     "app": "trainticket",
+     "family": "noisy_neighbor",
+     "run": "tt_noisy_neighbor_aggressive_steady_r1",
+     "n_cpus": 16,
+     "v": 0.0
+    },
+    {
+     "app": "trainticket",
+     "family": "noisy_neighbor",
+     "run": "tt_noisy_neighbor_aggressive_steady_r2",
+     "n_cpus": 16,
+     "v": 0.0
+    },
+    {
+     "app": "trainticket",
+     "family": "noisy_neighbor",
+     "run": "tt_noisy_neighbor_aggressive_steady_r3",
+     "n_cpus": 16,
+     "v": 0.0
+    },
+    {
+     "app": "trainticket",
+     "family": "noisy_neighbor",
+     "run": "tt_noisy_neighbor_aggressive_steady_r4",
+     "n_cpus": 16,
+     "v": 0.0
+    },
+    {
+     "app": "trainticket",
+     "family": "noisy_neighbor",
+     "run": "tt_noisy_neighbor_aggressive_steady_r5",
+     "n_cpus": 16,
+     "v": 0.0
+    },
+    {
+     "app": "trainticket",
+     "family": "noisy_neighbor",
+     "run": "tt_noisy_neighbor_subtle_steady_r1",
+     "n_cpus": 16,
+     "v": 0.0
+    },
+    {
+     "app": "trainticket",
+     "family": "noisy_neighbor",
+     "run": "tt_noisy_neighbor_subtle_steady_r2",
+     "n_cpus": 16,
+     "v": 0.0
+    },
+    {
+     "app": "trainticket",
+     "family": "noisy_neighbor",
+     "run": "tt_noisy_neighbor_subtle_steady_r3",
+     "n_cpus": 16,
+     "v": 0.0
+    },
+    {
+     "app": "trainticket",
+     "family": "normal",
+     "run": "tt_normal_none_burst_r1",
+     "n_cpus": 16,
+     "v": 0.0
+    },
+    {
+     "app": "trainticket",
+     "family": "normal",
+     "run": "tt_normal_none_burst_r2",
+     "n_cpus": 16,
+     "v": 0.0
+    },
+    {
+     "app": "trainticket",
+     "family": "normal",
+     "run": "tt_normal_none_burst_r3",
+     "n_cpus": 16,
+     "v": 0.0
+    },
+    {
+     "app": "trainticket",
+     "family": "normal",
+     "run": "tt_normal_none_burst_r4",
+     "n_cpus": 16,
+     "v": 0.0
+    },
+    {
+     "app": "trainticket",
+     "family": "normal",
+     "run": "tt_normal_none_burst_r5",
+     "n_cpus": 16,
+     "v": 0.0
+    },
+    {
+     "app": "trainticket",
+     "family": "normal",
+     "run": "tt_normal_none_steady_r1",
+     "n_cpus": 16,
+     "v": 0.0
+    },
+    {
+     "app": "trainticket",
+     "family": "normal",
+     "run": "tt_normal_none_steady_r2",
+     "n_cpus": 16,
+     "v": 0.0
+    },
+    {
+     "app": "trainticket",
+     "family": "normal",
+     "run": "tt_normal_none_steady_r3",
+     "n_cpus": 16,
+     "v": 0.0
+    },
+    {
+     "app": "trainticket",
+     "family": "normal",
+     "run": "tt_normal_none_steady_r4",
+     "n_cpus": 16,
+     "v": 0.0
+    },
+    {
+     "app": "trainticket",
+     "family": "normal",
+     "run": "tt_normal_none_steady_r5",
+     "n_cpus": 16,
+     "v": 0.0
+    },
+    {
+     "app": "trainticket",
+     "family": "priority_inversion",
+     "run": "tt_priority_inversion_aggressive_steady_r1",
+     "n_cpus": 16,
+     "v": 0.0
+    },
+    {
+     "app": "trainticket",
+     "family": "priority_inversion",
+     "run": "tt_priority_inversion_aggressive_steady_r2",
+     "n_cpus": 16,
+     "v": 0.0
+    },
+    {
+     "app": "trainticket",
+     "family": "priority_inversion",
+     "run": "tt_priority_inversion_aggressive_steady_r3",
+     "n_cpus": 16,
+     "v": 0.0
+    },
+    {
+     "app": "trainticket",
+     "family": "priority_inversion",
+     "run": "tt_priority_inversion_aggressive_steady_r4",
+     "n_cpus": 16,
+     "v": 0.0
+    },
+    {
+     "app": "trainticket",
+     "family": "priority_inversion",
+     "run": "tt_priority_inversion_aggressive_steady_r5",
+     "n_cpus": 16,
+     "v": 0.0
+    },
+    {
+     "app": "trainticket",
+     "family": "resource_abuse",
+     "run": "tt_resource_abuse_aggressive_steady_r1",
+     "n_cpus": 16,
+     "v": 0.0
+    },
+    {
+     "app": "trainticket",
+     "family": "resource_abuse",
+     "run": "tt_resource_abuse_aggressive_steady_r2",
+     "n_cpus": 16,
+     "v": 0.0
+    },
+    {
+     "app": "trainticket",
+     "family": "resource_abuse",
+     "run": "tt_resource_abuse_aggressive_steady_r3",
+     "n_cpus": 16,
+     "v": 0.0
+    },
+    {
+     "app": "trainticket",
+     "family": "resource_abuse",
+     "run": "tt_resource_abuse_aggressive_steady_r4",
+     "n_cpus": 16,
+     "v": 0.0
+    },
+    {
+     "app": "trainticket",
+     "family": "resource_abuse",
+     "run": "tt_resource_abuse_aggressive_steady_r5",
+     "n_cpus": 16,
+     "v": 0.0
+    },
+    {
+     "app": "trainticket",
+     "family": "slow_db",
+     "run": "tt_slow_db_aggressive_burst_r1",
+     "n_cpus": 16,
+     "v": 0.0
+    },
+    {
+     "app": "trainticket",
+     "family": "slow_db",
+     "run": "tt_slow_db_aggressive_burst_r2",
+     "n_cpus": 16,
+     "v": 0.0
+    },
+    {
+     "app": "trainticket",
+     "family": "slow_db",
+     "run": "tt_slow_db_aggressive_burst_r3",
+     "n_cpus": 16,
+     "v": 0.0
+    },
+    {
+     "app": "trainticket",
+     "family": "slow_db",
+     "run": "tt_slow_db_aggressive_steady_r1",
+     "n_cpus": 16,
+     "v": 0.0
+    },
+    {
+     "app": "trainticket",
+     "family": "slow_db",
+     "run": "tt_slow_db_aggressive_steady_r2",
+     "n_cpus": 16,
+     "v": 0.0
+    },
+    {
+     "app": "trainticket",
+     "family": "slow_db",
+     "run": "tt_slow_db_aggressive_steady_r3",
+     "n_cpus": 16,
+     "v": 0.0
+    },
+    {
+     "app": "trainticket",
+     "family": "slow_db",
+     "run": "tt_slow_db_aggressive_steady_r4",
+     "n_cpus": 16,
+     "v": 0.0
+    },
+    {
+     "app": "trainticket",
+     "family": "slow_db",
+     "run": "tt_slow_db_aggressive_steady_r5",
+     "n_cpus": 16,
+     "v": 0.0
+    },
+    {
+     "app": "trainticket",
+     "family": "slow_db",
+     "run": "tt_slow_db_subtle_steady_r1",
+     "n_cpus": 16,
+     "v": 0.0
+    },
+    {
+     "app": "trainticket",
+     "family": "slow_db",
+     "run": "tt_slow_db_subtle_steady_r2",
+     "n_cpus": 16,
+     "v": 0.0
+    },
+    {
+     "app": "trainticket",
+     "family": "slow_db",
+     "run": "tt_slow_db_subtle_steady_r3",
+     "n_cpus": 16,
+     "v": 0.0
+    },
+    {
+     "app": "trainticket",
+     "family": "svc_cpu_cap",
+     "run": "tt_svc_cpu_cap_aggressive_steady_r1",
+     "n_cpus": 16,
+     "v": 0.0
+    },
+    {
+     "app": "trainticket",
+     "family": "svc_cpu_cap",
+     "run": "tt_svc_cpu_cap_aggressive_steady_r2",
+     "n_cpus": 16,
+     "v": 0.0
+    },
+    {
+     "app": "trainticket",
+     "family": "svc_cpu_cap",
+     "run": "tt_svc_cpu_cap_aggressive_steady_r3",
+     "n_cpus": 16,
+     "v": 0.0
+    },
+    {
+     "app": "trainticket",
+     "family": "svc_cpu_cap",
+     "run": "tt_svc_cpu_cap_aggressive_steady_r4",
+     "n_cpus": 16,
+     "v": 0.0
+    },
+    {
+     "app": "trainticket",
+     "family": "svc_cpu_cap",
+     "run": "tt_svc_cpu_cap_aggressive_steady_r5",
+     "n_cpus": 16,
+     "v": 0.0
+    },
+    {
+     "app": "trainticket",
+     "family": "svc_cpu_cap",
+     "run": "tt_svc_cpu_cap_subtle_steady_r1",
+     "n_cpus": 16,
+     "v": 0.0
+    },
+    {
+     "app": "trainticket",
+     "family": "svc_cpu_cap",
+     "run": "tt_svc_cpu_cap_subtle_steady_r2",
+     "n_cpus": 16,
+     "v": 0.0
+    },
+    {
+     "app": "trainticket",
+     "family": "svc_cpu_cap",
+     "run": "tt_svc_cpu_cap_subtle_steady_r3",
+     "n_cpus": 16,
+     "v": 0.0
+    },
+    {
+     "app": "trainticket",
+     "family": "svc_mem_cap",
+     "run": "tt_svc_mem_cap_aggressive_steady_r1",
+     "n_cpus": 16,
+     "v": 0.0
+    },
+    {
+     "app": "trainticket",
+     "family": "svc_mem_cap",
+     "run": "tt_svc_mem_cap_aggressive_steady_r2",
+     "n_cpus": 16,
+     "v": 0.0
+    },
+    {
+     "app": "trainticket",
+     "family": "svc_mem_cap",
+     "run": "tt_svc_mem_cap_aggressive_steady_r3",
+     "n_cpus": 16,
+     "v": 0.0
+    },
+    {
+     "app": "trainticket",
+     "family": "svc_mem_cap",
+     "run": "tt_svc_mem_cap_aggressive_steady_r4",
+     "n_cpus": 16,
+     "v": 0.0
+    },
+    {
+     "app": "trainticket",
+     "family": "svc_mem_cap",
+     "run": "tt_svc_mem_cap_aggressive_steady_r5",
+     "n_cpus": 16,
+     "v": 0.0
+    },
+    {
+     "app": "trainticket",
+     "family": "svc_mem_cap",
+     "run": "tt_svc_mem_cap_subtle_steady_r1",
+     "n_cpus": 16,
+     "v": 0.0
+    },
+    {
+     "app": "trainticket",
+     "family": "svc_mem_cap",
+     "run": "tt_svc_mem_cap_subtle_steady_r2",
+     "n_cpus": 16,
+     "v": 0.0
+    },
+    {
+     "app": "trainticket",
+     "family": "svc_mem_cap",
+     "run": "tt_svc_mem_cap_subtle_steady_r3",
+     "n_cpus": 16,
+     "v": 0.0
+    },
+    {
+     "app": "trainticket",
+     "family": "svc_net",
+     "run": "tt_svc_net_aggressive_steady_r1",
+     "n_cpus": 16,
+     "v": 0.0
+    },
+    {
+     "app": "trainticket",
+     "family": "svc_net",
+     "run": "tt_svc_net_aggressive_steady_r2",
+     "n_cpus": 16,
+     "v": 0.0
+    },
+    {
+     "app": "trainticket",
+     "family": "svc_net",
+     "run": "tt_svc_net_aggressive_steady_r3",
+     "n_cpus": 16,
+     "v": 0.0
+    },
+    {
+     "app": "trainticket",
+     "family": "svc_net",
+     "run": "tt_svc_net_aggressive_steady_r4",
+     "n_cpus": 16,
+     "v": 0.0
+    },
+    {
+     "app": "trainticket",
+     "family": "svc_net",
+     "run": "tt_svc_net_aggressive_steady_r5",
+     "n_cpus": 16,
+     "v": 0.0
+    }
+   ]
+  },
   "emfile_per_s": {
    "label": "calls per second refused for want of a file descriptor",
    "unit": "per second",

@@ -142,7 +142,14 @@ He also said: finish the whole thing by end of semester and it is three or four 
       pair cannot be told apart. **NOW THE BIGGEST SINGLE SOURCE OF WRONG ANSWERS:** 15 of the
       19 remaining false fires are this one pair. Measured 13 Sept: `anomaly_mem` separates on
       `thief_share` per application only, so a shipped constant will not work.
-- [x] **I2. DONE 13 Sept — and it is eleven, not four.**
+- [x] **I2. DONE 13 Sept, then PARTLY REVERSED the same day.** The first answer was
+      eleven faults with no signal. Yuvraj pushed back on the six single-application families
+      and was right: the test required a cut to hold on two applications when those exist on
+      one. Re-run fairly, `dns_delay` separates and is now written. The five `code_*` families
+      turned out to have **contaminated baselines** - the injection restarts the container
+      inside the baseline window, giving 28-80% retransmission where a healthy baseline reads
+      0.00%. Recipes fixed (CAMPAIGN-ISSUES 17); those 25 runs need re-collecting.
+      Original note: it is eleven, not four.
       `blueprints/docs/COVERAGE-which-blueprints-are-missing.md`. Swept all 13 uncovered
       families against 45 signals, every other family as a negative, both applications
       required. Only 2 are worth attempting (`priority_inversion`, `lock_contention`, both

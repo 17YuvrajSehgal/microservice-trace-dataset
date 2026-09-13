@@ -104,9 +104,10 @@
       "transfers": "yes",
       "why_transfers": "a percentage of the traffic itself",
       "used_by": [
-        "db-latency-dependency-wait"
+        "db-latency-dependency-wait",
+        "dns-delay"
       ],
-      "measured": "the same number that makes the network blueprint fire, used here to rule the datastore OUT. One fact, two uses."
+      "measured": "the same number that makes the network blueprint fire, used here to rule the datastore OUT. One fact, two uses. Also used by dns-delay, where it is the gate that does the real work: slow name resolution and a degraded path are the only two families that raise EMFILE, and they are opposite on packet loss."
     },
     "RETRANS_BASELINE_MAX": {
       "value": 2.0,
@@ -289,6 +290,17 @@
         "db-latency-dependency-wait"
       ],
       "measured": "THE ANTI-PATTERN CEILING. Measured over 272 runs: a genuinely slow dependency inflates its caller's socket wait to at most 144x, while every one of the 25 code-defect runs reaches 651x or more. 306 is the geometric midpoint, 2.13x clear on both sides. It keeps 22 of 22 slow-datastore runs and excludes 25 of 25 anti-pattern runs. WHY THE MECHANISM WORKS: a slow dependency still ANSWERS, so the caller keeps doing work, just more slowly. A blocked event loop or a serialised await chain means the service has stopped doing work at all, so its poll call sits parked for most of the window. Waiting a thousand times longer than normal is not a slower callee - it is a caller that stopped. It also excludes 5/5 dns_delay, 5/10 fd_exhaustion and 1/10 conn_pool_exhaustion runs, all of which were false fires too."
+    },
+    "DNS_EMFILE_SHARE_MIN": {
+      "value": 0.0175,
+      "unit": "share of all failing syscalls",
+      "op": ">=",
+      "transfers": "yes",
+      "why_transfers": "a share of the failures themselves, so request load and descriptor limits cancel out",
+      "used_by": [
+        "dns-delay"
+      ],
+      "measured": "MEASURED over 272 runs. Slow name resolution makes the front-end pile up sockets waiting for answers, so descriptor exhaustion becomes a large fraction of everything that fails: 0.0197 to 0.0476 of all failing syscalls. A descriptor cap itself reaches only 0.00000564 to 0.00176 - more than 10x lower - because it exhausts descriptors slowly rather than in bursts. The only other family with any EMFILE at all is a network fault, at up to 0.0156, and that is excluded by the retransmission gate rather than by this one. 0.0175 is the geometric midpoint between the two. Against the fault this bar actually has to exclude - a descriptor cap - the margin is 11x."
     }
   }
 }

@@ -7,7 +7,9 @@ Reproduce: `python3 blueprints/lib/sweep_uncovered.py --packs <packs>`
 
 ## The short answer
 
-**11 families have a blueprint. 13 do not — 106 runs.**
+**12 families have a blueprint. 12 do not — 101 runs.**
+
+*(Updated 13 Sept: `dns-delay` written, after the re-run below showed the original verdict was wrong.)*
 
 But the more useful answer is that **we cannot write 13 more blueprints.** The data does not
 support them. Only two are worth attempting, and both need a per-deployment reference rather
@@ -202,3 +204,30 @@ be checked because Train Ticket makes no DNS queries.
 
 That changes the earlier conclusion. It was not that kernel traces cannot see these faults. We
 have not yet given them a fair measurement.
+
+---
+
+## `dns-delay` written, 13 Sept
+
+Two gates, because one is not enough and that is the point:
+
+| gate | value | what it excludes | margin |
+|---|---|---|---|
+| EMFILE as a share of all failing syscalls >= 0.0175 | fault measures 0.0197 - 0.0476 | a service at its own descriptor limit, at 0.0000056 - 0.00176 | **11x** |
+| retransmission < 12% | fault measures 0 - 1.9% | a degraded path, at 28.6 - 41.4% on its EMFILE-carrying runs | clean |
+
+On the first gate alone the margin against a network fault is only **1.26x** - too thin to
+trust. But the two faults are opposite on packet loss, so the second gate removes that whole
+family, and the first is then only responsible for excluding a descriptor cap, where it has
+11x. **That is the argument for a blueprint over a threshold, inside a single fault.**
+
+**4 of 5 runs.** The fifth measures EMFILE at exactly zero and its DNS packet rate barely
+moves - the injection did not take. Counted as a miss rather than quietly excluded.
+
+**One application only.** Train Ticket resolves nothing by name, so transfer cannot be tested
+with the applications we have. Stated on the blueprint rather than worked around.
+
+The interesting thing about this fault, and why it is worth having: its loudest symptom
+belongs to a different problem. The service runs out of file descriptors, which reads exactly
+like a leak or a limit set too low. Raising the limit changes nothing, because the descriptors
+are held by connections waiting for name answers that are not coming.

@@ -1,0 +1,285 @@
+{
+  "id": "dns-delay",
+  "version": 1,
+  "title": "Name resolution is unreliable, so new connections stall before they can start",
+  "problem": {
+    "summary": "A service's name lookups are being dropped, so the resolver retries and every new connection waits before it can even begin. Nothing is broken - the services are all up, the network carries traffic fine, and requests over connections that already exist are served normally. What suffers is anything that has to make a NEW connection, and the damage shows up in an odd place: while the front-end waits for answers that never come, it accumulates sockets until it runs out of file descriptors. The fault is in name resolution; the loudest symptom is descriptor exhaustion.",
+    "symptoms": [
+      "new connections are slow to establish while existing ones are fine",
+      "the service runs out of file descriptors even though nothing is leaking them",
+      "no packet loss and no service is down",
+      "latency is spiky rather than uniformly raised"
+    ],
+    "discriminators": [
+      {
+        "signal": "the share of all failing syscalls that are EMFILE, from syscall_exit_* with ret = -24",
+        "this_problem": "a large fraction of everything that fails - roughly one in fifty to one in twenty",
+        "not_this_problem": "a service hitting its own descriptor limit produces a rate more than ten times lower, because it exhausts descriptors gradually rather than in bursts of stalled lookups",
+        "evidence": "MEASURED across 272 runs covering every fault family on two applications. This fault reaches 0.0197 to 0.0476 of all failing syscalls. A descriptor cap reaches 0.00000564 to 0.00176 - an 11x gap at the cut. Every other family except one measures exactly zero, which is what makes the signal usable at all. Expressed as a SHARE rather than a rate on purpose: a rate depends on the request load and on the descriptor limit, neither of which travels. See evidence/dns-delay_separation.json",
+        "confused_with": [
+          "fd-exhaustion",
+          "healthy-baseline"
+        ]
+      },
+      {
+        "signal": "retransmission percentage on the impaired interfaces",
+        "this_problem": "flat - the path is healthy, it is the lookups that fail",
+        "not_this_problem": "a degraded network path retransmits 23-51% while also raising EMFILE, so volume alone cannot tell the two apart",
+        "evidence": "MEASURED, and this is the gate that does the real work. A network fault is the ONLY other family that produces EMFILE - up to 0.0156 of failures, close enough to this fault that the first discriminator alone has only a 1.26x margin against it. But the two are opposite on loss: every network run carrying EMFILE retransmits 28.6-41.4%, while every run of this fault measures 0-1.9%. With this gate the first discriminator only has to exclude a descriptor cap, where its margin is 11x. See evidence/dns-delay_separation.json",
+        "confused_with": [
+          "network-path-degradation"
+        ]
+      },
+      {
+        "signal": "which process is accumulating the descriptors",
+        "this_problem": "the service whose lookups are being dropped - it is the victim of the resolver, not the cause",
+        "not_this_problem": "n/a - this names who is affected once the problem is established; it does not decide whether the problem is present",
+        "evidence": "MEASURED. syscall_exit events carry the process, so the accumulating service comes free once EMFILE is counted per process. Recorded as a caveat rather than a discriminator: the process that runs out of descriptors is NOT the root cause here, and a reader who stops at it will go and raise a limit on a service that is behaving correctly. See evidence/dns-delay_separation.json",
+        "confused_with": [
+          "fd-exhaustion"
+        ]
+      }
+    ]
+  },
+  "reproduction": {
+    "system": "Sock Shop on Ubuntu 24.04, LTTng 2.15, Docker 27+, single GCP n2 VM",
+    "recipe": "microservice-lttng-data-collection-scripts/faults/dns_delay.sh",
+    "invoke": "./dns_delay.sh inject aggressive",
+    "teardown": "./dns_delay.sh cleanup",
+    "labelled_examples": [
+      "sockshop/dns_delay/dns_delay_aggressive_steady_r1",
+      "sockshop/dns_delay/dns_delay_aggressive_steady_r2",
+      "sockshop/dns_delay/dns_delay_aggressive_steady_r3",
+      "sockshop/dns_delay/dns_delay_aggressive_steady_r5"
+    ],
+    "harness_only": [
+      "The rule drops a fraction of ONE service's DNS queries inside its own network namespace. An earlier version put the rule in the host's OUTPUT chain and was nearly inert - our services resolve each other through Docker's embedded resolver, which answers inside the container, so host-level lookups barely happen. That version dropped 11 packets in an entire probe. Ten campaign runs of it would have been ten runs of a configuration change that altered nothing."
+    ]
+  },
+  "collection_order": {
+    "window": {
+      "baseline_s": 60,
+      "incident_s": 120,
+      "recovery_s": 60
+    },
+    "kernel_events": [
+      "syscall_exit_accept",
+      "syscall_exit_accept4",
+      "syscall_exit_socket",
+      "syscall_exit_sendto",
+      "syscall_exit_recvfrom",
+      "net_dev_queue",
+      "netif_receive_skb"
+    ],
+    "metrics": [],
+    "logs": [],
+    "traces": [],
+    "why_these": "MEASURED BASIS. The deciding fact is a syscall RETURN VALUE and the total count of failing syscalls, so exit events are what matter and durations are not needed. The two network events are only there for the retransmission gate, which is what excludes a degraded path. Recording every syscall exit also works and is what our own runs did, but syscall exits are 41% of all events and this rule reads five of them.",
+    "cheapest_first": "If failing syscalls are already counted by anything in the environment, the first discriminator can be answered without tracing at all. Only reach for the kernel when nothing else can attribute EMFILE."
+  },
+  "processing": [
+    {
+      "step": "make the kernel trace readable",
+      "capability": "trace.stage_ctf",
+      "produces": "<out>/ctf",
+      "reads": [],
+      "expect": "a CTF directory with metadata and channel streams"
+    },
+    {
+      "step": "count failing syscalls by errno, and the total, in both windows",
+      "capability": "syscall.error_attribution",
+      "produces": "<out>/process.json",
+      "reads": [
+        "<out>/ctf"
+      ],
+      "expect": "EMFILE per second, the total failing-syscall rate, and which process returned them"
+    },
+    {
+      "step": "confirm the path is healthy, so a degraded link is not mistaken for this",
+      "capability": "network.retransmission_rate",
+      "produces": "<out>/netloss.json",
+      "reads": [
+        "<out>/ctf"
+      ],
+      "expect": "retransmission percentage per interface; this fault leaves it flat"
+    },
+    {
+      "step": "combine into the verdict",
+      "capability": "verdict.apply_rules",
+      "produces": "<out>/verdict.json",
+      "reads": [
+        "<out>/process.json",
+        "<out>/netloss.json"
+      ],
+      "expect": "a verdict naming name resolution as the cause and the accumulating service as the victim, or an explicit non-fire with the reason"
+    },
+    {
+      "step": "state the recommended action alongside the diagnosis",
+      "capability": "report.recommended_action",
+      "produces": "<out>/explanation.txt, <out>/recommended_action.txt",
+      "reads": [
+        "<out>/verdict.json"
+      ],
+      "expect": "fix the resolver, and do NOT raise the descriptor limit on the service that ran out"
+    },
+    {
+      "step": "draw the decision card",
+      "capability": "report.decision_card",
+      "produces": "<out>/card.svg",
+      "reads": [
+        "<out>/verdict.json"
+      ],
+      "expect": "one page showing where every fault family sits on this blueprint's deciding number, which gates passed and by how much, and what else was ruled out"
+    }
+  ],
+  "outputs": [
+    {
+      "kind": "xy_chart",
+      "path": "<out>/card.svg",
+      "contains": "the decision itself: every fault family on the deciding axis with the cut drawn, the closest fault to that cut, each gate with its measured value and its bar, and the other blueprints with the number that ruled each one out"
+    },
+    {
+      "kind": "json",
+      "path": "<out>/verdict.json",
+      "contains": "verdict, the EMFILE share of failing syscalls, the process accumulating descriptors, and the retransmission rate that rules out a network fault"
+    },
+    {
+      "kind": "text",
+      "path": "<out>/explanation.txt",
+      "contains": "why a name-resolution problem shows up as descriptor exhaustion, and why the service that ran out of descriptors is the victim rather than the cause"
+    },
+    {
+      "kind": "text",
+      "path": "<out>/recommended_action.txt",
+      "contains": "fix name resolution for the affected service; raising its descriptor limit moves the failure later without addressing it"
+    }
+  ],
+  "decision": {
+    "uses_thresholds": [
+      "DNS_EMFILE_SHARE_MIN",
+      "RETRANS_VETO_PCT"
+    ],
+    "verdict_when": [
+      "at least {DNS_EMFILE_SHARE_MIN} of all failing syscalls are EMFILE. Measured as a share of the failures rather than a rate, because a rate depends on the request load and on the descriptor limit and neither of those travels between deployments",
+      "retransmission stays below {RETRANS_VETO_PCT}%, so the path is healthy and the failures are not a degraded link",
+      "the descriptors are being consumed by a service waiting on lookups rather than by one leaking them"
+    ],
+    "rule_out": [
+      {
+        "instead": "network-path-degradation",
+        "when": "retransmission is high. A degraded path is the only other fault that produces EMFILE at all, and on that signal alone the two are close - 0.0156 against 0.0197. They are opposite on loss, so loss is what separates them, not volume."
+      },
+      {
+        "instead": "fd-exhaustion",
+        "when": "EMFILE is a much smaller share of the failures, roughly one in a thousand rather than one in fifty. A service at its own descriptor limit exhausts them gradually; stalled lookups exhaust them in bursts."
+      },
+      {
+        "instead": "healthy-baseline",
+        "when": "no syscall is returning EMFILE. It is exactly zero in every family but two, so its absence is strong evidence."
+      }
+    ],
+    "root_cause_is": "unreliable name resolution for one service, identified by the service whose lookups stall and which then accumulates descriptors waiting for them",
+    "fault_type": "dns_delay"
+  },
+  "applicability": {
+    "apply_when": [
+      "new connections are slow while established ones are fine",
+      "a service is running out of file descriptors with no leak to explain it",
+      "syscall return values are available from the kernel trace"
+    ],
+    "do_not_apply_when": [
+      "no syscall is returning EMFILE",
+      "packets are being lost or retransmitted heavily",
+      "the application resolves nothing by name"
+    ],
+    "cheap_precheck": "count syscall exits with ret = -24 against all failing syscall exits in the incident window. If EMFILE is zero, this blueprint does not apply."
+  },
+  "capabilities_required": [
+    {
+      "id": "trace.stage_ctf",
+      "why": "the stored kernel trace must be readable"
+    },
+    {
+      "id": "syscall.error_attribution",
+      "why": "the deciding signal: failing syscalls by errno, as a share of all failures"
+    },
+    {
+      "id": "network.retransmission_rate",
+      "why": "not to fire the rule, but to rule out a degraded path, which also raises EMFILE"
+    }
+  ],
+  "stopping_conditions": {
+    "conclude": "EMFILE is a large share of all failing syscalls while the path carries traffic without loss",
+    "stop_and_switch": "retransmission at or above {RETRANS_VETO_PCT}% -> network-path-degradation; EMFILE present but a far smaller share of failures -> fd-exhaustion. IMPORTANT: switching away does not end the investigation. All three name a different cause for the same symptom - descriptors running out - so carry the measurement across rather than starting again.",
+    "stop_insufficient": "syscall exit events were not recorded, so return values are unavailable -> request them and re-run. Do NOT fall back to the total failing-syscall rate: the baseline already runs roughly 16,000 failing syscalls per second, almost all EAGAIN on non-blocking reads, and EMFILE disappears into it.",
+    "max_evidence_rounds": 2
+  },
+  "evidence_sufficiency": {
+    "confidence_floor": 0.7,
+    "if_below_floor": "name the unresolved question, pick the ONE additional capability that would settle it, check it against the overhead budget, and request it.",
+    "report_when_stuck": "if the floor is still not met after the allowed rounds, report the best-supported hypothesis, its confidence, and precisely what evidence is missing - never present a guess as a diagnosis"
+  },
+  "taxonomy": {
+    "domain": "Reliability",
+    "category": "Dependency failure",
+    "subcategory": "Name resolution",
+    "sibling_causes": [
+      "an overloaded or failing resolver",
+      "a DNS cache that has been disabled or is thrashing",
+      "search-domain misconfiguration causing several lookups per name",
+      "packet loss on the path to the resolver"
+    ],
+    "note": "The interesting thing about this fault is that its loudest symptom belongs to a different problem. The service runs out of file descriptors, which looks exactly like a leak or a limit set too low. Acting on that reading - raising the limit - changes nothing, because the descriptors are held by connections waiting for name answers that are not coming."
+  },
+  "selection": {
+    "supported_goals": [
+      "diagnose_connection_errors",
+      "diagnose_resource_exhaustion",
+      "diagnose_intermittent_latency"
+    ],
+    "supported_environments": [
+      "linux",
+      "container",
+      "virtual_machine",
+      "kubernetes"
+    ],
+    "applicable_symptoms": [
+      "new_connections_slow",
+      "descriptors_exhausted",
+      "no_packet_loss"
+    ],
+    "preconditions": [
+      "syscall exit events with return values are collectable or already collected",
+      "the application resolves its dependencies by name"
+    ],
+    "estimated_overhead_pct": {
+      "min": 2,
+      "max": 15
+    },
+    "historical_effectiveness": {
+      "runs_validated": 4,
+      "note": "4 of 5 labelled runs separate, with the two gates together producing no false fire across the other 267 runs. The fifth run measures EMFILE at exactly zero and its DNS packet rate barely moves, so the injection did not take - that is a property of that run rather than of the fault, and it is counted as a miss rather than excluded. ONE APPLICATION ONLY: Train Ticket resolves nothing by name, so this fault cannot be collected there and transfer cannot be checked."
+    }
+  },
+  "mutually_exclusive_with": [
+    "healthy-baseline"
+  ],
+  "related_blueprints": [
+    "fd-exhaustion",
+    "network-path-degradation",
+    "healthy-baseline"
+  ],
+  "inputs": {
+    "trace_dir": "where the kernel traces for this incident are held",
+    "window": "baseline start/end and incident start/end, as epoch seconds or ISO times",
+    "out": "a writable directory for results",
+    "ctf": "produced by the staging step, not supplied by the caller - the readable trace directory",
+    "note": "These are the ONLY inputs. A blueprint must never need the application name, a run identifier, or the fault family - an agent working a live incident has none of them, and the fault family is the answer it is trying to find."
+  },
+  "provenance": {
+    "authored_by": "measured across all 272 v2 packs and all 25 fault families",
+    "verified_by": "sweep_uncovered.py and the dns evidence sweep, 2026-09-13; per-run values in evidence/dns-delay_separation.json",
+    "authored_utc": "2026-09-13T00:00:00Z",
+    "notes": "THIS BLUEPRINT EXISTS BECAUSE THE FIRST ANSWER WAS WRONG. An earlier sweep reported that no signal separates dns_delay, and the reason was the test rather than the fault: it demanded that one cut hold on two applications, and this fault can only exist on one because Train Ticket resolves nothing by name. Re-run against Sock Shop alone, the signal is there. TWO GATES, AND THE SECOND IS THE ONE THAT EARNS ITS PLACE. On EMFILE share alone the margin against a network fault is 1.26x, which is too thin to trust. But the two faults are opposite on packet loss, so the retransmission gate removes that whole family, and the EMFILE bar is then only responsible for excluding a descriptor cap - where it has 11x. That is the argument for a blueprint over a threshold, in one fault. SCOPE: one application, four usable runs. Transfer is untested and cannot be tested with the applications we have."
+  }
+}

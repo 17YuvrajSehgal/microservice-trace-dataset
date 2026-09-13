@@ -96,6 +96,9 @@ CARDS = {
         rule=None),
     "fd-exhaustion": dict(
         signal="emfile_per_s", owns=["fd_exhaustion"], op="band", bar=(0.13, 9.28), rule=None),
+    "dns-delay": dict(
+        signal="emfile_error_share", owns=["dns_delay"], op=">=",
+        bar=BD.THRESHOLDS["DNS_EMFILE_SHARE_MIN"]["value"], rule=None),
 }
 
 RULE_TO_CARD = {v["rule"]: k for k, v in CARDS.items() if v["rule"]}

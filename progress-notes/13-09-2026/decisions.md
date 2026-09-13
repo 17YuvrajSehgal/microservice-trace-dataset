@@ -196,3 +196,78 @@ signal.**
 19 false fires, both already-known: `anomaly_mem -> service-memory-cap` x15 and
 `fd_exhaustion -> service-memory-cap` x4. Both need the memory-cap rule re-derived against
 `anomaly_mem`, which is still open from 8 Sept.
+
+---
+
+# The six single-application families (Yuvraj pushed back, and was right)
+
+## My test was unfair, twice
+
+It required one cut to hold on **two applications** when these six exist on one, and it
+required each code defect to separate from **the other four code defects**, which are the same
+kind of fault. Re-ran without either constraint, and stopped guessing signals - walked every
+numeric field in the pack against the healthy control instead.
+
+## Five of the six: the DATA is broken
+
+Baseline retransmission, where a healthy baseline reads 0.00%:
+
+| family | baseline retransmission |
+|---|---|
+| `code_lock_across_io` | 65.4 - 73.2% |
+| `code_n_plus_one` | 34.7 - 79.9% |
+| `code_serial_awaits` | 30.4 - 71.2% |
+| `code_event_loop_block` | 28.6 - 61.4% |
+| `code_unbounded_cache` | 0 - 53.9% |
+| everything else | 0 - 5.6%, mostly 0 |
+
+`code_defect_dispatch inject` restarts the container, sleeps 6s, verifies, and only **then**
+calls `gt_begin`. The restart lands in the last seconds of the baseline. So every
+baseline-relative ratio in those 25 runs is measured against a container teardown. That is why
+nothing separated: the loudest thing in the data is the injection mechanism.
+
+**Fixed.** The gate now reads `/tmp/strata_bug` (env var kept as fallback), and the verbs are
+split by whether they restart: `arm` and `disarm` restart and run outside the traced window;
+`inject` and `cleanup` write one word and do not. `run_scenario.sh` arms before tracing opens
+and disarms after it closes. `inject` refuses to run un-armed.
+
+**I have not run it** - the VM was deleted 2026-09-07. Python parses, generated Go and JS read
+by eye, all shell passes `bash -n`. Three verification steps written into CAMPAIGN-ISSUES 17.
+
+This also brings the recipes in line with a rule we already held: toxiproxy sits permanently in
+the catalogue path *because* fault toggling must be restart-free. These were the exception.
+
+## `dns_delay`: written
+
+Clean baseline, and it does separate - on **two** gates:
+
+- EMFILE as a share of all failing syscalls >= 0.0175. Fault 0.0197-0.0476; a descriptor cap
+  0.0000056-0.00176. **11x.**
+- retransmission < 12%. Fault 0-1.9%; a degraded path 28.6-41.4%.
+
+Gate one alone has only **1.26x** against a network fault - too thin. Gate two removes that
+family entirely, so gate one only has to exclude a descriptor cap, where it has 11x.
+**That is the blueprint-over-threshold argument inside one fault.**
+
+4 of 5 runs. The fifth has EMFILE exactly 0 and a flat DNS rate - the injection did not take,
+counted as a miss rather than excluded. One application only; Train Ticket resolves nothing by
+name so transfer cannot be tested.
+
+Its card also confirmed the anti-pattern ceiling working on real data: the datastore blueprint
+is ruled out with "node sat in poll for 1711x its baseline - it is parked, not waiting".
+
+## Method note
+
+Two wrong turns worth remembering. First, I tested "the slowest endpoint" across families -
+which is a different endpoint in every run, so it never compared like with like. Second, the
+whole-pack walk was initially swamped by process names appearing in top-N lists, which is list
+membership changing, not the fault doing anything. Both fixed by requiring a field to be
+present in most runs of both groups before comparing it.
+
+## Still open
+
+- Re-collect the 25 code-defect runs once a VM exists, and check baseline retransmission is
+  back to 0.00% before trusting anything else about them.
+- `verification.json` does not exist anywhere in v2, so `derive_v2_thresholds.py:confirmed()`
+  always returns False. Any "N campaign-confirmed runs" claim is hand-read, not reproducible
+  (CAMPAIGN-ISSUES 18).
