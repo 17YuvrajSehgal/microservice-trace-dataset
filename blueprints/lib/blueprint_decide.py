@@ -32,15 +32,40 @@ Runqueue delay is kept and reported, but only as corroboration.
 from __future__ import annotations
 import argparse, json, os, sys
 
-# ---- thresholds, every one of them measured; see evidence/cpu_cluster_separation.json ----
-SATURATED = 0.95        # host saturation measured 0.991-0.998; next family down tops out at 0.681
-COLLAPSE_RATIO = 0.80   # cap runs fell to 0.25-0.73 of baseline; healthy runs sat at 1.04-1.15
-THIEF_CORES = 0.50      # co-tenant newcomers took 0.988-2.002; the largest healthy one was 0.296
-CONTENDED = 0.55        # co-tenant utilisation floor 0.619; healthy ceiling 0.531
-BIG_THIEF = 4.0         # host-saturation newcomers took 6.54-6.62; co-tenant never above 2.002
-LOSER_CORES = -0.30     # cap runs lost 0.357-0.876; healthy and co-tenant lost 0.024-0.160
+# ---- thresholds -------------------------------------------------------------------------
+# EVERY number below is loaded from ../thresholds.json. None of them is written here.
+#
+# They used to be Python literals with the measurement in a comment beside them, and the same
+# numbers were ALSO written as prose inside each blueprint.json. Nothing checked the two
+# agreed. host-disk-saturation told a reader "at least 2000 disk requests per second" long
+# after the engine had replaced that with a ratio - so the document and the code were doing
+# different things, and only the code was ever tested.
+#
+# One copy now. thresholds.json carries the value, the unit, the measurement that set it, and
+# whether it survives a change of hardware. The blueprints quote it by {NAME} and the skill
+# generator substitutes the live value, so a reader and the engine cannot disagree.
+_HERE = os.path.dirname(os.path.abspath(__file__))
+_THRESHOLDS_PATH = os.path.join(_HERE, os.pardir, "thresholds.json")
+with open(_THRESHOLDS_PATH, encoding="utf-8") as _fh:
+    THRESHOLDS = json.load(_fh)["thresholds"]
 
-BLOCK_X = 5.0           # datastore fault measured 36.8x; its control 1.12x
+
+def _t(name):
+    """The measured value of one threshold. Fails loudly - a missing threshold is a broken
+    rule, and a rule that silently fell back to a default would be worse than a crash."""
+    if name not in THRESHOLDS:
+        raise KeyError("threshold %r is not in thresholds.json" % name)
+    return THRESHOLDS[name]["value"]
+
+
+SATURATED = _t("SATURATED")
+COLLAPSE_RATIO = _t("COLLAPSE_RATIO")
+THIEF_CORES = _t("THIEF_CORES")
+CONTENDED = _t("CONTENDED")              # RETIRED - see thresholds.json for why it failed
+BIG_THIEF = _t("BIG_THIEF")
+LOSER_CORES = _t("LOSER_CORES")
+
+BLOCK_X = _t("BLOCK_X")
 
 # ---- the two checks that fix the datastore rule's false fires (finding F13/F15) ----
 # The rule fires on socket blocking alone, which every impostor also trips. Two additions,
@@ -50,13 +75,13 @@ BLOCK_X = 5.0           # datastore fault measured 36.8x; its control 1.12x
 #    retransmission means the problem is the path, not the datastore. Measured: network
 #    18.5-60.7%, slow datastore never above 7.14%, every other family at or near 0. A cut at
 #    12 sits 1.7x above the datastore ceiling and 1.5x below the network floor.
-RETRANS_VETO_PCT = 12.0
+RETRANS_VETO_PCT = _t("RETRANS_VETO_PCT")
 # The same number is what makes the network blueprint FIRE, which is deliberate: "the path is
 # losing packets" is one fact, used to claim the network fault and to rule out the datastore.
-RETRANS_FIRE_PCT = 12.0
+RETRANS_FIRE_PCT = _t("RETRANS_FIRE_PCT")
 # The incident figure only means something against a quiet baseline. MEASURED: baseline
 # retransmission was 0.00% in all 40 runs on both applications, so 2.0 is a generous ceiling.
-RETRANS_BASELINE_MAX = 2.0
+RETRANS_BASELINE_MAX = _t("RETRANS_BASELINE_MAX")
 # Retransmission alone is NOT specific (finding F17). A memory cap retransmits harder than any
 # network fault - 59-96% - because the container cannot keep up and its receive buffers
 # overflow. Host CPU saturation crosses the bar too. What separates them is WHERE the packet
@@ -64,7 +89,7 @@ RETRANS_BASELINE_MAX = 2.0
 # and never transmitted. A full receive buffer drops it somewhere else entirely.
 # MEASURED across 84 runs on two applications: queue drops were non-zero ONLY where netem was
 # applied. No other family produced one above 0.001%, and those runs retransmit under 2.5%.
-QUEUE_DROP_MIN = 0.0
+QUEUE_DROP_MIN = _t("QUEUE_DROP_MIN")
 #
 # 2. THE DATASTORE MUST ACTUALLY BE SLOW. Blocking says a process is waiting; endpoint
 #    slowdown says something is answering slowly. MEASURED on the first application: slow
@@ -74,9 +99,8 @@ QUEUE_DROP_MIN = 0.0
 #    four runs, so this gate loses them, and a memory-cap fault there reaches 221-225x so the
 #    gate does not help. It is applied because the net effect is measured to be strongly
 #    positive, not because it is universal - see the blueprint scenario.
-ENDPOINT_SLOWDOWN_MIN = 18.0
-RQ_X = 2.0              # "runqueue is raised at all" - used only to describe a run, never
-                        # to decide anything.
+ENDPOINT_SLOWDOWN_MIN = _t("ENDPOINT_SLOWDOWN_MIN")
+RQ_X = _t("RQ_X")       # describes a run in the verdict text; never decides one
 
 # "the threads are genuinely SHORT of CPU" is a different and much stronger claim, and it
 # needs its own bar. MEASURED across 22 slow-datastore and cgroup-cap runs on both apps:
@@ -85,7 +109,7 @@ RQ_X = 2.0              # "runqueue is raised at all" - used only to describe a 
 # A 2.0 cut sits inside the datastore range and misdiagnosed two Train Ticket datastore runs
 # as throttling. 5.0 leaves margin on both sides - 1.9x above the datastore ceiling and 2.7x
 # below the cap floor - rather than being placed next to any single run.
-STARVED_RQ_X = 5.0
+STARVED_RQ_X = _t("STARVED_RQ_X")
 
 # --- storage and container-memory family -------------------------------------------------
 # A process arriving on the disk with thousands of requests per second is the disk fault. The
@@ -111,7 +135,7 @@ STARVED_RQ_X = 5.0
 #
 # One cut holds both applications: highest negative anywhere 352.4, lowest positive 545.8. 450
 # is the midpoint, so it has margin in both directions.
-DISK_IOPS_PER_IRQ = 450.0
+DISK_IOPS_PER_IRQ = _t("DISK_IOPS_PER_IRQ")
 
 # Once the disk fault is excluded by the ratio above, interrupt time separates svc_mem_cap
 # from everything remaining on BOTH applications: the highest non-disk negative is 1.19 (Train
@@ -121,7 +145,7 @@ DISK_IOPS_PER_IRQ = 450.0
 # The old pair was IRQ_X = 2.5 with MEMCAP_IOPS_MAX = 500, and the second half is what broke it:
 # Sock Shop memcap gains a median 553 req/s and Train Ticket 1033, so most runs of the family
 # this rule owns were vetoed by their own disk activity. It scored 3/16.
-IRQ_X = 2.0
+IRQ_X = _t("IRQ_X")
 
 SOCKET_CALLS = ("poll", "epoll_wait", "epoll_pwait", "recvfrom", "recvmsg", "read", "select")
 INFRA = ("kworker", "ksoftirqd", "rcu_", "kswapd", "kcompactd", "migration", "watchdog",

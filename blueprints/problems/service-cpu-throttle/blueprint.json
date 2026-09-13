@@ -185,10 +185,10 @@
   ],
   "decision": {
     "verdict_when": [
-      "host CPU utilisation during the incident falls materially below its own baseline",
-      "no process consumed CPU it was not already consuming",
-      "on-CPU time drops across many unrelated processes at once",
-      "runqueue delay is raised over the same window, so threads are waiting more while the system works less"
+      "host CPU utilisation during the incident falls to {COLLAPSE_RATIO} or less of its own baseline",
+      "no process consumed CPU it was not already consuming - no newcomer took {THIEF_CORES} cores or more",
+      "on-CPU time drops across many unrelated processes at once, the biggest single loss reaching {LOSER_CORES} cores",
+      "runqueue delay rises to at least {STARVED_RQ_X}x its baseline over the same window, so threads are waiting more while the system works less"
     ],
     "rule_out": [
       {
@@ -209,7 +209,13 @@
       }
     ],
     "root_cause_is": "a cgroup CPU quota set below the service's demand",
-    "fault_type": "svc_cpu_cap"
+    "fault_type": "svc_cpu_cap",
+    "uses_thresholds": [
+      "COLLAPSE_RATIO",
+      "THIEF_CORES",
+      "LOSER_CORES",
+      "STARVED_RQ_X"
+    ]
   },
   "evidence_from_literature": [
     {

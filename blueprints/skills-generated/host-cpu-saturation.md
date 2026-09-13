@@ -67,7 +67,7 @@ Each step names the capability it needs. The command shown is the binding resolv
 
 ## Resolution template
 Conclude this problem when ALL of:
-- host CPU utilisation during the incident is at or above 0.95, against a baseline near 0.5
+- host CPU utilisation during the incident is at or above 0.95 of all cores, against a baseline near half that
 - a process that consumed no CPU in the baseline now consumes several cores
 - runqueue delay is broadly inflated, corroborating that threads are queueing rather than working
 

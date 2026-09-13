@@ -178,9 +178,9 @@
   ],
   "decision": {
     "verdict_when": [
-      "at least one interface retransmits 12% or more of its segments during the incident",
-      "buffers queued to that device were dropped without ever being transmitted",
-      "the same interface retransmitted at or near zero in the baseline window"
+      "at least one interface retransmits {RETRANS_FIRE_PCT}% or more of its segments during the incident",
+      "more than {QUEUE_DROP_MIN}% of buffers queued to that device were dropped without ever being transmitted - the loss happened in the queue, not in a receive buffer",
+      "the same interface retransmitted at most {RETRANS_BASELINE_MAX}% in the baseline window, so the incident figure can be read against a quiet floor"
     ],
     "rule_out": [
       {
@@ -201,7 +201,12 @@
       }
     ],
     "root_cause_is": "packet loss on the network path serving the impaired interfaces",
-    "fault_type": "anomaly_net"
+    "fault_type": "anomaly_net",
+    "uses_thresholds": [
+      "RETRANS_FIRE_PCT",
+      "RETRANS_BASELINE_MAX",
+      "QUEUE_DROP_MIN"
+    ]
   },
   "evidence_from_literature": [
     {

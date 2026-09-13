@@ -64,7 +64,7 @@ Each step names the capability it needs. The command shown is the binding resolv
 
 ## Resolution template
 Conclude this problem when ALL of:
-- a process gains at least 2000 disk requests per second over its baseline
+- the process arriving on the disk brings more than 450 requests per second for each unit of rise in device interrupt time. It is the MIX that decides, not the arrival count: a flood is many requests per unit of interrupt rise, reclaim inside one cgroup is the reverse
 - total host disk requests rise several-fold over the same window
 - that process was doing little or no disk work before
 

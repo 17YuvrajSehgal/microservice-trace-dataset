@@ -64,13 +64,13 @@ Each step names the capability it needs. The command shown is the binding resolv
 
 ## Resolution template
 Conclude this problem when ALL of:
-- device interrupt time rises to at least 2.5x its baseline
-- AND no process gains 500 or more disk requests per second
+- device interrupt time rises to at least 2x its baseline
+- AND the disk stays quiet relative to that rise - at most 450 requests per second per unit of interrupt rise. Both halves are needed: interrupt time alone overlaps host memory pressure across applications
 
 Prefer a different explanation when:
 - host-disk-saturation — a process gains thousands of disk requests per second. Both faults raise interrupt time - the disk fault raises it MORE - so interrupts cannot tell them apart. Arrivals can, and the gap is wide: 4724 at the disk fault's floor against 282 at this fault's ceiling
 - host-memory-pressure — disk arrivals rise to roughly a thousand per second and device latency rises sharply. That is reclaim reaching the disk host-wide, not one cgroup working against its own limit. On the first application this is the ONLY thing separating the two, because host memory pressure reaches 3.45x on interrupts - above a second-application memory cap's 3.23x floor
-- healthy-baseline — interrupt time stays under 2.5x. Healthy runs reach 1.81x on the first application and 1.65x on the second application, so a quiet interrupt layer rules this fault out on both applications
+- healthy-baseline — interrupt time stays under 2x its baseline. Healthy runs reach 1.81x on the first application and 1.65x on the second, so the bar sits above both.
 - dependency-outage — the container was killed rather than throttled. Kernel traces cannot see that (F11-F13); it is defined by an absence of answers, not by any signal
 
 Root cause is: the container whose cgroup memory limit is being hit

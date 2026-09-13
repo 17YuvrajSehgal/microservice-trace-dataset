@@ -156,8 +156,8 @@
   ],
   "decision": {
     "verdict_when": [
-      "device interrupt time rises to at least 2.5x its baseline",
-      "AND no process gains 500 or more disk requests per second"
+      "device interrupt time rises to at least {IRQ_X}x its baseline",
+      "AND the disk stays quiet relative to that rise - at most {DISK_IOPS_PER_IRQ} requests per second per unit of interrupt rise. Both halves are needed: interrupt time alone overlaps host memory pressure across applications"
     ],
     "rule_out": [
       {
@@ -170,7 +170,7 @@
       },
       {
         "instead": "healthy-baseline",
-        "when": "interrupt time stays under 2.5x. Healthy runs reach 1.81x on the first application and 1.65x on the second application, so a quiet interrupt layer rules this fault out on both applications"
+        "when": "interrupt time stays under {IRQ_X}x its baseline. Healthy runs reach 1.81x on the first application and 1.65x on the second, so the bar sits above both."
       },
       {
         "instead": "dependency-outage",
@@ -178,7 +178,11 @@
       }
     ],
     "root_cause_is": "the container whose cgroup memory limit is being hit",
-    "fault_type": "svc_mem_cap"
+    "fault_type": "svc_mem_cap",
+    "uses_thresholds": [
+      "IRQ_X",
+      "DISK_IOPS_PER_IRQ"
+    ]
   },
   "scenarios": {
     "note": "SCENARIOS record how this problem looks on different system shapes. Both matter here more than usual, because the two halves of the decision rule carry it on DIFFERENT applications - a blueprint carrying only one application's numbers would look like a one-signal rule and would be wrong.",

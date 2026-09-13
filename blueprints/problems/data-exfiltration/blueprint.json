@@ -145,7 +145,7 @@
   ],
   "decision": {
     "verdict_when": [
-      "a process gains more than 3.6 MB per second of outbound traffic over its baseline",
+      "a process gains more than {TX_NEWCOMER_BYTES_PER_S} bytes per second of outbound traffic over its baseline",
       "that process was sending little or nothing before",
       "retransmission stays low, so the path is healthy rather than losing packets"
     ],
@@ -164,7 +164,10 @@
       }
     ],
     "root_cause_is": "a process sending bulk data it does not normally send, identified by its command name and destination port",
-    "fault_type": "data_exfiltration"
+    "fault_type": "data_exfiltration",
+    "uses_thresholds": [
+      "TX_NEWCOMER_BYTES_PER_S"
+    ]
   },
   "applicability": {
     "apply_when": [

@@ -79,9 +79,10 @@ Each step names the capability it needs. The command shown is the binding resolv
 
 ## Resolution template
 Conclude this problem when ALL of:
-- one component socket-waiting syscall inflates by roughly an order of magnitude
-- that component runqueue delay stays flat, so it is not short of CPU
-- slow call edges converge on it or on its nearest traced caller
+- one component's socket-waiting syscall inflates to at least 5x its baseline
+- that component's runqueue delay stays below 5x, so it is not short of CPU - it is blocked, not starved
+- an endpoint really is answering slowly, at least 18x its baseline. Blocking says a process is waiting; this says something is answering slowly
+- retransmission stays below 12%, so the path is not losing packets
 - traffic continues to succeed, so error rates barely move
 
 Prefer a different explanation when:

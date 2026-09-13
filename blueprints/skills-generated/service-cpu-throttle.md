@@ -68,10 +68,10 @@ Each step names the capability it needs. The command shown is the binding resolv
 
 ## Resolution template
 Conclude this problem when ALL of:
-- host CPU utilisation during the incident falls materially below its own baseline
-- no process consumed CPU it was not already consuming
-- on-CPU time drops across many unrelated processes at once
-- runqueue delay is raised over the same window, so threads are waiting more while the system works less
+- host CPU utilisation during the incident falls to 0.8 or less of its own baseline
+- no process consumed CPU it was not already consuming - no newcomer took 0.5 cores or more
+- on-CPU time drops across many unrelated processes at once, the biggest single loss reaching -0.3 cores
+- runqueue delay rises to at least 5x its baseline over the same window, so threads are waiting more while the system works less
 
 Prefer a different explanation when:
 - host-cpu-saturation — utilisation reaches the ceiling rather than falling - the host is exhausted, not idle

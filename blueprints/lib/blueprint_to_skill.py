@@ -27,6 +27,37 @@ REQUIRED = ["id", "version", "problem", "reproduction", "collection_order",
             "processing", "outputs", "decision", "provenance"]
 
 PROVIDERS = os.path.join(os.path.dirname(HERE), "providers.json")
+THRESHOLDS = os.path.join(os.path.dirname(HERE), "thresholds.json")
+
+
+def load_thresholds():
+    """name -> {value, unit, transfers, measured, used_by}. The single source for every
+    number a blueprint decides on. Blueprints quote these by {NAME} rather than writing the
+    figure, so the document and blueprint_decide.py cannot disagree."""
+    try:
+        with open(THRESHOLDS, encoding="utf-8") as fh:
+            return json.load(fh).get("thresholds", {})
+    except (OSError, json.JSONDecodeError):
+        return {}
+
+
+def fill_thresholds(text, th):
+    """Substitute {NAME} with the measured value, for the agent-facing skill.
+
+    The agent gets a real number - Mahsa's finding is that a description is not enough. The
+    blueprint keeps the name, so editing thresholds.json moves every skill at once.
+
+    The NUMBER only, never the unit: the sentence around it already says what the number
+    counts, and appending the unit produced "450 requests/s per x of interrupt rise requests
+    per second for each unit of rise in device interrupt time".
+    """
+    def one(m):
+        t = th.get(m.group(1))
+        if not t:
+            return m.group(0)
+        v = t["value"]
+        return ("%g" % v) if isinstance(v, (int, float)) else str(v)
+    return re.sub(r"\{([A-Z][A-Z0-9_]*)\}", one, text)
 
 
 def load_providers():
@@ -125,6 +156,44 @@ def validate(bp: dict, path: str) -> list:
     if not d.get("rule_out"):
         errs.append("decision.rule_out is empty - a blueprint must say when NOT to conclude this")
 
+    # ---- NO SILENT DRIFT BETWEEN THE DOCUMENT AND THE ENGINE ------------------------------
+    # The numbers used to be written twice: as prose here, and as Python literals in
+    # blueprint_decide.py. Nothing compared them, and they drifted badly - host-disk-saturation
+    # still told a reader "at least 2000 disk requests per second" after the engine had
+    # replaced that with a ratio, and service-memory-cap documented an IRQ_X=2.5 / 500 req/s
+    # pair that the engine's own comment records as having scored 3/16 before replacement.
+    # A reader following the blueprint was following a rule we had measured and rejected.
+    #
+    # Now a blueprint quotes a threshold by {NAME} and the value is substituted at generation
+    # time from thresholds.json. These checks make the quoting mandatory and the names real.
+    th = load_thresholds()
+    used = d.get("uses_thresholds") or []
+    for name in used:
+        if name not in th:
+            errs.append(f"decision.uses_thresholds names {name!r}, absent from thresholds.json")
+        elif bp["id"] not in th[name].get("used_by", []):
+            errs.append(f"threshold {name} does not list {bp['id']} in its used_by - "
+                        "the two directions must agree or one of them is stale")
+    prose = " ".join(list(d.get("verdict_when", []))
+                     + [r.get("when", "") for r in d.get("rule_out", [])])
+    for ref in set(re.findall(r"\{([A-Z][A-Z0-9_]*)\}", prose)):
+        if ref not in th:
+            errs.append(f"decision prose refers to {{{ref}}}, absent from thresholds.json")
+        elif ref not in used:
+            errs.append(f"decision prose refers to {{{ref}}} but uses_thresholds omits it")
+    # A bare number where a threshold belongs is exactly how the last drift started, so the
+    # rule here is blunt on purpose: in verdict_when, ANY digit must come from a {NAME}.
+    # An earlier version of this check tried to match units ("N requests per second") and
+    # missed the real bug, because the prose read "2000 disk requests per second" - one word
+    # in the wrong place and the check was blind. Matching units is guesswork; matching digits
+    # is not. rule_out stays lenient: it quotes other faults' measured ranges as context, and
+    # those are descriptions rather than bars this blueprint applies.
+    for i, v in enumerate(d.get("verdict_when", [])):
+        if re.search(r"\d", re.sub(r"\{[A-Z][A-Z0-9_]*\}", "", v)):
+            errs.append(f"decision.verdict_when[{i}] contains a bare number - every figure a "
+                        f"blueprint decides on must be quoted as {{NAME}} from thresholds.json "
+                        f"so it cannot drift from the engine: {v[:72]!r}")
+
     if str(bp["provenance"].get("verified_by", "")).startswith("PENDING"):
         errs.append("NOTE: not yet human-verified (provenance.verified_by is PENDING)")
 
@@ -217,12 +286,15 @@ def to_skill(bp: dict) -> str:
     for o in bp["outputs"]:
         outs.append(f"- {o['kind']}: {o['contains']}")
 
+    # The blueprint stores {NAME}; the agent is given the measured value. Keeping the name in
+    # the document and the number in the skill is what stops the two from drifting apart.
+    th = load_thresholds()
     res = ["## Resolution template", "Conclude this problem when ALL of:"]
     for v in d["verdict_when"]:
-        res.append(f"- {v}")
+        res.append(f"- {fill_thresholds(v, th)}")
     res += ["", "Prefer a different explanation when:"]
     for r in d["rule_out"]:
-        res.append(f"- {r['instead']} — {r['when']}")
+        res.append(f"- {r['instead']} — {fill_thresholds(r['when'], th)}")
     res += ["", f"Root cause is: {d['root_cause_is']}"]
 
     stop = bp.get("stopping_conditions") or {}

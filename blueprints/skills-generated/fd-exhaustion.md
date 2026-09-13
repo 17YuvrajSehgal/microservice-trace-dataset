@@ -60,7 +60,7 @@ Each step names the capability it needs. The command shown is the binding resolv
 
 ## Resolution template
 Conclude this problem when ALL of:
-- syscalls return EMFILE at between 0.13 and 9.3 per second. The floor is calibrated on campaign-confirmed runs; a weaker descriptor cap can sit below it, so a rate between 0 and 0.13 is inconclusive rather than negative
+- syscalls return EMFILE at between 0.13 and 9.28 per second. The floor is calibrated on campaign-confirmed runs; a weaker descriptor cap can sit below it, so a rate between zero and the floor is inconclusive rather than negative
 - the rate is sustained across the incident window rather than a single burst
 - DNS and network latency are normal, so descriptors are not being consumed by upstream stalls
 

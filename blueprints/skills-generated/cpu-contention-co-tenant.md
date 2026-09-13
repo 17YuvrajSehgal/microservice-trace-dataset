@@ -80,10 +80,11 @@ Each step names the capability it needs. The command shown is the binding resolv
 
 ## Resolution template
 Conclude this problem when ALL of:
-- host CPU utilisation rises during the incident but retains clear headroom
-- a process that consumed no CPU in the baseline now holds a bounded one to two cores
+- host CPU utilisation rises during the incident but keeps clear headroom - it stays below 0.95 of all cores
+- a process that consumed no CPU in the baseline now holds a bounded 0.5 to 4 cores
 - that process has no role in the call graph
 - runqueue delay is broadly inflated, corroborating that ready threads are queueing
+- interrupt time is NOT raised with the disk quiet - that shape is a container against its memory limit whose stress tool happens to eat a core, and it vetoes this blueprint
 
 Prefer a different explanation when:
 - host-cpu-saturation — utilisation reaches the ceiling and the newcomer takes several cores - the host is exhausted, not shared

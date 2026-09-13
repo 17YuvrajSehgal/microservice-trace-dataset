@@ -64,7 +64,7 @@ Each step names the capability it needs. The command shown is the binding resolv
 
 ## Resolution template
 Conclude this problem when ALL of:
-- a process gains more than 3.6 MB per second of outbound traffic over its baseline
+- a process gains more than 3.64e+06 bytes per second of outbound traffic over its baseline
 - that process was sending little or nothing before
 - retransmission stays low, so the path is healthy rather than losing packets
 

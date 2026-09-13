@@ -221,10 +221,11 @@
   ],
   "decision": {
     "verdict_when": [
-      "host CPU utilisation rises during the incident but retains clear headroom",
-      "a process that consumed no CPU in the baseline now holds a bounded one to two cores",
+      "host CPU utilisation rises during the incident but keeps clear headroom - it stays below {SATURATED} of all cores",
+      "a process that consumed no CPU in the baseline now holds a bounded {THIEF_CORES} to {BIG_THIEF} cores",
       "that process has no role in the call graph",
-      "runqueue delay is broadly inflated, corroborating that ready threads are queueing"
+      "runqueue delay is broadly inflated, corroborating that ready threads are queueing",
+      "interrupt time is NOT raised with the disk quiet - that shape is a container against its memory limit whose stress tool happens to eat a core, and it vetoes this blueprint"
     ],
     "rule_out": [
       {
@@ -253,7 +254,14 @@
       }
     ],
     "root_cause_is": "the co-tenant workload container itself, not any application service it delays",
-    "fault_type": "noisy_neighbor"
+    "fault_type": "noisy_neighbor",
+    "uses_thresholds": [
+      "THIEF_CORES",
+      "BIG_THIEF",
+      "SATURATED",
+      "IRQ_X",
+      "DISK_IOPS_PER_IRQ"
+    ]
   },
   "evidence_from_literature": [
     {

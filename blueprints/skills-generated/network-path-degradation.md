@@ -66,8 +66,8 @@ Each step names the capability it needs. The command shown is the binding resolv
 ## Resolution template
 Conclude this problem when ALL of:
 - at least one interface retransmits 12% or more of its segments during the incident
-- buffers queued to that device were dropped without ever being transmitted
-- the same interface retransmitted at or near zero in the baseline window
+- more than 0% of buffers queued to that device were dropped without ever being transmitted - the loss happened in the queue, not in a receive buffer
+- the same interface retransmitted at most 2% in the baseline window, so the incident figure can be read against a quiet floor
 
 Prefer a different explanation when:
 - service-memory-cap or another overloaded component — retransmission is high but NOTHING was dropped in the queue - the packets are being lost in a receive buffer because a container cannot keep up, not on the path

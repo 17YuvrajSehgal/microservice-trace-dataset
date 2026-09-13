@@ -159,7 +159,7 @@
   ],
   "decision": {
     "verdict_when": [
-      "a process gains at least 2000 disk requests per second over its baseline",
+      "the process arriving on the disk brings more than {DISK_IOPS_PER_IRQ} requests per second for each unit of rise in device interrupt time. It is the MIX that decides, not the arrival count: a flood is many requests per unit of interrupt rise, reclaim inside one cgroup is the reverse",
       "total host disk requests rise several-fold over the same window",
       "that process was doing little or no disk work before"
     ],
@@ -178,7 +178,10 @@
       }
     ],
     "root_cause_is": "the process flooding the block device",
-    "fault_type": "anomaly_disk"
+    "fault_type": "anomaly_disk",
+    "uses_thresholds": [
+      "DISK_IOPS_PER_IRQ"
+    ]
   },
   "evidence_from_literature": [
     {
