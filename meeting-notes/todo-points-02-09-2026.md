@@ -69,8 +69,11 @@ Do these in order, for latency:
 ### B. New test cases to build
 
 - [ ] **B1. Kernel-level lock contention.** Named directly by Naser as a good case. Kernel
-      locks, not user-level spinning. Easy to generate, many variants possible. Real examples
-      exist (Google Chrome was mentioned).
+      locks, not user-level spinning. **UPDATE 13 Sept:** the VM has no `lock_*` tracepoints
+      (stock Ubuntu kernels lack lock debugging), so kernel locks are not collectable at all -
+      see CLAUDE.md. What we have is USER-level `futex` contention, 10 runs on both apps, and
+      it separates on short-futex-wait shape **within** each application but has no shared
+      band. Buildable with a per-deployment reference; not with a shipped constant.
 - [ ] **B2. Small generated programs**, one per latency cause from A1, each traced 5–10 times.
 - [ ] **B3. Find a real, outside dataset** with a known latency problem to test against.
 - [x] **B4. DONE 2026-09-04. Built `service-memory-cap`.** Fires 4/4, 0 false fires
@@ -106,8 +109,11 @@ Do these in order, for latency:
 
 ### E. Open questions to answer, not just do
 
-- [ ] **E1. One blueprint or many?** Is the mapping problem→blueprint one-to-one or one-to-many?
-      Currently ours is per category — all database problems share one blueprint.
+- [~] **E1. One blueprint or many?** Partly answered 13 Sept, by measurement. I tested the
+      five `code_*` defects as ONE grouped blueprint ("a defect in the calling service") and it
+      does not separate as a group either. So grouping is not a way to rescue faults that do
+      not separate individually. The mapping question is still open, but one answer is now
+      closed off.
 - [ ] **E2. Mahsa's isolation problem.** If a blueprint contains specific hints ("if you see
       this dependency, do that"), then a good result may come from *those hints*, not from
       *having a blueprint*. How do we separate the two? Her suggestion: try several different

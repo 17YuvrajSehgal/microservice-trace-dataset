@@ -104,7 +104,7 @@ He also said: finish the whole thing by end of semester and it is three or four 
       **Three of Naser's four visual asks are met: resources, waiting, CPU usage.**
       The timeline is not, and that is real - see G2.
 
-- [ ] **G2. Add early detection — and the timeline.** Now carries two asks, not one.
+- [~] **G2. SKIPPED for now** (Yuvraj, 13 Sept). Add early detection — and the timeline. Now carries two asks, not one.
       We compare a 60s baseline against a whole 120s incident window. That answers "did it
       happen", never "how soon could we tell". Cut the incident window into slices and find
       the first slice where the signal crosses.
@@ -112,7 +112,10 @@ He also said: finish the whole thing by end of semester and it is three or four 
       because the packs hold baseline-vs-incident totals, not a series. Same fix serves both.
       Needs a change to the pack builder, then one cluster pass. No new collection.
 
-- [ ] **G3. Check the verdict actually names the culprit.** Blueprints claim they name a
+- [x] **G3. DONE 13 Sept, and it found a bug.** The verdict does name a process - but on
+      `nagle_delayed_ack` it named `lttng-consumerd`, our own trace collector, in 10 runs out
+      of 10. The disk rule never checked the infrastructure list. Fixed; CAMPAIGN-ISSUES 16.
+      Original item: Check the verdict actually names the culprit. Blueprints claim they name a
       process or container. Confirm the output file really carries the name, on a few runs.
       Small job, but it is the exact thing he defined root cause as.
 
@@ -136,10 +139,15 @@ He also said: finish the whole thing by end of semester and it is three or four 
 ### I. From our own work, not the meeting
 
 - [ ] **I1. Re-derive `service-memory-cap` against `anomaly_mem`**, or write down that the
-      pair cannot be told apart.
-- [ ] **I2. Write up the four faults with no signal** — `conn_pool_exhaustion`, `deadlock`,
-      `resource_abuse`, `anomaly_mem`. A negative result is a result. Naser said so himself
-      on 2 Sept.
+      pair cannot be told apart. **NOW THE BIGGEST SINGLE SOURCE OF WRONG ANSWERS:** 15 of the
+      19 remaining false fires are this one pair. Measured 13 Sept: `anomaly_mem` separates on
+      `thief_share` per application only, so a shipped constant will not work.
+- [x] **I2. DONE 13 Sept — and it is eleven, not four.**
+      `blueprints/docs/COVERAGE-which-blueprints-are-missing.md`. Swept all 13 uncovered
+      families against 45 signals, every other family as a negative, both applications
+      required. Only 2 are worth attempting (`priority_inversion`, `lock_contention`, both
+      needing a per-deployment reference). 11 have no portable signal. 6 of the 13 were
+      collected on one application only, so they are a COLLECTION gap, not an analysis one.
 - [ ] **I3. Settle the 10 Train Ticket `slow_db` / `svc_net` verdicts.**
 
 ---
