@@ -507,20 +507,66 @@ Full analysis: `blueprints/docs/COVERAGE-which-blueprints-are-missing.md`.
 
 ---
 
-## Issue 18 - `derive_v2_thresholds.py` cannot read campaign confirmation
+## Issue 18 - RETRACTED. Campaign verification works and is where the code expects it
 
-**Found 2026-09-13. Affects analysis only.**
+**Logged 2026-09-13, retracted the same day.**
 
-`confirmed()` looks for `<v2>/<app>/<family>/<run>/verification.json`. **There are zero such
-files anywhere in v2**, and `results/verify/` is empty. The function therefore returns False
-for every run, and the default path excludes every positive.
+I claimed `verification.json` did not exist anywhere in v2 and that
+`derive_v2_thresholds.py:confirmed()` could never return True. **Both claims were wrong.**
 
-Confirmation status was recorded during the campaign as prose in this file rather than as a
-machine-readable artifact per run.
+The cause was my own shell quoting: a `V2=...` assignment inside a nested `ssh "..."` command
+silently expanded to empty, so `find` searched the home directory and returned nothing. I read
+that as evidence and wrote it up.
 
-Consequence: any claim of the form "N campaign-confirmed runs" in a blueprint traces to hand
-reading of this file, not to a check the code can reproduce. `fd-exhaustion` carries such a
-claim. It is not necessarily wrong, but it is not reproducible by re-running anything.
+What is actually there:
 
-Fix: write `verification.json` per run from the campaign notes, or drop the confirmed /
-unconfirmed distinction and state plainly that all runs are included.
+| | count |
+|---|---|
+| run bundles | 303 |
+| `ground_truth.json` | 283 |
+| `verification.json` | 283 |
+| `verification.png` | 283 |
+
+283 = every fault run. The other 20 are the `normal` controls, which are skipped by design.
+The path is exactly the one `confirmed()` reads.
+
+**And the verification caught the bad runs.** All four runs my kernel-side analysis flagged as
+inert had already been flagged by the campaign months earlier:
+
+| run | verification said |
+|---|---|
+| `dns_delay_aggressive_steady_r4` | `no_metric_signature` |
+| `tt_slow_db_subtle_steady_r3` | `unconfirmed` |
+| `tt_svc_net_aggressive_steady_r2` | `unconfirmed` |
+| `tt_svc_net_aggressive_steady_r5` | `borderline` |
+
+So the campaign's own quality gate worked. The failure was downstream: **nothing in the analysis
+reads `verification_status`**, so unconfirmed runs were used as positives when deriving
+thresholds and as negatives when testing separation. That is the real defect, and it is
+Issue 19.
+
+**Lesson, and the reason this is kept rather than deleted:** I asserted that a quality control
+had never run, on the strength of one command that returned zero. A zero from a search is not
+evidence of absence until the search itself is verified. The `fd-exhaustion` blueprint's
+"campaign-confirmed" claim, which I called unreproducible, is reproducible.
+
+---
+
+## Issue 19 - the analysis ignores `verification_status`
+
+**Found 2026-09-13. Affects analysis, not collection.**
+
+283 runs carry a verification verdict and **no analysis script reads it**. Consequences that
+have already happened:
+
+- `dns_delay` was scored 4/5 with the fifth counted as a miss. It is not a miss - the campaign
+  recorded `no_metric_signature`, meaning the injection did not take. It should be excluded, and
+  the blueprint is 4/4 on runs that contain the fault.
+- The `tt_svc_cpu_cap` and `tt_slow_db` families are entirely `unconfirmed`/`borderline`, and
+  were used as positives throughout.
+
+Counts of runs that are not `confirmed`: see `blueprints/lib/read_verification.py`.
+
+**Fix:** every derivation and sweep should read `verification_status` and either exclude
+non-confirmed positives or report them separately. `derive_v2_thresholds.py` already has the
+switch (`--include-unconfirmed`); the newer sweeps do not.

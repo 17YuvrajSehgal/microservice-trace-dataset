@@ -206,4 +206,22 @@ python3 "$SD/audit_alignment.py" "$RUN_DIR" \
     --load-csv "$HOME/${RUN}_load.csv" --metrics-dir "$HOME/${RUN}_metrics" \
     ${AUDIT_KERNEL_TIMEOUT:+--kernel-timeout "$AUDIT_KERNEL_TIMEOUT"} || true
 
-echo "[$RUN] DONE. bundle=$RUN_DIR verification=$(python3 -c "import json,sys; print(json.load(open('$RUN_DIR/verification.json')).get('verification_status','n/a'))" 2>/dev/null || echo n/a)"
+# 7) THE QUALITY GATE - is this bundle actually usable?
+#
+# Two classes of bad run reached v2 and were not noticed for months, and both were cheap to
+# catch here, on the VM, while re-running was still possible:
+#
+#   - Failed injections were kept. verify_injection.py marked them (32 unconfirmed runs), and
+#     nothing read the verdict. They shipped and were later used as positives.
+#   - Contaminated baselines were invisible. The code-defect recipes restarted the container
+#     inside the baseline window and nothing looked at the baseline at all, so 25 runs were
+#     collected before anyone saw it.
+#
+# This does not delete or block anything - it writes run_quality.json and says so loudly. The
+# campaign driver decides what to do; a human decides whether to re-run.
+python3 "$SD/check_run_quality.py" --run-dir "$RUN_DIR" || {
+    echo "[$RUN] *** THIS BUNDLE IS NOT USABLE AS COLLECTED - see $RUN_DIR/run_quality.json"
+    echo "[$RUN] *** Re-run it before relying on it. Do not let it reach the dataset silently."
+}
+
+echo "[$RUN] DONE. bundle=$RUN_DIR verification=$(python3 -c "import json,sys; print(json.load(open('$RUN_DIR/verification.json')).get('verification_status','n/a'))" 2>/dev/null || echo n/a) quality=$(python3 -c "import json,sys; print(json.load(open('$RUN_DIR/run_quality.json')).get('verdict','n/a'))" 2>/dev/null || echo n/a)"

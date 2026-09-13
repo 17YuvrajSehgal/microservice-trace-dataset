@@ -121,3 +121,72 @@ exists on one.
 
 **A run is not inert because our signal missed it.** Check with a second instrument before
 calling data bad — the cost of being wrong here is re-collecting runs that were fine.
+
+---
+
+# CORRECTED 13 Sept, same day — the campaign already knew
+
+Everything above was written from the kernel side only. Then I read the campaign's own
+verification, which I had wrongly reported as missing. **283 of 303 runs carry a verdict**
+(the other 20 are the `normal` controls, skipped by design), and it had already flagged every
+run I "found".
+
+| verification_status | runs |
+|---|---|
+| `confirmed` | 226 |
+| `unconfirmed` | 32 |
+| `borderline` | 16 |
+| `no_metric_signature` | 9 |
+
+## The distinction I got wrong, and it matters
+
+`no_metric_signature` is **not** a failed injection. It means no metric target could see the
+fault at all.
+
+**All 5 `dns_delay` runs are `no_metric_signature`. Four of them show the fault plainly in the
+kernel trace, at 161–310 EMFILE/s.**
+
+That is a fault the metric modality cannot detect and the kernel modality can, measured rather
+than argued — and it arrived as a by-product of checking why a run looked inert. It is now
+recorded on the `dns-delay` blueprint.
+
+`unconfirmed` is the one that means "the checks ran and did not see the fault".
+
+## Which families the campaign says are weak
+
+| family | confirmed | rest |
+|---|---|---|
+| `slow_db` | 11 / 22 | 10 unconfirmed, 1 borderline |
+| `svc_cpu_cap` | 8 / 16 | 8 unconfirmed — all Train Ticket |
+| `svc_net` | 5 / 10 | 4 unconfirmed, 1 borderline |
+| `code_n_plus_one` | 0 / 5 | 5 borderline |
+| `code_lock_across_io` | 0 / 5 | 5 borderline |
+| `dns_delay` | 0 / 5 | 5 `no_metric_signature` — see above |
+| `fd_exhaustion` | 7 / 10 | 3 unconfirmed |
+| `lock_contention` | 7 / 10 | 3 unconfirmed |
+
+This confirms the kernel-side findings independently: `svc_cpu_cap` on Train Ticket and
+`slow_db` on Train Ticket are weak in the metrics too.
+
+## What actually changed as a result
+
+1. **A quality gate now runs at the end of every collection** —
+   `check_run_quality.py`, wired into `run_scenario.sh`. It checks the trace is readable, the
+   injection window sits inside the traced window, the verification verdict, and that the
+   baseline is quiet. Writes `run_quality.json` and says loudly when a bundle is not usable.
+2. **`verify_injection.py` no longer fails silently.** It was wrapped in `|| true`, so a crash
+   produced no verdict and a run with no verdict looked the same as one that passed.
+3. **The analysis still ignores `verification_status`** — that is CAMPAIGN-ISSUES 19 and it is
+   open. `dns_delay` should be scored 4/4 on runs that contain the fault, not 4/5.
+
+## The honest summary of my own error rate here
+
+Three claims in this document's first version were wrong, all in the same direction — treating
+a signal that did not fire as evidence that something was broken:
+
+- "22 inert runs" — the real number is 4.
+- "`verification.json` does not exist anywhere" — 283 of them do. My search was broken.
+- "these four runs are a new discovery" — the campaign had flagged all four months earlier.
+
+The pattern is the same every time: **a check returning nothing is not a finding until the
+check itself has been verified.**
