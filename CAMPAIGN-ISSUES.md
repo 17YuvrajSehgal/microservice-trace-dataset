@@ -417,3 +417,76 @@ value in the pack, so the rule can only veto — it cannot fall back to the next
 process. Recomputing that would need a pack rebuild.
 
 Full write-up: `blueprints/docs/RESULTS-antipattern-ceiling.md`.
+
+---
+
+## Issue 17 - the five code-defect families have contaminated BASELINE windows
+
+**Found 2026-09-13. NEEDS RE-COLLECTION. 25 runs, Sock Shop only.**
+
+`code_defect_dispatch inject` does this, in this order:
+
+```
+code_defect_apply "$DEFECT_BUG" "$DEFECT_IMAGE"   # restarts the container, sleep 6, verify
+gt_begin ...                                       # incident window starts HERE
+```
+
+The container restart happens **before** the incident is declared, so it lands inside the last
+seconds of the 60-second baseline window. The baseline is not a healthy reference - it contains
+a container teardown and restart.
+
+Measured, retransmission in the BASELINE window (a healthy baseline measures 0.00%):
+
+| family | baseline retransmission | runs affected |
+|---|---|---|
+| `code_lock_across_io` | 65.4 - 73.2% | 5 of 5 |
+| `code_n_plus_one` | 34.7 - 79.9% | 5 of 5 |
+| `code_serial_awaits` | 30.4 - 71.2% | 5 of 5 |
+| `code_event_loop_block` | 28.6 - 61.4% | 5 of 5 |
+| `code_unbounded_cache` | 0 - 53.9% | 3 of 5 |
+| every other family | 0 - 5.6%, mostly 0 | - |
+
+Corroborating: 3-7 endpoints "gone" between windows in every code run, against 1-2 elsewhere.
+That is containers coming back on new addresses.
+
+**Consequence.** Every baseline-relative measure in these 25 runs is a ratio against a restart.
+`node|poll` reads 1700x not because the defect is dramatic but because the baseline was a
+service being torn down. This is why no signal separates these families - the dominant thing in
+the data is the injection mechanism, not the fault.
+
+**This violates a rule the project already holds.** CLAUDE.md: Toxiproxy sits permanently in
+the catalogue path *because "fault toggling must be restart-free"*. The code-defect recipes
+toggle by restarting with a different `STRATA_BUG` environment variable.
+
+**Fix for re-collection** - either:
+1. gate each defect behind a runtime switch (a file, or an HTTP endpoint) so it can be turned
+   on without a restart, which is what toxiproxy does for `slow_db`; or
+2. restart with the defect already enabled, let it settle, and only then start tracing - so
+   the restart is outside the measured window entirely.
+
+Option 1 is better: it also gives a genuine paired control on the same process.
+
+**Until re-collected, these 25 runs must not be used for any baseline-relative claim.**
+They remain valid as incident-window evidence, which does not involve the baseline.
+
+Full analysis: `blueprints/docs/COVERAGE-which-blueprints-are-missing.md`.
+
+---
+
+## Issue 18 - `derive_v2_thresholds.py` cannot read campaign confirmation
+
+**Found 2026-09-13. Affects analysis only.**
+
+`confirmed()` looks for `<v2>/<app>/<family>/<run>/verification.json`. **There are zero such
+files anywhere in v2**, and `results/verify/` is empty. The function therefore returns False
+for every run, and the default path excludes every positive.
+
+Confirmation status was recorded during the campaign as prose in this file rather than as a
+machine-readable artifact per run.
+
+Consequence: any claim of the form "N campaign-confirmed runs" in a blueprint traces to hand
+reading of this file, not to a check the code can reproduce. `fd-exhaustion` carries such a
+claim. It is not necessarily wrong, but it is not reproducible by re-running anything.
+
+Fix: write `verification.json` per run from the campaign notes, or drop the confirmed /
+unconfirmed distinction and state plainly that all runs are included.

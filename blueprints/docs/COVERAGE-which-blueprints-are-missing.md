@@ -120,3 +120,85 @@ The effort is better spent on the two open items that do not depend on new bluep
    The blueprints have never been tested in the hands of an agent, which is what they are for.
 2. **`service-memory-cap` re-derived against `anomaly_mem`**, or recorded as inseparable. That
    single pair is 15 of the 19 remaining false fires.
+
+---
+
+# Re-run, 13 Sept: the six single-application families
+
+Yuvraj pushed back on the "no signal" verdict for these six. He was right, and for five of
+them the reason is that **the data is broken, not the analysis**.
+
+## The first test was unfair, and then the second one found the real problem
+
+Two things were wrong with how I tested these six:
+
+1. I required a cut to hold on **two applications**. These exist on one. They could never pass.
+2. I required each code defect to separate from **the other four code defects**, which are the
+   same kind of fault.
+
+So I re-ran without either constraint, and instead of guessing signals, walked **every numeric
+field in the pack** and compared each family's median against the healthy control.
+
+## What that turned up: the baselines are contaminated
+
+| family | retransmission in the BASELINE window | runs affected |
+|---|---|---|
+| `code_lock_across_io` | 65.4 - 73.2% | 5 of 5 |
+| `code_n_plus_one` | 34.7 - 79.9% | 5 of 5 |
+| `code_serial_awaits` | 30.4 - 71.2% | 5 of 5 |
+| `code_event_loop_block` | 28.6 - 61.4% | 5 of 5 |
+| `code_unbounded_cache` | 0 - 53.9% | 3 of 5 |
+| **every other family** | **0 - 5.6%, mostly 0** | - |
+
+A healthy baseline measures 0.00%. These measure up to 80%.
+
+The cause is in the recipe. `code_defect_dispatch inject` restarts the container with the
+defect's environment variable set, sleeps 6 seconds, verifies it came up - and only **then**
+calls `gt_begin` to mark the incident start. The restart therefore lands inside the last
+seconds of the baseline window.
+
+Corroborating it: 3-7 endpoints "gone" between windows in every code run, against 1-2
+everywhere else. That is containers coming back on new addresses.
+
+**So every ratio in these 25 runs is measured against a restart.** `node|poll` reads 1700x not
+because the defect is dramatic, but because the baseline was a service being torn down. Nothing
+separates these families because the loudest thing in the data is the injection mechanism.
+
+This violates a rule the project already holds - CLAUDE.md says toxiproxy sits permanently in
+the catalogue path precisely because *"fault toggling must be restart-free"*. The code-defect
+recipes toggle by restarting. Logged as CAMPAIGN-ISSUES 17, with the fix.
+
+## `dns_delay` is different, and it does have a signal
+
+Its baseline is clean (0 - 0.99%). And EMFILE separates it:
+
+| | EMFILE per second |
+|---|---|
+| `dns_delay` | 0, **161.3, 234.4, 285.2, 310.1** |
+| `anomaly_net` (the highest of anything else) | up to 63.8 |
+| `fd_exhaustion` | 0.27 - 1.78 |
+| everything else | exactly 0 |
+
+**Four of the five runs separate at a 2.53x margin.** The fifth measures exactly zero - the
+injection did not take, which is a property of that run and not of the fault.
+
+Slow name lookups make the front-end pile up sockets waiting for answers, so it exhausts
+descriptors far harder than the descriptor-cap fault does. The mechanism is sound and the
+margin is real.
+
+**`dns_delay` is blueprintable now**, on Sock Shop, with the honest caveat that transfer cannot
+be checked because Train Ticket makes no DNS queries.
+
+## Revised verdict on the six
+
+| family | verdict |
+|---|---|
+| `dns_delay` | **buildable.** 4/5 runs, 2.53x margin on EMFILE. One run had a failed injection |
+| `code_event_loop_block` | **re-collect.** Baseline contaminated by the injection restart |
+| `code_lock_across_io` | **re-collect.** Same |
+| `code_n_plus_one` | **re-collect.** Same |
+| `code_serial_awaits` | **re-collect.** Same |
+| `code_unbounded_cache` | **re-collect.** Same, 3 of 5 runs |
+
+That changes the earlier conclusion. It was not that kernel traces cannot see these faults. We
+have not yet given them a fair measurement.
