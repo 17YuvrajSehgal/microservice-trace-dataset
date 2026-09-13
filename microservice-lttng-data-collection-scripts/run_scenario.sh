@@ -11,7 +11,9 @@
 #        TARGET_SVC (passed through to service-targeted recipes)
 #        PROMETHEUS FRONTEND_HOST
 #
-# The whole run is traced continuously; the fault is injected BASELINE_S in
+# The whole run is traced continuously; the fault is injected BASELINE_S in.
+# Recipes that need a restart to install themselves are ARMED before tracing opens and
+# DISARMED after it closes, so no container recreate ever lands inside a measured window.
 # and removed after INJECTION_S, so every bundle contains onset and recovery
 # (required for the explanation/repair tasks). collect_trace.sh self-heals
 # stale LTTng state, so no manual reset is needed between runs.
@@ -87,6 +89,29 @@ fi
 echo "[$RUN] scenario=$RECIPE intensity=$INTENSITY workload=$PROFILE duration=${DURATION}s "\
 "(baseline ${BASELINE_S}s / injection ${INJECTION_S}s / recovery ${RECOVERY_S}s)"
 
+# 0) ARM ANY RECIPE THAT NEEDS A RESTART TO INSTALL ITSELF - BEFORE TRACING OPENS.
+#
+# The code-defect recipes swap the service onto a patched image. That recreates the container,
+# and a container teardown is a much louder event than any defect: 28-80% retransmission in a
+# window that should read 0.00%. When the swap happened at injection time it landed in the last
+# seconds of the BASELINE, so every baseline-relative ratio in those runs was measured against a
+# restart. All 25 v2 code-defect runs are unusable for that reason (CAMPAIGN-ISSUES 17).
+#
+# Arming here means the baseline is recorded on exactly the bytes that will serve the incident -
+# same image, same container, same process - and injection is then a one-word file write.
+#
+# Only recipes built on code_defect_lib.sh need this; the rest have no `arm` verb and are
+# skipped. `inject` refuses to run un-armed, so a missed arm fails loudly rather than quietly
+# producing another 25 contaminated runs.
+ARMED=0
+if [[ "$NORMAL" -eq 0 ]] && grep -q 'code_defect_dispatch' "$RECIPE_SH" 2>/dev/null; then
+    echo "[$RUN] arming $RECIPE before tracing starts (restart happens now, not mid-run)"
+    bash "$RECIPE_SH" arm || { echo "[$RUN] FATAL: arm failed"; exit 1; }
+    ARMED=1
+    # Let the recreated container settle so its startup is not the first thing in the baseline.
+    sleep "${ARM_SETTLE_S:-20}"
+fi
+
 # 1) continuous tracing for the whole window (scenario dir = recipe name)
 ( cd "$SD" && ./collect_trace.sh "$RECIPE" "$RUN" "$DURATION" ) &
 TRACE_PID=$!
@@ -139,6 +164,14 @@ fi
 
 # recovery window elapses while tracing continues to the end
 wait "$TRACE_PID" 2>/dev/null || true
+
+# Restore the stock image now that tracing is over. This restarts the container, which is why
+# it happens HERE and not in cleanup - cleanup runs while the recovery window is still being
+# recorded.
+if [[ "$ARMED" -eq 1 ]]; then
+    echo "[$RUN] disarming $RECIPE (tracing finished, safe to restart)"
+    bash "$RECIPE_SH" disarm || echo "[$RUN] WARN: disarm returned nonzero"
+fi
 kill "$LOAD_PID" 2>/dev/null || true
 wait "$LOAD_PID" 2>/dev/null || true
 LOAD_PID=""

@@ -469,6 +469,40 @@ Option 1 is better: it also gives a genuine paired control on the same process.
 **Until re-collected, these 25 runs must not be used for any baseline-relative claim.**
 They remain valid as incident-window evidence, which does not involve the baseline.
 
+### FIX WRITTEN 2026-09-13 - not yet run on hardware
+
+Option 1 above is implemented. The defect gate now reads `/tmp/strata_bug` inside the
+container, falling back to the `STRATA_BUG` environment variable, so it can be flipped without
+a recreate. The recipe verb set is now:
+
+| verb | what it does | restarts? | when |
+|---|---|---|---|
+| `arm` | put the service on the defect image with the defect OFF | **yes** | before tracing starts |
+| `inject` | write the defect name into the flag file | no | at baseline+60s, as before |
+| `cleanup` | write `none` back | no | at the end of the incident window |
+| `disarm` | restore the stock image | **yes** | after tracing ends |
+
+`run_scenario.sh` arms before `collect_trace.sh` opens and disarms after it closes, with a
+20-second settle after arming so the recreated container's startup is not the first thing in
+the baseline. `inject` **refuses to run un-armed**, so a missed arm fails loudly instead of
+quietly producing another 25 contaminated runs.
+
+Changed: `faults/code-defects/inject_defects.py` (both the Go and the Node gate),
+`faults/code_defect_lib.sh`, `run_scenario.sh`, `faults/code-defects/smoke_defects.sh`.
+
+**I have not run any of this.** The collection VM was deleted on 2026-09-07, so there is
+nowhere to build the images or start the stack. What has been checked: the Python parses, the
+generated Go and JavaScript were printed and read, and every shell file passes `bash -n`.
+Whether the patched services still build and serve traffic is unverified.
+
+**Before the next campaign, in this order:**
+1. `bash faults/code-defects/build_defect_images.sh` - this runs `inject_defects.py --check`
+   first, so a broken anchor is caught before any image is built.
+2. `bash faults/code-defects/smoke_defects.sh` - confirms each defect still changes something
+   measurable against its own control, now through the file flag.
+3. One `code_n_plus_one` run end to end, then check baseline retransmission is back to 0.00%.
+   That single number is the whole point of this fix.
+
 Full analysis: `blueprints/docs/COVERAGE-which-blueprints-are-missing.md`.
 
 ---

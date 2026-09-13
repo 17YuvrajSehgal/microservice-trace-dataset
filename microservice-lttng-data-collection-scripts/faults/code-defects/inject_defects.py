@@ -10,7 +10,10 @@ repeat, a build that quietly applied half a patch is far worse than one that sto
 
 WHY ONE IMAGE PER SERVICE AND NOT ONE PER BUG
 ---------------------------------------------
-Every defect is gated at runtime on the STRATA_BUG environment variable. So a service builds
+Every defect is gated at runtime on /tmp/strata_bug, falling back to the STRATA_BUG
+environment variable. Reading a FILE is what lets a defect be switched on mid-run without
+recreating the container - a restart inside the baseline window ruined 25 runs before this
+was changed (CAMPAIGN-ISSUES 17). So a service builds
 ONCE and the same binary serves every defect and the control.
 
 That matters for correctness, not just convenience. A patched image is not the stock image -
@@ -35,8 +38,8 @@ CATALOGUE = [
     (
         "service.go",
         'import (\n\t"errors"\n\t"strings"\n\t"time"\n',
-        'import (\n\t"errors"\n\t"os"\n\t"strings"\n\t"sync"\n\t"time"\n',
-        "add os and sync for the defect gate",
+        'import (\n\t"errors"\n\t"io/ioutil"\n\t"os"\n\t"strings"\n\t"sync"\n\t"time"\n',
+        "add os, io/ioutil and sync for the defect gate",
     ),
     (
         "service.go",
@@ -48,7 +51,31 @@ CATALOGUE = [
         "// the control. With STRATA_BUG unset or \"none\" this file behaves exactly as upstream.\n"
         "var strataMu sync.Mutex\n"
         "\n"
-        "func strataBug() string { return os.Getenv(\"STRATA_BUG\") }\n"
+        "// TOGGLED THROUGH A FILE, NOT THE ENVIRONMENT. An environment variable cannot\n"
+        "// change without recreating the container, and a restart inside the measured\n"
+        "// baseline window is a far bigger event than any defect - it tears down every\n"
+        "// connection. That silently ruined 25 runs. The environment variable stays as\n"
+        "// the fallback, so an image started with STRATA_BUG set behaves as before.\n"
+        "// Cached for a second: about one read per second, not one per request.\n"
+        "var strataFlagMu sync.Mutex\n"
+        "var strataFlagVal string\n"
+        "var strataFlagAt time.Time\n"
+        "\n"
+        "func strataBug() string {\n"
+        "\tstrataFlagMu.Lock()\n"
+        "\tdefer strataFlagMu.Unlock()\n"
+        "\tif !strataFlagAt.IsZero() && time.Since(strataFlagAt) < time.Second {\n"
+        "\t\treturn strataFlagVal\n"
+        "\t}\n"
+        "\tv := os.Getenv(\"STRATA_BUG\")\n"
+        "\tif b, err := ioutil.ReadFile(\"/tmp/strata_bug\"); err == nil {\n"
+        "\t\tif s := strings.TrimSpace(string(b)); s != \"\" {\n"
+        "\t\t\tv = s\n"
+        "\t\t}\n"
+        "\t}\n"
+        "\tstrataFlagVal, strataFlagAt = v, time.Now()\n"
+        "\treturn v\n"
+        "}\n"
         "\n"
         "func NewCatalogueService(db *sqlx.DB, logger log.Logger) Service {",
         "declare the defect gate",
@@ -87,7 +114,21 @@ FRONTEND = [
         "  // --- StrataTrace code-defect injection ---------------------------------------\n"
         "  // Selected at RUNTIME by STRATA_BUG so one build serves every defect and the\n"
         "  // control. Unset or \"none\" behaves exactly as upstream.\n"
-        "  var strataBug = function () { return process.env.STRATA_BUG || 'none'; };\n"
+        "  // TOGGLED THROUGH A FILE, NOT THE ENVIRONMENT - see the Go gate for why.\n"
+        "  // The environment variable remains the fallback. Cached for a second.\n"
+        "  var strataFlag = { v: null, at: 0 };\n"
+        "  var strataBug = function () {\n"
+        "    var now = Date.now();\n"
+        "    if (strataFlag.v !== null && now - strataFlag.at < 1000) "
+        "return strataFlag.v;\n"
+        "    var v = process.env.STRATA_BUG || 'none';\n"
+        "    try {\n"
+        "      var s = require('fs').readFileSync('/tmp/strata_bug', 'utf8').trim();\n"
+        "      if (s) { v = s; }\n"
+        "    } catch (e) { /* no file: fall back to the environment */ }\n"
+        "    strataFlag.v = v; strataFlag.at = now;\n"
+        "    return v;\n"
+        "  };\n"
         "  var strataCache = [];   // deliberately unbounded, for the cache defect\n"
         "  var crypto = require('crypto');\n",
         "add the defect gate to the shared helper module",

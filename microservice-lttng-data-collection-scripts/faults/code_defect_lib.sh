@@ -1,9 +1,19 @@
 #!/bin/bash
 # Shared implementation for the code-defect recipes.
 #
-# Every defect is gated at runtime on STRATA_BUG inside an image built by
-# code-defects/build_defect_images.sh. Injecting means swapping ONE service to that image with
-# the flag set; cleaning up means putting it back to the stock image.
+# Every defect is gated at runtime on /tmp/strata_bug inside the container (falling back to
+# the STRATA_BUG environment variable), in an image built by
+# code-defects/build_defect_images.sh.
+#
+# THE ORDER MATTERS, AND GETTING IT WRONG COST US 25 RUNS:
+#   arm      swap the service onto the defect image with the defect OFF.  RESTARTS. Run it
+#            BEFORE tracing starts.
+#   inject   write the defect name into the flag file.  NO RESTART.
+#   cleanup  write 'none' back.  NO RESTART.
+#   disarm   restore the stock image.  RESTARTS. Run it AFTER tracing ends.
+#
+# Previously `inject` did the image swap itself and then called gt_begin, so the container
+# recreate landed in the last seconds of the baseline window. See CAMPAIGN-ISSUES 17.
 #
 # THE POINT OF THE FLAG. A patched image is not the stock image - different build, different
 # layer, possibly a different compiler pass. If the control were the stock service, every
@@ -96,11 +106,67 @@ EOF
     echo "[$FAULT_NAME] $DEFECT_SERVICE running ${image:-stock} with STRATA_BUG=${bug}"
 }
 
+# The runtime flag, written INTO the running container. No restart, so this can happen in the
+# middle of a traced run without disturbing it.
+#
+# WHY THIS EXISTS. `inject` used to swap the image and recreate the container, then call
+# gt_begin. The recreate therefore happened in the last seconds of the baseline window, and a
+# container teardown is a far louder event than any defect - 28-80% retransmission in a window
+# that is supposed to read 0.00%. All 25 code-defect runs in v2 are unusable for any
+# baseline-relative measurement because of it (CAMPAIGN-ISSUES 17).
+#
+# CLAUDE.md already required this: toxiproxy sits permanently in the catalogue path precisely
+# because "fault toggling must be restart-free". These recipes were the exception.
+code_defect_set_flag() {   # code_defect_set_flag <bug-name-or-none>
+    local bug="$1" cname
+    cname="$(_cd_compose ps -q "$DEFECT_SERVICE" 2>/dev/null | head -1)"
+    [[ -z "$cname" ]] && cname="$(resolve_container "$DEFECT_SERVICE")"
+    if [[ -z "$cname" ]]; then
+        echo "[$FAULT_NAME] cannot find the $DEFECT_SERVICE container to set the flag"
+        return 1
+    fi
+    if ! docker exec "$cname" sh -c "printf '%s' '$bug' > /tmp/strata_bug"; then
+        echo "[$FAULT_NAME] could not write /tmp/strata_bug in $cname"
+        return 1
+    fi
+    # The gate caches for a second, so give it one before the caller declares the window.
+    sleep 1.2
+    echo "[$FAULT_NAME] $DEFECT_SERVICE flag set to '$bug' (no restart)"
+}
+
+# Is the service already on the defect image with the flag off, ready to be flipped?
+code_defect_is_armed() {
+    local cname
+    cname="$(_cd_compose ps -q "$DEFECT_SERVICE" 2>/dev/null | head -1)"
+    [[ -z "$cname" ]] && return 1
+    [[ "$(docker inspect -f '{{.Config.Image}}' "$cname" 2>/dev/null)" == "$DEFECT_IMAGE" ]]
+}
+
 code_defect_dispatch() {
     case "${1:-}" in
+      arm)
+        # THE ONLY STEP THAT RESTARTS ANYTHING, and it must run BEFORE tracing starts.
+        # Puts the service on the defect image with the defect OFF, so the baseline is
+        # recorded on exactly the bytes that will serve the incident - same image, same
+        # container, same process - and the only difference later is which branch runs.
+        code_defect_require_image
+        code_defect_apply none "$DEFECT_IMAGE" || exit 1
+        code_defect_set_flag none || exit 1
+        echo "[$FAULT_NAME] armed: $DEFECT_SERVICE on $DEFECT_IMAGE, defect OFF"
+        ;;
+      disarm)
+        # Back to the stock image. Runs AFTER tracing has finished, never during it.
+        code_defect_apply none "" || true
+        ;;
       inject)
         code_defect_require_image
-        code_defect_apply "$DEFECT_BUG" "$DEFECT_IMAGE" || exit 1
+        if ! code_defect_is_armed; then
+            echo "*** $DEFECT_SERVICE is not armed. Run '$0 arm' BEFORE tracing starts."
+            echo "*** Injecting now would recreate the container inside the measured window,"
+            echo "*** which is what made all 25 v2 code-defect runs unusable."
+            exit 1
+        fi
+        code_defect_set_flag "$DEFECT_BUG" || exit 1
         local prov commit="unknown"
         prov="$HOME/fault-state/code_defect_${DEFECT_SERVICE}.provenance.json"
         [[ -f "$prov" ]] && commit=$(python3 -c "import json;print(json.load(open('$prov'))['commit'])" 2>/dev/null || echo unknown)
@@ -110,17 +176,25 @@ code_defect_dispatch() {
         # The paired healthy run: SAME image, defect off. Not a `normal` run - a control run.
         code_defect_require_image
         code_defect_apply none "$DEFECT_IMAGE" || exit 1
+        code_defect_set_flag none || exit 1
         ;;
       cleanup)
-        # back to the stock image from the stack definition
-        code_defect_apply none "" || true
+        # Turn the defect off WITHOUT a restart, so the recovery window measures the same
+        # process recovering rather than a new one starting. The stock image is restored by
+        # `disarm`, after tracing has ended.
+        code_defect_set_flag none || true
         gt_end
         ;;
       status)
         local cname; cname="$(resolve_container "$DEFECT_SERVICE")"
         docker ps --filter "name=$cname" --format '{{.Names}} {{.Image}} {{.Status}}'
         docker inspect -f '{{range .Config.Env}}{{println .}}{{end}}' "$cname" 2>/dev/null | grep STRATA_BUG || echo "STRATA_BUG unset (stock)"
+        echo -n "flag file: "; docker exec "$cname" cat /tmp/strata_bug 2>/dev/null || echo "absent (gate falls back to the environment)"
+        code_defect_is_armed && echo "armed: yes" || echo "armed: no"
         ;;
-      *) echo "usage: $0 inject [subtle|aggressive] | control | cleanup | status"; exit 1 ;;
+      *) echo "usage: $0 arm | inject [subtle|aggressive] | cleanup | disarm | control | status"
+         echo "       arm BEFORE tracing starts; inject and cleanup are restart-free;"
+         echo "       disarm AFTER tracing ends."
+         exit 1 ;;
     esac
 }

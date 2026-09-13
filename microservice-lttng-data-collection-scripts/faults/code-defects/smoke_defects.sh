@@ -94,6 +94,7 @@ for d in "${DEFECTS[@]}"; do
     if ! bash "$recipe" inject aggressive >/dev/null 2>&1; then
         echo "  FAIL  inject failed"
         bash "$recipe" cleanup >/dev/null 2>&1 || true
+    bash "$recipe" disarm >/dev/null 2>&1 || true
         fail=$((fail+1)); continue
     fi
     sleep 6
@@ -102,6 +103,7 @@ for d in "${DEFECTS[@]}"; do
     if ! curl -sf -m 10 -o /dev/null "${path}" 2>/dev/null; then
         echo "  FAIL  service does not SERVE with the defect on - that is a different fault"
         bash "$recipe" cleanup >/dev/null 2>&1 || true
+    bash "$recipe" disarm >/dev/null 2>&1 || true
         fail=$((fail+1)); continue
     fi
 
@@ -136,6 +138,7 @@ for d in "${DEFECTS[@]}"; do
     fi
 
     bash "$recipe" cleanup >/dev/null 2>&1 || true
+    bash "$recipe" disarm >/dev/null 2>&1 || true
     sleep 4
 done
 
