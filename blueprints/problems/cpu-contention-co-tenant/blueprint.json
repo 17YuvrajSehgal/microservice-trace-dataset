@@ -222,7 +222,7 @@
   "decision": {
     "verdict_when": [
       "host CPU utilisation rises during the incident but keeps clear headroom - it stays below {SATURATED} of all cores",
-      "a process that consumed no CPU in the baseline now holds a bounded {THIEF_CORES} to {BIG_THIEF} cores",
+      "a process that consumed no CPU in the baseline now holds at least {THIEF_CORES} cores, but stays below {BIG_THIEF_SHARE} of the whole host - it is competing for the machine, not consuming it",
       "that process has no role in the call graph",
       "runqueue delay is broadly inflated, corroborating that ready threads are queueing",
       "interrupt time is NOT raised with the disk quiet - that shape is a container against its memory limit whose stress tool happens to eat a core, and it vetoes this blueprint"
@@ -257,7 +257,7 @@
     "fault_type": "noisy_neighbor",
     "uses_thresholds": [
       "THIEF_CORES",
-      "BIG_THIEF",
+      "BIG_THIEF_SHARE",
       "SATURATED",
       "IRQ_X",
       "DISK_IOPS_PER_IRQ"

@@ -65,8 +65,13 @@ CARDS = {
         signal="host_util_incident", owns=["anomaly_cpu"], op=">=", bar=BD.SATURATED,
         rule="host_cpu_saturation"),
     "cpu-contention-co-tenant": dict(
-        signal="thief_cores", owns=["noisy_neighbor"], op=">=", bar=BD.THIEF_CORES,
-        ceiling=BD.BIG_THIEF, rule="cpu_contention_co_tenant"),
+        # The floor is still in cores (measured better than a share - see thresholds.json)
+        # and the ceiling is now a share of the host, so the ruler draws the SHARE and the
+        # floor is converted per-run. Drawing the old 4.0-cores ceiling here would show a
+        # line the rule no longer applies.
+        signal="thief_share", owns=["noisy_neighbor"], op=">=",
+        bar_cores=BD.THIEF_CORES, bar=None, ceiling=BD.BIG_THIEF_SHARE,
+        rule="cpu_contention_co_tenant"),
     "service-cpu-throttle": dict(
         signal="util_ratio", owns=["svc_cpu_cap"], op="<=", bar=BD.COLLAPSE_RATIO,
         rule="service_cpu_throttle"),
@@ -229,6 +234,14 @@ def panel(s, y, letter, title, note=""):
 
 
 # --------------------------------------------------------------------------------- ruler
+def _floor_for(cfg, pts, app):
+    """A cores-denominated floor becomes a different share on each host."""
+    if not cfg.get("bar_cores"):
+        return None
+    n = next((p["n_cpus"] for p in pts if p["app"] == app and p.get("n_cpus")), None)
+    return (cfg["bar_cores"] / float(n)) if n else None
+
+
 def draw_ruler(s, y, cfg, ruler, this_run):
     sig = ruler["signals"].get(cfg["signal"])
     lines = []
@@ -244,24 +257,40 @@ def draw_ruler(s, y, cfg, ruler, this_run):
               "%d runs · %d families · %d applications"
               % (len(pts), len(set(p["family"] for p in pts)), len(apps)))
 
-    ax = Axis([p["v"] for p in pts] + (list(bar) if band else [bar]), PAD + 74, W - PAD - 8)
+    ax_extra = list(bar) if band else ([bar] if bar is not None else [])
+    if cfg.get("ceiling"):
+        ax_extra.append(cfg["ceiling"])
+    ax = Axis([p["v"] for p in pts] + ax_extra, PAD + 74, W - PAD - 8)
     lane_h = 30
     top = y + 16
 
     if band:
-        fires = lambda v: bar[0] <= v <= bar[1]                          # noqa: E731
+        fires = lambda v, a=None: bar[0] <= v <= bar[1]                  # noqa: E731
+    elif cfg.get("bar_cores"):
+        def fires(v, a=None):
+            lo = _floor_for(cfg, pts, a)
+            return lo is not None and v >= lo and (ceil is None or v < ceil)
     elif cfg["op"] in (">=", ">"):
-        fires = lambda v: v >= bar and (ceil is None or v < ceil)        # noqa: E731
+        fires = lambda v, a=None: v >= bar and (ceil is None or v < ceil)  # noqa: E731
     else:
-        fires = lambda v: v <= bar                                       # noqa: E731
+        fires = lambda v, a=None: v <= bar                               # noqa: E731
 
     near = None
-    if not band:
+    if not band and bar is not None:
         side = ([p for p in pts if p["family"] not in owns and p["v"] < bar]
                 if cfg["op"] in (">=", ">") else
                 [p for p in pts if p["family"] not in owns and p["v"] > bar])
         if side:
             near = (max if cfg["op"] in (">=", ">") else min)(side, key=lambda p: p["v"])
+
+    # A floor still expressed in cores is a DIFFERENT share on each host, so it is drawn
+    # per lane. Pretending it is one line would draw a cut the rule does not apply.
+    per_lane_floor = {}
+    if cfg.get("bar_cores"):
+        for a2 in apps:
+            n = next((p["n_cpus"] for p in pts if p["app"] == a2 and p.get("n_cpus")), None)
+            if n:
+                per_lane_floor[a2] = cfg["bar_cores"] / float(n)
 
     for i, app in enumerate(apps):
         ly = top + i * lane_h
@@ -269,6 +298,11 @@ def draw_ruler(s, y, cfg, ruler, this_run):
         if ax.has_zero:
             s.rect(ax.x0, ly, ax.zw - 4, lane_h - 5, "#f4f4f4")
         s.text(PAD + 68, ly + lane_h / 2.0, app, 9, MUTED, anchor="end")
+        if app in per_lane_floor:
+            fx = ax.x(per_lane_floor[app])
+            s.line(fx, ly, fx, ly + lane_h - 5, BAD, 1.3, dash="4,3")
+            s.text(fx, ly + lane_h + 4, ">= %s" % fmt(per_lane_floor[app]), 8, BAD,
+                   anchor="middle")
         rows = sorted([p for p in pts if p["app"] == app],
                       key=lambda p: (p["family"] not in owns, p["v"]))
         seen = {}
@@ -291,7 +325,7 @@ def draw_ruler(s, y, cfg, ruler, this_run):
     if band:
         cut(bar[0], "cut " + fmt(bar[0], unit))
         cut(bar[1], "cut " + fmt(bar[1], unit))
-    else:
+    elif bar is not None:
         cut(bar, "%s %s" % (cfg["op"], fmt(bar, unit)))
     if ceil:
         cut(ceil, "< " + fmt(ceil, unit))
@@ -332,7 +366,7 @@ def draw_ruler(s, y, cfg, ruler, this_run):
         s.text(PAD, bottom + 33, mt, 9, WARN if (margin and margin < 1.25) else MUTED)
         lines.append(mt)
 
-    wrong = [p for p in pts if fires(p["v"]) != (p["family"] in owns)]
+    wrong = [p for p in pts if fires(p["v"], p["app"]) != (p["family"] in owns)]
     a = ("this signal alone separates all %d" % len(pts) if not wrong
          else "this signal alone: %d of %d runs on the wrong side" % (len(wrong), len(pts)))
     s.text(W - PAD - 8, bottom + 45, a, 9.5, OK if not wrong else WARN, anchor="end")

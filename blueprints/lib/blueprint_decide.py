@@ -62,7 +62,7 @@ SATURATED = _t("SATURATED")
 COLLAPSE_RATIO = _t("COLLAPSE_RATIO")
 THIEF_CORES = _t("THIEF_CORES")
 CONTENDED = _t("CONTENDED")              # RETIRED - see thresholds.json for why it failed
-BIG_THIEF = _t("BIG_THIEF")
+BIG_THIEF_SHARE = _t("BIG_THIEF_SHARE")   # was BIG_THIEF in cores; see thresholds.json
 LOSER_CORES = _t("LOSER_CORES")
 
 BLOCK_X = _t("BLOCK_X")
@@ -213,6 +213,12 @@ def _cpu(pack):
         "loser_comm": s.get("biggest_loser_comm"),
         "loser_cores": s.get("biggest_loser_cores") or 0.0,
         "n_cpus": s.get("n_cpus"),
+        # Dimensionless forms. Sock Shop runs on 12 cores and Train Ticket on 16, so "cores"
+        # and "share of the host" are genuinely different measurements here, not a rename.
+        "thief_share": ((s.get("thief_cores_gained") or 0.0) / s["n_cpus"]
+                        if s.get("n_cpus") else None),
+        "loser_share": ((s.get("biggest_loser_cores") or 0.0) / s["n_cpus"]
+                        if s.get("n_cpus") else None),
     }
 
 
@@ -367,7 +373,9 @@ def co_tenant_rule(cpu, rq, blk, io=None):
     if not cpu["available"]:
         return {"fires": False, "why": "on-CPU attribution not in the pack"}
     has_thief = cpu["thief_cores"] >= THIEF_CORES and not is_infra(cpu["thief_comm"])
-    bounded = cpu["thief_cores"] < BIG_THIEF
+    # MEASURED: identical separation to the old 4.0-cores ceiling (10/10, 3.16x margin)
+    # across a 12-core and a 16-core host, and it no longer depends on the core count.
+    bounded = (cpu["thief_share"] is not None and cpu["thief_share"] < BIG_THIEF_SHARE)
     headroom = cpu["util_incident"] < SATURATED
     rising = cpu["util_ratio"] is not None and cpu["util_ratio"] > 1.0
     # `busy = util_incident >= CONTENDED` WAS HERE AND HAS BEEN REMOVED.
@@ -407,7 +415,8 @@ def co_tenant_rule(cpu, rq, blk, io=None):
     gates = [gate("a new process took CPU", cpu["thief_cores"], ">=", THIEF_CORES, "cores"),
              gate_bool("and it is not infrastructure", not is_infra(cpu["thief_comm"]),
                        cpu["thief_comm"] or "none"),
-             gate("its appetite is bounded", cpu["thief_cores"], "<", BIG_THIEF, "cores"),
+             gate("its appetite is bounded", cpu["thief_share"], "<", BIG_THIEF_SHARE,
+                  "share of host cores"),
              gate("the host still has headroom", cpu["util_incident"], "<", SATURATED,
                   "of all cores"),
              gate("the host got busier", cpu["util_ratio"], ">", 1.0, "x baseline"),

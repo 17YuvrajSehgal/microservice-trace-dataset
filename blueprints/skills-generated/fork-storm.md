@@ -60,7 +60,7 @@ Each step names the capability it needs. The command shown is the binding resolv
 
 ## Resolution template
 Conclude this problem when ALL of:
-- a process gains more than 26.34 forks per second over its baseline
+- a process arrives forking at more than 0.176 times the rate the whole host was forking at before. Measured as a ratio rather than a rate, because an absolute figure is tied to how busy the machine already is
 - that process was forking little or nothing before
 - the process is not part of the trace collector or the container runtime
 

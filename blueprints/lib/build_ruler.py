@@ -43,6 +43,11 @@ SIGNALS = {
         "unit": "cores",
         "get": lambda p: BD._cpu(p)["thief_cores"],
     },
+    "thief_share": {
+        "label": "share of the host taken by a process that was not using it before",
+        "unit": "share of host cores",
+        "get": lambda p: BD._cpu(p)["thief_share"],
+    },
     "util_ratio": {
         "label": "host CPU during the fault, against its own baseline",
         "unit": "x baseline",
@@ -114,7 +119,11 @@ def main():
             skipped.append((os.path.basename(f), "no run_id"))
             continue
         out["n_packs"] += 1
-        row = {"app": pack.get("app"), "family": family_of(pack), "run": pack["run_id"]}
+        # n_cpus travels with the point because one threshold (THIEF_CORES) is still in
+        # cores while its ceiling is a share, so the card has to draw that floor per
+        # application rather than as one line. 12 cores on Sock Shop, 16 on Train Ticket.
+        row = {"app": pack.get("app"), "family": family_of(pack), "run": pack["run_id"],
+               "n_cpus": BD._cpu(pack).get("n_cpus")}
 
         # What the COMPLETE rule decided, not just the one number. The card needs both:
         # a single signal usually does not separate a fault on its own, and saying so - then

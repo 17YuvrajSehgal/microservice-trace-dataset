@@ -126,7 +126,7 @@
   ],
   "decision": {
     "verdict_when": [
-      "a process gains more than {FORK_NEWCOMER_PER_S} forks per second over its baseline",
+      "a process arrives forking at more than {FORK_NEWCOMER_SHARE} times the rate the whole host was forking at before. Measured as a ratio rather than a rate, because an absolute figure is tied to how busy the machine already is",
       "that process was forking little or nothing before",
       "the process is not part of the trace collector or the container runtime"
     ],
@@ -147,7 +147,7 @@
     "root_cause_is": "a workload creating processes in a loop, identified by the command name of the child it spawns",
     "fault_type": "fork_storm",
     "uses_thresholds": [
-      "FORK_NEWCOMER_PER_S"
+      "FORK_NEWCOMER_SHARE"
     ]
   },
   "applicability": {
