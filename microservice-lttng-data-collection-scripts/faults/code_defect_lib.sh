@@ -1,7 +1,7 @@
 #!/bin/bash
 # Shared implementation for the code-defect recipes.
 #
-# Every defect is gated at runtime on /tmp/strata_bug inside the container (falling back to
+# Every defect is gated at runtime on /dev/shm/strata_bug inside the container (falling back to
 # the STRATA_BUG environment variable), in an image built by
 # code-defects/build_defect_images.sh.
 #
@@ -125,8 +125,13 @@ code_defect_set_flag() {   # code_defect_set_flag <bug-name-or-none>
         echo "[$FAULT_NAME] cannot find the $DEFECT_SERVICE container to set the flag"
         return 1
     fi
-    if ! docker exec "$cname" sh -c "printf '%s' '$bug' > /tmp/strata_bug"; then
-        echo "[$FAULT_NAME] could not write /tmp/strata_bug in $cname"
+    # /dev/shm, NOT /tmp. MEASURED ON THE VM: these services run with a READ-ONLY root
+    # filesystem, so writing to /tmp fails with "Read-only file system" and every defect
+    # reports "control would not start". Docker mounts a tmpfs on /dev/shm even when the
+    # rootfs is read-only - it is the one writable path these containers have. The gate reads
+    # /dev/shm first and falls back to /tmp, so this stays correct if that ever changes.
+    if ! docker exec "$cname" sh -c "printf '%s' '$bug' > /dev/shm/strata_bug"; then
+        echo "[$FAULT_NAME] could not write /dev/shm/strata_bug in $cname"
         return 1
     fi
     # The gate caches for a second, so give it one before the caller declares the window.

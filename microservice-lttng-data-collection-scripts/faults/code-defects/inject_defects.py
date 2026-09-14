@@ -10,7 +10,7 @@ repeat, a build that quietly applied half a patch is far worse than one that sto
 
 WHY ONE IMAGE PER SERVICE AND NOT ONE PER BUG
 ---------------------------------------------
-Every defect is gated at runtime on /tmp/strata_bug, falling back to the STRATA_BUG
+Every defect is gated at runtime on /dev/shm/strata_bug (then /tmp), falling back to the STRATA_BUG
 environment variable. Reading a FILE is what lets a defect be switched on mid-run without
 recreating the container - a restart inside the baseline window ruined 25 runs before this
 was changed (CAMPAIGN-ISSUES 17). So a service builds
@@ -68,9 +68,17 @@ CATALOGUE = [
         "\t\treturn strataFlagVal\n"
         "\t}\n"
         "\tv := os.Getenv(\"STRATA_BUG\")\n"
-        "\tif b, err := ioutil.ReadFile(\"/tmp/strata_bug\"); err == nil {\n"
-        "\t\tif s := strings.TrimSpace(string(b)); s != \"\" {\n"
-        "\t\t\tv = s\n"
+        "\t// /dev/shm FIRST. These services run with a READ-ONLY root filesystem, so\n"
+        "\t// /tmp cannot be written. Measured on the VM: writing there failed with\n"
+        "\t// \"Read-only file system\" and every defect reported\n"
+        "\t// \"control would not start\". Docker mounts a tmpfs on /dev/shm\n"
+        "\t// even when the rootfs is read-only, so it is the one writable path.\n"
+        "\tfor _, p := range []string{\"/dev/shm/strata_bug\", \"/tmp/strata_bug\"} {\n"
+        "\t\tif b, err := ioutil.ReadFile(p); err == nil {\n"
+        "\t\t\tif s := strings.TrimSpace(string(b)); s != \"\" {\n"
+        "\t\t\t\tv = s\n"
+        "\t\t\t\tbreak\n"
+        "\t\t\t}\n"
         "\t\t}\n"
         "\t}\n"
         "\tstrataFlagVal, strataFlagAt = v, time.Now()\n"
@@ -122,10 +130,14 @@ FRONTEND = [
         "    if (strataFlag.v !== null && now - strataFlag.at < 1000) "
         "return strataFlag.v;\n"
         "    var v = process.env.STRATA_BUG || 'none';\n"
-        "    try {\n"
-        "      var s = require('fs').readFileSync('/tmp/strata_bug', 'utf8').trim();\n"
-        "      if (s) { v = s; }\n"
-        "    } catch (e) { /* no file: fall back to the environment */ }\n"
+        "    // /dev/shm first: the rootfs is read-only, so /tmp cannot be written.\n"
+        "    var paths = ['/dev/shm/strata_bug', '/tmp/strata_bug'];\n"
+        "    for (var i = 0; i < paths.length; i++) {\n"
+        "      try {\n"
+        "        var s = require('fs').readFileSync(paths[i], 'utf8').trim();\n"
+        "        if (s) { v = s; break; }\n"
+        "      } catch (e) { /* try the next, then the environment */ }\n"
+        "    }\n"
         "    strataFlag.v = v; strataFlag.at = now;\n"
         "    return v;\n"
         "  };\n"
