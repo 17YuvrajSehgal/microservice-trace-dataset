@@ -565,8 +565,33 @@ have already happened:
 - The `tt_svc_cpu_cap` and `tt_slow_db` families are entirely `unconfirmed`/`borderline`, and
   were used as positives throughout.
 
-Counts of runs that are not `confirmed`: see `blueprints/lib/read_verification.py`.
+**FIXED 2026-09-13.** `blueprints/lib/verification.py` holds the index and the policy;
+`results/verification_index.json` carries the status of all 303 runs. Wired into
+`build_ruler.py`, `sweep_uncovered.py` and the new `score_with_verification.py`. Every script
+that filters PRINTS what it filtered - a filter nobody can see is how this happened.
 
-**Fix:** every derivation and sweep should read `verification_status` and either exclude
-non-confirmed positives or report them separately. `derive_v2_thresholds.py` already has the
-switch (`--include-unconfirmed`); the newer sweeps do not.
+What it changed, measured:
+
+| | every labelled run | only runs whose fault took |
+|---|---|---|
+| correct | 85/116 (73%) | **82/91 (90%)** |
+| false fires | 46 | **49** |
+
+Both move, in opposite directions. 22 of the 31 "misses" were runs with no fault to find. 3
+runs where a blueprint fired were counted as hits because the run carried a fault label; the
+fault did not take, so firing on them is a false fire.
+
+**The policy:** a non-confirmed run is excluded as a POSITIVE and kept as a NEGATIVE. Removing
+it from both sides would improve the score by deleting the evidence.
+
+**What it exposed.** Three Train Ticket families have no verified run at all - `slow_db`,
+`svc_cpu_cap`, `svc_net`. `svc_cpu_cap` scoring "0/8" was never a blueprint failure; there was
+nothing in those eight runs to find. Two Sock Shop families have none either:
+`code_lock_across_io` and `code_n_plus_one` are 0 of 5 confirmed. The sweep now reports
+"NO VERIFIED RUN" and stops, rather than fitting a cut to runs that contain no fault.
+
+One correction to the note above: `dns_delay` r4 is `no_metric_signature`, which does NOT mean
+the injection failed - it means no metric target can see this fault. The kernel shows it in 4
+of the 5 runs. r4 is a genuine failed injection, but the status alone cannot say so.
+
+Full write-up: `blueprints/docs/RESULTS-verification-filter.md`.
