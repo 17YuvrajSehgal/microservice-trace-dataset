@@ -24,6 +24,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import blueprint_decide as BD  # noqa: E402
+import verification as VF  # noqa: E402
 
 
 def _proc(pack, key):
@@ -108,8 +109,13 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--packs", required=True, help="directory of pack .json files")
     ap.add_argument("--out", required=True)
+    ap.add_argument("--verification", default="",
+                    help="verification_index.json; defaults to blueprints/results/")
     a = ap.parse_args()
 
+    vindex = VF.load(a.verification or None)
+    if not vindex:
+        print("WARNING: no verification index - every run will read as 'unknown'")
     files = sorted(glob.glob(os.path.join(a.packs, "*.json")))
     out = {"n_packs": 0, "source": a.packs, "signals": {}, "verdicts": []}
     for key, spec in SIGNALS.items():
@@ -129,8 +135,13 @@ def main():
         # n_cpus travels with the point because one threshold (THIEF_CORES) is still in
         # cores while its ceiling is a share, so the card has to draw that floor per
         # application rather than as one line. 12 cores on Sock Shop, 16 on Train Ticket.
+        # The campaign's verdict travels with every point. 32 runs were collected whose
+        # fault demonstrably did not take, and until this was added they were drawn on the
+        # ruler as positives like any other - so a family could look ragged for no reason
+        # other than that some of its runs contain no fault.
         row = {"app": pack.get("app"), "family": family_of(pack), "run": pack["run_id"],
-               "n_cpus": BD._cpu(pack).get("n_cpus")}
+               "n_cpus": BD._cpu(pack).get("n_cpus"),
+               "verification": VF.status(pack["run_id"], vindex)}
 
         # What the COMPLETE rule decided, not just the one number. The card needs both:
         # a single signal usually does not separate a fault on its own, and saying so - then
@@ -154,6 +165,7 @@ def main():
     with io.open(a.out, "w", encoding="utf-8", newline=chr(10)) as fh:
         fh.write(json.dumps(out, indent=1) + chr(10))
 
+    VF.report([p["run"] for p in out["verdicts"]], vindex, "all packs")
     print("packs read: %d   skipped: %d" % (out["n_packs"], len(skipped)))
     for key, s in out["signals"].items():
         fams = len(set((p["app"], p["family"]) for p in s["points"]))

@@ -1,0 +1,1826 @@
+{
+ "detail": {
+  "anomaly_cpu_aggressive_steady_r1": {
+   "app": "sockshop",
+   "family": "anomaly_cpu",
+   "review": false
+  },
+  "anomaly_cpu_aggressive_steady_r2": {
+   "app": "sockshop",
+   "family": "anomaly_cpu",
+   "review": false
+  },
+  "anomaly_cpu_aggressive_steady_r3": {
+   "app": "sockshop",
+   "family": "anomaly_cpu",
+   "review": false
+  },
+  "anomaly_cpu_aggressive_steady_r4": {
+   "app": "sockshop",
+   "family": "anomaly_cpu",
+   "review": false
+  },
+  "anomaly_cpu_aggressive_steady_r5": {
+   "app": "sockshop",
+   "family": "anomaly_cpu",
+   "review": false
+  },
+  "anomaly_disk_aggressive_steady_r1": {
+   "app": "sockshop",
+   "family": "anomaly_disk",
+   "review": false
+  },
+  "anomaly_disk_aggressive_steady_r2": {
+   "app": "sockshop",
+   "family": "anomaly_disk",
+   "review": false
+  },
+  "anomaly_disk_aggressive_steady_r3": {
+   "app": "sockshop",
+   "family": "anomaly_disk",
+   "review": false
+  },
+  "anomaly_disk_aggressive_steady_r4": {
+   "app": "sockshop",
+   "family": "anomaly_disk",
+   "review": false
+  },
+  "anomaly_disk_aggressive_steady_r5": {
+   "app": "sockshop",
+   "family": "anomaly_disk",
+   "review": false
+  },
+  "anomaly_mem_aggressive_steady_r1": {
+   "app": "sockshop",
+   "family": "anomaly_mem",
+   "review": false
+  },
+  "anomaly_mem_aggressive_steady_r2": {
+   "app": "sockshop",
+   "family": "anomaly_mem",
+   "review": false
+  },
+  "anomaly_mem_aggressive_steady_r3": {
+   "app": "sockshop",
+   "family": "anomaly_mem",
+   "review": false
+  },
+  "anomaly_mem_aggressive_steady_r4": {
+   "app": "sockshop",
+   "family": "anomaly_mem",
+   "review": false
+  },
+  "anomaly_mem_aggressive_steady_r5": {
+   "app": "sockshop",
+   "family": "anomaly_mem",
+   "review": false
+  },
+  "anomaly_mem_subtle_steady_r1": {
+   "app": "sockshop",
+   "family": "anomaly_mem",
+   "review": false
+  },
+  "anomaly_mem_subtle_steady_r2": {
+   "app": "sockshop",
+   "family": "anomaly_mem",
+   "review": false
+  },
+  "anomaly_mem_subtle_steady_r3": {
+   "app": "sockshop",
+   "family": "anomaly_mem",
+   "review": false
+  },
+  "anomaly_net_aggressive_burst_r1": {
+   "app": "sockshop",
+   "family": "anomaly_net",
+   "review": false
+  },
+  "anomaly_net_aggressive_burst_r2": {
+   "app": "sockshop",
+   "family": "anomaly_net",
+   "review": false
+  },
+  "anomaly_net_aggressive_burst_r3": {
+   "app": "sockshop",
+   "family": "anomaly_net",
+   "review": false
+  },
+  "anomaly_net_aggressive_steady_r1": {
+   "app": "sockshop",
+   "family": "anomaly_net",
+   "review": false
+  },
+  "anomaly_net_aggressive_steady_r2": {
+   "app": "sockshop",
+   "family": "anomaly_net",
+   "review": false
+  },
+  "anomaly_net_aggressive_steady_r3": {
+   "app": "sockshop",
+   "family": "anomaly_net",
+   "review": false
+  },
+  "anomaly_net_aggressive_steady_r4": {
+   "app": "sockshop",
+   "family": "anomaly_net",
+   "review": false
+  },
+  "anomaly_net_aggressive_steady_r5": {
+   "app": "sockshop",
+   "family": "anomaly_net",
+   "review": false
+  },
+  "code_event_loop_block_aggressive_steady_r1": {
+   "app": "sockshop",
+   "family": "code_event_loop_block",
+   "review": false
+  },
+  "code_event_loop_block_aggressive_steady_r2": {
+   "app": "sockshop",
+   "family": "code_event_loop_block",
+   "review": true
+  },
+  "code_event_loop_block_aggressive_steady_r3": {
+   "app": "sockshop",
+   "family": "code_event_loop_block",
+   "review": false
+  },
+  "code_event_loop_block_aggressive_steady_r4": {
+   "app": "sockshop",
+   "family": "code_event_loop_block",
+   "review": false
+  },
+  "code_event_loop_block_aggressive_steady_r5": {
+   "app": "sockshop",
+   "family": "code_event_loop_block",
+   "review": false
+  },
+  "code_lock_across_io_aggressive_steady_r1": {
+   "app": "sockshop",
+   "family": "code_lock_across_io",
+   "review": true
+  },
+  "code_lock_across_io_aggressive_steady_r2": {
+   "app": "sockshop",
+   "family": "code_lock_across_io",
+   "review": true
+  },
+  "code_lock_across_io_aggressive_steady_r3": {
+   "app": "sockshop",
+   "family": "code_lock_across_io",
+   "review": true
+  },
+  "code_lock_across_io_aggressive_steady_r4": {
+   "app": "sockshop",
+   "family": "code_lock_across_io",
+   "review": true
+  },
+  "code_lock_across_io_aggressive_steady_r5": {
+   "app": "sockshop",
+   "family": "code_lock_across_io",
+   "review": true
+  },
+  "code_n_plus_one_aggressive_steady_r1": {
+   "app": "sockshop",
+   "family": "code_n_plus_one",
+   "review": true
+  },
+  "code_n_plus_one_aggressive_steady_r2": {
+   "app": "sockshop",
+   "family": "code_n_plus_one",
+   "review": true
+  },
+  "code_n_plus_one_aggressive_steady_r3": {
+   "app": "sockshop",
+   "family": "code_n_plus_one",
+   "review": true
+  },
+  "code_n_plus_one_aggressive_steady_r4": {
+   "app": "sockshop",
+   "family": "code_n_plus_one",
+   "review": true
+  },
+  "code_n_plus_one_aggressive_steady_r5": {
+   "app": "sockshop",
+   "family": "code_n_plus_one",
+   "review": true
+  },
+  "code_serial_awaits_aggressive_steady_r1": {
+   "app": "sockshop",
+   "family": "code_serial_awaits",
+   "review": false
+  },
+  "code_serial_awaits_aggressive_steady_r2": {
+   "app": "sockshop",
+   "family": "code_serial_awaits",
+   "review": false
+  },
+  "code_serial_awaits_aggressive_steady_r3": {
+   "app": "sockshop",
+   "family": "code_serial_awaits",
+   "review": false
+  },
+  "code_serial_awaits_aggressive_steady_r4": {
+   "app": "sockshop",
+   "family": "code_serial_awaits",
+   "review": false
+  },
+  "code_serial_awaits_aggressive_steady_r5": {
+   "app": "sockshop",
+   "family": "code_serial_awaits",
+   "review": false
+  },
+  "code_unbounded_cache_aggressive_steady_r1": {
+   "app": "sockshop",
+   "family": "code_unbounded_cache",
+   "review": false
+  },
+  "code_unbounded_cache_aggressive_steady_r2": {
+   "app": "sockshop",
+   "family": "code_unbounded_cache",
+   "review": false
+  },
+  "code_unbounded_cache_aggressive_steady_r3": {
+   "app": "sockshop",
+   "family": "code_unbounded_cache",
+   "review": false
+  },
+  "code_unbounded_cache_aggressive_steady_r4": {
+   "app": "sockshop",
+   "family": "code_unbounded_cache",
+   "review": false
+  },
+  "code_unbounded_cache_aggressive_steady_r5": {
+   "app": "sockshop",
+   "family": "code_unbounded_cache",
+   "review": false
+  },
+  "conn_pool_exhaustion_aggressive_steady_r1": {
+   "app": "sockshop",
+   "family": "conn_pool_exhaustion",
+   "review": false
+  },
+  "conn_pool_exhaustion_aggressive_steady_r2": {
+   "app": "sockshop",
+   "family": "conn_pool_exhaustion",
+   "review": false
+  },
+  "conn_pool_exhaustion_aggressive_steady_r3": {
+   "app": "sockshop",
+   "family": "conn_pool_exhaustion",
+   "review": false
+  },
+  "conn_pool_exhaustion_aggressive_steady_r4": {
+   "app": "sockshop",
+   "family": "conn_pool_exhaustion",
+   "review": false
+  },
+  "conn_pool_exhaustion_aggressive_steady_r5": {
+   "app": "sockshop",
+   "family": "conn_pool_exhaustion",
+   "review": false
+  },
+  "data_exfiltration_aggressive_steady_r1": {
+   "app": "sockshop",
+   "family": "data_exfiltration",
+   "review": false
+  },
+  "data_exfiltration_aggressive_steady_r2": {
+   "app": "sockshop",
+   "family": "data_exfiltration",
+   "review": false
+  },
+  "data_exfiltration_aggressive_steady_r3": {
+   "app": "sockshop",
+   "family": "data_exfiltration",
+   "review": false
+  },
+  "data_exfiltration_aggressive_steady_r4": {
+   "app": "sockshop",
+   "family": "data_exfiltration",
+   "review": false
+  },
+  "data_exfiltration_aggressive_steady_r5": {
+   "app": "sockshop",
+   "family": "data_exfiltration",
+   "review": false
+  },
+  "deadlock_aggressive_steady_r1": {
+   "app": "sockshop",
+   "family": "deadlock",
+   "review": false
+  },
+  "deadlock_aggressive_steady_r2": {
+   "app": "sockshop",
+   "family": "deadlock",
+   "review": false
+  },
+  "deadlock_aggressive_steady_r3": {
+   "app": "sockshop",
+   "family": "deadlock",
+   "review": false
+  },
+  "deadlock_aggressive_steady_r4": {
+   "app": "sockshop",
+   "family": "deadlock",
+   "review": false
+  },
+  "deadlock_aggressive_steady_r5": {
+   "app": "sockshop",
+   "family": "deadlock",
+   "review": false
+  },
+  "dependency_outage_aggressive_steady_r1": {
+   "app": "sockshop",
+   "family": "dependency_outage",
+   "review": false
+  },
+  "dependency_outage_aggressive_steady_r2": {
+   "app": "sockshop",
+   "family": "dependency_outage",
+   "review": false
+  },
+  "dependency_outage_aggressive_steady_r3": {
+   "app": "sockshop",
+   "family": "dependency_outage",
+   "review": false
+  },
+  "dependency_outage_aggressive_steady_r4": {
+   "app": "sockshop",
+   "family": "dependency_outage",
+   "review": false
+  },
+  "dependency_outage_aggressive_steady_r5": {
+   "app": "sockshop",
+   "family": "dependency_outage",
+   "review": false
+  },
+  "dns_delay_aggressive_steady_r1": {
+   "app": "sockshop",
+   "family": "dns_delay",
+   "review": false
+  },
+  "dns_delay_aggressive_steady_r2": {
+   "app": "sockshop",
+   "family": "dns_delay",
+   "review": false
+  },
+  "dns_delay_aggressive_steady_r3": {
+   "app": "sockshop",
+   "family": "dns_delay",
+   "review": false
+  },
+  "dns_delay_aggressive_steady_r4": {
+   "app": "sockshop",
+   "family": "dns_delay",
+   "review": false
+  },
+  "dns_delay_aggressive_steady_r5": {
+   "app": "sockshop",
+   "family": "dns_delay",
+   "review": false
+  },
+  "error_storm_aggressive_burst_r1": {
+   "app": "sockshop",
+   "family": "error_storm",
+   "review": false
+  },
+  "error_storm_aggressive_burst_r2": {
+   "app": "sockshop",
+   "family": "error_storm",
+   "review": false
+  },
+  "error_storm_aggressive_burst_r3": {
+   "app": "sockshop",
+   "family": "error_storm",
+   "review": false
+  },
+  "error_storm_aggressive_steady_r1": {
+   "app": "sockshop",
+   "family": "error_storm",
+   "review": false
+  },
+  "error_storm_aggressive_steady_r2": {
+   "app": "sockshop",
+   "family": "error_storm",
+   "review": false
+  },
+  "error_storm_aggressive_steady_r3": {
+   "app": "sockshop",
+   "family": "error_storm",
+   "review": false
+  },
+  "error_storm_aggressive_steady_r4": {
+   "app": "sockshop",
+   "family": "error_storm",
+   "review": false
+  },
+  "error_storm_aggressive_steady_r5": {
+   "app": "sockshop",
+   "family": "error_storm",
+   "review": false
+  },
+  "fd_exhaustion_aggressive_steady_r1": {
+   "app": "sockshop",
+   "family": "fd_exhaustion",
+   "review": false
+  },
+  "fd_exhaustion_aggressive_steady_r2": {
+   "app": "sockshop",
+   "family": "fd_exhaustion",
+   "review": false
+  },
+  "fd_exhaustion_aggressive_steady_r3": {
+   "app": "sockshop",
+   "family": "fd_exhaustion",
+   "review": false
+  },
+  "fd_exhaustion_aggressive_steady_r4": {
+   "app": "sockshop",
+   "family": "fd_exhaustion",
+   "review": false
+  },
+  "fd_exhaustion_aggressive_steady_r5": {
+   "app": "sockshop",
+   "family": "fd_exhaustion",
+   "review": false
+  },
+  "fork_storm_aggressive_steady_r1": {
+   "app": "sockshop",
+   "family": "fork_storm",
+   "review": false
+  },
+  "fork_storm_aggressive_steady_r2": {
+   "app": "sockshop",
+   "family": "fork_storm",
+   "review": false
+  },
+  "fork_storm_aggressive_steady_r3": {
+   "app": "sockshop",
+   "family": "fork_storm",
+   "review": false
+  },
+  "fork_storm_aggressive_steady_r4": {
+   "app": "sockshop",
+   "family": "fork_storm",
+   "review": false
+  },
+  "fork_storm_aggressive_steady_r5": {
+   "app": "sockshop",
+   "family": "fork_storm",
+   "review": false
+  },
+  "lock_contention_aggressive_steady_r1": {
+   "app": "sockshop",
+   "family": "lock_contention",
+   "review": false
+  },
+  "lock_contention_aggressive_steady_r2": {
+   "app": "sockshop",
+   "family": "lock_contention",
+   "review": false
+  },
+  "lock_contention_aggressive_steady_r3": {
+   "app": "sockshop",
+   "family": "lock_contention",
+   "review": false
+  },
+  "lock_contention_aggressive_steady_r4": {
+   "app": "sockshop",
+   "family": "lock_contention",
+   "review": false
+  },
+  "lock_contention_aggressive_steady_r5": {
+   "app": "sockshop",
+   "family": "lock_contention",
+   "review": false
+  },
+  "nagle_delayed_ack_aggressive_steady_r1": {
+   "app": "sockshop",
+   "family": "nagle_delayed_ack",
+   "review": false
+  },
+  "nagle_delayed_ack_aggressive_steady_r2": {
+   "app": "sockshop",
+   "family": "nagle_delayed_ack",
+   "review": false
+  },
+  "nagle_delayed_ack_aggressive_steady_r3": {
+   "app": "sockshop",
+   "family": "nagle_delayed_ack",
+   "review": false
+  },
+  "nagle_delayed_ack_aggressive_steady_r4": {
+   "app": "sockshop",
+   "family": "nagle_delayed_ack",
+   "review": false
+  },
+  "nagle_delayed_ack_aggressive_steady_r5": {
+   "app": "sockshop",
+   "family": "nagle_delayed_ack",
+   "review": false
+  },
+  "noisy_neighbor_aggressive_steady_r1": {
+   "app": "sockshop",
+   "family": "noisy_neighbor",
+   "review": false
+  },
+  "noisy_neighbor_aggressive_steady_r2": {
+   "app": "sockshop",
+   "family": "noisy_neighbor",
+   "review": false
+  },
+  "noisy_neighbor_aggressive_steady_r3": {
+   "app": "sockshop",
+   "family": "noisy_neighbor",
+   "review": false
+  },
+  "noisy_neighbor_aggressive_steady_r4": {
+   "app": "sockshop",
+   "family": "noisy_neighbor",
+   "review": false
+  },
+  "noisy_neighbor_aggressive_steady_r5": {
+   "app": "sockshop",
+   "family": "noisy_neighbor",
+   "review": false
+  },
+  "noisy_neighbor_subtle_steady_r1": {
+   "app": "sockshop",
+   "family": "noisy_neighbor",
+   "review": false
+  },
+  "noisy_neighbor_subtle_steady_r2": {
+   "app": "sockshop",
+   "family": "noisy_neighbor",
+   "review": false
+  },
+  "noisy_neighbor_subtle_steady_r3": {
+   "app": "sockshop",
+   "family": "noisy_neighbor",
+   "review": false
+  },
+  "normal_none_burst_r1": {
+   "app": "sockshop",
+   "family": "normal",
+   "review": false
+  },
+  "normal_none_burst_r2": {
+   "app": "sockshop",
+   "family": "normal",
+   "review": false
+  },
+  "normal_none_burst_r3": {
+   "app": "sockshop",
+   "family": "normal",
+   "review": false
+  },
+  "normal_none_burst_r4": {
+   "app": "sockshop",
+   "family": "normal",
+   "review": false
+  },
+  "normal_none_burst_r5": {
+   "app": "sockshop",
+   "family": "normal",
+   "review": false
+  },
+  "normal_none_steady_r1": {
+   "app": "sockshop",
+   "family": "normal",
+   "review": false
+  },
+  "normal_none_steady_r2": {
+   "app": "sockshop",
+   "family": "normal",
+   "review": false
+  },
+  "normal_none_steady_r3": {
+   "app": "sockshop",
+   "family": "normal",
+   "review": false
+  },
+  "normal_none_steady_r4": {
+   "app": "sockshop",
+   "family": "normal",
+   "review": false
+  },
+  "normal_none_steady_r5": {
+   "app": "sockshop",
+   "family": "normal",
+   "review": false
+  },
+  "priority_inversion_aggressive_steady_r1": {
+   "app": "sockshop",
+   "family": "priority_inversion",
+   "review": false
+  },
+  "priority_inversion_aggressive_steady_r2": {
+   "app": "sockshop",
+   "family": "priority_inversion",
+   "review": false
+  },
+  "priority_inversion_aggressive_steady_r3": {
+   "app": "sockshop",
+   "family": "priority_inversion",
+   "review": false
+  },
+  "priority_inversion_aggressive_steady_r4": {
+   "app": "sockshop",
+   "family": "priority_inversion",
+   "review": false
+  },
+  "priority_inversion_aggressive_steady_r5": {
+   "app": "sockshop",
+   "family": "priority_inversion",
+   "review": false
+  },
+  "queue_backlog_aggressive_steady_r1": {
+   "app": "sockshop",
+   "family": "queue_backlog",
+   "review": false
+  },
+  "queue_backlog_aggressive_steady_r2": {
+   "app": "sockshop",
+   "family": "queue_backlog",
+   "review": true
+  },
+  "queue_backlog_aggressive_steady_r3": {
+   "app": "sockshop",
+   "family": "queue_backlog",
+   "review": false
+  },
+  "queue_backlog_aggressive_steady_r4": {
+   "app": "sockshop",
+   "family": "queue_backlog",
+   "review": false
+  },
+  "queue_backlog_aggressive_steady_r5": {
+   "app": "sockshop",
+   "family": "queue_backlog",
+   "review": false
+  },
+  "resource_abuse_aggressive_steady_r1": {
+   "app": "sockshop",
+   "family": "resource_abuse",
+   "review": false
+  },
+  "resource_abuse_aggressive_steady_r2": {
+   "app": "sockshop",
+   "family": "resource_abuse",
+   "review": false
+  },
+  "resource_abuse_aggressive_steady_r3": {
+   "app": "sockshop",
+   "family": "resource_abuse",
+   "review": false
+  },
+  "resource_abuse_aggressive_steady_r4": {
+   "app": "sockshop",
+   "family": "resource_abuse",
+   "review": false
+  },
+  "resource_abuse_aggressive_steady_r5": {
+   "app": "sockshop",
+   "family": "resource_abuse",
+   "review": false
+  },
+  "slow_db_aggressive_burst_r1": {
+   "app": "sockshop",
+   "family": "slow_db",
+   "review": false
+  },
+  "slow_db_aggressive_burst_r2": {
+   "app": "sockshop",
+   "family": "slow_db",
+   "review": false
+  },
+  "slow_db_aggressive_burst_r3": {
+   "app": "sockshop",
+   "family": "slow_db",
+   "review": false
+  },
+  "slow_db_aggressive_steady_r1": {
+   "app": "sockshop",
+   "family": "slow_db",
+   "review": false
+  },
+  "slow_db_aggressive_steady_r2": {
+   "app": "sockshop",
+   "family": "slow_db",
+   "review": false
+  },
+  "slow_db_aggressive_steady_r3": {
+   "app": "sockshop",
+   "family": "slow_db",
+   "review": false
+  },
+  "slow_db_aggressive_steady_r4": {
+   "app": "sockshop",
+   "family": "slow_db",
+   "review": false
+  },
+  "slow_db_aggressive_steady_r5": {
+   "app": "sockshop",
+   "family": "slow_db",
+   "review": false
+  },
+  "slow_db_subtle_steady_r1": {
+   "app": "sockshop",
+   "family": "slow_db",
+   "review": false
+  },
+  "slow_db_subtle_steady_r2": {
+   "app": "sockshop",
+   "family": "slow_db",
+   "review": false
+  },
+  "slow_db_subtle_steady_r3": {
+   "app": "sockshop",
+   "family": "slow_db",
+   "review": false
+  },
+  "svc_cpu_cap_aggressive_steady_r1": {
+   "app": "sockshop",
+   "family": "svc_cpu_cap",
+   "review": false
+  },
+  "svc_cpu_cap_aggressive_steady_r2": {
+   "app": "sockshop",
+   "family": "svc_cpu_cap",
+   "review": false
+  },
+  "svc_cpu_cap_aggressive_steady_r3": {
+   "app": "sockshop",
+   "family": "svc_cpu_cap",
+   "review": false
+  },
+  "svc_cpu_cap_aggressive_steady_r4": {
+   "app": "sockshop",
+   "family": "svc_cpu_cap",
+   "review": false
+  },
+  "svc_cpu_cap_aggressive_steady_r5": {
+   "app": "sockshop",
+   "family": "svc_cpu_cap",
+   "review": false
+  },
+  "svc_cpu_cap_subtle_steady_r1": {
+   "app": "sockshop",
+   "family": "svc_cpu_cap",
+   "review": false
+  },
+  "svc_cpu_cap_subtle_steady_r2": {
+   "app": "sockshop",
+   "family": "svc_cpu_cap",
+   "review": false
+  },
+  "svc_cpu_cap_subtle_steady_r3": {
+   "app": "sockshop",
+   "family": "svc_cpu_cap",
+   "review": false
+  },
+  "svc_mem_cap_aggressive_steady_r1": {
+   "app": "sockshop",
+   "family": "svc_mem_cap",
+   "review": false
+  },
+  "svc_mem_cap_aggressive_steady_r2": {
+   "app": "sockshop",
+   "family": "svc_mem_cap",
+   "review": false
+  },
+  "svc_mem_cap_aggressive_steady_r3": {
+   "app": "sockshop",
+   "family": "svc_mem_cap",
+   "review": false
+  },
+  "svc_mem_cap_aggressive_steady_r4": {
+   "app": "sockshop",
+   "family": "svc_mem_cap",
+   "review": false
+  },
+  "svc_mem_cap_aggressive_steady_r5": {
+   "app": "sockshop",
+   "family": "svc_mem_cap",
+   "review": false
+  },
+  "svc_mem_cap_subtle_steady_r1": {
+   "app": "sockshop",
+   "family": "svc_mem_cap",
+   "review": false
+  },
+  "svc_mem_cap_subtle_steady_r2": {
+   "app": "sockshop",
+   "family": "svc_mem_cap",
+   "review": false
+  },
+  "svc_mem_cap_subtle_steady_r3": {
+   "app": "sockshop",
+   "family": "svc_mem_cap",
+   "review": false
+  },
+  "svc_net_aggressive_steady_r1": {
+   "app": "sockshop",
+   "family": "svc_net",
+   "review": false
+  },
+  "svc_net_aggressive_steady_r2": {
+   "app": "sockshop",
+   "family": "svc_net",
+   "review": false
+  },
+  "svc_net_aggressive_steady_r3": {
+   "app": "sockshop",
+   "family": "svc_net",
+   "review": false
+  },
+  "svc_net_aggressive_steady_r4": {
+   "app": "sockshop",
+   "family": "svc_net",
+   "review": false
+  },
+  "svc_net_aggressive_steady_r5": {
+   "app": "sockshop",
+   "family": "svc_net",
+   "review": false
+  },
+  "tt_anomaly_cpu_aggressive_steady_r1": {
+   "app": "trainticket",
+   "family": "anomaly_cpu",
+   "review": false
+  },
+  "tt_anomaly_cpu_aggressive_steady_r2": {
+   "app": "trainticket",
+   "family": "anomaly_cpu",
+   "review": false
+  },
+  "tt_anomaly_cpu_aggressive_steady_r3": {
+   "app": "trainticket",
+   "family": "anomaly_cpu",
+   "review": false
+  },
+  "tt_anomaly_cpu_aggressive_steady_r4": {
+   "app": "trainticket",
+   "family": "anomaly_cpu",
+   "review": false
+  },
+  "tt_anomaly_cpu_aggressive_steady_r5": {
+   "app": "trainticket",
+   "family": "anomaly_cpu",
+   "review": false
+  },
+  "tt_anomaly_disk_aggressive_steady_r1": {
+   "app": "trainticket",
+   "family": "anomaly_disk",
+   "review": false
+  },
+  "tt_anomaly_disk_aggressive_steady_r2": {
+   "app": "trainticket",
+   "family": "anomaly_disk",
+   "review": false
+  },
+  "tt_anomaly_disk_aggressive_steady_r3": {
+   "app": "trainticket",
+   "family": "anomaly_disk",
+   "review": false
+  },
+  "tt_anomaly_disk_aggressive_steady_r4": {
+   "app": "trainticket",
+   "family": "anomaly_disk",
+   "review": false
+  },
+  "tt_anomaly_disk_aggressive_steady_r5": {
+   "app": "trainticket",
+   "family": "anomaly_disk",
+   "review": false
+  },
+  "tt_anomaly_mem_aggressive_steady_r1": {
+   "app": "trainticket",
+   "family": "anomaly_mem",
+   "review": false
+  },
+  "tt_anomaly_mem_aggressive_steady_r2": {
+   "app": "trainticket",
+   "family": "anomaly_mem",
+   "review": false
+  },
+  "tt_anomaly_mem_aggressive_steady_r3": {
+   "app": "trainticket",
+   "family": "anomaly_mem",
+   "review": false
+  },
+  "tt_anomaly_mem_aggressive_steady_r4": {
+   "app": "trainticket",
+   "family": "anomaly_mem",
+   "review": false
+  },
+  "tt_anomaly_mem_aggressive_steady_r5": {
+   "app": "trainticket",
+   "family": "anomaly_mem",
+   "review": false
+  },
+  "tt_anomaly_mem_subtle_steady_r1": {
+   "app": "trainticket",
+   "family": "anomaly_mem",
+   "review": false
+  },
+  "tt_anomaly_mem_subtle_steady_r2": {
+   "app": "trainticket",
+   "family": "anomaly_mem",
+   "review": false
+  },
+  "tt_anomaly_mem_subtle_steady_r3": {
+   "app": "trainticket",
+   "family": "anomaly_mem",
+   "review": false
+  },
+  "tt_anomaly_net_aggressive_burst_r1": {
+   "app": "trainticket",
+   "family": "anomaly_net",
+   "review": false
+  },
+  "tt_anomaly_net_aggressive_burst_r2": {
+   "app": "trainticket",
+   "family": "anomaly_net",
+   "review": false
+  },
+  "tt_anomaly_net_aggressive_burst_r3": {
+   "app": "trainticket",
+   "family": "anomaly_net",
+   "review": false
+  },
+  "tt_anomaly_net_aggressive_steady_r1": {
+   "app": "trainticket",
+   "family": "anomaly_net",
+   "review": false
+  },
+  "tt_anomaly_net_aggressive_steady_r2": {
+   "app": "trainticket",
+   "family": "anomaly_net",
+   "review": false
+  },
+  "tt_anomaly_net_aggressive_steady_r3": {
+   "app": "trainticket",
+   "family": "anomaly_net",
+   "review": false
+  },
+  "tt_anomaly_net_aggressive_steady_r4": {
+   "app": "trainticket",
+   "family": "anomaly_net",
+   "review": false
+  },
+  "tt_anomaly_net_aggressive_steady_r5": {
+   "app": "trainticket",
+   "family": "anomaly_net",
+   "review": false
+  },
+  "tt_conn_pool_exhaustion_aggressive_steady_r1": {
+   "app": "trainticket",
+   "family": "conn_pool_exhaustion",
+   "review": false
+  },
+  "tt_conn_pool_exhaustion_aggressive_steady_r2": {
+   "app": "trainticket",
+   "family": "conn_pool_exhaustion",
+   "review": false
+  },
+  "tt_conn_pool_exhaustion_aggressive_steady_r3": {
+   "app": "trainticket",
+   "family": "conn_pool_exhaustion",
+   "review": false
+  },
+  "tt_conn_pool_exhaustion_aggressive_steady_r4": {
+   "app": "trainticket",
+   "family": "conn_pool_exhaustion",
+   "review": false
+  },
+  "tt_conn_pool_exhaustion_aggressive_steady_r5": {
+   "app": "trainticket",
+   "family": "conn_pool_exhaustion",
+   "review": false
+  },
+  "tt_data_exfiltration_aggressive_steady_r1": {
+   "app": "trainticket",
+   "family": "data_exfiltration",
+   "review": false
+  },
+  "tt_data_exfiltration_aggressive_steady_r2": {
+   "app": "trainticket",
+   "family": "data_exfiltration",
+   "review": false
+  },
+  "tt_data_exfiltration_aggressive_steady_r3": {
+   "app": "trainticket",
+   "family": "data_exfiltration",
+   "review": false
+  },
+  "tt_data_exfiltration_aggressive_steady_r4": {
+   "app": "trainticket",
+   "family": "data_exfiltration",
+   "review": false
+  },
+  "tt_data_exfiltration_aggressive_steady_r5": {
+   "app": "trainticket",
+   "family": "data_exfiltration",
+   "review": false
+  },
+  "tt_deadlock_aggressive_steady_r1": {
+   "app": "trainticket",
+   "family": "deadlock",
+   "review": false
+  },
+  "tt_deadlock_aggressive_steady_r2": {
+   "app": "trainticket",
+   "family": "deadlock",
+   "review": false
+  },
+  "tt_deadlock_aggressive_steady_r3": {
+   "app": "trainticket",
+   "family": "deadlock",
+   "review": false
+  },
+  "tt_deadlock_aggressive_steady_r4": {
+   "app": "trainticket",
+   "family": "deadlock",
+   "review": false
+  },
+  "tt_deadlock_aggressive_steady_r5": {
+   "app": "trainticket",
+   "family": "deadlock",
+   "review": false
+  },
+  "tt_dependency_outage_aggressive_steady_r1": {
+   "app": "trainticket",
+   "family": "dependency_outage",
+   "review": false
+  },
+  "tt_dependency_outage_aggressive_steady_r2": {
+   "app": "trainticket",
+   "family": "dependency_outage",
+   "review": false
+  },
+  "tt_dependency_outage_aggressive_steady_r3": {
+   "app": "trainticket",
+   "family": "dependency_outage",
+   "review": false
+  },
+  "tt_dependency_outage_aggressive_steady_r4": {
+   "app": "trainticket",
+   "family": "dependency_outage",
+   "review": false
+  },
+  "tt_dependency_outage_aggressive_steady_r5": {
+   "app": "trainticket",
+   "family": "dependency_outage",
+   "review": false
+  },
+  "tt_error_storm_aggressive_burst_r1": {
+   "app": "trainticket",
+   "family": "error_storm",
+   "review": true
+  },
+  "tt_error_storm_aggressive_burst_r2": {
+   "app": "trainticket",
+   "family": "error_storm",
+   "review": false
+  },
+  "tt_error_storm_aggressive_burst_r3": {
+   "app": "trainticket",
+   "family": "error_storm",
+   "review": false
+  },
+  "tt_error_storm_aggressive_steady_r1": {
+   "app": "trainticket",
+   "family": "error_storm",
+   "review": false
+  },
+  "tt_error_storm_aggressive_steady_r2": {
+   "app": "trainticket",
+   "family": "error_storm",
+   "review": true
+  },
+  "tt_error_storm_aggressive_steady_r3": {
+   "app": "trainticket",
+   "family": "error_storm",
+   "review": false
+  },
+  "tt_error_storm_aggressive_steady_r4": {
+   "app": "trainticket",
+   "family": "error_storm",
+   "review": false
+  },
+  "tt_error_storm_aggressive_steady_r5": {
+   "app": "trainticket",
+   "family": "error_storm",
+   "review": false
+  },
+  "tt_fd_exhaustion_aggressive_steady_r1": {
+   "app": "trainticket",
+   "family": "fd_exhaustion",
+   "review": false
+  },
+  "tt_fd_exhaustion_aggressive_steady_r2": {
+   "app": "trainticket",
+   "family": "fd_exhaustion",
+   "review": false
+  },
+  "tt_fd_exhaustion_aggressive_steady_r3": {
+   "app": "trainticket",
+   "family": "fd_exhaustion",
+   "review": false
+  },
+  "tt_fd_exhaustion_aggressive_steady_r4": {
+   "app": "trainticket",
+   "family": "fd_exhaustion",
+   "review": false
+  },
+  "tt_fd_exhaustion_aggressive_steady_r5": {
+   "app": "trainticket",
+   "family": "fd_exhaustion",
+   "review": false
+  },
+  "tt_fork_storm_aggressive_steady_r1": {
+   "app": "trainticket",
+   "family": "fork_storm",
+   "review": false
+  },
+  "tt_fork_storm_aggressive_steady_r2": {
+   "app": "trainticket",
+   "family": "fork_storm",
+   "review": false
+  },
+  "tt_fork_storm_aggressive_steady_r3": {
+   "app": "trainticket",
+   "family": "fork_storm",
+   "review": false
+  },
+  "tt_fork_storm_aggressive_steady_r4": {
+   "app": "trainticket",
+   "family": "fork_storm",
+   "review": false
+  },
+  "tt_fork_storm_aggressive_steady_r5": {
+   "app": "trainticket",
+   "family": "fork_storm",
+   "review": false
+  },
+  "tt_lock_contention_aggressive_steady_r1": {
+   "app": "trainticket",
+   "family": "lock_contention",
+   "review": false
+  },
+  "tt_lock_contention_aggressive_steady_r2": {
+   "app": "trainticket",
+   "family": "lock_contention",
+   "review": false
+  },
+  "tt_lock_contention_aggressive_steady_r3": {
+   "app": "trainticket",
+   "family": "lock_contention",
+   "review": false
+  },
+  "tt_lock_contention_aggressive_steady_r4": {
+   "app": "trainticket",
+   "family": "lock_contention",
+   "review": false
+  },
+  "tt_lock_contention_aggressive_steady_r5": {
+   "app": "trainticket",
+   "family": "lock_contention",
+   "review": false
+  },
+  "tt_nagle_delayed_ack_aggressive_steady_r1": {
+   "app": "trainticket",
+   "family": "nagle_delayed_ack",
+   "review": false
+  },
+  "tt_nagle_delayed_ack_aggressive_steady_r2": {
+   "app": "trainticket",
+   "family": "nagle_delayed_ack",
+   "review": false
+  },
+  "tt_nagle_delayed_ack_aggressive_steady_r3": {
+   "app": "trainticket",
+   "family": "nagle_delayed_ack",
+   "review": false
+  },
+  "tt_nagle_delayed_ack_aggressive_steady_r4": {
+   "app": "trainticket",
+   "family": "nagle_delayed_ack",
+   "review": false
+  },
+  "tt_nagle_delayed_ack_aggressive_steady_r5": {
+   "app": "trainticket",
+   "family": "nagle_delayed_ack",
+   "review": false
+  },
+  "tt_noisy_neighbor_aggressive_steady_r1": {
+   "app": "trainticket",
+   "family": "noisy_neighbor",
+   "review": false
+  },
+  "tt_noisy_neighbor_aggressive_steady_r2": {
+   "app": "trainticket",
+   "family": "noisy_neighbor",
+   "review": false
+  },
+  "tt_noisy_neighbor_aggressive_steady_r3": {
+   "app": "trainticket",
+   "family": "noisy_neighbor",
+   "review": false
+  },
+  "tt_noisy_neighbor_aggressive_steady_r4": {
+   "app": "trainticket",
+   "family": "noisy_neighbor",
+   "review": false
+  },
+  "tt_noisy_neighbor_aggressive_steady_r5": {
+   "app": "trainticket",
+   "family": "noisy_neighbor",
+   "review": false
+  },
+  "tt_noisy_neighbor_subtle_steady_r1": {
+   "app": "trainticket",
+   "family": "noisy_neighbor",
+   "review": false
+  },
+  "tt_noisy_neighbor_subtle_steady_r2": {
+   "app": "trainticket",
+   "family": "noisy_neighbor",
+   "review": false
+  },
+  "tt_noisy_neighbor_subtle_steady_r3": {
+   "app": "trainticket",
+   "family": "noisy_neighbor",
+   "review": false
+  },
+  "tt_normal_none_burst_r1": {
+   "app": "trainticket",
+   "family": "normal",
+   "review": false
+  },
+  "tt_normal_none_burst_r2": {
+   "app": "trainticket",
+   "family": "normal",
+   "review": false
+  },
+  "tt_normal_none_burst_r3": {
+   "app": "trainticket",
+   "family": "normal",
+   "review": false
+  },
+  "tt_normal_none_burst_r4": {
+   "app": "trainticket",
+   "family": "normal",
+   "review": false
+  },
+  "tt_normal_none_burst_r5": {
+   "app": "trainticket",
+   "family": "normal",
+   "review": false
+  },
+  "tt_normal_none_steady_r1": {
+   "app": "trainticket",
+   "family": "normal",
+   "review": false
+  },
+  "tt_normal_none_steady_r2": {
+   "app": "trainticket",
+   "family": "normal",
+   "review": false
+  },
+  "tt_normal_none_steady_r3": {
+   "app": "trainticket",
+   "family": "normal",
+   "review": false
+  },
+  "tt_normal_none_steady_r4": {
+   "app": "trainticket",
+   "family": "normal",
+   "review": false
+  },
+  "tt_normal_none_steady_r5": {
+   "app": "trainticket",
+   "family": "normal",
+   "review": false
+  },
+  "tt_priority_inversion_aggressive_steady_r1": {
+   "app": "trainticket",
+   "family": "priority_inversion",
+   "review": false
+  },
+  "tt_priority_inversion_aggressive_steady_r2": {
+   "app": "trainticket",
+   "family": "priority_inversion",
+   "review": false
+  },
+  "tt_priority_inversion_aggressive_steady_r3": {
+   "app": "trainticket",
+   "family": "priority_inversion",
+   "review": false
+  },
+  "tt_priority_inversion_aggressive_steady_r4": {
+   "app": "trainticket",
+   "family": "priority_inversion",
+   "review": false
+  },
+  "tt_priority_inversion_aggressive_steady_r5": {
+   "app": "trainticket",
+   "family": "priority_inversion",
+   "review": false
+  },
+  "tt_resource_abuse_aggressive_steady_r1": {
+   "app": "trainticket",
+   "family": "resource_abuse",
+   "review": false
+  },
+  "tt_resource_abuse_aggressive_steady_r2": {
+   "app": "trainticket",
+   "family": "resource_abuse",
+   "review": false
+  },
+  "tt_resource_abuse_aggressive_steady_r3": {
+   "app": "trainticket",
+   "family": "resource_abuse",
+   "review": false
+  },
+  "tt_resource_abuse_aggressive_steady_r4": {
+   "app": "trainticket",
+   "family": "resource_abuse",
+   "review": false
+  },
+  "tt_resource_abuse_aggressive_steady_r5": {
+   "app": "trainticket",
+   "family": "resource_abuse",
+   "review": false
+  },
+  "tt_slow_db_aggressive_burst_r1": {
+   "app": "trainticket",
+   "family": "slow_db",
+   "review": false
+  },
+  "tt_slow_db_aggressive_burst_r2": {
+   "app": "trainticket",
+   "family": "slow_db",
+   "review": false
+  },
+  "tt_slow_db_aggressive_burst_r3": {
+   "app": "trainticket",
+   "family": "slow_db",
+   "review": false
+  },
+  "tt_slow_db_aggressive_steady_r1": {
+   "app": "trainticket",
+   "family": "slow_db",
+   "review": false
+  },
+  "tt_slow_db_aggressive_steady_r2": {
+   "app": "trainticket",
+   "family": "slow_db",
+   "review": true
+  },
+  "tt_slow_db_aggressive_steady_r3": {
+   "app": "trainticket",
+   "family": "slow_db",
+   "review": false
+  },
+  "tt_slow_db_aggressive_steady_r4": {
+   "app": "trainticket",
+   "family": "slow_db",
+   "review": false
+  },
+  "tt_slow_db_aggressive_steady_r5": {
+   "app": "trainticket",
+   "family": "slow_db",
+   "review": false
+  },
+  "tt_slow_db_subtle_steady_r1": {
+   "app": "trainticket",
+   "family": "slow_db",
+   "review": false
+  },
+  "tt_slow_db_subtle_steady_r2": {
+   "app": "trainticket",
+   "family": "slow_db",
+   "review": false
+  },
+  "tt_slow_db_subtle_steady_r3": {
+   "app": "trainticket",
+   "family": "slow_db",
+   "review": false
+  },
+  "tt_svc_cpu_cap_aggressive_steady_r1": {
+   "app": "trainticket",
+   "family": "svc_cpu_cap",
+   "review": false
+  },
+  "tt_svc_cpu_cap_aggressive_steady_r2": {
+   "app": "trainticket",
+   "family": "svc_cpu_cap",
+   "review": false
+  },
+  "tt_svc_cpu_cap_aggressive_steady_r3": {
+   "app": "trainticket",
+   "family": "svc_cpu_cap",
+   "review": false
+  },
+  "tt_svc_cpu_cap_aggressive_steady_r4": {
+   "app": "trainticket",
+   "family": "svc_cpu_cap",
+   "review": false
+  },
+  "tt_svc_cpu_cap_aggressive_steady_r5": {
+   "app": "trainticket",
+   "family": "svc_cpu_cap",
+   "review": false
+  },
+  "tt_svc_cpu_cap_subtle_steady_r1": {
+   "app": "trainticket",
+   "family": "svc_cpu_cap",
+   "review": false
+  },
+  "tt_svc_cpu_cap_subtle_steady_r2": {
+   "app": "trainticket",
+   "family": "svc_cpu_cap",
+   "review": false
+  },
+  "tt_svc_cpu_cap_subtle_steady_r3": {
+   "app": "trainticket",
+   "family": "svc_cpu_cap",
+   "review": false
+  },
+  "tt_svc_mem_cap_aggressive_steady_r1": {
+   "app": "trainticket",
+   "family": "svc_mem_cap",
+   "review": false
+  },
+  "tt_svc_mem_cap_aggressive_steady_r2": {
+   "app": "trainticket",
+   "family": "svc_mem_cap",
+   "review": false
+  },
+  "tt_svc_mem_cap_aggressive_steady_r3": {
+   "app": "trainticket",
+   "family": "svc_mem_cap",
+   "review": false
+  },
+  "tt_svc_mem_cap_aggressive_steady_r4": {
+   "app": "trainticket",
+   "family": "svc_mem_cap",
+   "review": false
+  },
+  "tt_svc_mem_cap_aggressive_steady_r5": {
+   "app": "trainticket",
+   "family": "svc_mem_cap",
+   "review": false
+  },
+  "tt_svc_mem_cap_subtle_steady_r1": {
+   "app": "trainticket",
+   "family": "svc_mem_cap",
+   "review": false
+  },
+  "tt_svc_mem_cap_subtle_steady_r2": {
+   "app": "trainticket",
+   "family": "svc_mem_cap",
+   "review": false
+  },
+  "tt_svc_mem_cap_subtle_steady_r3": {
+   "app": "trainticket",
+   "family": "svc_mem_cap",
+   "review": false
+  },
+  "tt_svc_net_aggressive_steady_r1": {
+   "app": "trainticket",
+   "family": "svc_net",
+   "review": false
+  },
+  "tt_svc_net_aggressive_steady_r2": {
+   "app": "trainticket",
+   "family": "svc_net",
+   "review": false
+  },
+  "tt_svc_net_aggressive_steady_r3": {
+   "app": "trainticket",
+   "family": "svc_net",
+   "review": false
+  },
+  "tt_svc_net_aggressive_steady_r4": {
+   "app": "trainticket",
+   "family": "svc_net",
+   "review": false
+  },
+  "tt_svc_net_aggressive_steady_r5": {
+   "app": "trainticket",
+   "family": "svc_net",
+   "review": true
+  }
+ },
+ "n": 303,
+ "runs": {
+  "anomaly_cpu_aggressive_steady_r1": "confirmed",
+  "anomaly_cpu_aggressive_steady_r2": "confirmed",
+  "anomaly_cpu_aggressive_steady_r3": "confirmed",
+  "anomaly_cpu_aggressive_steady_r4": "confirmed",
+  "anomaly_cpu_aggressive_steady_r5": "confirmed",
+  "anomaly_disk_aggressive_steady_r1": "confirmed",
+  "anomaly_disk_aggressive_steady_r2": "confirmed",
+  "anomaly_disk_aggressive_steady_r3": "confirmed",
+  "anomaly_disk_aggressive_steady_r4": "confirmed",
+  "anomaly_disk_aggressive_steady_r5": "confirmed",
+  "anomaly_mem_aggressive_steady_r1": "confirmed",
+  "anomaly_mem_aggressive_steady_r2": "confirmed",
+  "anomaly_mem_aggressive_steady_r3": "confirmed",
+  "anomaly_mem_aggressive_steady_r4": "confirmed",
+  "anomaly_mem_aggressive_steady_r5": "confirmed",
+  "anomaly_mem_subtle_steady_r1": "confirmed",
+  "anomaly_mem_subtle_steady_r2": "confirmed",
+  "anomaly_mem_subtle_steady_r3": "confirmed",
+  "anomaly_net_aggressive_burst_r1": "confirmed",
+  "anomaly_net_aggressive_burst_r2": "confirmed",
+  "anomaly_net_aggressive_burst_r3": "confirmed",
+  "anomaly_net_aggressive_steady_r1": "confirmed",
+  "anomaly_net_aggressive_steady_r2": "confirmed",
+  "anomaly_net_aggressive_steady_r3": "confirmed",
+  "anomaly_net_aggressive_steady_r4": "confirmed",
+  "anomaly_net_aggressive_steady_r5": "confirmed",
+  "code_event_loop_block_aggressive_steady_r1": "confirmed",
+  "code_event_loop_block_aggressive_steady_r2": "borderline",
+  "code_event_loop_block_aggressive_steady_r3": "confirmed",
+  "code_event_loop_block_aggressive_steady_r4": "confirmed",
+  "code_event_loop_block_aggressive_steady_r5": "confirmed",
+  "code_lock_across_io_aggressive_steady_r1": "borderline",
+  "code_lock_across_io_aggressive_steady_r2": "borderline",
+  "code_lock_across_io_aggressive_steady_r3": "borderline",
+  "code_lock_across_io_aggressive_steady_r4": "borderline",
+  "code_lock_across_io_aggressive_steady_r5": "borderline",
+  "code_n_plus_one_aggressive_steady_r1": "borderline",
+  "code_n_plus_one_aggressive_steady_r2": "borderline",
+  "code_n_plus_one_aggressive_steady_r3": "borderline",
+  "code_n_plus_one_aggressive_steady_r4": "borderline",
+  "code_n_plus_one_aggressive_steady_r5": "borderline",
+  "code_serial_awaits_aggressive_steady_r1": "confirmed",
+  "code_serial_awaits_aggressive_steady_r2": "confirmed",
+  "code_serial_awaits_aggressive_steady_r3": "confirmed",
+  "code_serial_awaits_aggressive_steady_r4": "confirmed",
+  "code_serial_awaits_aggressive_steady_r5": "confirmed",
+  "code_unbounded_cache_aggressive_steady_r1": "confirmed",
+  "code_unbounded_cache_aggressive_steady_r2": "confirmed",
+  "code_unbounded_cache_aggressive_steady_r3": "confirmed",
+  "code_unbounded_cache_aggressive_steady_r4": "confirmed",
+  "code_unbounded_cache_aggressive_steady_r5": "confirmed",
+  "conn_pool_exhaustion_aggressive_steady_r1": "confirmed",
+  "conn_pool_exhaustion_aggressive_steady_r2": "confirmed",
+  "conn_pool_exhaustion_aggressive_steady_r3": "confirmed",
+  "conn_pool_exhaustion_aggressive_steady_r4": "confirmed",
+  "conn_pool_exhaustion_aggressive_steady_r5": "confirmed",
+  "data_exfiltration_aggressive_steady_r1": "confirmed",
+  "data_exfiltration_aggressive_steady_r2": "confirmed",
+  "data_exfiltration_aggressive_steady_r3": "confirmed",
+  "data_exfiltration_aggressive_steady_r4": "confirmed",
+  "data_exfiltration_aggressive_steady_r5": "confirmed",
+  "deadlock_aggressive_steady_r1": "confirmed",
+  "deadlock_aggressive_steady_r2": "confirmed",
+  "deadlock_aggressive_steady_r3": "confirmed",
+  "deadlock_aggressive_steady_r4": "unconfirmed",
+  "deadlock_aggressive_steady_r5": "confirmed",
+  "dependency_outage_aggressive_steady_r1": "confirmed",
+  "dependency_outage_aggressive_steady_r2": "confirmed",
+  "dependency_outage_aggressive_steady_r3": "confirmed",
+  "dependency_outage_aggressive_steady_r4": "confirmed",
+  "dependency_outage_aggressive_steady_r5": "confirmed",
+  "dns_delay_aggressive_steady_r1": "no_metric_signature",
+  "dns_delay_aggressive_steady_r2": "no_metric_signature",
+  "dns_delay_aggressive_steady_r3": "no_metric_signature",
+  "dns_delay_aggressive_steady_r4": "no_metric_signature",
+  "dns_delay_aggressive_steady_r5": "no_metric_signature",
+  "error_storm_aggressive_burst_r1": "confirmed",
+  "error_storm_aggressive_burst_r2": "confirmed",
+  "error_storm_aggressive_burst_r3": "confirmed",
+  "error_storm_aggressive_steady_r1": "confirmed",
+  "error_storm_aggressive_steady_r2": "confirmed",
+  "error_storm_aggressive_steady_r3": "confirmed",
+  "error_storm_aggressive_steady_r4": "confirmed",
+  "error_storm_aggressive_steady_r5": "confirmed",
+  "fd_exhaustion_aggressive_steady_r1": "unconfirmed",
+  "fd_exhaustion_aggressive_steady_r2": "confirmed",
+  "fd_exhaustion_aggressive_steady_r3": "confirmed",
+  "fd_exhaustion_aggressive_steady_r4": "unconfirmed",
+  "fd_exhaustion_aggressive_steady_r5": "unconfirmed",
+  "fork_storm_aggressive_steady_r1": "confirmed",
+  "fork_storm_aggressive_steady_r2": "confirmed",
+  "fork_storm_aggressive_steady_r3": "confirmed",
+  "fork_storm_aggressive_steady_r4": "confirmed",
+  "fork_storm_aggressive_steady_r5": "confirmed",
+  "lock_contention_aggressive_steady_r1": "confirmed",
+  "lock_contention_aggressive_steady_r2": "unconfirmed",
+  "lock_contention_aggressive_steady_r3": "unconfirmed",
+  "lock_contention_aggressive_steady_r4": "confirmed",
+  "lock_contention_aggressive_steady_r5": "unconfirmed",
+  "nagle_delayed_ack_aggressive_steady_r1": "confirmed",
+  "nagle_delayed_ack_aggressive_steady_r2": "confirmed",
+  "nagle_delayed_ack_aggressive_steady_r3": "confirmed",
+  "nagle_delayed_ack_aggressive_steady_r4": "confirmed",
+  "nagle_delayed_ack_aggressive_steady_r5": "confirmed",
+  "noisy_neighbor_aggressive_steady_r1": "confirmed",
+  "noisy_neighbor_aggressive_steady_r2": "confirmed",
+  "noisy_neighbor_aggressive_steady_r3": "confirmed",
+  "noisy_neighbor_aggressive_steady_r4": "confirmed",
+  "noisy_neighbor_aggressive_steady_r5": "confirmed",
+  "noisy_neighbor_subtle_steady_r1": "confirmed",
+  "noisy_neighbor_subtle_steady_r2": "confirmed",
+  "noisy_neighbor_subtle_steady_r3": "confirmed",
+  "normal_none_burst_r1": "unknown",
+  "normal_none_burst_r2": "unknown",
+  "normal_none_burst_r3": "unknown",
+  "normal_none_burst_r4": "unknown",
+  "normal_none_burst_r5": "unknown",
+  "normal_none_steady_r1": "unknown",
+  "normal_none_steady_r2": "unknown",
+  "normal_none_steady_r3": "unknown",
+  "normal_none_steady_r4": "unknown",
+  "normal_none_steady_r5": "unknown",
+  "priority_inversion_aggressive_steady_r1": "confirmed",
+  "priority_inversion_aggressive_steady_r2": "confirmed",
+  "priority_inversion_aggressive_steady_r3": "confirmed",
+  "priority_inversion_aggressive_steady_r4": "confirmed",
+  "priority_inversion_aggressive_steady_r5": "confirmed",
+  "queue_backlog_aggressive_steady_r1": "confirmed",
+  "queue_backlog_aggressive_steady_r2": "borderline",
+  "queue_backlog_aggressive_steady_r3": "confirmed",
+  "queue_backlog_aggressive_steady_r4": "confirmed",
+  "queue_backlog_aggressive_steady_r5": "confirmed",
+  "resource_abuse_aggressive_steady_r1": "confirmed",
+  "resource_abuse_aggressive_steady_r2": "confirmed",
+  "resource_abuse_aggressive_steady_r3": "confirmed",
+  "resource_abuse_aggressive_steady_r4": "confirmed",
+  "resource_abuse_aggressive_steady_r5": "confirmed",
+  "slow_db_aggressive_burst_r1": "confirmed",
+  "slow_db_aggressive_burst_r2": "confirmed",
+  "slow_db_aggressive_burst_r3": "confirmed",
+  "slow_db_aggressive_steady_r1": "confirmed",
+  "slow_db_aggressive_steady_r2": "confirmed",
+  "slow_db_aggressive_steady_r3": "confirmed",
+  "slow_db_aggressive_steady_r4": "confirmed",
+  "slow_db_aggressive_steady_r5": "confirmed",
+  "slow_db_subtle_steady_r1": "confirmed",
+  "slow_db_subtle_steady_r2": "confirmed",
+  "slow_db_subtle_steady_r3": "confirmed",
+  "svc_cpu_cap_aggressive_steady_r1": "confirmed",
+  "svc_cpu_cap_aggressive_steady_r2": "confirmed",
+  "svc_cpu_cap_aggressive_steady_r3": "confirmed",
+  "svc_cpu_cap_aggressive_steady_r4": "confirmed",
+  "svc_cpu_cap_aggressive_steady_r5": "confirmed",
+  "svc_cpu_cap_subtle_steady_r1": "confirmed",
+  "svc_cpu_cap_subtle_steady_r2": "confirmed",
+  "svc_cpu_cap_subtle_steady_r3": "confirmed",
+  "svc_mem_cap_aggressive_steady_r1": "confirmed",
+  "svc_mem_cap_aggressive_steady_r2": "confirmed",
+  "svc_mem_cap_aggressive_steady_r3": "confirmed",
+  "svc_mem_cap_aggressive_steady_r4": "confirmed",
+  "svc_mem_cap_aggressive_steady_r5": "confirmed",
+  "svc_mem_cap_subtle_steady_r1": "confirmed",
+  "svc_mem_cap_subtle_steady_r2": "confirmed",
+  "svc_mem_cap_subtle_steady_r3": "confirmed",
+  "svc_net_aggressive_steady_r1": "confirmed",
+  "svc_net_aggressive_steady_r2": "confirmed",
+  "svc_net_aggressive_steady_r3": "confirmed",
+  "svc_net_aggressive_steady_r4": "confirmed",
+  "svc_net_aggressive_steady_r5": "confirmed",
+  "tt_anomaly_cpu_aggressive_steady_r1": "confirmed",
+  "tt_anomaly_cpu_aggressive_steady_r2": "confirmed",
+  "tt_anomaly_cpu_aggressive_steady_r3": "confirmed",
+  "tt_anomaly_cpu_aggressive_steady_r4": "confirmed",
+  "tt_anomaly_cpu_aggressive_steady_r5": "confirmed",
+  "tt_anomaly_disk_aggressive_steady_r1": "confirmed",
+  "tt_anomaly_disk_aggressive_steady_r2": "confirmed",
+  "tt_anomaly_disk_aggressive_steady_r3": "confirmed",
+  "tt_anomaly_disk_aggressive_steady_r4": "confirmed",
+  "tt_anomaly_disk_aggressive_steady_r5": "confirmed",
+  "tt_anomaly_mem_aggressive_steady_r1": "confirmed",
+  "tt_anomaly_mem_aggressive_steady_r2": "confirmed",
+  "tt_anomaly_mem_aggressive_steady_r3": "confirmed",
+  "tt_anomaly_mem_aggressive_steady_r4": "confirmed",
+  "tt_anomaly_mem_aggressive_steady_r5": "confirmed",
+  "tt_anomaly_mem_subtle_steady_r1": "confirmed",
+  "tt_anomaly_mem_subtle_steady_r2": "confirmed",
+  "tt_anomaly_mem_subtle_steady_r3": "confirmed",
+  "tt_anomaly_net_aggressive_burst_r1": "confirmed",
+  "tt_anomaly_net_aggressive_burst_r2": "confirmed",
+  "tt_anomaly_net_aggressive_burst_r3": "confirmed",
+  "tt_anomaly_net_aggressive_steady_r1": "confirmed",
+  "tt_anomaly_net_aggressive_steady_r2": "no_metric_signature",
+  "tt_anomaly_net_aggressive_steady_r3": "no_metric_signature",
+  "tt_anomaly_net_aggressive_steady_r4": "no_metric_signature",
+  "tt_anomaly_net_aggressive_steady_r5": "no_metric_signature",
+  "tt_conn_pool_exhaustion_aggressive_steady_r1": "confirmed",
+  "tt_conn_pool_exhaustion_aggressive_steady_r2": "confirmed",
+  "tt_conn_pool_exhaustion_aggressive_steady_r3": "confirmed",
+  "tt_conn_pool_exhaustion_aggressive_steady_r4": "confirmed",
+  "tt_conn_pool_exhaustion_aggressive_steady_r5": "confirmed",
+  "tt_data_exfiltration_aggressive_steady_r1": "confirmed",
+  "tt_data_exfiltration_aggressive_steady_r2": "confirmed",
+  "tt_data_exfiltration_aggressive_steady_r3": "confirmed",
+  "tt_data_exfiltration_aggressive_steady_r4": "confirmed",
+  "tt_data_exfiltration_aggressive_steady_r5": "confirmed",
+  "tt_deadlock_aggressive_steady_r1": "confirmed",
+  "tt_deadlock_aggressive_steady_r2": "confirmed",
+  "tt_deadlock_aggressive_steady_r3": "confirmed",
+  "tt_deadlock_aggressive_steady_r4": "confirmed",
+  "tt_deadlock_aggressive_steady_r5": "confirmed",
+  "tt_dependency_outage_aggressive_steady_r1": "confirmed",
+  "tt_dependency_outage_aggressive_steady_r2": "confirmed",
+  "tt_dependency_outage_aggressive_steady_r3": "confirmed",
+  "tt_dependency_outage_aggressive_steady_r4": "confirmed",
+  "tt_dependency_outage_aggressive_steady_r5": "confirmed",
+  "tt_error_storm_aggressive_burst_r1": "borderline",
+  "tt_error_storm_aggressive_burst_r2": "unconfirmed",
+  "tt_error_storm_aggressive_burst_r3": "confirmed",
+  "tt_error_storm_aggressive_steady_r1": "confirmed",
+  "tt_error_storm_aggressive_steady_r2": "borderline",
+  "tt_error_storm_aggressive_steady_r3": "unconfirmed",
+  "tt_error_storm_aggressive_steady_r4": "confirmed",
+  "tt_error_storm_aggressive_steady_r5": "confirmed",
+  "tt_fd_exhaustion_aggressive_steady_r1": "confirmed",
+  "tt_fd_exhaustion_aggressive_steady_r2": "confirmed",
+  "tt_fd_exhaustion_aggressive_steady_r3": "confirmed",
+  "tt_fd_exhaustion_aggressive_steady_r4": "confirmed",
+  "tt_fd_exhaustion_aggressive_steady_r5": "confirmed",
+  "tt_fork_storm_aggressive_steady_r1": "confirmed",
+  "tt_fork_storm_aggressive_steady_r2": "confirmed",
+  "tt_fork_storm_aggressive_steady_r3": "confirmed",
+  "tt_fork_storm_aggressive_steady_r4": "confirmed",
+  "tt_fork_storm_aggressive_steady_r5": "confirmed",
+  "tt_lock_contention_aggressive_steady_r1": "confirmed",
+  "tt_lock_contention_aggressive_steady_r2": "confirmed",
+  "tt_lock_contention_aggressive_steady_r3": "confirmed",
+  "tt_lock_contention_aggressive_steady_r4": "confirmed",
+  "tt_lock_contention_aggressive_steady_r5": "confirmed",
+  "tt_nagle_delayed_ack_aggressive_steady_r1": "confirmed",
+  "tt_nagle_delayed_ack_aggressive_steady_r2": "confirmed",
+  "tt_nagle_delayed_ack_aggressive_steady_r3": "confirmed",
+  "tt_nagle_delayed_ack_aggressive_steady_r4": "confirmed",
+  "tt_nagle_delayed_ack_aggressive_steady_r5": "confirmed",
+  "tt_noisy_neighbor_aggressive_steady_r1": "confirmed",
+  "tt_noisy_neighbor_aggressive_steady_r2": "confirmed",
+  "tt_noisy_neighbor_aggressive_steady_r3": "confirmed",
+  "tt_noisy_neighbor_aggressive_steady_r4": "confirmed",
+  "tt_noisy_neighbor_aggressive_steady_r5": "confirmed",
+  "tt_noisy_neighbor_subtle_steady_r1": "confirmed",
+  "tt_noisy_neighbor_subtle_steady_r2": "confirmed",
+  "tt_noisy_neighbor_subtle_steady_r3": "confirmed",
+  "tt_normal_none_burst_r1": "unknown",
+  "tt_normal_none_burst_r2": "unknown",
+  "tt_normal_none_burst_r3": "unknown",
+  "tt_normal_none_burst_r4": "unknown",
+  "tt_normal_none_burst_r5": "unknown",
+  "tt_normal_none_steady_r1": "unknown",
+  "tt_normal_none_steady_r2": "unknown",
+  "tt_normal_none_steady_r3": "unknown",
+  "tt_normal_none_steady_r4": "unknown",
+  "tt_normal_none_steady_r5": "unknown",
+  "tt_priority_inversion_aggressive_steady_r1": "confirmed",
+  "tt_priority_inversion_aggressive_steady_r2": "confirmed",
+  "tt_priority_inversion_aggressive_steady_r3": "confirmed",
+  "tt_priority_inversion_aggressive_steady_r4": "confirmed",
+  "tt_priority_inversion_aggressive_steady_r5": "confirmed",
+  "tt_resource_abuse_aggressive_steady_r1": "confirmed",
+  "tt_resource_abuse_aggressive_steady_r2": "confirmed",
+  "tt_resource_abuse_aggressive_steady_r3": "confirmed",
+  "tt_resource_abuse_aggressive_steady_r4": "confirmed",
+  "tt_resource_abuse_aggressive_steady_r5": "confirmed",
+  "tt_slow_db_aggressive_burst_r1": "unconfirmed",
+  "tt_slow_db_aggressive_burst_r2": "unconfirmed",
+  "tt_slow_db_aggressive_burst_r3": "unconfirmed",
+  "tt_slow_db_aggressive_steady_r1": "unconfirmed",
+  "tt_slow_db_aggressive_steady_r2": "borderline",
+  "tt_slow_db_aggressive_steady_r3": "unconfirmed",
+  "tt_slow_db_aggressive_steady_r4": "unconfirmed",
+  "tt_slow_db_aggressive_steady_r5": "unconfirmed",
+  "tt_slow_db_subtle_steady_r1": "unconfirmed",
+  "tt_slow_db_subtle_steady_r2": "unconfirmed",
+  "tt_slow_db_subtle_steady_r3": "unconfirmed",
+  "tt_svc_cpu_cap_aggressive_steady_r1": "unconfirmed",
+  "tt_svc_cpu_cap_aggressive_steady_r2": "unconfirmed",
+  "tt_svc_cpu_cap_aggressive_steady_r3": "unconfirmed",
+  "tt_svc_cpu_cap_aggressive_steady_r4": "unconfirmed",
+  "tt_svc_cpu_cap_aggressive_steady_r5": "unconfirmed",
+  "tt_svc_cpu_cap_subtle_steady_r1": "unconfirmed",
+  "tt_svc_cpu_cap_subtle_steady_r2": "unconfirmed",
+  "tt_svc_cpu_cap_subtle_steady_r3": "unconfirmed",
+  "tt_svc_mem_cap_aggressive_steady_r1": "unconfirmed",
+  "tt_svc_mem_cap_aggressive_steady_r2": "confirmed",
+  "tt_svc_mem_cap_aggressive_steady_r3": "confirmed",
+  "tt_svc_mem_cap_aggressive_steady_r4": "confirmed",
+  "tt_svc_mem_cap_aggressive_steady_r5": "confirmed",
+  "tt_svc_mem_cap_subtle_steady_r1": "confirmed",
+  "tt_svc_mem_cap_subtle_steady_r2": "confirmed",
+  "tt_svc_mem_cap_subtle_steady_r3": "confirmed",
+  "tt_svc_net_aggressive_steady_r1": "unconfirmed",
+  "tt_svc_net_aggressive_steady_r2": "unconfirmed",
+  "tt_svc_net_aggressive_steady_r3": "unconfirmed",
+  "tt_svc_net_aggressive_steady_r4": "unconfirmed",
+  "tt_svc_net_aggressive_steady_r5": "borderline"
+ },
+ "source": "/scratch/yuvraj17/stratatrace/data/stratatrace-v2"
+}

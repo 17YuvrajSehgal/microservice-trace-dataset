@@ -8,6 +8,10 @@ The rules are the same ones every threshold in this project follows:
   - a cut that works on one application and fails on the other is reported as FAILING,
     because one deployment cannot tell you whether you found a property of the fault or a
     property of the machine
+  - a run whose fault DID NOT TAKE is not a positive. 32 v2 runs carry
+    `verification_status: unconfirmed`, and until this was added they were used as evidence
+    that a fault was present. They remain NEGATIVES, because a run where nothing happened is
+    still a run no blueprint should fire on.
 
     python3 blueprints/lib/sweep_uncovered.py --packs <dir>
 """
@@ -21,6 +25,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import blueprint_decide as BD  # noqa: E402
+import verification as VF  # noqa: E402
 
 COVERED = {"anomaly_cpu", "noisy_neighbor", "svc_cpu_cap", "anomaly_disk", "svc_mem_cap",
            "slow_db", "anomaly_net", "svc_net", "fork_storm", "data_exfiltration",
@@ -128,8 +133,14 @@ def main():
             continue
         fam = p.get("family_dir") or ""
         fam = fam[3:] if fam.startswith("tt_") else fam
-        rows.append((fam, p.get("app"), signals(p)))
+        rows.append((fam, p.get("app"), signals(p), p["run_id"]))
 
+    vindex = VF.load()
+    VF.report([r[3] for r in rows], vindex, "all runs")
+    # A positive must be a run whose fault demonstrably happened. A negative can be any run.
+    pos_ok = {r[3]: VF.usable_as_positive(r[3], vindex, r[0]) for r in rows}
+    dropped = sum(1 for r in rows if not pos_ok[r[3]])
+    print("  %d run(s) excluded from POSITIVES (kept as negatives)" % dropped)
     fams = sorted(set(r[0] for r in rows))
     uncovered = [f for f in fams if f not in COVERED and f != CONTROL]
     keys = sorted(rows[0][2])
@@ -139,7 +150,17 @@ def main():
 
     report = {}
     for fam in uncovered:
-        apps = sorted(set(r[1] for r in rows if r[0] == fam))
+        apps = sorted(set(r[1] for r in rows if r[0] == fam and pos_ok[r[3]]))
+        if not apps:
+            # Every run of this family failed verification, so there is nothing to derive a
+            # threshold FROM. Saying so is the result; deriving one anyway would fit a cut to
+            # runs that contain no fault.
+            n_all = sum(1 for r in rows if r[0] == fam)
+            print("  %-24s %2d runs   NO VERIFIED RUN - its fault did not take in any of them"
+                  % (fam, n_all))
+            print()
+            report[fam] = []
+            continue
         found = []
         for k in keys:
             # must hold with EVERY other family as a negative, on every application the
@@ -147,21 +168,22 @@ def main():
             per_app = []
             for app in apps:
                 pos = [r[2][k] for r in rows if r[0] == fam and r[1] == app
-                       and r[2].get(k) is not None]
+                       and r[2].get(k) is not None and pos_ok[r[3]]]
                 neg = [r[2][k] for r in rows if r[0] != fam and r[1] == app
                        and r[2].get(k) is not None]
                 per_app.append(try_separate(pos, neg))
             if not all(per_app) or any(x[1] < x[2] for x in per_app):
                 continue
             # and a single cut must hold across both, not one per application
-            pos = [r[2][k] for r in rows if r[0] == fam and r[2].get(k) is not None]
+            pos = [r[2][k] for r in rows if r[0] == fam and r[2].get(k) is not None
+                   and pos_ok[r[3]]]
             neg = [r[2][k] for r in rows if r[0] != fam and r[2].get(k) is not None]
             joint = try_separate(pos, neg)
             both = bool(joint and joint[1] == joint[2])
             found.append((k, per_app[0][0], joint, both, len(apps)))
         found.sort(key=lambda t: (not t[3], -(t[2][3] or 0) if t[2] and t[2][3] else 0))
         report[fam] = found
-        n_runs = sum(1 for r in rows if r[0] == fam)
+        n_runs = sum(1 for r in rows if r[0] == fam and pos_ok[r[3]])
         if not found:
             print("  %-24s %2d runs / %d app   NO SIGNAL SEPARATES IT" % (fam, n_runs, len(apps)))
         else:
