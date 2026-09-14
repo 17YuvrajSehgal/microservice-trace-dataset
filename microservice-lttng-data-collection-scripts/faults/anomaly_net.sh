@@ -54,9 +54,26 @@ case "${1:-}" in
       aggressive) DELAY="${DELAY:-80}" JITTER="${JITTER:-20}" LOSS="${LOSS:-2}"   ;;
       *) echo "unknown intensity: $INTENSITY"; exit 1 ;;
     esac
+    # THE WORST OFFENDER OF THE LOT, and the only one whose metadata depended on the action.
+    #
+    # This used to run apply_each FIRST and then stamp, so netem was already dropping packets
+    # across 16-44 container namespaces while the clock still said "baseline". Measured: 5 of
+    # 16 runs carry baseline retransmission up to 50%, where a clean baseline reads 0.00%.
+    #
+    # The count is resolved from the target list before anything is changed, so the stamp can
+    # come first. CAMPAIGN-ISSUES 1 was found because `containers: 0` was recorded when the
+    # container match failed on Train Ticket - that safety is kept, and the applied count is
+    # compared against the planned one afterwards.
+    N_TARGETS=$(stack_containers | wc -l)
+    gt_begin "$INTENSITY" "{\"scope\": \"per-container netns\", \"containers\": $N_TARGETS, \"iface\": \"$IFACE\", \"delay_ms\": $DELAY, \"jitter_ms\": $JITTER, \"loss_pct\": $LOSS}"
     N=$(apply_each add "$DELAY" "$JITTER" "$LOSS")
-    echo "[anomaly_net] netem on $N container netns ($IFACE)"
-    gt_begin "$INTENSITY" "{\"scope\": \"per-container netns\", \"containers\": $N, \"iface\": \"$IFACE\", \"delay_ms\": $DELAY, \"jitter_ms\": $JITTER, \"loss_pct\": $LOSS}"
+    echo "[anomaly_net] netem on $N of $N_TARGETS container netns ($IFACE)"
+    if [ "$N" -eq 0 ]; then
+        echo "[anomaly_net] *** netem reached ZERO containers - this run contains no fault."
+        echo "[anomaly_net] *** Check STRATA_APP and stack_containers (CAMPAIGN-ISSUES 1)."
+    elif [ "$N" -ne "$N_TARGETS" ]; then
+        echo "[anomaly_net] *** applied to $N of $N_TARGETS targets - ground truth says $N_TARGETS."
+    fi
     ;;
   cleanup)
     apply_each del >/dev/null

@@ -39,8 +39,12 @@ case "${1:-}" in
     esac
     mkdir -p "$FAULT_STATE_DIR"
     docker inspect -f '{{.HostConfig.Memory}} {{.HostConfig.MemorySwap}}' "$CONTAINER" > "$ORIG_FILE"
-    docker update -m "$MEM" --memory-swap "$MEM" "$CONTAINER" > /dev/null
+    # gt_begin FIRST: it stamps the start of the incident window, so anything done
+    # before it is counted as baseline. Disrupting first put part of the fault in the
+    # baseline - measured at up to 50%% retransmission on anomaly_net. The ramp-up now
+    # lands inside the incident window, which is where it belongs.
     gt_begin "$INTENSITY" "{\"memory\": \"$MEM\", \"container\": \"$CONTAINER\", \"orig\": \"$(cat "$ORIG_FILE")\"}"
+    docker update -m "$MEM" --memory-swap "$MEM" "$CONTAINER" > /dev/null
     ;;
   cleanup)
     read -r ORIG_MEM ORIG_SWAP < "$ORIG_FILE" 2>/dev/null || { ORIG_MEM=0; ORIG_SWAP=0; }

@@ -47,8 +47,10 @@ case "${1:-}" in
       aggressive) THREADS="${THREADS:-4}" BEACON="${BEACON:-5}"  CPUS="${CPUS:-2.0}" ;;
       *) echo "unknown intensity: $INTENSITY"; exit 1 ;;
     esac
-    workload_start "$CONTAINER" resource_abuse.py "$CPUS" -- "$THREADS" "$BEACON"
+    # gt_begin stamps the start of the incident window, so it must come BEFORE the fault
+    # starts. Stamping after put the ramp-up in the baseline.
     gt_begin "$INTENSITY" "{\"hash_threads\": $THREADS, \"beacon_interval_s\": $BEACON, \"cpus_cap\": $CPUS, \"container\": \"$CONTAINER\", \"note\": \"benign simulation; beacon target is a local listener, nothing leaves the host\"}"
+    workload_start "$CONTAINER" resource_abuse.py "$CPUS" -- "$THREADS" "$BEACON"
     ;;
   cleanup)  workload_stop "$CONTAINER"; gt_end ;;
   status)   workload_status "$CONTAINER" ;;

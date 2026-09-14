@@ -42,10 +42,14 @@ case "${1:-}" in
     # ext4, which supports it) so writes hit the block device -> higher io_time /
     # cleaner block_rq_* signal than fsync alone.
     HDD_OPTS="${HDD_OPTS:-direct,fsync}"
+    # gt_begin FIRST: it stamps the start of the incident window, so anything done
+    # before it is counted as baseline. Disrupting first put part of the fault in the
+    # baseline - measured at up to 50%% retransmission on anomaly_net. The ramp-up now
+    # lands inside the incident window, which is where it belongs.
+    gt_begin "$INTENSITY" "{\"hdd_workers\": $WORKERS, \"hdd_bytes\": \"$BYTES\", \"hdd_opts\": \"$HDD_OPTS\", \"scratch\": \"$SCRATCH\", \"container\": \"$CONTAINER\"}"
     docker run -d --name "$CONTAINER" -v "$SCRATCH":/stress "$STRESS_IMAGE" \
         stress-ng --hdd "$WORKERS" --hdd-bytes "$BYTES" --hdd-opts "$HDD_OPTS" \
                   --temp-path /stress > /dev/null
-    gt_begin "$INTENSITY" "{\"hdd_workers\": $WORKERS, \"hdd_bytes\": \"$BYTES\", \"hdd_opts\": \"$HDD_OPTS\", \"scratch\": \"$SCRATCH\", \"container\": \"$CONTAINER\"}"
     ;;
   cleanup)
     docker rm -f "$CONTAINER" > /dev/null 2>&1 || true

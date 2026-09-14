@@ -40,8 +40,10 @@ case "${1:-}" in
       aggressive) LAT_MS="${LAT_MS:-500}" JITTER_MS="${JITTER_MS:-100}" ;;
       *) echo "unknown intensity: $INTENSITY"; exit 1 ;;
     esac
-    toxic_add "$PROXY" "{\"name\":\"$TOXIC_NAME\",\"type\":\"latency\",\"stream\":\"downstream\",\"attributes\":{\"latency\":$LAT_MS,\"jitter\":$JITTER_MS}}"
+    # gt_begin stamps the start of the incident window, so it must come BEFORE the fault
+    # starts. Stamping after put the ramp-up in the baseline.
     gt_begin "$INTENSITY" "{\"latency_ms\": $LAT_MS, \"jitter_ms\": $JITTER_MS, \"stream\": \"downstream\", \"proxy\": \"$PROXY\"}"
+    toxic_add "$PROXY" "{\"name\":\"$TOXIC_NAME\",\"type\":\"latency\",\"stream\":\"downstream\",\"attributes\":{\"latency\":$LAT_MS,\"jitter\":$JITTER_MS}}"
     ;;
   cleanup)
     toxic_del "$PROXY" "$TOXIC_NAME"

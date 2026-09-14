@@ -48,9 +48,11 @@ case "${1:-}" in
     # --pids-limit is the hard stop. Even if the workload's own cap were wrong, the kernel
     # refuses the fork rather than letting it run away - which matters for something spawning
     # processes next to a live application.
+    # gt_begin stamps the start of the incident window, so it must come BEFORE the fault
+    # starts. Stamping after put the ramp-up in the baseline.
+    gt_begin "$INTENSITY" "{\"spawns_per_s\": $RATE, \"max_live\": $LIVE, \"child_lifetime_s\": $LIFE, \"pids_limit\": $PIDS, \"cpus_cap\": $CPUS, \"container\": \"$CONTAINER\", \"note\": \"bounded and PID-capped; not a fork bomb\"}"
     workload_start "$CONTAINER" fork_storm.py "$CPUS" \
         --pids-limit "$PIDS" -- "$RATE" "$LIVE" "$LIFE"
-    gt_begin "$INTENSITY" "{\"spawns_per_s\": $RATE, \"max_live\": $LIVE, \"child_lifetime_s\": $LIFE, \"pids_limit\": $PIDS, \"cpus_cap\": $CPUS, \"container\": \"$CONTAINER\", \"note\": \"bounded and PID-capped; not a fork bomb\"}"
     ;;
   cleanup)  workload_stop "$CONTAINER"; gt_end ;;
   status)   workload_status "$CONTAINER" ;;

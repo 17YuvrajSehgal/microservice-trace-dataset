@@ -41,8 +41,12 @@ case "${1:-}" in
     # Capture BOTH representations: docker leaves NanoCpus stale after a
     # quota-based reset, so neither field alone is trustworthy.
     docker inspect -f '{{.HostConfig.NanoCpus}} {{.HostConfig.CpuQuota}}' "$CONTAINER" > "$ORIG_FILE"
-    docker update --cpus="$CPUS" "$CONTAINER" > /dev/null
+    # gt_begin FIRST: it stamps the start of the incident window, so anything done
+    # before it is counted as baseline. Disrupting first put part of the fault in the
+    # baseline - measured at up to 50%% retransmission on anomaly_net. The ramp-up now
+    # lands inside the incident window, which is where it belongs.
     gt_begin "$INTENSITY" "{\"cpus\": $CPUS, \"container\": \"$CONTAINER\", \"orig_nanocpus_quota\": \"$(cat "$ORIG_FILE")\"}"
+    docker update --cpus="$CPUS" "$CONTAINER" > /dev/null
     ;;
   cleanup)
     read -r ORIG_NANO ORIG_QUOTA < "$ORIG_FILE" 2>/dev/null || { ORIG_NANO=0; ORIG_QUOTA=0; }

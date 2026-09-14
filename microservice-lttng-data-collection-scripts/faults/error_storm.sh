@@ -38,12 +38,16 @@ case "${1:-}" in
     case "$INTENSITY" in
       subtle)
         TIMEOUT_MS="${TIMEOUT_MS:-2000}"
-        toxic_add "$PROXY" "{\"name\":\"$TOXIC_NAME\",\"type\":\"timeout\",\"stream\":\"downstream\",\"attributes\":{\"timeout\":$TIMEOUT_MS}}"
+        # gt_begin stamps the start of the incident window, so it must come BEFORE the fault
+        # starts. Stamping after put the ramp-up in the baseline.
         gt_begin "$INTENSITY" "{\"toxic\": \"timeout\", \"timeout_ms\": $TIMEOUT_MS, \"proxy\": \"$PROXY\"}"
+        toxic_add "$PROXY" "{\"name\":\"$TOXIC_NAME\",\"type\":\"timeout\",\"stream\":\"downstream\",\"attributes\":{\"timeout\":$TIMEOUT_MS}}"
         ;;
       aggressive)
-        toxic_add "$PROXY" "{\"name\":\"$TOXIC_NAME\",\"type\":\"reset_peer\",\"stream\":\"downstream\",\"attributes\":{\"timeout\":0}}"
+        # gt_begin stamps the start of the incident window, so it must come BEFORE the fault
+        # starts. Stamping after put the ramp-up in the baseline.
         gt_begin "$INTENSITY" "{\"toxic\": \"reset_peer\", \"timeout_ms\": 0, \"proxy\": \"$PROXY\"}"
+        toxic_add "$PROXY" "{\"name\":\"$TOXIC_NAME\",\"type\":\"reset_peer\",\"stream\":\"downstream\",\"attributes\":{\"timeout\":0}}"
         ;;
       *) echo "unknown intensity: $INTENSITY"; exit 1 ;;
     esac

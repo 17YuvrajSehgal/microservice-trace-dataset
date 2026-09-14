@@ -49,9 +49,11 @@ case "${1:-}" in
     esac
     # SYS_NICE lets the high-priority thread actually raise itself. The workload degrades
     # gracefully without it, so this is best-effort rather than required.
+    # gt_begin stamps the start of the incident window, so it must come BEFORE the fault
+    # starts. Stamping after put the ramp-up in the baseline.
+    gt_begin "$INTENSITY" "{\"mid_threads\": $MID, \"hold_ms\": $HOLD_MS, \"cpus_cap\": $CPUS, \"container\": \"$CONTAINER\", \"mechanism\": \"nice-based inversion, not SCHED_FIFO\"}"
     workload_start "$CONTAINER" priority_inversion.py "$CPUS" \
         --cap-add=SYS_NICE -- "$MID" "$HOLD_MS"
-    gt_begin "$INTENSITY" "{\"mid_threads\": $MID, \"hold_ms\": $HOLD_MS, \"cpus_cap\": $CPUS, \"container\": \"$CONTAINER\", \"mechanism\": \"nice-based inversion, not SCHED_FIFO\"}"
     ;;
   cleanup)  workload_stop "$CONTAINER"; gt_end ;;
   status)   workload_status "$CONTAINER" ;;

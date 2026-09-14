@@ -166,11 +166,14 @@ code_defect_dispatch() {
             echo "*** which is what made all 25 v2 code-defect runs unusable."
             exit 1
         fi
-        code_defect_set_flag "$DEFECT_BUG" || exit 1
         local prov commit="unknown"
         prov="$HOME/fault-state/code_defect_${DEFECT_SERVICE}.provenance.json"
         [[ -f "$prov" ]] && commit=$(python3 -c "import json;print(json.load(open('$prov'))['commit'])" 2>/dev/null || echo unknown)
         gt_begin "${2:-aggressive}" "{\"kind\": \"code_defect\", \"service\": \"$DEFECT_SERVICE\", \"image\": \"$DEFECT_IMAGE\", \"bug\": \"$DEFECT_BUG\", \"commit\": \"$commit\", \"mechanism\": \"$DEFECT_MECHANISM\", \"correct_fix\": \"$DEFECT_FIX\", \"pairs_with\": \"$DEFECT_PAIRS_WITH\", \"control\": \"same image with STRATA_BUG=none\"}"
+        # STAMP FIRST, THEN FLIP. The gate caches its flag for a second, so flipping
+        # before stamping would put up to 1.2s of fault inside the baseline. Stamping
+        # first puts the ramp-up in the incident window, where it belongs.
+        code_defect_set_flag "$DEFECT_BUG" || { gt_end 2>/dev/null || true; exit 1; }
         ;;
       control)
         # The paired healthy run: SAME image, defect off. Not a `normal` run - a control run.

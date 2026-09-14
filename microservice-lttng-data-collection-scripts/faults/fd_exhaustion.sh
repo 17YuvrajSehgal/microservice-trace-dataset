@@ -153,20 +153,26 @@ case "${1:-}" in
         exit 1
     fi
 
+    # gt_begin FIRST: it stamps the start of the incident window, so anything done
+    # before it is counted as baseline. Disrupting first put part of the fault in the
+    # baseline - measured at up to 50%% retransmission on anomaly_net. The ramp-up now
+    # lands inside the incident window, which is where it belongs.
+    gt_begin "$INTENSITY" "{\"target_service\": \"$TARGET_SVC\", \"target_pid\": $PID, \"nofile_limit\": $NOFILE, \"nofile_original\": $ORIG, \"fds_in_use_at_inject\": $INUSE, \"cap_fraction\": $CAP_FRACTION, \"mechanism\": \"prlimit on the live process - RLIMIT_NOFILE lowered to a FRACTION of what the service is using at inject time, so it cannot open what it needs. No restart, so the trace contains the fault and nothing else.\"}"
     # The live process, no restart. Lowering the hard limit needs root, and cleanup raises it
     # again as root.
     if ! sudo prlimit --pid "$PID" --nofile="$NOFILE:$NOFILE"; then
         echo "[$FAULT_NAME] prlimit failed on pid $PID"
+        gt_end 2>/dev/null || true   # we stamped before acting; undo it
         exit 1
     fi
     NOW="$(limit_of "$PID")"
     if [[ "$NOW" != "$NOFILE" ]]; then
         echo "[$FAULT_NAME] the limit did not take: asked for $NOFILE, /proc reports $NOW"
+        gt_end 2>/dev/null || true   # we stamped before acting; undo it
         exit 1
     fi
     echo "[$FAULT_NAME] $TARGET_SVC (pid $PID) limit $ORIG -> $NOFILE, using $INUSE right now"
 
-    gt_begin "$INTENSITY" "{\"target_service\": \"$TARGET_SVC\", \"target_pid\": $PID, \"nofile_limit\": $NOFILE, \"nofile_original\": $ORIG, \"fds_in_use_at_inject\": $INUSE, \"cap_fraction\": $CAP_FRACTION, \"mechanism\": \"prlimit on the live process - RLIMIT_NOFILE lowered to a FRACTION of what the service is using at inject time, so it cannot open what it needs. No restart, so the trace contains the fault and nothing else.\"}"
     ;;
 
   prove)

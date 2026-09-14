@@ -47,8 +47,10 @@ case "${1:-}" in
       aggressive) RESPAWN="${RESPAWN:-5}"  PAIRS="${PAIRS:-12}" CPUS="${CPUS:-0.5}" ;;
       *) echo "unknown intensity: $INTENSITY"; exit 1 ;;
     esac
-    workload_start "$CONTAINER" deadlock.py "$CPUS" -- "$RESPAWN" "$PAIRS"
+    # gt_begin stamps the start of the incident window, so it must come BEFORE the fault
+    # starts. Stamping after put the ramp-up in the baseline.
     gt_begin "$INTENSITY" "{\"respawn_s\": $RESPAWN, \"max_pairs\": $PAIRS, \"cpus_cap\": $CPUS, \"container\": \"$CONTAINER\", \"mechanism\": \"AB-BA lock ordering\"}"
+    workload_start "$CONTAINER" deadlock.py "$CPUS" -- "$RESPAWN" "$PAIRS"
     ;;
   cleanup)  workload_stop "$CONTAINER"; gt_end ;;
   status)   workload_status "$CONTAINER" ;;

@@ -112,13 +112,17 @@ case "${1:-}" in
     esac
     PID="$(target_pid)" || exit 1
     RESOLVER="$(resolver_ip)"
+    # gt_begin FIRST: it stamps the start of the incident window, so anything done
+    # before it is counted as baseline. Disrupting first put part of the fault in the
+    # baseline - measured at up to 50%% retransmission on anomaly_net. The ramp-up now
+    # lands inside the incident window, which is where it belongs.
+    gt_begin "$INTENSITY" "{\"target_service\": \"$TARGET_SVC\", \"target_pid\": $PID, \"resolver\": \"$RESOLVER\", \"drop_probability\": $PROB, \"protocol\": \"udp\", \"mechanism\": \"iptables statistic random drop inside the service's network namespace, matched on the resolver address because Docker rewrites the port before the filter chain\"}"
     # shellcheck disable=SC2046
     if ! ns "$PID" iptables -I $(rule_args "$RESOLVER" "$PROB"); then
         echo "[$FAULT_NAME] could not install the rule in $TARGET_SVC's namespace"
         exit 1
     fi
     echo "[$FAULT_NAME] dropping ${PROB} of $TARGET_SVC's queries to $RESOLVER"
-    gt_begin "$INTENSITY" "{\"target_service\": \"$TARGET_SVC\", \"target_pid\": $PID, \"resolver\": \"$RESOLVER\", \"drop_probability\": $PROB, \"protocol\": \"udp\", \"mechanism\": \"iptables statistic random drop inside the service's network namespace, matched on the resolver address because Docker rewrites the port before the filter chain\"}"
     ;;
 
   prove)

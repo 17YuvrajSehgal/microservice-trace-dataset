@@ -56,11 +56,12 @@ case "${1:-}" in
       *) echo "unknown intensity: $INTENSITY"; exit 1 ;;
     esac
     # The sink first, so the sender has somewhere to go the moment it starts.
-    workload_start "$SINK" data_exfiltration.py 0.5 \
-        --network "$NETWORK" -- 1 1 - "$SINK_PORT"
+    workload_start "$SINK" data_exfiltration.py 0.5 --network "$NETWORK" -- 1 1 - "$SINK_PORT"   # ordering-ok: idle sink, not the fault
+    # gt_begin stamps the start of the incident window, so it must come BEFORE the fault
+    # starts. Stamping after put the ramp-up in the baseline.
+    gt_begin "$INTENSITY" "{\"rate_mb_per_s\": $RATE, \"chunk_kb\": $CHUNK, \"cpus_cap\": $CPUS, \"container\": \"$CONTAINER\", \"sink_container\": \"$SINK\", \"network\": \"$NETWORK\", \"note\": \"benign simulation; the sink is a container on this host, so nothing leaves it - but the bytes cross a real veth, which the first version did not\"}"
     workload_start "$CONTAINER" data_exfiltration.py "$CPUS" \
         --network "$NETWORK" -- "$RATE" "$CHUNK" "$SINK" "$SINK_PORT"
-    gt_begin "$INTENSITY" "{\"rate_mb_per_s\": $RATE, \"chunk_kb\": $CHUNK, \"cpus_cap\": $CPUS, \"container\": \"$CONTAINER\", \"sink_container\": \"$SINK\", \"network\": \"$NETWORK\", \"note\": \"benign simulation; the sink is a container on this host, so nothing leaves it - but the bytes cross a real veth, which the first version did not\"}"
     ;;
   cleanup)  workload_stop "$CONTAINER"; workload_stop "$SINK"; gt_end ;;
   status)   workload_status "$CONTAINER"; workload_status "$SINK" ;;

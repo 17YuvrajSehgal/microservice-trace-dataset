@@ -54,9 +54,13 @@ case "${1:-}" in
     esac
     TOTAL_MB=$(( $(awk '/MemTotal/{print $2}' /proc/meminfo) / 1024 ))
     VM_MB=$(( TOTAL_MB * FRAC / 100 ))
+    # gt_begin FIRST: it stamps the start of the incident window, so anything done
+    # before it is counted as baseline. Disrupting first put part of the fault in the
+    # baseline - measured at up to 50%% retransmission on anomaly_net. The ramp-up now
+    # lands inside the incident window, which is where it belongs.
+    gt_begin "$INTENSITY" "{\"stressor\": \"vm-hang(single,uncapped)\", \"vm_bytes_mb\": $VM_MB, \"target_frac_pct\": $FRAC, \"container\": \"$CONTAINER\"}"
     docker run -d --name "$CONTAINER" "$STRESS_IMAGE" \
         stress-ng --vm 1 --vm-bytes "${VM_MB}m" --vm-keep --vm-hang 0 --page-in > /dev/null
-    gt_begin "$INTENSITY" "{\"stressor\": \"vm-hang(single,uncapped)\", \"vm_bytes_mb\": $VM_MB, \"target_frac_pct\": $FRAC, \"container\": \"$CONTAINER\"}"
     ;;
   cleanup)
     docker rm -f "$CONTAINER" > /dev/null 2>&1 || true

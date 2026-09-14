@@ -39,10 +39,14 @@ case "${1:-}" in
       aggressive) CPUS="${CPUS:-2.0}" WORKERS="${WORKERS:-4}" ;;
       *) echo "unknown intensity: $INTENSITY"; exit 1 ;;
     esac
+    # gt_begin FIRST: it stamps the start of the incident window, so anything done
+    # before it is counted as baseline. Disrupting first put part of the fault in the
+    # baseline - measured at up to 50%% retransmission on anomaly_net. The ramp-up now
+    # lands inside the incident window, which is where it belongs.
+    gt_begin "$INTENSITY" "{\"cpus_cap\": $CPUS, \"workers\": $WORKERS, \"image\": \"$STRESS_IMAGE\", \"container\": \"$NEIGHBOR\"}"
     # The image has no entrypoint (Cmd=/bin/bash) - invoke stress-ng explicitly.
     docker run -d --name "$NEIGHBOR" --cpus="$CPUS" \
         "$STRESS_IMAGE" stress-ng --cpu "$WORKERS" --cpu-method matrixprod > /dev/null
-    gt_begin "$INTENSITY" "{\"cpus_cap\": $CPUS, \"workers\": $WORKERS, \"image\": \"$STRESS_IMAGE\", \"container\": \"$NEIGHBOR\"}"
     ;;
   cleanup)
     docker rm -f "$NEIGHBOR" > /dev/null 2>&1 || true

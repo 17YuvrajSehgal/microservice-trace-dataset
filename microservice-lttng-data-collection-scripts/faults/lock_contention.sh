@@ -52,8 +52,10 @@ case "${1:-}" in
       aggressive) THREADS="${THREADS:-16}" HOLD_US="${HOLD_US:-200}" WORK_US="${WORK_US:-50}"  CPUS="${CPUS:-2.0}" ;;
       *) echo "unknown intensity: $INTENSITY"; exit 1 ;;
     esac
-    workload_start "$CONTAINER" lock_contention.py "$CPUS" -- "$THREADS" "$HOLD_US" "$WORK_US"
+    # gt_begin stamps the start of the incident window, so it must come BEFORE the fault
+    # starts. Stamping after put the ramp-up in the baseline.
     gt_begin "$INTENSITY" "{\"threads\": $THREADS, \"hold_us\": $HOLD_US, \"work_us\": $WORK_US, \"cpus_cap\": $CPUS, \"container\": \"$CONTAINER\", \"lock_type\": \"user-level futex\"}"
+    workload_start "$CONTAINER" lock_contention.py "$CPUS" -- "$THREADS" "$HOLD_US" "$WORK_US"
     ;;
   cleanup)  workload_stop "$CONTAINER"; gt_end ;;
   status)   workload_status "$CONTAINER" ;;

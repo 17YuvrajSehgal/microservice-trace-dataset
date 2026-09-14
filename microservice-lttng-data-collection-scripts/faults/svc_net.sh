@@ -38,10 +38,14 @@ case "${1:-}" in
     esac
     PID="$(container_pid)"
     [ -n "$PID" ] && [ "$PID" != "0" ] || { echo "cannot resolve PID for $CONTAINER"; exit 1; }
+    # gt_begin FIRST: it stamps the start of the incident window, so anything done
+    # before it is counted as baseline. Disrupting first put part of the fault in the
+    # baseline - measured at up to 50%% retransmission on anomaly_net. The ramp-up now
+    # lands inside the incident window, which is where it belongs.
+    gt_begin "$INTENSITY" "{\"container\": \"$CONTAINER\", \"iface\": \"$IFACE\", \"delay_ms\": $DELAY, \"jitter_ms\": $JITTER, \"loss_pct\": $LOSS}"
     echo "[svc_net] netem on $CONTAINER (pid $PID) $IFACE"
     sudo nsenter -t "$PID" -n tc qdisc add dev "$IFACE" root netem \
         delay "${DELAY}ms" "${JITTER}ms" distribution normal loss "${LOSS}%"
-    gt_begin "$INTENSITY" "{\"container\": \"$CONTAINER\", \"iface\": \"$IFACE\", \"delay_ms\": $DELAY, \"jitter_ms\": $JITTER, \"loss_pct\": $LOSS}"
     ;;
   cleanup)
     PID="$(container_pid)"

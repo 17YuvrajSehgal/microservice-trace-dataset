@@ -57,8 +57,10 @@ case "${1:-}" in
     esac
     # Loopback inside the container: the stall is a property of the TCP state machine, not of
     # the physical path, so it reproduces without touching the application network.
-    workload_start "$CONTAINER" nagle_delayed_ack.py "$CPUS" -- "$CONNS" 100000
+    # gt_begin stamps the start of the incident window, so it must come BEFORE the fault
+    # starts. Stamping after put the ramp-up in the baseline.
     gt_begin "$INTENSITY" "{\"connections\": $CONNS, \"cpus_cap\": $CPUS, \"container\": \"$CONTAINER\", \"expected_stall_ms\": 100, \"expected_stall_note\": \"measured on the collection VM: median 99.48 / p95 100.66; Linux minimum RTO, not the textbook 40 ms BSD delayed-ACK timer\", \"control\": \"identical exchange with TCP_NODELAY runs alongside\"}"
+    workload_start "$CONTAINER" nagle_delayed_ack.py "$CPUS" -- "$CONNS" 100000
     ;;
   cleanup)  workload_stop "$CONTAINER"; gt_end ;;
   status)   workload_status "$CONTAINER" ;;
