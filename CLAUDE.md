@@ -129,6 +129,30 @@ Check `tools/bt21.sh --version` says 2.1.2.
 
 Project **`teleeporter`**, zone **us-east1-d**, billing account 017712-7348A8-7FAB01.
 
+**A REPLACEMENT SOCK SHOP VM EXISTS AGAIN as of 2026-09-14**, built to re-collect the runs
+the audit found unusable. `stratatrace-ss`, us-east1-d, `n2-custom-12-40960` (12 vCPU, 40 GB)
+- the SAME shape as the original, which matters because `thief_share` and `BIG_THIEF_SHARE`
+divide by core count and `anomaly_mem` sizes itself as a fraction of RAM. 200 GB pd-balanced
+boot + 1 TB pd-standard archive mounted at `/mnt/archive`. Repo checked out on branch
+`blueprints`, which is where the recipe fixes live - `master` still has the broken ordering.
+
+Two things learned building it:
+- **SSH from Windows does not work.** `plink.exe` prompts for the host key and eats stdin, so
+  any piped script arrives mangled or empty. Use WSL: the key is copied to `~/.ssh/gce_key`
+  and there is an `ssvm` host entry in WSL's `~/.ssh/config`. Same class of problem as the
+  Trillium note above.
+- **Kernel is 7.0.0-1011-gcp, not the 6.17 recorded below.** LTTng 2.15.1 builds and loads on
+  it, and a smoke trace recorded 30,000 events read back cleanly by babeltrace2. Verified
+  rather than assumed - `lttng list --kernel` output formatting changed, so counting its lines
+  gives 0 and looks broken. Record a trace and read it back; that is the only test that means
+  anything.
+
+Cost: about $0.50/hour running, plus roughly $60/month for the two disks whether it runs or
+not. Stop it when idle - `gcloud compute instances stop stratatrace-ss --zone=us-east1-d` -
+the disks persist.
+
+The original pair:
+
 **BOTH VMs AND ALL FOUR DISKS WERE DELETED 2026-09-07.** `stratatrace-ss`
 (n2-custom-12-40960) and `stratatrace-tt` (n2-standard-16), each with a 200 GB pd-balanced boot
 disk and a 1 TB pd-standard archive disk, are gone. Nothing of this project remains in
