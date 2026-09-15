@@ -380,7 +380,7 @@
    "direction": "decrease",
    "canonical": true,
    "expected_to_fail": true,
-   "note": "MEASURED FLAT, 2026-09-15. Plotted across a whole run, catalogue request rate is 264.1/s at injection start and 263.7/s at injection end - unchanged. The 0.2 -> 262 step happens FORTY SECONDS EARLIER and is the load generator spinning up (CAMPAIGN-ISSUES 20). An earlier version of this target was set to expect that rise and 'confirmed' runs on it, which detected the load generator rather than the fault. The defect is real - the smoke test measures 4.00x slowdown - but no Prometheus series moves with it. Marked expected_to_fail so this reports no_metric_signature, which is a finding, not a broken run."
+   "note": "MEASURED FLAT, 2026-09-15. Plotted across a whole run, catalogue request rate is 264.1/s at injection start and 263.7/s at injection end - unchanged. The 0.2 -> 262 step happens FORTY SECONDS EARLIER and is the load generator spinning up (CAMPAIGN-ISSUES 20). An earlier version of this target was set to expect that rise and 'confirmed' runs on it, which detected the load generator rather than the fault. The defect is real - the smoke test measures 4.00x slowdown - but no Prometheus series moves with it. Injection and recovery means are equal (within 1%), which is the load ramp and not the fault. Two SIBLING families (code_event_loop_block, code_serial_awaits) DO move this metric - they are front-end Node defects that stall a single-threaded event loop, whereas this one is Go in catalogue where concurrency absorbs the per-request slowdown. Marked expected_to_fail so this reports no_metric_signature, which is a finding, not a broken run."
   }
  ],
  "code_n_plus_one": [
@@ -390,27 +390,25 @@
    "direction": "decrease",
    "canonical": true,
    "expected_to_fail": true,
-   "note": "MEASURED FLAT, 2026-09-15. Plotted across a whole run, catalogue request rate is 264.1/s at injection start and 263.7/s at injection end - unchanged. The 0.2 -> 262 step happens FORTY SECONDS EARLIER and is the load generator spinning up (CAMPAIGN-ISSUES 20). An earlier version of this target was set to expect that rise and 'confirmed' runs on it, which detected the load generator rather than the fault. The defect is real - the smoke test measures 5.33x slowdown - but no Prometheus series moves with it. Marked expected_to_fail so this reports no_metric_signature, which is a finding, not a broken run."
+   "note": "MEASURED FLAT, 2026-09-15. Plotted across a whole run, catalogue request rate is 264.1/s at injection start and 263.7/s at injection end - unchanged. The 0.2 -> 262 step happens FORTY SECONDS EARLIER and is the load generator spinning up (CAMPAIGN-ISSUES 20). An earlier version of this target was set to expect that rise and 'confirmed' runs on it, which detected the load generator rather than the fault. The defect is real - the smoke test measures 5.33x slowdown - but no Prometheus series moves with it. Injection and recovery means are equal (within 1%), which is the load ramp and not the fault. Two SIBLING families (code_event_loop_block, code_serial_awaits) DO move this metric - they are front-end Node defects that stall a single-threaded event loop, whereas this one is Go in catalogue where concurrency absorbs the per-request slowdown. Marked expected_to_fail so this reports no_metric_signature, which is a finding, not a broken run."
   }
  ],
  "code_event_loop_block": [
   {
-   "name": "catalogue_throughput_flat_expected",
+   "name": "catalogue_throughput_drop",
    "promql": "sum(rate(http_request_duration_seconds_count{job=\"catalogue\"}[1m]))",
    "direction": "decrease",
    "canonical": true,
-   "expected_to_fail": true,
-   "note": "MEASURED FLAT, 2026-09-15. Plotted across a whole run, catalogue request rate is 264.1/s at injection start and 263.7/s at injection end - unchanged. The 0.2 -> 262 step happens FORTY SECONDS EARLIER and is the load generator spinning up (CAMPAIGN-ISSUES 20). An earlier version of this target was set to expect that rise and 'confirmed' runs on it, which detected the load generator rather than the fault. The defect is real - the smoke test measures 43.12x slowdown - but no Prometheus series moves with it. Marked expected_to_fail so this reports no_metric_signature, which is a finding, not a broken run."
+   "note": "MEASURED VISIBLE, 2026-09-15 (5 runs). Catalogue request rate falls to 0.27-0.39x of baseline during injection and recovers to 122-134/s afterwards, with the same image running throughout - only the /dev/shm flag changed. Smoke test measures 43.12x slowdown. This is a front-end (Node) defect: the event loop is single-threaded, so blocking it stalls every request and catalogue stops being called. NOTE the sigma test fails here (sigma_ok=false) because the baseline window includes the load generator ramping up, which inflates baseline_std - see CAMPAIGN-ISSUES 20. The verdict rests on direction plus fraction, corroborated by the recovery window."
   }
  ],
  "code_serial_awaits": [
   {
-   "name": "catalogue_throughput_flat_expected",
+   "name": "catalogue_throughput_drop",
    "promql": "sum(rate(http_request_duration_seconds_count{job=\"catalogue\"}[1m]))",
    "direction": "decrease",
    "canonical": true,
-   "expected_to_fail": true,
-   "note": "MEASURED FLAT, 2026-09-15. Plotted across a whole run, catalogue request rate is 264.1/s at injection start and 263.7/s at injection end - unchanged. The 0.2 -> 262 step happens FORTY SECONDS EARLIER and is the load generator spinning up (CAMPAIGN-ISSUES 20). An earlier version of this target was set to expect that rise and 'confirmed' runs on it, which detected the load generator rather than the fault. The defect is real - the smoke test measures 18.99x slowdown - but no Prometheus series moves with it. Marked expected_to_fail so this reports no_metric_signature, which is a finding, not a broken run."
+   "note": "MEASURED VISIBLE, 2026-09-15 (5 runs). Catalogue request rate falls to 0.52-0.54x of baseline during injection and recovers to 127-136/s afterwards, with the same image running throughout - only the /dev/shm flag changed. Smoke test measures 18.99x slowdown. This is a front-end (Node) defect: the event loop is single-threaded, so blocking it stalls every request and catalogue stops being called. NOTE the sigma test fails here (sigma_ok=false) because the baseline window includes the load generator ramping up, which inflates baseline_std - see CAMPAIGN-ISSUES 20. The verdict rests on direction plus fraction, corroborated by the recovery window."
   }
  ],
  "code_unbounded_cache": [
@@ -420,7 +418,7 @@
    "direction": "decrease",
    "canonical": true,
    "expected_to_fail": true,
-   "note": "MEASURED FLAT, 2026-09-15. Plotted across a whole run, catalogue request rate is 264.1/s at injection start and 263.7/s at injection end - unchanged. The 0.2 -> 262 step happens FORTY SECONDS EARLIER and is the load generator spinning up (CAMPAIGN-ISSUES 20). An earlier version of this target was set to expect that rise and 'confirmed' runs on it, which detected the load generator rather than the fault. The defect is real - the smoke test measures memory growth with latency flat at 1.00x - but no Prometheus series moves with it. Marked expected_to_fail so this reports no_metric_signature, which is a finding, not a broken run."
+   "note": "MEASURED FLAT, 2026-09-15. Plotted across a whole run, catalogue request rate is 264.1/s at injection start and 263.7/s at injection end - unchanged. The 0.2 -> 262 step happens FORTY SECONDS EARLIER and is the load generator spinning up (CAMPAIGN-ISSUES 20). An earlier version of this target was set to expect that rise and 'confirmed' runs on it, which detected the load generator rather than the fault. The defect is real - the smoke test measures memory growth with latency flat at 1.00x - but no Prometheus series moves with it. Injection and recovery means are equal (within 1%), which is the load ramp and not the fault. Two SIBLING families (code_event_loop_block, code_serial_awaits) DO move this metric - they are front-end Node defects that stall a single-threaded event loop, whereas this one is Go in catalogue where concurrency absorbs the per-request slowdown. Marked expected_to_fail so this reports no_metric_signature, which is a finding, not a broken run."
   },
   {
    "name": "front_end_memory_growth",

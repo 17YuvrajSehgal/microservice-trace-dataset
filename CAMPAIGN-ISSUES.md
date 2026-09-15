@@ -642,3 +642,42 @@ same shape as the `arm`-before-tracing fix in issue 17.
 
 **Do not "discover" this again and change it in place.** A run collected with a settled
 baseline is not comparable with the 303 that were not.
+
+---
+
+## Issue 21 - RESOLVED: issue 17 re-collection done, and two code defects turned out metric-visible
+
+**Closed 2026-09-15.** All five code-defect families re-collected on the replacement VM with the
+`arm`/`inject` split from issue 17. **26 of 26 runs usable** (25 campaign + 1 proof run).
+
+While re-verifying them, the shared canonical target caught something the old contaminated runs
+could not show. Catalogue request rate, median of 5 runs per family:
+
+| family | baseline | injection | recovery | reads as |
+|---|---|---|---|---|
+| `code_lock_across_io` | 106.5 | 262.2 | 262.7 | ramp only |
+| `code_n_plus_one` | 104.1 | 255.9 | 255.0 | ramp only |
+| `code_unbounded_cache` | 99.8 | 245.9 | 247.2 | ramp only |
+| `code_event_loop_block` | 102.8 | **34.3** | **122.4** | real |
+| `code_serial_awaits` | 93.6 | **50.5** | **132.4** | real |
+
+**Read the recovery column, not the baseline.** Baseline is contaminated by the load ramp (issue
+20), so baseline-to-injection ratios mean little. Injection-to-recovery is clean: both windows run
+the identical container image, and only the `/dev/shm` flag differs. Where injection equals
+recovery, nothing happened. Where the rate falls and then returns, the fault is real.
+
+Both visible families are front-end Node defects - a single-threaded event loop, so blocking it
+stalls every request. The three invisible ones are Go in catalogue, where concurrency absorbs the
+per-request slowdown and offered throughput does not change.
+
+**Targets updated:** the two visible families lost `expected_to_fail` and now verify normally;
+the other three keep it and report `no_metric_signature`.
+
+**Two caveats carried forward, neither resolved:**
+
+1. `sigma_ok=false` on both visible families. The load ramp inflates `baseline_std`, so the sigma
+   test cannot fire. Verdicts rest on direction + fraction, corroborated by recovery. Another
+   consequence of issue 20.
+2. Settled catalogue rate is ~130/s in front-end-defect runs but ~250/s in catalogue-defect runs
+   under the same load profile. Within-run comparisons are unaffected. **Do not compare absolute
+   rates across the two groups** until this is explained.
