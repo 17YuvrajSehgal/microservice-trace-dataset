@@ -373,9 +373,61 @@
    "expected_to_fail": true
   }
  ],
- "code_lock_across_io": [],
- "code_n_plus_one": [],
- "code_event_loop_block": [],
- "code_serial_awaits": [],
- "code_unbounded_cache": []
+ "code_lock_across_io": [
+  {
+   "name": "catalogue_throughput_flat_expected",
+   "promql": "sum(rate(http_request_duration_seconds_count{job=\"catalogue\"}[1m]))",
+   "direction": "decrease",
+   "canonical": true,
+   "expected_to_fail": true,
+   "note": "MEASURED FLAT, 2026-09-15. Plotted across a whole run, catalogue request rate is 264.1/s at injection start and 263.7/s at injection end - unchanged. The 0.2 -> 262 step happens FORTY SECONDS EARLIER and is the load generator spinning up (CAMPAIGN-ISSUES 20). An earlier version of this target was set to expect that rise and 'confirmed' runs on it, which detected the load generator rather than the fault. The defect is real - the smoke test measures 4.00x slowdown - but no Prometheus series moves with it. Marked expected_to_fail so this reports no_metric_signature, which is a finding, not a broken run."
+  }
+ ],
+ "code_n_plus_one": [
+  {
+   "name": "catalogue_throughput_flat_expected",
+   "promql": "sum(rate(http_request_duration_seconds_count{job=\"catalogue\"}[1m]))",
+   "direction": "decrease",
+   "canonical": true,
+   "expected_to_fail": true,
+   "note": "MEASURED FLAT, 2026-09-15. Plotted across a whole run, catalogue request rate is 264.1/s at injection start and 263.7/s at injection end - unchanged. The 0.2 -> 262 step happens FORTY SECONDS EARLIER and is the load generator spinning up (CAMPAIGN-ISSUES 20). An earlier version of this target was set to expect that rise and 'confirmed' runs on it, which detected the load generator rather than the fault. The defect is real - the smoke test measures 5.33x slowdown - but no Prometheus series moves with it. Marked expected_to_fail so this reports no_metric_signature, which is a finding, not a broken run."
+  }
+ ],
+ "code_event_loop_block": [
+  {
+   "name": "catalogue_throughput_flat_expected",
+   "promql": "sum(rate(http_request_duration_seconds_count{job=\"catalogue\"}[1m]))",
+   "direction": "decrease",
+   "canonical": true,
+   "expected_to_fail": true,
+   "note": "MEASURED FLAT, 2026-09-15. Plotted across a whole run, catalogue request rate is 264.1/s at injection start and 263.7/s at injection end - unchanged. The 0.2 -> 262 step happens FORTY SECONDS EARLIER and is the load generator spinning up (CAMPAIGN-ISSUES 20). An earlier version of this target was set to expect that rise and 'confirmed' runs on it, which detected the load generator rather than the fault. The defect is real - the smoke test measures 43.12x slowdown - but no Prometheus series moves with it. Marked expected_to_fail so this reports no_metric_signature, which is a finding, not a broken run."
+  }
+ ],
+ "code_serial_awaits": [
+  {
+   "name": "catalogue_throughput_flat_expected",
+   "promql": "sum(rate(http_request_duration_seconds_count{job=\"catalogue\"}[1m]))",
+   "direction": "decrease",
+   "canonical": true,
+   "expected_to_fail": true,
+   "note": "MEASURED FLAT, 2026-09-15. Plotted across a whole run, catalogue request rate is 264.1/s at injection start and 263.7/s at injection end - unchanged. The 0.2 -> 262 step happens FORTY SECONDS EARLIER and is the load generator spinning up (CAMPAIGN-ISSUES 20). An earlier version of this target was set to expect that rise and 'confirmed' runs on it, which detected the load generator rather than the fault. The defect is real - the smoke test measures 18.99x slowdown - but no Prometheus series moves with it. Marked expected_to_fail so this reports no_metric_signature, which is a finding, not a broken run."
+  }
+ ],
+ "code_unbounded_cache": [
+  {
+   "name": "catalogue_throughput_flat_expected",
+   "promql": "sum(rate(http_request_duration_seconds_count{job=\"catalogue\"}[1m]))",
+   "direction": "decrease",
+   "canonical": true,
+   "expected_to_fail": true,
+   "note": "MEASURED FLAT, 2026-09-15. Plotted across a whole run, catalogue request rate is 264.1/s at injection start and 263.7/s at injection end - unchanged. The 0.2 -> 262 step happens FORTY SECONDS EARLIER and is the load generator spinning up (CAMPAIGN-ISSUES 20). An earlier version of this target was set to expect that rise and 'confirmed' runs on it, which detected the load generator rather than the fault. The defect is real - the smoke test measures memory growth with latency flat at 1.00x - but no Prometheus series moves with it. Marked expected_to_fail so this reports no_metric_signature, which is a finding, not a broken run."
+  },
+  {
+   "name": "front_end_memory_growth",
+   "promql": "sum(container_memory_usage_bytes{name=~\".*front-end_1$\"})",
+   "direction": "increase",
+   "canonical": false,
+   "note": "Recorded, not decisive. The defect never frees, so memory is its only signal - but over a 120 s window the growth is small against a 40 GB host, which is why it cannot carry the verdict."
+  }
+ ]
 }
