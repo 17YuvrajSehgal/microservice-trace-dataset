@@ -124,3 +124,51 @@ lives in `../agentic-rca/`; these are the dataset-side tools that feed it.
   bundles); the push ships them as `_aux_metrics_load.tar.gz` per app.
 - "Very carefully": writes are atomic (`.partial`→`mv`), the push is resumable, and `--verify`
   tar-tests each archive and checks its run count against the source before you delete anything.
+
+---
+
+## Pulling instead of pushing (15 Sept 2026)
+
+**`push_to_trillium.sh` no longer works unattended.** Alliance requires a second factor even
+when a CCDB-registered key passes as the first:
+
+```
+debug1: Server accepts key: ... ED25519 SHA256:Zexa...B78
+Authenticated using "publickey" with partial success.
+debug1: Authentications that can continue: keyboard-interactive,hostbased
+```
+
+"Partial success" means the key was accepted and Duo still wants a passcode. `BatchMode` cannot
+answer that, so section A above (VM key in Trillium `authorized_keys`) is dead for automation.
+
+**Measured the same day: `tri-login02` can open port 22 outbound to the VM.** So invert the
+direction - Trillium dials the VM. Your normal MFA login is the only interactive step, and you
+were going to do it anyway.
+
+```bash
+ssh trillium                                   # normal Duo login, once
+VM_HOST=$(gcloud compute instances describe stratatrace-ss --zone=us-east1-d \
+    --format='get(networkInterfaces[0].accessConfigs[0].natIP)')   # run this locally
+DEST=/scratch/yuvraj17/stratatrace/v2/sockshop VM_HOST=$VM_HOST ./pull_from_vm.sh
+./pull_from_vm.sh --verify
+```
+
+### The key on the VM is restricted, on purpose
+
+The private half lives on `tri-login02`, a **shared multi-user login node**. An unrestricted key
+there is a shell on the VM for anyone who can read it. So the VM's `authorized_keys` binds it to
+a forced command:
+
+```
+command="/home/17yuv/bin/export_recipe.sh",no-port-forwarding,no-agent-forwarding,
+no-X11-forwarding,no-pty,no-user-rc ssh-ed25519 AAAA...
+```
+
+`export_recipe.sh` (in this directory; install it to `~/bin/` on the VM) accepts exactly three
+things: `list`, `sizes`, or one recipe name matching `[a-z0-9_]+` that exists under
+`/mnt/archive/runs`. Anything else exits 2. Remove the key when the transfer is verified.
+
+### The VM's external IP is ephemeral
+
+It changes on every stop/start. Re-read it after each restart; `pull_from_vm.sh` fails loudly
+rather than hanging when it is stale.
