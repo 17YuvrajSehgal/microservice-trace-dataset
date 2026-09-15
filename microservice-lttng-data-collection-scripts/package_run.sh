@@ -114,8 +114,19 @@ quality = {
     "has_memory_tracepoints": bool(re.search(r"\bvmscan_|\bkmem_", enabled)),
     "enabled_events_recorded": bool(enabled),
 }
+# Which verdicts count as usable. This list MUST match check_run_quality.py - the two used to
+# disagree, and the disagreement was silent. `no_metric_signature` was missing here, so on
+# 15 Sept the 16 re-collected code-defect runs were `usable` to check_run_quality.py and NOT
+# usable to this script, from the same verification.json.
+#
+# `no_metric_signature` means the metric checks RAN and no series could see the fault. That is
+# a finding about metrics, not a broken run - three of the five code-defect families are
+# genuinely invisible to Prometheus while the kernel trace shows them plainly.
+# `unconfirmed` is the opposite: the checks ran and should have seen something. That is bad.
+# `no_targets` stays out too - nothing was registered to check, so the run makes no claim.
+USABLE_VERDICTS = ("confirmed", "n/a", "borderline", "no_metric_signature")
 usable = (quality["event_loss"].get("clean") is not False
-          and quality["verification"] in ("confirmed", "n/a", "borderline"))
+          and quality["verification"] in USABLE_VERDICTS)
 quality["usable"] = usable
 quality["why_not"] = None if usable else (
     "events were discarded" if quality["event_loss"].get("clean") is False
