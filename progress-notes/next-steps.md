@@ -1,72 +1,86 @@
 # Next steps
 
-_Updated 9 September 2026. Waiting on Trillium, back on 10 September._
+_Updated 15 September 2026._
 
 ## Where things stand
 
-303 runs collected and archived (Sock Shop 169, Train Ticket 134), 1.18 TB, four modalities in
-every run, 302/303 kernel traces with zero event loss. Full inventory:
+The 25 contaminated code-defect runs are re-collected and verified. **26 of 26 usable**
+(25 campaign runs + 1 proof run). Baseline no longer contains a container restart.
+
+**These 26 runs exist only on the collection VM.** They are not on Trillium yet. That is the
+one thing worth acting on quickly.
+
+The rest of v2 (303 runs, 1.18 TB) is on Trillium. Inventory:
 `blueprints/docs/DATASET-v2-INVENTORY.md`. Known problems: `CAMPAIGN-ISSUES.md`.
 
-Both VMs are still RUNNING. Nothing outstanding needs them except the transfer itself and any
-re-scoring against live Prometheus — and the Prometheus TSDBs are already snapshotted to
-`/mnt/archive/prometheus/` on each VM and copied locally, so even that is no longer a reason to
-keep them up.
+## The result from this collection
+
+Two of the five code defects DO move a metric. Three do not. See
+`progress-notes/15-09-2026/decisions.md` and CAMPAIGN-ISSUES 21.
+
+| family | baseline | injection | recovery | reads as |
+|---|---|---|---|---|
+| `code_lock_across_io` | 106.5 | 262.2 | 262.7 | ramp only |
+| `code_n_plus_one` | 104.1 | 255.9 | 255.0 | ramp only |
+| `code_unbounded_cache` | 99.8 | 245.9 | 247.2 | ramp only |
+| `code_event_loop_block` | 102.8 | **34.3** | **122.4** | real |
+| `code_serial_awaits` | 93.6 | **50.5** | **132.4** | real |
+
+Trace volume agrees independently: the two visible families produced 14–15 GB per family, the
+three invisible ones 26–33 GB. Throughput fell, so fewer kernel events.
 
 ## Next, in order
 
-Everything below is ready. Nothing is blocked except by the cluster.
+### 1. Get the 26 runs off the VM — BLOCKED, needs you
 
-### When Trillium is back (10 Sept), do this first
+`transfer/push_to_trillium.sh` is ready and pigz is installed, but the new VM has **no SSH key
+for Trillium**. SciNet needs key + MFA, so this needs you:
 
-    wsl.exe -d Ubuntu -- bash -lc "ssh -fNM trillium"     # one Duo login, from the laptop
-    cd /scratch/yuvraj17/stratatrace/repo && git pull
-    sbatch blueprints/lib/cluster-v2_packs.sbatch blueprints/lib/tasks-v2-uncovered.txt
+```bash
+# on the VM
+ssh-keygen -t ed25519 -f ~/.ssh/trillium -N ""
+cat ~/.ssh/trillium.pub          # add this at https://ccdb.alliancecan.ca -> Manage SSH Keys
+```
 
-That builds 156 evidence packs for the fault families with no blueprint. About 45 minutes on one
-node. It skips packs that already exist, so it is safe to resubmit.
+Then the push is one command:
 
-The previous job (2280376) was cancelled while the cluster was in maintenance.
+```bash
+DEST_ROOT=/scratch/yuvraj17/stratatrace/v2 SRC=/mnt/archive/runs APP=sockshop \
+    ./push_to_trillium.sh
+```
 
-### Then, in order
+114 GB. GCP egress is roughly $14. Verify after with `./push_to_trillium.sh --verify`.
 
-1. **Measure before writing anything.**
+### 2. Stop the VM once the transfer is done
 
-       python blueprints/lib/derive_v2_thresholds.py --packs <packs> --tasks <tasks-v2-uncovered>
+It bills about $0.50/hr while running. The disk persists when stopped.
 
-   Add the new families to `RULES` in that script first. It reports, per signal per application,
-   whether a cut separates the fault from every other family. A signal that works on one
-   application is reported as failing, never averaged.
+### 3. Rebuild packs on Trillium so `baseline_quiet` can run over the new runs
 
-2. **Write blueprints only for what separates.** A fault with no separating signal is a result to
-   report, not a gap to hide.
+### 4. Still to re-collect — both need a decision, neither is quick
 
-3. **The five likely-easy ones**, because their signals are already extracted:
-   `resource_abuse` (thief_cores), `lock_contention` and `deadlock` (futex shape), `anomaly_mem`
-   (interrupt time), the five `code_*` (endpoint slowdown).
+| what | runs | why it is not quick |
+|---|---|---|
+| `svc_net` on Train Ticket | 4 | needs a Train Ticket stack; not deployed on this VM |
+| `tt_slow_db_subtle` r3 | 1 | same |
+| `dns_delay` r4 | 1 | no `dns_delay` runs exist on this VM, so re-running the family collects 5, not 1 (~45 min) |
 
-4. **The five needing the new probe**: `fork_storm`, `fd_exhaustion`, `conn_pool_exhaustion`,
-   `data_exfiltration`, `dns_delay`, `priority_inversion`. `process_probe.py` is written and
-   verified on a real run.
+Train Ticket code defects remain a separate decision — real work, worth it only if we want
+those five faults in the paper for both apps.
 
-5. **Run the with/without agent comparison on v2.** Everything measured so far is the rule engine.
-   This is what the demo needs.
+## Open questions, carried forward
 
-6. **The parent/child blueprint hierarchy.** Agreed at the 2 Sept meeting, never added to the task
-   list, never started.
+1. The sigma test cannot fire on the two visible families. The load ramp inflates
+   `baseline_std` (CAMPAIGN-ISSUES 20), so verdicts rest on direction + fraction plus the
+   recovery window.
+2. Settled catalogue rate is ~130/s in front-end-defect runs but ~250/s in catalogue-defect
+   runs under the same load. Within-run comparisons are fine. **Do not compare absolute rates
+   across the two groups** until this is explained.
 
-7. **fault_catalog.md pre-registration** for the 15 new families.
+## Older items still open
 
-### Out of scope, decided and measured
-
-`dependency_outage`, `queue_backlog` and `error_storm` cannot be seen in kernel traces. They
-belong on the out-of-scope list, not the backlog. That leaves 16 problems to cover, not 19.
-
-### Known limits to carry
-
-- `service-cpu-throttle` and `datastore-wait` cannot be re-derived: Train Ticket has zero
-  confirmed runs for `svc_cpu_cap` or `slow_db`.
-- Train Ticket reports all ~40 Java services as one process name, so per-process signals are
-  diluted there. Flow-based signals (endpoint latency) are not.
-- Baseline host load drifted 4.6x during collection, so absolute levels partly measure when a run
-  happened. Within-run ratios are unaffected.
+- H1: with/without agent comparison
+- H2: parent/child blueprint tree
+- I1: `service-memory-cap` vs `anomaly_mem`
+- `explanation.txt` and `recommended_action.txt` are declared by blueprints but written by
+  nothing
