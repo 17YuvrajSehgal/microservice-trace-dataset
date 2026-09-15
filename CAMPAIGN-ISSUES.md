@@ -595,3 +595,50 @@ the injection failed - it means no metric target can see this fault. The kernel 
 of the 5 runs. r4 is a genuine failed injection, but the status alone cannot say so.
 
 Full write-up: `blueprints/docs/RESULTS-verification-filter.md`.
+
+---
+
+## Issue 20 - ACCEPTED: the baseline window includes the load generator ramping up
+
+**Found 2026-09-15. Affects analysis. Deliberately NOT fixed - see the decision below.**
+
+`run_scenario.sh` starts the load generator and immediately begins the baseline sleep, so the
+baseline window is `[load_start, load_start + 60s]`. The load takes roughly 25 seconds to spin
+up to 150 users, which means the first ~25 seconds of every 60-second baseline carries little
+or no traffic.
+
+Measured on `code_lock_across_io_aggressive_steady_r1`, catalogue request rate across a whole
+run:
+
+| time, relative to injection start | requests/s |
+|---|---|
+| -70 s | 0.2 |
+| -40 s | 153.0 |
+| -20 s | 261.9 |
+| **0 s (injection starts)** | **264.1** |
+| +120 s (injection ends) | 263.7 |
+
+The rate steps up **40 seconds before the injection** and is flat across the injection
+boundary.
+
+**Consequence.** Baseline rates are understated, so every incident-against-baseline ratio is
+somewhat inflated. It does not change which runs contain their faults, and it does not touch
+anything measured inside a single window.
+
+**How it was found.** Not by looking for it. I changed a code-defect verification target to
+expect a rate INCREASE, having seen 110.8 -> 273.5 on one run and reasoned that an N+1 defect
+issues more queries. The run confirmed. Then `code_lock_across_io` - a mutex held across I/O,
+a completely different fault - produced 101-109 -> 252-260, the same number. Two unrelated
+defects cannot share a signature, and plotting the rate showed why.
+
+**DECISION (Yuvraj, 2026-09-15): leave it.** All 303 v2 runs were collected this way, so the
+distortion is uniform across the dataset and the re-collected runs stay directly comparable
+with the ones they replace. Replacing contaminated runs with clean-but-incomparable ones would
+trade a known problem for a worse one.
+
+Fix it deliberately in a future collection, not mid-campaign: either start the load generator
+before tracing opens, or add a settle period before the baseline window begins. Both are the
+same shape as the `arm`-before-tracing fix in issue 17.
+
+**Do not "discover" this again and change it in place.** A run collected with a settled
+baseline is not comparable with the 303 that were not.
