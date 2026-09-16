@@ -1,0 +1,184 @@
+{
+  "_comment": [
+    "SHARED SYMPTOM VOCABULARY.",
+    "",
+    "WHY THIS FILE EXISTS. Before it, each blueprint invented its own symptom words. There were",
+    "24 words across 11 blueprints and 22 of them were used by exactly one blueprint. So picking",
+    "a blueprint by matching words would have scored near-perfect - not because selection works,",
+    "but because each word named its own answer. Any selection number built on that is worthless.",
+    "",
+    "The rule now: a blueprint may only use words from this file. It may not add a private one.",
+    "Blueprints that look alike are then forced to share words, and selection has to do real work.",
+    "",
+    "The words are grouped on axes (scope, errors, latency, throughput, resource, network).",
+    "Grouping is deliberate: two different faults that both slow one service must both say",
+    "scope.single_component, and something else has to tell them apart.",
+    "",
+    "STATUS: PROPOSED, NOT MEASURED. The words were derived by reading the 11 existing blueprints.",
+    "Which words are actually TRUE for each fault family has not been measured yet. That needs",
+    "running the survey over the labelled packs. Until then no blueprint's symptom list is evidence.",
+    "",
+    "`measured_by` names the capability that decides the word. Words with capability null are not",
+    "yet measurable and must not be used in selection."
+  ],
+  "version": 1,
+  "status": "proposed-not-measured",
+  "axes": {
+    "scope": {
+      "what": "How much of the system is affected, and in what shape.",
+      "note": "Exactly one scope word should be true per incident.",
+      "words": {
+        "scope.single_component": {
+          "what": "One service or container is slow. The rest are fine.",
+          "measured_by": "endpoint.latency_by_component"
+        },
+        "scope.several_components": {
+          "what": "Several services degrade at the same time, but not all.",
+          "measured_by": "endpoint.latency_by_component"
+        },
+        "scope.host_wide": {
+          "what": "Everything on the host degrades together.",
+          "measured_by": "endpoint.latency_by_component"
+        },
+        "scope.along_a_path": {
+          "what": "The slowdown follows a caller-callee path, not one component.",
+          "measured_by": "endpoint.latency_by_pair"
+        }
+      }
+    },
+    "errors": {
+      "what": "Are requests failing, or only slow?",
+      "words": {
+        "errors.none": {
+          "what": "Requests succeed. They are only slower.",
+          "measured_by": "endpoint.error_rate"
+        },
+        "errors.partial": {
+          "what": "Some requests fail while others succeed, at the same time.",
+          "measured_by": "endpoint.error_rate"
+        },
+        "errors.on_connect": {
+          "what": "Failures happen when opening a connection, not when serving.",
+          "measured_by": "syscall.connect_accept_errno"
+        }
+      }
+    },
+    "latency": {
+      "what": "The shape of the slowdown, not its size.",
+      "words": {
+        "latency.raised_steadily": {
+          "what": "Latency is higher and stays higher.",
+          "measured_by": "endpoint.latency_by_component"
+        },
+        "latency.erratic": {
+          "what": "Latency jumps around. Some requests normal, some far worse.",
+          "measured_by": "endpoint.latency_spread"
+        },
+        "latency.connection_setup_slow": {
+          "what": "The delay is before the request starts, at connect time.",
+          "measured_by": "syscall.connect_duration"
+        }
+      }
+    },
+    "throughput": {
+      "what": "Is the system doing more work or less?",
+      "words": {
+        "throughput.down": {
+          "what": "Fewer requests are completing than in the baseline.",
+          "measured_by": "endpoint.request_rate"
+        },
+        "throughput.unchanged": {
+          "what": "Work rate is the same. Only latency moved.",
+          "measured_by": "endpoint.request_rate"
+        }
+      }
+    },
+    "resource": {
+      "what": "What is being consumed, and is anything at its ceiling?",
+      "words": {
+        "resource.host_cpu_saturated": {
+          "what": "Host CPU is at or near the ceiling across all cores.",
+          "measured_by": "kernel.cpu.utilisation_host"
+        },
+        "resource.cpu_busy_not_saturated": {
+          "what": "CPU is clearly busier than baseline but not at the ceiling.",
+          "measured_by": "kernel.cpu.utilisation_host"
+        },
+        "resource.cpu_low_while_slow": {
+          "what": "The system is slow while CPU use is low or falling.",
+          "measured_by": "kernel.cpu.utilisation_by_process"
+        },
+        "resource.disk_busy": {
+          "what": "Disk request rate or service time is well above baseline.",
+          "measured_by": "kernel.block.io_rate"
+        },
+        "resource.memory_pressure": {
+          "what": "Reclaim or allocation stalls appear.",
+          "measured_by": "kernel.memory.reclaim"
+        },
+        "resource.descriptors_exhausted": {
+          "what": "Opening a file or socket fails because the limit is reached.",
+          "measured_by": "syscall.emfile_rate"
+        },
+        "resource.process_churn": {
+          "what": "Processes are being created far faster than baseline.",
+          "measured_by": "kernel.process.fork_rate"
+        },
+        "resource.none_saturated": {
+          "what": "Nothing is near a ceiling, yet the system is slow.",
+          "measured_by": "kernel.cpu.utilisation_host"
+        }
+      }
+    },
+    "waiting": {
+      "what": "What threads are waiting on. This is what kernel traces see and metrics do not.",
+      "words": {
+        "waiting.runqueue": {
+          "what": "Threads are runnable but not getting a CPU.",
+          "measured_by": "kernel.scheduler.runqueue_delay"
+        },
+        "waiting.in_syscall": {
+          "what": "Threads are blocked inside a syscall, waiting on something else.",
+          "measured_by": "kernel.syscall.block_duration"
+        },
+        "waiting.on_lock": {
+          "what": "Threads are parked on a user-level lock.",
+          "measured_by": "kernel.futex.wait"
+        },
+        "suspect.resource_quiet": {
+          "what": "The component everything waits on is itself using no resources.",
+          "measured_by": "kernel.cpu.utilisation_by_process"
+        }
+      }
+    },
+    "network": {
+      "what": "Network health and volume, kept apart on purpose.",
+      "note": "Impairment and volume are different questions. A busy healthy link is not a broken one.",
+      "words": {
+        "network.loss_present": {
+          "what": "Packets are retransmitted or dropped in the queue.",
+          "measured_by": "kernel.net.retransmit_rate"
+        },
+        "network.loss_absent": {
+          "what": "No meaningful retransmission or queue drop.",
+          "measured_by": "kernel.net.retransmit_rate"
+        },
+        "network.outbound_volume_high": {
+          "what": "Sustained outbound bytes well above baseline.",
+          "measured_by": "kernel.net.bytes_by_direction"
+        },
+        "network.name_resolution_slow": {
+          "what": "Name lookups take far longer than baseline.",
+          "measured_by": "kernel.net.dns_latency"
+        }
+      }
+    }
+  },
+  "rules": [
+    "A blueprint may only use words defined here.",
+    "A word used by exactly one blueprint is a warning. It may be naming its own answer.",
+    "A blueprint must declare at least one word that another blueprint also declares.",
+    "Words with measured_by null may not be used for selection.",
+    "Adding a word requires showing two faults that the existing words cannot tell apart."
+  ]
+}
