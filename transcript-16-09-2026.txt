@@ -1,0 +1,634 @@
+
+Yuvraj Sehgal 37 minutes 50 seconds
+Yeah.
+Yuvraj Sehgal 37 minutes 51 seconds
+Same here.
+Yuvraj Sehgal 37 minutes 54 seconds
+Honestly, I don't have much progress on my research. I wasn't feeling very well last week. I had flu or something. But like, yeah, I tried my best and worked on, yeah, sorry, Sneh, you were saying something.
+
+Naser Ezzati-Jivan
+37 minutes 56 seconds37:56
+Naser Ezzati-Jivan 37 minutes 56 seconds
+Ohh.
+Naser Ezzati-Jivan 38 minutes
+Ohh.
+Naser Ezzati-Jivan 38 minutes 4 seconds
+Welcome.
+
+Yuvraj Sehgal
+38 minutes 9 seconds38:09
+Yuvraj Sehgal 38 minutes 9 seconds
+Oh, I thought you shorthand. Okay, so like, it's okay. So like, yeah, basically I was working on some of the points we discussed last week. You mentioned that I should come up with a way to visualise the...
+SP
+Sneh Patel
+38 minutes 11 seconds38:11
+Sneh Patel 38 minutes 11 seconds
+Sorry, Mama, I was...
+
+Yuvraj Sehgal
+38 minutes 25 seconds38:25
+Yuvraj Sehgal 38 minutes 25 seconds
+We like we realise how the anomalies are there and something that could be used by humans to see how we are doing the analysis and all that. So I was doing that and then mainly reading the PhD research I think that you shared, but it is huge. It is 300.
+Yuvraj Sehgal 38 minutes 45 seconds
+So I'm trying to see what is useful for me over there. One thing I haven't still done that is like evaluate the blueprints on how the agents will use blueprints. So I'm struggling with that part. I tried again last week, but results were still like 50, 60%.
+
+Naser Ezzati-Jivan
+38 minutes 48 seconds38:48
+Naser Ezzati-Jivan 38 minutes 48 seconds
+Okay.
+Naser Ezzati-Jivan 38 minutes 51 seconds
+Mm.
+Naser Ezzati-Jivan 38 minutes 57 seconds
+Yeah.
+Naser Ezzati-Jivan 39 minutes 4 seconds
+With that.
+Naser Ezzati-Jivan 39 minutes 8 seconds
+Sneh.
+
+Yuvraj Sehgal
+39 minutes 9 seconds39:09
+Yuvraj Sehgal 39 minutes 9 seconds
+only that they every time they do not end up using the correct blueprint. The blueprint themselves, they give really good results. But when it comes to the agent picking the right blueprint, it is struggling a lot because when it gets the trace, it does not know what kind of anomaly is already present there.
+
+Naser Ezzati-Jivan
+39 minutes 15 seconds39:15
+Naser Ezzati-Jivan 39 minutes 15 seconds
+Hello.
+Naser Ezzati-Jivan 39 minutes 22 seconds
+Mhm.
+
+Yuvraj Sehgal
+39 minutes 30 seconds39:30
+Yuvraj Sehgal 39 minutes 30 seconds
+So, if...
+
+Naser Ezzati-Jivan
+39 minutes 30 seconds39:30
+Naser Ezzati-Jivan 39 minutes 30 seconds
+But that's not a problem for today, you know, for now. We can assume that they're giving the blueprint along with the problem.
+
+Yuvraj Sehgal
+39 minutes 34 seconds39:34
+Yuvraj Sehgal 39 minutes 34 seconds
+Mhm.
+Yuvraj Sehgal 39 minutes 39 seconds
+Okay, so are we evaluating?
+
+Naser Ezzati-Jivan
+39 minutes 39 seconds39:39
+Naser Ezzati-Jivan 39 minutes 39 seconds
+Not a problem, yeah, because we already know the blue thing we know, but we can think about it later. That's not a problem.
+
+Yuvraj Sehgal
+39 minutes 45 seconds39:45
+Yuvraj Sehgal 39 minutes 45 seconds
+Okay, I thought we are doing both right now.
+
+Naser Ezzati-Jivan
+39 minutes 45 seconds39:45
+Naser Ezzati-Jivan 39 minutes 45 seconds
+Yeah, we give it along, along the problem. Hey, this is the problem, along the problem, say, look, this was a blueprint attached, we know about it, because we are not automating, automating everything 100%, just helping the analyzer to use that. So, this is a blueprint, this is the trace, then go ahead and do that.
+
+Yuvraj Sehgal
+40 minutes 2 seconds40:02
+Yuvraj Sehgal 40 minutes 2 seconds
+Okay, so if like say if let's say somebody sees a problem in the system that the system is slow, so they will already know which blueprint to use and we need to evaluate that.
+
+Naser Ezzati-Jivan
+40 minutes 11 seconds40:11
+Naser Ezzati-Jivan 40 minutes 11 seconds
+Something like that. You can assume that for now. You can assume that for now, right? And then...
+
+Yuvraj Sehgal
+40 minutes 14 seconds40:14
+Yuvraj Sehgal 40 minutes 14 seconds
+Okay.
+
+Naser Ezzati-Jivan
+40 minutes 24 seconds40:24
+Naser Ezzati-Jivan 40 minutes 24 seconds
+Yeah.
+
+Yuvraj Sehgal
+40 minutes 24 seconds40:24
+Yuvraj Sehgal 40 minutes 24 seconds
+yeah, how the performance of blueprints are themselves. And then we can do a separate analysis where.
+
+Naser Ezzati-Jivan
+40 minutes 27 seconds40:27
+Naser Ezzati-Jivan 40 minutes 27 seconds
+Yes.
+Naser Ezzati-Jivan 40 minutes 30 seconds
+But then again, with and without blueprint, this is important. Is it the agent doing that or is this our blueprint that we have designed, format and so on does that?
+
+Yuvraj Sehgal
+40 minutes 31 seconds40:31
+Yuvraj Sehgal 40 minutes 31 seconds
+Sneh.
+Yuvraj Sehgal 40 minutes 33 seconds
+Yes, yes.
+Yuvraj Sehgal 40 minutes 38 seconds
+Exactly. So how I was testing that was I give the agent only the trace and then like some scripts to read it like the CTF and all that that we discussed and then it was able to like do the analysis on that that by itself and the results were not that good only like less than 50% if I remember.
+
+Naser Ezzati-Jivan
+40 minutes 46 seconds40:46
+Naser Ezzati-Jivan 40 minutes 46 seconds
+Sneh.
+
+Yuvraj Sehgal
+40 minutes 59 seconds40:59
+Yuvraj Sehgal 40 minutes 59 seconds
+And like with blueprint, it goes up to 70, 80% accuracy. So like out of five runs, it is able to, most of the time, four out of five, five out of five, it is able to see that, yes, the TB related problem is actually present in the traces when we give it the blueprint. So.
+Yuvraj Sehgal 41 minutes 18 seconds
+I can definitely get those final numbers on the.
+
+Naser Ezzati-Jivan
+41 minutes 21 seconds41:21
+Naser Ezzati-Jivan 41 minutes 21 seconds
+So you have the answers and you cheque with that? How do you know that the answer is correct?
+
+Yuvraj Sehgal
+41 minutes 26 seconds41:26
+Yuvraj Sehgal 41 minutes 26 seconds
+Sorry?
+
+Naser Ezzati-Jivan
+41 minutes 27 seconds41:27
+Naser Ezzati-Jivan 41 minutes 27 seconds
+How do you know that the answer is correct?
+
+Yuvraj Sehgal
+41 minutes 29 seconds41:29
+Yuvraj Sehgal 41 minutes 29 seconds
+Because I look at it right, because when it says that according to the blueprint and like here are the results. So in the root cause analysis, it tells us like based on the blueprint, we are seeing these symptoms that are already mentioned in blueprint. So definitely CPU contention problem is present in the system.
+
+Naser Ezzati-Jivan
+41 minutes 49 seconds41:49
+Naser Ezzati-Jivan 41 minutes 49 seconds
+So we already know the answer and we checked with the answer, right?
+
+Yuvraj Sehgal
+41 minutes 52 seconds41:52
+Yuvraj Sehgal 41 minutes 52 seconds
+Exactly, yeah, yeah. So like it is kind of giving us how well the blueprint is designed to capture that problem in the given trace.
+
+Naser Ezzati-Jivan
+42 minutes 1 second42:01
+Naser Ezzati-Jivan 42 minutes 1 second
+Okay, then that's good. Yeah, that's what we want to do.
+Naser Ezzati-Jivan 42 minutes 6 seconds
+All right, good. So we talked last time, right? I said that try to find a way to visualise the teams, right? And then...
+
+Yuvraj Sehgal
+42 minutes 13 seconds42:13
+Yuvraj Sehgal 42 minutes 13 seconds
+Yeah, I can show you. I tried doing something with AI. It's not the best, but still it gives us a good idea of what, uh, so this.
+
+Naser Ezzati-Jivan
+42 minutes 22 seconds42:22
+Naser Ezzati-Jivan 42 minutes 22 seconds
+Is this the job position? No, not that one, yeah.
+
+Yuvraj Sehgal
+42 minutes 24 seconds42:24
+Yuvraj Sehgal 42 minutes 24 seconds
+Sorry?
+Yuvraj Sehgal 42 minutes 27 seconds
+That's different. So yeah, it is something like I tried to visualise it using AI. So this is like all the runs. So we have two data sets, right? One on sock shop and the other is train set. So it figures out like according to the blueprint.
+
+Naser Ezzati-Jivan
+42 minutes 29 seconds42:29
+Naser Ezzati-Jivan 42 minutes 29 seconds
+Hey.
+
+Yuvraj Sehgal
+42 minutes 46 seconds42:46
+Yuvraj Sehgal 42 minutes 46 seconds
+what is expected like and for this run what was the number. So it is kind of trying to do analysis on the data and figure out what is standing out for this problem.
+
+Naser Ezzati-Jivan
+42 minutes 46 seconds42:46
+Naser Ezzati-Jivan 42 minutes 46 seconds
+What is it like?
+Naser Ezzati-Jivan 42 minutes 52 seconds
+Yeah.
+Naser Ezzati-Jivan 43 minutes 2 seconds
+Yeah.
+Naser Ezzati-Jivan 43 minutes 4 seconds
+Well, I don't understand this view for now. OK, but the problem was packet loss on the network path serving the impaired interfaces. What was the problem? It was latency.
+
+Yuvraj Sehgal
+43 minutes 15 seconds43:15
+Yuvraj Sehgal 43 minutes 15 seconds
+Yeah, because it is like network path problem. So latency is the issue. So it is trying to see through the traces we have collected some of the system calls and all that, right? So in the scripts itself, it has a way to like find what is standing out for this network related problem.
+Yuvraj Sehgal 43 minutes 35 seconds
+So when it plots it on a normal run or
+
+Naser Ezzati-Jivan
+43 minutes 35 seconds43:35
+Naser Ezzati-Jivan 43 minutes 35 seconds
+So, when?
+
+Yuvraj Sehgal
+43 minutes 41 seconds43:41
+Yuvraj Sehgal 43 minutes 41 seconds
+on the data set where some different anomaly was injected. Most of the data lies in this region. And when we look at the data for this anomaly traced set, then it is showing that the most of the data is lying more like far out to the right. That means like some kind of anomaly is actually present.
+
+Naser Ezzati-Jivan
+43 minutes 57 seconds43:57
+Naser Ezzati-Jivan 43 minutes 57 seconds
+I.
+
+Yuvraj Sehgal
+44 minutes 3 seconds44:03
+Yuvraj Sehgal 44 minutes 3 seconds
+In this network-related problem.
+
+Naser Ezzati-Jivan
+44 minutes 3 seconds44:03
+Naser Ezzati-Jivan 44 minutes 3 seconds
+Nah.
+Naser Ezzati-Jivan 44 minutes 7 seconds
+Yeah.
+
+Yuvraj Sehgal
+44 minutes 7 seconds44:07
+Yuvraj Sehgal 44 minutes 7 seconds
+So similarly, it has created a couple of more things. I don't understand all of them right now. So I'm still trying to figure out what is the best way to visualise it. As I created multiple graphs, this was one of the best it could get. But yeah, I'll need.
+
+Naser Ezzati-Jivan
+44 minutes 14 seconds44:14
+Naser Ezzati-Jivan 44 minutes 14 seconds
+Sneh.
+Naser Ezzati-Jivan 44 minutes 16 seconds
+Sneh.
+Naser Ezzati-Jivan 44 minutes 20 seconds
+Yeah, yeah, you know, per problem, we can do this kind of things. We can do the blueprint and analyse and so on, right? This is not difficult, but still, still we can do that. We can say, look, we created a database of 50 problems, 100 problems, we categorise in different groups, right? And then for each of them, or a few of them, like similar of them,
+
+Yuvraj Sehgal
+44 minutes 30 seconds44:30
+Yuvraj Sehgal 44 minutes 30 seconds
+Yes.
+
+Naser Ezzati-Jivan
+44 minutes 42 seconds44:42
+Naser Ezzati-Jivan 44 minutes 42 seconds
+similar things of them. We have a blueprint, and the blueprint works very well, and this is the performance, right? Compared to no blueprint, it works on this, this amount, you know, no blueprint is 50%, with blueprint is 80%, something like that. This is the paper for itself. But then, but then, as I said last time,
+
+Yuvraj Sehgal
+44 minutes 48 seconds44:48
+Yuvraj Sehgal 44 minutes 48 seconds
+Mhm.
+Yuvraj Sehgal 44 minutes 58 seconds
+Yes.
+
+Naser Ezzati-Jivan
+45 minutes 1 second45:01
+Naser Ezzati-Jivan 45 minutes 1 second
+A systematic way to find, okay, now let's say we have many problems. You already have collected, let's say, 100 blueprints. So how the system should know which one to use and how to use? What are the symptoms? Those Germany things will help you. We'll first look at this thing, then look at that thing.
+
+Yuvraj Sehgal
+45 minutes 6 seconds45:06
+Yuvraj Sehgal 45 minutes 6 seconds
+Mhm.
+
+
+Yuvraj Sehgal
+45 minutes 48 seconds45:48
+Yuvraj Sehgal 45 minutes 48 seconds
+Mhm.
+Yuvraj Sehgal 45 minutes 56 seconds
+Yes.
+Yuvraj Sehgal 46 minutes 5 seconds
+Now, yeah.
+
+Naser Ezzati-Jivan
+46 minutes 6 seconds46:06
+Naser Ezzati-Jivan 46 minutes 6 seconds
+Focus on creating blueprints and make sure for that given problem your system works with and without blueprint. Right? So let's say, we'll say, look, I have worked on 10 different problems, 10 different similar latency related problems. We created blueprint for each of them separately. But then for each of them, you need to analyse again, look, I need this data, that data, this work. So try to improve the blueprint. The focus will be on the blueprint itself.
+
+Yuvraj Sehgal
+46 minutes 12 seconds46:12
+Yuvraj Sehgal 46 minutes 12 seconds
+Mhm.
+Yuvraj Sehgal 46 minutes 31 seconds
+Mmh.
+
+Naser Ezzati-Jivan
+46 minutes 32 seconds46:32
+Naser Ezzati-Jivan 46 minutes 32 seconds
+more richer blueprint, right? Every problem you will need to understand and analyse and improve the blueprint for that problem, okay? And then we'll create similar cases of that problem and see if the blueprint really helps.
+
+Yuvraj Sehgal
+46 minutes 35 seconds46:35
+Yuvraj Sehgal 46 minutes 35 seconds
+Yes.
+
+Naser Ezzati-Jivan
+46 minutes 50 seconds46:50
+Naser Ezzati-Jivan 46 minutes 50 seconds
+So compared with and without blueprint, each of them like five times, five different analysis, because agent, we don't know, right? We need to run it several times. And let's see, look, I can, I have a system now for a given problem. We create blueprint, the human actually, human analyst create the blueprint.
+
+Yuvraj Sehgal
+46 minutes 55 seconds46:55
+Yuvraj Sehgal 46 minutes 55 seconds
+Mhm.
+Yuvraj Sehgal 46 minutes 59 seconds
+Yes.
+
+Naser Ezzati-Jivan
+47 minutes 9 seconds47:09
+Naser Ezzati-Jivan 47 minutes 9 seconds
+And with blueprint, we improved from this number to that number. Like we improved by 20%, something, right? This is the first contribution, important contribution. But then other question, now we have a trace, we know that there's a problem, but we don't know the type of the problem. And we already have 100 blueprints. So what we can do now?
+
+Yuvraj Sehgal
+47 minutes 12 seconds47:12
+Yuvraj Sehgal 47 minutes 12 seconds
+Ke.
+Yuvraj Sehgal 47 minutes 15 seconds
+Mhm.
+
+Naser Ezzati-Jivan
+47 minutes 29 seconds47:29
+Naser Ezzati-Jivan 47 minutes 29 seconds
+how the system can actually find the right blueprint. So finding the right blueprint is going to be the second question.
+
+Yuvraj Sehgal
+47 minutes 30 seconds47:30
+Yuvraj Sehgal 47 minutes 30 seconds
+Yeah.
+Yuvraj Sehgal 47 minutes 33 seconds
+Mhm.
+Yuvraj Sehgal 47 minutes 36 seconds
+Yes.
+
+Naser Ezzati-Jivan
+47 minutes 36 seconds47:36
+Naser Ezzati-Jivan 47 minutes 36 seconds
+Because the first question is...
+Naser Ezzati-Jivan 47 minutes 40 seconds
+Let's say 3, like 2 questions. Yeah, it can be 3, but two questions. The first question is...
+Naser Ezzati-Jivan 47 minutes 50 seconds
+You know, three questions from problem to blueprint, but designing A blueprint itself is a research question.
+
+Yuvraj Sehgal
+47 minutes 53 seconds47:53
+Yuvraj Sehgal 47 minutes 53 seconds
+And.
+Yuvraj Sehgal 47 minutes 58 seconds
+Okay.
+
+Naser Ezzati-Jivan
+47 minutes 58 seconds47:58
+Naser Ezzati-Jivan 47 minutes 58 seconds
+How we do, how we get blueprints? This is an important question. We need to think about it. For now, we can just go like iteratively. We can go with a simple design and then we can approve. But then eventually we need to find out how we did that. What are the important aspects of it? Do we need like a control flow there?
+Naser Ezzati-Jivan 48 minutes 16 seconds
+like memory system and how. All right? So creating the blueprint, there will be the design of duplicating will be one question. The second question, now we have the blueprint. Let's use it for that kind of problems.
+
+Yuvraj Sehgal
+48 minutes 27 seconds48:27
+Yuvraj Sehgal 48 minutes 27 seconds
+Mhm.
+
+Naser Ezzati-Jivan
+48 minutes 32 seconds48:32
+Naser Ezzati-Jivan 48 minutes 32 seconds
+You're not testing like multiple problems or something. So we know that that is a problem is in place. We have a trace for it. Now see if the blueprint is affected.
+
+Yuvraj Sehgal
+48 minutes 41 seconds48:41
+Yuvraj Sehgal 48 minutes 41 seconds
+Yes.
+
+Naser Ezzati-Jivan
+48 minutes 41 seconds48:41
+Naser Ezzati-Jivan 48 minutes 41 seconds
+So the second question is pretty much using that in like putting that to action in action and then seeing if the blueprint is good or not. How good is our system?
+
+Yuvraj Sehgal
+48 minutes 47 seconds48:47
+Yuvraj Sehgal 48 minutes 47 seconds
+Mhm.
+Yuvraj Sehgal 48 minutes 51 seconds
+Yeah.
+
+Naser Ezzati-Jivan
+48 minutes 53 seconds48:53
+Naser Ezzati-Jivan 48 minutes 53 seconds
+So, the second question is pretty much evaluating the first question. So, first question, design blueprint and 2nd question, evaluate it and see if it really works. The third thing now, again, now we have a given trace, we don't know which kind of what kind of problem exists, but we know there's a problem.
+
+Yuvraj Sehgal
+48 minutes 54 seconds48:54
+Yuvraj Sehgal 48 minutes 54 seconds
+Nah.
+Yuvraj Sehgal 49 minutes 11 seconds
+Mhm.
+
+Naser Ezzati-Jivan
+49 minutes 12 seconds49:12
+Naser Ezzati-Jivan 49 minutes 12 seconds
+And then the system should find systematically the right blueprint, the right blueprints, small set of blueprints, and do the detection and analysis.
+
+Yuvraj Sehgal
+49 minutes 21 seconds49:21
+Yuvraj Sehgal 49 minutes 21 seconds
+Okay.
+Yuvraj Sehgal 49 minutes 22 seconds
+And, uh...
+
+Naser Ezzati-Jivan
+49 minutes 23 seconds49:23
+Naser Ezzati-Jivan 49 minutes 23 seconds
+And the blueprint will not only be on detection, it will be also on analysis, you know, some sort of analysis. Look, there is a, there is a latency problem, and most likely the problem is because of network packets or the dependency between this and that, right? Instead of many different reasons, you narrow down, then the human analysis will go and cheque what's happened.
+
+Yuvraj Sehgal
+49 minutes 27 seconds49:27
+Yuvraj Sehgal 49 minutes 27 seconds
+Okay.
+Yuvraj Sehgal 49 minutes 37 seconds
+Mhm.
+Yuvraj Sehgal 49 minutes 43 seconds
+Yes.
+Yuvraj Sehgal 49 minutes 44 seconds
+One question. So when we ask like, let's say the LLM or the agent who is using the blueprint, do we give him like a hint, hey, I'm seeing some issue related to this problem. Can you do a root cause analysis or something? Or do we give like a very generalised ROM, find a...
+
+Naser Ezzati-Jivan
+49 minutes 59 seconds49:59
+Naser Ezzati-Jivan 49 minutes 59 seconds
+No.
+
+Yuvraj Sehgal
+50 minutes 4 seconds50:04
+Yuvraj Sehgal 50 minutes 4 seconds
+Anomaly in the following system or something like, OK, OK.
+
+Naser Ezzati-Jivan
+50 minutes 5 seconds50:05
+Naser Ezzati-Jivan 50 minutes 5 seconds
+We can test both of them. We can test both of them. In the second question, we will tell it, hey, this is the problem.
+
+Yuvraj Sehgal
+50 minutes 12 seconds50:12
+Yuvraj Sehgal 50 minutes 12 seconds
+Okay, okay.
+Yuvraj Sehgal 50 minutes 17 seconds
+Find, yeah.
+Yuvraj Sehgal 50 minutes 29 seconds
+Yes.
+
+
+Naser Ezzati-Jivan
+51 minutes 49 seconds51:49
+Naser Ezzati-Jivan 51 minutes 49 seconds
+They will directly go, they will directly go to that skill or those skills around that problem. But then next time, like the final your list, third question will be, all right, look, this person is sick.
+
+Yuvraj Sehgal
+52 minutes 2 seconds52:02
+Yuvraj Sehgal 52 minutes 2 seconds
+Mhm.
+
+Naser Ezzati-Jivan
+52 minutes 2 seconds52:02
+Naser Ezzati-Jivan 52 minutes 2 seconds
+What is the problem? We don't know.
+Naser Ezzati-Jivan 52 minutes 5 seconds
+He has headache, he has this and that, right?
+Naser Ezzati-Jivan 52 minutes 12 seconds
+And then doctor needs to narrow them, ask some question, narrow them out of those skills. So always they do all they do, like they do blood test and they do. So do you see there's a systematic way, right? Always. At least in Canada is a system. Iran is a different doctor actually knows based on their knowledge, you know, they're more experienced there.
+
+Yuvraj Sehgal
+52 minutes 12 seconds52:12
+Yuvraj Sehgal 52 minutes 12 seconds
+Yeah. Yeah.
+Yuvraj Sehgal 52 minutes 19 seconds
+Mhm.
+Yuvraj Sehgal 52 minutes 26 seconds
+Yes.
+Yuvraj Sehgal 52 minutes 31 seconds
+Mhm.
+
+Naser Ezzati-Jivan
+52 minutes 33 seconds52:33
+Naser Ezzati-Jivan 52 minutes 33 seconds
+they don't need to follow the procedure. They actually follow, but they're very fast in that they ask two questions, they go jump to the problem. Right? So the same thing here, but here we have to system system has to to be reliable, you need it needs to check.
+
+Yuvraj Sehgal
+52 minutes 37 seconds52:37
+Yuvraj Sehgal 52 minutes 37 seconds
+Yes.
+Yuvraj Sehgal 52 minutes 39 seconds
+Yeah.
+Yuvraj Sehgal 52 minutes 44 seconds
+S.
+Yuvraj Sehgal 52 minutes 51 seconds
+Mhm.
+
+Naser Ezzati-Jivan
+52 minutes 52 seconds52:52
+Naser Ezzati-Jivan 52 minutes 52 seconds
+this, block this first and then that, then, then, then, then, right? And then say, look, based on this symptoms, I think that the problem is about latency and that kind of latency. Now we have 3 blueprints about.
+
+Yuvraj Sehgal
+52 minutes 56 seconds52:56
+Yuvraj Sehgal 52 minutes 56 seconds
+Exactly.
+Yuvraj Sehgal 53 minutes 4 seconds
+Mhm.
+Yuvraj Sehgal 53 minutes 5 seconds
+Yeah, so there will be like some way of the agent to be like to come to communicate with the trace and find out some preliminary questions, get answered, then do the analysis. Okay.
+
+Naser Ezzati-Jivan
+53 minutes 13 seconds53:13
+Naser Ezzati-Jivan 53 minutes 13 seconds
+Yeah, exactly.
+Naser Ezzati-Jivan 53 minutes 16 seconds
+Yeah, yeah, questions, or yeah, or look into the data directly without asking questions from human, because the data and everything is there, right? Yeah. But the human, the user can always give like some hint from the beginning. Hey, the system is slow, or when we do this, the system becomes more slow, something like that. This can help A lot. You remember in
+
+Yuvraj Sehgal
+53 minutes 23 seconds53:23
+Yuvraj Sehgal 53 minutes 23 seconds
+Yes, yeah.
+Yuvraj Sehgal 53 minutes 26 seconds
+Yes, yes, so it will interact directly with the trace.
+Yuvraj Sehgal 53 minutes 40 seconds
+Yeah.
+
+Naser Ezzati-Jivan
+53 minutes 41 seconds53:41
+Naser Ezzati-Jivan 53 minutes 41 seconds
+In the presentation I had for Sina, I said we have something like intention analysis. So they talk in non-technical language and we need to translate it to what our system understands.
+
+Yuvraj Sehgal
+53 minutes 46 seconds53:46
+Yuvraj Sehgal 53 minutes 46 seconds
+Mhm.
+Yuvraj Sehgal 53 minutes 53 seconds
+Understand, exactly, yeah.
+
+Naser Ezzati-Jivan
+53 minutes 56 seconds53:56
+Naser Ezzati-Jivan 53 minutes 56 seconds
+Yeah.
+
+Yuvraj Sehgal
+53 minutes 56 seconds53:56
+Yuvraj Sehgal 53 minutes 56 seconds
+Yeah, makes sense.
+
+Naser Ezzati-Jivan
+53 minutes 58 seconds53:58
+Naser Ezzati-Jivan 53 minutes 58 seconds
+All right, great.
+
+Yuvraj Sehgal
+54 minutes 1 second54:01
+Yuvraj Sehgal 54 minutes 1 second
+Thank you.
+
+Naser Ezzati-Jivan
+54 minutes 1 second54:01
+Naser Ezzati-Jivan 54 minutes 1 second
+Prof.
+Naser Ezzati-Jivan 54 minutes 6 seconds
+I think you wrote something. I had a message for you.
+MP
+Mahsa Panahandeh
+54 minutes 12 seconds54:12
+Mahsa Panahandeh 54 minutes 12 seconds
+Yeah, I'm sorry, I don't know. I have another meeting. So I just put the message there about candidating different blueprints for different cases. Just I mean kind of run and all the evaluation.
+
+Naser Ezzati-Jivan
+54 minutes 14 seconds54:14
+Naser Ezzati-Jivan 54 minutes 14 seconds
+Ke.
+Naser Ezzati-Jivan 54 minutes 23 seconds
+Yeah, yeah, yeah, yeah, yeah.
+
+Yuvraj Sehgal
+54 minutes 23 seconds54:23
+Yuvraj Sehgal 54 minutes 23 seconds
+Mhm.
+
+Naser Ezzati-Jivan
+54 minutes 27 seconds54:27
+Naser Ezzati-Jivan 54 minutes 27 seconds
+Thank you.
+Naser Ezzati-Jivan 54 minutes 29 seconds
+Okay.
+MP
+Mahsa Panahandeh
+54 minutes 29 seconds54:29
+Mahsa Panahandeh 54 minutes 29 seconds
+Yeah, thank you.
+
+Yuvraj Sehgal
+54 minutes 31 seconds54:31
+Yuvraj Sehgal 54 minutes 31 seconds
+OK, I'll try that as well. Thank you.
+MP
+Mahsa Panahandeh
+54 minutes 31 seconds54:31
+Mahsa Panahandeh 54 minutes 31 seconds
+Ball.
+Mahsa Panahandeh 54 minutes 34 seconds
+No worries, and see you all next week.
