@@ -97,6 +97,7 @@ applies to chat replies AND to any document/report written for the user.
 
 | Path | What |
 |---|---|
+| `READING-ORDER.md` | **Which docs to read and in what order** — ~120 markdown files exist and not all are current. Names the duplicates, the superseded ones, and what to skip |
 | `blueprints/docs/DATASET-v2-INVENTORY.md` | **What v2 actually contains** — 303 runs, sizes, per-family counts, where it lives on Trillium, and the caveats that affect analysis. Start here |
 | `CAMPAIGN-ISSUES.md` | **v2 campaign problems, live** — what needs re-collecting vs re-scoring. Read before trusting any run |
 | `msr-research.md` | The research plan (phases in §10) |
