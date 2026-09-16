@@ -10,7 +10,7 @@
 #
 #   sbatch --export=DEST=/scratch/.../sockshop-recollected-20260915 \
 #       transfer/verify_archives_job.sbatch
-#   sbatch --export=DEST=...,ONLY="code_n_plus_one dns_delay" ...   # subset
+#   sbatch --export=DEST=...,ONLY=code_n_plus_one,dns_delay ...     # subset, COMMAS not spaces
 #
 # THREE THINGS THE FIRST VERSION GOT WRONG (job 2320736, killed at the 55-minute wall clock
 # with ZERO output - all three were mine):
@@ -36,7 +36,11 @@
 set -uo pipefail
 
 DEST="${DEST:?set DEST via --export=DEST=...}"
-ONLY="${ONLY:-}"          # optional space-separated recipe names; default is every archive
+# Optional subset. Accepts commas OR spaces, and commas are what you should actually use:
+# sbatch --export takes a COMMA-separated list, so a space-separated ONLY is truncated at the
+# first space and the rest is silently dropped. That cost job 2321025 three of its four
+# archives - it ran happily on one and looked like a stall.
+ONLY="${ONLY:-}"
 PAR="${PAR:-4}"           # I/O bound, so more streams stop helping quickly
 
 mkdir -p /scratch/yuvraj17/stratatrace/slurm-logs
@@ -62,7 +66,7 @@ count_one() {
 export -f count_one
 
 if [ -n "$ONLY" ]; then
-    for r in $ONLY; do echo "$DEST/$r.tar.gz"; done
+    for r in ${ONLY//,/ }; do echo "$DEST/$r.tar.gz"; done
 else
     ls -1 "$DEST"/*.tar.gz 2>/dev/null
 fi | xargs -P "$PAR" -I{} bash -c 'count_one "$@"' _ {}
