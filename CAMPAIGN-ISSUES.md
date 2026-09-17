@@ -756,3 +756,61 @@ The collection VM is deleted, so `verify_injection.py` has nothing to query.
 `blueprints/lib/rescore_from_sidecar.py` computes the same quantity offline from each run's
 archived `<run>_metrics/*.json.gz`. Results are in
 `results/rescore/{fd_exhaustion,lock_contention,dns_delay}_rescore.json` on Trillium.
+
+---
+
+## Issue 23 - Train Ticket unconfirmed runs re-scored: 16 fixed, 10 reclassified, 6 still need collection
+
+**2026-09-16.** The audit found 32 `unconfirmed` runs, 25 of them Train Ticket. Re-scored every
+one against its mechanism rather than a downstream consequence.
+
+| family | was | now | what was wrong |
+|---|---|---|---|
+| `svc_cpu_cap` | 0 / 8 | **8 / 8 confirmed** | target measured CPU *usage* of an idle service |
+| `svc_mem_cap` | 7 / 8 | **8 / 8 confirmed** | baseline reads 0 before a limit exists, so a cap looked like an increase |
+| `slow_db` | 1 / 11 | **`no_metric_signature`** | measured: no captured series can see it |
+| `svc_net` | 1 / 5 | unchanged | not a scoring problem - the injection produced no loss |
+| `error_storm` | 6 / 8 | unchanged | direction is right, effect is weak |
+
+### A cap fault records itself
+
+The cleanest result. `container_spec_cpu_quota` has no series while no quota is set and appears
+the instant docker applies one: **absent in every baseline, then 20000 on every aggressive run
+and 50000 on every subtle run**. `container_spec_memory_limit_bytes` likewise: 6.742e10 (host
+RAM, unlimited) -> 1.678e8 (160 MB) -> back to 6.742e10.
+
+The old targets watched for *consequences* - CPU usage falling on a service that was already
+idle at 0.00 cores. Nothing to fall.
+
+**Also found:** the CPU quota is still set during the recovery window of r4, r5 and subtle_r1, so
+the restore does not always clear it. Verify against `/sys/fs/cgroup`, not `docker inspect`.
+
+### The `slow_db` replacement I nearly adopted, and why I did not
+
+`container_fs_writes_total` on mysql drops to ~48% of baseline during injection in **11 of 11
+runs** and recovers afterwards. A textbook signature.
+
+It is not a signal. The same ratio appears in **every** Train Ticket family:
+
+| family | inj/base | family | inj/base |
+|---|---|---|---|
+| `anomaly_cpu` | 0.49 | `deadlock` | 0.48 |
+| `anomaly_disk` | 0.49 | `fork_storm` | 0.48 |
+| `anomaly_mem` | 0.48 | `lock_contention` | 0.48 |
+| `anomaly_net` | 0.48 | `noisy_neighbor` | 0.48 |
+
+It measures the window, not the fault: the baseline is 60 s against a 120 s injection and mysql's
+I/O is front-loaded. Adopting it would have repeated the `code_n_plus_one` mistake of confirming
+the load generator. **Specificity across families is the check that catches this**, and it is
+cheap - run it before adopting any replacement target.
+
+`slow_db` is real and visible at 10.3x-4836x endpoint latency, from the trace. Train Ticket
+reports all forty Java services under one process name, so process-level metrics cannot separate
+one blocked service from thirty-nine idle ones. Marked `expected_to_fail`.
+
+### Still needing collection, not scoring
+
+`svc_net` (4 runs) produced 0% packet loss in 4 of 5 - the injection did not take, so no target
+can rescue it. Needs intensity calibration and a re-run on a Train Ticket VM, which does not
+exist. `error_storm` (2 runs) has the right direction and a weak effect; a threshold change would
+be fitting to two runs, so it is left alone.

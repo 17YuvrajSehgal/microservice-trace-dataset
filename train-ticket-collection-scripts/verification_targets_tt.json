@@ -11,14 +11,12 @@
  "_calibration": "Calibrated 2026-08-04 on the VM under 15-user load (30s windows; the campaign uses 60s baseline / 120s injection which settle better). KEY FINDING: TT's latency-type faults are METRICS-BLIND - slow_db (search 60ms->28.8s), svc_net (65ms->2.96s), dependency_outage (37ms->30s hang), svc_cpu_cap-aggressive (63ms->163ms) show HUGE client latency but their cAdvisor CPU/network signals are weak or DIRECTION-FLIP with load (mysql CPU rose, not fell, once real query concurrency piled up behind the toxic). This is the study's thesis, not a bug: the kernel (blocked socket reads) + the load-CSV client latency carry these faults, not resource metrics -> expect these to verify BORDERLINE/unconfirmed. RELIABLE (verify confirmed): svc_mem_cap (limit->120MB), noisy_neighbor (fires + KPIs flat), dependency_outage seat-CPU->0 (needs the 120s window). SAFETY: anomaly_mem FRAC bounded to 35 in run_campaign_tt (default 88 near-OOMs TT's 33GB-baseline box). TO WATCH in the campaign: anomaly_cpu (30s window showed 66%->59%, likely a lull under the already-loaded box - the 120s window should saturate) and anomaly_net (barely moved KPI 73ms->78ms - the host-bridge netem may not be hitting TT's docker network; verify the target interface).",
  "slow_db_mysql": [
   {
-   "canonical": true,
-   "name": "mysql_cpu_throughput_drop",
+   "name": "mysql_no_metric_signature",
    "promql": "rate(container_cpu_usage_seconds_total{name=\"mysql\"}[1m])",
    "direction": "decrease",
-   "threshold_sigma": 3,
-   "abs_threshold": 0.02,
-   "min_fraction": 0.5,
-   "why": "CALIBRATE. Latency toxic on the shared mysql proxy: in the closed loop fewer queries/s complete -> mysql does less work/s -> CPU drops. METRICS-WEAK & a trace BLIND SPOT (mysql uninstrumented); the real signal is the KERNEL (services blocked in read() on the DB socket) + the client-side latency in the load CSV. Mirrors slow_db_catalogue on Sock Shop but starker (no app latency metric at all)."
+   "canonical": true,
+   "expected_to_fail": true,
+   "note": "MEASURED TO HAVE NO METRIC SIGNATURE, 2026-09-16. The old target was rate(container_cpu_usage_seconds_total{name='mysql'}) with direction=decrease. It failed 10 of 11 runs because mysql is effectively idle on the steady profile - measured baseline 0.00-0.01 cores - so there is nothing for a latency toxic to reduce. Four other captured series were tested as replacements: network receive/transmit packets, network receive bytes, and container_fs_reads/writes on mysql. fs_writes looked excellent - it drops to ~48% of baseline during injection in 11 of 11 runs and recovers afterwards. IT IS NOT A SIGNAL. The same ratio appears in EVERY Train Ticket family - anomaly_cpu 0.49, anomaly_disk 0.49, anomaly_mem 0.48, deadlock 0.48, fork_storm 0.48, lock_contention 0.48, noisy_neighbor 0.48 - so it measures the window, not the fault (the baseline window is 60 s against a 120 s injection, and mysql's I/O is front-loaded). Adopting it would have repeated the code_n_plus_one mistake of confirming the load generator. The fault IS real and IS visible - endpoint latency measures 10.3x to 4836x with slowed endpoints in 10 of 11 runs - but that comes from the trace, not from Prometheus. Train Ticket reports all forty Java services under one process name, which is why process-level metrics cannot separate one blocked service from thirty-nine idle ones. Marked expected_to_fail so these report no_metric_signature - a finding about metrics, not a broken run. Same treatment as dns_delay and the three invisible code defects."
   }
  ],
  "error_storm_mysql": [
@@ -35,36 +33,39 @@
  ],
  "svc_cpu_cap_ts-travel-service": [
   {
+   "name": "travel_cpu_quota_applied",
+   "promql": "container_spec_cpu_quota{name=~\".*ts-travel-service_1$\"}",
+   "direction": "increase",
    "canonical": true,
-   "name": "travel_cpu_usage_capped",
-   "promql": "rate(container_cpu_usage_seconds_total{name=~\".*ts-travel-service_1$\"}[1m])",
-   "direction": "decrease",
-   "threshold_sigma": 3,
-   "abs_threshold": 0.15,
-   "min_fraction": 0.5,
-   "why": "CALIBRATE. cgroup quota pins ts-travel-service CPU at/below the cap (0.5 subtle / 0.2 aggressive). Reliable cAdvisor signal (same mechanism as Sock Shop svc_cpu_cap_carts). App-latency inflation is trace/kernel-visible but has no TT Prometheus metric."
+   "mechanism_metric": true,
+   "measured": {
+    "baseline": "series absent",
+    "aggressive": 20000,
+    "subtle": 50000
+   },
+   "note": "REPLACED 2026-09-16. The old target was rate(container_cpu_usage_seconds_total) on the capped service with direction=decrease. It failed 8/8 for a plain reason: ts-travel-service is IDLE - measured baseline 0.00 cores against injection 0.01. You cannot watch a cap reduce consumption that was never there. The audit already knew the cap bites (endpoint latency 11.8-216x); the metric simply could not show it. A cap fault records ITSELF. container_spec_cpu_quota has no series while no quota is set and appears the moment docker applies one. MEASURED over all 8 runs: absent in every baseline, then 20000 on every aggressive run and 50000 on every subtle run. That is the injection, not a downstream consequence of it. NOTE the quota is STILL PRESENT in the recovery window of r4, r5 and subtle_r1, so the restore does not always clear it. Check /sys/fs/cgroup rather than docker inspect - faults/README.md."
   }
  ],
  "svc_mem_cap_ts-order-service": [
   {
-   "canonical": true,
-   "name": "order_memory_limit_dropped",
+   "name": "order_memory_limit_applied",
    "promql": "min(container_spec_memory_limit_bytes{name=~\".*ts-order-service_1$\"})",
    "direction": "decrease",
-   "threshold_sigma": 3,
-   "abs_threshold": 1000000000,
-   "min_fraction": 0.8,
-   "why": "The cap is applied: the limit drops from host-total to the cap (<= a few hundred MB). Reliable for both intensities (same as Sock Shop svc_mem_cap_carts)."
+   "canonical": true,
+   "mechanism_metric": true,
+   "measured": {
+    "baseline": 67418689536,
+    "aggressive": 167772160,
+    "subtle": 314572800
+   },
+   "note": "REPLACED 2026-09-16. The old target used min(container_spec_memory_limit_bytes) with direction=decrease. It failed because on the first run the baseline reads 0 - the series does not exist until a limit does - so applying a 160 MB cap looked like an INCREASE from zero. MEASURED over all 8 runs: baseline 6.742e10 (67 GB = host RAM, i.e. unlimited), injection 1.678e8 (160 MB) on every aggressive run and 3.146e8 (300 MB) on every subtle run, recovery back to 6.742e10. The signal was always perfect; only the comparison was wrong. Score it as 'the limit during injection is finite and far below host RAM', never as a baseline-relative decrease."
   },
   {
-   "canonical": false,
    "name": "order_oom_kills",
    "promql": "increase(container_oom_events_total{name=~\".*ts-order-service_1$\"}[2m])",
    "direction": "increase",
-   "threshold_sigma": 2,
-   "abs_threshold": 1,
-   "min_fraction": 0.2,
-   "why": "an aggressive cap below the JVM working set forces OOM kills; subtle causes GC pressure without necessarily OOMing. CALIBRATE the cap vs the Spring Boot heap."
+   "canonical": false,
+   "note": "Kept from the original panel, still non-canonical. Whether the capped service is actually OOM-killed depends on what it was holding at inject time, so it cannot carry the verdict - but when it fires it is strong corroboration."
   }
  ],
  "svc_net_ts-basic-service": [
