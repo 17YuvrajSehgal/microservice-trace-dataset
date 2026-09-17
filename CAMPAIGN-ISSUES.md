@@ -814,3 +814,55 @@ one blocked service from thirty-nine idle ones. Marked `expected_to_fail`.
 can rescue it. Needs intensity calibration and a re-run on a Train Ticket VM, which does not
 exist. `error_storm` (2 runs) has the right direction and a weak effect; a threshold change would
 be fitting to two runs, so it is left alone.
+
+---
+
+## Issue 24 - `error_storm` on Train Ticket is a logs fault, not a metrics fault
+
+**2026-09-17. Re-collected all 8 runs, then fixed the target rather than the intensity.**
+
+### The re-collection settled it
+
+8 fresh runs on a clean VM: **7 `borderline`, 1 `unconfirmed`, ZERO confirmed** - on both steady
+(20 users) and burst (40 users), so load level is not the discriminator. The weakness is real and
+reproducible.
+
+That also reframes the original family's 6/8 confirmed as **load-dependent luck**. The old target,
+`rate(container_network_receive_bytes_total{name="mysql"})` with `direction: decrease`, measures a
+consequence whose magnitude scales with how much traffic happened to be flowing - the same
+structural flaw found in `svc_cpu_cap`, `slow_db` and `fd_exhaustion` on the same day.
+
+### No better metric exists here, and that was checked
+
+| candidate | result |
+|---|---|
+| `http_server_requests` / 5xx rate | **absent** - TT's Spring services expose no actuator Prometheus endpoint, so the Sock Shop approach (`catalogue_5xx_rate`) has nothing to bind to |
+| `node_netstat_Tcp_OutRsts` | **reads 0 for entire runs** - node-exporter is containerised (`instance=nodeexporter:9100`) and reports its own netns, not the application's |
+| `Tcp_EstabResets`, `TcpExt_TCPAbortOnData`, `Tcp_AttemptFails` | not captured at all |
+
+### The evidence is in the logs, exactly as pre-registered
+
+The recipe header says *"LOGS should win - catalogue logs driver errors with explicit cause
+strings"*. Counted in `tt_error_storm_aggressive_burst_r1`:
+
+| pattern | count | control (`svc_net` r1) |
+|---|---|---|
+| `Communications link failure` | 462 | - |
+| `SQLException` | 1078 | - |
+| `Connection reset` | 316 | **0** |
+| `CommunicationsException` | 216 | **0** |
+
+Logged by `ts-order`, `ts-config`, `ts-travel`, `ts-travel2`, `ts-order-other`. The first line
+lands at `03:37:32.808Z` against an injection start of `03:37:32Z` - instant. And the control
+shows the signal is specific to this fault, not a property of the deployment:
+
+```
+WARN 'HikariPool-1 - Connection com.mysql.cj.jdbc.ConnectionImpl marked as broken
+      because of SQLSTATE(08S01), ErrorCode(0)'
+```
+
+That is the `reset_peer` toxic, named in the driver's own words.
+
+**Do not raise the intensity to push a weak proxy over a threshold.** The fault already works;
+the metric modality is the thing that cannot see it. Marked `expected_to_fail` so it reports
+`no_metric_signature`, with the network-bytes series kept as a non-canonical observation.

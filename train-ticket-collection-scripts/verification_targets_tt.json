@@ -21,14 +21,19 @@
  ],
  "error_storm_mysql": [
   {
-   "canonical": true,
-   "name": "mysql_net_recv_drop",
+   "name": "mysql_no_metric_signature",
    "promql": "rate(container_network_receive_bytes_total{name=\"mysql\"}[1m])",
    "direction": "decrease",
-   "threshold_sigma": 3,
-   "abs_threshold": 1000,
-   "min_fraction": 0.4,
-   "why": "CALIBRATE. timeout/reset_peer toxic breaks DB connections -> fewer successful queries reach mysql -> inbound bytes drop. The primary error signal (5xx to clients) lives in the LOAD CSV + service LOGS, not Prometheus (no app metrics)."
+   "canonical": true,
+   "expected_to_fail": true,
+   "note": "MEASURED 2026-09-17 over 8 freshly collected runs. The fault is REAL, UNMISTAKABLE and SPECIFIC - it is simply not a metrics fault on Train Ticket. Re-collected the whole family on a clean VM: 7 of 8 came back `borderline` and 1 `unconfirmed`, ZERO confirmed, on both steady (20 users) and burst (40 users). The original family's 6/8 confirmed was therefore load-dependent luck, not robustness - the old canonical target, rate(container_network_receive_bytes_total{name='mysql'}) direction=decrease, measures a CONSEQUENCE whose magnitude scales with how much traffic happened to be flowing. No better metric exists on this application, and that was checked rather than assumed: Train Ticket's Spring services expose NO actuator Prometheus endpoint, so there is no http_server_requests / 5xx series of the kind the Sock Shop target (catalogue_5xx_rate) uses; node_netstat_Tcp_OutRsts reads 0 for whole runs because node-exporter is containerised (instance=nodeexporter:9100) and reports its own netns, not the application's; and Tcp_EstabResets / TcpExt_TCPAbortOnData are not captured at all. THE EVIDENCE IS IN THE LOGS, which is what the recipe pre-registered ('LOGS should win'). Counted in tt_error_storm_aggressive_burst_r1: 'Communications link failure' x462, 'SQLException' x1078, 'Connection reset' x316, 'CommunicationsException' x216, across ts-order, ts-config, ts-travel, ts-travel2 and ts-order-other. The first line lands at 03:37:32.808Z against an injection start of 03:37:32Z - instant. Control: a svc_net run on the same stack counts 0 and 0 for the first two patterns, so the signal is specific to this fault and not a property of the deployment. Marked expected_to_fail so these report no_metric_signature. Do NOT raise the intensity to make a weak proxy cross a threshold - the fault already works."
+  },
+  {
+   "name": "mysql_recv_bytes_weak_consequence",
+   "promql": "rate(container_network_receive_bytes_total{name=\"mysql\"}[1m])",
+   "direction": "decrease",
+   "canonical": false,
+   "note": "Recorded, never decisive. It does move the right way - 48522 -> 8437 on the old burst_r2 - but 7 of 8 fresh runs land `borderline`, so the magnitude depends on offered load rather than on the fault."
   }
  ],
  "svc_cpu_cap_ts-travel-service": [
