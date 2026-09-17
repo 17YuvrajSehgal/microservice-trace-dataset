@@ -130,27 +130,38 @@ Check `tools/bt21.sh --version` says 2.1.2.
 
 Project **`teleeporter`**, zone **us-east1-d**, billing account 017712-7348A8-7FAB01.
 
-**A REPLACEMENT SOCK SHOP VM EXISTS AGAIN as of 2026-09-14**, built to re-collect the runs
-the audit found unusable. `stratatrace-ss`, us-east1-d, `n2-custom-12-40960` (12 vCPU, 40 GB)
-- the SAME shape as the original, which matters because `thief_share` and `BIG_THIEF_SHARE`
-divide by core count and `anomaly_mem` sizes itself as a fraction of RAM. 200 GB pd-balanced
-boot + 1 TB pd-standard archive mounted at `/mnt/archive`. Repo checked out on branch
-`blueprints`, which is where the recipe fixes live - `master` still has the broken ordering.
+**THE REPLACEMENT SOCK SHOP VM WAS DELETED 2026-09-16, after its work was finished and
+verified.** `stratatrace-ss` (n2-custom-12-40960), its 200 GB boot disk and its 1 TB archive disk
+are all gone. **Nothing of this project remains in `teleeporter`; GCP cost is zero again.** No
+snapshots or images were kept.
 
-Two things learned building it:
-- **SSH from Windows does not work.** `plink.exe` prompts for the host key and eats stdin, so
-  any piped script arrives mangled or empty. Use WSL: the key is copied to `~/.ssh/gce_key`
-  and there is an `ssvm` host entry in WSL's `~/.ssh/config`. Same class of problem as the
-  Trillium note above.
-- **Kernel is 7.0.0-1011-gcp, not the 6.17 recorded below.** LTTng 2.15.1 builds and loads on
-  it, and a smoke trace recorded 30,000 events read back cleanly by babeltrace2. Verified
-  rather than assumed - `lttng list --kernel` output formatting changed, so counting its lines
-  gives 0 and looks broken. Record a trace and read it back; that is the only test that means
-  anything.
+It existed from 14 to 16 Sept and re-collected 54 Sock Shop runs. Everything it produced, plus
+everything that existed only on the machine, is on Trillium in
+`v2/sockshop-recollected-20260915/` - 12 archives, 156.4 GB, every one verified by decompressing
+it and counting the runs inside:
 
-Cost: about $0.50/hour running, plus roughly $60/month for the two disks whether it runs or
-not. Stop it when idle - `gcloud compute instances stop stratatrace-ss --zone=us-east1-d` -
-the disks persist.
+| archive | what |
+|---|---|
+| the 5 `code_*` families | 26 runs, contaminated baselines replaced |
+| `anomaly_net`, `dns_delay` | 13 runs |
+| `fd_exhaustion`, `lock_contention`, `deadlock` | 15 runs |
+| `provenance_20260916.tar.gz` | the Prometheus TSDB + campaign manifest + all collection logs |
+| `provenance_vm_20260917.tar.gz` | the gate01 validation run, `fault-state/`, and `docker save` of the 5 images built on the VM |
+
+The two provenance archives are the lesson from v1: the run bundles were never the only thing
+that mattered. The TSDB is the continuous record that per-run metric exports cannot
+reconstruct, and it is what a corrected verification target gets re-scored against.
+
+**Re-collecting anything now needs a fresh VM** - `git clone --recursive`, then
+`vm_bootstrap.sh`, then `run_gate.sh gate01`. Two things measured on this VM that the old notes
+below get wrong: the kernel is **7.0.0-1011-gcp**, and `lttng list --kernel` output formatting
+changed so counting its lines reports 0 and looks broken - record a trace and read it back
+instead. SSH from Windows does not work (plink eats stdin); use WSL.
+
+**Transfers now need `transfer/pull_from_vm.sh`, not `push_to_trillium.sh`.** Alliance requires
+MFA as a second factor even when a CCDB-registered key passes as the first, so a batch-mode push
+from the VM cannot authenticate. Trillium can dial out to a GCP VM, so the direction is
+inverted. Details and the restricted-key design are in `transfer/README.md`.
 
 The original pair:
 

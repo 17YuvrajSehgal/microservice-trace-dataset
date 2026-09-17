@@ -1,59 +1,71 @@
 # 16-09-2026 — decisions
 
-## 1. Re-ran 3 Sock Shop families. One of the three got worse.
+## 1. The collection VM is deleted. Trillium is the only copy again.
 
-We re-collected `fd_exhaustion`, `lock_contention` and `deadlock`. 5 runs each.
+`stratatrace-ss`, its 200 GB boot disk and its 1 TB archive disk are gone. GCP cost for this
+project is zero. It existed 14–16 Sept and did exactly one job: re-collect the 54 Sock Shop runs
+the audit found unusable.
 
-The reason for picking these three: each one had *partly* worked before. So the recipe
-clearly works on this app, and the failures looked like bad luck rather than a broken
-recipe. That was the guess.
+**Before deleting, I swept the machine for anything that existed only there.** That mattered —
+three things were not in the run bundles:
 
-| family | before | after | |
-|---|---|---|---|
-| `lock_contention` | 2 of 5 | 5 of 5 | better |
-| `deadlock` | 4 of 5 | 5 of 5 | better |
-| `fd_exhaustion` | 2 of 5 | **0 of 5** | worse |
+| found | why it would have been lost |
+|---|---|
+| Prometheus TSDB (179 MB) | per-run `_metrics/*.json.gz` only hold series somebody thought to export |
+| `gate01` validation run (1.4 GB) | the proof THIS machine was set up correctly, in `~/traces`, not `/mnt/archive/runs` |
+| `fault-state/` (54 dirs), gate/bootstrap logs, 5 custom Docker images | not under the pull path at all |
 
-**Why this matters:** the guess held for two families and failed for one. `fd_exhaustion`
-does not fail by luck. It fails every time now. Re-running it was the wrong call.
+They are now `provenance_20260916.tar.gz` and `provenance_vm_20260917.tar.gz`.
 
-**Next step, not yet done:** `unconfirmed` means the *metric* checks did not see the fault.
-`fd_exhaustion` shows up in the kernel trace as `accept` and `socket` returning EMFILE.
-That is the same shape as `dns_delay` and the code defects. If the kernel trace shows it,
-the family belongs in `expected_to_fail`, not in the re-collect list. **This is a guess.
-It needs checking against the 5 new traces.**
+**Why this nearly went wrong.** I scoped the pull key to a forced command that only exposes
+recipe directories under `/mnt/archive/runs`. That is good security and it silently defined what
+could be transferred. The run bundles were complete; everything around them was invisible to the
+pull. Found only because the question "is everything we need on Trillium?" was asked directly.
 
-## 2. Wrote the plan for testing whether blueprints help
+## 2. Retired the superseded Sock Shop material
 
-New doc: `blueprints/docs/EVAL-PLAN-effectiveness.md`.
+Moved, not deleted, to `superseded-20260917/`: **10 archives (105 GB), 10 extracted trees
+(783 GB), 53 derived packs.** `WHY.md` records the reason per family.
 
-**Why now:** the September with/without test came out a tie. Before running anything else
-we wrote down what we will test and what would count as a win. Setting the line first
-means we cannot move it later.
+Seven were genuinely broken — 5 `code_*` (container restart inside the baseline window),
+`anomaly_net` (netem applied before the incident stamp), `dns_delay` (r4 never injected).
 
-Three things from September drive the plan:
+**Three were not**: `fd_exhaustion`, `lock_contention`, `deadlock` were `unconfirmed`, not
+contaminated. They were retired anyway because a complete verified replacement exists and
+leaving both copies side by side invites exactly the mixing this was meant to prevent. That is a
+judgement call, and it is written down in `WHY.md` rather than left implicit.
 
-- Picking the wrong blueprint caused every bad case. No blueprint gave bad advice about
-  its own fault.
-- The rule engine gets 38 of 41 right. The same rules given to the model as text get about
-  half.
-- Both sides got the evidence pack. So we tested "how to read the numbers" and never
-  tested "what to collect".
+The 783 GB of extracted trees are regenerable from the archives if scratch gets tight.
 
-The plan adds two setups to fix that. One ships the decision as code instead of text. One
-gives the agent **no** evidence pack, so the blueprint has to say what to collect.
+## 3. The verification took four attempts, and three of them were my own bugs
 
-It also adds early detection, which nothing measures today. Feed the agent a growing slice
-of the incident window and record when the answer first becomes right. Our runs already
-have the stamps needed for this, so it needs no new collection.
+| attempt | what happened |
+|---|---|
+| inline on the login node | `nice 19` + idle I/O on a node at load 48 → **0.4 MB/s**; I also started it twice |
+| SLURM, debug partition | killed at 55 min with ZERO output — I read each archive twice and piped through `sort`, which buffers until the end |
+| SLURM, compute, 3 h | killed again; `--export` does not survive Trillium's sbatch wrapper, so every job verified everything |
+| **job array** | **3 minutes, 120 MB/s per node** |
 
-**Reporting note:** a setup that ties on accuracy but answers in 30 s instead of 120 s is
-still worth having. Accuracy alone would hide that.
+The number that explains it: the 3-hour job burned **7 minutes of CPU on 192 cores**. The work
+was never CPU bound and a whole node never helped — it is bound by how fast ONE node pulls gzip
+off `/scratch`, and running four archives on that node splits one pipe four ways. One archive
+per node fixed it. I spent three submissions tuning reads and buffering before looking at that.
 
-## 3. Added a reading order for the repo
+`transfer/verify_archives_array.sbatch` is the version that works, with markers so a re-run only
+re-reads what is still in doubt.
 
-New doc: `READING-ORDER.md`.
+## 4. `fd_exhaustion` is an analysis problem, not a collection one
 
-**Why:** about 120 markdown files exist and there was no way to tell which are current.
-Three are exact copies of each other. One doc supersedes another while both stay in the
-tree. Every entry was written after opening the file, not guessed from the name.
+Re-collecting it made the metric verdict *worse* (2/5 → 0/5 confirmed) while proving the fault
+always fires: `target_pid_survived_window: false` in **all ten runs**, old and new.
+
+The prlimit caps RLIMIT_NOFILE to about half the descriptors in use; the front-end dies; its
+supervisor respawns it WITHOUT the per-process limit, so `container_file_descriptors` CLIMBS
+(98 → 446 → 560) against a target expecting `decrease`.
+
+The evidence was in the old ground truth all along. I read the `unconfirmed` verdicts and not
+the ground truth underneath them, and recommended a re-collection on that basis. The re-run was
+not wasted — it produced 5 clean runs and the proof — but the right fix is the target.
+
+**Open work**: correct the target and re-score. The TSDB in `provenance_20260916.tar.gz` is what
+that re-scoring needs, which is the concrete reason it was worth saving.

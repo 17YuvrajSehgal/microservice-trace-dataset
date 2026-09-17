@@ -28,7 +28,7 @@ I also found the cause of the spoiled baselines. Eleven fault recipes started th
 *before* writing down the start time. So the fault sat inside the window meant to be clean.
 All eleven are fixed. A checker now tests this, and all 23 recipes pass.
 
-Write-up: `blueprints/docs/AUDIT-v2-full.md`.
+Write-up: `../blueprints/docs/AUDIT-v2-full.md`.
 
 ## 2. The analysis was ignoring the campaign's own verdict
 
@@ -127,9 +127,9 @@ The key this needs is locked to one command, so it cannot be used for anything e
 
 | doc | what it is |
 |---|---|
-| `READING-ORDER.md` | Which of the ~120 docs to read, in what order, and which to skip |
-| `blueprints/docs/EVAL-PLAN-effectiveness.md` | The plan for testing whether blueprints help an agent |
-| `blueprints/docs/AUDIT-v2-full.md` | The full check of all 303 runs |
+| `../READING-ORDER.md` | Which of the ~120 docs to read, in what order, and which to skip |
+| `../blueprints/docs/EVAL-PLAN-effectiveness.md` | The plan for testing whether blueprints help an agent |
+| `../blueprints/docs/AUDIT-v2-full.md` | The full check of all 303 runs |
 
 The eval plan is written before running anything, so we cannot move the goalposts later.
 It also covers early detection, which nothing measures today.
