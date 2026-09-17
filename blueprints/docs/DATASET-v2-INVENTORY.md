@@ -1,12 +1,15 @@
 # StrataTrace v2 — what was collected
 
-**Collection finished 6 September 2026.** 303 runs across two applications, four modalities each.
+**Collection finished 6 September 2026. Partly re-collected 15-16 September 2026.**
+**304 runs** across two applications, four modalities each.
 
-This is the inventory: what exists, how good it is, and what to be careful about. Every number
-here was read off the bundles with
-`microservice-lttng-data-collection-scripts/rebuild_manifest.py`, not from the campaign
-drivers' own manifests (which are unreliable for this campaign — see
-[CAMPAIGN-ISSUES.md](../../CAMPAIGN-ISSUES.md) issue 7).
+This is the inventory: what exists, how good it is, and what to be careful about.
+
+> **Read this first if you are picking runs to work with.** 53 Sock Shop runs were retired on
+> 16 Sept and replaced by 54 freshly collected ones. The retired copies are still on disk under
+> `superseded-20260917/` and are **not** part of the dataset. See
+> [the re-collection](#the-re-collection-15-16-september) before using anything under
+> `v2/sockshop/`.
 
 ---
 
@@ -14,37 +17,82 @@ drivers' own manifests (which are unreliable for this campaign — see
 
 | | Sock Shop | Train Ticket | total |
 |---|---|---|---|
-| runs | **169** | **134** | **303** |
-| packed size | 688 GB | 493 GB | **1.18 TB** |
-| runs with all 4 modality dirs | 169 / 169 | 134 / 134 | **303 / 303** |
-| **kernel traces without event loss** | **169 / 169** | **133 / 134** | **302 / 303** |
+| runs | **170** | **134** | **304** |
+| runs with all 4 modality dirs | 170 / 170 | 134 / 134 | **304 / 304** |
+| **kernel traces without event loss** | **170 / 170** | **133 / 134** | **303 / 304** |
 
 The single lossy run is `tt_anomaly_disk_aggressive_steady_r4` (2,481,855 discarded, ~0.25% of
-that run). It is kept deliberately — see [caveats](#caveats-that-affect-analysis).
+that run). It is kept deliberately - see [caveats](#caveats-that-affect-analysis).
 
 Every run carries: kernel CTF trace, OTLP spans, container logs, meta/clock anchors, and a
 per-run Prometheus export (~440 metric series) alongside the bundle.
 
-The client-side request CSV is **complete on Sock Shop (169/169) and partial on Train Ticket
-(31/134)** — see [the load CSV gap](#the-train-ticket-load-csv-gap). The four trace modalities
-are unaffected.
+The client-side request CSV is **complete on Sock Shop and partial on Train Ticket (31/134)** -
+see [the load CSV gap](#the-train-ticket-load-csv-gap). It is a fifth artifact, not one of the
+four modalities; all four are complete in all 304 runs.
+
+## How many runs can you actually build a blueprint from?
+
+Measured 16 Sept. The test: all four modality dirs, a loss-free kernel trace, the fault
+demonstrably present, and a baseline that is a reference rather than a second incident.
+
+| | runs | |
+|---|---|---|
+| **fully usable** | **287** | no run-specific caveat |
+| usable with a caveat | 11 | listed below |
+| not usable as a positive | 6 | the injection did not take |
+
+Fully usable, by verdict:
+
+| app | `confirmed` | `no_metric_signature` | `normal` (reference) |
+|---|---|---|---|
+| Sock Shop | 133 | 21 | 10 |
+| Train Ticket | 99 | 14 | 10 |
+
+`no_metric_signature` counts as fully usable. The fault is present and was **measured** to have
+no metric signature; for kernel-trace work those 35 runs are the most interesting ones, not the
+weakest.
+
+The 11 with a caveat:
+
+| caveat | runs |
+|---|---|
+| baseline inherits the previous run's restart loop (issue 22) | `fd_exhaustion` x5 |
+| effect below threshold, needs a human | `queue_backlog` r2, `tt_error_storm` x2, `tt_slow_db` r2, `tt_svc_net` r5 |
+| kernel event loss ~0.25% | `tt_anomaly_disk_aggressive_steady_r4` |
+
+The 6 that are not usable as positives: `tt_svc_net` x4 (produced 0% packet loss) and
+`tt_error_storm` x2 (effect too weak). These need calibration and re-collection, not re-scoring.
 
 ## Verification verdicts
 
-Of 283 fault runs (303 minus 20 fault-free `normal` reference runs):
+Of 284 fault runs (304 minus 20 fault-free `normal` reference runs), after the 15-16 Sept
+re-collection and re-scoring:
 
 | verdict | Sock Shop | Train Ticket | meaning |
 |---|---|---|---|
-| `confirmed` | 135 | 91 | the fault moved its pre-registered target metric |
-| `borderline` | 12 | 4 | right direction and coverage, magnitude below threshold |
-| `unconfirmed` | 7 | 25 | target did not move — **see caveats, mostly uncalibrated targets** |
-| `no_metric_signature` | 5 | 4 | **measured** to have no metrics signature; this is a finding |
+| `confirmed` | 133 | 99 | the fault moved its pre-registered target metric |
+| `no_metric_signature` | 21 | 14 | **measured** to have no metric signature; this is a finding |
+| `borderline` | 1 | 4 | right direction and coverage, magnitude below threshold |
+| `unconfirmed` | 0 | 6 | the injection did not take - re-collection, not re-scoring |
 | `n/a` (normal runs) | 10 | 10 | nothing injected, nothing to verify |
 
-**A verdict is QC metadata, not data.** Every run above contains a real injection with correct
-ground truth; `unconfirmed` means the *metric check* failed, not that the fault did not happen.
-Verdicts are re-derivable at any time — the original as-collected verdict is preserved in each
-bundle as `verification.as-collected.json`.
+**A verdict is QC metadata, not data.** `unconfirmed` means the *metric check* failed, not that
+the fault did not happen - and twice now the check was the thing that was wrong. Each bundle
+preserves its collection-time verdict as `verification.as-collected.json`.
+
+**Two target families were corrected on 16 September** (CAMPAIGN-ISSUES 22 and 23):
+
+- `fd_exhaustion` went 0/5 to 5/5. Its target summed eleven Prometheus series that look like one
+  - cAdvisor mints a new series per container restart - so a `decrease` target read 98 -> 446.
+  What the fault does is restart-loop the front-end, exactly 9 times per injection.
+- `svc_cpu_cap` (TT) went 0/8 to 8/8 and `svc_mem_cap` 7/8 to 8/8, by scoring the **mechanism**.
+  A cap fault records itself: `container_spec_cpu_quota` is absent until docker applies a quota.
+  The old targets watched CPU usage fall on a service already idle at 0.00 cores.
+- `slow_db` (TT) is now `no_metric_signature`, measured. A candidate replacement
+  (`container_fs_writes_total` on mysql) dropped to 48% of baseline in 11 of 11 runs and
+  recovered - and turned out to show the identical 0.48 in **every** family, so it measured the
+  window, not the fault.
 
 ## Per-family counts
 
@@ -57,19 +105,19 @@ intensity and workload studies add 3 more to selected families (hence 8s and 11s
 | `anomaly_cpu` | 5 | 5 | |
 | `anomaly_disk` | 5 | 5 | **not the same experiment on both** — see caveats |
 | `anomaly_mem` | 8 | 8 | |
-| `anomaly_net` | 8 | 8 | TT: 4 `no_metric_signature` by design |
+| `anomaly_net` | 8 | 8 | **SS re-collected 15 Sept** - baseline median retransmission now 0% |
 | `dependency_outage` | 5 | 5 | |
 | `error_storm` | 8 | 8 | |
 | `noisy_neighbor` | 8 | 8 | |
 | `queue_backlog` | 5 | — | TT has no message broker |
-| `slow_db` | 11 | 11 | TT verdicts outstanding |
+| `slow_db` | 11 | 11 | TT: `no_metric_signature`, measured (issue 23) |
 | `svc_cpu_cap` | 8 | 8 | **ineffective on TT** — see caveats |
 | `svc_mem_cap` | 8 | 8 | |
-| `svc_net` | 5 | 5 | TT verdicts outstanding |
-| `lock_contention` | 5 | 5 | new in v2 |
+| `svc_net` | 5 | 5 | **TT: 4 of 5 produced no packet loss - needs re-collection** |
+| `lock_contention` | 5 | 5 | new in v2; **SS re-collected 16 Sept**, 2/5 -> 5/5 confirmed |
 | `priority_inversion` | 5 | 5 | new in v2 |
-| `deadlock` | 5 | 5 | new in v2 |
-| `fd_exhaustion` | 5 | 5 | new in v2 |
+| `deadlock` | 5 | 5 | new in v2; **SS re-collected 16 Sept**, 4/5 -> 5/5 confirmed |
+| `fd_exhaustion` | 5 | 5 | new in v2; **SS re-collected 16 Sept**, target corrected (issue 22) |
 | `conn_pool_exhaustion` | 5 | 5 | new in v2 |
 | `resource_abuse` | 5 | 5 | new in v2 |
 | `data_exfiltration` | 5 | 5 | new in v2 |
@@ -105,11 +153,29 @@ Docker's embedded resolver inside the netns. On Sock Shop the effect is a tail e
 p95 read *better* than baseline while wall-clock time is 22x and 8% of requests fail. Train
 Ticket sends **zero** DNS packets (Nacos discovery over HTTP), so the family is absent there.
 
-**The five code defects share one metrics signature.** All produce catalogue throughput
-collapsing to 0.33–0.47x; none is distinguishable from the others, or from the container restart
-that applying it requires, in the metrics modality alone. Latency is *not* a discriminator — p95
-goes **down**, because the surviving requests are the fast ones. Discrimination has to come from
-the kernel and trace modalities, which is what the ablation study is for.
+**Two of the five code defects DO move a metric; three do not.** Measured 15 Sept on the
+re-collected runs, using the recovery window as the control (identical container image in both
+windows, only the `/dev/shm` flag differs):
+
+| family | baseline | injection | recovery | reads as |
+|---|---|---|---|---|
+| `code_lock_across_io` | 106.5 | 262.2 | 262.7 | load ramp only |
+| `code_n_plus_one` | 104.1 | 255.9 | 255.0 | load ramp only |
+| `code_unbounded_cache` | 99.8 | 245.9 | 247.2 | load ramp only |
+| `code_event_loop_block` | 102.8 | **34.3** | **122.4** | real |
+| `code_serial_awaits` | 93.6 | **50.5** | **132.4** | real |
+
+Where injection equals recovery, nothing happened. Where the rate falls and returns, the fault
+is real. **The split is Node vs Go**: both visible families are front-end Node defects that stall
+a single-threaded event loop, so catalogue stops being called. The three invisible ones are Go in
+catalogue, where concurrency absorbs a per-request slowdown and offered throughput holds. Same
+class of bug, opposite modality outcome.
+
+Trace volume agrees independently: the two visible families produced 14-15 GB per family against
+26-33 GB for the three invisible ones.
+
+This supersedes the earlier claim that all five shared one signature and that the container
+restart was inseparable from the defect - the restart was a collection bug (issue 17), fixed.
 
 **Bounded metrics are blind to faults our collection contends for.** LTTng writes ~53 MB/s
 continuously on Sock Shop — exactly the measured baseline of `node_disk_written_bytes_total` —
@@ -155,27 +221,74 @@ memory. Re-collecting 103 Train Ticket runs costs roughly 620 GB and a day of VM
 modality of four. Whether that is worth it depends on whether the ablation study needs a
 client-side view on Train Ticket; it is a research call, not a defect to quietly patch.
 
-**10 Train Ticket verdicts are outstanding** (`slow_db` ×5, `svc_net` ×5). Their data is intact.
-`svc_net`'s candidate metrics rise *uniformly* ~2.1x across unrelated services, which reads as
-load drift rather than a targeted fault; registering it without separating fault from drift
-would risk certifying noise.
+**The 10 outstanding Train Ticket verdicts are resolved** (16 Sept, CAMPAIGN-ISSUES 23).
+`slow_db` is `no_metric_signature` - measured, not assumed. `svc_net` is the one family that
+genuinely needs re-collecting: 4 of its 5 runs produced 0% packet loss, so the injection did not
+take and no target can rescue it.
+
+---
+
+## The re-collection, 15-16 September
+
+53 Sock Shop runs were retired and 54 collected in their place, on a purpose-built VM
+(`stratatrace-ss`, same `n2-custom-12-40960` shape as the original so `thief_share` and
+`anomaly_mem` still divide correctly).
+
+| family | runs | why it was re-collected | outcome |
+|---|---|---|---|
+| 5 x `code_*` | 26 | contaminated baseline: the recipe restarted the container **inside** the baseline window, so baseline TCP retransmission read 34.7-79.9% | fixed; `arm` restarts before tracing, `inject` writes a flag |
+| `anomaly_net` | 8 | 3 of 8 applied netem **before** the incident stamp | fixed; **baseline median retransmission 0%** |
+| `dns_delay` | 5 | r4's injection never took (EMFILE exactly 0) | all 5 consistent |
+| `lock_contention` | 5 | 3 of 5 `unconfirmed` | 2/5 -> **5/5 confirmed** |
+| `deadlock` | 5 | 1 of 5 `unconfirmed` | 4/5 -> **5/5 confirmed** |
+| `fd_exhaustion` | 5 | 3 of 5 `unconfirmed` | the *target* was wrong, not the runs (issue 22) |
+
+The retired copies are at `superseded-20260917/` - **moved, never deleted**, because they are the
+evidence for issues 17 and 21 and for the before/after comparison. `WHY.md` there records the
+reason per family. Three of the ten retired families were not contaminated at all
+(`fd_exhaustion`, `lock_contention`, `deadlock`); they were retired because a verified
+replacement exists and leaving both invites mixing.
+
+**Do not mix the two sets.** Everything under `v2/sockshop-recollected-20260915/` supersedes the
+same-named family in `superseded-20260917/`.
 
 ## Where the data is
 
 | | location |
 |---|---|
-| archives (authoritative) | Trillium `/scratch/yuvraj17/stratatrace/v2/{sockshop,trainticket}/` |
-| working copy | Trillium `/scratch/yuvraj17/stratatrace/data/stratatrace-v2/<app>/<recipe>/<run_id>/` — extracted and **fully decompressed** |
-| Prometheus TSDBs | `C:\workplace\stratatrace-v2-prometheus\` |
-| campaign logs | `C:\workplace\stratatrace-v2-campaign-logs\` |
+| archives, original | Trillium `/scratch/yuvraj17/stratatrace/v2/{sockshop,trainticket}/` |
+| archives, re-collected | Trillium `/scratch/yuvraj17/stratatrace/v2/sockshop-recollected-20260915/` - 12 archives, 156.4 GB, **all verified** |
+| retired | Trillium `/scratch/yuvraj17/stratatrace/superseded-20260917/` - 105 GB archives + 783 GB extracted + 53 stale packs |
+| working copy | Trillium `/scratch/yuvraj17/stratatrace/data/stratatrace-v2/<app>/<recipe>/<run_id>/` - extracted, fully decompressed |
+| Prometheus TSDBs | originals `C:\workplace\stratatrace-v2-prometheus\`; the re-collection's is on Trillium in `provenance_20260916.tar.gz` |
+| campaign logs | originals `C:\workplace\stratatrace-v2-campaign-logs\`; the re-collection's is in `provenance_20260916.tar.gz` |
 
-**The collection VMs were deleted on 2026-09-07**, along with all four disks, so
-`stratatrace-ss:/mnt/archive` no longer exists. **Trillium holds the only copy of the dataset.**
-`/scratch` retention there is confirmed safe for at least a year; `/project` could not hold it
-(705 GiB free against 778 GiB needed) and a Nibi copy was attempted and abandoned.
+**Every collection VM has been deleted.** The original pair went on 2026-09-07; the replacement
+`stratatrace-ss` and both its disks went on 2026-09-16 once its work was verified. GCP cost for
+this project is zero. **Trillium holds the only copy of the dataset.**
 
-**Not yet transferred to Trillium.** At 1.18 TB the two halves fit their own 1 TB archives but
-not a single one; plan the move per application.
+Before the replacement VM was deleted, three things that existed *only* on it were swept off -
+they were not in any run bundle, because the transfer key was deliberately scoped to recipe
+directories:
+
+- the Prometheus TSDB (179 MB) - the continuous record the per-run exports cannot reconstruct,
+  and what a corrected verification target gets re-scored against
+- the `gate01` validation run (1.4 GB) - proof that machine was set up correctly
+- `fault-state/` (54 dirs), the bootstrap and gate logs, and `docker save` of the five images
+  built there (`frontend-bugs:v2`, `catalogue-bugs:v2`, the two OTel images, the workload image)
+
+They are `provenance_20260916.tar.gz` and `provenance_vm_20260917.tar.gz`.
+
+**Transfers now pull, they do not push.** Alliance requires MFA as a second factor even when a
+CCDB-registered key passes as the first, so a batch-mode push from a VM cannot authenticate.
+Trillium can dial out to a GCP VM, so `transfer/pull_from_vm.sh` inverts the direction. The key
+it uses lives on a shared login node, so it is bound to a forced command that can only list
+recipes or stream one. See `transfer/README.md`.
+
+**Verify archives with a job array, not a loop.** `transfer/verify_archives_array.sbatch` gives
+each archive its own node: 120 MB/s each, the whole set in about three minutes. Three earlier
+single-node attempts were killed at their wall clocks - the work is bound by how fast one node
+pulls gzip off `/scratch`, so four archives on one node just split one pipe four ways.
 
 ### Prometheus snapshots
 
