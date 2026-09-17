@@ -1,86 +1,96 @@
 # Next steps
 
-_Updated 15 September 2026._
+_Updated 17 September 2026, end of session._
 
-## Where things stand
+## Read this first
 
-The 25 contaminated code-defect runs are re-collected and verified. **26 of 26 usable**
-(25 campaign runs + 1 proof run). Baseline no longer contains a container restart.
+**10 runs exist ONLY on the stopped Train Ticket VM's archive disk.** 8 `error_storm` + 2
+`svc_net`. They are not on Trillium. The disks persist while the instance is stopped, so nothing
+is at risk today, but this is the same single-copy exposure that made the v1 loss possible.
 
-**These 26 runs exist only on the collection VM.** They are not on Trillium yet. That is the
-one thing worth acting on quickly.
+Getting them to Trillium is the first job tomorrow, before collecting anything else.
 
-The rest of v2 (303 runs, 1.18 TB) is on Trillium. Inventory:
-`blueprints/docs/DATASET-v2-INVENTORY.md`. Known problems: `CAMPAIGN-ISSUES.md`.
+## The VM
 
-## The result from this collection
+| | |
+|---|---|
+| name | `stratatrace-tt`, us-east1-d, `n2-standard-16` |
+| state | **TERMINATED** (stopped cleanly; no partial bundles, LTTng sessions destroyed) |
+| disks | 200 GB boot + 1 TB archive, both `READY`, both persist |
+| cost while stopped | disks only, roughly $60/month |
+| cost while running | about $0.78/hour |
 
-Two of the five code defects DO move a metric. Three do not. See
-`progress-notes/15-09-2026/decisions.md` and CAMPAIGN-ISSUES 21.
-
-| family | baseline | injection | recovery | reads as |
-|---|---|---|---|---|
-| `code_lock_across_io` | 106.5 | 262.2 | 262.7 | ramp only |
-| `code_n_plus_one` | 104.1 | 255.9 | 255.0 | ramp only |
-| `code_unbounded_cache` | 99.8 | 245.9 | 247.2 | ramp only |
-| `code_event_loop_block` | 102.8 | **34.3** | **122.4** | real |
-| `code_serial_awaits` | 93.6 | **50.5** | **132.4** | real |
-
-Trace volume agrees independently: the two visible families produced 14–15 GB per family, the
-three invisible ones 26–33 GB. Throughput fell, so fewer kernel events.
-
-## Next, in order
-
-### 1. Get the 26 runs off the VM — BLOCKED, needs you
-
-`transfer/push_to_trillium.sh` is ready and pigz is installed, but the new VM has **no SSH key
-for Trillium**. SciNet needs key + MFA, so this needs you:
+**Its external IP WILL CHANGE on restart.** Re-read it and pass it to `pull_from_vm.sh`:
 
 ```bash
-# on the VM
-ssh-keygen -t ed25519 -f ~/.ssh/trillium -N ""
-cat ~/.ssh/trillium.pub          # add this at https://ccdb.alliancecan.ca -> Manage SSH Keys
+gcloud compute instances start stratatrace-tt --zone=us-east1-d --project=teleeporter
+gcloud compute instances describe stratatrace-tt --zone=us-east1-d --project=teleeporter \
+    --format='get(networkInterfaces[0].accessConfigs[0].natIP)'
 ```
 
-Then the push is one command:
+## Tomorrow, in order
+
+### 1. Finish the 3 remaining `svc_net` runs
+
+r3, r4, r5. The driver is already on the VM at `~/collect_sn.sh` and is resumable — it skips runs
+whose bundle exists, so just re-run it. It also re-runs its own pre-check and **aborts if
+`ts-basic-service` is not carrying traffic**, which is the condition that ruined the originals.
 
 ```bash
-DEST_ROOT=/scratch/yuvraj17/stratatrace/v2 SRC=/mnt/archive/runs APP=sockshop \
-    ./push_to_trillium.sh
+setsid ~/collect_sn.sh > ~/collect_sn2.log 2>&1 &
 ```
 
-114 GB. GCP egress is roughly $14. Verify after with `./push_to_trillium.sh --verify`.
+About 15 min/run, so ~45 minutes.
 
-### 2. Stop the VM once the transfer is done
+### 2. Prove the fault is in the new `svc_net` traces
 
-It bills about $0.50/hr while running. The disk persists when stopped.
+**This is the step that matters, and the metric verdict does not answer it.** `svc_net`'s target
+is `rate(container_network_transmit_bytes_total)` with `direction: decrease`, which is BACKWARDS —
+packet loss causes retransmission, so transmitted bytes go UP (measured: 15938 -> 31517). Both
+collected runs already read `unconfirmed` for that reason and it means nothing.
 
-### 3. Rebuild packs on Trillium so `baseline_quiet` can run over the new runs
+Run the kernel-trace check instead, which is validated on TT traces (it reproduced r1's 42.9%):
 
-### 4. Still to re-collect — both need a decision, neither is quick
+```bash
+python3 blueprints/lib/net_loss_signature.py --ctf <run>/kernel/kernel \
+    --gt <run>/ground_truth.json --out <run>_netloss.json
+```
 
-| what | runs | why it is not quick |
-|---|---|---|
-| `svc_net` on Train Ticket | 4 | needs a Train Ticket stack; not deployed on this VM |
-| `tt_slow_db_subtle` r3 | 1 | same |
-| `dns_delay` r4 | 1 | no `dns_delay` runs exist on this VM, so re-running the family collects 5, not 1 (~45 min) |
+Read `signature.worst_retrans_pct` and `signature.n_impaired`. Expect ~4% loss and impaired
+veths; r1 of the old family is the reference at 42.9%.
 
-Train Ticket code defects remain a separate decision — real work, worth it only if we want
-those five faults in the paper for both apps.
+### 3. Then fix the `svc_net` target
 
-## Open questions, carried forward
+Almost certainly the same shape as `error_storm` and `anomaly_net` on TT: Sock Shop's target is
+`carts_p95_latency`, and **Train Ticket exposes no latency histogram**, so metrics are
+structurally blind to netem there. If the traces show loss, mark `expected_to_fail` and record the
+retransmission percentages as the evidence. Do not adopt a target until it passes a specificity
+check across families — that is what caught the `slow_db` near-miss.
 
-1. The sigma test cannot fire on the two visible families. The load ramp inflates
-   `baseline_std` (CAMPAIGN-ISSUES 20), so verdicts rest on direction + fraction plus the
-   recovery window.
-2. Settled catalogue rate is ~130/s in front-end-defect runs but ~250/s in catalogue-defect
-   runs under the same load. Within-run comparisons are fine. **Do not compare absolute rates
-   across the two groups** until this is explained.
+### 4. Set up the Trillium pull key on this VM
 
-## Older items still open
+The pull key was never installed here — it only ever existed on the Sock Shop VM, which is
+deleted. Repeat the `transfer/README.md` procedure: generate a key on Trillium, install
+`transfer/export_recipe.sh` to `~/bin/` on the VM, and add the forced-command line to
+`~/.ssh/authorized_keys`. **That last step needs you** — the classifier blocks me from editing
+`authorized_keys`.
 
-- H1: with/without agent comparison
-- H2: parent/child blueprint tree
-- I1: `service-memory-cap` vs `anomaly_mem`
-- `explanation.txt` and `recommended_action.txt` are declared by blueprints but written by
-  nothing
+### 5. Pull, verify, delete
+
+```bash
+VM_HOST=<new ip> DEST=/scratch/yuvraj17/stratatrace/v2/trainticket-recollected-20260917 \
+    ~/bin/pull_from_vm.sh
+sbatch --array=0-N transfer/verify_archives_array.sbatch     # one archive per node
+```
+
+Then delete the instance **and** the archive disk (`auto-delete=no`, so it survives otherwise).
+
+## Still open, not started
+
+- **`svc_net` r4** of the old family was never re-analysed for loss (r1/r2/r3/r5 were).
+- The **103 Train Ticket runs with no client-side load CSV** — a research call, not a defect.
+- **1 lossy run**, `tt_anomaly_disk_aggressive_steady_r4` (~0.25% discarded), kept deliberately.
+- **Train Ticket code defects** (25 runs) — the only way those five faults satisfy the
+  two-application rule. Today's Node-vs-Go finding makes a third runtime genuinely interesting.
+- `explanation.txt` / `recommended_action.txt` are declared by blueprints and written by nothing.
+- H1 with/without agent comparison; H2 parent/child blueprint tree.
