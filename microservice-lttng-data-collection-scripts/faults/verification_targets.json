@@ -260,14 +260,19 @@
  ],
  "fd_exhaustion": [
   {
+   "name": "front_end_restart_loop",
+   "promql": "count(count_over_time(container_file_descriptors{name=~\".*front-end_1$\"}[2m]))",
+   "direction": "increase",
    "canonical": true,
-   "name": "front_end_fd_ceiling",
-   "promql": "container_file_descriptors{name=~\".*front-end_1$\"}",
-   "direction": "decrease",
-   "threshold_sigma": 3,
-   "abs_threshold": null,
-   "min_fraction": 0.6,
-   "why": "The cap is set to a fraction of what the service is using at inject time, so the descriptor count is forced DOWN and then pinned. MEASURED on Train Ticket: 305 in use, capped to 183, count fell to 257. Deliberately has no abs_threshold - the absolute number depends entirely on the service (21 idle on Sock Shop's Node front-end, 175 on Train Ticket's JVM gateway), so only the direction and the sigma are portable."
+   "min_new_generations_in_injection": 2,
+   "measured_new_generations": [
+    9,
+    9,
+    9,
+    9,
+    9
+   ],
+   "note": "REPLACED 2026-09-16 after measuring all 5 re-collected runs. The old target summed a series that is not one series: container_file_descriptors{name=~'.*front-end_1$'} matches ELEVEN series for one container, differing only in container_label_restartcount, because cAdvisor mints a new series on every restart. Summing them produced injection_mean=446 and recovery_mean=560 against a baseline of 98, so a 'decrease' target failed and the run read unconfirmed. The single continuous series is flat (98 -> 96 -> 96); nothing climbed, the SERIES COUNT grew. What the fault actually does is restart-loop the front-end: restartcount runs 21->31 in a 120 s injection, and the count of NEW restart generations inside the injection window is EXACTLY 9 in all five runs. Control: lock_contention r2-r5 sit at 76->76 with zero restarts, so the front-end is stable when nothing attacks it; dns_delay shows 9,0,8,0,0, so the signal is not unique to this fault but is decisive for it. CAVEAT: the loop outlives the injection (Docker restart backoff), so each run's BASELINE inherits the previous run's tail - 1,6,7,11,12 new generations in the five baselines. Judge on generations that START inside the injection window, not on a baseline-relative ratio."
   }
  ],
  "conn_pool_exhaustion": [

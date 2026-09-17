@@ -681,3 +681,78 @@ the other three keep it and report `no_metric_signature`.
 2. Settled catalogue rate is ~130/s in front-end-defect runs but ~250/s in catalogue-defect runs
    under the same load profile. Within-run comparisons are unaffected. **Do not compare absolute
    rates across the two groups** until this is explained.
+
+---
+
+## Issue 22 - RESOLVED: `fd_exhaustion`'s target measured an artifact of its own query
+
+**Fixed 2026-09-16. Re-scored: 5 of 5 confirmed, up from 0 of 5.**
+
+### The old target counted series, not descriptors
+
+`container_file_descriptors{name=~".*front-end_1$"}` looks like one series. It is **eleven**.
+cAdvisor mints a new series on every container restart; they share the same container id, image
+and name, and differ only in `container_label_restartcount`. The query summed them:
+
+| | baseline | injection | recovery |
+|---|---|---|---|
+| stored verdict (summed) | 98.2 | 446.0 | 560.2 |
+| the one continuous series | 98.0 | 96.0 | 96.0 |
+
+So a `decrease` target failed and five good runs read `unconfirmed`. Nothing climbed - the
+**series count** grew. Summing the eleven reproduces 560.2 against the stored 560.17, which is
+how the artifact was identified rather than guessed at.
+
+This also corrects an explanation given earlier in the same session: "the process dies and its
+supervisor respawns it without the per-process limit, so descriptors climb". Wrong. The
+container never leaves; `container_processes` holds at 1.0 throughout.
+
+### What the fault actually does
+
+It restart-loops the front-end. `restartcount` runs **21 -> 31 inside a 120 s injection**, and
+the count of restart generations that BEGIN inside the injection window is **exactly 9 in all
+five runs**.
+
+| family | new generations in injection | reads as |
+|---|---|---|
+| `fd_exhaustion` | 9, 9, 9, 9, 9 | the fault |
+| `lock_contention` | 0, 0, 0, 0, 0 | clean negative control (`rc` frozen at 76) |
+| `dns_delay` | 9, 0, 8, 0, 0 | not unique to fd_exhaustion, still decisive for it |
+
+`lock_contention` is the control that matters: the front-end sits at `76 -> 76` untouched, so it
+is **not** inherently crash-looping. It is stable when nothing attacks it.
+
+New canonical target:
+
+```
+count(count_over_time(container_file_descriptors{name=~".*front-end_1$"}[2m]))   direction: increase
+```
+
+### CARRIED FORWARD, NOT FIXED: the loop outlives the injection
+
+Docker's restart backoff keeps the loop running past the injection window, so **each run's
+baseline inherits the previous run's tail**:
+
+| run | generations inherited by the baseline |
+|---|---|
+| r1 | 1 |
+| r2 | 6 |
+| r3 | 7 |
+| r4 | 11 |
+| r5 | 12 |
+
+`lock_contention` r1 inherited 11 from `fd_exhaustion` r5 before settling, so this crosses
+family boundaries in collection order. Same class of problem as issue 17, different mechanism.
+
+**Consequence:** never score `fd_exhaustion` on a baseline-relative ratio - that measures the
+previous run. Judge on generations that start inside the injection window. The new target does.
+
+A future collection should drain the restart loop before the next run's baseline opens, the same
+shape as the `arm`-before-tracing fix.
+
+### Re-scoring with no Prometheus
+
+The collection VM is deleted, so `verify_injection.py` has nothing to query.
+`blueprints/lib/rescore_from_sidecar.py` computes the same quantity offline from each run's
+archived `<run>_metrics/*.json.gz`. Results are in
+`results/rescore/{fd_exhaustion,lock_contention,dns_delay}_rescore.json` on Trillium.
