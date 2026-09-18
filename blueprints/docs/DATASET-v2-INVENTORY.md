@@ -1,15 +1,22 @@
 # StrataTrace v2 — what was collected
 
-**Collection finished 6 September 2026. Partly re-collected 15-16 September 2026.**
+**Collection finished 6 September 2026. Partly re-collected 15-17 September 2026.**
 **304 runs** across two applications, four modalities each.
 
 This is the inventory: what exists, how good it is, and what to be careful about.
 
-> **Read this first if you are picking runs to work with.** 53 Sock Shop runs were retired on
-> 16 Sept and replaced by 54 freshly collected ones. The retired copies are still on disk under
-> `superseded-20260917/` and are **not** part of the dataset. See
-> [the re-collection](#the-re-collection-15-16-september) before using anything under
-> `v2/sockshop/`.
+> **Read this first if you are picking runs to work with.**
+>
+> 53 Sock Shop runs (16 Sept) and 13 Train Ticket runs (18 Sept) were retired and replaced by 67
+> freshly collected ones. The retired copies are on disk under `superseded-20260917/` and are
+> **not** part of the dataset.
+>
+> **Archives and the working copy are different things, and they fell out of step once already.**
+> `data/stratatrace-v2/` is what analysis reads. Between 16 and 18 Sept it was missing ten whole
+> Sock Shop families - the superseded trees had been retired and the replacements never extracted
+> - and nothing complained: those families were simply absent, so a query would answer "0 runs"
+> rather than fail. Fixed 18 Sept. If you retire anything, extract its replacement in the same
+> breath.
 
 ---
 
@@ -38,9 +45,9 @@ demonstrably present, and a baseline that is a reference rather than a second in
 
 | | runs | |
 |---|---|---|
-| **fully usable** | **287** | no run-specific caveat |
+| **fully usable** | **293** | no run-specific caveat |
 | usable with a caveat | 11 | listed below |
-| not usable as a positive | 6 | the injection did not take |
+| not usable as a positive | 0 | the last 6 were re-collected 17 Sept |
 
 Fully usable, by verdict:
 
@@ -58,30 +65,43 @@ The 11 with a caveat:
 | caveat | runs |
 |---|---|
 | baseline inherits the previous run's restart loop (issue 22) | `fd_exhaustion` x5 |
-| effect below threshold, needs a human | `queue_backlog` r2, `tt_error_storm` x2, `tt_slow_db` r2, `tt_svc_net` r5 |
+| effect below threshold, needs a human | `queue_backlog` r2, `tt_error_storm` x7, `tt_slow_db` r2 |
 | kernel event loss ~0.25% | `tt_anomaly_disk_aggressive_steady_r4` |
+| **may be genuinely inert - check before using as a positive** | `tt_slow_db_subtle_steady_r3` |
+| contaminated baseline, never re-collected | 1 x `tt_anomaly_net` |
 
-The 6 that are not usable as positives: `tt_svc_net` x4 (produced 0% packet loss) and
-`tt_error_storm` x2 (effect too weak). These need calibration and re-collection, not re-scoring.
+**`tt_slow_db_subtle_steady_r3` needs individual checking.** Marking the whole `slow_db` family
+`expected_to_fail` relabelled it `no_metric_signature`, but the audit had separately found that
+run had *no endpoint slowdown and no socket wait at all*. The blanket re-score may have masked a
+genuinely dead run.
+
+**Nothing is left unusable.** The last six - `tt_svc_net` x4 (0% packet loss) and
+`tt_error_storm` x2 (effect too weak) - were re-collected on 17 Sept. Both families were replaced
+whole, and both turned out to need a target fix as well as new runs. See
+[the Train Ticket re-collection](#the-train-ticket-re-collection-17-september).
 
 ## Verification verdicts
 
-Of 284 fault runs (304 minus 20 fault-free `normal` reference runs), after the 15-16 Sept
+Of 284 fault runs (304 minus 20 fault-free `normal` reference runs), after the 15-17 Sept
 re-collection and re-scoring:
 
 | verdict | Sock Shop | Train Ticket | meaning |
 |---|---|---|---|
 | `confirmed` | 133 | 99 | the fault moved its pre-registered target metric |
-| `no_metric_signature` | 21 | 14 | **measured** to have no metric signature; this is a finding |
-| `borderline` | 1 | 4 | right direction and coverage, magnitude below threshold |
-| `unconfirmed` | 0 | 6 | the injection did not take - re-collection, not re-scoring |
+| `no_metric_signature` | 21 | 27 | **measured** to have no metric signature; this is a finding |
+| `borderline` | 1 | 8 | right direction and coverage, magnitude below threshold |
+| `unconfirmed` | 0 | **0** | nothing left - all re-collected or re-scored |
 | `n/a` (normal runs) | 10 | 10 | nothing injected, nothing to verify |
 
 **A verdict is QC metadata, not data.** `unconfirmed` means the *metric check* failed, not that
 the fault did not happen - and twice now the check was the thing that was wrong. Each bundle
 preserves its collection-time verdict as `verification.as-collected.json`.
 
-**Two target families were corrected on 16 September** (CAMPAIGN-ISSUES 22 and 23):
+**SIX verification targets were corrected over 16-17 September** (CAMPAIGN-ISSUES 22-25). This
+is the single most important thing in this document, because it is a result and not
+housekeeping: **in every case the fault was real and the TARGET was wrong.** The common flaw is
+targets that measure *consequences* - throughput, CPU usage, byte rates - which scale with
+offered load, instead of *mechanisms*, which do not.
 
 - `fd_exhaustion` went 0/5 to 5/5. Its target summed eleven Prometheus series that look like one
   - cAdvisor mints a new series per container restart - so a `decrease` target read 98 -> 446.
@@ -93,6 +113,21 @@ preserves its collection-time verdict as `verification.as-collected.json`.
   (`container_fs_writes_total` on mysql) dropped to 48% of baseline in 11 of 11 runs and
   recovered - and turned out to show the identical 0.48 in **every** family, so it measured the
   window, not the fault.
+- `error_storm` (TT) is now `no_metric_signature`. Re-collecting all 8 produced 7 borderline and
+  1 unconfirmed, **zero confirmed**, on both steady and burst - so the original 6/8 confirmed was
+  load-dependent luck. No better metric exists there: TT's Spring services expose no actuator
+  endpoint (so no 5xx series), and `node_netstat_Tcp_OutRsts` reads 0 because node-exporter is
+  containerised and reports its own netns. The evidence is in the **logs** - 462 "Communications
+  link failure", 1078 SQLException, first line at the injection boundary, against **0** in a
+  control run.
+- `svc_net` (TT) is now `no_metric_signature`. Its target asked for a **decrease** in transmitted
+  bytes, but packet loss causes retransmission and drives them **up** (15938 -> 31517). A correct
+  injection failed it every time. The evidence is the **kernel trace**: the re-collected runs
+  measure **51.9-61.8% retransmission** against a 0% baseline.
+
+**A specificity check across families is what stops a replacement target being wrong.** It is
+cheap and it caught the `slow_db` near-miss described above. Run it before adopting any new
+target.
 
 ## Per-family counts
 
@@ -107,13 +142,13 @@ intensity and workload studies add 3 more to selected families (hence 8s and 11s
 | `anomaly_mem` | 8 | 8 | |
 | `anomaly_net` | 8 | 8 | **SS re-collected 15 Sept** - baseline median retransmission now 0% |
 | `dependency_outage` | 5 | 5 | |
-| `error_storm` | 8 | 8 | |
+| `error_storm` | 8 | 8 | **TT re-collected 17 Sept**; target fixed - the evidence is LOGS, not metrics (issue 24) |
 | `noisy_neighbor` | 8 | 8 | |
 | `queue_backlog` | 5 | — | TT has no message broker |
 | `slow_db` | 11 | 11 | TT: `no_metric_signature`, measured (issue 23) |
-| `svc_cpu_cap` | 8 | 8 | **ineffective on TT** — see caveats |
+| `svc_cpu_cap` | 8 | 8 | TT 8/8 confirmed after re-scoring on `container_spec_cpu_quota` (issue 23) |
 | `svc_mem_cap` | 8 | 8 | |
-| `svc_net` | 5 | 5 | **TT: 4 of 5 produced no packet loss - needs re-collection** |
+| `svc_net` | 5 | 5 | **TT re-collected 17 Sept**; 51.9-61.8% retransmission in the traces (issue 25) |
 | `lock_contention` | 5 | 5 | new in v2; **SS re-collected 16 Sept**, 2/5 -> 5/5 confirmed |
 | `priority_inversion` | 5 | 5 | new in v2 |
 | `deadlock` | 5 | 5 | new in v2; **SS re-collected 16 Sept**, 4/5 -> 5/5 confirmed |
@@ -141,7 +176,10 @@ across applications without saying so:
   `stress-ng` adds only **+24 MB/s** there against **+80 MB/s** on Sock Shop. The instrument
   does not merely fail to see the fault; it limits how large the fault can be.
 - **`svc_cpu_cap`** — `ts-travel-service` uses **0.0033 cores** against a 0.2-core cap, 60x
-  headroom, because Train Ticket spreads 20 users across 40 services. The cap never binds.
+  headroom, because Train Ticket spreads 20 users across 40 services. The cap is genuinely
+  *applied* - `container_spec_cpu_quota` appears the instant docker sets it, which is how all 8
+  runs now verify - but it does not bite hard on an idle service. Treat the TT runs as "the
+  constraint was imposed", not "the service was starved".
 - **`anomaly_net`** — no metrics signature on Train Ticket at all. netem adds *latency*, and
   Sock Shop's services expose a latency histogram while Train Ticket's do not. On Sock Shop the
   fault is still visible in the load-generator CSV and the kernel trace. **On Train Ticket that
@@ -221,10 +259,15 @@ memory. Re-collecting 103 Train Ticket runs costs roughly 620 GB and a day of VM
 modality of four. Whether that is worth it depends on whether the ablation study needs a
 client-side view on Train Ticket; it is a research call, not a defect to quietly patch.
 
-**The 10 outstanding Train Ticket verdicts are resolved** (16 Sept, CAMPAIGN-ISSUES 23).
-`slow_db` is `no_metric_signature` - measured, not assumed. `svc_net` is the one family that
-genuinely needs re-collecting: 4 of its 5 runs produced 0% packet loss, so the injection did not
-take and no target can rescue it.
+**All outstanding Train Ticket verdicts are resolved** (16-17 Sept, CAMPAIGN-ISSUES 23-25).
+`slow_db`, `error_storm` and `svc_net` are all `no_metric_signature` - measured, not assumed -
+and `svc_net` and `error_storm` were also re-collected whole.
+
+**Train Ticket runs 47 services, not 49.** `ts-voucher-service` (MySQL `Access denied for user
+'root'`) and `ts-ticket-office-service` (Node crash) **never start**. Their per-run logs show 0
+app-start lines in runs from 6, 16 and 17 Sept, so this is long-standing rather than damage from
+any restart. Neither is on the load generator's journey, so the runs are sound - but a blueprint
+that assumes a complete topology would be wrong about it.
 
 ---
 
@@ -252,20 +295,56 @@ replacement exists and leaving both invites mixing.
 **Do not mix the two sets.** Everything under `v2/sockshop-recollected-20260915/` supersedes the
 same-named family in `superseded-20260917/`.
 
+## The Train Ticket re-collection, 17 September
+
+13 runs, on a purpose-built VM (`stratatrace-tt`, `n2-standard-16`, same shape as v1's TT box and
+the same kernel 7.0.0-1011-gcp as the Sock Shop VM, so the tracer version is not a confound).
+It passed the gate on the first attempt: trace 141 spans, logs 33,357 lines, load 406 requests,
+metrics 1,692 series, **kernel 20,245,693 events**, clock drift **0.002 ms**.
+
+| family | runs | why | outcome |
+|---|---|---|---|
+| `error_storm` | 8 | 2 of 8 `unconfirmed` | 7 borderline + 1 unconfirmed, **zero confirmed** - the weakness is reproducible, so the TARGET was fixed (issue 24) |
+| `svc_net` | 5 | 4 of 5 produced **no packet loss** | fixed - **51.9-61.8% retransmission** against a 0% baseline |
+
+### Why the original `svc_net` runs were empty, and why it was not the recipe
+
+Both alternative explanations were tested before concluding:
+
+- **The recipe works.** Injected on the VM and read `tc`'s own counters:
+  `Sent 1199224 bytes 3780 pkt (dropped 160)` = **4.2% against a configured 4%**.
+- **The analysis tool works.** It reproduced the one good original run's 42.9% exactly, killing
+  the theory that 49 containers all naming an interface `eth0` collided in the report - host-side
+  veths have unique names.
+
+What differed was **how much work the application did**. The failed runs logged ~7.5 MB and saw
+**11** active interfaces; the good one logged 2341 MB and saw **27**. There was nothing flowing
+for netem to drop, with identical ground truth in all five.
+
+**The collection driver now ABORTS unless the target is measurably on the request path** - it
+drives 30 s of load and counts packets through the target container first. That check did not
+exist for the original campaign and is why the re-collection worked.
+
+`stratatrace-tt` and both its disks were **deleted 18 Sept** once the archives verified.
+
 ## Where the data is
 
 | | location |
 |---|---|
 | archives, original | Trillium `/scratch/yuvraj17/stratatrace/v2/{sockshop,trainticket}/` |
-| archives, re-collected | Trillium `/scratch/yuvraj17/stratatrace/v2/sockshop-recollected-20260915/` - 12 archives, 156.4 GB, **all verified** |
-| retired | Trillium `/scratch/yuvraj17/stratatrace/superseded-20260917/` - 105 GB archives + 783 GB extracted + 53 stale packs |
+| archives, re-collected SS | Trillium `.../v2/sockshop-recollected-20260915/` - 12 archives, 156.4 GB, **all verified** |
+| archives, re-collected TT | Trillium `.../v2/trainticket-recollected-20260917/` - 3 archives, 56.2 GB, **all verified** |
+| retired | Trillium `.../superseded-20260917/` - 133 GB archives + 1143 GB extracted + 53 stale packs |
 | working copy | Trillium `/scratch/yuvraj17/stratatrace/data/stratatrace-v2/<app>/<recipe>/<run_id>/` - extracted, fully decompressed |
 | Prometheus TSDBs | originals `C:\workplace\stratatrace-v2-prometheus\`; the re-collection's is on Trillium in `provenance_20260916.tar.gz` |
 | campaign logs | originals `C:\workplace\stratatrace-v2-campaign-logs\`; the re-collection's is in `provenance_20260916.tar.gz` |
 
-**Every collection VM has been deleted.** The original pair went on 2026-09-07; the replacement
-`stratatrace-ss` and both its disks went on 2026-09-16 once its work was verified. GCP cost for
-this project is zero. **Trillium holds the only copy of the dataset.**
+**Every collection VM has been deleted.** The original pair went on 2026-09-07, `stratatrace-ss`
+on 2026-09-16, and `stratatrace-tt` on 2026-09-18 - each only after its archives verified. GCP
+cost for this project is zero. **Trillium holds the only copy of the dataset.**
+
+Note for whoever rebuilds one: an archive disk created with `auto-delete=no` **survives the
+instance** and keeps billing. Delete it explicitly.
 
 Before the replacement VM was deleted, three things that existed *only* on it were swept off -
 they were not in any run bundle, because the transfer key was deliberately scoped to recipe
@@ -277,7 +356,13 @@ directories:
 - `fault-state/` (54 dirs), the bootstrap and gate logs, and `docker save` of the five images
   built there (`frontend-bugs:v2`, `catalogue-bugs:v2`, the two OTel images, the workload image)
 
-They are `provenance_20260916.tar.gz` and `provenance_vm_20260917.tar.gz`.
+They are `provenance_20260916.tar.gz` and `provenance_vm_20260917.tar.gz`. The Train Ticket VM
+got the same treatment in `provenance_tt_20260917.tar.gz` - its gate01 run, TSDB, `fault-state/`,
+collection logs, and the `lossresults/` packet-loss analysis.
+
+**This is the lesson that keeps recurring: the run bundles were never the only thing that
+mattered.** The transfer key is scoped to recipe directories, which is correct security and also
+silently defines what can leave the machine. Stage anything else into that path before deleting.
 
 **Transfers now pull, they do not push.** Alliance requires MFA as a second factor even when a
 CCDB-registered key passes as the first, so a batch-mode push from a VM cannot authenticate.
@@ -339,17 +424,29 @@ worth separating.
 
 ### The working copy
 
-Extracted and decompressed 7 September 2026, so everything is directly readable — no decode cache,
-no `.gz` anywhere.
+Extracted and decompressed 7 September 2026, **re-synchronised 18 September** after the
+re-collection. Everything is directly readable - no decode cache, no `.gz` anywhere.
 
     /scratch/yuvraj17/stratatrace/data/stratatrace-v2/<app>/<recipe>/<run_id>/
 
 | | |
 |---|---|
-| runs | **303** (169 sockshop + 134 trainticket) |
-| files | 831,475 |
-| size | **7.3 TB** (from 778 GB of archives) |
+| runs | **304** (170 sockshop + 134 trainticket) |
+| size | ~8 TB |
 | `.gz` remaining | **0** |
+
+> **THE TRAP, and it cost two days of quiet wrongness.** Archives and the working copy are
+> separate. On 16 Sept the superseded Sock Shop trees were retired here and the 54 replacements
+> were never extracted, so this tree held **116** Sock Shop runs instead of 170 - ten entire
+> families absent. Nothing errors in that state: a query for `code_n_plus_one` simply answers
+> zero. Fixed 18 Sept with `transfer/extract_recollected_array.sbatch`.
+>
+> **Whenever you retire a family here, extract its replacement in the same step**, and verify by
+> counting `meta/runinfo_end.txt` per family rather than trusting that the job ran.
+
+Sock Shop was verified family-by-family after the 18 Sept extraction: 170 runs, all ten
+re-collected families present, 0 remaining `.gz`. Train Ticket's two replaced families were
+extracted in the same pass.
 
 Verified by opening a trace with babeltrace 2.1.2 rather than by counting files:
 
@@ -364,9 +461,16 @@ The apps stay in separate trees because both use the same recipe names; merging 
 Sock Shop's `anomaly_cpu` and Train Ticket's in one directory. Run ids differ (`tt_` prefix), so
 nothing would be lost, but "how many `anomaly_cpu` runs are there" would stop having one answer.
 
-Reproduce with `transfer/extract_v2_job.sbatch` then `transfer/decompress_v2_job.sbatch`
-(chain the second with `--dependency=afterok:<jobid>`). Both are resumable and took 19 and 16
-minutes on one 192-core node.
+Reproduce the original extraction with `transfer/extract_v2_job.sbatch` then
+`transfer/decompress_v2_job.sbatch` (chain with `--dependency=afterok:<jobid>`). For the
+re-collected sets use `transfer/extract_recollected_array.sbatch`, which does both steps per
+archive and is resumable - it skips a recipe whose directory already holds the expected run
+count.
+
+**Right-size the wall clock.** Those array tasks took **6-15 minutes** each against a 2-hour
+request, which wastes a whole-node allocation and delays the job in the queue. And keep cheap
+work off the scheduler entirely: listings, `stat`, reading JSON, `squeue`/`sacct` and small greps
+belong on the login node. Only multi-GB decompression and whole-trace scans need SLURM.
 
 ### Bundle layout
 
