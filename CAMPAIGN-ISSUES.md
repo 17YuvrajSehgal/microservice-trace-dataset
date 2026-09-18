@@ -866,3 +866,58 @@ That is the `reset_peer` toxic, named in the driver's own words.
 **Do not raise the intensity to push a weak proxy over a threshold.** The fault already works;
 the metric modality is the thing that cannot see it. Marked `expected_to_fail` so it reports
 `no_metric_signature`, with the network-bytes series kept as a non-canonical observation.
+
+---
+
+## Issue 25 - `svc_net` on Train Ticket re-collected; its target was backwards
+
+**2026-09-17. 5 runs re-collected, fault confirmed in the kernel trace, target corrected.**
+
+### The target asks for the opposite of what happens
+
+`rate(container_network_transmit_bytes_total{ts-basic-service})` with `direction: decrease`.
+netem drops packets, TCP **retransmits** them, and transmitted bytes go **UP** - measured
+15938 -> 31517 on the original r1, the one run that definitely contained the fault. A correct
+injection fails this check every time. All 5 fresh runs read `unconfirmed`, and that verdict
+carries no information.
+
+No metric replacement exists: Sock Shop's equivalent is `carts_p95_latency`, and **Train Ticket
+exposes no latency histogram** - the same gap that makes `anomaly_net` invisible there. netem is
+`tc` configuration and is not surfaced to Prometheus at all.
+
+### The evidence is the kernel trace
+
+`net_loss_signature.py` on the freshly collected runs:
+
+| run | interfaces | impaired | worst retrans % | baseline % |
+|---|---|---|---|---|
+| new r1 | 26 | 1 | **61.8** | 0 |
+| new r4 | 27 | 2 | **51.9** | 0 |
+| old r1 (reference) | 27 | 2 | 42.9 | 0 |
+| **old r2 / r3 / r5** | **11** | **0** | **0** | 0 |
+
+### Why the originals failed - not the recipe, and not the instrument
+
+Both were checked before concluding:
+
+- **The recipe works.** Injected on the VM and read `tc`'s own counters:
+  `Sent 1199224 bytes 3780 pkt (dropped 160)` = **4.2% against a configured 4%**.
+- **The tool works.** It reproduced the old r1's 42.9% exactly on a Train Ticket trace, so the
+  earlier theory that 49 containers named `eth0` collided in the report was wrong - host-side
+  veths have unique names.
+
+What differed was **how much work the application did**. The failed runs logged ~7.5 MB and saw
+11 active interfaces; the good one logged 2341 MB and saw 27. There was nothing flowing for netem
+to drop, with identical ground truth in all five.
+
+**The driver now ABORTS unless the target is measurably on the request path** - it drives 30 s of
+load and counts packets through the target container first. That is the check the original
+campaign never had, and it is what made the re-collection work.
+
+### Also recorded: Train Ticket runs 47 services, not 49
+
+`ts-voucher-service` (MySQL `Access denied for user 'root'`) and `ts-ticket-office-service` (Node
+crash, 25 restarts) **never start**. Their per-run logs show 0 app-start lines in runs collected
+on both 16 and 17 Sept, so this is long-standing rather than restart damage. Neither is on the
+load generator's journey, so the runs are sound - but a blueprint that assumes a complete
+topology would be wrong about it.

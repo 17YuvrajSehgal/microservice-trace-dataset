@@ -75,14 +75,18 @@
  ],
  "svc_net_ts-basic-service": [
   {
-   "canonical": true,
-   "name": "basic_net_throughput_drop",
+   "name": "basic_net_no_metric_signature",
    "promql": "rate(container_network_transmit_bytes_total{name=~\".*ts-basic-service_1$\"}[1m])",
    "direction": "decrease",
-   "threshold_sigma": 3,
-   "abs_threshold": 500,
-   "min_fraction": 0.4,
-   "why": "CALIBRATE. per-netns netem inside ts-basic-service inflates its hop latency -> in the closed loop it completes fewer aggregations/s -> transmit bytes drop. METRICS-WEAK (no app latency); traces/kernel carry the latency."
+   "canonical": true,
+   "expected_to_fail": true,
+   "evidence_modality": "kernel",
+   "measured_retransmission_pct": {
+    "r1": 61.765,
+    "r4": 51.852,
+    "old_r1_reference": 42.857
+   },
+   "note": "MEASURED 2026-09-17. The old target was rate(container_network_transmit_bytes_total{name=~'.*ts-basic-service_1$'}) with direction=decrease, and it is BACKWARDS. netem drops packets, TCP retransmits them, and transmitted bytes go UP - measured 15938 -> 31517 on the old r1, the one run that definitely contained the fault. A correct injection therefore fails this check every time, which is why all 5 freshly collected runs read `unconfirmed`. That verdict carries no information about whether the fault took. No metric replacement exists here, checked rather than assumed: Sock Shop's equivalent target is carts_p95_latency, and Train Ticket exposes NO latency histogram - the same structural gap that makes anomaly_net invisible on this application (DATASET-v2-INVENTORY, caveats). netem is tc configuration and is not surfaced to Prometheus at all. THE EVIDENCE IS THE KERNEL TRACE. blueprints/lib/net_loss_signature.py on the freshly collected runs: r1 1 of 26 interfaces impaired, worst retransmission 61.765%, baseline median 0%; r4 2 of 27 impaired, 51.852%, baseline 0%. The reference is the one good run of the original family at 42.9%. Results are archived in provenance_tt_20260917/lossresults/. WHY THE ORIGINALS FAILED, and it was not the recipe: netem on this VM drops 4.2% against a configured 4% (read from tc's own counters: Sent 3780 pkt, dropped 160), and ts-basic-service carries 18,340 packets per 25 s under load. The old r2/r3/r5 simply had nothing flowing - they logged ~7.5 MB and saw 11 active interfaces, against 2341 MB and 27 for the good run. The collection driver now ABORTS unless the target is measurably on the request path. Marked expected_to_fail so these report no_metric_signature."
   }
  ],
  "dependency_outage_ts-seat-service": [
