@@ -409,3 +409,83 @@ agent needs a presence-oriented primitive (something like "which processes exist
 not range B" - still a raw count diff, no ground truth), or the blueprint has to push much
 harder against the volume instinct. Do not scale to six problems before deciding this: an
 IoU near 0.04 everywhere carries no signal about blueprints either way.
+
+## 15. Two new tools: WHO, not just HOW MUCH
+
+Yuvraj: "give the agent a way to compare processes between two windows... do both - add the
+process diff tool and update the blueprint - the agent can use whatever it wants."
+
+The pilot's systematic error was that every tool answered "how much is happening". For
+`noisy_neighbor` nothing answers, because the co-tenant raises no totals. So 52 of 60 runs
+found the recovery.
+
+| tool | what it answers |
+|---|---|
+| `ctf_procdiff(A, B)` | which processes are in B and not A, in A and not B, and who changed most. By rate, so the ranges need not be the same length |
+| `ctf_proclife()` | when each process first and last appears; split into "part of the recording" and "throughout" |
+
+Both from the count index, both ground-truth free. Neither says which process matters.
+
+**Checked on r1.** `ctf_proclife` lists `stress-ng-cpu 13:11:54.1 -> 13:13:54.2` against a true
+window of 13:11:54-13:13:55. It is one of 14 rows, so the agent still has to pick it. Three
+other processes (`systemd-udevd`, `networkctl`, `(udev-worker)`) start at the same instant -
+the injection's own side effects - which is a real clue and also a real distractor.
+
+`ctf_procdiff` on a quiet range against a middle range: totals go 111,065/s to 105,589/s, so
+volume says nothing, while `stress-ng-cpu` appears at 1,723/s from zero. That is the whole
+argument for the tool in one output.
+
+### The base prompt was biased and is fixed
+
+It said to look for "a step, a spike or a collapse" - the volume search that fails. It now
+says both kinds of change must be checked, and warns that the biggest step in a count chart is
+often the **recovery** just after the problem. This goes to BOTH arms, so it removes a harness
+bias rather than adding a hint to one side.
+
+### Blueprints now say how to do each step here
+
+Dropping the unrunnable commands left steps with no method. Each capability now carries a
+"with your tools" line - which tool, which events. No thresholds, no windows, no verdicts.
+Where a capability cannot be reached from a kernel trace (call-graph convergence needs spans)
+it says NOT REACHABLE, tells the agent to skip it, and says not to read its absence as
+evidence either way. Two recipes warn that a proxy is a proxy: runqueue delay and syscall
+duration cannot be measured with these tools, only approximated by rates.
+
+## 16. Marking what it understood, not which label it picked
+
+Yuvraj: "The agent does not have to pickup exactly the same name such as noisy_neighbor -> as
+long as it can briefly describe what kind of problem it is seeing... come up with a better and
+fair way to evaluate this."
+
+Two unfairnesses in the old marking, both visible in the pilot.
+
+**Labels.** The fixed fault list was written for a four-modality view; from a kernel trace
+several of its entries are not separable. An agent that wrote "a foreign process is eating CPU
+while the services keep working" understood the incident and scored zero for saying
+`cpu_saturation`. That marks vocabulary. `other` is now allowed, and `submit_diagnosis` asks
+for `what_is_wrong` in the agent's own words **first**; the label is for tallying.
+
+**WHERE.** `_svc_match` accepted `host` and `stress-ng*` equally. One is a safe guess that is
+right by default; the other is finding the process. Merged, the column swung 47% -> 13% while
+the real find rate sat flat at 3/2/2/2.
+
+### `q2_judge.py` - three axes, no label guessing
+
+| axis | what it measures |
+|---|---|
+| WHERE | named the process / right scope only / wrong - three-way |
+| WHAT | share of the mechanism the agent's own words cover, any synonym |
+| HOW | which tools it used, and whether it checked WHO rather than only HOW MUCH |
+
+Concept matching is deliberately generous. It answers "did it say this at all". A miss means
+go and read the run.
+
+So `q2_review.py` prints all 60 answers in full - what it said, where it pointed, when, how it
+says it got there, and what the rubric thought. **If a run reads correct and scored low, the
+rubric is wrong, not the run.** Yuvraj reviews these himself.
+
+The report also asks the question the new tools exist to answer: do runs that used
+`ctf_procdiff`/`ctf_proclife` find better windows than runs that did not.
+
+Rubrics for the other five problems are drafts from `fault_catalog.md`, marked as such. Only
+`noisy_neighbor` has been checked against real answers.
