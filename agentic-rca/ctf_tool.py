@@ -63,6 +63,15 @@ def _secs(hhmmss: str) -> float:
     return int(h) * 3600 + int(m) * 60 + float(s)
 
 
+def _secs_safe(hhmmss: str):
+    """_secs, but None instead of an exception. begin/end come from the model, so they can be
+    anything; a malformed range must not take the whole tool call down."""
+    try:
+        return _secs(hhmmss)
+    except (ValueError, AttributeError):
+        return None
+
+
 def _clock(line: str):
     m = _TIME_RE.match(line)
     if not m:
@@ -224,6 +233,11 @@ def query_ctf(run_dir: str, event: str, begin: str | None = None, end: str | Non
     by_event, by_proc = Counter(), Counter()
     lines, scanned, truncated = [], 0, False
     first_t = last_t = None
+    # The scan's OWN span, which is not the matched events' span. If the pattern is rare
+    # the two differ a lot, and it is the scan span that says how much of the requested
+    # range was actually read. Clock-parsed on the first and last line only, not all of
+    # them - at 400k lines a per-line regex is not free.
+    scan_first = scan_last_line = None
     try:
         p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
                              text=True, bufsize=1 << 20)
@@ -235,6 +249,9 @@ def query_ctf(run_dir: str, event: str, begin: str | None = None, end: str | Non
             if scanned > MAX_SCAN:
                 truncated = True
                 break
+            if scan_first is None:
+                scan_first = _clock(line)
+            scan_last_line = line
             m = _EVENT_RE.search(line)
             if not m or not ev_re.search(m.group(1)):
                 continue
@@ -256,6 +273,32 @@ def query_ctf(run_dir: str, event: str, begin: str | None = None, end: str | Non
 
     dur = (last_t - first_t) if (first_t is not None and last_t is not None) else None
     total = sum(by_event.values())
+
+    # How much of what was ASKED FOR did we actually read? The first version reported only
+    # `truncated: true`, which understates it badly: the agent asked for 20 s, got 0.3 s, and
+    # went on comparing windows as if it had them. Say the number.
+    scan_last = _clock(scan_last_line) if scan_last_line else None
+    scan_span = (scan_last - scan_first) if (scan_first is not None and scan_last is not None) else None
+    want = None
+    if begin and end:
+        b, e = _secs_safe(begin), _secs_safe(end)
+        if b is not None and e is not None and e > b:
+            want = e - b
+    cover = round(100.0 * scan_span / want, 1) if (scan_span is not None and want) else None
+
+    if truncated and cover is not None:
+        note = ("scan cap of %d events hit: you asked for %.1f s and only the first %.1f s "
+                "(%.1f%%) was read. Raw counts are a LOWER BOUND for the range you named. "
+                "Asking for a shorter range does NOT help - babeltrace decodes from the start "
+                "of the trace either way. Compare rate_per_s between ranges instead of counts, "
+                "and remember a zero here means 'not in the part I read', not 'absent'."
+                % (MAX_SCAN, want, scan_span, cover))
+    elif truncated:
+        note = ("scan cap of %d events hit - counts are a LOWER BOUND and the range was not "
+                "fully read. Compare rate_per_s between ranges rather than raw counts; a zero "
+                "means 'not in the part I read', not 'absent'." % MAX_SCAN)
+    else:
+        note = "range fully read"
     return {
         "event_pattern": event,
         "range_requested": [begin, end],
@@ -265,10 +308,11 @@ def query_ctf(run_dir: str, event: str, begin: str | None = None, end: str | Non
         "matched": total,
         "rate_per_s": round(total / dur, 2) if dur and dur > 0 else None,
         "events_scanned": scanned,
+        "range_actually_read": [_fmt(scan_first) if scan_first is not None else None,
+                                _fmt(scan_last) if scan_last is not None else None],
+        "coverage_pct_of_requested": cover,
         "truncated": truncated,
-        "note": ("scan cap of %d hit - counts are a LOWER BOUND and the range was not fully "
-                 "read. Narrow the range or the pattern." % MAX_SCAN) if truncated else
-                "range fully read",
+        "note": note,
         "by_event": dict(by_event.most_common(15)),
         "top_procnames": dict(by_proc.most_common(15)),
         "sample": lines,
@@ -280,9 +324,10 @@ def query_ctf(run_dir: str, event: str, begin: str | None = None, end: str | Non
 
 TIMESPAN_DEF = {
     "name": "ctf_timespan",
-    "description": ("Start time, end time and duration of the raw kernel trace, read from the "
-                    "trace itself. Call this first to orient. It does NOT tell you where any "
-                    "incident is - finding that is your job."),
+    "description": ("Start time, end time and duration of the whole recording, in UTC, read "
+                    "from the collection metadata the bundle carries. Call this first to "
+                    "orient: every range you ask for later must sit inside it. It does NOT "
+                    "tell you where any incident is - finding that is your job."),
     "parameters": {"type": "object", "properties": {}, "required": []},
 }
 

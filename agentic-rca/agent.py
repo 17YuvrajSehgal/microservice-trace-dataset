@@ -648,6 +648,17 @@ def diagnose_oneshot(run, app: str | None = None, transcript_path: str | None = 
     return out
 
 
+# A model that stops calling tools and just writes prose has NOT answered: the contract is the
+# submit_diagnosis call. The first tools-only pilot spent 524 s and 94k tokens finding
+# stress-ng-cpu at the right moment, then ended its turn with plain text - and the harness threw
+# all of it away as `diagnosis: None`. That is a scored failure caused by the harness, not by the
+# agent. So prompt it back, twice, before giving up.
+MAX_NUDGES = 2
+NUDGE = ("You ended your turn without calling submit_diagnosis, so nothing has been recorded. "
+         "Call submit_diagnosis now with your best answer from the evidence you already have. "
+         "If the evidence is weak, say so in `confidence` and `evidence` - an honest low-"
+         "confidence answer counts, silence does not.")
+
 def _loop_anthropic(tools, user, max_steps, verbose, tr, guard, system=SYSTEM, rank_k=0,
                     kernel_only=False):
     client = config.make_client()
@@ -655,6 +666,7 @@ def _loop_anthropic(tools, user, max_steps, verbose, tr, guard, system=SYSTEM, r
               for t in _tool_defs(rank_k, kernel_only=kernel_only)]
     messages = [{"role": "user", "content": user}]
     traj, itok, otok, bt, diagnosis = [], 0, 0, 0, None
+    nudges = 0
     for step in range(max_steps):
         tc = time.time()
         r = _api_call(lambda: client.messages.create(
@@ -667,6 +679,11 @@ def _loop_anthropic(tools, user, max_steps, verbose, tr, guard, system=SYSTEM, r
         messages.append({"role": "assistant", "content": r.content})
         tool_uses = [b for b in r.content if b.type == "tool_use"]
         if not tool_uses:
+            if diagnosis is None and nudges < MAX_NUDGES:
+                nudges += 1
+                tr.event("nudge", step=step, n=nudges)
+                messages.append({"role": "user", "content": NUDGE})
+                continue
             break
         results = []
         for tu in tool_uses:
@@ -703,6 +720,7 @@ def _loop_openai(tools, user, max_steps, verbose, tr, guard, system=SYSTEM, rank
     messages = [{"role": "system", "content": system}, {"role": "user", "content": user}]
     ck = config.openai_create_kwargs()
     traj, itok, otok, bt, diagnosis = [], 0, 0, 0, None
+    nudges = 0
     for step in range(max_steps):
         tc = time.time()
         r = _api_call(lambda: client.chat.completions.create(
@@ -719,6 +737,11 @@ def _loop_openai(tools, user, max_steps, verbose, tr, guard, system=SYSTEM, rank
                                   for c in m.tool_calls]
         messages.append(asst)
         if not m.tool_calls:
+            if diagnosis is None and nudges < MAX_NUDGES:
+                nudges += 1
+                tr.event("nudge", step=step, n=nudges)
+                messages.append({"role": "user", "content": NUDGE})
+                continue
             break
         for c in m.tool_calls:
             name = c.function.name
