@@ -38,22 +38,27 @@ The signals below are sufficient for this problem; you do not need everything.
 Why this set: MEASURED BASIS. net_if_receive_skb carries the full IP and TCP header, including the sequence number, so a segment repeating a sequence number already seen on its flow is a retransmission - the one effect only packet loss produces. net_dev_queue and net_dev_xmit both carry the buffer address, so a buffer queued to a device and never transmitted was dropped inside the queue, which is where the impairment sits; this corroborates. Nothing else in the kernel trace is needed, and in particular the scheduler events are irrelevant here: this fault does not change how threads are scheduled, only what happens to their packets.
 
 ## Investigation blueprint
-Each step names the capability it needs and what a correct result looks like. No commands are given: in this environment you have a raw kernel trace and your read-only query tools, and nothing else. Achieve each capability with those, in your own way. A step you genuinely cannot reach from kernel data should be stated as unreachable, not guessed at.
+Each step names the capability it needs, how to get at it with the tools you have, and what a correct result looks like. There are no commands: you have a raw kernel trace and six read-only query tools, and nothing else. The 'with your tools' line is a starting point, not an instruction - if you see a better way with the same tools, take it and say what you did. A step marked NOT REACHABLE cannot be done from kernel data: skip it, say you skipped it, and do not treat its absence as evidence either way.
 
 1. stage the stored kernel trace for reading
    needs: `trace.stage_ctf`
+   with your tools: already done - the trace is loaded. ctf_timespan gives its real start and end.
    expect: a CTF directory the trace reader can open
 2. count retransmissions and queue drops per interface, baseline window against incident window
    needs: `network.retransmission_rate`
+   with your tools: query_ctf on net_dev_xmit and netif_receive_skb per range. There is no TCP retransmission tracepoint in this profile, so a retransmission RATE is not measurable - say that rather than inferring one from packet counts.
    expect: per-interface retransmission and drop rates, and the list of impaired interfaces
 3. Combine into the verdict and its artifacts: the JSON verdict, the per-interface chart, and a plain-English explanation
    needs: `verdict.apply_rules`
+   with your tools: do this yourself, from the numbers your own tool calls returned. Quote them.
    expect: name the impaired interfaces, the retransmission rate on each, and the scope
 4. State the recommended action alongside the diagnosis
    needs: `report.recommended_action`
+   with your tools: write it in your own words in the diagnosis.
    expect: map the impaired interfaces to their containers and inspect the queueing discipline and link health on that path
 5. draw the decision card
    needs: `report.decision_card`
+   with your tools: NOT REACHABLE - no plotting here. Skip it; it does not affect the diagnosis.
    expect: one page showing where every fault family sits on this blueprint's deciding number, which gates passed and by how much, and what else was ruled out
 
 ## What to produce

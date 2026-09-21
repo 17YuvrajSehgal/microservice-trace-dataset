@@ -36,19 +36,23 @@ The signals below are sufficient for this problem; you do not need everything.
 Why this set: MEASURED BASIS. sched_process_fork carries the parent and the child command name, which is everything needed to say who started forking and how much they brought. One event type decides this blueprint. Nothing else in the kernel trace is required: the fault changes neither what reaches the disk nor what crosses the network, and while it does add scheduler work, the scheduler signals it moves are the same ones every CPU fault moves and therefore cannot identify it.
 
 ## Investigation blueprint
-Each step names the capability it needs and what a correct result looks like. No commands are given: in this environment you have a raw kernel trace and your read-only query tools, and nothing else. Achieve each capability with those, in your own way. A step you genuinely cannot reach from kernel data should be stated as unreachable, not guessed at.
+Each step names the capability it needs, how to get at it with the tools you have, and what a correct result looks like. There are no commands: you have a raw kernel trace and six read-only query tools, and nothing else. The 'with your tools' line is a starting point, not an instruction - if you see a better way with the same tools, take it and say what you did. A step marked NOT REACHABLE cannot be done from kernel data: skip it, say you skipped it, and do not treat its absence as evidence either way.
 
 1. stage the stored kernel trace for reading
    needs: `trace.stage_ctf`
+   with your tools: already done - the trace is loaded. ctf_timespan gives its real start and end.
    expect: a CTF directory the trace reader can open
 2. measure process creation per command name, both windows, and report the newcomer
    needs: `process.creation_attribution`
+   with your tools: ctf_proclife shows arrivals and departures directly. sched_process_fork and sched_process_exec rates via query_ctf show how fast processes are being created.
    expect: forks per second in each window, and the process whose fork rate rose most
 3. combine into the verdict and its artifacts
    needs: `verdict.apply_rules`
+   with your tools: do this yourself, from the numbers your own tool calls returned. Quote them.
    expect: a verdict naming the forking process, or an explicit non-fire with the reason
 4. draw the decision card
    needs: `report.decision_card`
+   with your tools: NOT REACHABLE - no plotting here. Skip it; it does not affect the diagnosis.
    expect: one page showing where every fault family sits on this blueprint's deciding number, which gates passed and by how much, and what else was ruled out
 
 ## What to produce

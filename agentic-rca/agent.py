@@ -28,6 +28,8 @@ from ctf_tool import TOOL_DEF as _CTF_TOOL_DEF
 from ctf_tool import TIMELINE_DEF as _CTF_TIMELINE_DEF
 from ctf_tool import TIMESPAN_DEF as _CTF_TIMESPAN_DEF
 from ctf_tool import LINES_DEF as _CTF_LINES_DEF
+from ctf_tool import PROCDIFF_DEF as _CTF_PROCDIFF_DEF
+from ctf_tool import PROCLIFE_DEF as _CTF_PROCLIFE_DEF
 import leakguard
 import shared_context
 import skillreg
@@ -125,37 +127,50 @@ _KO_HEAD = (
     "told you whether anything went wrong, when, or where. There is no alert, no known "
     "incident window, and no pre-computed baseline. Finding all of that is the job.\n"
     "\n"
-    "YOUR ONLY EVIDENCE is the LTTng kernel trace, through four tools: ctf_timespan (how "
-    "long the recording is), ctf_timeline (one event counted across the whole recording, "
-    "bucketed, as a bar chart), query_ctf (counts, rates and the processes responsible, over "
-    "a range YOU choose - exact over the whole range, not a sample of it) and ctf_lines (real "
-    "event lines with all their fields, over a narrow range). There are deliberately no "
-    "metrics, logs or spans. That is the dataset, not a gap in it: never treat a missing "
+    "YOUR ONLY EVIDENCE is the LTTng kernel trace, through six tools. Three count things: "
+    "ctf_timespan (how long the recording is), ctf_timeline (one event counted across the "
+    "whole recording, bucketed, as a bar chart) and query_ctf (counts, rates and the "
+    "processes responsible, over a range YOU choose). Two look at WHO rather than how much: "
+    "ctf_proclife (when each process first and last appears) and ctf_procdiff (which "
+    "processes differ between two ranges you pick). One shows the raw record: ctf_lines "
+    "(real event lines with all their fields, over a narrow range). There are deliberately "
+    "no metrics, logs or spans. That is the dataset, not a gap in it: never treat a missing "
     "modality as evidence that nothing happened.\n"
     "\n"
+    "TWO KINDS OF CHANGE, AND YOU MUST CHECK BOTH. A problem can show up as a change in HOW "
+    "MUCH is happening - event rates step up or collapse - or as a change in WHO is doing "
+    "it, where a process appears or disappears and the totals barely move. Searching only "
+    "for the first kind is the commonest way to get this wrong, because when a heavy "
+    "workload STOPS, the backlog drains and the totals jump: the biggest step in a count "
+    "chart is often the RECOVERY, sitting just after the problem, not the problem itself. "
+    "If your candidate window begins at a rise in totals, check what was happening just "
+    "BEFORE that rise.\n"
+    "\n"
     "METHOD:\n"
-    "1. ORIENT: ctf_timespan first, so you know the real start and end. Every later range must "
-    "sit inside it. Timestamps are UTC.\n"
-    "2. FIND THE WHEN: ctf_timeline on a few unrelated events (for example sched_switch, "
-    "sched_wakeup, block_rq_issue, net_dev_xmit) across the FULL span. You are looking for a "
-    "step, a spike or a collapse in one series that the others do not share. A step present in "
-    "everything usually means the workload changed, not that the system misbehaved. Check the "
-    "coverage line each call reports: if a scan was truncated, the quiet part may simply be the "
-    "part you never read.\n"
-    "3. FIND THE WHERE: query_ctf over the suspect range versus a quiet range you pick as your "
-    "own baseline. Compare top processes between the two. The culprit is usually a process that "
-    "is absent or negligible in the quiet range and dominant in the suspect one.\n"
-    "4. FIND THE WHY, from the mechanism the kernel actually recorded: on-CPU saturation "
+    "1. ORIENT: ctf_timespan first, so you know the real start and end. Every later range "
+    "must sit inside it. Timestamps are UTC.\n"
+    "2. WHO CHANGED: ctf_proclife across the whole recording. Any process present for only "
+    "part of it marks two boundaries - when it arrived and when it left - and those are "
+    "candidate incident edges that no count chart will show you. Plenty of short-lived "
+    "processes are routine, so treat these as candidates, not findings.\n"
+    "3. HOW MUCH CHANGED: ctf_timeline on a few unrelated events (for example sched_switch, "
+    "sched_wakeup, block_rq_issue, net_dev_xmit) across the FULL span. Look for a step, "
+    "spike or collapse in one series that the others do not share. A step present in "
+    "everything usually means the workload changed rather than the system misbehaving.\n"
+    "4. PIN IT DOWN: ctf_procdiff between a range you suspect and a range you believe is "
+    "quiet. What is in one and absent from the other is the strongest single signal you "
+    "have. Say which range you treated as quiet and why - if that range overlaps the "
+    "problem, everything downstream of it is wrong.\n"
+    "5. FIND THE WHY, from the mechanism the kernel actually recorded: on-CPU saturation "
     "(sched_switch churn, one process monopolising), CPU starvation (long sched_wakeup to "
     "sched_switch delay), disk wait (block_rq_issue/block_rq_complete latency), network "
-    "(net_dev_xmit/netif_receive_skb), lock or futex contention, memory reclaim, or a process "
-    "exiting and respawning. Read a few raw lines with ctf_lines before you commit - counts alone can "
-    "mislead.\n"
-    "5. CONFIRM OR REJECT: state which check would have falsified your conclusion and whether "
-    "you ran it. If the evidence genuinely shows a healthy system, 'normal' is a legitimate "
-    "answer - but only after you have looked across the whole span, not because a tool came "
-    "back empty.\n"
-    "6. Then submit_diagnosis, with the incident_window you derived and the evidence for it.\n"
+    "(net_dev_xmit/netif_receive_skb), lock or futex contention, memory reclaim, or a "
+    "process exiting and respawning. Read a few raw lines with ctf_lines before you commit "
+    "- counts alone can mislead.\n"
+    "6. CONFIRM OR REJECT: state which check would have falsified your conclusion and "
+    "whether you ran it. If the evidence genuinely shows a healthy system, say so - but "
+    "only after looking across the whole span, not because a tool came back empty.\n"
+    "7. Then submit_diagnosis, with the window you derived and the evidence for it.\n"
     "\n"
 )
 
@@ -200,14 +215,32 @@ _TOOL_DEFS = [
     _CTF_TIMELINE_DEF,
     _CTF_TOOL_DEF,
     _CTF_LINES_DEF,
+    _CTF_PROCDIFF_DEF,
+    _CTF_PROCLIFE_DEF,
     {"name": "submit_diagnosis",
-     "description": ("Commit the final root-cause verdict: WHAT went wrong, WHERE, and WHEN. "
-                     "The window is part of the answer, not a detail - you were not told when "
-                     "the incident was and finding it is half the job."),
+     "description": ("Commit the final verdict: WHAT went wrong, WHERE, and WHEN. The window is "
+                     "part of the answer, not a detail - you were not told when the incident "
+                     "was and finding it is half the job."),
      "parameters": {"type": "object", "properties": {
-         "root_cause_service": {"type": "string", "description": "the single culprit service/container"},
+         # Free text FIRST, and it is the field a human actually reads. The enum below is a
+         # convenience for tallying, not the answer: a label picked from a list says very
+         # little about whether the agent understood what it was looking at.
+         "what_is_wrong": {"type": "string", "description":
+                           "In your own words, 1-3 plain sentences: what is happening, to what, "
+                           "and why you think so. Do not just repeat the fault_type label. If "
+                           "nothing appears wrong, say that and why."},
+         "root_cause_service": {"type": "string", "description":
+                                "WHERE the problem comes from, named as it appears in the "
+                                "trace: a process name, a container, or 'host' if the cause is "
+                                "host-wide with no single culprit. Kernel process names are cut "
+                                "to 15 characters - give what you saw."},
+         "culprit_kind": {"type": "string",
+                          "enum": ["process", "container", "service", "host", "unknown"],
+                          "description": "what kind of thing you just named"},
          "fault_type": {"type": "string", "enum": FAULT_TYPES},
-         "evidence": {"type": "string", "description": "1-3 sentences citing the decisive signals"},
+         "evidence": {"type": "string", "description":
+                      "How you found it: which tool calls, which ranges you compared, and what "
+                      "the decisive numbers were. Someone should be able to repeat your steps."},
          "confidence": {"type": "number", "description": "0..1"},
          # WHEN. Nothing told the agent this; it has to be derived from the trace, which is why
          # window_evidence is required alongside it - a guessed range that happens to overlap
@@ -219,8 +252,8 @@ _TOOL_DEFS = [
          "window_evidence": {"type": "string", "description":
                              "what made you choose that range: which event, which tool call, "
                              "what changed at the boundary"}},
-         "required": ["root_cause_service", "fault_type", "evidence", "confidence",
-                      "incident_window", "window_evidence"]}},
+         "required": ["what_is_wrong", "root_cause_service", "culprit_kind", "fault_type",
+                      "evidence", "confidence", "incident_window", "window_evidence"]}},
 ]
 
 # Optional ranked-answer mode (RQ: hit@k / MRR / MAP, comparable to the ranked-list baselines).
@@ -249,7 +282,7 @@ _ALTERNATIVES_PROP = {
 # unavailable, and there are no service spans/logs/topology edges". Absence of a tool's output
 # is not absence of a fault, and the cleanest fix is not to offer tools that cannot answer.
 KERNEL_ONLY_TOOLS = ("ctf_timespan", "ctf_timeline", "query_ctf", "ctf_lines",
-                     "submit_diagnosis")
+                     "ctf_procdiff", "ctf_proclife", "submit_diagnosis")
 
 
 def _tool_defs(rank_k: int = 0, only_submit: bool = False, kernel_only: bool = False):
@@ -258,6 +291,21 @@ def _tool_defs(rank_k: int = 0, only_submit: bool = False, kernel_only: bool = F
     defs = [dict(t) for t in _TOOL_DEFS]
     if kernel_only:
         defs = [t for t in defs if t["name"] in KERNEL_ONLY_TOOLS]
+        # Let it say "other". The fixed list was written for a four-modality view and some of
+        # its distinctions are not separable from a kernel trace alone. Forcing a pick from it
+        # turns "I can see a foreign process eating CPU" into a label-matching exercise, and a
+        # wrong label then hides a correct understanding. what_is_wrong is what gets read.
+        for t in defs:
+            if t["name"] != "submit_diagnosis":
+                continue
+            props = dict(t["parameters"]["properties"])
+            ft = dict(props["fault_type"])
+            ft["enum"] = list(FAULT_TYPES) + ["other"]
+            ft["description"] = ("closest match from the list. Pick 'other' if none of them "
+                                 "fits what you actually saw - that is not a failure, and "
+                                 "what_is_wrong is where you say what it was.")
+            props["fault_type"] = ft
+            t["parameters"] = {**t["parameters"], "properties": props}
     if rank_k > 0:
         for t in defs:
             if t["name"] == "submit_diagnosis":
@@ -368,6 +416,16 @@ def _run_tool(tools: RunTools, name: str, args: dict, guard=None):
             begin=args.get("begin") or "", end=args.get("end") or "",
             n=args.get("n", 10), procname=args.get("procname"),
             contains=args.get("contains")), 0
+    if name == "ctf_procdiff":
+        return ctf_tool.ctf_procdiff(
+            tools.run.run_dir,
+            begin_a=args.get("begin_a") or "", end_a=args.get("end_a") or "",
+            begin_b=args.get("begin_b") or "", end_b=args.get("end_b") or "",
+            event=args.get("event") or ".", top=args.get("top") or 20), 0
+    if name == "ctf_proclife":
+        return ctf_tool.ctf_proclife(
+            tools.run.run_dir, min_events=args.get("min_events") or 1000,
+            event=args.get("event") or "."), 0
     return {"error": f"unknown tool {name}"}, 0
 
 

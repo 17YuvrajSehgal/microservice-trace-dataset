@@ -36,19 +36,23 @@ The signals below are sufficient for this problem; you do not need everything.
 Why this set: MEASURED BASIS. The deciding fact is a syscall RETURN VALUE, not a duration, so the exit events are what matter and the entry events are not needed. These five are where EMFILE actually appears when a service runs out of descriptors under load. Collecting all syscall exits also works and is what our own runs did, but it is 41% of all events for a signal that lives in five of them.
 
 ## Investigation blueprint
-Each step names the capability it needs and what a correct result looks like. No commands are given: in this environment you have a raw kernel trace and your read-only query tools, and nothing else. Achieve each capability with those, in your own way. A step you genuinely cannot reach from kernel data should be stated as unreachable, not guessed at.
+Each step names the capability it needs, how to get at it with the tools you have, and what a correct result looks like. There are no commands: you have a raw kernel trace and six read-only query tools, and nothing else. The 'with your tools' line is a starting point, not an instruction - if you see a better way with the same tools, take it and say what you did. A step marked NOT REACHABLE cannot be done from kernel data: skip it, say you skipped it, and do not treat its absence as evidence either way.
 
 1. stage the stored kernel trace for reading
    needs: `trace.stage_ctf`
+   with your tools: already done - the trace is loaded. ctf_timespan gives its real start and end.
    expect: a CTF directory the trace reader can open
 2. count failing syscalls by errno and by call, both windows
    needs: `syscall.error_attribution`
+   with your tools: query_ctf on syscall_exit_* for the calls you care about, then ctf_lines over a narrow range to read the actual return values. Error codes are in the raw lines only.
    expect: EMFILE per second in each window, and which syscalls returned it
 3. combine into the verdict and its artifacts
    needs: `verdict.apply_rules`
+   with your tools: do this yourself, from the numbers your own tool calls returned. Quote them.
    expect: a verdict naming the refusing syscalls, or an explicit non-fire with the reason
 4. draw the decision card
    needs: `report.decision_card`
+   with your tools: NOT REACHABLE - no plotting here. Skip it; it does not affect the diagnosis.
    expect: one page showing where every fault family sits on this blueprint's deciding number, which gates passed and by how much, and what else was ruled out
 
 ## What to produce

@@ -38,22 +38,27 @@ The signals below are sufficient for this problem; you do not need everything.
 Why this set: MEASURED BASIS. block_rq_issue carries the device, the sector, the byte count AND the process that issued the request, which is everything needed to say who arrived on the disk and how much work they brought. block_rq_complete closes each request so service time can be measured - not because it decides anything, but because it is what proves latency is NOT the signal, and that retraction is worth carrying. Nothing else in the kernel trace is required: this fault changes neither scheduling nor networking, only what reaches the block device.
 
 ## Investigation blueprint
-Each step names the capability it needs and what a correct result looks like. No commands are given: in this environment you have a raw kernel trace and your read-only query tools, and nothing else. Achieve each capability with those, in your own way. A step you genuinely cannot reach from kernel data should be stated as unreachable, not guessed at.
+Each step names the capability it needs, how to get at it with the tools you have, and what a correct result looks like. There are no commands: you have a raw kernel trace and six read-only query tools, and nothing else. The 'with your tools' line is a starting point, not an instruction - if you see a better way with the same tools, take it and say what you did. A step marked NOT REACHABLE cannot be done from kernel data: skip it, say you skipped it, and do not treat its absence as evidence either way.
 
 1. stage the stored kernel trace for reading
    needs: `trace.stage_ctf`
+   with your tools: already done - the trace is loaded. ctf_timespan gives its real start and end.
    expect: a CTF directory the trace reader can open
 2. measure disk arrivals per process and service time per device, both windows
    needs: `storage.io_attribution`
+   with your tools: query_ctf on block_rq_issue and block_rq_complete per range, with top_procnames for who is issuing the I/O. Rates, not latencies.
    expect: requests per second per process, and the newcomer if there is one
 3. Combine into the verdict and its artifacts: the JSON verdict, the per-process I/O chart, and a plain-English explanation
    needs: `verdict.apply_rules`
+   with your tools: do this yourself, from the numbers your own tool calls returned. Quote them.
    expect: name the flooding process, how much I/O it brought, and what share of the device it now holds
 4. State the recommended action alongside the diagnosis
    needs: `report.recommended_action`
+   with your tools: write it in your own words in the diagnosis.
    expect: identify the container owning the flooding process, then throttle its I/O or move it off this device
 5. draw the decision card
    needs: `report.decision_card`
+   with your tools: NOT REACHABLE - no plotting here. Skip it; it does not affect the diagnosis.
    expect: one page showing where every fault family sits on this blueprint's deciding number, which gates passed and by how much, and what else was ruled out
 
 ## What to produce

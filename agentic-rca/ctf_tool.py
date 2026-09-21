@@ -414,6 +414,184 @@ def ctf_lines(run_dir: str, event: str, begin: str, end: str, n: int = 10,
     }
 
 
+def ctf_procdiff(run_dir: str, begin_a: str, end_a: str, begin_b: str, end_b: str,
+                 event: str = ".", top: int = 20, ctf_subdir: str = "kernel/kernel") -> dict:
+    """Compare WHICH PROCESSES are active in two time ranges you choose.
+
+    The pilot showed why this is needed. Sixty runs looked for a change in how MANY events
+    were happening, and 52 of them landed on the recovery rather than the fault, because the
+    injected co-tenant raised no totals - it was simply a process that had not been there
+    before. Volume answers "how much"; this answers "who", and for a whole class of faults
+    only the second one moves.
+
+    Rates, not raw counts, so ranges of different lengths compare honestly. Ground truth is
+    not consulted: both ranges are the agent's choice, and naming one of them "baseline" is
+    the agent's claim to defend, not something this tool knows.
+    """
+    try:
+        ev_re = re.compile(event)
+    except re.error as e:
+        return {"error": "bad event pattern: %s" % e}
+    idx = _index_for(run_dir)
+    if idx is None:
+        return {"error": "no count index for this run, so a process diff would be a guess. "
+                         "Build one with blueprints/lib/build_ctf_index.py."}
+
+    a0, a1 = _secs_safe(begin_a), _secs_safe(end_a)
+    b0, b1 = _secs_safe(begin_b), _secs_safe(end_b)
+    if None in (a0, a1, b0, b1) or a1 <= a0 or b1 <= b0:
+        return {"error": "need two ranges as HH:MM:SS, each with end after begin"}
+    top = max(1, min(int(top), 60))
+
+    ca, cb = Counter(), Counter()
+    for bt, _ev, proc, n in _scan_index(idx, ev_re=ev_re):
+        if a0 <= bt < a1:
+            ca[proc] += n
+        if b0 <= bt < b1:
+            cb[proc] += n
+    if not ca and not cb:
+        return {"event_pattern": event, "matched": 0,
+                "note": "no events of this pattern in either range - check the pattern"}
+
+    da, db = a1 - a0, b1 - b0
+    rows = []
+    for proc in set(ca) | set(cb):
+        ra, rb = ca[proc] / da, cb[proc] / db
+        rows.append({"procname": proc,
+                     "rate_a": round(ra, 1), "rate_b": round(rb, 1),
+                     "delta_per_s": round(rb - ra, 1),
+                     "times": (round(rb / ra, 2) if ra > 0 else None)})
+
+    only_b = sorted([r for r in rows if r["rate_a"] == 0 and r["rate_b"] > 0],
+                    key=lambda r: -r["rate_b"])
+    only_a = sorted([r for r in rows if r["rate_b"] == 0 and r["rate_a"] > 0],
+                    key=lambda r: -r["rate_a"])
+    movers = sorted([r for r in rows if r["rate_a"] > 0 and r["rate_b"] > 0],
+                    key=lambda r: -abs(r["delta_per_s"]))
+
+    return {
+        "event_pattern": event, "clock": "UTC",
+        "range_a": [begin_a, end_a], "range_b": [begin_b, end_b],
+        "total_rate_a": round(sum(ca.values()) / da, 1),
+        "total_rate_b": round(sum(cb.values()) / db, 1),
+        "only_in_b": only_b[:top],
+        "only_in_a": only_a[:top],
+        "biggest_changes": movers[:top],
+        "source": "count index (both ranges read end to end)",
+        "how_to_read": (
+            "only_in_b is a process active in B and completely absent from A; only_in_a is the "
+            "reverse. Those two lists are the point of this tool. biggest_changes is for "
+            "processes present in both, and is weaker evidence: a process that merely does "
+            "more work may be a victim of the culprit rather than the culprit. Compare "
+            "total_rate_a against total_rate_b before reading anything into a single process - "
+            "if the totals moved as much as your candidate did, the whole workload shifted."),
+    }
+
+
+def ctf_proclife(run_dir: str, min_events: int = 1000, event: str = ".",
+                 ctf_subdir: str = "kernel/kernel") -> dict:
+    """When each process FIRST and LAST appears across the whole recording.
+
+    A process that starts or stops part-way through the recording is a change point that no
+    event-count series will show you. Anything whose life covers the full span was there the
+    whole time and did not arrive with the problem.
+
+    This is raw arrival and departure, nothing more. It does not say which of them matters,
+    or whether any of them is a fault - a recording normally contains short-lived processes
+    that are perfectly ordinary.
+    """
+    try:
+        ev_re = re.compile(event)
+    except re.error as e:
+        return {"error": "bad event pattern: %s" % e}
+    idx = _index_for(run_dir)
+    if idx is None:
+        return {"error": "no count index for this run. Build one with "
+                         "blueprints/lib/build_ctf_index.py."}
+
+    first: dict = {}
+    last: dict = {}
+    tot: Counter = Counter()
+    lo = hi = None
+    for bt, _ev, proc, n in _scan_index(idx, ev_re=ev_re):
+        lo = bt if lo is None else min(lo, bt)
+        hi = bt if hi is None else max(hi, bt)
+        tot[proc] += n
+        if proc not in first:
+            first[proc] = bt
+        last[proc] = bt
+    if not tot:
+        return {"event_pattern": event, "note": "nothing matched this pattern"}
+
+    span = max(1e-6, hi - lo)
+    part, whole = [], []
+    for proc, n in tot.items():
+        if n < min_events:
+            continue
+        f, l = first[proc], last[proc]
+        row = {"procname": proc, "first_seen": _fmt(f), "last_seen": _fmt(l),
+               "alive_s": round(l - f, 1), "events": n,
+               "covers_pct_of_recording": round(100.0 * (l - f) / span, 1)}
+        # 95% rather than 100%: bucket edges and a quiet first or last bucket should not
+        # promote a process that ran throughout into the "arrived part-way" list.
+        (whole if (l - f) >= 0.95 * span else part).append(row)
+
+    part.sort(key=lambda r: r["first_seen"])
+    whole.sort(key=lambda r: -r["events"])
+    return {
+        "event_pattern": event, "clock": "UTC",
+        "recording": [_fmt(lo), _fmt(hi)],
+        "min_events": min_events,
+        "present_for_only_part_of_the_recording": part,
+        "present_throughout": [r["procname"] for r in whole],
+        "source": "count index (every event in the recording)",
+        "how_to_read": (
+            "The first list is where a change of WHO is visible. A process that appears at one "
+            "time and stops at another marks two boundaries, and those boundaries are candidate "
+            "incident edges - but plenty of short-lived processes are routine, so confirm what "
+            "a candidate was doing with query_ctf and ctf_lines before believing it. Raise "
+            "min_events to hide noise. A process in the second list was running the whole time "
+            "and cannot itself be something that arrived."),
+    }
+
+
+PROCDIFF_DEF = {
+    "name": "ctf_procdiff",
+    "description": (
+        "Compare WHICH PROCESSES are active in two time ranges you choose, by rate so the "
+        "ranges need not be the same length. Tells you what is in B but not in A, what is in A "
+        "but not in B, and who changed most. Use this when you suspect a period and want to "
+        "know what is different about it - counting events tells you how much is happening, "
+        "this tells you who is doing it, and they often disagree."),
+    "parameters": {"type": "object", "properties": {
+        "begin_a": {"type": "string", "description": "range A start 'HH:MM:SS' UTC"},
+        "end_a": {"type": "string", "description": "range A end 'HH:MM:SS' UTC"},
+        "begin_b": {"type": "string", "description": "range B start 'HH:MM:SS' UTC"},
+        "end_b": {"type": "string", "description": "range B end 'HH:MM:SS' UTC"},
+        "event": {"type": "string", "description":
+                  "event name substring or regex; default '.' means all events"},
+        "top": {"type": "integer", "description": "rows per list, 1-60 (default 20)"}},
+        "required": ["begin_a", "end_a", "begin_b", "end_b"]},
+}
+
+PROCLIFE_DEF = {
+    "name": "ctf_proclife",
+    "description": (
+        "When each process FIRST and LAST appears in the recording. Splits them into those "
+        "present for only part of it and those present throughout. A process that arrives or "
+        "leaves part-way through marks a boundary that no event-count chart will show you, so "
+        "this is usually the fastest way to find candidate incident edges. Short-lived "
+        "processes are often routine - confirm before believing one."),
+    "parameters": {"type": "object", "properties": {
+        "min_events": {"type": "integer", "description":
+                       "ignore processes with fewer events than this (default 1000); raise it "
+                       "to cut noise"},
+        "event": {"type": "string", "description":
+                  "event name substring or regex; default '.' means all events"}},
+        "required": []},
+}
+
+
 # --- fallbacks: no index for this run, so read the trace under a cap -----------------------
 # Kept so the tools still work on a bundle nobody has indexed. Both are honest about the cap,
 # because a silent partial answer is worse than an error: the agent treats a lower bound as a

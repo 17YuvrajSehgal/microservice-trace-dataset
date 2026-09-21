@@ -235,6 +235,67 @@ def leak_scan(text: str) -> list:
     return sorted(hits)
 
 
+# How to reach each capability with a raw kernel trace and the six read-only tools.
+#
+# A blueprint step names a capability and, normally, a command bound to it. In phase 1 there is
+# no shell, so the command is dropped - but dropping it alone left the agent holding a step it
+# had no idea how to perform. These lines close that gap. They say which tool and which events,
+# not what the answer is: no thresholds, no windows, no expected verdict. A step with no recipe
+# here keeps its capability and its expectation and is simply marked as not reachable, which is
+# itself information - it tells the agent which parts of the method it cannot run, instead of
+# leaving it to guess or to fake.
+KERNEL_RECIPES = {
+    "trace.stage_ctf":
+        "already done - the trace is loaded. ctf_timespan gives its real start and end.",
+    "kernel.scheduler.oncpu_attribution":
+        "query_ctf on sched_switch over each range, and read top_procnames: that is who was "
+        "getting the CPU. ctf_procdiff between the two ranges names who changed.",
+    "kernel.scheduler.runqueue_delay":
+        "the delay is sched_waking to the sched_switch that runs the thread. You cannot join "
+        "those two per thread with these tools, so use the rate of sched_waking against "
+        "sched_switch as a proxy, and say in your evidence that it is a proxy.",
+    "kernel.syscall.blocking_duration":
+        "query_ctf on syscall_entry_poll, syscall_entry_epoll_wait, syscall_entry_recvfrom, "
+        "syscall_entry_read per range. Rates only - durations need pairing with the exits, "
+        "which these tools cannot do. Say so rather than implying you measured duration.",
+    "kernel.interrupt.time_attribution":
+        "query_ctf on irq_handler_entry and softirq_entry per range, compared by rate.",
+    "process.creation_attribution":
+        "ctf_proclife shows arrivals and departures directly. sched_process_fork and "
+        "sched_process_exec rates via query_ctf show how fast processes are being created.",
+    "storage.io_attribution":
+        "query_ctf on block_rq_issue and block_rq_complete per range, with top_procnames for "
+        "who is issuing the I/O. Rates, not latencies.",
+    "network.retransmission_rate":
+        "query_ctf on net_dev_xmit and netif_receive_skb per range. There is no TCP "
+        "retransmission tracepoint in this profile, so a retransmission RATE is not "
+        "measurable - say that rather than inferring one from packet counts.",
+    "network.egress_attribution":
+        "query_ctf on net_dev_xmit with top_procnames, and ctf_procdiff on the same event to "
+        "see which process's traffic changed.",
+    "syscall.error_attribution":
+        "query_ctf on syscall_exit_* for the calls you care about, then ctf_lines over a narrow "
+        "range to read the actual return values. Error codes are in the raw lines only.",
+    "metrics.container.cpu_attribution":
+        "there are no container metrics here. The kernel equivalent is per-process on-CPU "
+        "attribution: query_ctf on sched_switch with top_procnames, plus ctf_procdiff to find "
+        "a process present in one range and absent from the other. Process names are the "
+        "kernel's, not container names.",
+    "traces.call_graph.convergence":
+        "NOT REACHABLE from a kernel trace - there are no spans, so there is no call graph. Do "
+        "not guess at one. Say the check could not be run, and do not treat its absence as "
+        "either supporting or refuting the blueprint.",
+    "verdict.apply_rules":
+        "do this yourself, from the numbers your own tool calls returned. Quote them.",
+    "verdict.dependency_wait":
+        "do this yourself, from the numbers your own tool calls returned. Quote them.",
+    "report.recommended_action":
+        "write it in your own words in the diagnosis.",
+    "report.decision_card":
+        "NOT REACHABLE - no plotting here. Skip it; it does not affect the diagnosis.",
+}
+
+
 def to_skill(bp: dict, kernel_only: bool = False) -> str:
     """Render the agent-facing skill. Answer-bearing fields are deliberately excluded.
 
@@ -287,11 +348,13 @@ def to_skill(bp: dict, kernel_only: bool = False) -> str:
     providers = load_providers()
     if kernel_only:
         steps = ["## Investigation blueprint",
-                 "Each step names the capability it needs and what a correct result looks "
-                 "like. No commands are given: in this environment you have a raw kernel "
-                 "trace and your read-only query tools, and nothing else. Achieve each "
-                 "capability with those, in your own way. A step you genuinely cannot reach "
-                 "from kernel data should be stated as unreachable, not guessed at.", ""]
+                 "Each step names the capability it needs, how to get at it with the tools "
+                 "you have, and what a correct result looks like. There are no commands: you "
+                 "have a raw kernel trace and six read-only query tools, and nothing else. "
+                 "The 'with your tools' line is a starting point, not an instruction - if you "
+                 "see a better way with the same tools, take it and say what you did. A step "
+                 "marked NOT REACHABLE cannot be done from kernel data: skip it, say you "
+                 "skipped it, and do not treat its absence as evidence either way.", ""]
     else:
         steps = ["## Investigation blueprint",
                  "Each step names the capability it needs. The command shown is the binding "
@@ -304,7 +367,11 @@ def to_skill(bp: dict, kernel_only: bool = False) -> str:
         if cap:
             bound, prov = bind(cap, providers)
             steps.append(f"   needs: `{cap}`")
-            if bound and not kernel_only:
+            if kernel_only:
+                steps.append("   with your tools: %s"
+                             % KERNEL_RECIPES.get(cap, "no direct equivalent from a kernel "
+                                                       "trace - say the step was not run."))
+            elif bound:
                 steps.append(f"   run [{prov}]: `{bound}`")
             run = run or bound
         elif run and not kernel_only:

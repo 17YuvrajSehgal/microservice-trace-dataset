@@ -42,28 +42,35 @@ The signals below are sufficient for this problem; you do not need everything.
 Why this set: MEASURED BASIS. Runqueue delay needs exactly two tracepoints: sched_waking gives the moment a thread became runnable, and sched_switch (next_tid) gives the moment a CPU actually ran it. The difference is the delay. Syscall events are collected only as the NEGATIVE control - showing durations stay flat is what separates this from a component blocked on I/O. Nothing else in the kernel trace is required.
 
 ## Investigation blueprint
-Each step names the capability it needs and what a correct result looks like. No commands are given: in this environment you have a raw kernel trace and your read-only query tools, and nothing else. Achieve each capability with those, in your own way. A step you genuinely cannot reach from kernel data should be stated as unreachable, not guessed at.
+Each step names the capability it needs, how to get at it with the tools you have, and what a correct result looks like. There are no commands: you have a raw kernel trace and six read-only query tools, and nothing else. The 'with your tools' line is a starting point, not an instruction - if you see a better way with the same tools, take it and say what you did. A step marked NOT REACHABLE cannot be done from kernel data: skip it, say you skipped it, and do not treat its absence as evidence either way.
 
 1. Make the kernel trace readable
    needs: `trace.stage_ctf`
+   with your tools: already done - the trace is loaded. ctf_timespan gives its real start and end.
    expect: a CTF directory with metadata and channel streams
 2. attribute on-CPU time per process, baseline window against incident window
    needs: `kernel.scheduler.oncpu_attribution`
+   with your tools: query_ctf on sched_switch over each range, and read top_procnames: that is who was getting the CPU. ctf_procdiff between the two ranges names who changed.
    expect: host utilisation raised but below the ceiling, and one newcomer holding 1-2 cores
 3. Measure runqueue delay per process, baseline vs incident
    needs: `kernel.scheduler.runqueue_delay`
+   with your tools: the delay is sched_waking to the sched_switch that runs the thread. You cannot join those two per thread with these tools, so use the rate of sched_waking against sched_switch as a proxy, and say in your evidence that it is a proxy.
    expect: a broad multi-process inflation of p95 indicates contention
 4. NEGATIVE CONTROL: confirm blocking-syscall durations did not inflate
    needs: `kernel.syscall.blocking_duration`
+   with your tools: query_ctf on syscall_entry_poll, syscall_entry_epoll_wait, syscall_entry_recvfrom, syscall_entry_read per range. Rates only - durations need pairing with the exits, which these tools cannot do. Say so rather than implying you measured duration.
    expect: no syscall inflates much; a large single-component inflation means this is the wrong blueprint
 5. Identify the off-call-path CPU consumer and emit the verdict
    needs: `metrics.container.cpu_attribution`
+   with your tools: there are no container metrics here. The kernel equivalent is per-process on-CPU attribution: query_ctf on sched_switch with top_procnames, plus ctf_procdiff to find a process present in one range and absent from the other. Process names are the kernel's, not container names.
    expect: the top CPU consumer has no call-graph edges and was absent in the baseline
 6. State the recommended action alongside the diagnosis
    needs: `metrics.container.cpu_attribution`
+   with your tools: there are no container metrics here. The kernel equivalent is per-process on-CPU attribution: query_ctf on sched_switch with top_procnames, plus ctf_procdiff to find a process present in one range and absent from the other. Process names are the kernel's, not container names.
    expect: a concrete action naming the container to constrain, not a generic suggestion
 7. draw the decision card
    needs: `report.decision_card`
+   with your tools: NOT REACHABLE - no plotting here. Skip it; it does not affect the diagnosis.
    expect: one page showing where every fault family sits on this blueprint's deciding number, which gates passed and by how much, and what else was ruled out
 
 ## What to produce

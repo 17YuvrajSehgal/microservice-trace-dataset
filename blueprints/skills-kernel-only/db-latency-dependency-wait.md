@@ -41,28 +41,35 @@ The signals below are sufficient for this problem; you do not need everything.
 Why this set: MEASURED BASIS. The verdict rests on how long the component blocks inside its socket-waiting syscall, so entry AND exit of those calls are required - entry alone gives no duration. The two scheduler events are needed for the negative control: showing runqueue delay is FLAT is what rules out CPU starvation. This is strictly more than the CPU-contention blueprint needs, and that difference is the point: the two problems genuinely require different collection sequences.
 
 ## Investigation blueprint
-Each step names the capability it needs and what a correct result looks like. No commands are given: in this environment you have a raw kernel trace and your read-only query tools, and nothing else. Achieve each capability with those, in your own way. A step you genuinely cannot reach from kernel data should be stated as unreachable, not guessed at.
+Each step names the capability it needs, how to get at it with the tools you have, and what a correct result looks like. There are no commands: you have a raw kernel trace and six read-only query tools, and nothing else. The 'with your tools' line is a starting point, not an instruction - if you see a better way with the same tools, take it and say what you did. A step marked NOT REACHABLE cannot be done from kernel data: skip it, say you skipped it, and do not treat its absence as evidence either way.
 
 1. Make the kernel trace readable
    needs: `trace.stage_ctf`
+   with your tools: already done - the trace is loaded. ctf_timespan gives its real start and end.
    expect: a CTF directory with metadata and channel streams
 2. Find which component the slow call paths converge on
    needs: `traces.call_graph.convergence`
+   with your tools: NOT REACHABLE from a kernel trace - there are no spans, so there is no call graph. Do not guess at one. Say the check could not be run, and do not treat its absence as either supporting or refuting the blueprint.
    expect: one component with slow incoming and no slow outgoing edges; it may be the CALLER of the culprit if the culprit emits no spans
 3. Measure how long the suspect blocks inside each syscall
    needs: `kernel.syscall.blocking_duration`
+   with your tools: query_ctf on syscall_entry_poll, syscall_entry_epoll_wait, syscall_entry_recvfrom, syscall_entry_read per range. Rates only - durations need pairing with the exits, which these tools cannot do. Say so rather than implying you measured duration.
    expect: one socket-waiting syscall inflated by roughly an order of magnitude
 4. NEGATIVE CONTROL: confirm the suspect is not merely CPU-starved
    needs: `kernel.scheduler.runqueue_delay`
+   with your tools: the delay is sched_waking to the sched_switch that runs the thread. You cannot join those two per thread with these tools, so use the rate of sched_waking against sched_switch as a proxy, and say in your evidence that it is a proxy.
    expect: runqueue delay flat; if it inflates broadly this is the CPU-contention blueprint instead
 5. Combine into the verdict and its artifacts
    needs: `verdict.dependency_wait`
+   with your tools: do this yourself, from the numbers your own tool calls returned. Quote them.
    expect: a named component, the syscall it blocked in, its inflation factor, and the flat runqueue delay that rules out CPU starvation
 6. State the recommended action alongside the diagnosis
    needs: `verdict.dependency_wait`
+   with your tools: do this yourself, from the numbers your own tool calls returned. Quote them.
    expect: an action aimed at the blocked component or its dependency, explicitly not at the victims named by the call graph
 7. draw the decision card
    needs: `report.decision_card`
+   with your tools: NOT REACHABLE - no plotting here. Skip it; it does not affect the diagnosis.
    expect: one page showing where every fault family sits on this blueprint's deciding number, which gates passed and by how much, and what else was ruled out
 
 ## What to produce

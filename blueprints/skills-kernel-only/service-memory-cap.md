@@ -37,22 +37,27 @@ The signals below are sufficient for this problem; you do not need everything.
 Why this set: MEASURED BASIS. The verdict needs one signal that rises and one that stays flat, and both halves are load-bearing: on the first application the disk test is what excludes host memory pressure, and on the second application the interrupt test is what excludes a healthy run. Interrupt handlers need entry AND exit because the signal is time spent inside them, not a count. block_rq_issue alone is enough for arrivals; block_rq_complete is kept so the negative claim - that service time did not change - can be shown rather than asserted.
 
 ## Investigation blueprint
-Each step names the capability it needs and what a correct result looks like. No commands are given: in this environment you have a raw kernel trace and your read-only query tools, and nothing else. Achieve each capability with those, in your own way. A step you genuinely cannot reach from kernel data should be stated as unreachable, not guessed at.
+Each step names the capability it needs, how to get at it with the tools you have, and what a correct result looks like. There are no commands: you have a raw kernel trace and six read-only query tools, and nothing else. The 'with your tools' line is a starting point, not an instruction - if you see a better way with the same tools, take it and say what you did. A step marked NOT REACHABLE cannot be done from kernel data: skip it, say you skipped it, and do not treat its absence as evidence either way.
 
 1. stage the stored kernel trace for reading
    needs: `trace.stage_ctf`
+   with your tools: already done - the trace is loaded. ctf_timespan gives its real start and end.
    expect: a CTF directory the trace reader can open
 2. measure device interrupt time in both windows
    needs: `kernel.interrupt.time_attribution`
+   with your tools: query_ctf on irq_handler_entry and softirq_entry per range, compared by rate.
    expect: hardirq seconds per second of wall clock, baseline and incident, and their ratio
 3. measure disk arrivals per process, to show the disk stayed quiet
    needs: `storage.io_attribution`
+   with your tools: query_ctf on block_rq_issue and block_rq_complete per range, with top_procnames for who is issuing the I/O. Rates, not latencies.
    expect: requests per second gained by any newcomer process; expected to be near zero for this fault
 4. combine into the verdict and its artifacts
    needs: `verdict.apply_rules`
+   with your tools: do this yourself, from the numbers your own tool calls returned. Quote them.
    expect: a verdict naming the capped service, or a refusal to decide
 5. draw the decision card
    needs: `report.decision_card`
+   with your tools: NOT REACHABLE - no plotting here. Skip it; it does not affect the diagnosis.
    expect: one page showing where every fault family sits on this blueprint's deciding number, which gates passed and by how much, and what else was ruled out
 
 ## What to produce

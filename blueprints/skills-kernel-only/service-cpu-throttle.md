@@ -38,25 +38,31 @@ The signals below are sufficient for this problem; you do not need everything.
 Why this set: MEASURED BASIS. sched_switch gives on-CPU time per process per CPU, which yields both host utilisation and the per-process gain or loss - the two facts that decide this verdict. sched_waking adds runqueue delay, which is corroboration rather than evidence, since it is raised in every neighbouring fault. No metrics are needed: cgroup throttling counters would confirm the mechanism but are not required to reach the verdict, and the falling-utilisation signal is measured to separate this family from all three neighbours on its own.
 
 ## Investigation blueprint
-Each step names the capability it needs and what a correct result looks like. No commands are given: in this environment you have a raw kernel trace and your read-only query tools, and nothing else. Achieve each capability with those, in your own way. A step you genuinely cannot reach from kernel data should be stated as unreachable, not guessed at.
+Each step names the capability it needs, how to get at it with the tools you have, and what a correct result looks like. There are no commands: you have a raw kernel trace and six read-only query tools, and nothing else. The 'with your tools' line is a starting point, not an instruction - if you see a better way with the same tools, take it and say what you did. A step marked NOT REACHABLE cannot be done from kernel data: skip it, say you skipped it, and do not treat its absence as evidence either way.
 
 1. stage the stored kernel trace for reading
    needs: `trace.stage_ctf`
+   with your tools: already done - the trace is loaded. ctf_timespan gives its real start and end.
    expect: a CTF directory the trace reader can open
 2. attribute on-CPU time per process, baseline window against incident window
    needs: `kernel.scheduler.oncpu_attribution`
+   with your tools: query_ctf on sched_switch over each range, and read top_procnames: that is who was getting the CPU. ctf_procdiff between the two ranges names who changed.
    expect: host_utilisation falling between windows, no newcomer, broad per-process losses
 3. measure runqueue delay as corroboration only
    needs: `kernel.scheduler.runqueue_delay`
+   with your tools: the delay is sched_waking to the sched_switch that runs the thread. You cannot join those two per thread with these tools, so use the rate of sched_waking against sched_switch as a proxy, and say in your evidence that it is a proxy.
    expect: per-process p95 runqueue delay raised while utilisation falls
 4. Combine into the verdict and its artifacts: the JSON verdict, the CPU breakdown chart, and a plain-English explanation
    needs: `verdict.apply_rules`
+   with your tools: do this yourself, from the numbers your own tool calls returned. Quote them.
    expect: state that a CPU quota is throttling some service, why the host looks quiet, and that the service is NOT identified by this evidence
 5. State the recommended action alongside the diagnosis
    needs: `report.recommended_action`
+   with your tools: write it in your own words in the diagnosis.
    expect: inspect cgroup cpu.max and cpu.stat throttling counters for the services on the stalled path, and raise or remove the quota on the one that is throttling
 6. draw the decision card
    needs: `report.decision_card`
+   with your tools: NOT REACHABLE - no plotting here. Skip it; it does not affect the diagnosis.
    expect: one page showing where every fault family sits on this blueprint's deciding number, which gates passed and by how much, and what else was ruled out
 
 ## What to produce

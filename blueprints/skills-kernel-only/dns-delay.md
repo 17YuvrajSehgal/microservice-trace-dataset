@@ -37,25 +37,31 @@ The signals below are sufficient for this problem; you do not need everything.
 Why this set: MEASURED BASIS. The deciding fact is a syscall RETURN VALUE and the total count of failing syscalls, so exit events are what matter and durations are not needed. The two network events are only there for the retransmission gate, which is what excludes a degraded path. Recording every syscall exit also works and is what our own runs did, but syscall exits are 41% of all events and this rule reads five of them.
 
 ## Investigation blueprint
-Each step names the capability it needs and what a correct result looks like. No commands are given: in this environment you have a raw kernel trace and your read-only query tools, and nothing else. Achieve each capability with those, in your own way. A step you genuinely cannot reach from kernel data should be stated as unreachable, not guessed at.
+Each step names the capability it needs, how to get at it with the tools you have, and what a correct result looks like. There are no commands: you have a raw kernel trace and six read-only query tools, and nothing else. The 'with your tools' line is a starting point, not an instruction - if you see a better way with the same tools, take it and say what you did. A step marked NOT REACHABLE cannot be done from kernel data: skip it, say you skipped it, and do not treat its absence as evidence either way.
 
 1. make the kernel trace readable
    needs: `trace.stage_ctf`
+   with your tools: already done - the trace is loaded. ctf_timespan gives its real start and end.
    expect: a CTF directory with metadata and channel streams
 2. count failing syscalls by errno, and the total, in both windows
    needs: `syscall.error_attribution`
+   with your tools: query_ctf on syscall_exit_* for the calls you care about, then ctf_lines over a narrow range to read the actual return values. Error codes are in the raw lines only.
    expect: EMFILE per second, the total failing-syscall rate, and which process returned them
 3. confirm the path is healthy, so a degraded link is not mistaken for this
    needs: `network.retransmission_rate`
+   with your tools: query_ctf on net_dev_xmit and netif_receive_skb per range. There is no TCP retransmission tracepoint in this profile, so a retransmission RATE is not measurable - say that rather than inferring one from packet counts.
    expect: retransmission percentage per interface; this fault leaves it flat
 4. combine into the verdict
    needs: `verdict.apply_rules`
+   with your tools: do this yourself, from the numbers your own tool calls returned. Quote them.
    expect: a verdict naming name resolution as the cause and the accumulating service as the victim, or an explicit non-fire with the reason
 5. state the recommended action alongside the diagnosis
    needs: `report.recommended_action`
+   with your tools: write it in your own words in the diagnosis.
    expect: fix the resolver, and do NOT raise the descriptor limit on the service that ran out
 6. draw the decision card
    needs: `report.decision_card`
+   with your tools: NOT REACHABLE - no plotting here. Skip it; it does not affect the diagnosis.
    expect: one page showing where every fault family sits on this blueprint's deciding number, which gates passed and by how much, and what else was ruled out
 
 ## What to produce
