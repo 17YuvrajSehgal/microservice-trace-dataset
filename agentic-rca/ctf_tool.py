@@ -457,7 +457,7 @@ def ctf_procdiff(run_dir: str, begin_a: str, end_a: str, begin_b: str, end_b: st
     rows = []
     for proc in set(ca) | set(cb):
         ra, rb = ca[proc] / da, cb[proc] / db
-        rows.append({"procname": proc,
+        rows.append({"procname": proc, "kernel_thread": _is_kthread(proc),
                      "rate_a": round(ra, 1), "rate_b": round(rb, 1),
                      "delta_per_s": round(rb - ra, 1),
                      "times": (round(rb / ra, 2) if ra > 0 else None)})
@@ -484,8 +484,28 @@ def ctf_procdiff(run_dir: str, begin_a: str, end_a: str, begin_b: str, end_b: st
             "processes present in both, and is weaker evidence: a process that merely does "
             "more work may be a victim of the culprit rather than the culprit. Compare "
             "total_rate_a against total_rate_b before reading anything into a single process - "
-            "if the totals moved as much as your candidate did, the whole workload shifted."),
+            "if the totals moved as much as your candidate did, the whole workload shifted. "
+            "kernel_thread=true marks an operating-system thread (swapper, kworker, ksoftirqd, "
+            "jbd2 and so on) rather than a deployed program; they appear and vanish as the "
+            "kernel schedules its own work, so they are rarely a cause though they can be a "
+            "symptom."),
     }
+
+
+# Kernel threads, not workloads. swapper is the idle task, kworker/kthreadd are the kernel's
+# own worker pool, ksoftirqd/migration/rcu/watchdog are per-CPU housekeeping, jbd2 is the
+# filesystem journal. None of them is a program somebody deployed, and an SRE reading a trace
+# knows that at a glance. Flagging them is not doing the analysis - it is supplying the OS
+# knowledge the agent is not being tested on. The first run with ctf_proclife blamed
+# `kworker/u48:8`, which is a kernel worker doing 8,569 events, over `stress-ng-cpu` doing
+# 1.68 million.
+_KTHREAD_RE = re.compile(r"^(swapper/|kworker/|ksoftirqd/|migration/|rcu_|rcuo|watchdog/|"
+                         r"kthreadd$|irq/|jbd2/|kcompactd|kswapd|khugepaged|ktlsd|"
+                         r"idle_inject/|cpuhp/|netns$|kdevtmpfs$|writeback$|kblockd)")
+
+
+def _is_kthread(proc: str) -> bool:
+    return bool(_KTHREAD_RE.match(proc or ""))
 
 
 def ctf_proclife(run_dir: str, min_events: int = 1000, event: str = ".",
@@ -531,12 +551,17 @@ def ctf_proclife(run_dir: str, min_events: int = 1000, event: str = ".",
         f, l = first[proc], last[proc]
         row = {"procname": proc, "first_seen": _fmt(f), "last_seen": _fmt(l),
                "alive_s": round(l - f, 1), "events": n,
+               "kernel_thread": _is_kthread(proc),
                "covers_pct_of_recording": round(100.0 * (l - f) / span, 1)}
         # 95% rather than 100%: bucket edges and a quiet first or last bucket should not
         # promote a process that ran throughout into the "arrived part-way" list.
         (whole if (l - f) >= 0.95 * span else part).append(row)
 
-    part.sort(key=lambda r: r["first_seen"])
+    # Busiest first, not earliest first. Sorted by arrival, the eye lands on whatever happened
+    # to start soonest, and the first run to use this tool blamed an 8,569-event kernel worker
+    # sitting above a 1.68-million-event process. Event count is a plain fact about the row,
+    # not a hint about which one matters - a busy process can easily be a victim.
+    part.sort(key=lambda r: -r["events"])
     whole.sort(key=lambda r: -r["events"])
     return {
         "event_pattern": event, "clock": "UTC",
@@ -546,12 +571,17 @@ def ctf_proclife(run_dir: str, min_events: int = 1000, event: str = ".",
         "present_throughout": [r["procname"] for r in whole],
         "source": "count index (every event in the recording)",
         "how_to_read": (
-            "The first list is where a change of WHO is visible. A process that appears at one "
-            "time and stops at another marks two boundaries, and those boundaries are candidate "
-            "incident edges - but plenty of short-lived processes are routine, so confirm what "
-            "a candidate was doing with query_ctf and ctf_lines before believing it. Raise "
-            "min_events to hide noise. A process in the second list was running the whole time "
-            "and cannot itself be something that arrived."),
+            "The first list is where a change of WHO is visible, ordered by how many events "
+            "each process produced - that is a fact about the row, not a ranking of blame, "
+            "since a busy process can be a victim. A process that appears at one time and "
+            "stops at another marks two boundaries, and those are candidate incident edges. "
+            "kernel_thread=true means it is part of the operating system (swapper, kworker, "
+            "ksoftirqd, jbd2 and so on), not a program anyone deployed: those come and go as "
+            "the kernel schedules its own work and are rarely the cause, though they can be a "
+            "symptom. Plenty of short-lived user processes are routine too, so confirm what a "
+            "candidate was actually doing with query_ctf and ctf_lines before believing it. "
+            "Raise min_events to hide noise. A process in the second list ran the whole time "
+            "and cannot be something that arrived."),
     }
 
 
