@@ -168,3 +168,84 @@ modality-ablation study can make the same mistake.
   recall, precision, IoU. `unknown` counts as an honest abstention, not a wrong answer, because
   the schema tells the agent an invented window is worse than an admitted gap and the metric
   has to agree with the instruction.
+
+## 9. babeltrace2 does not seek, and that changed the tool design
+
+Fix 3 above (report real coverage) did its job immediately: it showed the agent was asking for
+20-second windows and being given 0.3 seconds of them. 1.6%. It then compared two 0.3 s slices
+as though they were the 20 s windows it named.
+
+Measured, because the reason was not obvious:
+
+| range | events returned | wall |
+|---|---|---|
+| 1 s, 3 s into the trace | 1,220,291 | 9.6 s |
+| 1 s, 213 s into the trace | 14,317 | **133 s** |
+
+`--begin/--end` decode from the start of the trace and discard what falls outside. So a query's
+cost tracks how **deep** the range sits, not how much comes back, and "narrow the range" - the
+advice the tool was giving - buys nothing. A whole pass costs about what one deep query costs.
+
+### The count index
+
+One decode per run into `bucket_start_s, event, procname, count` at 100 ms.
+
+| run | events decoded | rows | index | build |
+|---|---|---|---|---|
+| r1 | 315,569,477 | 2,885,348 | 14.5 MB | 532 s |
+| r2 | 313,502,229 | 2,887,661 | 14.5 MB | 529 s |
+| r3 | 318,640,754 | 2,893,672 | 14.5 MB | 542 s |
+
+315 million events per run. That is why a 400,000-event cap reached 0.3 seconds.
+
+A query now costs **1.0 s and covers the whole range asked for**, against 52 s for 1.6% before.
+Raw event lines still come from the trace, through a separate `ctf_lines` tool, because
+per-event fields are exactly what the index does not keep.
+
+**Why this is not pre-computing the answer.** The index holds counts. It reads no ground truth,
+and has no notion of a baseline window, an incident window, a fault or a culprit. It is built
+before any question is asked of it and identically for every run, in both arms. It is the
+histogram an engineer gets for free on opening the trace in Trace Compass. What it removes is
+a decoding cost, not an analysis step.
+
+### Proof the experiment is winnable
+
+The thing worth checking before spending 60 runs: can the fault be found from the index at all?
+
+```
+stress-ng-cpu   first 13:11:54.1   last 13:13:54.2   1,682,336 events
+ground truth    injection 13:11:54Z - 13:13:55Z
+```
+
+Both ends within a second, and nothing pointed the tool at that window.
+
+Two things this also settled:
+
+- **`sched_switch` volume shows no step at the injection window.** The series is flat across it.
+  That is `noisy_neighbor`'s pre-registered property - a co-tenant consumes host resources while
+  KPIs barely move. So the fault must be found by *which process is present*, not by how much
+  the system is doing. Good: the blueprint says exactly that, and now it has something to earn.
+- **The culprit ranked 15th of 15** in `top_procnames` inside its own incident window - 1.68M
+  events against dockerd's 67M. One place from invisible. Raised to 30, so the comparison the
+  method depends on is possible rather than lucky.
+
+### Also fixed: the span was 24 s short
+
+`ctf_timespan` read the meta tick snapshots, which begin just after the recorder and end just
+before it: 13:11:07-13:14:46 against a true 13:10:55-13:14:58. The agent is told every range
+must sit inside that span, so 24 seconds of recording were quietly out of bounds. It reads the
+index now; ticks are the fallback and say they are approximate.
+
+## 10. The harness lost a correct investigation
+
+The second pilot is the clearest argument yet for running one cell before sixty.
+
+The agent called `ctf_timespan`, swept five `ctf_timeline` series, ran eight `query_ctf` probes,
+and **found `stress-ng-cpu` at 13:13:10** - the right culprit. Then it ended its turn with prose
+instead of calling `submit_diagnosis`, and the loop recorded `diagnosis: None`. Scored:
+service_ok False, fault_ok False, window abstained, set_f1 0.0. 524 s and 94k tokens, filed as
+a total failure by the agent.
+
+Both loops now prompt it back up to twice, and say that a low-confidence answer counts while
+silence does not. Worth remembering as a general point: **when an agent scores zero, check the
+harness before believing the number.**
