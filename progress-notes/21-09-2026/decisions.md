@@ -338,3 +338,74 @@ That is a genuine analysis failure with the blueprint in hand, which is exactly 
 this experiment exists to take. Nothing to fix - but worth re-checking after the skills were
 regenerated without the unrunnable steps, since the old rendering told it to run scripts that
 would have done the presence comparison for it.
+
+## 14. The 60-cell pilot ran: 60/60, 89 minutes, and three of the columns lie
+
+Full table and workings: `blueprints/docs/Q2-PILOT-noisy_neighbor.md`. Decisions here.
+
+Headline: blueprint +13 and +33 points on both-correct, +34 and +46 on narrowing, ~25% more
+tokens, and *faster* in wall clock. Then I checked what the columns are actually counting.
+
+### Fault accuracy is near-tautological, because the blueprint is GIVEN
+
+given arm answers `noisy_neighbor` 15/15 and 14/15. The blueprint is called
+`cpu-contention-co-tenant` and describes that fault in the vocabulary's own words.
+
+The control arm is the interesting half: `cpu_saturation` 21 of 30 - right mechanism, wrong
+label. Those two differ only by whether the host keeps headroom, which is exactly what the
+blueprint's "telling it apart" section settles. So there IS a real contribution here, and this
+design cannot separate it from being told the answer.
+
+**Decision: a `chosen` arm is needed before the six-problem matrix**, where the agent selects
+from all 11 blueprints. Naser's framing was "blueprint given, not chosen", and for narrowing
+and localisation that is fine. For fault typing it is not measuring anything.
+
+### The service column measures hedging
+
+`_svc_match` scores both `host` and `stress-ng*` correct for a host-scoped fault. Splitting:
+
+| arm | service_ok | said host | **named the culprit** |
+|---|---|---|---|
+| nohint\|none | 7 | 4 | **3** |
+| nohint\|given | 2 | 0 | **2** |
+| hint\|none | 10 | 8 | **2** |
+| hint\|given | 7 | 5 | **2** |
+
+Naming the injected process is 3/2/2/2 - flat. Every difference in the column is how often the
+agent hedged to `host`.
+
+So "the blueprint makes localisation worse, 47% -> 13%" is wrong. The blueprint makes the agent
+commit to a container instead of hedging, and it commits to the wrong one. Ability is unchanged
+at ~13%. **Decision: report both columns, never the merged one, for host-scoped faults.**
+
+Worth catching now. "Blueprints hurt localisation" is a clean, wrong, publishable-looking
+sentence.
+
+### 52 of 60 found the recovery instead of the fault
+
+Same in all four arms, and none claimed a window that started early.
+
+```
+true            13:11:54 - 13:13:55
+typical claim   13:13:50 - 13:14:45
+```
+
+The cause is in the data. Whole-trace sched_switch sits at ~1.17M per bucket through the
+injection and jumps to ~1.34M at 13:13:52, when the co-tenant **stops** and the backlog drains.
+The fault produces no step in aggregate volume; the recovery does.
+
+That is `noisy_neighbor`'s pre-registered property confirmed from the kernel side, and it
+generalises:
+
+> For a fault whose signature is presence rather than volume, aggregate change-point detection
+> systematically finds the recovery instead of the fault.
+
+The information is present - `stress-ng-cpu` runs 13:11:54.1 to 13:13:54.2, both ends within a
+second of ground truth. The search strategy is what fails, and the blueprint tells it to search
+on presence, and it searched on volume anyway.
+
+**Open: is the window task winnable as posed?** Every arm fails it identically. Either the
+agent needs a presence-oriented primitive (something like "which processes exist in range A and
+not range B" - still a raw count diff, no ground truth), or the blueprint has to push much
+harder against the volume instinct. Do not scale to six problems before deciding this: an
+IoU near 0.04 everywhere carries no signal about blueprints either way.
