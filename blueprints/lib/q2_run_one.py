@@ -163,6 +163,7 @@ def main() -> int:
         meta={"problem": args.problem, "arm": args.arm, "ask": args.ask, "repeat": args.repeat},
         skills=skills, skill_given=(args.arm == "given"), rank_k=Q.RANK_K,
         problem_hint=(prob["hint"] if args.ask == "hint" else None),
+        kernel_only=True,          # phase 1: raw kernel traces only, no logs/metrics/spans
     )
     wall = round(time.time() - t0, 1)
 

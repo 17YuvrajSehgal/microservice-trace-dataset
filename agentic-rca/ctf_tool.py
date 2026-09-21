@@ -44,6 +44,13 @@ from collections import Counter
 # its paths go stale - check `bt21.sh --version` if a query comes back empty (CLUSTER-LAYOUT.md).
 BT2 = os.environ.get("BT2", "/scratch/yuvraj17/stratatrace/tools/bt21.sh")
 
+# --clock-gmt on EVERY call. babeltrace2 renders timestamps in the reader's LOCAL time by
+# default, so on this cluster the trace read 09:10 where the run actually happened at 13:11 UTC
+# - a 4-hour EDT offset. Every other artifact in a bundle is UTC (ground truth, meta ticks,
+# container logs), so without this the agent's window can never line up with anything, and a
+# correct finding scores as a miss.
+GMT = ["--clock-gmt"]
+
 MAX_SAMPLE = 40
 MAX_SCAN = 400000
 _TIME_RE = re.compile(r"^\[(\d{2}):(\d{2}):(\d{2})\.(\d+)\]")
@@ -69,49 +76,48 @@ def _fmt(sec: float) -> str:
     return "%02d:%02d:%06.3f" % (int(sec) // 3600 % 24, int(sec) // 60 % 60, sec % 60)
 
 
-def ctf_timespan(run_dir: str, ctf_subdir: str = "kernel/kernel") -> dict:
-    """First and last timestamp in the trace, read FROM THE TRACE. No ground truth involved.
+_TICK_RE = re.compile(r"_tick_(\d{8})T(\d{6})Z\.txt$")
 
-    This is the agent's only free orientation: how long the recording is. Where anything
-    interesting sits inside it is for the agent to find.
+
+def ctf_timespan(run_dir: str, ctf_subdir: str = "kernel/kernel") -> dict:
+    """How long the recording is. Read from the bundle's own collection metadata.
+
+    NOT by decoding the trace. The first version did, hit a 4-million-event cap, and returned
+    the partial read AS IF IT WERE THE WHOLE SPAN - it reported 3.6 s of a 219 s recording, and
+    the agent then reasoned, honestly, from a tool that had lied to it. A capped read presented
+    as complete is worse than an error.
+
+    `meta/` carries periodic cgroup snapshots stamped `_tick_YYYYMMDDTHHMMSSZ`, written
+    throughout collection. Their first and last stamps bound the recording. This is collection
+    metadata - WHEN THE RECORDER RAN - which any engineer handed a trace would know. It is not
+    `ground_truth.json`, which records when the FAULT was injected, and which nothing in this
+    file may read.
     """
     ctf = os.path.join(run_dir, ctf_subdir)
     if not os.path.isdir(ctf):
         return {"error": "no CTF at %s" % ctf}
-    out = {}
-    try:
-        p = subprocess.run([BT2, ctf, "--clock-seconds"], capture_output=True, text=True,
-                           timeout=25)
-        first = p.stdout[:400].splitlines()
-        out["first_line"] = first[0][:200] if first else None
-    except Exception:                                                    # noqa: BLE001
-        pass
-    # head/tail without decoding twice: bt2 streams in order, so first and last lines suffice
-    try:
-        p = subprocess.Popen([BT2, ctf], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
-                             text=True, bufsize=1 << 20)
-        first_t = last_t = None
-        n = 0
-        with p:
-            for line in p.stdout:
-                t = _clock(line)
-                if t is None:
-                    continue
-                n += 1
-                if first_t is None:
-                    first_t = t
-                last_t = t
-                if n > 4_000_000:                    # safety, not expected to trigger
-                    break
-            p.kill()
-        return {"begin": _fmt(first_t) if first_t else None,
-                "end": _fmt(last_t) if last_t else None,
-                "duration_s": round(last_t - first_t, 3) if (first_t and last_t) else None,
-                "events_seen": n,
-                "note": ("This is the whole recording. Nothing here says where an incident is - "
-                         "use ctf_timeline to look for a change, then query_ctf to inspect it.")}
-    except OSError as e:
-        return {"error": "cannot run babeltrace2 (%s): %r" % (BT2, e)}
+    meta = os.path.join(run_dir, "meta")
+    stamps = []
+    if os.path.isdir(meta):
+        for fn in os.listdir(meta):
+            m = _TICK_RE.search(fn)
+            if m:
+                hh, mm, ss = m.group(2)[:2], m.group(2)[2:4], m.group(2)[4:6]
+                stamps.append("%s:%s:%s" % (hh, mm, ss))
+    if not stamps:
+        return {"error": "no meta/_tick_ snapshots - cannot bound the recording without "
+                         "decoding, and a capped decode would misreport the span"}
+    stamps.sort()
+    lo, hi = stamps[0], stamps[-1]
+    dur = _secs(hi) - _secs(lo)
+    return {
+        "begin": lo, "end": hi, "duration_s": round(dur, 1),
+        "clock": "UTC",
+        "source": "meta/ cgroup tick snapshots written during collection",
+        "note": ("This is the whole recording, in UTC. Nothing here says where an incident is "
+                 "or whether there is one - use ctf_timeline to look for a change across this "
+                 "span, then query_ctf to inspect any range you suspect."),
+    }
 
 
 def ctf_timeline(run_dir: str, event: str, buckets: int = 30,
@@ -135,8 +141,8 @@ def ctf_timeline(run_dir: str, event: str, buckets: int = 30,
     scanned = 0
     truncated = False
     try:
-        p = subprocess.Popen([BT2, ctf], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
-                             text=True, bufsize=1 << 20)
+        p = subprocess.Popen([BT2] + GMT + [ctf], stdout=subprocess.PIPE,
+                             stderr=subprocess.DEVNULL, text=True, bufsize=1 << 20)
     except OSError as e:
         return {"error": "cannot run babeltrace2 (%s): %r" % (BT2, e)}
     with p:
@@ -169,9 +175,9 @@ def ctf_timeline(run_dir: str, event: str, buckets: int = 30,
     series = [{"t": _fmt(lo + i * width), "n": c,
                "bar": "#" * int(round(20 * c / peak)) if peak else ""}
               for i, c in enumerate(counts)]
-    return {
-        "event_pattern": event, "procname": procname,
-        "span": [_fmt(lo), _fmt(hi)], "bucket_width_s": round(width, 3),
+    out = {
+        "event_pattern": event, "procname": procname, "clock": "UTC",
+        "span_covered": [_fmt(lo), _fmt(hi)], "bucket_width_s": round(width, 3),
         "matched": len(stamps), "events_scanned": scanned, "truncated": truncated,
         "series": series,
         "how_to_read": ("Each row is one time bucket and its event count. A sustained step up "
@@ -179,6 +185,16 @@ def ctf_timeline(run_dir: str, event: str, buckets: int = 30,
                         "against a second, unrelated event before believing it - a step in "
                         "every event type usually means the workload changed, not the system."),
     }
+    # A capped scan covers only the START of the recording, but the series still renders as a
+    # full-width chart. Left unsaid, "no clearly isolated step" would mean "I did not look at
+    # most of it" - which is how a partial read turns into a wrong conclusion.
+    if truncated:
+        out["WARNING"] = (
+            "SCAN CAP HIT. This series covers only %s to %s, NOT the whole recording. Compare "
+            "against ctf_timespan: if that span is longer, the rest of the trace was never "
+            "examined and you must not conclude anything about it. Narrow with procname, or "
+            "sweep later ranges explicitly with query_ctf." % (_fmt(lo), _fmt(hi)))
+    return out
 
 
 def query_ctf(run_dir: str, event: str, begin: str | None = None, end: str | None = None,
@@ -199,7 +215,7 @@ def query_ctf(run_dir: str, event: str, begin: str | None = None, end: str | Non
     except re.error as e:
         return {"error": "bad event pattern: %s" % e}
 
-    cmd = [BT2, ctf]
+    cmd = [BT2] + GMT + [ctf]
     if begin:
         cmd += ["--begin", begin]
     if end:

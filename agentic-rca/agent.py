@@ -172,10 +172,21 @@ _ALTERNATIVES_PROP = {
 }
 
 
-def _tool_defs(rank_k: int = 0, only_submit: bool = False):
+# Phase 1 of the blueprint study is KERNEL TRACES ONLY - no logs, metrics or spans. The other
+# query tools read derived frames that L0 bundles do not carry, so offering them does not merely
+# waste calls: the agent reads their emptiness as evidence that nothing happened. In the first
+# pilot it concluded "normal" partly because "query_metrics returned no metrics, query_kernel is
+# unavailable, and there are no service spans/logs/topology edges". Absence of a tool's output
+# is not absence of a fault, and the cleanest fix is not to offer tools that cannot answer.
+KERNEL_ONLY_TOOLS = ("ctf_timespan", "ctf_timeline", "query_ctf", "submit_diagnosis")
+
+
+def _tool_defs(rank_k: int = 0, only_submit: bool = False, kernel_only: bool = False):
     """Tool schemas. rank_k>0 adds the ranked `alternatives` field; only_submit drops the
-    query tools (the no-tools baseline)."""
+    query tools (the no-tools baseline); kernel_only keeps just the raw-trace tools."""
     defs = [dict(t) for t in _TOOL_DEFS]
+    if kernel_only:
+        defs = [t for t in defs if t["name"] in KERNEL_ONLY_TOOLS]
     if rank_k > 0:
         for t in defs:
             if t["name"] == "submit_diagnosis":
@@ -288,7 +299,7 @@ def diagnose(run, app: str | None = None, max_steps: int = 14, verbose: bool = F
              meta: dict | None = None, skills: list | None = None,
              inject_brief: bool = False, rank_k: int = 0,
              l0_pack: str | None = None, skill_given: bool = False,
-             problem_hint: str | None = None) -> dict:
+             problem_hint: str | None = None, kernel_only: bool = False) -> dict:
     """Run the agent on one incident. Returns diagnosis + trajectory + usage (no ground-truth here).
     Dispatches on the provider's SDK family — Anthropic vs OpenAI-compatible (azure/gemini/openai/
     ollama) — so the model is a config knob (RCA_PROVIDER/RCA_MODEL); everything else is identical.
@@ -400,6 +411,15 @@ def diagnose(run, app: str | None = None, max_steps: int = 14, verbose: bool = F
     # tell it, hey, this is the problem." The hint states the SYMPTOM, never the fault name or
     # the culprit service - otherwise it would hand over the answer and the arms stop comparing
     # anything. Same string in both arms, so it cannot advantage one of them.
+    if kernel_only:
+        # Say the scope out loud. Otherwise a missing modality reads as "nothing happened" -
+        # which is exactly how the first pilot talked itself into "normal".
+        user += ("\n\nThe ONLY evidence available for this incident is the raw LTTng kernel "
+                 "trace, via ctf_timespan, ctf_timeline and query_ctf. There are deliberately "
+                 "no metrics, logs or spans. That is the dataset, not a gap: do not treat "
+                 "their absence as evidence that nothing happened, and do not report 'normal' "
+                 "merely because a modality you expected is missing.")
+
     if problem_hint:
         user += ("\n\nWhat the operator reports: " + problem_hint +
                  "\nThat is a symptom, not a diagnosis. Confirm or reject it from the evidence.")
@@ -410,12 +430,14 @@ def diagnose(run, app: str | None = None, max_steps: int = 14, verbose: bool = F
     tr.meta["l0_pack"] = l0_pack or None
     tr.meta["skill_selected"] = sel["skill_name"] if sel else None
     tr.event("system_prompt", text=system_eff, sha256=T.sha256_text(system_eff))
-    tr.event("tools_schema", tools=_tool_defs(rank_k))
+    tr.event("tools_schema", tools=_tool_defs(rank_k, kernel_only=kernel_only))
+    tr.meta["kernel_only"] = kernel_only
     tr.event("user_message", text=user)
     loop = _loop_anthropic if config.sdk_kind() == "anthropic" else _loop_openai
     try:
         diagnosis, traj, in_tok, out_tok, bytes_touched = loop(tools, user, max_steps, verbose, tr,
-                                                              guard, system_eff, rank_k)
+                                                              guard, system_eff, rank_k,
+                                                              kernel_only)
     except Exception as e:
         tr.event("error", error=repr(e))
         tr.finalize(None, "error", wall_s=round(time.time() - t0, 1))
@@ -559,10 +581,11 @@ def diagnose_oneshot(run, app: str | None = None, transcript_path: str | None = 
     return out
 
 
-def _loop_anthropic(tools, user, max_steps, verbose, tr, guard, system=SYSTEM, rank_k=0):
+def _loop_anthropic(tools, user, max_steps, verbose, tr, guard, system=SYSTEM, rank_k=0,
+                    kernel_only=False):
     client = config.make_client()
     schema = [{"name": t["name"], "description": t["description"], "input_schema": t["parameters"]}
-              for t in _tool_defs(rank_k)]
+              for t in _tool_defs(rank_k, kernel_only=kernel_only)]
     messages = [{"role": "user", "content": user}]
     traj, itok, otok, bt, diagnosis = [], 0, 0, 0, None
     for step in range(max_steps):
@@ -604,10 +627,12 @@ def _loop_anthropic(tools, user, max_steps, verbose, tr, guard, system=SYSTEM, r
     return diagnosis, traj, itok, otok, bt
 
 
-def _loop_openai(tools, user, max_steps, verbose, tr, guard, system=SYSTEM, rank_k=0):
+def _loop_openai(tools, user, max_steps, verbose, tr, guard, system=SYSTEM, rank_k=0,
+                 kernel_only=False):
     """OpenAI-compatible tool-use loop (Azure / Gemini / OpenAI / Ollama)."""
     client = config.make_client()
-    schema = [{"type": "function", "function": t} for t in _tool_defs(rank_k)]
+    schema = [{"type": "function", "function": t}
+              for t in _tool_defs(rank_k, kernel_only=kernel_only)]
     messages = [{"role": "system", "content": system}, {"role": "user", "content": user}]
     ck = config.openai_create_kwargs()
     traj, itok, otok, bt, diagnosis = [], 0, 0, 0, None
