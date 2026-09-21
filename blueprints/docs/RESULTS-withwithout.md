@@ -19,7 +19,52 @@ gap is inside the noise.
 
 ---
 
-## The noise check (this is the important part)
+## CORRECTED 18 September 2026 — re-read from the raw file
+
+The noise check below said *"on 30 of the 57 runs the model picked no blueprint at all"* and
+concluded the gap was noise. **`withwithout.json` does not support that.** It records:
+
+```
+"selection": { "n_with_a_pick": 57, "n_correct_pick": 19, "n_no_pick": 0 }
+```
+
+Every run picked something. The 30 identical-input runs the noise argument rested on do not
+exist in this data. "It is a tie" happened to be half right; the reasoning was wrong, and the
+real split is far more useful:
+
+| | n | without | with | |
+|---|---|---|---|---|
+| **the fault HAS a blueprint** | 36 | 20 (56%) | **20 (56%)** | dead even |
+| **the fault has NONE** | 21 | 12 (57%) | **9 (43%)** | **−14 pts** |
+| pooled | 57 | 32 (56%) | 29 (51%) | −5 pts |
+
+**All of the pooled loss comes from runs where no blueprint fits.** Where one fits, the arms are
+identical at 20/36. Where none fits, offering the library anyway costs 3 runs — the agent picks a
+blueprint written for a different fault and follows it.
+
+That agrees with what the old text got right — *"every single break is the wrong blueprint being
+chosen, not one is a blueprint giving bad advice about its own fault"* — but states it from the
+data rather than inferring it.
+
+**Selection was the weak link, not the blueprints.** `n_correct_pick` is 19 of 57, right about a
+third of the time. So this experiment measured *selection accuracy × usefulness* and reported the
+product as if it were usefulness alone.
+
+### What this means for the experiment Naser asked for
+
+**This result does not answer his question**, and his new design is right to remove selection:
+the agent is *told* the problem and *given* the blueprint. Under that design the not-covered arm
+disappears, and the 36 covered runs are the only relevant population — where the honest reading
+today is **56% with, 56% without, no measured gain yet.**
+
+That is the number to quote, and the baseline the blueprint work has to beat.
+
+**Do not quote 50% → 70–80%.** That was said from memory in the 16 Sept meeting and appears in no
+result file.
+
+---
+
+## The original noise check, kept for the record — its premise is wrong
 
 On **30 of the 57 runs the model picked no blueprint at all.** On those runs both arms got
 exactly the same input. Same evidence, same prompt, same model.

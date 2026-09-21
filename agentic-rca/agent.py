@@ -248,7 +248,8 @@ def diagnose(run, app: str | None = None, max_steps: int = 14, verbose: bool = F
              transcript_path: str | None = None, condition: str | None = None,
              meta: dict | None = None, skills: list | None = None,
              inject_brief: bool = False, rank_k: int = 0,
-             l0_pack: str | None = None) -> dict:
+             l0_pack: str | None = None, skill_given: bool = False,
+             problem_hint: str | None = None) -> dict:
     """Run the agent on one incident. Returns diagnosis + trajectory + usage (no ground-truth here).
     Dispatches on the provider's SDK family — Anthropic vs OpenAI-compatible (azure/gemini/openai/
     ollama) — so the model is a config knob (RCA_PROVIDER/RCA_MODEL); everything else is identical.
@@ -307,7 +308,26 @@ def diagnose(run, app: str | None = None, max_steps: int = 14, verbose: bool = F
         except Exception as e:                                         # noqa: BLE001
             tr.event("l0_pack_error", error=repr(e))
 
-    if skills:
+    # QUESTION 2 (Naser, 16 Sept): "we can assume that they're giving the blueprint along with
+    # the problem." Selection is parked, so when exactly one skill is HANDED OVER we bypass the
+    # selector entirely. This matters because the old with/without experiment let the agent
+    # choose, got the choice right only 19 times in 57, and every regression it measured came
+    # from a blueprint written for a different fault - see RESULTS-withwithout.md.
+    if skills and skill_given:
+        if len(skills) != 1:
+            raise ValueError("skill_given expects exactly one blueprint, got %d" % len(skills))
+        sk = skills[0]
+        system_eff = (SYSTEM +
+                      "\n\nBLUEPRINT FOR THIS PROBLEM (given to you; it was not inferred from "
+                      f"the evidence): {sk.name}\n"
+                      "Follow its method. Still VERIFY its problem signature with your own tool "
+                      "queries - if a discriminating check FAILS, say so explicitly rather than "
+                      "forcing the blueprint's conclusion onto contradicting evidence.\n"
+                      f"{sk.body}")
+        tr.event("skill_injected", skill_name=sk.name, body=sk.body, given=True)
+        tr.meta["skill_given"] = sk.name
+        sel = {"skill_name": sk.name, "skill": sk}
+    elif skills:
         evidence_json = json.dumps(masked_digest, default=str)
         tr.event("survey", result=sic.digest(), sent=evidence_json, result_bytes=survey_bytes)
         try:
@@ -337,6 +357,15 @@ def diagnose(run, app: str | None = None, max_steps: int = 14, verbose: bool = F
                               "skill's conclusion onto contradicting evidence.\n"
                               f"{sk.body}")
                 tr.event("skill_injected", skill_name=sk.name, body=sk.body)
+    # The "hint" half of Naser's ask: "We can test both of them. In the second question, we will
+    # tell it, hey, this is the problem." The hint states the SYMPTOM, never the fault name or
+    # the culprit service - otherwise it would hand over the answer and the arms stop comparing
+    # anything. Same string in both arms, so it cannot advantage one of them.
+    if problem_hint:
+        user += ("\n\nWhat the operator reports: " + problem_hint +
+                 "\nThat is a symptom, not a diagnosis. Confirm or reject it from the evidence.")
+        tr.meta["problem_hint"] = problem_hint
+
     tr.meta["skill_mode"] = bool(skills)
     tr.meta["brief_injected"] = inject_brief
     tr.meta["l0_pack"] = l0_pack or None
