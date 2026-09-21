@@ -33,8 +33,16 @@ def main() -> int:
     ap.add_argument("--repeat", type=int, default=1)
     ap.add_argument("--data-root", default="/scratch/yuvraj17/stratatrace/data/stratatrace-v2")
     ap.add_argument("--out-dir", default="/scratch/yuvraj17/stratatrace/results/q2")
+    ap.add_argument("--packs-root", default="/scratch/yuvraj17/stratatrace/data/packs")
     ap.add_argument("--skills-dir", default=os.path.join(ROOT, "agentic-rca", "skills-generated"))
-    ap.add_argument("--max-steps", type=int, default=14)
+    # 14 was tuned when the agent had 7 pre-aggregated tools and a pack that pre-located the
+    # incident. It now starts with neither: it must orient, sweep a timeline to find a change
+    # point, confirm it against a second event, then compare ranges it picks itself - on files
+    # holding ~20 million events. Each of those is a step, several are slow, and a run that
+    # hits the cap mid-investigation scores as a failure of the agent when it was a failure of
+    # the budget. 60 is deliberately generous for the pilot; measure what is actually used and
+    # tighten it afterwards rather than guessing now.
+    ap.add_argument("--max-steps", type=int, default=60)
     args = ap.parse_args()
 
     try:
@@ -74,6 +82,20 @@ def main() -> int:
         skills = [match[0]]
         print("  skill body %d chars" % len(match[0].body))
 
+    # NO L0 PACK. Deliberate, and the core of the experiment.
+    #
+    # The pack is built by slicing the trace at ground_truth.json's injection_start_utc: every
+    # figure in it is "baseline window vs incident window". Handing it over does not merely
+    # leak WHEN the fault was - it pre-frames the whole analysis around the right window, so
+    # the agent is describing an anomaly somebody already isolated rather than finding one.
+    #
+    # A real engineer gets a trace and knows none of that. So the agent gets the tools and
+    # nothing else: ctf_timespan to orient, ctf_timeline to hunt for a change point, query_ctf
+    # to inspect ranges it chooses, plus the trace/topology/log/metric/kernel queries. It has
+    # to work out what happened, when, and where - with a blueprint and without one. That
+    # comparison is the research question; anything that pre-locates the incident destroys it.
+    print("  l0 pack   NOT GIVEN - agent must find the incident window itself")
+
     outd = Q.cell_dir(args.out_dir, args.problem, inc["run_id"], args.ask, args.arm, args.repeat)
     os.makedirs(outd, exist_ok=True)
 
@@ -94,8 +116,24 @@ def main() -> int:
                     ranked=dx.get("ranked"))
 
     cands = dx.get("ranked") or []
-    n_cand = max(1, len(cands)) if cands else 1
-    rank = score.get("rank_both") or score.get("rank") or (1 if score.get("both") else None)
+    # the primary verdict is candidate 1; `ranked` holds the alternatives after it
+    n_cand = 1 + len(cands)
+
+    # BUG 3, found by the first pilot run, and the one that would have quietly ruined the
+    # results. `rank` must mean "position of the CORRECT answer in the candidate list", and
+    # nothing else. The old fallback chain let a wrong answer come out as rank 1, which scored
+    # set_f1 = 1.0 and mrr = 1.0 on a run where both_ok was False.
+    rank = None
+    if score.get("both"):
+        rank = 1                                   # primary verdict was right
+    else:
+        gtf = (gt.get("fault") or {})
+        want_svc, want_fault = gtf.get("target_service"), gtf.get("name")
+        for i, c in enumerate(cands, start=2):     # alternatives start at position 2
+            if R._svc_match(c.get("service", ""), want_svc) and \
+               R._fault_match(want_fault, args.problem, c.get("fault_type", "")):
+                rank = i
+                break
     row = {
         "problem": args.problem, "run_id": inc["run_id"], "app": inc["app"],
         "arm": args.arm, "ask": args.ask, "repeat": args.repeat,
@@ -107,8 +145,13 @@ def main() -> int:
         "narrowed": bool(rank and rank <= Q.NARROW_AT),
         "set_f1": Q.set_f1(bool(rank and rank <= Q.RANK_K), n_cand),
         "mrr": round(1.0 / rank, 3) if rank else 0.0,
+        # BUG 2: diagnose returns tokens as {"in": .., "out": ..}, not flat in_tokens/out_tokens,
+        # so the old read gave 0 on every run and the cost column would have been empty.
         "seconds": wall, "calls": dx.get("n_tool_calls"),
-        "tokens": (dx.get("in_tokens") or 0) + (dx.get("out_tokens") or 0),
+        "tokens_in": (dx.get("tokens") or {}).get("in", 0),
+        "tokens_out": (dx.get("tokens") or {}).get("out", 0),
+        "tokens": ((dx.get("tokens") or {}).get("in", 0)
+                   + (dx.get("tokens") or {}).get("out", 0)),
         "true_fault": (gt.get("fault") or {}).get("name"),
         "true_service": (gt.get("fault") or {}).get("target_service"),
         "pred_fault": (dx.get("diagnosis") or {}).get("fault_type"),

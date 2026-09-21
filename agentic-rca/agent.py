@@ -23,6 +23,10 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import config
 import context_builder
+import ctf_tool
+from ctf_tool import TOOL_DEF as _CTF_TOOL_DEF
+from ctf_tool import TIMELINE_DEF as _CTF_TIMELINE_DEF
+from ctf_tool import TIMESPAN_DEF as _CTF_TIMESPAN_DEF
 import leakguard
 import shared_context
 import skillreg
@@ -119,6 +123,13 @@ _TOOL_DEFS = [
          "start_line": {"type": "integer"},
          "limit": {"type": "integer", "description": "lines to read (default 120, max 400)"}},
          "required": ["op"]}},
+    # Raw-trace tools. Every other tool serves a pre-computed aggregation, which caps what the
+    # agent can discover at whatever someone thought to aggregate in advance. These let it read
+    # any tracepoint the kernel recorded, and - critically - FIND WHEN something happened
+    # rather than being handed the injection window. None of them reads ground_truth.json.
+    _CTF_TIMESPAN_DEF,
+    _CTF_TIMELINE_DEF,
+    _CTF_TOOL_DEF,
     {"name": "submit_diagnosis", "description": "Commit the final root-cause verdict.",
      "parameters": {"type": "object", "properties": {
          "root_cause_service": {"type": "string", "description": "the single culprit service/container"},
@@ -241,6 +252,20 @@ def _run_tool(tools: RunTools, name: str, args: dict, guard=None):
                                  path=args.get("path"),
                                  start_line=args.get("start_line") or 1,
                                  limit=args.get("limit") or 120)
+    # Raw-trace tools. procname is a kernel comm, not a service alias, so it is NOT unmasked -
+    # leakguard aliases services; the trace records the process names the kernel saw.
+    if name == "ctf_timespan":
+        return ctf_tool.ctf_timespan(tools.run.run_dir), 0
+    if name == "ctf_timeline":
+        return ctf_tool.ctf_timeline(
+            tools.run.run_dir, event=args.get("event") or "",
+            buckets=args.get("buckets", 30), procname=args.get("procname")), 0
+    if name == "query_ctf":
+        return ctf_tool.query_ctf(
+            tools.run.run_dir, event=args.get("event") or "",
+            begin=args.get("begin"), end=args.get("end"),
+            sample=args.get("sample", 10),
+            procname=args.get("procname"), contains=args.get("contains")), 0
     return {"error": f"unknown tool {name}"}, 0
 
 
