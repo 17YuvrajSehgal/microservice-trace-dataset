@@ -168,17 +168,33 @@ def main() -> int:
     wall = round(time.time() - t0, 1)
 
     gt = json.load(open(os.path.join(inc["run_dir"], "ground_truth.json")))
-    score = R.score(dx.get("diagnosis") or {}, gt, family=args.problem,
-                    ranked=dx.get("ranked"))
+
+    # BUG 4, found by the second pilot. R.score reads gt["target_service"], but in a bundle it
+    # lives at gt["fault"]["target_service"] - so it was being handed the wrong level and saw
+    # an empty target. That is not a harmless miss: measured, _svc_match against "" behaves
+    # exactly as if the target were "host". noisy_neighbor's target IS host, so the pilot family
+    # scored correctly by accident, while every problem with a real service target - catalogue,
+    # carts, the rest - would have marked a CORRECT answer wrong. It would have surfaced only
+    # after the full matrix, as "blueprints do not help localisation".
+    gtf = gt.get("fault") or gt
+
+    # BUG 5, same run. diagnose() returns `ranked_services` and `ranked_candidates`; the old
+    # code asked for `ranked`, which does not exist, so every alternative was silently dropped.
+    # On this run that threw away a rank-2 candidate naming the correct service.
+    ranked_all = dx.get("ranked_candidates") or []
+    dxd = dict(dx.get("diagnosis") or {})
+    if ranked_all:
+        dxd["_candidates"] = ranked_all      # R.score reads this for the per-axis rank metrics
+    score = R.score(dxd, gtf, family=args.problem, ranked=dx.get("ranked_services"))
 
     # WINDOW ACCURACY - new, and half the task now that the agent is not told when.
     # Scored by overlap against the true injection window. Ground truth is read HERE, in the
     # scorer, which is the only place it belongs - never in a tool the agent can reach.
     win = score_window((dx.get("diagnosis") or {}).get("incident_window"), gt)
 
-    cands = dx.get("ranked") or []
-    # the primary verdict is candidate 1; `ranked` holds the alternatives after it
-    n_cand = 1 + len(cands)
+    # ranked_candidates puts the PRIMARY first, so the alternatives are everything after it.
+    cands = ranked_all[1:]
+    n_cand = len(ranked_all) or 1
 
     # BUG 3, found by the first pilot run, and the one that would have quietly ruined the
     # results. `rank` must mean "position of the CORRECT answer in the candidate list", and
@@ -188,7 +204,6 @@ def main() -> int:
     if score.get("both"):
         rank = 1                                   # primary verdict was right
     else:
-        gtf = (gt.get("fault") or {})
         want_svc, want_fault = gtf.get("target_service"), gtf.get("name")
         for i, c in enumerate(cands, start=2):     # alternatives start at position 2
             if R._svc_match(c.get("service", ""), want_svc) and \
