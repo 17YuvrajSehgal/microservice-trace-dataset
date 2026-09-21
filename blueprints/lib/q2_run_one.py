@@ -111,6 +111,7 @@ def main() -> int:
 
     import q2_harness as Q
     import config, agent, runs as R, skillreg
+    import q2_judge as J
     from stratatrace import load_run
 
     prob = Q.PROBLEMS[args.problem]
@@ -196,6 +197,10 @@ def main() -> int:
     # scorer, which is the only place it belongs - never in a tool the agent can reach.
     win = score_window((dx.get("diagnosis") or {}).get("incident_window"), gt)
 
+    # The fairer marking: WHERE three ways, WHAT by concept coverage of the agent's own words,
+    # HOW from the tool log. See q2_judge.py for why the old binary label match was unfair.
+    jd = J.judge(dx.get("diagnosis") or {}, dx.get("trajectory"), args.problem)
+
     # ranked_candidates puts the PRIMARY first, so the alternatives are everything after it.
     cands = ranked_all[1:]
     n_cand = len(ranked_all) or 1
@@ -232,6 +237,16 @@ def main() -> int:
         "tokens_out": (dx.get("tokens") or {}).get("out", 0),
         "tokens": ((dx.get("tokens") or {}).get("in", 0)
                    + (dx.get("tokens") or {}).get("out", 0)),
+        # fairer marking, reported alongside the old columns rather than replacing them
+        "where": jd["where"]["where"],              # named | scope | wrong | none
+        "named_culprit": jd["where"]["where"] == "named",
+        "culprit_kind": (dx.get("diagnosis") or {}).get("culprit_kind"),
+        "what_score": jd["what"]["what_score"],
+        "what_missed": jd["what"]["missed"],
+        "used_who_tools": jd["how"]["used_who_tools"],
+        "n_who_calls": jd["how"]["n_who_calls"],
+        "distinct_tools": jd["how"]["distinct_tools"],
+        "what_is_wrong": (dx.get("diagnosis") or {}).get("what_is_wrong"),
         "true_fault": (gt.get("fault") or {}).get("name"),
         "true_service": (gt.get("fault") or {}).get("target_service"),
         "pred_fault": (dx.get("diagnosis") or {}).get("fault_type"),
@@ -254,6 +269,12 @@ def main() -> int:
 
     print("\n== what the agent answered ==")
     d = dx.get("diagnosis") or {}
+    print("  where      %s -> %s   (true: %s)"
+          % (row["where"].upper(), row["pred_service"], row["true_service"]))
+    print("  described  %s of the mechanism%s"
+          % ("%.0f%%" % (100 * row["what_score"]) if row["what_score"] is not None else "n/a",
+             ("   missed: " + "; ".join(row["what_missed"])) if row["what_missed"] else ""))
+    print("  who-tools  %s (%d calls)" % (row["used_who_tools"], row["n_who_calls"]))
     print("  service    %s   (true: %s)" % (row["pred_service"], row["true_service"]))
     print("  fault      %s   (true: %s)" % (row["pred_fault"], row["true_fault"]))
     print("  confidence %s" % d.get("confidence"))

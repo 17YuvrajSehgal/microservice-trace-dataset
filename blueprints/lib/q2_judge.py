@@ -1,0 +1,200 @@
+#!/usr/bin/env python3
+"""A fairer way to mark the agent's answer.
+
+WHY THE OLD MARKING WAS UNFAIR
+------------------------------
+Two problems, both found in the 60-run pilot.
+
+1. It required an exact label. The agent had to pick `noisy_neighbor` from a fixed list. But
+   the list was written for a four-modality view, and from a kernel trace alone several of its
+   entries are not separable. An agent that said "a foreign process is eating CPU while the
+   services keep working" understood the incident perfectly and scored zero for calling it
+   `cpu_saturation`. We are marking vocabulary, not analysis.
+
+2. It merged two different answers about WHERE. `_svc_match` accepts both `host` and
+   `stress-ng*` for a host-scoped fault. One is a safe guess that is right by default; the
+   other is actually finding the process. Merged, the column moved 47% -> 13% between arms
+   while the real find rate sat flat at 3/2/2/2.
+
+WHAT THIS SCORES INSTEAD
+------------------------
+Three separate things, none of which needs the agent to guess a label:
+
+  WHERE   named the injected process | right scope only | wrong        (three-way, not binary)
+  WHAT    how much of the mechanism its own description covers          (concepts, any synonym)
+  HOW     which tools it used to get there, and whether it checked WHO  (objective, from the log)
+
+WHEN stays as it was - overlap with the true window.
+
+None of this replaces reading the answers. It sorts 60 runs so a human can scan them, and
+q2_review.py prints them for exactly that. Concept matching is deliberately generous: it is
+there to catch "did it say the thing at all", and a miss should be read as "go and look",
+not as a verdict.
+"""
+from __future__ import annotations
+
+import re
+
+# Per problem: what counts as naming the culprit, what scope-level answers are acceptable, and
+# the ideas a correct description contains. Synonyms are generous on purpose - the agent is
+# writing free text and should not be penalised for wording.
+#
+# `culprit` is the injected thing as the KERNEL sees it. Kernel process names are cut to 15
+# characters, so these are matched as substrings both ways.
+RUBRIC = {
+    "noisy_neighbor": {
+        "culprit": ["stress-ng", "stress"],
+        "scope": ["host", "node", "machine"],
+        "scope_is_defensible": True,   # the fault IS host-scoped; "host" is a real answer
+        "concepts": [
+            ("a workload that is not part of the application",
+             ["co-tenant", "cotenant", "noisy neighbour", "noisy neighbor", "stress",
+              "foreign", "external process", "unrelated workload", "background job",
+              "not part of the app", "off-call-path", "off call path", "newcomer",
+              "new process", "extra process", "another process", "third-party"]),
+            ("competing for CPU",
+             ["cpu", "on-cpu", "scheduler", "sched", "runqueue", "run queue", "contention",
+              "contend", "competing", "starv", "preempt", "time slice", "core"]),
+            ("the application services are victims, not the cause",
+             ["victim", "not itself", "no single service", "services still", "headroom",
+              "not saturated", "not exhausted", "spare capacity", "still succeed",
+              "keep working", "keeps working", "still working", "still running",
+              "mild", "unaffected", "remain healthy", "no component is", "not the cause",
+              "rather than the cause", "collateral", "affected by", "suffering"]),
+        ],
+    },
+    # Drafts for the other five. Written from fault_catalog.md, NOT yet checked against real
+    # answers - the pilot has only run noisy_neighbor. Revisit each before its problem runs.
+    "anomaly_cpu": {
+        "culprit": ["stress-ng", "stress"], "scope": ["host", "node", "machine"],
+        "scope_is_defensible": True,
+        "concepts": [
+            ("host CPU is exhausted", ["cpu", "saturat", "exhaust", "ceiling", "100%",
+                                       "no headroom", "pinned", "fully busy"]),
+            ("everything slows together", ["all services", "across the board", "everywhere",
+                                           "host-wide", "system-wide", "every service",
+                                           "many services"]),
+        ],
+    },
+    "slow_db": {
+        "culprit": ["mysql", "mysqld", "catalogue-db", "carts-db", "toxiproxy"],
+        "scope": ["database", "datastore", "db"], "scope_is_defensible": True,
+        "concepts": [
+            ("a datastore answers slowly", ["database", "db", "datastore", "mysql", "query",
+                                            "sql"]),
+            ("callers wait on it rather than being busy themselves",
+             ["wait", "blocked", "blocking", "idle", "not busy", "external", "downstream",
+              "dependency", "caller"]),
+        ],
+    },
+    "anomaly_net": {
+        "culprit": [], "scope": ["host", "node", "network", "machine"],
+        "scope_is_defensible": True,
+        "concepts": [
+            ("the network path is degraded", ["network", "packet", "latency", "delay", "loss",
+                                              "retransmit", "rtt", "net_dev", "socket"]),
+            ("it affects traffic broadly, not one component",
+             ["host-wide", "all services", "everywhere", "across", "many services",
+              "not one service", "no single"]),
+        ],
+    },
+    "svc_net": {
+        "culprit": [], "scope": [], "scope_is_defensible": False,
+        "concepts": [
+            ("one service's network path is degraded",
+             ["network", "packet", "latency", "delay", "loss", "socket", "net_dev"]),
+            ("only traffic through that one service is affected",
+             ["one service", "single service", "only", "specific", "isolated",
+              "that container"]),
+        ],
+    },
+    "svc_cpu_cap": {
+        "culprit": [], "scope": [], "scope_is_defensible": False,
+        "concepts": [
+            ("one service is held back by its own CPU limit",
+             ["throttl", "quota", "cap", "limit", "cgroup", "cfs"]),
+            ("the host itself is fine", ["host is", "host fine", "host healthy", "headroom",
+                                         "not host", "host-level", "no host"]),
+        ],
+    },
+}
+
+# The two tools that answer WHO rather than HOW MUCH. Whether the agent reached for them is
+# the most interesting thing in its trajectory, because the pilot's failure was searching only
+# on volume.
+WHO_TOOLS = ("ctf_procdiff", "ctf_proclife")
+
+
+def _norm(s) -> str:
+    return re.sub(r"[^a-z0-9 ]+", " ", str(s or "").lower())
+
+
+def score_where(pred_service: str, kind: str, problem: str) -> dict:
+    """Three-way, because 'host' and 'stress-ng-cpu' are not the same answer.
+
+    named  - it identified the injected thing
+    scope  - it got the level right without the thing (only counts where that is defensible:
+             for a host-scoped fault 'host' IS a real answer, just a less useful one)
+    wrong  - anything else
+    """
+    r = RUBRIC.get(problem) or {}
+    p = _norm(pred_service).strip()
+    if not p:
+        return {"where": "none", "pred": pred_service, "kind": kind}
+    for c in r.get("culprit", []):
+        if c in p or p in _norm(c):
+            return {"where": "named", "pred": pred_service, "kind": kind, "matched": c}
+    if r.get("scope_is_defensible"):
+        for sc in r.get("scope", []):
+            if p == sc or p.startswith(sc):
+                return {"where": "scope", "pred": pred_service, "kind": kind, "matched": sc}
+    return {"where": "wrong", "pred": pred_service, "kind": kind}
+
+
+def score_what(text: str, problem: str) -> dict:
+    """How much of the mechanism the agent's own words cover.
+
+    Any synonym counts. This is a coverage check, not a grade: it answers "did it mention
+    this at all", so a low score means go and read the answer, not that the answer is wrong.
+    """
+    r = RUBRIC.get(problem) or {}
+    concepts = r.get("concepts") or []
+    if not concepts:
+        return {"what_score": None, "hit": [], "missed": [], "n_concepts": 0}
+    t = _norm(text)
+    hit, missed = [], []
+    for name, words in concepts:
+        (hit if any(_norm(w) in t for w in words) else missed).append(name)
+    return {"what_score": round(len(hit) / len(concepts), 3),
+            "hit": hit, "missed": missed, "n_concepts": len(concepts)}
+
+
+def score_how(trajectory) -> dict:
+    """What the agent actually did. Objective, straight from the tool log.
+
+    used_who_tools is the one to watch: the pilot's systematic error was searching only for a
+    change in event volume, so whether an agent reached for the presence tools at all - and
+    whether that goes with getting the window right - is the question the new tools exist to
+    answer.
+    """
+    names = [t.get("tool") for t in (trajectory or []) if t.get("tool")]
+    seq = [n for n in names if n != "submit_diagnosis"]
+    return {
+        "n_tool_calls": len(seq),
+        "distinct_tools": sorted(set(seq)),
+        "used_who_tools": any(n in WHO_TOOLS for n in seq),
+        "n_who_calls": sum(1 for n in seq if n in WHO_TOOLS),
+        "used_raw_lines": "ctf_lines" in seq,
+        "tool_sequence": seq,
+    }
+
+
+def judge(diagnosis: dict, trajectory, problem: str) -> dict:
+    """All three axes for one run. Reads no ground truth beyond the rubric above."""
+    d = diagnosis or {}
+    where = score_where(d.get("root_cause_service", ""), d.get("culprit_kind", ""), problem)
+    # Both fields, because the mechanism often lands in the evidence rather than the summary,
+    # and marking it absent on a wording split would be exactly the unfairness this replaces.
+    what = score_what("%s %s" % (d.get("what_is_wrong", ""), d.get("evidence", "")), problem)
+    how = score_how(trajectory)
+    return {"where": where, "what": what, "how": how}

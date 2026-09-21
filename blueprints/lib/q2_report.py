@@ -108,6 +108,54 @@ def main() -> int:
                                     fd if fd is not None else 0.0, sr))
             print()
 
+    # The fairer marking. Kept separate from the table above because it answers different
+    # questions: not "did it pick the right label" but "did it find the thing, describe the
+    # mechanism, and how did it get there". See q2_judge.py.
+    print("=" * 78)
+    print("WHERE, WHAT, HOW - the fairer marking")
+    print("=" * 78)
+    print("  %-14s %3s  %6s %6s %6s  %8s  %9s %6s"
+          % ("ask | arm", "n", "named", "scope", "wrong", "described", "who-tools", "calls"))
+    print("  " + "-" * 74)
+    for ask in Q.ASKS:
+        for arm in ("none", "given"):
+            rs = [r for r in rows if r.get("ask") == ask and r.get("arm") == arm]
+            if not rs:
+                continue
+            n = len(rs)
+            w = [r.get("where") for r in rs]
+            ws = [r["what_score"] for r in rs
+                  if isinstance(r.get("what_score"), (int, float))]
+            who = sum(1 for r in rs if r.get("used_who_tools"))
+            print("  %-14s %3d  %6d %6d %6d  %8s  %9s %6s"
+                  % ("%s|%s" % (ask, arm), n, w.count("named"), w.count("scope"),
+                     w.count("wrong") + w.count("none"),
+                     ("%.0f%%" % (100 * sum(ws) / len(ws))) if ws else "  -  ",
+                     "%d/%d" % (who, n),
+                     Q._median([r.get("calls") for r in rs])))
+    print()
+    print("  named = identified the injected process. scope = right level only (e.g. 'host').")
+    print("  described = average share of the mechanism the agent's own words covered.")
+    print("  who-tools = runs that used ctf_procdiff or ctf_proclife at all.")
+    print()
+
+    # Does reaching for the WHO tools go with finding the right window? This is the question
+    # the two new tools exist to answer, so it gets its own line rather than being inferred.
+    with_who = [r for r in rows if r.get("used_who_tools")]
+    without = [r for r in rows if not r.get("used_who_tools")]
+    if with_who and without:
+        def _iou(rs):
+            v = [r["window_iou"] for r in rs if isinstance(r.get("window_iou"), (int, float))]
+            return Q._median(v)
+
+        def _named(rs):
+            return "%d/%d" % (sum(1 for r in rs if r.get("named_culprit")), len(rs))
+        print("  used who-tools:     %2d runs   median window IoU %-6s   named culprit %s"
+              % (len(with_who), _iou(with_who), _named(with_who)))
+        print("  did not use them:   %2d runs   median window IoU %-6s   named culprit %s"
+              % (len(without), _iou(without), _named(without)))
+        print()
+
     # WHEN. Not in summarise() because the ranked metrics say nothing about it, and finding
     # the window is half the task once the agent is no longer told where to look.
     print("=" * 78)
