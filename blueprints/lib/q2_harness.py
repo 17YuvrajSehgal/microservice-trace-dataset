@@ -175,6 +175,11 @@ def summarise(rows) -> dict:
                 "hit_at_k_pct": pct(lambda r: r.get("hit_at_k")),
                 "mrr": (round(sum(r.get("mrr") or 0 for r in rs) / n, 3) if n else None),
                 "median_candidates": _median([r.get("n_candidates") for r in rs]),
+                # F1, two ways, because they answer different questions
+                "set_f1": (round(sum(set_f1(bool(r.get("hit_at_k")),
+                                            r.get("n_candidates") or 0) for r in rs) / n, 3)
+                           if n else None),
+                "macro_f1": macro_f1(rs)["macro_f1"],
                 # COST. A blueprint that buys accuracy by taking three times as long is a
                 # different trade from one that is faster, and only the numbers show which.
                 "median_seconds": _median([r.get("seconds") for r in rs]),
@@ -192,6 +197,8 @@ def summarise(rows) -> dict:
             if a["median_seconds"] and b["median_seconds"]:
                 entry["%s|seconds_ratio" % ask] = round(
                     b["median_seconds"] / a["median_seconds"], 2)
+            if a["set_f1"] is not None and b["set_f1"] is not None:
+                entry["%s|set_f1_delta" % ask] = round(b["set_f1"] - a["set_f1"], 3)
         out[fam] = entry
     return out
 
@@ -199,6 +206,59 @@ def summarise(rows) -> dict:
 def _median(vals):
     v = sorted(x for x in vals if isinstance(x, (int, float)))
     return v[len(v) // 2] if v else None
+
+
+def set_f1(hit: bool, n_candidates: int) -> float:
+    """F1 of the returned candidate SET against the single true answer.
+
+    There is exactly one ground truth, so with a ranked list of size k:
+        precision = 1/k if the truth is in the list, else 0
+        recall    = 1   if the truth is in the list, else 0
+        F1        = 2PR/(P+R)
+
+    This is the metric that actually prices narrowing. Returning the right answer alone scores
+    1.00; right answer buried in 5 candidates scores 0.33; a confident wrong answer scores 0.
+    An agent cannot game it by listing everything - padding the list drives precision down - and
+    it separates "found it" from "found it and said so cleanly", which `both_ok` cannot.
+    """
+    if not hit or not n_candidates:
+        return 0.0
+    p, r = 1.0 / n_candidates, 1.0
+    return round(2 * p * r / (p + r), 3)
+
+
+def macro_f1(rows, field="pred_fault", truth="true_fault") -> dict:
+    """Macro-F1 over fault types across a set of runs - the classification view.
+
+    Per class: precision = TP/(TP+FP), recall = TP/(TP+FN), then averaged over classes that
+    appear as either truth or prediction. Macro rather than micro so a rare fault counts as much
+    as a common one; with 3 incidents per problem the support is small either way, so read it
+    alongside the counts rather than on its own.
+    """
+    tp, fp, fn = {}, {}, {}
+    classes = set()
+    for r in rows:
+        t, p = r.get(truth), r.get(field)
+        classes.update(x for x in (t, p) if x)
+        if t == p and t:
+            tp[t] = tp.get(t, 0) + 1
+        else:
+            if p:
+                fp[p] = fp.get(p, 0) + 1
+            if t:
+                fn[t] = fn.get(t, 0) + 1
+    if not classes:
+        return {"macro_f1": None, "per_class": {}}
+    per = {}
+    for c in sorted(classes):
+        t_, f_, n_ = tp.get(c, 0), fp.get(c, 0), fn.get(c, 0)
+        p = t_ / (t_ + f_) if (t_ + f_) else 0.0
+        rc = t_ / (t_ + n_) if (t_ + n_) else 0.0
+        per[c] = {"precision": round(p, 3), "recall": round(rc, 3),
+                  "f1": round(2 * p * rc / (p + rc), 3) if (p + rc) else 0.0,
+                  "support": t_ + n_}
+    return {"macro_f1": round(sum(v["f1"] for v in per.values()) / len(per), 3),
+            "per_class": per}
 
 
 def main() -> int:
@@ -220,8 +280,15 @@ def main() -> int:
     ap.add_argument("--repeats", type=int, default=5)
     ap.add_argument("--asks", default="nohint,hint")
     ap.add_argument("--out-dir", default=os.path.join(root, "blueprints", "results", "q2"))
+    # Cheapest of the GPT family. The arms are both on the same model so the with/without
+    # comparison is valid - but this is NOT comparable to the 2 Sept baseline of 56%, which ran
+    # on full gpt-5.4. Do not put a nano number next to that one in a table.
+    ap.add_argument("--model", default="gpt-5.4-nano")
+    ap.add_argument("--provider", default="azure")
     ap.add_argument("--plan", action="store_true")
     args = ap.parse_args()
+    os.environ.setdefault("RCA_PROVIDER", args.provider)
+    os.environ.setdefault("RCA_MODEL", args.model)
 
     problems = [p for p in args.problems.split(",") if p]
     unknown = [p for p in problems if p not in PROBLEMS]
