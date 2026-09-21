@@ -130,13 +130,27 @@ _TOOL_DEFS = [
     _CTF_TIMESPAN_DEF,
     _CTF_TIMELINE_DEF,
     _CTF_TOOL_DEF,
-    {"name": "submit_diagnosis", "description": "Commit the final root-cause verdict.",
+    {"name": "submit_diagnosis",
+     "description": ("Commit the final root-cause verdict: WHAT went wrong, WHERE, and WHEN. "
+                     "The window is part of the answer, not a detail - you were not told when "
+                     "the incident was and finding it is half the job."),
      "parameters": {"type": "object", "properties": {
          "root_cause_service": {"type": "string", "description": "the single culprit service/container"},
          "fault_type": {"type": "string", "enum": FAULT_TYPES},
          "evidence": {"type": "string", "description": "1-3 sentences citing the decisive signals"},
-         "confidence": {"type": "number", "description": "0..1"}},
-         "required": ["root_cause_service", "fault_type", "evidence", "confidence"]}},
+         "confidence": {"type": "number", "description": "0..1"},
+         # WHEN. Nothing told the agent this; it has to be derived from the trace, which is why
+         # window_evidence is required alongside it - a guessed range that happens to overlap
+         # is not a finding, and the two fields together let a human tell them apart.
+         "incident_window": {"type": "string", "description":
+                             "the time range the anomaly occupies, as 'HH:MM:SS - HH:MM:SS' in "
+                             "trace clock time. Say 'unknown' if the evidence does not support "
+                             "a range - a wrong window is worse than an admitted gap."},
+         "window_evidence": {"type": "string", "description":
+                             "what made you choose that range: which event, which tool call, "
+                             "what changed at the boundary"}},
+         "required": ["root_cause_service", "fault_type", "evidence", "confidence",
+                      "incident_window", "window_evidence"]}},
 ]
 
 # Optional ranked-answer mode (RQ: hit@k / MRR / MAP, comparable to the ranked-list baselines).

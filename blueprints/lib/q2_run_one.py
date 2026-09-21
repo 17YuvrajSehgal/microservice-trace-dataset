@@ -15,6 +15,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import sys
 import time
 
@@ -23,6 +24,60 @@ ROOT = os.path.dirname(os.path.dirname(HERE))
 sys.path.insert(0, HERE)
 sys.path.insert(0, os.path.join(ROOT, "agentic-rca"))
 sys.path.insert(0, ROOT)
+
+
+def _clock_s(s: str):
+    """'HH:MM:SS[.frac]' -> seconds. None if it does not parse."""
+    try:
+        parts = s.strip().split(":")
+        if len(parts) != 3:
+            return None
+        return int(parts[0]) * 3600 + int(parts[1]) * 60 + float(parts[2])
+    except (ValueError, AttributeError):
+        return None
+
+
+def score_window(claimed: str | None, gt: dict) -> dict:
+    """Did the agent find WHEN? Scored by overlap with the true injection window.
+
+    Two numbers, because one hides the failure modes:
+      recall    how much of the real incident the claimed range covers. Low = missed it.
+      precision how much of the claimed range is really incident. Low = claimed half the
+                trace and happened to contain the answer, which is not a finding.
+    IoU combines them. 'unknown' is recorded as an honest abstention, NOT scored as wrong -
+    the schema tells the agent a wrong window is worse than an admitted gap, and the metric
+    has to agree or the instruction is a lie.
+    """
+    f = gt.get("fault") or {}
+    t0 = _clock_s((f.get("injection_start_utc") or "").split("T")[-1].rstrip("Z"))
+    t1 = _clock_s((f.get("injection_end_utc") or "").split("T")[-1].rstrip("Z"))
+    out = {"claimed": claimed, "true_window": None, "iou": None,
+           "recall": None, "precision": None, "verdict": None}
+    if t0 is None or t1 is None or t1 <= t0:
+        out["verdict"] = "ground truth window unreadable"
+        return out
+    out["true_window"] = "%s - %s" % (f.get("injection_start_utc"), f.get("injection_end_utc"))
+
+    if not claimed or claimed.strip().lower() in ("unknown", "n/a", "none", ""):
+        out["verdict"] = "abstained"
+        return out
+    m = re.split(r"\s*(?:-|to|–|—)\s*", claimed.strip())
+    if len(m) != 2:
+        out["verdict"] = "unparseable"
+        return out
+    c0, c1 = _clock_s(m[0]), _clock_s(m[1])
+    if c0 is None or c1 is None or c1 <= c0:
+        out["verdict"] = "unparseable"
+        return out
+
+    inter = max(0.0, min(t1, c1) - max(t0, c0))
+    union = max(t1, c1) - min(t0, c0)
+    out["recall"] = round(inter / (t1 - t0), 3)
+    out["precision"] = round(inter / (c1 - c0), 3)
+    out["iou"] = round(inter / union, 3) if union > 0 else 0.0
+    out["verdict"] = ("hit" if out["iou"] >= 0.5 else
+                      "partial" if inter > 0 else "miss")
+    return out
 
 
 def main() -> int:
@@ -115,6 +170,11 @@ def main() -> int:
     score = R.score(dx.get("diagnosis") or {}, gt, family=args.problem,
                     ranked=dx.get("ranked"))
 
+    # WINDOW ACCURACY - new, and half the task now that the agent is not told when.
+    # Scored by overlap against the true injection window. Ground truth is read HERE, in the
+    # scorer, which is the only place it belongs - never in a tool the agent can reach.
+    win = score_window((dx.get("diagnosis") or {}).get("incident_window"), gt)
+
     cands = dx.get("ranked") or []
     # the primary verdict is candidate 1; `ranked` holds the alternatives after it
     n_cand = 1 + len(cands)
@@ -156,6 +216,11 @@ def main() -> int:
         "true_service": (gt.get("fault") or {}).get("target_service"),
         "pred_fault": (dx.get("diagnosis") or {}).get("fault_type"),
         "pred_service": (dx.get("diagnosis") or {}).get("root_cause_service"),
+        "window_claimed": (dx.get("diagnosis") or {}).get("incident_window"),
+        "window_evidence": (dx.get("diagnosis") or {}).get("window_evidence"),
+        "window_iou": win.get("iou"), "window_recall": win.get("recall"),
+        "window_precision": win.get("precision"), "window_verdict": win.get("verdict"),
+        "window_true": win.get("true_window"),
         "error": dx.get("error"),
     }
 
@@ -178,10 +243,19 @@ def main() -> int:
         print("     %d. %-18s %-22s %s" % (i, c.get("service"), c.get("fault_type"),
                                            str(c.get("evidence"))[:70]))
 
+    print("\n== WHEN - did it find the window? (it was never told) ==")
+    print("  claimed   %s" % row["window_claimed"])
+    print("  true      %s" % row["window_true"])
+    print("  verdict   %s   IoU=%s recall=%s precision=%s"
+          % (row["window_verdict"], row["window_iou"], row["window_recall"],
+             row["window_precision"]))
+    print("  why       %s" % str(row["window_evidence"])[:200])
+
     print("\n== metrics collected ==")
     for k in ("service_ok", "fault_ok", "both_ok", "rank", "n_candidates", "hit_at_k",
-              "narrowed", "set_f1", "mrr", "seconds", "calls", "tokens", "error"):
-        print("  %-14s %s" % (k, row[k]))
+              "narrowed", "set_f1", "mrr", "window_iou", "window_verdict",
+              "seconds", "calls", "tokens", "error"):
+        print("  %-16s %s" % (k, row[k]))
 
     print("\n== files written ==")
     for f in sorted(os.listdir(outd)):
