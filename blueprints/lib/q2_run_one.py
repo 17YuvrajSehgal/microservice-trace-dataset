@@ -92,7 +92,7 @@ def main() -> int:
     ap.add_argument("--data-root", default="/scratch/yuvraj17/stratatrace/data/stratatrace-v2")
     ap.add_argument("--out-dir", default="/scratch/yuvraj17/stratatrace/results/q2")
     ap.add_argument("--packs-root", default="/scratch/yuvraj17/stratatrace/data/packs")
-    ap.add_argument("--skills-dir", default=os.path.join(ROOT, "agentic-rca", "skills-generated"))
+    ap.add_argument("--skills-dir", default=os.path.join(ROOT, "blueprints", "skills-kernel-only"))
     # 14 was tuned when the agent had 7 pre-aggregated tools and a pack that pre-located the
     # incident. It now starts with neither: it must orient, sweep a timeline to find a change
     # point, confirm it against a second event, then compare ranges it picks itself - on files

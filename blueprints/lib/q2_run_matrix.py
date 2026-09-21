@@ -74,7 +74,7 @@ def main() -> int:
     ap.add_argument("--data-root", default="/scratch/yuvraj17/stratatrace/data/stratatrace-v2")
     ap.add_argument("--out-dir", default="/scratch/yuvraj17/stratatrace/results/q2")
     ap.add_argument("--packs-root", default="/scratch/yuvraj17/stratatrace/data/packs")
-    ap.add_argument("--skills-dir", default=os.path.join(ROOT, "blueprints", "skills-generated"))
+    ap.add_argument("--skills-dir", default=os.path.join(ROOT, "blueprints", "skills-kernel-only"))
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--force", action="store_true", help="re-run cells that already have a score")
     a = ap.parse_args()
