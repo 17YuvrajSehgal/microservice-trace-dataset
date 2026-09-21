@@ -58,6 +58,13 @@ MAX_SCAN = 400000
 # handful of lines. Counts come from the index; lines are for confirming what an event
 # looks like once the counts have said where to look.
 MAX_LINES_RANGE_S = 5.0
+# How many processes query_ctf names. 15 was too few and it was nearly luck that it was
+# enough: measured on noisy_neighbor r1, the injected `stress-ng-cpu` is 1.68M events
+# against dockerd's 67M, so it ranked 15th of 15 inside its own incident window - one
+# place from invisible. The agent finds the culprit by noticing a process present in
+# one range and absent from another, so the list has to be long enough for that
+# comparison to be possible rather than fortunate.
+TOP_PROCS = 30
 _TIME_RE = re.compile(r"^\[(\d{2}):(\d{2}):(\d{2})\.(\d+)\]")
 _EVENT_RE = re.compile(r"\]\s+(?:\(\+[^)]*\)\s+)?\S+\s+([a-zA-Z0-9_]+):")
 _PROC_RE = re.compile(r'procname\s*=\s*"([^"]*)"')
@@ -156,6 +163,29 @@ def ctf_timespan(run_dir: str, ctf_subdir: str = "kernel/kernel") -> dict:
     ctf = os.path.join(run_dir, ctf_subdir)
     if not os.path.isdir(ctf):
         return {"error": "no CTF at %s" % ctf}
+
+    # Prefer the index: it was built from every event in the trace, so it knows the real ends.
+    # The tick snapshots start a little after the recorder does and stop a little before it,
+    # and on noisy_neighbor r1 that cost 12 s at each end - 13:11:07-13:14:46 against a true
+    # 13:10:55-13:14:58. That matters because the agent is told every range must sit inside
+    # this span, so an under-reported span silently puts the first and last 12 s off limits.
+    idx = _index_for(run_dir)
+    if idx is not None:
+        lo_t = hi_t = None
+        for bt, _ev, _proc, _n in _scan_index(idx):
+            if lo_t is None:
+                lo_t = bt
+            hi_t = bt
+        if lo_t is not None:
+            return {
+                "begin": _fmt(lo_t), "end": _fmt(hi_t),
+                "duration_s": round(hi_t - lo_t, 1), "clock": "UTC",
+                "source": "the trace itself, via the count index",
+                "note": ("This is the whole recording, in UTC. Nothing here says where an "
+                         "incident is or whether there is one - use ctf_timeline to look for a "
+                         "change across this span, then query_ctf on any range you suspect."),
+            }
+
     meta = os.path.join(run_dir, "meta")
     stamps = []
     if os.path.isdir(meta):
@@ -173,7 +203,9 @@ def ctf_timespan(run_dir: str, ctf_subdir: str = "kernel/kernel") -> dict:
     return {
         "begin": lo, "end": hi, "duration_s": round(dur, 1),
         "clock": "UTC",
-        "source": "meta/ cgroup tick snapshots written during collection",
+        "source": "meta/ cgroup tick snapshots written during collection "
+                  "(approximate: they begin just after, and end just before, the "
+                  "recorder itself)",
         "note": ("This is the whole recording, in UTC. Nothing here says where an incident is "
                  "or whether there is one - use ctf_timeline to look for a change across this "
                  "span, then query_ctf to inspect any range you suspect."),
@@ -289,7 +321,7 @@ def query_ctf(run_dir: str, event: str, begin: str | None = None, end: str | Non
         "matched": total,
         "rate_per_s": round(total / span, 2) if span and span > 0 else None,
         "by_event": dict(by_event.most_common(15)),
-        "top_procnames": dict(by_proc.most_common(15)),
+        "top_procnames": dict(by_proc.most_common(TOP_PROCS)),
         "source": "count index (exact over the whole range you asked for)",
         "how_to_compare": ("A count on its own means nothing. Compare rate_per_s against "
                            "another range of this same trace that you have reason to believe "
@@ -523,7 +555,7 @@ def _query_from_trace(run_dir: str, event: str, begin, end, sample: int,
         "events_scanned": scanned, "truncated": truncated, "note": note,
         "source": "raw trace under a scan cap (no index for this run)",
         "by_event": dict(by_event.most_common(15)),
-        "top_procnames": dict(by_proc.most_common(15)),
+        "top_procnames": dict(by_proc.most_common(TOP_PROCS)),
         "sample": lines,
     }
 
