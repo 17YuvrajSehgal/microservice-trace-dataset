@@ -249,3 +249,92 @@ a total failure by the agent.
 Both loops now prompt it back up to twice, and say that a low-confidence answer counts while
 silence does not. Worth remembering as a general point: **when an agent scores zero, check the
 harness before believing the number.**
+
+## 11. Two scoring bugs, one of which would have produced a headline result
+
+The third pilot answered `noisy_neighbor` correctly and localised to `toxiproxy` instead of
+`host`. Fine - that is a real agent error and exactly what we are here to measure. But checking
+*how* it was scored found two harness bugs.
+
+### The scorer was never reading the service target
+
+`R.score` reads `gt["target_service"]`. In a bundle it lives at
+`gt["fault"]["target_service"]`, and the runner passed the top level. So the scorer saw an
+empty target.
+
+That is not a harmless miss. Measured:
+
+| predicted | vs `target=""` | vs `target=host` | vs `target=catalogue` |
+|---|---|---|---|
+| host | **True** | True | False |
+| stress-ng | **True** | True | False |
+| catalogue | **False** | False | True |
+| toxiproxy | False | False | False |
+
+An empty target behaves exactly as if the target were `host`. `noisy_neighbor`'s target *is*
+host, so the pilot family scored correctly by accident. Every problem with a real service
+target - `db_latency`, `error_storm`, `cpu_throttling`, the rest - would have marked a
+**correct** answer wrong.
+
+It would not have failed. It would have produced a clean, publishable-looking table in which
+localisation accuracy was near zero in both arms, and the obvious reading of that table is
+"blueprints do not help you find the component".
+
+### The ranked answers were thrown away
+
+`diagnose()` returns `ranked_services` and `ranked_candidates`. The runner asked for `ranked`,
+which does not exist. Every alternative was silently dropped: the run printed
+`ranked 0 candidate(s)` while its own `diagnosis.json` carried
+
+```
+alternatives[0] = {"service": "host", "fault_type": "cpu_saturation"}
+```
+
+- the correct service, at rank 2. So `rank_k=5` was still unverified end to end, as §5 flagged.
+Now wired through, primary at position 1 and alternatives after it.
+
+**The pattern across three pilots is worth stating plainly: every zero so far has been the
+harness, not the agent.** Check the plumbing before believing a number.
+
+## 12. The blueprint's commands were unrunnable, and three of them leaked the answer
+
+Checked what the "given" arm actually receives. The blueprint splits in two.
+
+**The reasoning survives and is the part worth testing** - the signature, and the discriminators
+with their measured values: a newcomer taking 0.99-2.00 cores on a 12-CPU host, runqueue delay
+raised 7.12x but explicitly demoted to corroboration, socket-wait flat as the negative control,
+and "a container consumes steady CPU it did not consume in the baseline and has NO call-graph
+edges". That last line is precisely what the index confirms.
+
+**The seven investigation steps do not survive.** The agent has four read-only tools and no
+shell, so every `run [...]` line names something it cannot do. Steps 5-6 need
+prometheus-cadvisor. Worse, steps 2-4 pass `--gt <window>` - the ground-truth injection window,
+the one thing the agent is supposed to work out. The same leak as §1, hiding in the skill text
+rather than in a tool.
+
+Handing the given arm a method whose steps are impossible is a handicap, not help, and it would
+have been read as evidence against blueprints.
+
+`--kernel-only` keeps each step, its capability and its expectation, and drops only the resolved
+binding - which is what the blueprint already calls a binding: environment-specific and
+replaceable. All 11 skills regenerated: zero `run [...]` lines, no `--gt` anywhere.
+
+## 13. What the third pilot got wrong, and why it is the right kind of wrong
+
+Claimed window 13:13:55-13:14:45. True window 13:11:54-13:13:55. The claim begins exactly where
+the truth ends.
+
+The agent's reasoning: `sched_switch` and `sched_wakeup` step up around 13:13:57 and stay up.
+That step is real - the whole-trace timeline shows ~1.17M events per bucket mid-trace rising to
+~1.34M from 13:13:52 on. It is the recovery, after the co-tenant stops and the backlog drains.
+
+So it picked a real change point, and the wrong one, because it looked at **volume**. The
+blueprint it was holding says in as many words that volume will not separate this fault - "no
+service is itself busy", the newcomer is identified by *presence*, not by load. It then chose
+a comparison window (13:10:55-13:12:40) that already contained the first 46 s of the injection,
+so its baseline was contaminated by the thing it was looking for.
+
+That is a genuine analysis failure with the blueprint in hand, which is exactly the measurement
+this experiment exists to take. Nothing to fix - but worth re-checking after the skills were
+regenerated without the unrunnable steps, since the old rendering told it to run scripts that
+would have done the presence comparison for it.
