@@ -489,3 +489,66 @@ The report also asks the question the new tools exist to answer: do runs that us
 
 Rubrics for the other five problems are drafts from `fault_catalog.md`, marked as such. Only
 `noisy_neighbor` has been checked against real answers.
+
+## 17. The rerun: the tools fixed the task
+
+60/60, 80 minutes, into `results/q2b`. Full write-up in
+`blueprints/docs/Q2-RERUN-with-process-tools.md`. Decisions here.
+
+**Named the injected process:** 3/2/2/2 of 15 before, **10/14/12/15** after. 9 in 60 becomes
+51 in 60. All 60 runs used the new tools; not one ignored them.
+
+**Window:** median IoU 0.03-0.05 before, **0.992** after. 1 hit in 60 becomes 45 in 60.
+
+### The window is now downstream of the process, and must be reported that way
+
+| | runs | window hits | mean IoU |
+|---|---|---|---|
+| named the culprit | 51 | 43 | 0.872 |
+| did not name it | 9 | 2 | 0.449 |
+
+`ctf_proclife` returns a process's exact first and last time, so once the right process is
+picked the window is free. The analysis is choosing it out of 14 candidates. **Do not present
+the window as an independent skill** - it is a check on the process choice.
+
+### The finding worth keeping
+
+Without a hint and without a blueprint, the agent found the process and then said nothing was
+wrong. Labels in that arm: `normal` 9, `noisy_neighbor` 4, `cpu_saturation` 2 - while naming
+`stress-ng-cpu` 10 times. Its own words:
+
+> container-69a5e6 appears only from 13:11:54 to 13:13:54 ... I do not see clear evidence of a
+> host-wide resource fault; this looks more like a workload/container lifecycle change than an
+> injected kernel-visible failure.
+
+That is a correct observation and a defensible conclusion - a process starting and stopping is
+not by itself a fault. So the blueprint's contribution now splits in two, and we can see the
+halves separately:
+
+- **finding the thing**: 10 -> 14 of 15. Real, modest.
+- **calling it a problem and describing it**: label 27% -> 100%, description 71% -> 98%. Large.
+
+The second is still partly the given-not-chosen effect. But `described` is not a label match
+and it moved a long way, which is the first evidence that a blueprint does something beyond
+supplying the word.
+
+### Two numbers that went the wrong way, both explained
+
+- **set-F1 fell with the blueprint** (-0.078, -0.034). Not accuracy: the blueprint arm returns
+  3 candidates against the control's 2, and set-F1 penalises list length. Both arms are at
+  hit@5 100%.
+- **macro-F1 = 1.000** in the blueprint arms. Still degenerate with one problem and one class,
+  as in the first pilot. Ignore until six problems.
+
+### Judgement call worth recording
+
+`ctf_proclife` now flags kernel threads (`swapper`, `kworker`, `ksoftirqd`, `jbd2`...). The
+first run using the tool found the window (IoU 0.807) and then blamed `kworker/u48:8` - a
+kernel worker doing 8,569 events - over `stress-ng-cpu` doing 1.68 million. Flagging supplies
+operating-system knowledge any SRE has at a glance, and we are testing root-cause reasoning,
+not whether the model memorised Linux thread names. The list was also sorted by arrival time,
+which buried `stress-ng-cpu`; it is sorted by event count now. Both changes are reversible and
+Yuvraj was told.
+
+The honest distractors remain: the `conn*` MySQL connection threads carry MORE events than
+`stress-ng-cpu`, so the agent still has to work out which name does not belong.
