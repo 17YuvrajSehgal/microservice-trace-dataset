@@ -87,7 +87,15 @@ PROBLEMS = {
 # both host-wide and single-container degradation? Kept as separate problems so the answer shows.
 ARMS = ("none", "given")
 ASKS = ("nohint", "hint")
-RANK_K = 4          # primary + up to 3 alternatives
+
+RANK_K = 5          # primary + up to 4 alternatives, 5 candidates in total
+NARROW_AT = 2       # "narrowed" = the true answer is in the TOP 2
+
+# Narrowing is scored at top-2 rather than top-5 on purpose. The point of a blueprint is that a
+# human analyst then goes and checks - "instead of many different reasons, you narrow down, then
+# the human analyst will go and check" - and handing someone 5 candidates out of ~12 fault types
+# is barely a narrowing. Two is a shortlist they can actually work through. hit@5 and MRR are
+# recorded as well, so a different bar can be applied later without re-running anything.
 
 
 def incidents_for(family: str, data_root: str, limit: int) -> list:
@@ -162,15 +170,28 @@ def summarise(rows) -> dict:
                 "both_pct": pct(lambda r: r.get("both_ok")),
                 "service_pct": pct(lambda r: r.get("service_ok")),
                 "fault_pct": pct(lambda r: r.get("fault_ok")),
-                # narrowing: right answer anywhere in the ranked list, and how far down
+                # narrowing, the thing a ranked answer buys us
+                "narrowed_pct": pct(lambda r: (r.get("rank") or 99) <= NARROW_AT),
                 "hit_at_k_pct": pct(lambda r: r.get("hit_at_k")),
                 "mrr": (round(sum(r.get("mrr") or 0 for r in rs) / n, 3) if n else None),
                 "median_candidates": _median([r.get("n_candidates") for r in rs]),
+                # COST. A blueprint that buys accuracy by taking three times as long is a
+                # different trade from one that is faster, and only the numbers show which.
+                "median_seconds": _median([r.get("seconds") for r in rs]),
+                "median_tool_calls": _median([r.get("calls") for r in rs]),
+                "median_tokens": _median([r.get("tokens") for r in rs]),
             }
         for ask in ASKS:
             a, b = entry.get("%s|none" % ask), entry.get("%s|given" % ask)
-            if a and b and a["both_pct"] is not None and b["both_pct"] is not None:
+            if not (a and b):
+                continue
+            if a["both_pct"] is not None and b["both_pct"] is not None:
                 entry["%s|delta_pts" % ask] = b["both_pct"] - a["both_pct"]
+            if a["narrowed_pct"] is not None and b["narrowed_pct"] is not None:
+                entry["%s|narrowed_delta_pts" % ask] = b["narrowed_pct"] - a["narrowed_pct"]
+            if a["median_seconds"] and b["median_seconds"]:
+                entry["%s|seconds_ratio" % ask] = round(
+                    b["median_seconds"] / a["median_seconds"], 2)
         out[fam] = entry
     return out
 
@@ -184,7 +205,15 @@ def main() -> int:
     here = os.path.dirname(os.path.abspath(__file__))
     root = os.path.dirname(os.path.dirname(here))
     ap = argparse.ArgumentParser()
-    ap.add_argument("--problems", default=",".join(PROBLEMS))
+    # FIRST RUN IS ONE PROBLEM. noisy_neighbor, for two reasons that point the same way:
+    #   * it is where the agent most needs help - in the 2 Sept data it got this right
+    #     0 times out of 6 unaided, the only family it could not do at all
+    #   * its blueprint has the most threshold work behind it. BIG_THIEF_SHARE was re-derived
+    #     to 0.297 (geometric midpoint, 1.78x margin each way) after the original 0.167 turned
+    #     out to be a separation cut misused as a ceiling, which cost 1 of 16 runs.
+    # Maximum headroom and the blueprint I trust most - if it shows nothing here, the whole
+    # approach needs rethinking before spending 360 runs on it.
+    ap.add_argument("--problems", default="noisy_neighbor")
     ap.add_argument("--data-root", default="/scratch/yuvraj17/stratatrace/data/stratatrace-v2")
     ap.add_argument("--incidents", type=int, default=3,
                     help="incidents per problem - the same for every problem")

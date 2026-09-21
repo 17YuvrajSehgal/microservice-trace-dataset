@@ -1,0 +1,11 @@
+{
+ "matrix": [],
+ "problems": {
+  "noisy_neighbor": {
+   "blueprint": "cpu-contention-co-tenant",
+   "hint": "requests are slow and the host looks contended"
+  }
+ },
+ "rank_k": 5,
+ "n_runs": 0
+}
