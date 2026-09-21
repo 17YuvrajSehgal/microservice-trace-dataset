@@ -1,138 +1,129 @@
-# Question 2, pilot: does a blueprint help on `noisy_neighbor`?
+# Q2 pilot: does a blueprint help on `noisy_neighbor`?
 
-60 runs, all completed, 89 minutes. One problem, 3 incidents, 2 arms, 2 asks, 5 repeats.
-Kernel traces only - no metrics, logs or spans. The agent is never told when the fault was,
-or that there was one.
+All 60 runs finished. 89 minutes. Nothing failed.
 
-- model `gpt-5.4-mini` (azure), temperature left at the model default, 5 repeats measure that
-- blueprint `cpu-contention-co-tenant`, **given, not chosen**
-- incidents `noisy_neighbor_aggressive_steady_r1/r2/r3` (sockshop)
-- results `/scratch/yuvraj17/stratatrace/results/q2`, one directory per cell
+Setup:
 
-## The table
+- 1 problem, 3 runs of it, 2 arms (blueprint / no blueprint), 2 asks (hint / no hint), 5 repeats
+- kernel traces only. No metrics, no logs, no spans
+- the agent is not told when the fault was, or that there was one
+- model `gpt-5.4-mini` (azure), blueprint `cpu-contention-co-tenant`, handed over not chosen
+- results in `/scratch/yuvraj17/stratatrace/results/q2`
 
-| ask \| arm | n | both | service | fault | narrowed@2 | hit@5 | set-F1 | sec | tokens |
+## The numbers
+
+| ask \| arm | n | both right | service | fault | narrowed to top 2 | set-F1 | sec | tokens |
 |---|---|---|---|---|---|---|---|---|---|
-| nohint \| none | 15 | 0% | 47% | 20% | 53% | 67% | 0.367 | 428 | 54,640 |
-| nohint \| given | 15 | **13%** | 13% | 100% | **87%** | 93% | 0.453 | 300 | 67,050 |
-| hint \| none | 15 | 7% | 67% | 20% | 47% | 47% | 0.267 | 339 | 53,920 |
-| hint \| given | 15 | **40%** | 47% | 93% | **93%** | 93% | 0.489 | 272 | 80,452 |
+| nohint \| none | 15 | 0% | 47% | 20% | 53% | 0.367 | 428 | 54,640 |
+| nohint \| given | 15 | 13% | 13% | 100% | 87% | 0.453 | 300 | 67,050 |
+| hint \| none | 15 | 7% | 67% | 20% | 47% | 0.267 | 339 | 53,920 |
+| hint \| given | 15 | 40% | 47% | 93% | 93% | 0.489 | 272 | 80,452 |
 
-The blueprint helps on the headline number (+13 and +33 points) and on narrowing (+34 and +46),
-costs about 25% more tokens, and is *faster* in wall clock (x0.7, x0.8).
+The blueprint helped. Both-right went up 13 and 33 points. Narrowing went up 34 and 46 points.
+It used about 25% more tokens. It was faster in real time.
 
-**Three of those columns do not mean what they look like.** Taking them in turn.
+Three of those columns are misleading. Here is why.
 
-## 1. Fault accuracy is close to tautological in the given arm
+## 1. The fault score is almost free
 
-| ask \| arm | what it answered |
-|---|---|
-| nohint \| none | cpu_saturation 9, noisy_neighbor 3, normal 2, disk_io 1 |
-| nohint \| given | **noisy_neighbor 15** |
-| hint \| none | cpu_saturation 12, noisy_neighbor 3 |
-| hint \| given | noisy_neighbor 14, normal 1 |
+The blueprint is named `cpu-contention-co-tenant`. Its text describes a co-tenant eating host
+CPU. The answer list has `noisy_neighbor` defined in nearly the same words.
 
-The blueprint is called `cpu-contention-co-tenant` and its body describes a co-tenant consuming
-host CPU while KPIs stay near-normal. The fault vocabulary defines `noisy_neighbor` in almost
-those words. So 100% is mostly "the agent read the blueprint it was handed".
+So the agent can read the answer off the blueprint. 100% here means "it read the page".
 
-What is genuinely interesting is the control arm's answer. Without a blueprint it says
-`cpu_saturation` 21 times out of 30 - the right *mechanism*, the wrong label. The only thing
-separating the two is whether the host keeps headroom, which is exactly what this blueprint's
-"telling it apart" section exists to settle.
+The no-blueprint arm is more interesting. It said `cpu_saturation` 21 times out of 30. That is
+the right mechanism with the wrong name. The only difference between the two names is whether
+the host still has spare CPU. That is exactly what the blueprint's "telling it apart" section
+answers.
 
-So the blueprint does contribute something real: it discriminates between look-alikes. But
-because it was **given rather than chosen**, this pilot cannot separate that contribution from
-simply being told the answer. Measuring it needs an arm where the agent selects from all 11
-blueprints. Recommended as the next change.
+So the blueprint does add something real. But we gave it the right blueprint, so we cannot
+tell how much.
 
-## 2. The service metric is measuring hedging, not localisation
+**Fix: add an arm where the agent picks its own blueprint from all 11.**
 
-`_svc_match` scores both `host` and `stress-ng*` as correct for a host-scoped fault. That is
-defensible - but it merges a hedge with a find. Split apart:
+## 2. The service score is measuring hedging
 
-| ask \| arm | service_ok | said `host` | **named the culprit** | wrong |
-|---|---|---|---|---|
-| nohint \| none | 7 | 4 | **3** | 8 |
-| nohint \| given | 2 | 0 | **2** | 13 |
-| hint \| none | 10 | 8 | **2** | 5 |
-| hint \| given | 7 | 5 | **2** | 8 |
+The scorer counts both `host` and `stress-ng*` as correct. Those are very different answers.
+One is a safe guess. One is finding the actual process.
 
-**Naming the actual injected process is 3, 2, 2, 2 - flat across all four arms.** Every
-difference in the service column comes from how often the agent hedged to `host`.
+| ask \| arm | scored correct | said `host` | named the process | wrong |
+|---|---|---|---|---|---|
+| nohint \| none | 7 | 4 | 3 | 8 |
+| nohint \| given | 2 | 0 | 2 | 13 |
+| hint \| none | 10 | 8 | 2 | 5 |
+| hint \| given | 7 | 5 | 2 | 8 |
 
-So the apparent finding "the blueprint makes localisation worse" (47% -> 13%) is not that. The
-blueprint pushes the agent to commit to a named container instead of hedging, and it commits to
-the wrong one. Localisation ability is unchanged at about 13%; what changes is willingness to
-guess.
+Naming the real process is 3, 2, 2, 2. Flat in every arm.
 
-This also means `service_ok` should not be read as localisation for host-scoped faults at all.
-Worth reporting both columns in the paper rather than the merged one.
+So the blueprint did not make localisation worse. It made the agent name a container instead
+of saying `host`. It named the wrong container. Its actual skill did not change.
+
+**Fix: report both columns. Never the merged one.**
+
+This matters. "Blueprints hurt localisation" would have been a clean, wrong result.
 
 ## 3. Almost every run found the recovery, not the fault
 
-The clearest result here, and it is the same in all four arms.
-
-**52 of 60 claimed a window that starts at or after the true window ended.** None started early.
+52 of 60 gave a window that starts at or after the real window ended. None started early.
 
 ```
-true window     13:11:54 - 13:13:55
-typical claim   13:13:50 - 13:14:45
+real window     13:11:54 - 13:13:55
+typical answer  13:13:50 - 13:14:45
 ```
 
 | ask \| arm | abstained | miss | partial | hit | median IoU |
-|---|---|---|---|---|---|
+|---|---|---|---|---|---|---|
 | nohint \| none | 2 | 3 | 9 | 1 | 0.047 |
 | nohint \| given | 0 | 2 | 13 | 0 | 0.029 |
 | hint \| none | 0 | 3 | 12 | 0 | 0.047 |
 | hint \| given | 1 | 2 | 12 | 0 | 0.049 |
 
-The reason is in the data, not the agent. Whole-trace `sched_switch` counts, from the index:
+This is the data, not the agent. Event counts across the whole trace:
 
 ```
 13:12:01   1,170,092  #################
 13:12:45   1,153,546  #################
-13:13:30   1,164,320  #################     <- fault still running
-13:13:52   1,307,926  ####################  <- fault STOPS here
+13:13:30   1,164,320  #################     fault still running
+13:13:52   1,307,926  ####################  fault STOPS here
 13:14:14   1,334,383  ####################
 13:14:36   1,338,374  ####################
 ```
 
-The injected fault produces **no step in aggregate event volume**. The recovery does. So any
-change-point search over totals lands on the recovery, and lands there consistently.
+The fault does not raise the event count. The recovery does. So anything that looks for a jump
+in totals lands on the recovery every time.
 
-That is `noisy_neighbor`'s pre-registered property - a co-tenant consumes host resources while
-KPIs barely move - confirmed from the kernel side, and it has a consequence worth stating:
+This is what we predicted for `noisy_neighbor`: the co-tenant eats CPU but the system keeps
+working. Now we have shown it in the kernel data.
 
-> For a fault whose signature is *presence* rather than *volume*, aggregate change-point
-> detection systematically finds the recovery instead of the fault.
+It also gives us a general point:
 
-The fault is perfectly visible if you look the right way. From the index:
+> If a fault shows up as a new process rather than more events, looking for a jump in totals
+> finds the recovery instead.
+
+The fault is easy to see the right way:
 
 ```
-stress-ng-cpu   first 13:11:54.1   last 13:13:54.2   1,682,336 events
-ground truth    injection 13:11:54Z - 13:13:55Z
+stress-ng-cpu   starts 13:11:54.1   ends 13:13:54.2
+real window     13:11:54Z - 13:13:55Z
 ```
 
-Both ends within a second. The information is there; the search strategy is what fails. The
-blueprint says this in as many words - the newcomer is identified by presence, not by load -
-and the agent still searched on volume.
+Within one second at both ends. The data is fine. The way the agent searched is the problem.
+The blueprint even says to look for a new process, not more load. It looked at load anyway.
 
-## What this pilot is good for
+## What this pilot proved
 
-- The harness works end to end. 60/60 completed, every metric populated and internally
-  consistent.
-- The blueprint has a measurable effect on the headline number and a large one on narrowing.
-- Two of the four headline columns need re-reading before they go anywhere near a paper, and
-  the third (window) is a clean negative result in both arms.
+- The harness works. 60 of 60 ran. Every number is filled in and consistent.
+- The blueprint helps the main score, and helps narrowing a lot.
+- Two columns need re-reading before they go in a paper.
+- The window result is bad in both arms, and that is a real finding.
 
-## What to change before scaling to six problems
+## Before we scale to 6 problems
 
-1. **Add a `chosen` arm.** Without it, fault accuracy in the given arm measures reading
-   comprehension. This is the single biggest limitation of the current design.
-2. **Report `named the culprit` separately from `service_ok`** for host-scoped faults.
-3. **Consider whether the window task is winnable as posed.** Every arm fails it the same way.
-   Either the agent needs a presence-oriented search primitive, or the blueprint needs to push
-   much harder on "do not look for a volume step".
-4. `macro_f1` reads 1.000 for nohint|given - degenerate with one problem and one class. It only
-   becomes meaningful across the six-problem matrix.
+1. **Add an arm where the agent picks the blueprint.** Without it the fault score means little.
+2. **Split "named the process" out of the service score** for host faults.
+3. **Decide if the window task is fair as set up.** Every arm fails it the same way, at IoU
+   around 0.04. That tells us nothing about blueprints. Either the agent needs a way to ask
+   "which processes are in range A but not range B", or the blueprint has to push much harder
+   against looking at load.
+4. `macro_f1` shows 1.000 for nohint|given. That is meaningless with one problem and one
+   answer class. It only starts working across all 6 problems.
