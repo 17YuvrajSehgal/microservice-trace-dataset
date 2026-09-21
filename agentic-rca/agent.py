@@ -27,6 +27,7 @@ import ctf_tool
 from ctf_tool import TOOL_DEF as _CTF_TOOL_DEF
 from ctf_tool import TIMELINE_DEF as _CTF_TIMELINE_DEF
 from ctf_tool import TIMESPAN_DEF as _CTF_TIMESPAN_DEF
+from ctf_tool import LINES_DEF as _CTF_LINES_DEF
 import leakguard
 import shared_context
 import skillreg
@@ -124,11 +125,13 @@ _KO_HEAD = (
     "told you whether anything went wrong, when, or where. There is no alert, no known "
     "incident window, and no pre-computed baseline. Finding all of that is the job.\n"
     "\n"
-    "YOUR ONLY EVIDENCE is the LTTng kernel trace, through three tools: ctf_timespan (how long "
-    "the recording is), ctf_timeline (one event counted across the whole recording, bucketed, "
-    "as a bar chart) and query_ctf (counts, rates, top processes and raw event lines over a "
-    "range YOU choose). There are deliberately no metrics, logs or spans. That is the dataset, "
-    "not a gap in it: never treat a missing modality as evidence that nothing happened.\n"
+    "YOUR ONLY EVIDENCE is the LTTng kernel trace, through four tools: ctf_timespan (how "
+    "long the recording is), ctf_timeline (one event counted across the whole recording, "
+    "bucketed, as a bar chart), query_ctf (counts, rates and the processes responsible, over "
+    "a range YOU choose - exact over the whole range, not a sample of it) and ctf_lines (real "
+    "event lines with all their fields, over a narrow range). There are deliberately no "
+    "metrics, logs or spans. That is the dataset, not a gap in it: never treat a missing "
+    "modality as evidence that nothing happened.\n"
     "\n"
     "METHOD:\n"
     "1. ORIENT: ctf_timespan first, so you know the real start and end. Every later range must "
@@ -146,7 +149,7 @@ _KO_HEAD = (
     "(sched_switch churn, one process monopolising), CPU starvation (long sched_wakeup to "
     "sched_switch delay), disk wait (block_rq_issue/block_rq_complete latency), network "
     "(net_dev_xmit/netif_receive_skb), lock or futex contention, memory reclaim, or a process "
-    "exiting and respawning. Read a few raw event lines before you commit - counts alone can "
+    "exiting and respawning. Read a few raw lines with ctf_lines before you commit - counts alone can "
     "mislead.\n"
     "5. CONFIRM OR REJECT: state which check would have falsified your conclusion and whether "
     "you ran it. If the evidence genuinely shows a healthy system, 'normal' is a legitimate "
@@ -196,6 +199,7 @@ _TOOL_DEFS = [
     _CTF_TIMESPAN_DEF,
     _CTF_TIMELINE_DEF,
     _CTF_TOOL_DEF,
+    _CTF_LINES_DEF,
     {"name": "submit_diagnosis",
      "description": ("Commit the final root-cause verdict: WHAT went wrong, WHERE, and WHEN. "
                      "The window is part of the answer, not a detail - you were not told when "
@@ -244,7 +248,8 @@ _ALTERNATIVES_PROP = {
 # pilot it concluded "normal" partly because "query_metrics returned no metrics, query_kernel is
 # unavailable, and there are no service spans/logs/topology edges". Absence of a tool's output
 # is not absence of a fault, and the cleanest fix is not to offer tools that cannot answer.
-KERNEL_ONLY_TOOLS = ("ctf_timespan", "ctf_timeline", "query_ctf", "submit_diagnosis")
+KERNEL_ONLY_TOOLS = ("ctf_timespan", "ctf_timeline", "query_ctf", "ctf_lines",
+                     "submit_diagnosis")
 
 
 def _tool_defs(rank_k: int = 0, only_submit: bool = False, kernel_only: bool = False):
@@ -355,8 +360,14 @@ def _run_tool(tools: RunTools, name: str, args: dict, guard=None):
         return ctf_tool.query_ctf(
             tools.run.run_dir, event=args.get("event") or "",
             begin=args.get("begin"), end=args.get("end"),
-            sample=args.get("sample", 10),
-            procname=args.get("procname"), contains=args.get("contains")), 0
+            buckets=args.get("buckets") or 0,
+            procname=args.get("procname")), 0
+    if name == "ctf_lines":
+        return ctf_tool.ctf_lines(
+            tools.run.run_dir, event=args.get("event") or "",
+            begin=args.get("begin") or "", end=args.get("end") or "",
+            n=args.get("n", 10), procname=args.get("procname"),
+            contains=args.get("contains")), 0
     return {"error": f"unknown tool {name}"}, 0
 
 

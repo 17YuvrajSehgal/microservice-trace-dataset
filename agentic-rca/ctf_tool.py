@@ -34,6 +34,7 @@ than an error, because the agent would treat a lower bound as a count.
 """
 from __future__ import annotations
 
+import gzip
 import json
 import os
 import re
@@ -53,6 +54,10 @@ GMT = ["--clock-gmt"]
 
 MAX_SAMPLE = 40
 MAX_SCAN = 400000
+# ctf_lines decodes from the start of the trace, so a wide range is a full pass for a
+# handful of lines. Counts come from the index; lines are for confirming what an event
+# looks like once the counts have said where to look.
+MAX_LINES_RANGE_S = 5.0
 _TIME_RE = re.compile(r"^\[(\d{2}):(\d{2}):(\d{2})\.(\d+)\]")
 _EVENT_RE = re.compile(r"\]\s+(?:\(\+[^)]*\)\s+)?\S+\s+([a-zA-Z0-9_]+):")
 _PROC_RE = re.compile(r'procname\s*=\s*"([^"]*)"')
@@ -86,6 +91,52 @@ def _fmt(sec: float) -> str:
 
 
 _TICK_RE = re.compile(r"_tick_(\d{8})T(\d{6})Z\.txt$")
+
+
+# ---------------------------------------------------------------------------
+# The count index. See blueprints/lib/build_ctf_index.py for how it is built and why.
+#
+# babeltrace2 does not seek: --begin/--end decode from the start of the trace and discard the
+# rest, so a query's cost tracks how DEEP the range sits, not how much comes back. Measured
+# here: a 1 s range 3 s in costs 9.6 s; the same 1 s range 213 s in costs 133 s. The scan cap
+# that keeps one call bounded was therefore giving the agent the first 0.3 s of a 20 s window
+# - 1.6% - and it went on to compare two 0.3 s slices as though they were the windows it asked
+# for. Counts now come from a table built by ONE full pass, so a range means the whole range.
+#
+# The index holds counts and nothing else: bucket_start_s, event, procname, count. It reads no
+# ground truth, and has no notion of a baseline, an incident window, a fault or a culprit. It
+# is built before any question is asked of it and identically for every run.
+#
+# Raw event LINES still come from the trace itself, through ctf_lines.
+INDEX_ROOT = os.environ.get("CTF_INDEX_ROOT", "/scratch/yuvraj17/stratatrace/data/ctf-index")
+
+
+def _index_for(run_dir: str):
+    p = os.path.join(INDEX_ROOT, os.path.basename(run_dir.rstrip("/")) + ".tsv.gz")
+    return p if os.path.exists(p) else None
+
+
+def _scan_index(path: str, ev_re=None, procname: str | None = None,
+                t0: float | None = None, t1: float | None = None):
+    """Stream matching index rows as (bucket_start_s, event, procname, count)."""
+    with gzip.open(path, "rt") as fh:
+        for line in fh:
+            if not line or line[0] == "#":
+                continue
+            try:
+                b, ev, proc, n = line.rstrip().split('\t')
+                bt = float(b)
+            except ValueError:
+                continue
+            if t0 is not None and bt < t0:
+                continue
+            if t1 is not None and bt >= t1:
+                continue
+            if ev_re is not None and not ev_re.search(ev):
+                continue
+            if procname is not None and proc != procname:
+                continue
+            yield bt, ev, proc, int(n)
 
 
 def ctf_timespan(run_dir: str, ctf_subdir: str = "kernel/kernel") -> dict:
@@ -136,6 +187,151 @@ def ctf_timeline(run_dir: str, event: str, buckets: int = 30,
     This is what replaces being told when the incident was. A rate that steps up or collapses
     partway through the series is the thing to investigate - but the agent decides that, and
     has to defend it from the numbers.
+
+    Served from the count index, so the series really does span the whole recording. The first
+    version decoded the trace under a scan cap and drew a full-width chart from whatever
+    prefix it managed to read, which meant "no clearly isolated step" could equally mean
+    "I never looked at most of it".
+    """
+    try:
+        ev_re = re.compile(event)
+    except re.error as e:
+        return {"error": "bad event pattern: %s" % e}
+    buckets = max(5, min(int(buckets), 120))
+
+    idx = _index_for(run_dir)
+    if idx is None:
+        return _timeline_from_trace(run_dir, event, buckets, procname, ctf_subdir)
+
+    rows = list(_scan_index(idx, ev_re=ev_re, procname=procname))
+    if not rows:
+        return {"event_pattern": event, "matched": 0, "source": "count index",
+                "note": ("no events matched - check the pattern, or this tracepoint was not "
+                         "enabled in the collection profile")}
+
+    lo = min(r[0] for r in rows)
+    hi = max(r[0] for r in rows)
+    width = max(1e-6, (hi - lo) / buckets)
+    counts = [0] * buckets
+    matched = 0
+    for bt, _ev, _proc, n in rows:
+        counts[min(buckets - 1, int((bt - lo) / width))] += n
+        matched += n
+    peak = max(counts)
+    series = [{"t": _fmt(lo + i * width), "n": c,
+               "bar": "#" * int(round(20 * c / peak)) if peak else ""}
+              for i, c in enumerate(counts)]
+    names = Counter()
+    for _bt, ev, _proc, n in rows:
+        names[ev] += n
+    return {
+        "event_pattern": event, "procname": procname, "clock": "UTC",
+        "span_covered": [_fmt(lo), _fmt(hi)], "bucket_width_s": round(width, 3),
+        "matched": matched, "by_event": dict(names.most_common(10)),
+        "source": "count index (one full decode; this series covers the whole recording)",
+        "series": series,
+        "how_to_read": ("Each row is one time bucket and its event count. A sustained step up "
+                        "or down partway through is a candidate change point. Confirm it "
+                        "against a second, unrelated event before believing it - a step in "
+                        "every event type usually means the workload changed, not the system."),
+    }
+
+
+def query_ctf(run_dir: str, event: str, begin: str | None = None, end: str | None = None,
+              procname: str | None = None, buckets: int = 0,
+              ctf_subdir: str = "kernel/kernel", sample: int = 0,
+              contains: str | None = None) -> dict:
+    """Counts, rate and responsible processes for one event over a range THE AGENT chooses.
+
+    begin/end are clock strings like '13:12:30' (HH:MM:SS[.frac]), UTC. Omit both for the whole
+    recording. There are no named windows: naming one would require knowing when the incident
+    was, which is the thing being asked.
+
+    Exact over the full range, from the count index - not a capped prefix of it.
+    """
+    try:
+        ev_re = re.compile(event)
+    except re.error as e:
+        return {"error": "bad event pattern: %s" % e}
+
+    idx = _index_for(run_dir)
+    if idx is None:
+        return _query_from_trace(run_dir, event, begin, end, sample or 10, procname,
+                                 contains, ctf_subdir)
+
+    t0 = _secs_safe(begin) if begin else None
+    t1 = _secs_safe(end) if end else None
+    if begin and t0 is None:
+        return {"error": "cannot parse begin %r - use HH:MM:SS" % begin}
+    if end and t1 is None:
+        return {"error": "cannot parse end %r - use HH:MM:SS" % end}
+    if t0 is not None and t1 is not None and t1 <= t0:
+        return {"error": "end must be after begin"}
+
+    by_event, by_proc = Counter(), Counter()
+    per_bucket = Counter()
+    lo = hi = None
+    for bt, ev, proc, n in _scan_index(idx, ev_re=ev_re, procname=procname, t0=t0, t1=t1):
+        by_event[ev] += n
+        by_proc[proc] += n
+        per_bucket[bt] += n
+        lo = bt if lo is None else min(lo, bt)
+        hi = bt if hi is None else max(hi, bt)
+
+    total = sum(by_event.values())
+    span = (t1 - t0) if (t0 is not None and t1 is not None) else (
+        (hi - lo) if (lo is not None and hi is not None) else None)
+    out = {
+        "event_pattern": event,
+        "range_requested": [begin, end],
+        "filters": {"procname": procname},
+        "clock": "UTC",
+        "matched": total,
+        "rate_per_s": round(total / span, 2) if span and span > 0 else None,
+        "by_event": dict(by_event.most_common(15)),
+        "top_procnames": dict(by_proc.most_common(15)),
+        "source": "count index (exact over the whole range you asked for)",
+        "how_to_compare": ("A count on its own means nothing. Compare rate_per_s against "
+                           "another range of this same trace that you have reason to believe "
+                           "is quiet, and say which range you used and why."),
+    }
+    if total == 0:
+        # An honest zero, unlike the old capped read where zero meant "not in the 0.3 s I got to".
+        out["note"] = ("zero over this whole range. The range really was read end to end, so "
+                       "this means absent here - not merely unread. Check the pattern is right "
+                       "before concluding anything from it.")
+    if buckets:
+        b = max(5, min(int(buckets), 120))
+        keys = sorted(per_bucket)
+        if keys:
+            klo, khi = keys[0], keys[-1]
+            w = max(1e-6, (khi - klo) / b)
+            cc = [0] * b
+            for k in keys:
+                cc[min(b - 1, int((k - klo) / w))] += per_bucket[k]
+            peak = max(cc)
+            out["series"] = [{"t": _fmt(klo + i * w), "n": c,
+                              "bar": "#" * int(round(20 * c / peak)) if peak else ""}
+                             for i, c in enumerate(cc)]
+            out["bucket_width_s"] = round(w, 3)
+    if sample:
+        out["sample_note"] = ("This tool returns counts only. For real event lines with their "
+                              "fields, call ctf_lines over a narrow range.")
+    return out
+
+
+def ctf_lines(run_dir: str, event: str, begin: str, end: str, n: int = 10,
+              procname: str | None = None, contains: str | None = None,
+              ctf_subdir: str = "kernel/kernel") -> dict:
+    """Real event lines, with their fields, straight from the trace.
+
+    Separate from query_ctf on purpose. Counting is cheap now because it reads the index;
+    reading actual lines is not, because it decodes the trace from the beginning every time.
+    Keeping them apart means the expensive path is a deliberate choice rather than a hidden
+    cost on every count.
+
+    Narrow ranges only, and few lines: this is for confirming WHAT an event looks like once
+    the counts have told you where to look.
     """
     ctf = os.path.join(run_dir, ctf_subdir)
     if not os.path.isdir(ctf):
@@ -144,11 +340,60 @@ def ctf_timeline(run_dir: str, event: str, buckets: int = 30,
         ev_re = re.compile(event)
     except re.error as e:
         return {"error": "bad event pattern: %s" % e}
-    buckets = max(5, min(int(buckets), 120))
+    t0, t1 = _secs_safe(begin), _secs_safe(end)
+    if t0 is None or t1 is None or t1 <= t0:
+        return {"error": "begin and end are required, as HH:MM:SS, with end after begin"}
+    if t1 - t0 > MAX_LINES_RANGE_S:
+        return {"error": "range is %.1f s; ask for at most %d s of lines. Use query_ctf for "
+                         "counts over wider ranges." % (t1 - t0, MAX_LINES_RANGE_S)}
+    n = max(1, min(int(n), MAX_SAMPLE))
 
-    stamps = []
-    scanned = 0
-    truncated = False
+    cmd = [BT2] + GMT + [ctf, "--begin", begin, "--end", end]
+    lines, scanned = [], 0
+    try:
+        p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+                             text=True, bufsize=1 << 20)
+    except OSError as e:
+        return {"error": "cannot run babeltrace2 (%s): %r" % (BT2, e)}
+    with p:
+        for line in p.stdout:
+            scanned += 1
+            if scanned > MAX_SCAN:
+                break
+            m = _EVENT_RE.search(line)
+            if not m or not ev_re.search(m.group(1)):
+                continue
+            if contains and contains not in line:
+                continue
+            if procname:
+                pm = _PROC_RE.search(line)
+                if not pm or pm.group(1) != procname:
+                    continue
+            lines.append(line.rstrip()[:400])
+            if len(lines) >= n:
+                break
+        p.kill()
+    return {
+        "event_pattern": event, "range": [begin, end], "clock": "UTC",
+        "filters": {"procname": procname, "contains": contains},
+        "returned": len(lines), "lines": lines,
+        "note": ("These are the first matching lines in the range, not a random sample, and "
+                 "not a count. Use query_ctf if you want to know how many there were."),
+    }
+
+
+# --- fallbacks: no index for this run, so read the trace under a cap -----------------------
+# Kept so the tools still work on a bundle nobody has indexed. Both are honest about the cap,
+# because a silent partial answer is worse than an error: the agent treats a lower bound as a
+# count. See the note at the top of this file.
+
+def _timeline_from_trace(run_dir: str, event: str, buckets: int,
+                         procname: str | None, ctf_subdir: str) -> dict:
+    ctf = os.path.join(run_dir, ctf_subdir)
+    if not os.path.isdir(ctf):
+        return {"error": "no CTF at %s" % ctf}
+    ev_re = re.compile(event)
+    stamps, scanned, truncated = [], 0, False
     try:
         p = subprocess.Popen([BT2] + GMT + [ctf], stdout=subprocess.PIPE,
                              stderr=subprocess.DEVNULL, text=True, bufsize=1 << 20)
@@ -171,72 +416,47 @@ def ctf_timeline(run_dir: str, event: str, buckets: int = 30,
             if t is not None:
                 stamps.append(t)
         p.kill()
-
     if not stamps:
-        return {"event_pattern": event, "matched": 0,
-                "note": "no events matched - check the pattern, or this tracepoint was not enabled"}
+        return {"event_pattern": event, "matched": 0, "source": "raw trace (no index)",
+                "note": "no events matched - check the pattern, or the tracepoint was off"}
     lo, hi = min(stamps), max(stamps)
     width = max(1e-6, (hi - lo) / buckets)
     counts = [0] * buckets
     for t in stamps:
         counts[min(buckets - 1, int((t - lo) / width))] += 1
     peak = max(counts)
-    series = [{"t": _fmt(lo + i * width), "n": c,
-               "bar": "#" * int(round(20 * c / peak)) if peak else ""}
-              for i, c in enumerate(counts)]
     out = {
         "event_pattern": event, "procname": procname, "clock": "UTC",
         "span_covered": [_fmt(lo), _fmt(hi)], "bucket_width_s": round(width, 3),
         "matched": len(stamps), "events_scanned": scanned, "truncated": truncated,
-        "series": series,
-        "how_to_read": ("Each row is one time bucket and its event count. A sustained step up "
-                        "or down partway through is a candidate change point. Confirm it "
-                        "against a second, unrelated event before believing it - a step in "
-                        "every event type usually means the workload changed, not the system."),
+        "source": "raw trace under a scan cap (no index for this run)",
+        "series": [{"t": _fmt(lo + i * width), "n": c,
+                    "bar": "#" * int(round(20 * c / peak)) if peak else ""}
+                   for i, c in enumerate(counts)],
     }
-    # A capped scan covers only the START of the recording, but the series still renders as a
-    # full-width chart. Left unsaid, "no clearly isolated step" would mean "I did not look at
-    # most of it" - which is how a partial read turns into a wrong conclusion.
     if truncated:
         out["WARNING"] = (
             "SCAN CAP HIT. This series covers only %s to %s, NOT the whole recording. Compare "
-            "against ctf_timespan: if that span is longer, the rest of the trace was never "
-            "examined and you must not conclude anything about it. Narrow with procname, or "
-            "sweep later ranges explicitly with query_ctf." % (_fmt(lo), _fmt(hi)))
+            "against ctf_timespan: if that span is longer, the rest was never examined and you "
+            "must not conclude anything about it." % (_fmt(lo), _fmt(hi)))
     return out
 
 
-def query_ctf(run_dir: str, event: str, begin: str | None = None, end: str | None = None,
-              sample: int = 10, procname: str | None = None, contains: str | None = None,
-              ctf_subdir: str = "kernel/kernel") -> dict:
-    """Read the raw trace for one event pattern over a time range THE AGENT chooses.
-
-    begin/end are clock strings like '03:37:32' (HH:MM:SS[.frac]). Omit both to read the whole
-    trace, subject to the scan cap. There are no named windows: naming one would require
-    knowing when the incident was, which is the thing being asked.
-    """
+def _query_from_trace(run_dir: str, event: str, begin, end, sample: int,
+                      procname, contains, ctf_subdir: str) -> dict:
     ctf = os.path.join(run_dir, ctf_subdir)
     if not os.path.isdir(ctf):
         return {"error": "no CTF at %s" % ctf}
+    ev_re = re.compile(event)
     sample = max(0, min(int(sample), MAX_SAMPLE))
-    try:
-        ev_re = re.compile(event)
-    except re.error as e:
-        return {"error": "bad event pattern: %s" % e}
-
     cmd = [BT2] + GMT + [ctf]
     if begin:
         cmd += ["--begin", begin]
     if end:
         cmd += ["--end", end]
-
     by_event, by_proc = Counter(), Counter()
     lines, scanned, truncated = [], 0, False
     first_t = last_t = None
-    # The scan's OWN span, which is not the matched events' span. If the pattern is rare
-    # the two differ a lot, and it is the scan span that says how much of the requested
-    # range was actually read. Clock-parsed on the first and last line only, not all of
-    # them - at 400k lines a per-line regex is not free.
     scan_first = scan_last_line = None
     try:
         p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
@@ -273,10 +493,6 @@ def query_ctf(run_dir: str, event: str, begin: str | None = None, end: str | Non
 
     dur = (last_t - first_t) if (first_t is not None and last_t is not None) else None
     total = sum(by_event.values())
-
-    # How much of what was ASKED FOR did we actually read? The first version reported only
-    # `truncated: true`, which understates it badly: the agent asked for 20 s, got 0.3 s, and
-    # went on comparing windows as if it had them. Say the number.
     scan_last = _clock(scan_last_line) if scan_last_line else None
     scan_span = (scan_last - scan_first) if (scan_first is not None and scan_last is not None) else None
     want = None
@@ -285,41 +501,32 @@ def query_ctf(run_dir: str, event: str, begin: str | None = None, end: str | Non
         if b is not None and e is not None and e > b:
             want = e - b
     cover = round(100.0 * scan_span / want, 1) if (scan_span is not None and want) else None
-
     if truncated and cover is not None:
         note = ("scan cap of %d events hit: you asked for %.1f s and only the first %.1f s "
-                "(%.1f%%) was read. Raw counts are a LOWER BOUND for the range you named. "
-                "Asking for a shorter range does NOT help - babeltrace decodes from the start "
-                "of the trace either way. Compare rate_per_s between ranges instead of counts, "
-                "and remember a zero here means 'not in the part I read', not 'absent'."
-                % (MAX_SCAN, want, scan_span, cover))
+                "(%.1f%%) was read. Counts are a LOWER BOUND. Compare rate_per_s between "
+                "ranges rather than counts, and remember a zero means 'not in the part I "
+                "read', not 'absent'." % (MAX_SCAN, want, scan_span, cover))
     elif truncated:
         note = ("scan cap of %d events hit - counts are a LOWER BOUND and the range was not "
-                "fully read. Compare rate_per_s between ranges rather than raw counts; a zero "
-                "means 'not in the part I read', not 'absent'." % MAX_SCAN)
+                "fully read." % MAX_SCAN)
     else:
         note = "range fully read"
     return {
         "event_pattern": event,
         "range_requested": [begin, end],
-        "range_matched": [_fmt(first_t) if first_t is not None else None,
-                          _fmt(last_t) if last_t is not None else None],
-        "filters": {"procname": procname, "contains": contains},
-        "matched": total,
-        "rate_per_s": round(total / dur, 2) if dur and dur > 0 else None,
-        "events_scanned": scanned,
         "range_actually_read": [_fmt(scan_first) if scan_first is not None else None,
                                 _fmt(scan_last) if scan_last is not None else None],
         "coverage_pct_of_requested": cover,
-        "truncated": truncated,
-        "note": note,
+        "filters": {"procname": procname, "contains": contains},
+        "matched": total,
+        "rate_per_s": round(total / dur, 2) if dur and dur > 0 else None,
+        "events_scanned": scanned, "truncated": truncated, "note": note,
+        "source": "raw trace under a scan cap (no index for this run)",
         "by_event": dict(by_event.most_common(15)),
         "top_procnames": dict(by_proc.most_common(15)),
         "sample": lines,
-        "how_to_compare": ("A count on its own means nothing. Compare rate_per_s against "
-                           "another range of this same trace that you have reason to believe "
-                           "is quiet, and say which range you used and why."),
     }
+
 
 
 TIMESPAN_DEF = {
@@ -350,22 +557,39 @@ TIMELINE_DEF = {
 TOOL_DEF = {
     "name": "query_ctf",
     "description": (
-        "Read the RAW LTTng kernel trace for one event type over a time range YOU choose. Any "
-        "tracepoint the kernel recorded is available - not only what has been pre-aggregated. "
-        "begin/end are clock strings like '03:37:32'; omit both to sweep the whole trace. "
-        "Returns counts, a per-second rate, the processes responsible, and real event lines. "
-        "Counts are meaningless alone: compare a range you suspect against a range you believe "
-        "is quiet, and be able to say why you chose each."),
+        "Count one kernel event over a time range YOU choose, and see which processes produced "
+        "it. Any tracepoint the kernel recorded is available. begin/end are UTC clock strings "
+        "like '13:12:30'; omit both for the whole recording. Exact over the whole range you "
+        "name - not a sample of it. Counts are meaningless alone: compare a range you suspect "
+        "against a range you believe is quiet, and be able to say why you chose each. Set "
+        "`buckets` to see the range broken down over time."),
     "parameters": {"type": "object", "properties": {
         "event": {"type": "string", "description": "event name substring or regex"},
-        "begin": {"type": "string", "description": "start clock 'HH:MM:SS' (optional)"},
-        "end": {"type": "string", "description": "end clock 'HH:MM:SS' (optional)"},
+        "begin": {"type": "string", "description": "start clock 'HH:MM:SS' UTC (optional)"},
+        "end": {"type": "string", "description": "end clock 'HH:MM:SS' UTC (optional)"},
         "procname": {"type": "string", "description": "optional exact procname filter"},
-        "contains": {"type": "string", "description": "optional substring the line must contain"},
-        "sample": {"type": "integer", "description":
-                   "raw event lines to return, 0-%d (default 10)" % MAX_SAMPLE}},
+        "buckets": {"type": "integer", "description":
+                    "optional: split the range into this many time buckets, 5-120"}},
         "required": ["event"]},
 }
+
+LINES_DEF = {
+    "name": "ctf_lines",
+    "description": (
+        "Read real event lines, with all their fields, straight from the raw trace. Use it to "
+        "see WHAT an event actually contains once query_ctf has told you where to look - the "
+        "processes involved, the CPU, the prev/next task, the syscall arguments. Narrow ranges "
+        "only (at most %d s) and a few lines at a time." % int(MAX_LINES_RANGE_S)),
+    "parameters": {"type": "object", "properties": {
+        "event": {"type": "string", "description": "event name substring or regex"},
+        "begin": {"type": "string", "description": "start clock 'HH:MM:SS' UTC (required)"},
+        "end": {"type": "string", "description": "end clock 'HH:MM:SS' UTC (required)"},
+        "n": {"type": "integer", "description": "lines to return, 1-%d (default 10)" % MAX_SAMPLE},
+        "procname": {"type": "string", "description": "optional exact procname filter"},
+        "contains": {"type": "string", "description": "optional substring the line must contain"}},
+        "required": ["event", "begin", "end"]},
+}
+
 
 
 if __name__ == "__main__":
