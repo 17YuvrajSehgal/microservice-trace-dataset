@@ -235,8 +235,17 @@ def leak_scan(text: str) -> list:
     return sorted(hits)
 
 
-def to_skill(bp: dict) -> str:
-    """Render the agent-facing skill. Answer-bearing fields are deliberately excluded."""
+def to_skill(bp: dict, kernel_only: bool = False) -> str:
+    """Render the agent-facing skill. Answer-bearing fields are deliberately excluded.
+
+    kernel_only drops the resolved command bindings. In phase 1 the agent has a raw
+    kernel trace and four read-only tools - no shell, no prometheus, no cadvisor - so
+    every `run [...]` line names something it cannot do. Worse, three of them pass
+    `--gt <window>`, the ground-truth injection window, which is the one thing the
+    agent is supposed to work out for itself. The capability and the expectation stay:
+    those are the method. Only the binding goes, which is what the blueprint already
+    says a binding is - environment-specific and replaceable.
+    """
     p, c, d = bp["problem"], bp["collection_order"], bp["decision"]
 
     app = bp.get("applicability", {})
@@ -276,10 +285,18 @@ def to_skill(bp: dict) -> str:
         order += ["", f"Why this set: {c['why_these']}"]
 
     providers = load_providers()
-    steps = ["## Investigation blueprint",
-             "Each step names the capability it needs. The command shown is the binding "
-             "resolved for THIS environment; another environment may bind a different tool "
-             "to the same capability without changing the procedure.", ""]
+    if kernel_only:
+        steps = ["## Investigation blueprint",
+                 "Each step names the capability it needs and what a correct result looks "
+                 "like. No commands are given: in this environment you have a raw kernel "
+                 "trace and your read-only query tools, and nothing else. Achieve each "
+                 "capability with those, in your own way. A step you genuinely cannot reach "
+                 "from kernel data should be stated as unreachable, not guessed at.", ""]
+    else:
+        steps = ["## Investigation blueprint",
+                 "Each step names the capability it needs. The command shown is the binding "
+                 "resolved for THIS environment; another environment may bind a different tool "
+                 "to the same capability without changing the procedure.", ""]
     for i, s in enumerate(bp["processing"], 1):
         steps.append(f"{i}. {s['step']}")
         cap = s.get("capability")
@@ -287,10 +304,10 @@ def to_skill(bp: dict) -> str:
         if cap:
             bound, prov = bind(cap, providers)
             steps.append(f"   needs: `{cap}`")
-            if bound:
+            if bound and not kernel_only:
                 steps.append(f"   run [{prov}]: `{bound}`")
             run = run or bound
-        elif run:
+        elif run and not kernel_only:
             steps.append(f"   run: `{run}`")
         if s.get("expect"):
             steps.append(f"   expect: {s['expect']}")
@@ -409,6 +426,11 @@ def main():
     ap.add_argument("blueprints", nargs="+")
     ap.add_argument("--out", default="", help="write skills here; omit to validate only")
     ap.add_argument("--validate", action="store_true")
+    ap.add_argument("--kernel-only", action="store_true",
+                    help="drop the resolved command bindings: phase 1 gives the agent "
+                         "a raw kernel trace and read-only query tools, so every "
+                         "command line names something it cannot run, and three of "
+                         "them pass the ground-truth window")
     a = ap.parse_args()
 
     paths = []
@@ -431,7 +453,7 @@ def main():
         if hard:
             print(f"FAIL {path}: {len(hard)} problem(s)"); bad += 1; continue
 
-        skill = to_skill(bp)
+        skill = to_skill(bp, kernel_only=a.kernel_only)
         # Scan the BODY only. The frontmatter carries `covers:` on purpose — it is harness
         # metadata for scoring and leave-one-out, and skillreg never puts it in the prompt.
         body_only = skill.split("---", 2)[-1]
