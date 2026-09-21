@@ -44,7 +44,7 @@ FAULT_TYPES = [
     "memory_limit", "service_network", "queue_backlog", "normal",
 ]
 
-SYSTEM = (
+_SYS_HEAD = (
     "You are a senior SRE doing root-cause analysis of ONE incident in a microservice system. "
     "An anomaly was detected in a known time window. Your read-only telemetry tools compare the "
     "pre-incident BASELINE to the incident window.\n"
@@ -69,6 +69,9 @@ SYSTEM = (
     "actually does), query_source can search and read the application's source.\n"
     "5. Only then submit_diagnosis, citing the decisive baseline->incident changes.\n"
     "\n"
+)
+
+_FAULT_VOCAB = (
     "FAULT TYPES (operational definitions — pick the closest):\n"
     "- cpu_saturation: host-wide CPU pressure; an extra workload or spike consumes host CPU, many "
     "services see contention.\n"
@@ -96,11 +99,74 @@ SYSTEM = (
     "idle/lagging, backlog grows; few user-visible errors).\n"
     "- normal: no injected fault evident.\n"
     "\n"
+)
+
+_SYS_RULES = (
     "RULES: root_cause_service is the culprit component as named in telemetry — name the "
     "unexplained workload/container itself if a co-tenant is the cause, or 'host' for host-wide "
     "resource causes with no visible culprit workload. Distinguish victims from the culprit. Be "
     "economical with tool calls; never guess before checking baseline->incident evidence."
 )
+
+SYSTEM = _SYS_HEAD + _FAULT_VOCAB + _SYS_RULES
+
+# ---------------------------------------------------------------------------
+# Phase 1 of the blueprint study: a raw LTTng kernel trace and nothing else.
+#
+# The default prompt above cannot be reused. It opens with "an anomaly was detected in a known
+# time window" and "your tools compare the pre-incident BASELINE to the incident window" - both
+# false here, and both give away the one thing the agent is supposed to work out for itself.
+# Its METHOD then names list_services, query_topology, query_kernel and query_source, none of
+# which are offered. A prompt that describes tools the agent does not have is how the first
+# pilot ended up reporting "normal" because the modalities it expected came back empty.
+_KO_HEAD = (
+    "You are a senior SRE handed ONE raw kernel trace from a microservice host. Nobody has "
+    "told you whether anything went wrong, when, or where. There is no alert, no known "
+    "incident window, and no pre-computed baseline. Finding all of that is the job.\n"
+    "\n"
+    "YOUR ONLY EVIDENCE is the LTTng kernel trace, through three tools: ctf_timespan (how long "
+    "the recording is), ctf_timeline (one event counted across the whole recording, bucketed, "
+    "as a bar chart) and query_ctf (counts, rates, top processes and raw event lines over a "
+    "range YOU choose). There are deliberately no metrics, logs or spans. That is the dataset, "
+    "not a gap in it: never treat a missing modality as evidence that nothing happened.\n"
+    "\n"
+    "METHOD:\n"
+    "1. ORIENT: ctf_timespan first, so you know the real start and end. Every later range must "
+    "sit inside it. Timestamps are UTC.\n"
+    "2. FIND THE WHEN: ctf_timeline on a few unrelated events (for example sched_switch, "
+    "sched_wakeup, block_rq_issue, net_dev_xmit) across the FULL span. You are looking for a "
+    "step, a spike or a collapse in one series that the others do not share. A step present in "
+    "everything usually means the workload changed, not that the system misbehaved. Check the "
+    "coverage line each call reports: if a scan was truncated, the quiet part may simply be the "
+    "part you never read.\n"
+    "3. FIND THE WHERE: query_ctf over the suspect range versus a quiet range you pick as your "
+    "own baseline. Compare top processes between the two. The culprit is usually a process that "
+    "is absent or negligible in the quiet range and dominant in the suspect one.\n"
+    "4. FIND THE WHY, from the mechanism the kernel actually recorded: on-CPU saturation "
+    "(sched_switch churn, one process monopolising), CPU starvation (long sched_wakeup to "
+    "sched_switch delay), disk wait (block_rq_issue/block_rq_complete latency), network "
+    "(net_dev_xmit/netif_receive_skb), lock or futex contention, memory reclaim, or a process "
+    "exiting and respawning. Read a few raw event lines before you commit - counts alone can "
+    "mislead.\n"
+    "5. CONFIRM OR REJECT: state which check would have falsified your conclusion and whether "
+    "you ran it. If the evidence genuinely shows a healthy system, 'normal' is a legitimate "
+    "answer - but only after you have looked across the whole span, not because a tool came "
+    "back empty.\n"
+    "6. Then submit_diagnosis, with the incident_window you derived and the evidence for it.\n"
+    "\n"
+)
+
+_KO_RULES = (
+    "RULES: root_cause_service is the culprit as it appears in the kernel trace - the process "
+    "or container name itself when one workload is responsible, or 'host' for a host-wide "
+    "resource cause with no single visible culprit. Kernel process names are truncated to 15 "
+    "characters; report what you saw. Distinguish victims (processes waiting) from the culprit "
+    "(the process consuming). incident_window must come from your own evidence: an invented "
+    "window is worse than 'unknown'. Never guess a fault type before you have located a change "
+    "in time and attributed it to a process."
+)
+
+SYSTEM_KERNEL_ONLY = _KO_HEAD + _FAULT_VOCAB + _KO_RULES
 
 _TOOL_DEFS = [
     {"name": "list_services", "description": "List the services/containers present in this incident.",
@@ -314,8 +380,17 @@ def diagnose(run, app: str | None = None, max_steps: int = 14, verbose: bool = F
     # are pseudonymized in every tool result. The agent answers in alias space; we unmask after.
     guard = leakguard.Guard(enabled=config.MASK_NAMES)
     shown_id = leakguard.alias_run(run_id) if config.MASK_NAMES else run_id
-    user = (f"Incident '{shown_id}'. Services are unknown until you list "
-            f"them. Diagnose the root cause and call submit_diagnosis.")
+    if kernel_only:
+        # Neutral on purpose. The default wording says "Incident 'X'. Services are unknown
+        # until you list them" - it asserts that something went wrong, and it points at
+        # list_services, which kernel-only mode does not offer. Asserting an incident is a
+        # small leak but a real one: it rules out `normal` before the agent has looked.
+        user = (f"Kernel trace '{shown_id}' from one host, one recording. Work out whether "
+                f"anything went wrong in it and, if so, when, where and why. Then call "
+                f"submit_diagnosis.")
+    else:
+        user = (f"Incident '{shown_id}'. Services are unknown until you list "
+                f"them. Diagnose the root cause and call submit_diagnosis.")
     sic = None
     tr = T.Transcript(run_id, method="agent", condition=condition, extra=meta)
     tr.meta["sent_cap_chars"] = SENT_CAP
@@ -327,7 +402,8 @@ def diagnose(run, app: str | None = None, max_steps: int = 14, verbose: bool = F
     # Phase 1: deterministic evidence survey -> masked -> evidence-only skill selection with
     # ABSTAIN. On a match the skill body is appended to the system prompt; on abstain the agent
     # proceeds first-principles. Selection sees ONLY masked evidence — nothing states the problem.
-    system_eff, sel = SYSTEM, None
+    base_system = SYSTEM_KERNEL_ONLY if kernel_only else SYSTEM
+    system_eff, sel = base_system, None
     sel_tokens = {"in": 0, "out": 0}
     survey_bytes = 0
     masked_digest = None
@@ -367,7 +443,7 @@ def diagnose(run, app: str | None = None, max_steps: int = 14, verbose: bool = F
         if len(skills) != 1:
             raise ValueError("skill_given expects exactly one blueprint, got %d" % len(skills))
         sk = skills[0]
-        system_eff = (SYSTEM +
+        system_eff = (base_system +
                       "\n\nBLUEPRINT FOR THIS PROBLEM (given to you; it was not inferred from "
                       f"the evidence): {sk.name}\n"
                       "Follow its method. Still VERIFY its problem signature with your own tool "
@@ -397,7 +473,7 @@ def diagnose(run, app: str | None = None, max_steps: int = 14, verbose: bool = F
                      tokens=sel_tokens)
             if sel.get("skill") is not None:
                 sk = sel["skill"]
-                system_eff = (SYSTEM +
+                system_eff = (base_system +
                               "\n\nACTIVE SKILL (matched by evidence, possibly wrongly): "
                               f"{sk.name}\n"
                               "Before following its blueprint, VERIFY its problem signature with "
@@ -411,15 +487,6 @@ def diagnose(run, app: str | None = None, max_steps: int = 14, verbose: bool = F
     # tell it, hey, this is the problem." The hint states the SYMPTOM, never the fault name or
     # the culprit service - otherwise it would hand over the answer and the arms stop comparing
     # anything. Same string in both arms, so it cannot advantage one of them.
-    if kernel_only:
-        # Say the scope out loud. Otherwise a missing modality reads as "nothing happened" -
-        # which is exactly how the first pilot talked itself into "normal".
-        user += ("\n\nThe ONLY evidence available for this incident is the raw LTTng kernel "
-                 "trace, via ctf_timespan, ctf_timeline and query_ctf. There are deliberately "
-                 "no metrics, logs or spans. That is the dataset, not a gap: do not treat "
-                 "their absence as evidence that nothing happened, and do not report 'normal' "
-                 "merely because a modality you expected is missing.")
-
     if problem_hint:
         user += ("\n\nWhat the operator reports: " + problem_hint +
                  "\nThat is a symptom, not a diagnosis. Confirm or reject it from the evidence.")
