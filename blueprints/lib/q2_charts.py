@@ -259,7 +259,7 @@ def chart_ceiling(rows, path):
 
     # Hand-placed offsets. These four points sit close enough that automatic placement runs
     # labels into the diagonal or into each other.
-    NUDGE = {"anomaly_cpu": (-12, 12), "anomaly_net": (-8, 13), "noisy_neighbor": (6, -22),
+    NUDGE = {"anomaly_cpu": (-12, 12), "anomaly_net": (-8, 13), "noisy_neighbor": (-12, -6),
              "slow_db": (0, 14), "svc_net": (14, 2), "svc_cpu_cap": (14, 2)}
     for (a, b), probs in sorted(at.items()):
         ax.scatter([a], [b], s=190, color=COLOR_OF[probs[0]], zorder=3,
@@ -270,11 +270,11 @@ def chart_ceiling(rows, path):
         ax.annotate(label, (a, b), textcoords="offset points", xytext=(dx, dy),
                     ha=ha, fontsize=9.5, color=INK)
 
-    ax.text(33, 97, "blueprint helped", fontsize=10, color=S1, ha="center",
+    ax.text(27, 86, "blueprint helped", fontsize=10, color=S1, ha="center",
             fontweight="bold")
     ax.text(76, 64, "no change", fontsize=9, color=INK_MUTED, rotation=41, ha="center")
     ax.annotate("already at the ceiling -" + chr(10) + "nothing left to gain", (100, 100),
-                textcoords="offset points", xytext=(-8, -70), ha="right",
+                textcoords="offset points", xytext=(-6, -30), ha="right",
                 fontsize=8.5, color=INK_MUTED)
     ax.annotate("stuck at the floor - the tools" + chr(10) + "could not tell containers apart",
                 (0, 0), textcoords="offset points", xytext=(16, 34), ha="left",
