@@ -52,6 +52,10 @@ BT2 = os.environ.get("BT2", "/scratch/yuvraj17/stratatrace/tools/bt21.sh")
 # correct finding scores as a miss.
 GMT = ["--clock-gmt"]
 
+# index columns are tab-separated; spelled this way because a literal escape in a
+# heredoc-written patch has bitten this file twice already
+TAB = chr(9)
+
 MAX_SAMPLE = 40
 MAX_SCAN = 400000
 # ctf_lines decodes from the start of the trace, so a wide range is a full pass for a
