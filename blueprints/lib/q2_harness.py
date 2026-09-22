@@ -98,7 +98,7 @@ NARROW_AT = 2       # "narrowed" = the true answer is in the TOP 2
 # recorded as well, so a different bar can be applied later without re-running anything.
 
 
-def incidents_for(family: str, data_root: str, limit: int) -> list:
+def incidents_for(family: str, data_root: str, limit: int, app: str = "") -> list:
     """Run dirs for one family, capped at `limit` - the SAME cap for every problem, so no
     problem gets more attempts than another.
 
@@ -107,8 +107,12 @@ def incidents_for(family: str, data_root: str, limit: int) -> list:
     was extracted before concluding the runs do not exist.
     """
     out = []
-    for app in ("sockshop", "trainticket"):
-        d = os.path.join(data_root, app, family)
+    # `app` filters. Without it the loop takes the first `limit` runs from a list that puts
+    # Sock Shop first, and Sock Shop always has enough - so Train Ticket was never reached, and
+    # the entire 360-run study ran on one application without anything saying so.
+    apps = (app,) if app else ("sockshop", "trainticket")
+    for app_name in apps:
+        d = os.path.join(data_root, app_name, family)
         if not os.path.isdir(d):
             continue
         for run in sorted(os.listdir(d)):
@@ -119,7 +123,8 @@ def incidents_for(family: str, data_root: str, limit: int) -> list:
                 continue
             if not os.path.exists(os.path.join(rd, "ground_truth.json")):
                 continue
-            out.append({"app": app, "family": family, "run_id": run, "run_dir": rd})
+            out.append({"app": app_name, "family": family, "run_id": run,
+                        "run_dir": rd})
     return out[:limit]
 
 

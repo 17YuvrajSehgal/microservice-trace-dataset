@@ -89,6 +89,9 @@ def main() -> int:
     ap.add_argument("--incident", type=int, default=0,
                     help="which incident of the family, 0-based. The matrix runs "
                          "several per problem, so a cell has to be able to name one.")
+    ap.add_argument("--app", default="",
+                    help="sockshop or trainticket; omit to take whichever "
+                         "comes first, which is always sockshop")
     ap.add_argument("--data-root", default="/scratch/yuvraj17/stratatrace/dataset/runs")
     ap.add_argument("--out-dir", default="/scratch/yuvraj17/stratatrace/results/q2")
     ap.add_argument("--packs-root", default="/scratch/yuvraj17/stratatrace/data/packs")
@@ -122,7 +125,7 @@ def main() -> int:
     print("  model     %s / %s" % (config.PROVIDER, config.model_id()))
     print("  rank_k    %d   narrowed at top-%d" % (Q.RANK_K, Q.NARROW_AT))
 
-    incs = Q.incidents_for(args.problem, args.data_root, args.incident + 1)
+    incs = Q.incidents_for(args.problem, args.data_root, args.incident + 1, app=args.app)
     if len(incs) <= args.incident:
         print("no incident %d for %s under %s (found %d)"
               % (args.incident, args.problem, args.data_root, len(incs)))

@@ -55,6 +55,8 @@ def run_cell(c: dict, a, log_dir: str) -> dict:
            "--ask", c["ask"], "--arm", c["arm"], "--repeat", str(c["repeat"]),
            "--data-root", a.data_root, "--out-dir", a.out_dir,
            "--skills-dir", a.skills_dir, "--max-steps", str(a.max_steps)]
+    if a.app:
+        cmd += ["--app", a.app]
     t0 = time.time()
     with open(log, "w") as fh:
         rc = subprocess.call(cmd, stdout=fh, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL)
@@ -75,6 +77,9 @@ def main() -> int:
     ap.add_argument("--jobs", type=int, default=4)
     ap.add_argument("--max-steps", type=int, default=60)
     ap.add_argument("--python", default=os.path.expanduser("~/q2venv/bin/python"))
+    ap.add_argument("--app", default="",
+                    help="sockshop or trainticket; omit to take whichever "
+                         "comes first, which is always sockshop")
     ap.add_argument("--data-root", default="/scratch/yuvraj17/stratatrace/dataset/runs")
     ap.add_argument("--out-dir", default="/scratch/yuvraj17/stratatrace/results/q2")
     ap.add_argument("--packs-root", default="/scratch/yuvraj17/stratatrace/data/packs")
@@ -94,7 +99,7 @@ def main() -> int:
 
     todo, skipped, planned = [], 0, 0
     for prob in problems:
-        incs = Q.incidents_for(prob, a.data_root, a.incidents)
+        incs = Q.incidents_for(prob, a.data_root, a.incidents, app=a.app)
         if not incs:
             print("WARNING: no incidents found for %s - skipping" % prob)
             continue
