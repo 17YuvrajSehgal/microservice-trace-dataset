@@ -63,7 +63,8 @@ SCHEMA = TAB.join(["# bucket_start_s", "event", "procname", "pid_ns", "count"]) 
 
 
 def build(run_dir: str, out_path: str, ctf_subdir: str = "kernel/kernel",
-          bucket_ms: int = BUCKET_MS, verbose: bool = True) -> dict:
+          bucket_ms: int = BUCKET_MS, verbose: bool = True,
+          lines_path: str | None = None) -> dict:
     """Stream one decode into a bucketed count table.
 
     Streamed, not accumulated. babeltrace emits in time order, so a bucket is finished the
@@ -86,7 +87,24 @@ def build(run_dir: str, out_path: str, ctf_subdir: str = "kernel/kernel",
     procs: set[str] = set()
     nss: set[str] = set()
 
+    # Optional second output: ONE raw line per (bucket, event). Measured on 22-09, ctf_lines
+    # was 80% of an agent run's wall clock - 56-90 s a call - because babeltrace cannot seek and
+    # re-decodes the whole trace from the start to reach a range. This pass already decodes
+    # every event once, so keeping a line costs nothing extra here and makes that tool a file
+    # read.
+    #
+    # It is a DIFFERENT sample, and that has to be said rather than hidden: ctf_lines returns
+    # the first n matching lines in a range, which can all land inside a few milliseconds.
+    # Served from this file it returns one line per bucket, spread across the range.
     tmp = out_path + ".partial"
+    lines_fh = None
+    lines_seen: set = set()
+    n_lines_kept = 0
+    if lines_path:
+        os.makedirs(os.path.dirname(lines_path) or ".", exist_ok=True)
+        lines_fh = gzip.open(lines_path + ".partial", "wt", compresslevel=6)
+        lines_fh.write(TAB.join(["# bucket_start_s", "event", "procname", "pid_ns",
+                                 "raw_line"]) + chr(10))
     p = subprocess.Popen([BT2] + GMT + [ctf], stdout=subprocess.PIPE,
                          stderr=subprocess.DEVNULL, text=True, bufsize=1 << 22)
     with gzip.open(tmp, "wt", compresslevel=6) as out:
@@ -106,6 +124,7 @@ def build(run_dir: str, out_path: str, ctf_subdir: str = "kernel/kernel",
                 if cur_bucket is not None and b != cur_bucket:
                     n_rows += _flush(out, cur_bucket * bw, cur)
                     cur = {}
+                    lines_seen.clear()      # one line per event PER BUCKET
                 cur_bucket = b
                 em = _EVENT_RE.search(line)
                 if not em:
@@ -119,6 +138,14 @@ def build(run_dir: str, out_path: str, ctf_subdir: str = "kernel/kernel",
                 procs.add(proc)
                 nss.add(ns)
                 k = (ev, proc, ns)
+                if lines_fh is not None:
+                    lk = (cur_bucket, ev)
+                    if lk not in lines_seen:
+                        lines_seen.add(lk)
+                        lines_fh.write(TAB.join([
+                            "%.3f" % (cur_bucket * bw), ev, proc, ns,
+                            line.rstrip()[:400].replace(TAB, " ")]) + chr(10))
+                        n_lines_kept += 1
                 cur[k] = cur.get(k, 0) + 1
                 if verbose and n_lines % 5_000_000 == 0:
                     print("    %d M events, t=%.1fs, %.0fs elapsed"
@@ -126,6 +153,10 @@ def build(run_dir: str, out_path: str, ctf_subdir: str = "kernel/kernel",
                           flush=True)
         if cur_bucket is not None:
             n_rows += _flush(out, cur_bucket * bw, cur)
+
+    if lines_fh is not None:
+        lines_fh.close()
+        os.replace(lines_path + ".partial", lines_path)
 
     rc = p.returncode
     if rc not in (0, None) and n_lines == 0:
@@ -145,6 +176,10 @@ def build(run_dir: str, out_path: str, ctf_subdir: str = "kernel/kernel",
         "n_pid_ns": len(nss),
         "build_s": round(time.time() - t0, 1),
         "size_bytes": os.path.getsize(out_path),
+        "lines_kept": n_lines_kept,
+        "lines_path": lines_path if lines_path else None,
+        "lines_bytes": os.path.getsize(lines_path) if lines_path and
+        os.path.exists(lines_path) else 0,
     }
 
 
@@ -165,6 +200,11 @@ def main() -> int:
     ap.add_argument("--out-root", default="/scratch/yuvraj17/stratatrace/dataset/index")
     ap.add_argument("--bucket-ms", type=int, default=BUCKET_MS)
     ap.add_argument("--force", action="store_true", help="rebuild even if the index exists")
+    ap.add_argument("--with-lines", action="store_true",
+                    help="also keep one raw event line per (bucket, event), so ctf_lines reads "
+                         "a file instead of re-decoding the trace. Off by default: it changes "
+                         "WHICH lines that tool returns, and a live experiment must not have "
+                         "its tools altered underneath it.")
     a = ap.parse_args()
 
     rc = 0
@@ -175,7 +215,9 @@ def main() -> int:
                                                         os.path.getsize(op)), flush=True)
             continue
         print("BUILD %s" % rd, flush=True)
-        r = build(rd, op)
+        lp = (os.path.join(a.out_root, os.path.basename(rd.rstrip("/")) + ".lines.gz")
+              if a.with_lines else None)
+        r = build(rd, op, lines_path=lp)
         if "error" in r:
             print("  FAILED: %s" % r["error"], flush=True)
             rc = 1
@@ -184,6 +226,9 @@ def main() -> int:
               % (r["events_decoded"], r["rows"], r["size_bytes"] / 1e6,
                  r["n_event_types"], r["n_procnames"], r["build_s"]), flush=True)
         print("     %d pid namespaces (containers)" % r.get("n_pid_ns", 0), flush=True)
+        if r.get("lines_path"):
+            print("     %d raw lines kept, %.1f MB"
+                  % (r["lines_kept"], r["lines_bytes"] / 1e6), flush=True)
     return rc
 
 

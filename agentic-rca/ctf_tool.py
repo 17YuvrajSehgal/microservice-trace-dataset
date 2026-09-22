@@ -127,6 +127,18 @@ def _index_for(run_dir: str):
     return p if os.path.exists(p) else None
 
 
+def _lines_for(run_dir: str):
+    """The optional raw-line sample kept during the index pass, if this run has one.
+
+    Measured on 22-09: ctf_lines was 80% of an agent run's wall clock, 56-90 s a call, because
+    babeltrace cannot seek and re-decodes the trace from the start to reach any range. Every
+    other tool answers in about 2 s off the count index. When the sample exists this tool joins
+    them; when it does not, the old decode still runs, so nothing breaks on an unprepared run.
+    """
+    p = os.path.join(INDEX_ROOT, os.path.basename(run_dir.rstrip("/")) + ".lines.gz")
+    return p if os.path.exists(p) else None
+
+
 def _scan_index(path: str, ev_re=None, procname: str | None = None,
                 t0: float | None = None, t1: float | None = None,
                 pid_ns: str | None = None):
@@ -413,6 +425,44 @@ def ctf_lines(run_dir: str, event: str, begin: str, end: str, n: int = 10,
         return {"error": "range is %.1f s; ask for at most %d s of lines. Use query_ctf for "
                          "counts over wider ranges." % (t1 - t0, MAX_LINES_RANGE_S)}
     n = max(1, min(int(n), MAX_SAMPLE))
+
+    sample = _lines_for(run_dir)
+    if sample:
+        out, scanned = [], 0
+        with gzip.open(sample, "rt") as fh:
+            for row in fh:
+                if not row or row[0] == "#":
+                    continue
+                parts = row.rstrip(chr(10)).split(TAB)
+                if len(parts) != 5:
+                    continue
+                b, ev, proc, ns, raw = parts
+                try:
+                    bt = float(b)
+                except ValueError:
+                    continue
+                if bt < t0 or bt >= t1:
+                    continue
+                scanned += 1
+                if not ev_re.search(ev):
+                    continue
+                if contains and contains not in raw:
+                    continue
+                if procname and proc != procname:
+                    continue
+                out.append(raw)
+                if len(out) >= n:
+                    break
+        return {
+            "event_pattern": event, "range": [begin, end], "clock": "UTC",
+            "filters": {"procname": procname, "contains": contains},
+            "returned": len(out), "lines": out,
+            "source": "one line per 100 ms bucket, kept when the trace was indexed",
+            "note": ("These are real event lines from the range, one per 100 ms bucket rather "
+                     "than the first n in a row - so they are spread across the range instead "
+                     "of clustered at its start. They are a sample, not a count: use query_ctf "
+                     "if you want to know how many there were."),
+        }
 
     cmd = [BT2] + GMT + [ctf, "--begin", begin, "--end", end]
     lines, scanned = [], 0
