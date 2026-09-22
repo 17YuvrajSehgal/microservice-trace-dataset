@@ -175,16 +175,18 @@ def chart_effect(rows, path):
                     ha="left", va="center", fontweight="bold")
             prev = b
 
-    ax.set_title("Does the blueprint help?", fontsize=14, color=INK,
-                 fontweight="bold", pad=26, loc="left")
-    ax.text(0, 1.10, "Change in percentage points when the agent is given the blueprint. "
-                     "Blue is better, red is worse.",
-            transform=ax.transAxes, fontsize=9.5, color=INK_2, va="bottom")
-    fig.text(0.013, 0.015,
-             "Ignore a big number under 'both right' on its own - the blueprint text names the "
-             "fault, so it can be read straight off.",
+    # Title and subtitle both in FIGURE coords. An axes title and an axes-relative subtitle
+    # move independently, and the render pass showed them printed on top of each other.
+    fig.text(0.013, 0.958, "Does the blueprint help?", fontsize=14, color=INK,
+             fontweight="bold", va="top")
+    fig.text(0.013, 0.888, "Change in percentage points when the agent is given the "
+                           "blueprint. Blue is better, red is worse.",
+             fontsize=9.5, color=INK_2, va="top")
+    fig.text(0.013, 0.018,
+             "Ignore a big number under 'both right' on its own - the blueprint text names "
+             "the fault, so it can be read straight off.",
              fontsize=8, color=INK_MUTED)
-    fig.tight_layout(rect=(0, 0.045, 1, 1))
+    fig.tight_layout(rect=(0, 0.06, 1, 0.85))
     fig.savefig(path, dpi=200, facecolor=SURFACE)
     plt.close(fig)
     return path
@@ -245,26 +247,37 @@ def chart_ceiling(rows, path):
     ax.plot([-5, 105], [-5, 105], color=GRID, lw=2, zorder=1)
     ax.fill_between([-5, 105], [-5, 105], 112, color=S1, alpha=0.05, zorder=0)
 
+    # Coincident points get ONE marker and a combined label. svc_net and svc_cpu_cap both sit
+    # at (0, 0), and the render pass showed their two labels printed on top of each other.
+    at = {}
     for prob in ORDER:
         a = metric(arm(rows, prob, "none"), "where_ok", prob)
         b = metric(arm(rows, prob, "given"), "where_ok", prob)
         if a is None or b is None:
             continue
-        a, b = 100 * a, 100 * b
-        ax.scatter([a], [b], s=190, color=COLOR_OF[prob], zorder=3,
-                   edgecolors=SURFACE, linewidths=2)
-        dy = 6 if b < 92 else -9
-        ax.annotate(prob, (a, b), textcoords="offset points", xytext=(0, dy),
-                    ha="center", fontsize=9.5, color=INK)
+        at.setdefault((round(100 * a), round(100 * b)), []).append(prob)
 
-    ax.text(52, 103, "blueprint helped", fontsize=9.5, color=S1, ha="center",
+    # Hand-placed offsets. These four points sit close enough that automatic placement runs
+    # labels into the diagonal or into each other.
+    NUDGE = {"anomaly_cpu": (-12, 12), "anomaly_net": (-8, 13), "noisy_neighbor": (6, -22),
+             "slow_db": (0, 14), "svc_net": (14, 2), "svc_cpu_cap": (14, 2)}
+    for (a, b), probs in sorted(at.items()):
+        ax.scatter([a], [b], s=190, color=COLOR_OF[probs[0]], zorder=3,
+                   edgecolors=SURFACE, linewidths=2)
+        label = probs[0] if len(probs) == 1 else " + ".join(sorted(probs))
+        dx, dy = NUDGE.get(probs[0], (0, 13))
+        ha = "left" if dx > 4 else ("right" if dx < -4 else "center")
+        ax.annotate(label, (a, b), textcoords="offset points", xytext=(dx, dy),
+                    ha=ha, fontsize=9.5, color=INK)
+
+    ax.text(33, 97, "blueprint helped", fontsize=10, color=S1, ha="center",
             fontweight="bold")
-    ax.text(88, 78, "no change", fontsize=9, color=INK_MUTED, rotation=38, ha="center")
-    ax.annotate("already at the ceiling\nnothing left to gain", (100, 100),
-                textcoords="offset points", xytext=(-20, -46), ha="right",
+    ax.text(76, 64, "no change", fontsize=9, color=INK_MUTED, rotation=41, ha="center")
+    ax.annotate("already at the ceiling -" + chr(10) + "nothing left to gain", (100, 100),
+                textcoords="offset points", xytext=(-8, -70), ha="right",
                 fontsize=8.5, color=INK_MUTED)
-    ax.annotate("stuck at the floor\nthe tools could not\ntell containers apart", (0, 0),
-                textcoords="offset points", xytext=(16, 22), ha="left",
+    ax.annotate("stuck at the floor - the tools" + chr(10) + "could not tell containers apart",
+                (0, 0), textcoords="offset points", xytext=(16, 34), ha="left",
                 fontsize=8.5, color=INK_MUTED)
 
     ax.set_xlim(-5, 112)
