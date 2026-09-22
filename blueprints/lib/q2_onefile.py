@@ -48,6 +48,13 @@ def pc(n, d):
     return "-" if not d else "%d%%" % round(100 * n / d)
 
 
+def _mmss(secs):
+    """Median wall-clock per run. Minutes and seconds, because "how long did it take" is the
+    question a person asks and 393 is harder to read than 6m33s."""
+    secs = int(secs or 0)
+    return "%dm%02ds" % (secs // 60, secs % 60)
+
+
 def med(vals):
     v = sorted(x for x in vals if isinstance(x, (int, float)))
     return v[len(v) // 2] if v else 0
@@ -77,8 +84,8 @@ def block(L, prob, rows):
     L.append("")
 
     # the main table, same shape for every problem
-    L.append("| ask \\| arm | n | both right | WHERE | window | described | fault | tokens |")
-    L.append("|---|---|---|---|---|---|---|---|")
+    L.append("| ask \\| arm | n | both right | WHERE | window | described | fault | time | tokens |")
+    L.append("|---|---|---|---|---|---|---|---|---|")
     cache = {}
     for ask, arm in ARMS:
         rs = [r for r in rs_all if r.get("ask") == ask and r.get("arm") == arm]
@@ -91,9 +98,11 @@ def block(L, prob, rows):
         fault = sum(1 for r in rs if r.get("fault_ok"))
         dtxt, dval = describe(rs)
         cache[(ask, arm)] = (both / n, where / n, win / n, dval, fault / n)
-        L.append("| %s \\| %s | %d | %s | %s | %s | %s | %s | %s |"
+        secs = med([r.get("seconds") for r in rs])
+        L.append("| %s \\| %s | %d | %s | %s | %s | %s | %s | %s | %s |"
                  % (ask, arm, n, pc(both, n), pc(where, n), pc(win, n), dtxt,
-                    pc(fault, n), "{:,}".format(med([r.get("tokens") for r in rs]))))
+                    pc(fault, n), _mmss(secs),
+                    "{:,}".format(med([r.get("tokens") for r in rs]))))
     L.append("")
 
     # what the blueprint changed, per ask
@@ -170,7 +179,77 @@ def main() -> int:
     L.append("| window | did it find WHEN, overlap of at least half with the real window |")
     L.append("| described | how much of the mechanism its own words covered |")
     L.append("| fault | did it pick the right label from the list |")
+    L.append("| time | median wall clock for one run, start to answer |")
     L.append("| tokens | median per run |")
+    L.append("")
+    L.append("## How each number is worked out")
+    L.append("")
+    L.append("Every one is scored per run, then counted across the 15 runs in a row. Ground "
+             "truth is read only by the scorer. No tool the agent can call ever sees it.")
+    L.append("")
+    L.append("**both right** - the old strict test. The service must match AND the fault label "
+             "must match. One run, pass or fail. The column is how many of 15 passed.")
+    L.append("")
+    L.append("**fault** - does the label it picked match the fault we injected? We map its "
+             "label to our recipe name first, so `cpu_saturation` and `anomaly_cpu` count as "
+             "the same thing. Pass or fail per run.")
+    L.append("")
+    L.append("**WHERE** - four possible answers, not two:")
+    L.append("")
+    L.append("| answer | what it means |")
+    L.append("|---|---|")
+    L.append("| named | it said the injected thing, e.g. `stress-ng-cpu` or `mysqld` |")
+    L.append("| container | it said one specific container, by its `pid_ns` number |")
+    L.append("| host only | it said `host` and nothing narrower |")
+    L.append("| ambiguous | it said a shared runtime like `java`, which is 5 containers here |")
+    L.append("| wrong | anything else |")
+    L.append("")
+    L.append("Which of these count as right depends on the fault. For `anomaly_net` the netem "
+             "sits on the host's own interface, so there is no container to name and `host` IS "
+             "the complete answer. Everywhere else `host` is a hedge and does not count. The "
+             "target for each run is read from that run's own `ground_truth.json`, so the "
+             "accept list is never something I guessed in advance.")
+    L.append("")
+    L.append("**window** - we compare the range it claimed against the real injection window "
+             "and measure the overlap:")
+    L.append("")
+    L.append("```")
+    L.append("overlap = how much of the two ranges is shared")
+    L.append("union   = how much they cover together")
+    L.append("score   = overlap / union        (1.0 = exact, 0 = no overlap at all)")
+    L.append("```")
+    L.append("")
+    L.append("| verdict | when |")
+    L.append("|---|---|")
+    L.append("| hit | score is 0.5 or more |")
+    L.append("| partial | they overlap, but less than that |")
+    L.append("| miss | no overlap |")
+    L.append("| abstained | it said `unknown` |")
+    L.append("")
+    L.append("The `window` column counts hits only. **Abstaining is not counted as wrong.** We "
+             "told the agent a made-up window is worse than admitting it does not know, so "
+             "scoring it as a failure would contradict its own instructions.")
+    L.append("")
+    L.append("**described** - this one is a keyword check, and it is the softest number here. "
+             "For each problem we wrote down 3 ideas a correct answer contains. For "
+             "`noisy_neighbor` they are:")
+    L.append("")
+    L.append("1. an extra workload that is not part of the application")
+    L.append("2. it is taking CPU away from the others")
+    L.append("3. the application services are victims, not the cause")
+    L.append("")
+    L.append("Each idea has a list of phrases that count. Any one of them scores the idea. The "
+             "run scores the fraction it hit, so 2 of 3 is 67%%. The column averages that over "
+             "15 runs.")
+    L.append("")
+    L.append("It is deliberately generous - it asks \"did it say this at all\", not \"did it say "
+             "it well\". A low score means go and read the run, not that the run is wrong. The "
+             "first version was too generous and scored `slow_db` at 97%% because its word list "
+             "held a bare \"db\", which matches `catalogue-db` in any answer naming the "
+             "container. It now asks for phrases like \"database\" or \"waiting on\" instead.")
+    L.append("")
+    L.append("**time and tokens** - the median across the 15 runs, not the average, so one very "
+             "slow run cannot drag the number.")
     L.append("")
     L.append("> **Ignore the `fault` column when comparing arms.** The blueprint is handed "
              "over and its text describes the fault, so that column largely measures whether "
