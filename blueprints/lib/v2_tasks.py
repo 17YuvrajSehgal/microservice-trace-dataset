@@ -26,7 +26,7 @@ import argparse
 import os
 import sys
 
-V2 = os.environ.get("V2_ROOT", "/scratch/yuvraj17/stratatrace/data/stratatrace-v2")
+V2 = os.environ.get("V2_ROOT", "/scratch/yuvraj17/stratatrace/dataset/runs")
 APPS = ("sockshop", "trainticket")
 
 # Not a fault family: the Prometheus snapshot archive extracts into a sibling directory of the

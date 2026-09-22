@@ -5,27 +5,45 @@ Before 2026-09-03 it was spread across the scratch root, mixed with four other p
 
 ```
 /scratch/yuvraj17/stratatrace/
-├── repo/          the git clone (was /scratch/yuvraj17/microservice-trace-dataset)
-├── data/
-│   ├── l0/            raw kernel traces, the big one (~1.3 TB expanded)
-│   ├── agentic-runs/  extracted per-run telemetry
-│   ├── packs/         allpacks, evidence_packs, evidence_packs_tt, specificity
-│   ├── ctfcache/      shared decode cache (see ctf_extract.py)
-│   └── stratatrace-v1/  the v1 dataset release
-├── results/       one dir per experiment: withwithout, blockio, cpucluster, dbfix,
-│                  endpoints, flows, netloss, nettest, retest, comparison,
-│                  comparison_tt, verify, repro, peers, reorg, ww-smoke
-├── tools/         bt21.sh, local-bt21/ (babeltrace 2.1.2), src/ (its source)
+├── dataset/       **THE v2 DATASET. Everything about it is in here.**
+│   ├── README.md      generated - counts, per-family tables, what one run holds, the traps
+│   ├── INVENTORY.csv  one row per run, generated from the runs themselves
+│   ├── runs/          the extracted runs, what analysis reads      7.7 TB, 304 runs
+│   │   ├── sockshop/<family>/<run_id>/ + <run_id>_metrics/ + <run_id>_load.csv
+│   │   └── trainticket/...
+│   ├── archives/      the same runs as .tar.gz, one per family     844 GB
+│   │   ├── sockshop/      29 archives
+│   │   ├── trainticket/   22 archives
+│   │   └── provenance/    Prometheus TSDB, campaign manifests, collection logs, VM images
+│   └── index/         per-run kernel event count tables (build_ctf_index.py)
+├── attic/         kept, not deleted, not part of the dataset
+│   ├── superseded-20260917/     retired runs                        1.3 TB
+│   ├── superseded-20260915-issue17/  empty
+│   └── v1-and-earlier/          l0, stratatrace-v1, agentic-runs    2.8 TB
+├── repo/          the git clone
+├── data/          symlinks back to the above, plus packs/ and ctfcache/
+├── results/       one dir per experiment (q2, q2b, withwithout, blockio, ...)
+├── tools/         bt21.sh, local-bt21/ (babeltrace 2.1.2), src/
 ├── scripts/       loose helper scripts from past sessions
 ├── slurm-logs/    job .out / .err / .log files
-├── misc/          leftover odds and ends
-└── v2/            the v2 release, pushed 2026-09-06
-    ├── sockshop/      28 per-recipe tar.gz + _prometheus_snapshot.tar.gz  (464 GB, 169 runs)
-    └── trainticket/   21 per-recipe tar.gz + _prometheus_snapshot.tar.gz  (315 GB, 134 runs)
+├── misc/, work/   leftovers
 ```
 
-**v2 is deliberately NOT under `data/`.** It reuses every v1 recipe name, so sharing a root would
-let one release's archives overwrite the other's with no way to tell them apart afterwards.
+Reorganised 21 Sept 2026 by `transfer/organize_dataset.sh`. Before that the dataset was in
+three unrelated-looking places - `data/stratatrace-v2`, `v2/` (four subdirectories) and
+`data/ctf-index` - with the retired runs and 2.8 TB of v1 material beside them and nothing
+saying which was current.
+
+Nothing was deleted. Every move was a rename inside /scratch, and the old paths
+(`data/stratatrace-v2`, `data/ctf-index`, `data/l0`, `data/stratatrace-v1`,
+`data/agentic-runs`) are symlinks, so anything still pointing at them works.
+
+Run `transfer/make_inventory.py` after adding or retiring runs. It rewrites README.md and
+INVENTORY.csv from the runs on disk, so the counts cannot drift.
+
+v2 and v1 must never share a root: v2 reuses every v1 recipe name, so one release's archives
+would overwrite the other's with no way to tell them apart. That is why v1 sits in `attic/`
+rather than beside the v2 runs.
 
 ## Retention
 

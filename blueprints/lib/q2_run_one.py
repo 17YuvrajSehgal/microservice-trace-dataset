@@ -89,7 +89,7 @@ def main() -> int:
     ap.add_argument("--incident", type=int, default=0,
                     help="which incident of the family, 0-based. The matrix runs "
                          "several per problem, so a cell has to be able to name one.")
-    ap.add_argument("--data-root", default="/scratch/yuvraj17/stratatrace/data/stratatrace-v2")
+    ap.add_argument("--data-root", default="/scratch/yuvraj17/stratatrace/dataset/runs")
     ap.add_argument("--out-dir", default="/scratch/yuvraj17/stratatrace/results/q2")
     ap.add_argument("--packs-root", default="/scratch/yuvraj17/stratatrace/data/packs")
     ap.add_argument("--skills-dir", default=os.path.join(ROOT, "blueprints", "skills-kernel-only"))

@@ -10,7 +10,7 @@
 #   bash extract_v2_full.sh --verify   # count runs against the archives
 #
 #   env: SRC (/scratch/$USER/stratatrace/v2)
-#        OUT (/scratch/$USER/stratatrace/data/stratatrace-v2)
+#        OUT (/scratch/$USER/stratatrace/dataset/runs)
 #        PAR (16)  concurrent archives
 #
 # THE APPS STAY SEPARATE ON PURPOSE
@@ -30,7 +30,7 @@ set -uo pipefail
 
 ME="${USER:-$(id -un)}"
 SRC="${SRC:-/scratch/$ME/stratatrace/v2}"
-OUT="${OUT:-/scratch/$ME/stratatrace/data/stratatrace-v2}"
+OUT="${OUT:-/scratch/$ME/stratatrace/dataset/runs}"
 PAR="${PAR:-16}"
 APPS="${APPS:-sockshop trainticket}"
 UNZ="pigz -dc"; command -v pigz >/dev/null 2>&1 || UNZ="zcat"

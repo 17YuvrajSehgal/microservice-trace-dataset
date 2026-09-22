@@ -148,7 +148,7 @@ def index_path(out_root: str, run_dir: str) -> str:
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("run_dirs", nargs="+")
-    ap.add_argument("--out-root", default="/scratch/yuvraj17/stratatrace/data/ctf-index")
+    ap.add_argument("--out-root", default="/scratch/yuvraj17/stratatrace/dataset/index")
     ap.add_argument("--bucket-ms", type=int, default=BUCKET_MS)
     ap.add_argument("--force", action="store_true", help="rebuild even if the index exists")
     a = ap.parse_args()

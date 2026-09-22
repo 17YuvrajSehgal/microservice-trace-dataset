@@ -115,7 +115,7 @@ _TICK_RE = re.compile(r"_tick_(\d{8})T(\d{6})Z\.txt$")
 # is built before any question is asked of it and identically for every run.
 #
 # Raw event LINES still come from the trace itself, through ctf_lines.
-INDEX_ROOT = os.environ.get("CTF_INDEX_ROOT", "/scratch/yuvraj17/stratatrace/data/ctf-index")
+INDEX_ROOT = os.environ.get("CTF_INDEX_ROOT", "/scratch/yuvraj17/stratatrace/dataset/index")
 
 
 def _index_for(run_dir: str):

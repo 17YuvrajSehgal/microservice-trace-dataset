@@ -47,7 +47,7 @@
 set -uo pipefail
 
 REPO=/scratch/yuvraj17/stratatrace/repo
-V2=/scratch/yuvraj17/stratatrace/data/stratatrace-v2
+V2=/scratch/yuvraj17/stratatrace/dataset/runs
 OUT=/scratch/yuvraj17/stratatrace/results/v2-blueprint1-cpu
 TASKS="${1:-$REPO/blueprints/lib/tasks-v2-cpu.txt}"
 # Whole-node scheduling gives us 192 cores. Each measurement is one babeltrace decode, which is
@@ -67,7 +67,7 @@ echo
 measure_one() {
   APP="$1"; FAM="$2"; RUN="$3"
   REPO=/scratch/yuvraj17/stratatrace/repo
-  V2=/scratch/yuvraj17/stratatrace/data/stratatrace-v2
+  V2=/scratch/yuvraj17/stratatrace/dataset/runs
   OUT=/scratch/yuvraj17/stratatrace/results/v2-blueprint1-cpu
   D="$V2/$APP/$FAM/$RUN"
   CTF="$D/kernel/kernel"

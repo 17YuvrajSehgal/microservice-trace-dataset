@@ -28,7 +28,7 @@ import os
 import statistics
 import sys
 
-V2_DEFAULT = "/scratch/yuvraj17/stratatrace/data/stratatrace-v2"
+V2_DEFAULT = "/scratch/yuvraj17/stratatrace/dataset/runs"
 
 # rule -> (owning families, [(label, extractor, direction, current threshold)])
 # direction ">=" means the fault makes the number BIGGER.

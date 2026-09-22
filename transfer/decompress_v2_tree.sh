@@ -8,7 +8,7 @@
 #   bash decompress_v2_tree.sh            # decompress in place (resumable)
 #   bash decompress_v2_tree.sh --verify   # assert zero .gz remain
 #
-#   env: OUT (/scratch/$USER/stratatrace/data/stratatrace-v2)  PAR (64)
+#   env: OUT (/scratch/$USER/stratatrace/dataset/runs)  PAR (64)
 #
 # IT IS NOT JUST THE KERNEL TRACES
 # --------------------------------
@@ -24,7 +24,7 @@
 set -uo pipefail
 
 ME="${USER:-$(id -un)}"
-OUT="${OUT:-/scratch/$ME/stratatrace/data/stratatrace-v2}"
+OUT="${OUT:-/scratch/$ME/stratatrace/dataset/runs}"
 PAR="${PAR:-64}"
 UNZ="pigz -d"; command -v pigz >/dev/null 2>&1 || UNZ="gunzip"
 

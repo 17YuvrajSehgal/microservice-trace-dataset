@@ -71,7 +71,7 @@ def main() -> int:
     ap.add_argument("--jobs", type=int, default=4)
     ap.add_argument("--max-steps", type=int, default=60)
     ap.add_argument("--python", default=os.path.expanduser("~/q2venv/bin/python"))
-    ap.add_argument("--data-root", default="/scratch/yuvraj17/stratatrace/data/stratatrace-v2")
+    ap.add_argument("--data-root", default="/scratch/yuvraj17/stratatrace/dataset/runs")
     ap.add_argument("--out-dir", default="/scratch/yuvraj17/stratatrace/results/q2")
     ap.add_argument("--packs-root", default="/scratch/yuvraj17/stratatrace/data/packs")
     ap.add_argument("--skills-dir", default=os.path.join(ROOT, "blueprints", "skills-kernel-only"))

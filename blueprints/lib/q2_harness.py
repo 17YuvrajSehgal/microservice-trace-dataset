@@ -274,7 +274,7 @@ def main() -> int:
     # Maximum headroom and the blueprint I trust most - if it shows nothing here, the whole
     # approach needs rethinking before spending 360 runs on it.
     ap.add_argument("--problems", default="noisy_neighbor")
-    ap.add_argument("--data-root", default="/scratch/yuvraj17/stratatrace/data/stratatrace-v2")
+    ap.add_argument("--data-root", default="/scratch/yuvraj17/stratatrace/dataset/runs")
     ap.add_argument("--incidents", type=int, default=3,
                     help="incidents per problem - the same for every problem")
     ap.add_argument("--repeats", type=int, default=5)

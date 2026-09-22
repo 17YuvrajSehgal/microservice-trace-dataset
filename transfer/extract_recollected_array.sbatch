@@ -26,7 +26,7 @@ set -uo pipefail
 R=/scratch/yuvraj17/stratatrace
 SRC=${SRC:-$R/v2/sockshop-recollected-20260915}
 APP=${APP:-sockshop}
-DEST=$R/data/stratatrace-v2/$APP
+DEST=$R/dataset/runs/$APP
 mkdir -p "$DEST" "$R/slurm-logs"
 
 mapfile -t FILES < <(ls -1 "$SRC"/*.tar.gz 2>/dev/null | grep -v '/provenance' | sort)

@@ -42,7 +42,7 @@ import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 BP = os.path.dirname(HERE)                                    # blueprints/
-V2 = os.environ.get("V2_ROOT", "/scratch/yuvraj17/stratatrace/data/stratatrace-v2")
+V2 = os.environ.get("V2_ROOT", "/scratch/yuvraj17/stratatrace/dataset/runs")
 
 EXTRACT = f"{HERE}/ctf_extract.py"
 SYNTH = f"{HERE}/synthesize_gt.py"
