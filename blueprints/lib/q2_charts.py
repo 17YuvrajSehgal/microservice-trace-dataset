@@ -26,6 +26,7 @@ import argparse
 import glob
 import json
 import os
+import random
 import sys
 
 import matplotlib
@@ -192,54 +193,6 @@ def chart_effect(rows, path):
     return path
 
 
-# --- 2. how good is it, with and without? ---------------------------------------------------
-def chart_dumbbell(rows, path):
-    fig, axes = plt.subplots(1, 2, figsize=(10.4, 4.0), facecolor=SURFACE, sharey=True)
-    for ax, (key, label) in zip(axes, [METRICS[0], METRICS[1]]):
-        style(ax)
-        ax.set_facecolor(SURFACE)
-        ys = list(range(len(ORDER)))[::-1]
-        for y, prob in zip(ys, ORDER):
-            a = metric(arm(rows, prob, "none"), key, prob)
-            b = metric(arm(rows, prob, "given"), key, prob)
-            if a is None or b is None:
-                continue
-            a, b = 100 * a, 100 * b
-            ax.plot([a, b], [y, y], color=GRID, lw=2.5, zorder=1, solid_capstyle="round")
-            ax.scatter([a], [y], s=95, color=S1, zorder=3,
-                       edgecolors=SURFACE, linewidths=2)   # 2px surface ring
-            ax.scatter([b], [y], s=95, color=S2, zorder=3,
-                       edgecolors=SURFACE, linewidths=2)
-            far, near = (b, a) if b >= a else (a, b)
-            ax.text(far + 3.2, y, "%d%%" % round(far), va="center", fontsize=9, color=INK)
-            if abs(b - a) > 6:
-                ax.text(near - 3.2, y, "%d%%" % round(near), va="center", ha="right",
-                        fontsize=9, color=INK_MUTED)
-        ax.set_xlim(-14, 118)
-        ax.set_xticks([0, 25, 50, 75, 100])
-        ax.set_xticklabels(["0", "25", "50", "75", "100%"])
-        ax.set_yticks(ys)
-        ax.set_yticklabels(ORDER, fontsize=10, color=INK)
-        ax.xaxis.grid(True, color=GRID, lw=1)
-        ax.set_axisbelow(True)
-        ax.set_title(label.replace("\n", " "), fontsize=11.5, color=INK,
-                     fontweight="bold", loc="left", pad=8)
-
-    h = [plt.Line2D([], [], marker="o", ls="", ms=9, color=S1, label="without blueprint"),
-         plt.Line2D([], [], marker="o", ls="", ms=9, color=S2, label="with blueprint")]
-    axes[0].legend(handles=h, loc="upper left", bbox_to_anchor=(0, -0.13), ncol=2,
-                   frameon=False, fontsize=9.5, labelcolor=INK_2)
-    fig.suptitle("How often does it get the answer right?", fontsize=14, color=INK,
-                 fontweight="bold", x=0.013, ha="left", y=0.985)
-    fig.text(0.013, 0.905, "30 runs behind each dot. Problems grouped by what the fault "
-                           "touches: whole host, then a datastore, then one service.",
-             fontsize=9.5, color=INK_2)
-    fig.tight_layout(rect=(0, 0.10, 1, 0.88))
-    fig.savefig(path, dpi=200, facecolor=SURFACE)
-    plt.close(fig)
-    return path
-
-
 # --- 3. why the effect is zero in places -----------------------------------------------------
 def chart_ceiling(rows, path):
     fig, ax = plt.subplots(figsize=(6.8, 6.1), facecolor=SURFACE)
@@ -305,43 +258,203 @@ def chart_ceiling(rows, path):
     return path
 
 
-# --- 4. what it costs ------------------------------------------------------------------------
-def chart_cost(rows, path):
-    fig, axes = plt.subplots(1, 2, figsize=(10.4, 3.6), facecolor=SURFACE, sharey=True)
-    for ax, (key, label, fmt, scale) in zip(
-            axes, [("seconds", "Time per run (minutes)", "%.1f", 1 / 60.0),
-                   ("tokens", "Tokens per run (thousands)", "%.0f", 1 / 1000.0)]):
-        style(ax)
-        ys = list(range(len(ORDER)))[::-1]
-        for y, prob in zip(ys, ORDER):
-            a = metric(arm(rows, prob, "none"), key, prob)
-            b = metric(arm(rows, prob, "given"), key, prob)
-            if a is None or b is None:
-                continue
-            a, b = a * scale, b * scale
-            ax.plot([a, b], [y, y], color=GRID, lw=2.5, zorder=1, solid_capstyle="round")
-            ax.scatter([a], [y], s=85, color=S1, zorder=3, edgecolors=SURFACE, linewidths=2)
-            ax.scatter([b], [y], s=85, color=S2, zorder=3, edgecolors=SURFACE, linewidths=2)
-            hi = max(a, b)
-            ax.text(hi * 1.04, y, fmt % hi, va="center", fontsize=9, color=INK)
-        ax.set_yticks(ys)
-        ax.set_yticklabels(ORDER, fontsize=10, color=INK)
-        ax.xaxis.grid(True, color=GRID, lw=1)
-        ax.set_axisbelow(True)
-        ax.set_xlim(0, None)
-        ax.margins(x=0.18)
-        ax.set_title(label, fontsize=11.5, color=INK, fontweight="bold", loc="left", pad=8)
+# --- 2. every single run, one square ---------------------------------------------------------
+# Ordinal ramp: one hue, monotone lightness, validated with --ordinal. The outcome is ordered
+# best to worst, so an ordered encoding is the honest one - a categorical set of hues would
+# imply the four outcomes are unrelated kinds rather than degrees of the same thing.
+OUT_COLORS = [
+    ("named", "#184f95", "named the thing"),
+    ("container", "#256abf", "named one container"),
+    ("scope", "#3987e5", "said host only"),
+    ("ambiguous", "#86b6ef", "said a shared runtime"),
+    ("wrong", "#e6e5e1", "wrong"),
+]
+OUT_INK = {"named": "#184f95", "container": "#256abf", "scope": "#3987e5",
+           "ambiguous": "#86b6ef", "wrong": "#e6e5e1", "none": "#e6e5e1"}
+ARM_COLS = [("nohint", "none", "no hint\\nno blueprint"),
+            ("nohint", "given", "no hint\\nblueprint"),
+            ("hint", "none", "hint\\nno blueprint"),
+            ("hint", "given", "hint\\nblueprint")]
 
-    h = [plt.Line2D([], [], marker="o", ls="", ms=9, color=S1, label="without blueprint"),
-         plt.Line2D([], [], marker="o", ls="", ms=9, color=S2, label="with blueprint")]
-    axes[0].legend(handles=h, loc="upper left", bbox_to_anchor=(0, -0.15), ncol=2,
+
+def chart_every_run(rows, path):
+    """All 360 runs, one square each. Nothing averaged.
+
+    A summary rate cannot tell a stable 3-of-5 from a 5-of-5 on one incident and 0-of-5 on the
+    next, and those are very different findings. Here every repeat is visible, so consistency
+    is something you SEE rather than something you take on trust.
+    """
+    BW, BH, GAPX, GAPY = 5, 3, 1.5, 1.4          # 5 repeats wide, 3 incidents tall
+    fig, ax = plt.subplots(figsize=(11.6, 7.4), facecolor=SURFACE)
+
+    incid = {}
+    for prob in ORDER:
+        seen = []
+        for r in rows:
+            if r.get("problem") == prob and r.get("run_id") not in seen:
+                seen.append(r.get("run_id"))
+        incid[prob] = sorted(seen)
+
+    for pi, prob in enumerate(ORDER):
+        y0 = (len(ORDER) - 1 - pi) * (BH + GAPY)
+        for ai, (ask, armv, _) in enumerate(ARM_COLS):
+            x0 = ai * (BW + GAPX)
+            for r in rows:
+                if r.get("problem") != prob or r.get("ask") != ask or r.get("arm") != armv:
+                    continue
+                try:
+                    row_i = incid[prob].index(r.get("run_id"))
+                    col_i = int(r.get("repeat", 1)) - 1
+                except (ValueError, TypeError):
+                    continue
+                c = OUT_INK.get(r.get("where") or "wrong", "#e6e5e1")
+                ax.add_patch(plt.Rectangle(
+                    (x0 + col_i + 0.06, y0 + (BH - 1 - row_i) + 0.06), 0.88, 0.88,
+                    facecolor=c, edgecolor=SURFACE, linewidth=1.4))
+        ax.text(-0.7, y0 + BH / 2.0, prob, ha="right", va="center", fontsize=10.5, color=INK)
+
+    for ai, (_, _, label) in enumerate(ARM_COLS):
+        ax.text(ai * (BW + GAPX) + BW / 2.0, len(ORDER) * (BH + GAPY) - GAPY + 0.35,
+                label, ha="center", va="bottom", fontsize=9.5, color=INK_2,
+                linespacing=1.35)
+
+    ax.set_xlim(-7.4, 4 * (BW + GAPX) - GAPX + 0.4)
+    ax.set_ylim(-1.9, len(ORDER) * (BH + GAPY) + 1.1)
+    ax.set_aspect("equal")
+    ax.axis("off")
+
+    h = [plt.Rectangle((0, 0), 1, 1, facecolor=c, edgecolor=SURFACE)
+         for _, c, _ in OUT_COLORS]
+    ax.legend(h, [lbl for _, _, lbl in OUT_COLORS], loc="upper left",
+              bbox_to_anchor=(0.0, -0.005), ncol=5, frameon=False, fontsize=9,
+              labelcolor=INK_2, handlelength=1.1, columnspacing=1.3)
+
+    fig.text(0.012, 0.972, "Every one of the 360 runs", fontsize=14, color=INK,
+             fontweight="bold", va="top")
+    fig.text(0.012, 0.928, "One square per run. Each block is 5 repeats across "
+                           "(left to right) by 3 incidents down. Nothing is averaged.",
+             fontsize=9.5, color=INK_2, va="top")
+    fig.tight_layout(rect=(0, 0.045, 1, 0.905))
+    fig.savefig(path, dpi=200, facecolor=SURFACE)
+    plt.close(fig)
+    return path
+
+
+# --- 3. the window score every run actually got ----------------------------------------------
+def chart_window_raw(rows, path):
+    """All 360 window scores, not the hit rate.
+
+    The tables count a "hit" at 0.5 overlap or better, which turns a continuous measurement
+    into a coin flip and hides two very different failures: a near miss at 0.45 and a wild
+    guess at 0.02 both read as "not a hit". The raw values show which one actually happened.
+    """
+    fig, ax = plt.subplots(figsize=(11.2, 5.0), facecolor=SURFACE)
+    style(ax)
+    rng = random.Random(7)          # fixed seed: the jitter must not move between renders
+
+    for pi, prob in enumerate(ORDER):
+        for ai, armv in enumerate(("none", "given")):
+            base = pi * 2.6 + ai * 0.95
+            rs = [r for r in rows if r.get("problem") == prob and r.get("arm") == armv]
+            vals = [r.get("window_iou") for r in rs
+                    if isinstance(r.get("window_iou"), (int, float))]
+            absts = sum(1 for r in rs if r.get("window_verdict") == "abstained")
+            col = S1 if armv == "none" else S2
+            for v in vals:
+                ax.scatter([base + rng.uniform(-0.26, 0.26)], [v], s=26, color=col,
+                           alpha=0.55, linewidths=0, zorder=3)
+            if vals:
+                m = sorted(vals)[len(vals) // 2]
+                ax.plot([base - 0.36, base + 0.36], [m, m], color=col, lw=2.6,
+                        solid_capstyle="round", zorder=4)
+            if absts:
+                ax.text(base, -0.115, "%d" % absts, ha="center", va="center",
+                        fontsize=8.5, color=INK_MUTED)
+
+    ax.axhline(0.5, color=INK_MUTED, lw=1.4, ls=(0, (5, 4)), zorder=2)
+    ax.text(-1.15, 0.52, "counted as a hit", fontsize=8.5, color=INK_MUTED, va="bottom")
+    ax.text(-1.15, -0.115, "said\\nunknown", fontsize=8, color=INK_MUTED, va="center",
+            ha="left", linespacing=1.3)
+
+    ax.set_xticks([pi * 2.6 + 0.47 for pi in range(len(ORDER))])
+    ax.set_xticklabels(ORDER, fontsize=10, color=INK)
+    ax.set_xlim(-1.3, (len(ORDER) - 1) * 2.6 + 1.5)
+    ax.set_ylim(-0.17, 1.06)
+    ax.set_yticks([0, 0.25, 0.5, 0.75, 1.0])
+    ax.set_yticklabels(["0", "0.25", "0.5", "0.75", "1.0"])
+    ax.yaxis.grid(True, color=GRID, lw=1)
+    ax.set_axisbelow(True)
+    ax.set_ylabel("overlap with the real window", fontsize=10, color=INK_2)
+
+    h = [plt.Line2D([], [], marker="o", ls="", ms=8, color=S1, label="without blueprint"),
+         plt.Line2D([], [], marker="o", ls="", ms=8, color=S2, label="with blueprint"),
+         plt.Line2D([], [], color=INK_MUTED, lw=2.6, label="median")]
+    ax.legend(handles=h, loc="upper left", bbox_to_anchor=(0, -0.10), ncol=3,
+              frameon=False, fontsize=9.5, labelcolor=INK_2)
+
+    fig.text(0.012, 0.972, "How close was the time it gave?", fontsize=14, color=INK,
+             fontweight="bold", va="top")
+    fig.text(0.012, 0.928, "One dot per run, all 360. The tables count a hit at 0.5 and above, "
+                           "which hides the difference between a near miss and a wild guess.",
+             fontsize=9.5, color=INK_2, va="top")
+    fig.tight_layout(rect=(0, 0.075, 1, 0.905))
+    fig.savefig(path, dpi=200, facecolor=SURFACE)
+    plt.close(fig)
+    return path
+
+
+# --- 5. what every run cost ------------------------------------------------------------------
+def chart_cost_raw(rows, path):
+    """All 360 runs on the cost axes, so the spread is visible rather than a median dot."""
+    fig, axes = plt.subplots(1, 2, figsize=(11.2, 4.3), facecolor=SURFACE)
+    rng = random.Random(11)
+
+    ax = axes[0]
+    style(ax)
+    for armv, col in (("none", S1), ("given", S2)):
+        xs = [(r.get("seconds") or 0) / 60.0 for r in rows if r.get("arm") == armv]
+        ys = [(r.get("tokens") or 0) / 1000.0 for r in rows if r.get("arm") == armv]
+        ax.scatter(xs, ys, s=22, color=col, alpha=0.45, linewidths=0)
+    ax.set_xlabel("minutes", fontsize=10, color=INK_2)
+    ax.set_ylabel("thousand tokens", fontsize=10, color=INK_2)
+    ax.grid(True, color=GRID, lw=1)
+    ax.set_axisbelow(True)
+    ax.set_title("Every run, cost against time", fontsize=11.5, color=INK,
+                 fontweight="bold", loc="left", pad=8)
+
+    ax = axes[1]
+    style(ax)
+    for pi, prob in enumerate(ORDER):
+        for ai, armv in enumerate(("none", "given")):
+            base = pi * 2.4 + ai * 0.9
+            col = S1 if armv == "none" else S2
+            vals = [(r.get("seconds") or 0) / 60.0
+                    for r in rows if r.get("problem") == prob and r.get("arm") == armv]
+            for v in vals:
+                ax.scatter([base + rng.uniform(-0.24, 0.24)], [v], s=20, color=col,
+                           alpha=0.45, linewidths=0, zorder=3)
+            if vals:
+                m = sorted(vals)[len(vals) // 2]
+                ax.plot([base - 0.33, base + 0.33], [m, m], color=col, lw=2.4,
+                        solid_capstyle="round", zorder=4)
+    ax.set_xticks([pi * 2.4 + 0.45 for pi in range(len(ORDER))])
+    ax.set_xticklabels([p.replace("_", "\\n") for p in ORDER], fontsize=8.5, color=INK)
+    ax.set_ylabel("minutes per run", fontsize=10, color=INK_2)
+    ax.yaxis.grid(True, color=GRID, lw=1)
+    ax.set_axisbelow(True)
+    ax.set_title("Time per run, by problem", fontsize=11.5, color=INK,
+                 fontweight="bold", loc="left", pad=8)
+
+    h = [plt.Line2D([], [], marker="o", ls="", ms=8, color=S1, label="without blueprint"),
+         plt.Line2D([], [], marker="o", ls="", ms=8, color=S2, label="with blueprint")]
+    axes[0].legend(handles=h, loc="upper left", bbox_to_anchor=(0, -0.17), ncol=2,
                    frameon=False, fontsize=9.5, labelcolor=INK_2)
-    fig.suptitle("What the blueprint costs", fontsize=14, color=INK, fontweight="bold",
-                 x=0.013, ha="left", y=0.985)
-    fig.text(0.013, 0.885, "Middle value of 30 runs. The blueprint adds tokens because it is "
-                           "long - and it makes the agent FASTER, not slower.",
-             fontsize=9.5, color=INK_2)
-    fig.tight_layout(rect=(0, 0.11, 1, 0.86))
+    fig.text(0.012, 0.972, "What it cost, run by run", fontsize=14, color=INK,
+             fontweight="bold", va="top")
+    fig.text(0.012, 0.922, "The blueprint adds tokens and takes away time - and the spread "
+                           "matters as much as the middle.",
+             fontsize=9.5, color=INK_2, va="top")
+    fig.tight_layout(rect=(0, 0.10, 1, 0.895))
     fig.savefig(path, dpi=200, facecolor=SURFACE)
     plt.close(fig)
     return path
@@ -360,9 +473,10 @@ def main() -> int:
     os.makedirs(a.out_dir, exist_ok=True)
     made = [
         chart_effect(rows, os.path.join(a.out_dir, "1-blueprint-effect.png")),
-        chart_dumbbell(rows, os.path.join(a.out_dir, "2-accuracy.png")),
-        chart_ceiling(rows, os.path.join(a.out_dir, "3-room-to-improve.png")),
-        chart_cost(rows, os.path.join(a.out_dir, "4-cost.png")),
+        chart_every_run(rows, os.path.join(a.out_dir, "2-every-run.png")),
+        chart_window_raw(rows, os.path.join(a.out_dir, "3-window-raw.png")),
+        chart_ceiling(rows, os.path.join(a.out_dir, "4-room-to-improve.png")),
+        chart_cost_raw(rows, os.path.join(a.out_dir, "5-cost-raw.png")),
     ]
     for m in made:
         print("wrote %s  (%d KB)" % (m, os.path.getsize(m) // 1024))
