@@ -63,7 +63,11 @@ def run_cell(c: dict, a, log_dir: str) -> dict:
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--problem", default="noisy_neighbor")
+    ap.add_argument("--problem", default="",
+                    help="one problem; omit to use --problems")
+    ap.add_argument("--problems", default="all",
+                    help="comma-separated, or 'all' for every problem in "
+                         "q2_harness.PROBLEMS")
     ap.add_argument("--incidents", type=int, default=3)
     ap.add_argument("--repeats", type=int, default=5)
     ap.add_argument("--asks", default="hint,nohint")
@@ -81,27 +85,39 @@ def main() -> int:
 
     asks = [x for x in a.asks.split(",") if x]
     arms = [x for x in a.arms.split(",") if x]
-    incs = Q.incidents_for(a.problem, a.data_root, a.incidents)
-    if len(incs) < a.incidents:
-        print("WARNING: asked for %d incidents of %s, found %d"
-              % (a.incidents, a.problem, len(incs)))
+    if a.problem:
+        problems = [a.problem]
+    elif a.problems.strip().lower() == "all":
+        problems = list(Q.PROBLEMS)
+    else:
+        problems = [x.strip() for x in a.problems.split(",") if x.strip()]
 
-    todo, skipped = [], 0
-    for c in cells(a.problem, min(a.incidents, len(incs)), a.repeats, asks, arms):
-        rid = incs[c["incident"]]["run_id"]
-        if not a.force and os.path.exists(done_path(a.out_dir, c["problem"], rid,
-                                                    c["ask"], c["arm"], c["repeat"])):
-            skipped += 1
+    todo, skipped, planned = [], 0, 0
+    for prob in problems:
+        incs = Q.incidents_for(prob, a.data_root, a.incidents)
+        if not incs:
+            print("WARNING: no incidents found for %s - skipping" % prob)
             continue
-        todo.append(c)
+        if len(incs) < a.incidents:
+            print("WARNING: asked for %d incidents of %s, found %d"
+                  % (a.incidents, prob, len(incs)))
+        n_inc = min(a.incidents, len(incs))
+        planned += n_inc * len(asks) * len(arms) * a.repeats
+        print("  %-16s %d incidents: %s"
+              % (prob, n_inc, ", ".join(i["run_id"] for i in incs[:n_inc])))
+        for c in cells(prob, n_inc, a.repeats, asks, arms):
+            rid = incs[c["incident"]]["run_id"]
+            if not a.force and os.path.exists(done_path(a.out_dir, c["problem"], rid,
+                                                        c["ask"], c["arm"], c["repeat"])):
+                skipped += 1
+                continue
+            todo.append(c)
 
-    print("matrix: %s | %d incident(s) x %d ask x %d arm x %d repeat = %d cells"
-          % (a.problem, min(a.incidents, len(incs)), len(asks), len(arms), a.repeats,
-             min(a.incidents, len(incs)) * len(asks) * len(arms) * a.repeats))
+    print()
+    print("matrix: %d problem(s) x %d incidents x %d ask x %d arm x %d repeat = %d cells"
+          % (len(problems), a.incidents, len(asks), len(arms), a.repeats, planned))
     print("  already scored: %d      to run: %d      at %d in parallel"
           % (skipped, len(todo), a.jobs))
-    for i, c in enumerate(incs[:a.incidents]):
-        print("  incident %d: %s (%s)" % (i, c["run_id"], c["app"]))
     if a.dry_run:
         for c in todo:
             print("  would run i%d %s/%s rep%d" % (c["incident"], c["ask"], c["arm"], c["repeat"]))
