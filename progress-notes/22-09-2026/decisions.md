@@ -114,3 +114,75 @@ Both would have hidden the very thing the namespace re-run exists to measure.
 Caught by running the scorer against six example answers before launching 120 cells. **Third
 time heredoc escape mangling has damaged this codebase** - patterns are now built without
 literal escapes in the patch text.
+
+## 7. The per-service re-run: 120/120, and the fix barely moved the score
+
+`results/q2-ns`, everything held fixed except `pid_ns` in the index. Verified the cluster repo
+stayed at the pre-fix commit for the whole run, so no cell saw a different prompt.
+
+| | svc_cpu_cap | svc_net |
+|---|---|---|
+| WHERE right | 0/60 -> **1/60** | 0/60 -> **0/60** |
+| answered "host" | 43 -> **33** | 56 -> **28** |
+| ambiguous (bare `java`) | 13 -> **21** | 1 -> **7** |
+
+So the namespace data moved the agent off "host" - by 10 and 28 runs - but it went to bare
+`java`, not to a specific container.
+
+**It is using the namespaces.** 42/60 and 45/60 mention a `pid_ns` in their reasoning. Only
+1/120 put one in the answer field. And one run says exactly why:
+
+> The specific throttled service cannot be named from kernel comm alone; the trace shows
+> multiple `java` containers, including pid_ns 4026532538 and 4026533460, but not which one
+> has the quota.
+
+That is correct reasoning and an honest refusal, not a failure.
+
+## 8. So: is svc_cpu_cap solvable from the trace? Three tests, and the third says yes
+
+This is the third time today a "the modality cannot do it" claim has failed verification, so I
+tested rather than asserted.
+
+**Test 1 - event rate per container.** Useless. Capping carts stalls the whole request path, so
+EVERY container drops 3x to 100x, all four java containers included (0.14, 0.19, 0.30, 0.32).
+There is no odd one out. The agent answering "everything slowed" is reading the trace correctly.
+
+**Test 2 - wake-to-switch ratio.** A throttled cgroup should be woken and then denied a CPU, so
+its ratio should rise. It does not. It FALLS for every java container, because upstream traffic
+stopped so they are not being woken either.
+
+**Test 3 - `sched_stat_runtime`.** Decisive:
+
+```
+java  pid_ns 4026532538    before 0.551 CPU-s/s    during 0.195 CPU-s/s
+carts cap                                          0.200 CPU
+```
+
+Pinned at its cap, measured. A CPU cap limits CPU *time*, not event count - so the signal was
+never going to be in a count.
+
+**The trace can identify the throttled container. My index cannot, because it sums nothing -
+it counts events and discards their payload.** Tooling limit, not modality limit, again.
+
+There is no cgroup or throttling tracepoint in the profile (405 event types, none matching
+throttl/cgroup/cfs/quota), so `sched_stat_runtime` is the only route - but it is enough.
+
+### Decision
+
+The index needs to carry summed `sched_stat_runtime.runtime` per (bucket, procname, pid_ns)
+alongside the counts, and a tool to read it as CPU-seconds per container. That is a schema
+change, another full rebuild, and another re-run - real compute - so it is Yuvraj's call rather
+than something to start unannounced at 05:30.
+
+### The pattern worth keeping
+
+Three claims of the form "kernel traces cannot do X" were tested today. All three were false,
+and all three were my own tooling:
+
+1. cannot localise per-service faults -> the trace carries `pid_ns`, my index dropped it
+2. cannot find the window for host-wide faults -> my prompt told the agent to reject the signal
+3. cannot identify a throttled container -> the trace carries runtime, my index counts only
+
+**A count-based summary of a kernel trace loses exactly the information that identifies
+resource-limit faults.** That is a real finding about summarisation, and it is worth more to
+the paper than any of the three false claims would have been.
