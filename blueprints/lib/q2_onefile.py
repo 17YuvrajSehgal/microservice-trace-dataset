@@ -169,94 +169,142 @@ def main() -> int:
              "read-only tools over the raw kernel trace and has to find what happened, when, "
              "and where.")
     L.append("")
-    L.append("**What the columns mean**")
+    L.append("## How to read the tables")
     L.append("")
-    L.append("| column | meaning |")
+    L.append("Every problem below has the same table. This explains it once.")
+    L.append("")
+    L.append("### The rows")
+    L.append("")
+    L.append("Each row is one setup. The name has two parts, split by a `|`.")
+    L.append("")
+    L.append("**Part 1 - did we give the agent a hint?**")
+    L.append("")
+    L.append("- `nohint` - we said nothing at all. It gets a trace and works out the rest.")
+    L.append("- `hint` - we told it the symptom only. Something like \"requests are slow and "
+             "the host looks contended\". Never the answer.")
+    L.append("")
+    L.append("**Part 2 - did we give the agent the blueprint?**")
+    L.append("")
+    L.append("- `none` - no blueprint. It works alone.")
+    L.append("- `given` - we handed it the right blueprint to follow.")
+    L.append("")
+    L.append("So `nohint | none` is the least help and `hint | given` is the most. Each row is "
+             "run 15 times, so a lucky answer does not look like a skilled one.")
+    L.append("")
+    L.append("### The columns")
+    L.append("")
+    L.append("| column | the question it asks |")
     L.append("|---|---|")
-    L.append("| both right | the old pass/fail: right service AND right fault label |")
-    L.append("| WHERE | did it point at the right thing, judged against the best answer the "
-             "fault allows |")
-    L.append("| window | did it find WHEN, overlap of at least half with the real window |")
-    L.append("| described | how much of the mechanism its own words covered |")
-    L.append("| fault | did it pick the right label from the list |")
-    L.append("| time | median wall clock for one run, start to answer |")
-    L.append("| tokens | median per run |")
+    L.append("| n | how many runs. Always 15 |")
+    L.append("| both right | did it get the place AND the fault name right |")
+    L.append("| WHERE | did it point at the right thing |")
+    L.append("| window | did it find the right time |")
+    L.append("| described | how much of the problem its own words explained |")
+    L.append("| fault | did it pick the right fault name from our list |")
+    L.append("| time | how long one run took |")
+    L.append("| tokens | how much one run cost |")
     L.append("")
-    L.append("## How each number is worked out")
+    L.append("**WHERE and both right are not the same.** `both right` needs the fault name "
+             "too. `WHERE` only asks about the place.")
     L.append("")
-    L.append("Every one is scored per run, then counted across the 15 runs in a row. Ground "
-             "truth is read only by the scorer. No tool the agent can call ever sees it.")
+    L.append("> **Ignore the `fault` column when comparing rows.** The blueprint text "
+             "describes the fault, so a `given` row can read the answer straight off it. That "
+             "column mostly shows whether the agent read the page. To measure it properly we "
+             "need a setup where the agent picks its own blueprint from all 11.")
     L.append("")
-    L.append("**both right** - the old strict test. The service must match AND the fault label "
-             "must match. One run, pass or fail. The column is how many of 15 passed.")
+    L.append("## How we score each answer")
     L.append("")
-    L.append("**fault** - does the label it picked match the fault we injected? We map its "
-             "label to our recipe name first, so `cpu_saturation` and `anomaly_cpu` count as "
-             "the same thing. Pass or fail per run.")
+    L.append("Each run is scored on its own. The column is then how many of the 15 passed.")
     L.append("")
-    L.append("**WHERE** - four possible answers, not two:")
+    L.append("The agent never sees the right answer. Only the scorer reads it, after the run "
+             "is finished.")
+    L.append("")
+    L.append("### both right")
+    L.append("")
+    L.append("The strictest test. It must get the place right AND the fault name right. Pass "
+             "or fail.")
+    L.append("")
+    L.append("### fault")
+    L.append("")
+    L.append("Did the fault name it picked match the one we injected? We match on meaning, not "
+             "spelling, so `cpu_saturation` and `anomaly_cpu` count as the same thing.")
+    L.append("")
+    L.append("### WHERE")
+    L.append("")
+    L.append("Not just right or wrong. There are five kinds of answer:")
     L.append("")
     L.append("| answer | what it means |")
     L.append("|---|---|")
-    L.append("| named | it said the injected thing, e.g. `stress-ng-cpu` or `mysqld` |")
-    L.append("| container | it said one specific container, by its `pid_ns` number |")
-    L.append("| host only | it said `host` and nothing narrower |")
-    L.append("| ambiguous | it said a shared runtime like `java`, which is 5 containers here |")
+    L.append("| named | it said the exact thing we broke, like `stress-ng-cpu` |")
+    L.append("| container | it said one exact container, using its `pid_ns` number |")
+    L.append("| host only | it said `host`, and nothing smaller |")
+    L.append("| ambiguous | it said `java`. Five containers here run java, so this is vague |")
     L.append("| wrong | anything else |")
     L.append("")
-    L.append("Which of these count as right depends on the fault. For `anomaly_net` the netem "
-             "sits on the host's own interface, so there is no container to name and `host` IS "
-             "the complete answer. Everywhere else `host` is a hedge and does not count. The "
-             "target for each run is read from that run's own `ground_truth.json`, so the "
-             "accept list is never something I guessed in advance.")
+    L.append("**Which of these count as right depends on the fault.**")
     L.append("")
-    L.append("**window** - we compare the range it claimed against the real injection window "
-             "and measure the overlap:")
+    L.append("For most faults there is one container at fault, so the agent should name it. "
+             "Saying `host` is a safe guess and does not count.")
+    L.append("")
+    L.append("`anomaly_net` is the exception. We slowed the host's own network card. There is "
+             "no container to name, so `host` **is** the full answer and it counts.")
+    L.append("")
+    L.append("The right answer for each run is read from that run's own record. We never typed "
+             "a list of expected answers by hand.")
+    L.append("")
+    L.append("### window")
+    L.append("")
+    L.append("We compare the time range it gave against the real one.")
     L.append("")
     L.append("```")
-    L.append("overlap = how much of the two ranges is shared")
-    L.append("union   = how much they cover together")
-    L.append("score   = overlap / union        (1.0 = exact, 0 = no overlap at all)")
+    L.append("overlap = the time both ranges share")
+    L.append("union   = the time they cover together")
+    L.append("score   = overlap / union")
     L.append("```")
+    L.append("")
+    L.append("A score of 1.0 means the ranges match exactly. A score of 0 means they do not "
+             "touch.")
     L.append("")
     L.append("| verdict | when |")
     L.append("|---|---|")
-    L.append("| hit | score is 0.5 or more |")
-    L.append("| partial | they overlap, but less than that |")
-    L.append("| miss | no overlap |")
-    L.append("| abstained | it said `unknown` |")
+    L.append("| hit | score is 0.5 or higher |")
+    L.append("| partial | they overlap a bit, but less than that |")
+    L.append("| miss | they do not overlap |")
+    L.append("| abstained | it answered `unknown` |")
     L.append("")
-    L.append("The `window` column counts hits only. **Abstaining is not counted as wrong.** We "
-             "told the agent a made-up window is worse than admitting it does not know, so "
-             "scoring it as a failure would contradict its own instructions.")
+    L.append("The table counts hits only.")
     L.append("")
-    L.append("**described** - this one is a keyword check, and it is the softest number here. "
-             "For each problem we wrote down 3 ideas a correct answer contains. For "
+    L.append("**Answering `unknown` is not counted as wrong.** We told the agent that a made-up "
+             "time is worse than saying it does not know. Marking it wrong would punish it for "
+             "doing what we asked.")
+    L.append("")
+    L.append("### described")
+    L.append("")
+    L.append("This is a word check, and it is the softest number here.")
+    L.append("")
+    L.append("For each problem we wrote down 3 ideas that a correct answer contains. For "
              "`noisy_neighbor` they are:")
     L.append("")
-    L.append("1. an extra workload that is not part of the application")
+    L.append("1. there is an extra workload that is not part of the app")
     L.append("2. it is taking CPU away from the others")
-    L.append("3. the application services are victims, not the cause")
+    L.append("3. the app services are victims, not the cause")
     L.append("")
-    L.append("Each idea has a list of phrases that count. Any one of them scores the idea. The "
-             "run scores the fraction it hit, so 2 of 3 is 67%%. The column averages that over "
-             "15 runs.")
+    L.append("Each idea has a list of words and phrases that count. Any one of them scores "
+             "that idea. So hitting 2 of 3 gives 67%%.")
     L.append("")
-    L.append("It is deliberately generous - it asks \"did it say this at all\", not \"did it say "
-             "it well\". A low score means go and read the run, not that the run is wrong. The "
-             "first version was too generous and scored `slow_db` at 97%% because its word list "
-             "held a bare \"db\", which matches `catalogue-db` in any answer naming the "
-             "container. It now asks for phrases like \"database\" or \"waiting on\" instead.")
+    L.append("It asks \"did the agent say this at all\", not \"did it say it well\". A low "
+             "score means go and read the run. It does not prove the run is wrong.")
     L.append("")
-    L.append("**time and tokens** - the median across the 15 runs, not the average, so one very "
-             "slow run cannot drag the number.")
+    L.append("We got this wrong the first time. Our word list held a bare \"db\", which appears "
+             "in `catalogue-db`. So any answer naming that container scored a free point, and "
+             "`slow_db` came out at 97%%. It now asks for real phrases like \"database\" or "
+             "\"waiting on\".")
     L.append("")
-    L.append("> **Ignore the `fault` column when comparing arms.** The blueprint is handed "
-             "over and its text describes the fault, so that column largely measures whether "
-             "the agent read it. It needs an arm where the agent picks its own blueprint.")
+    L.append("### time and tokens")
     L.append("")
-
-    # summary first: the six problems side by side
+    L.append("The middle value of the 15 runs, not the average. One very slow run cannot drag "
+             "the number.")
+    L.append("")
     L.append("## All six problems at a glance")
     L.append("")
     L.append("| problem | target | WHERE right | window hits | described |")

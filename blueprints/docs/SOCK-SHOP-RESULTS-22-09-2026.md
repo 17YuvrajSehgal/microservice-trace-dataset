@@ -26,7 +26,57 @@ The agent is never told when the fault was, or that there was one. It gets six r
 | window | did it find WHEN, overlap of at least half with the real window |
 | described | how much of the mechanism its own words covered |
 | fault | did it pick the right label from the list |
+| time | median wall clock for one run, start to answer |
 | tokens | median per run |
+
+## How each number is worked out
+
+Every one is scored per run, then counted across the 15 runs in a row. Ground truth is read only by the scorer. No tool the agent can call ever sees it.
+
+**both right** - the old strict test. The service must match AND the fault label must match. One run, pass or fail. The column is how many of 15 passed.
+
+**fault** - does the label it picked match the fault we injected? We map its label to our recipe name first, so `cpu_saturation` and `anomaly_cpu` count as the same thing. Pass or fail per run.
+
+**WHERE** - four possible answers, not two:
+
+| answer | what it means |
+|---|---|
+| named | it said the injected thing, e.g. `stress-ng-cpu` or `mysqld` |
+| container | it said one specific container, by its `pid_ns` number |
+| host only | it said `host` and nothing narrower |
+| ambiguous | it said a shared runtime like `java`, which is 5 containers here |
+| wrong | anything else |
+
+Which of these count as right depends on the fault. For `anomaly_net` the netem sits on the host's own interface, so there is no container to name and `host` IS the complete answer. Everywhere else `host` is a hedge and does not count. The target for each run is read from that run's own `ground_truth.json`, so the accept list is never something I guessed in advance.
+
+**window** - we compare the range it claimed against the real injection window and measure the overlap:
+
+```
+overlap = how much of the two ranges is shared
+union   = how much they cover together
+score   = overlap / union        (1.0 = exact, 0 = no overlap at all)
+```
+
+| verdict | when |
+|---|---|
+| hit | score is 0.5 or more |
+| partial | they overlap, but less than that |
+| miss | no overlap |
+| abstained | it said `unknown` |
+
+The `window` column counts hits only. **Abstaining is not counted as wrong.** We told the agent a made-up window is worse than admitting it does not know, so scoring it as a failure would contradict its own instructions.
+
+**described** - this one is a keyword check, and it is the softest number here. For each problem we wrote down 3 ideas a correct answer contains. For `noisy_neighbor` they are:
+
+1. an extra workload that is not part of the application
+2. it is taking CPU away from the others
+3. the application services are victims, not the cause
+
+Each idea has a list of phrases that count. Any one of them scores the idea. The run scores the fraction it hit, so 2 of 3 is 67%%. The column averages that over 15 runs.
+
+It is deliberately generous - it asks "did it say this at all", not "did it say it well". A low score means go and read the run, not that the run is wrong. The first version was too generous and scored `slow_db` at 97%% because its word list held a bare "db", which matches `catalogue-db` in any answer naming the container. It now asks for phrases like "database" or "waiting on" instead.
+
+**time and tokens** - the median across the 15 runs, not the average, so one very slow run cannot drag the number.
 
 > **Ignore the `fault` column when comparing arms.** The blueprint is handed over and its text describes the fault, so that column largely measures whether the agent read it. It needs an arm where the agent picks its own blueprint.
 
@@ -49,12 +99,12 @@ The split is by **scope**, not by difficulty. Host-wide faults are found. Single
 
 Target: `catalogue-db`. Best WHERE answer this fault allows: **name the container**.
 
-| ask \| arm | n | both right | WHERE | window | described | fault | tokens |
-|---|---|---|---|---|---|---|---|
-| nohint \| none | 15 | 0% | 20% | 0% | 47% | 0% | 60,311 |
-| nohint \| given | 15 | 0% | 40% | 0% | 84% | 80% | 86,223 |
-| hint \| none | 15 | 0% | 27% | 7% | 60% | 27% | 60,702 |
-| hint \| given | 15 | 0% | 53% | 0% | 80% | 60% | 97,994 |
+| ask \| arm | n | both right | WHERE | window | described | fault | time | tokens |
+|---|---|---|---|---|---|---|---|---|
+| nohint \| none | 15 | 0% | 20% | 0% | 47% | 0% | 6m25s | 60,311 |
+| nohint \| given | 15 | 0% | 40% | 0% | 84% | 80% | 5m54s | 86,223 |
+| hint \| none | 15 | 0% | 27% | 7% | 60% | 27% | 6m20s | 60,702 |
+| hint \| given | 15 | 0% | 53% | 0% | 80% | 60% | 6m48s | 97,994 |
 
 Blueprint effect, in percentage points:
 
@@ -73,12 +123,12 @@ Most common answers: `host` 30, `mysqld` 18, `traefik` 3, `toxiproxy` 3, `conn76
 
 Target: `host`. Best WHERE answer this fault allows: **say `host`**.
 
-| ask \| arm | n | both right | WHERE | window | described | fault | tokens |
-|---|---|---|---|---|---|---|---|
-| nohint \| none | 15 | 0% | 47% | 60% | 58% | 0% | 65,278 |
-| nohint \| given | 15 | 20% | 93% | 13% | 44% | 20% | 94,216 |
-| hint \| none | 15 | 7% | 73% | 47% | 56% | 7% | 77,395 |
-| hint \| given | 15 | 20% | 100% | 20% | 36% | 20% | 84,716 |
+| ask \| arm | n | both right | WHERE | window | described | fault | time | tokens |
+|---|---|---|---|---|---|---|---|---|
+| nohint \| none | 15 | 0% | 47% | 60% | 58% | 0% | 3m33s | 65,278 |
+| nohint \| given | 15 | 20% | 93% | 13% | 44% | 20% | 2m43s | 94,216 |
+| hint \| none | 15 | 7% | 73% | 47% | 56% | 7% | 4m05s | 77,395 |
+| hint \| given | 15 | 20% | 100% | 20% | 36% | 20% | 2m13s | 84,716 |
 
 Blueprint effect, in percentage points:
 
@@ -97,12 +147,12 @@ Most common answers: `host` 47, `dockerd` 8, `toxiproxy` 2, `docker` 1, `mysqld`
 
 Target: `carts`. Best WHERE answer this fault allows: **name the container**.
 
-| ask \| arm | n | both right | WHERE | window | described | fault | tokens |
-|---|---|---|---|---|---|---|---|
-| nohint \| none | 15 | 0% | 0% | 33% | 36% | 7% | 73,118 |
-| nohint \| given | 15 | 0% | 0% | 33% | 36% | 27% | 87,003 |
-| hint \| none | 15 | 0% | 0% | 53% | 44% | 0% | 66,802 |
-| hint \| given | 15 | 0% | 0% | 27% | 33% | 13% | 92,968 |
+| ask \| arm | n | both right | WHERE | window | described | fault | time | tokens |
+|---|---|---|---|---|---|---|---|---|
+| nohint \| none | 15 | 0% | 0% | 33% | 36% | 7% | 3m30s | 73,118 |
+| nohint \| given | 15 | 0% | 0% | 33% | 36% | 27% | 2m29s | 87,003 |
+| hint \| none | 15 | 0% | 0% | 53% | 44% | 0% | 3m13s | 66,802 |
+| hint \| given | 15 | 0% | 0% | 27% | 33% | 13% | 2m45s | 92,968 |
 
 Blueprint effect, in percentage points:
 
@@ -121,12 +171,12 @@ Most common answers: `host` 56, `traefik` 1, `dockerd` 1, `conn463` 1, `conn443`
 
 Target: `host`. Best WHERE answer this fault allows: **name the container**.
 
-| ask \| arm | n | both right | WHERE | window | described | fault | tokens |
-|---|---|---|---|---|---|---|---|
-| nohint \| none | 15 | 67% | 100% | 73% | 42% | 67% | 67,348 |
-| nohint \| given | 15 | 93% | 93% | 87% | 89% | 100% | 91,601 |
-| hint \| none | 15 | 20% | 33% | 27% | 47% | 33% | 77,204 |
-| hint \| given | 15 | 87% | 87% | 53% | 89% | 100% | 85,314 |
+| ask \| arm | n | both right | WHERE | window | described | fault | time | tokens |
+|---|---|---|---|---|---|---|---|---|
+| nohint \| none | 15 | 67% | 100% | 73% | 42% | 67% | 6m53s | 67,348 |
+| nohint \| given | 15 | 93% | 93% | 87% | 89% | 100% | 4m59s | 91,601 |
+| hint \| none | 15 | 20% | 33% | 27% | 47% | 33% | 5m26s | 77,204 |
+| hint \| given | 15 | 87% | 87% | 53% | 89% | 100% | 5m19s | 85,314 |
 
 Blueprint effect, in percentage points:
 
@@ -145,12 +195,12 @@ Most common answers: `stress-ng-cpu` 47, `host` 8, `toxiproxy` 2, `conn71` 1, `j
 
 Target: `carts`. Best WHERE answer this fault allows: **name the container**.
 
-| ask \| arm | n | both right | WHERE | window | described | fault | tokens |
-|---|---|---|---|---|---|---|---|
-| nohint \| none | 15 | 0% | 0% | 60% | 9% | 0% | 65,068 |
-| nohint \| given | 15 | 0% | 0% | 87% | 40% | 100% | 68,922 |
-| hint \| none | 15 | 0% | 0% | 67% | 33% | 0% | 62,524 |
-| hint \| given | 15 | 0% | 0% | 93% | 49% | 100% | 87,327 |
+| ask \| arm | n | both right | WHERE | window | described | fault | time | tokens |
+|---|---|---|---|---|---|---|---|---|
+| nohint \| none | 15 | 0% | 0% | 60% | 9% | 0% | 3m22s | 65,068 |
+| nohint \| given | 15 | 0% | 0% | 87% | 40% | 100% | 2m54s | 68,922 |
+| hint \| none | 15 | 0% | 0% | 67% | 33% | 0% | 2m33s | 62,524 |
+| hint \| given | 15 | 0% | 0% | 93% | 49% | 100% | 2m37s | 87,327 |
 
 Blueprint effect, in percentage points:
 
@@ -169,12 +219,12 @@ Most common answers: `host` 43, `dockerd` 9, `java` 4, `toxiproxy` 2, `conn77` 1
 
 Target: `host`. Best WHERE answer this fault allows: **name the container**.
 
-| ask \| arm | n | both right | WHERE | window | described | fault | tokens |
-|---|---|---|---|---|---|---|---|
-| nohint \| none | 15 | 67% | 100% | 73% | 67% | 67% | 60,685 |
-| nohint \| given | 15 | 100% | 100% | 80% | 82% | 100% | 64,231 |
-| hint \| none | 15 | 67% | 100% | 73% | 76% | 67% | 86,857 |
-| hint \| given | 15 | 100% | 100% | 73% | 93% | 100% | 74,305 |
+| ask \| arm | n | both right | WHERE | window | described | fault | time | tokens |
+|---|---|---|---|---|---|---|---|---|
+| nohint \| none | 15 | 67% | 100% | 73% | 67% | 67% | 3m58s | 60,685 |
+| nohint \| given | 15 | 100% | 100% | 80% | 82% | 100% | 3m07s | 64,231 |
+| hint \| none | 15 | 67% | 100% | 73% | 76% | 67% | 3m42s | 86,857 |
+| hint \| given | 15 | 100% | 100% | 73% | 93% | 100% | 3m55s | 74,305 |
 
 Blueprint effect, in percentage points:
 
