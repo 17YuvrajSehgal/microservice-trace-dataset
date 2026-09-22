@@ -282,3 +282,101 @@ milliseconds. Served from the sample it returns one line per bucket, spread acro
 That is arguably the better sample, but it is a different one.
 
 Expected effect: a run drops from about 9 minutes to about 2.
+
+## 11. Five new kernel-only blueprints. 6 testable problems becomes 11
+
+Yuvraj, while the matrices ran: "help me to build new blueprints that we can use kernel only
+data... give it a try even if you think that the kernel traces are not enough."
+
+They are enough, for five of the seven families tried. The two that are not are recorded as
+limits rather than dropped.
+
+### The instrument first, before any candidate list
+
+`428 event types` in the profile. Checked rather than assumed, and it changed the plan:
+
+- **no memory or reclaim events at all** - no `mm_`, `kswapd`, `vmscan`, `page_fault`
+- **futex 26.9M events** - so the lock family has something to work with
+- **192 syscall types**, including connect/accept/socket and mmap/madvise
+- `sched_stat_runtime` 21.8M - real CPU time per task
+
+### Two rejections before anything was written down
+
+**The specificity sweep** (`lib/discover_signature.py`) measured every event's rate in the
+injection window against a baseline, then ran the same measurement across all eight families.
+It threw out `unlinkat` (x11-24), `ftruncate` (x0.1), `block_split`, `lseek` and `dup` - each
+moves the same way in six unrelated faults, so they measure the WINDOW rather than the fault.
+That is the `slow_db` 0.48 trap from the campaign, caught on the first pass.
+
+**The harness check** (`lib/who_makes_it.py`) asked who emitted what survived. It killed
+`nagle_delayed_ack` outright: its `poll` x11.9 and `sendto` x6.7 are **94% a python3 process
+going 0 -> 57,338/s**, which is our own load generator.
+
+**And it caught my own error.** The first harness rule listed `python3` by name, which nearly
+discarded every signature - these faults are injected as SIDECAR CONTAINERS, so the
+containerised python3 *is* the fault. Corrected to namespace: collection runs in the host
+pid_ns, anything in a container namespace is the application or the injected fault. Process
+name was the wrong test.
+
+### Shares, not rates
+
+The absolute rates separate these families perfectly and **transfer to nobody**: 63,000/s is
+our injector's 16 threads at 200 us, not a property of lock contention. What survives a
+parameter change is what share of its OWN events the culprit spends on each kind of work.
+
+|  | futex | churn | on-CPU | softirq | network | ioctl | file ops | n |
+|---|---|---|---|---|---|---|---|---|
+| lock_contention | **47.0** | 26.4 | 14.7 | 5.9 | . | . | . | 5 |
+| priority_inversion | **41.0** | 22.2 | 18.5 | 13.4 | 1.2 | . | . | 5 |
+| nagle_delayed_ack | 25.8 | 16.9 | 9.7 | 9.4 | 17.9 | . | . | 5 |
+| deadlock | **4.3** | 9.0 | 6.8 | 3.3 | 0.2 | 0.4 | **22.1** | 5 |
+| conn_pool_exhaustion | . | 7.7 | 3.2 | 9.8 | 35.6 | **17.3** | . | 5 |
+| anomaly_mem | . | 11.6 | 34.0 | 42.8 | 1.5 | . | 0.6 | 8 |
+| noisy_neighbor | . | 27.8 | 27.0 | 35.7 | 2.9 | . | . | 3 |
+| anomaly_cpu | . | 45.1 | 29.2 | 21.3 | 1.8 | . | . | 3 |
+
+### The finding worth keeping
+
+**A deadlocked container is QUIETER than an idle one.** 70-84 events/s against 63,000 for lock
+contention - a factor of 800 - because parked threads make no syscalls. Nobody would guess it;
+it falls out of the measurement. The blueprint states the consequence plainly: **a high futex
+share RULES OUT deadlock**, which is the reverse of the intuition.
+
+`ioctl` at 17.3% is the cleanest single separation in the whole table - it appears in no other
+family at all.
+
+### Two limits, written into the blueprints rather than dropped
+
+**`anomaly_mem` does not separate from `noisy_neighbor` by shape** (on-CPU 34.0/softirq 42.8
+against 27.0/35.7). The profile records no `mm_` or reclaim events, so a memory stressor reads
+as a CPU stressor from the kernel side. **This is a limit of the modality, not the tooling** -
+the first case today where the honest answer is that we need metrics.
+
+**`nagle_delayed_ack`** has no app-side signature separable from the injector.
+
+### `dependency_outage` needed its own route
+
+It **removes** a container rather than adding one, so the newcomer search that finds every
+other fault returns nothing in every run. Its signature is a retry storm confined to one
+existing container: `getrusage` 5.3/s -> 2,474-2,701/s in ONE java namespace while three
+identical siblings hold at 6.7/s, 100% application and 0% harness. That both detects AND
+localises, which is exactly what the `svc_*` families failed at this morning.
+
+### What each blueprint admits it cannot do
+
+- a deadlock cannot be told from a crashed container without process-exit events
+- the exhausted pool was measured only from the holder's side, never the datastore's
+- `getrusage` is n=2 and JVM-specific, so the SHAPE is the discriminator and the syscall is a
+  runtime detail
+- priority inversion rests on two weak secondary shares, because futex alone does not separate
+  it from lock contention (41.0 vs 47.0). **`sched_switch` carries `prev_prio`/`next_prio` and
+  we never read them** - the count index keeps counts only. That is the single most valuable
+  thing to add next and would likely make it decisive.
+
+### The leak scanner earned its place twice
+
+It rejected real service names in the dependency-outage text, then flagged "two **orders** of
+magnitude" because `orders` is a Sock Shop service. Reworded rather than loosening the scanner:
+a false positive costs a minute, a missed leak costs the experiment.
+
+16/16 blueprints validate, 0 unrunnable commands, 0 `--gt` leaks.
