@@ -186,3 +186,57 @@ and all three were my own tooling:
 **A count-based summary of a kernel trace loses exactly the information that identifies
 resource-limit faults.** That is a real finding about summarisation, and it is worth more to
 the paper than any of the three false claims would have been.
+
+## 9. Train Ticket: and why Sock Shop gets re-run with it
+
+Yuvraj: "Now run all the tests on the TT dataset."
+
+### The picker never reached Train Ticket
+
+`incidents_for` took the first N runs from a list that puts Sock Shop first, and Sock Shop
+always has enough. So all 600 runs so far are one application, and nothing said so. Added
+`--app`.
+
+The runs were always there - 5 to 11 per problem per app. This was a one-line slice, not a
+data gap.
+
+### Targets differ, and the scorer already handles it
+
+| problem | Sock Shop | Train Ticket |
+|---|---|---|
+| slow_db | catalogue-db | `mysql` |
+| svc_net | carts | `ts-basic-service` |
+| svc_cpu_cap | carts | `ts-travel-service` |
+| the three host faults | host | host |
+
+Nothing to change: since §2 the accept list comes from each run's own `ground_truth.json`
+rather than a list I wrote. Had it still been my hand-written list, every Train Ticket
+per-service run would have scored wrong and it would have looked like an application
+difference.
+
+### Sock Shop is being re-run alongside it
+
+`q2-full` and `q2-ns` both ran at the commit **before** the anomaly_net prompt fix (§4), and
+that fix changed the base METHOD for every problem, not just that one.
+
+So running Train Ticket alone would leave **two** things different between the applications -
+the app and the prompt - and the whole reason for a second application is to show a result is
+not an artefact of one codebase. That argument does not survive a harness change in the middle
+of it.
+
+**Decision: run both now, on the corrected prompt, concurrently.** 5 jobs each on the login
+node; they are API-bound and idle most of their wall clock. About 5-6 hours for both against 9
+sequentially.
+
+Running Train Ticket alone on the old prompt would have produced 360 runs I would have had to
+throw away.
+
+`q2-full` keeps its value as the record of what the old prompt did - it is what §4's -37 point
+regression is measured on.
+
+### Two refusals in the launcher
+
+It will not start if any of the 36 indexes is missing or lacks `pid_ns`, and it will not start
+if `agent.py` still contains the old heuristic. Both failure modes are silent otherwise: the
+first falls back to a capped raw read and produces plausible rows built on 1.6% of the trace,
+and the second would quietly reintroduce the bug the re-run exists to remove.
