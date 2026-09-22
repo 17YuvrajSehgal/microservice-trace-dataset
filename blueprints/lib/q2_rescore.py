@@ -171,7 +171,10 @@ def where_ok(where: str, problem: str) -> bool:
     ceiling = WHERE_CEILING.get(problem, "named")
     if ceiling == "scope":
         return where in ("named", "scope")
-    return where == "named"
+    # `container` counts. The kernel records no service name, only one pid_ns per container,
+    # so picking one container out of the 21 on this host is the most precise answer the
+    # modality allows - and it is a different thing entirely from answering "host".
+    return where in ("named", "container")
 
 
 def _norm(s) -> str:
