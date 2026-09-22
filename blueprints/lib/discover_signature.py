@@ -50,6 +50,27 @@ def secs(iso):
         return None
 
 
+def _index_span(run_dir):
+    """First and last bucket in this run's index, so a control run can be cut like a real one."""
+    rid = os.path.basename(run_dir.rstrip("/"))
+    p = os.path.join(IDX, rid + ".tsv.gz")
+    if not os.path.exists(p):
+        return None
+    lo = hi = None
+    with gzip.open(p, "rt") as fh:
+        for line in fh:
+            if line[0] == "#":
+                continue
+            try:
+                bt = float(line.split(TAB, 1)[0])
+            except ValueError:
+                continue
+            if lo is None:
+                lo = bt
+            hi = bt
+    return (lo, hi) if lo is not None else None
+
+
 def run_dirs(family, app="sockshop"):
     d = os.path.join(DATA, app, family)
     if not os.path.isdir(d):
@@ -67,7 +88,16 @@ def windows(run_dir):
     """
     gp = os.path.join(run_dir, "ground_truth.json")
     if not os.path.exists(gp):
-        return None
+        # A `normal` run has no ground truth because nothing was injected - and skipping it
+        # would throw away the only control there is. Cut it at the same offsets a fault run
+        # uses, so "what moves between two windows of a healthy machine" is measured on exactly
+        # the same shape of comparison. Without this every load artefact looks like a finding.
+        span = _index_span(run_dir)
+        if not span:
+            return None
+        lo, hi = span
+        t0 = lo + 75.0                      # injection starts ~75 s in on a real run
+        return (t0 - 70, t0 - 10, t0, min(hi, t0 + 120))
     f = (json.load(open(gp)).get("fault") or {})
     t0, t1 = secs(f.get("injection_start_utc") or ""), secs(f.get("injection_end_utc") or "")
     if t0 is None or t1 is None or t1 <= t0:
