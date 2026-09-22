@@ -240,3 +240,45 @@ It will not start if any of the 36 indexes is missing or lacks `pid_ns`, and it 
 if `agent.py` still contains the old heuristic. Both failure modes are silent otherwise: the
 first falls back to a capped raw read and produces plausible rows built on 1.6% of the trace,
 and the second would quietly reintroduce the bug the re-run exists to remove.
+
+## 10. 80% of the agent's wall clock is one tool
+
+Measured from the transcripts while the Train Ticket matrix ran, because 13 hours looked wrong
+and guessing at the cause would have been worse than measuring it.
+
+| | tool time per run | of which `ctf_lines` | API time |
+|---|---|---|---|
+| Train Ticket | 473 s | **378 s (80%)** | 27 s |
+| Sock Shop | 333 s | **261 s (78%)** | 22 s |
+
+Median `ctf_lines` call: 56 s on TT, 90 s on SS. **Every other tool answers in about 2 s**,
+because they read the count index. The API is not the bottleneck and never was - 218 s of API
+across eight whole runs.
+
+The cause is the thing measured on 21-09: **babeltrace cannot seek.** To hand back 40 raw event
+lines from 100 s into the trace it decodes everything before that point and discards it. The
+agent calls `ctf_lines` about five times a run.
+
+So the honest cost statement is not "the agent is slow" or "the model is slow". One tool of six
+costs 40x what the others do, for a fixed reason in the tracing toolchain. Worth reporting: any
+kernel-trace agent that reads raw event lines pays this, and the count index is what made the
+other five cheap.
+
+**Not changed mid-run.** Half the cells would carry a different tool cost and the time column
+would stop meaning anything - the same reason the rubric was left alone during the last matrix.
+Trillium's repo is deliberately NOT being synced until both matrices finish, because each cell
+imports `ctf_tool.py` fresh at start and a sync would change the tool under a running
+experiment.
+
+### The fix, ready for next time
+
+The index pass already decodes every event once. It can keep, for each (bucket, event), the
+first raw line - so `ctf_lines` reads a file instead of re-decoding the trace. About 2.9M lines
+per run, which is the row count of the count index.
+
+One semantic change, and it must be stated rather than hidden: `ctf_lines` currently returns
+the first n matching lines **in the range**, which can all fall inside the first few
+milliseconds. Served from the sample it returns one line per bucket, spread across the range.
+That is arguably the better sample, but it is a different one.
+
+Expected effect: a run drops from about 9 minutes to about 2.
