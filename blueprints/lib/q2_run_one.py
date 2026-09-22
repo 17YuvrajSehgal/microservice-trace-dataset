@@ -199,7 +199,9 @@ def main() -> int:
 
     # The fairer marking: WHERE three ways, WHAT by concept coverage of the agent's own words,
     # HOW from the tool log. See q2_judge.py for why the old binary label match was unfair.
-    jd = J.judge(dx.get("diagnosis") or {}, dx.get("trajectory"), args.problem)
+    jd = J.judge(dx.get("diagnosis") or {}, dx.get("trajectory"), args.problem,
+                 true_service=(gt.get("fault") or {}).get("target_service", ""),
+                 scope=(gt.get("fault") or {}).get("scope", ""))
 
     # ranked_candidates puts the PRIMARY first, so the alternatives are everything after it.
     cands = ranked_all[1:]

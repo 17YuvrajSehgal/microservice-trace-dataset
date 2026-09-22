@@ -114,9 +114,10 @@ def main() -> int:
     print("=" * 78)
     print("WHERE, WHAT, HOW - the fairer marking")
     print("=" * 78)
-    print("  %-14s %3s  %6s %6s %6s  %8s  %9s %6s"
-          % ("ask | arm", "n", "named", "scope", "wrong", "described", "who-tools", "calls"))
-    print("  " + "-" * 74)
+    print("  %-14s %3s  %6s %6s %6s %6s  %8s  %9s %6s"
+          % ("ask | arm", "n", "named", "scope", "ambig", "wrong", "described",
+             "who-tools", "calls"))
+    print("  " + "-" * 80)
     for ask in Q.ASKS:
         for arm in ("none", "given"):
             rs = [r for r in rows if r.get("ask") == ask and r.get("arm") == arm]
@@ -127,14 +128,15 @@ def main() -> int:
             ws = [r["what_score"] for r in rs
                   if isinstance(r.get("what_score"), (int, float))]
             who = sum(1 for r in rs if r.get("used_who_tools"))
-            print("  %-14s %3d  %6d %6d %6d  %8s  %9s %6s"
+            print("  %-14s %3d  %6d %6d %6d %6d  %8s  %9s %6s"
                   % ("%s|%s" % (ask, arm), n, w.count("named"), w.count("scope"),
-                     w.count("wrong") + w.count("none"),
+                     w.count("ambiguous"), w.count("wrong") + w.count("none"),
                      ("%.0f%%" % (100 * sum(ws) / len(ws))) if ws else "  -  ",
                      "%d/%d" % (who, n),
                      Q._median([r.get("calls") for r in rs])))
     print()
-    print("  named = identified the injected process. scope = right level only (e.g. 'host').")
+    print("  named = identified the injected thing. scope = right level only (e.g. 'host').")
+    print("  ambig = a shared runtime (java, node, dockerd) that maps to several services.")
     print("  described = average share of the mechanism the agent's own words covered.")
     print("  who-tools = runs that used ctf_procdiff or ctf_proclife at all.")
     print()

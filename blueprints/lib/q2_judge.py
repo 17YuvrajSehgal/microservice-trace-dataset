@@ -129,25 +129,58 @@ def _norm(s) -> str:
     return re.sub(r"[^a-z0-9 ]+", " ", str(s or "").lower())
 
 
-def score_where(pred_service: str, kind: str, problem: str) -> dict:
-    """Three-way, because 'host' and 'stress-ng-cpu' are not the same answer.
+# Process names a kernel trace shows for MANY different services. Sock Shop runs several Java
+# containers, so `java` in a sched_switch line could be any of them; the same goes for node and
+# python3, and for the container runtime itself. An agent that answers one of these has found a
+# real signal and has NOT localised it. Scoring that as simply "wrong" hides the distinction,
+# and scoring it right would be generous to the point of meaningless - so it gets its own
+# bucket. It is also a result in its own right: from a kernel trace alone, a per-service fault
+# in a Java stack may not be separable at all.
+AMBIGUOUS_RUNTIME = ("java", "node", "python3", "python", "dockerd", "containerd-shim",
+                     "containerd", "runc", "docker-proxy")
 
-    named  - it identified the injected thing
-    scope  - it got the level right without the thing (only counts where that is defensible:
-             for a host-scoped fault 'host' IS a real answer, just a less useful one)
-    wrong  - anything else
+
+def score_where(pred_service: str, kind: str, problem: str,
+                true_service: str = "", scope: str = "") -> dict:
+    """Four ways, because 'host', 'java' and 'stress-ng-cpu' are three different answers.
+
+    named      - identified the injected thing
+    scope      - right level, not the thing. Only for a host-scoped fault, where 'host' is a
+                 real answer, just a less useful one
+    ambiguous  - a shared runtime process that maps to several services
+    wrong      - anything else
+
+    `true_service` comes from the run's own ground truth, so the accept set does not depend on
+    me having guessed the right names per problem in advance. Ground truth belongs here, in the
+    scorer - never in a tool the agent can reach.
     """
     r = RUBRIC.get(problem) or {}
     p = _norm(pred_service).strip()
     if not p:
         return {"where": "none", "pred": pred_service, "kind": kind}
-    for c in r.get("culprit", []):
-        if c in p or p in _norm(c):
+
+    host_scoped = (_norm(true_service).strip() == "host") or (_norm(scope).strip() == "host")
+
+    # the injected thing, per the rubric AND per this run's own ground truth
+    accept = list(r.get("culprit", []))
+    if true_service and not host_scoped:
+        accept.append(true_service)
+    for c in accept:
+        cn = _norm(c).strip()
+        if not cn:
+            continue
+        if cn in p or p in cn:
             return {"where": "named", "pred": pred_service, "kind": kind, "matched": c}
-    if r.get("scope_is_defensible"):
-        for sc in r.get("scope", []):
+
+    if host_scoped:
+        for sc in list(r.get("scope", [])) + ["host"]:
             if p == sc or p.startswith(sc):
                 return {"where": "scope", "pred": pred_service, "kind": kind, "matched": sc}
+
+    for amb in AMBIGUOUS_RUNTIME:
+        if p == amb or p.startswith(amb):
+            return {"where": "ambiguous", "pred": pred_service, "kind": kind, "matched": amb}
+
     return {"where": "wrong", "pred": pred_service, "kind": kind}
 
 
@@ -189,10 +222,12 @@ def score_how(trajectory) -> dict:
     }
 
 
-def judge(diagnosis: dict, trajectory, problem: str) -> dict:
-    """All three axes for one run. Reads no ground truth beyond the rubric above."""
+def judge(diagnosis: dict, trajectory, problem: str,
+          true_service: str = "", scope: str = "") -> dict:
+    """All three axes for one run."""
     d = diagnosis or {}
-    where = score_where(d.get("root_cause_service", ""), d.get("culprit_kind", ""), problem)
+    where = score_where(d.get("root_cause_service", ""), d.get("culprit_kind", ""), problem,
+                        true_service=true_service, scope=scope)
     # Both fields, because the mechanism often lands in the evidence rather than the summary,
     # and marking it absent on a wording split would be exactly the unfairness this replaces.
     what = score_what("%s %s" % (d.get("what_is_wrong", ""), d.get("evidence", "")), problem)
