@@ -26,3 +26,5 @@ agentic-rca/results/
 /stratatrace-v1/
 
 DOCS/reading-papers
+# downloaded cluster results - large, and they live on Trillium
+results-download/
