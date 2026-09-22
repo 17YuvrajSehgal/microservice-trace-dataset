@@ -271,10 +271,10 @@ OUT_COLORS = [
 ]
 OUT_INK = {"named": "#184f95", "container": "#256abf", "scope": "#3987e5",
            "ambiguous": "#86b6ef", "wrong": "#e6e5e1", "none": "#e6e5e1"}
-ARM_COLS = [("nohint", "none", "no hint\\nno blueprint"),
-            ("nohint", "given", "no hint\\nblueprint"),
-            ("hint", "none", "hint\\nno blueprint"),
-            ("hint", "given", "hint\\nblueprint")]
+ARM_COLS = [("nohint", "none", "no hint\nno blueprint"),
+            ("nohint", "given", "no hint\nblueprint"),
+            ("hint", "none", "hint\nno blueprint"),
+            ("hint", "given", "hint\nblueprint")]
 
 
 def chart_every_run(rows, path):
@@ -373,7 +373,7 @@ def chart_window_raw(rows, path):
 
     ax.axhline(0.5, color=INK_MUTED, lw=1.4, ls=(0, (5, 4)), zorder=2)
     ax.text(-1.15, 0.52, "counted as a hit", fontsize=8.5, color=INK_MUTED, va="bottom")
-    ax.text(-1.15, -0.115, "said\\nunknown", fontsize=8, color=INK_MUTED, va="center",
+    ax.text(-1.15, -0.115, "said\nunknown", fontsize=8, color=INK_MUTED, va="center",
             ha="left", linespacing=1.3)
 
     ax.set_xticks([pi * 2.6 + 0.47 for pi in range(len(ORDER))])
@@ -438,7 +438,7 @@ def chart_cost_raw(rows, path):
                 ax.plot([base - 0.33, base + 0.33], [m, m], color=col, lw=2.4,
                         solid_capstyle="round", zorder=4)
     ax.set_xticks([pi * 2.4 + 0.45 for pi in range(len(ORDER))])
-    ax.set_xticklabels([p.replace("_", "\\n") for p in ORDER], fontsize=8.5, color=INK)
+    ax.set_xticklabels([p.replace("_", "\n") for p in ORDER], fontsize=8.5, color=INK)
     ax.set_ylabel("minutes per run", fontsize=10, color=INK_2)
     ax.yaxis.grid(True, color=GRID, lw=1)
     ax.set_axisbelow(True)
