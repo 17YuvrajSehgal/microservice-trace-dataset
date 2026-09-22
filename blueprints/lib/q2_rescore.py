@@ -146,6 +146,34 @@ CONCEPTS = {
 }
 
 
+# The best WHERE answer each fault ALLOWS. Not every fault has a process to name.
+#
+# `anomaly_net` is netem applied to the host's own interface: there is no container, no extra
+# process, nothing to point at but the host. So "host" is the correct and complete answer
+# there, and counting it as a partial one would mark a right answer wrong. Measured on the
+# first 60 runs of it: named=0 for every single run, which is not the agent failing - it is
+# structurally impossible.
+#
+# The others all have something nameable: a stress-ng container, a database, or the one
+# container whose veth was degraded. For those, "host" really is a hedge.
+WHERE_CEILING = {
+    "anomaly_net": "scope",      # netem on the host itself - nothing to name
+    "noisy_neighbor": "named",   # the stress-ng co-tenant container
+    "anomaly_cpu": "named",      # the stress-ng container
+    "slow_db": "named",          # catalogue-db / mysqld
+    "svc_net": "named",          # netem on ONE container's veth
+    "svc_cpu_cap": "named",      # one container's cgroup quota
+}
+
+
+def where_ok(where: str, problem: str) -> bool:
+    """Did it get WHERE right, judged against the best answer this fault allows?"""
+    ceiling = WHERE_CEILING.get(problem, "named")
+    if ceiling == "scope":
+        return where in ("named", "scope")
+    return where == "named"
+
+
 def _norm(s) -> str:
     return re.sub(r"[^a-z0-9 ]+", " ", str(s or "").lower())
 
@@ -204,23 +232,29 @@ def main() -> int:
     for r in rows:
         by[r.get("problem", "?")].append(r)
 
-    print("%-16s %4s   %8s %8s   %s" % ("problem", "n", "v1", "v2", "concept most often missed"))
-    print("-" * 92)
+    print("%-16s %4s %8s   %8s %8s   %s"
+          % ("problem", "n", "WHERE ok", "what v1", "what v2", "concept most often missed"))
+    print("-" * 104)
     for prob in sorted(by):
         rs = by[prob]
         v1 = [r["what_score"] for r in rs if isinstance(r.get("what_score"), (int, float))]
         v2 = [r["_v2"]["what_score_v2"] for r in rs
               if isinstance(r["_v2"].get("what_score_v2"), (int, float))]
+        ok = sum(1 for r in rs if where_ok(r.get("where", ""), prob))
         miss = Counter()
         for r in rs:
             for m in r["_v2"]["missed"]:
                 miss[m] += 1
         top = miss.most_common(1)
-        print("%-16s %4d   %7s%% %7s%%   %s"
-              % (prob, len(rs),
+        print("%-16s %4d %4d/%-3d   %7s%% %7s%%   %s"
+              % (prob, len(rs), ok, len(rs),
                  "%.0f" % (100 * sum(v1) / len(v1)) if v1 else " -",
                  "%.0f" % (100 * sum(v2) / len(v2)) if v2 else " -",
                  ("%s (%d)" % (top[0][0], top[0][1])) if top else ""))
+    print()
+    print("WHERE ok is judged against the best answer each fault allows: for anomaly_net the")
+    print("netem sits on the host's own interface, so 'host' IS the complete answer and there")
+    print("is nothing to name. Everywhere else 'host' is a hedge.")
 
     print()
     print("%-16s %-14s %8s %8s" % ("problem", "ask | arm", "v2", "n"))
