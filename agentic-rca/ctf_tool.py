@@ -124,15 +124,33 @@ def _index_for(run_dir: str):
 
 
 def _scan_index(path: str, ev_re=None, procname: str | None = None,
-                t0: float | None = None, t1: float | None = None):
-    """Stream matching index rows as (bucket_start_s, event, procname, count)."""
+                t0: float | None = None, t1: float | None = None,
+                pid_ns: str | None = None):
+    """Stream matching index rows as (bucket_start_s, event, procname, pid_ns, count).
+
+    pid_ns is the container. Every kernel event carries the namespaces of the task that
+    produced it, and one pid_ns is one container - which is the only thing in a kernel trace
+    that tells `java` in one container from `java` in another. The first index kept procname
+    alone and threw it away, and with it any chance of localising a per-service fault.
+
+    Tolerates the older four-column index by reporting pid_ns as "?", so a run nobody has
+    rebuilt still answers instead of crashing, and says plainly that it does not know.
+    """
     with gzip.open(path, "rt") as fh:
         for line in fh:
             if not line or line[0] == "#":
                 continue
+            parts = line.rstrip().split(TAB)
+            if len(parts) == 5:
+                b, ev, proc, ns, n = parts
+            elif len(parts) == 4:
+                b, ev, proc, n = parts
+                ns = "?"
+            else:
+                continue
             try:
-                b, ev, proc, n = line.rstrip().split('\t')
                 bt = float(b)
+                cnt = int(n)
             except ValueError:
                 continue
             if t0 is not None and bt < t0:
@@ -143,7 +161,10 @@ def _scan_index(path: str, ev_re=None, procname: str | None = None,
                 continue
             if procname is not None and proc != procname:
                 continue
-            yield bt, ev, proc, int(n)
+            if pid_ns is not None and ns != str(pid_ns):
+                continue
+            yield bt, ev, proc, ns, cnt
+
 
 
 def ctf_timespan(run_dir: str, ctf_subdir: str = "kernel/kernel") -> dict:
@@ -172,7 +193,7 @@ def ctf_timespan(run_dir: str, ctf_subdir: str = "kernel/kernel") -> dict:
     idx = _index_for(run_dir)
     if idx is not None:
         lo_t = hi_t = None
-        for bt, _ev, _proc, _n in _scan_index(idx):
+        for bt, _ev, _proc, _ns, _n in _scan_index(idx):
             if lo_t is None:
                 lo_t = bt
             hi_t = bt
@@ -246,7 +267,7 @@ def ctf_timeline(run_dir: str, event: str, buckets: int = 30,
     width = max(1e-6, (hi - lo) / buckets)
     counts = [0] * buckets
     matched = 0
-    for bt, _ev, _proc, n in rows:
+    for bt, _ev, _proc, _ns, n in rows:
         counts[min(buckets - 1, int((bt - lo) / width))] += n
         matched += n
     peak = max(counts)
@@ -254,7 +275,7 @@ def ctf_timeline(run_dir: str, event: str, buckets: int = 30,
                "bar": "#" * int(round(20 * c / peak)) if peak else ""}
               for i, c in enumerate(counts)]
     names = Counter()
-    for _bt, ev, _proc, n in rows:
+    for _bt, ev, _proc, _ns, n in rows:
         names[ev] += n
     return {
         "event_pattern": event, "procname": procname, "clock": "UTC",
@@ -301,11 +322,14 @@ def query_ctf(run_dir: str, event: str, begin: str | None = None, end: str | Non
         return {"error": "end must be after begin"}
 
     by_event, by_proc = Counter(), Counter()
+    by_container = Counter()          # keyed (procname, pid_ns): one row per container
     per_bucket = Counter()
     lo = hi = None
-    for bt, ev, proc, n in _scan_index(idx, ev_re=ev_re, procname=procname, t0=t0, t1=t1):
+    for bt, ev, proc, ns, n in _scan_index(idx, ev_re=ev_re, procname=procname,
+                                           t0=t0, t1=t1):
         by_event[ev] += n
         by_proc[proc] += n
+        by_container[(proc, ns)] += n
         per_bucket[bt] += n
         lo = bt if lo is None else min(lo, bt)
         hi = bt if hi is None else max(hi, bt)
@@ -322,6 +346,12 @@ def query_ctf(run_dir: str, event: str, begin: str | None = None, end: str | Non
         "rate_per_s": round(total / span, 2) if span and span > 0 else None,
         "by_event": dict(by_event.most_common(15)),
         "top_procnames": dict(by_proc.most_common(TOP_PROCS)),
+        # Same process name, different container. `java` is not one thing here: split by
+        # pid_ns it is several, and which one matters is the whole question for a per-service
+        # fault. top_procnames alone cannot answer that and reading it as if it could is how
+        # every per-service run ended up blaming the host.
+        "top_by_container": [{"procname": pr, "pid_ns": ns, "events": c}
+                             for (pr, ns), c in by_container.most_common(TOP_PROCS)],
         "source": "count index (exact over the whole range you asked for)",
         "how_to_compare": ("A count on its own means nothing. Compare rate_per_s against "
                            "another range of this same trace that you have reason to believe "
@@ -443,21 +473,24 @@ def ctf_procdiff(run_dir: str, begin_a: str, end_a: str, begin_b: str, end_b: st
         return {"error": "need two ranges as HH:MM:SS, each with end after begin"}
     top = max(1, min(int(top), 60))
 
+    # Keyed by (procname, pid_ns), not procname. Two containers both running `java` are two
+    # different things, and collapsing them is what made every per-service fault look host-wide.
     ca, cb = Counter(), Counter()
-    for bt, _ev, proc, n in _scan_index(idx, ev_re=ev_re):
+    for bt, _ev, proc, ns, n in _scan_index(idx, ev_re=ev_re):
         if a0 <= bt < a1:
-            ca[proc] += n
+            ca[(proc, ns)] += n
         if b0 <= bt < b1:
-            cb[proc] += n
+            cb[(proc, ns)] += n
     if not ca and not cb:
         return {"event_pattern": event, "matched": 0,
                 "note": "no events of this pattern in either range - check the pattern"}
 
     da, db = a1 - a0, b1 - b0
     rows = []
-    for proc in set(ca) | set(cb):
-        ra, rb = ca[proc] / da, cb[proc] / db
-        rows.append({"procname": proc, "kernel_thread": _is_kthread(proc),
+    for key in set(ca) | set(cb):
+        proc, ns = key
+        ra, rb = ca[key] / da, cb[key] / db
+        rows.append({"procname": proc, "pid_ns": ns, "kernel_thread": _is_kthread(proc),
                      "rate_a": round(ra, 1), "rate_b": round(rb, 1),
                      "delta_per_s": round(rb - ra, 1),
                      "times": (round(rb / ra, 2) if ra > 0 else None)})
@@ -488,7 +521,10 @@ def ctf_procdiff(run_dir: str, begin_a: str, end_a: str, begin_b: str, end_b: st
             "kernel_thread=true marks an operating-system thread (swapper, kworker, ksoftirqd, "
             "jbd2 and so on) rather than a deployed program; they appear and vanish as the "
             "kernel schedules its own work, so they are rarely a cause though they can be a "
-            "symptom."),
+            "symptom. pid_ns IS THE CONTAINER: one number per container, so the same procname "
+            "under two different pid_ns values is two different containers. A runtime name "
+            "like java, node or python3 tells you almost nothing on its own - the pid_ns is "
+            "what lets you say WHICH service."),
     }
 
 
@@ -529,27 +565,33 @@ def ctf_proclife(run_dir: str, min_events: int = 1000, event: str = ".",
         return {"error": "no count index for this run. Build one with "
                          "blueprints/lib/build_ctf_index.py."}
 
+    # Keyed by (procname, pid_ns). A container that starts part-way through is the signal;
+    # merged on procname alone, a new `java` container hides inside the `java` that was always
+    # running.
     first: dict = {}
     last: dict = {}
     tot: Counter = Counter()
     lo = hi = None
-    for bt, _ev, proc, n in _scan_index(idx, ev_re=ev_re):
+    for bt, _ev, proc, ns, n in _scan_index(idx, ev_re=ev_re):
         lo = bt if lo is None else min(lo, bt)
         hi = bt if hi is None else max(hi, bt)
-        tot[proc] += n
-        if proc not in first:
-            first[proc] = bt
-        last[proc] = bt
+        k = (proc, ns)
+        tot[k] += n
+        if k not in first:
+            first[k] = bt
+        last[k] = bt
     if not tot:
         return {"event_pattern": event, "note": "nothing matched this pattern"}
 
     span = max(1e-6, hi - lo)
     part, whole = [], []
-    for proc, n in tot.items():
+    for key, n in tot.items():
+        proc, ns = key
         if n < min_events:
             continue
-        f, l = first[proc], last[proc]
-        row = {"procname": proc, "first_seen": _fmt(f), "last_seen": _fmt(l),
+        f, l = first[key], last[key]
+        row = {"procname": proc, "pid_ns": ns,
+               "first_seen": _fmt(f), "last_seen": _fmt(l),
                "alive_s": round(l - f, 1), "events": n,
                "kernel_thread": _is_kthread(proc),
                "covers_pct_of_recording": round(100.0 * (l - f) / span, 1)}
@@ -568,7 +610,9 @@ def ctf_proclife(run_dir: str, min_events: int = 1000, event: str = ".",
         "recording": [_fmt(lo), _fmt(hi)],
         "min_events": min_events,
         "present_for_only_part_of_the_recording": part,
-        "present_throughout": [r["procname"] for r in whole],
+        "present_throughout": [{"procname": r["procname"], "pid_ns": r["pid_ns"],
+                                "events": r["events"]} for r in whole],
+        "n_containers_seen": len({r["pid_ns"] for r in part + whole}),
         "source": "count index (every event in the recording)",
         "how_to_read": (
             "The first list is where a change of WHO is visible, ordered by how many events "
@@ -602,6 +646,8 @@ PROCDIFF_DEF = {
                   "event name substring or regex; default '.' means all events"},
         "top": {"type": "integer", "description": "rows per list, 1-60 (default 20)"}},
         "required": ["begin_a", "end_a", "begin_b", "end_b"]},
+    "_note": "rows carry pid_ns - one number per container. The same procname under two pid_ns "
+             "values is two different containers.",
 }
 
 PROCLIFE_DEF = {

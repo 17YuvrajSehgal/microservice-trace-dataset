@@ -19,7 +19,9 @@ queries in the last pilot cost 524 s. So one pass, cached, is both cheaper AND c
 
 WHAT IT DOES AND DOES NOT CONTAIN
 ---------------------------------
-Counts. `bucket_start_s, event, procname, count` at a fixed bucket width. Nothing else.
+Counts. `bucket_start_s, event, procname, pid_ns, count` at a fixed bucket width.
+Nothing else. pid_ns is the container: one number per container, and it is the only thing in
+a kernel trace that tells `java` in one container from `java` in another.
 
 It does NOT read ground_truth.json - the rule at the top of ctf_tool.py applies here too. It
 holds no notion of a baseline window, an incident window, a fault, or a culprit. It cannot,
@@ -47,10 +49,17 @@ GMT = ["--clock-gmt"]
 _TIME_RE = re.compile(r"^\[(\d{2}):(\d{2}):(\d{2})\.(\d+)\]")
 _EVENT_RE = re.compile(r"\]\s+(?:\(\+[^)]*\)\s+)?\S+\s+([a-zA-Z0-9_]+):")
 _PROC_RE = re.compile(r'procname\s*=\s*"([^"]*)"')
+# Every event carries the namespaces of the task that produced it. pid_ns is one
+# number per container, so it is what tells `java` in carts from `java` in orders -
+# measured on svc_cpu_cap r1, `java` appears under FOUR distinct pid_ns values. The
+# first index kept only procname and threw this away, and the agent could then do
+# nothing but answer "host" for every per-service fault.
+_PIDNS_RE = re.compile(r'pid_ns\s*=\s*(\d+)')
 
 BUCKET_MS = 100
 
-SCHEMA = "# bucket_start_s\tevent\tprocname\tcount\n"
+TAB = chr(9)
+SCHEMA = TAB.join(["# bucket_start_s", "event", "procname", "pid_ns", "count"]) + chr(10)
 
 
 def build(run_dir: str, out_path: str, ctf_subdir: str = "kernel/kernel",
@@ -71,10 +80,11 @@ def build(run_dir: str, out_path: str, ctf_subdir: str = "kernel/kernel",
     t0 = time.time()
     n_lines = n_rows = 0
     cur_bucket = None
-    cur: dict[tuple[str, str], int] = {}
+    cur: dict[tuple[str, str, str], int] = {}
     first_t = last_t = None
     events: set[str] = set()
     procs: set[str] = set()
+    nss: set[str] = set()
 
     tmp = out_path + ".partial"
     p = subprocess.Popen([BT2] + GMT + [ctf], stdout=subprocess.PIPE,
@@ -103,9 +113,12 @@ def build(run_dir: str, out_path: str, ctf_subdir: str = "kernel/kernel",
                 ev = em.group(1)
                 pm = _PROC_RE.search(line)
                 proc = pm.group(1) if pm else "?"
+                nm = _PIDNS_RE.search(line)
+                ns = nm.group(1) if nm else "0"
                 events.add(ev)
                 procs.add(proc)
-                k = (ev, proc)
+                nss.add(ns)
+                k = (ev, proc, ns)
                 cur[k] = cur.get(k, 0) + 1
                 if verbose and n_lines % 5_000_000 == 0:
                     print("    %d M events, t=%.1fs, %.0fs elapsed"
@@ -129,14 +142,15 @@ def build(run_dir: str, out_path: str, ctf_subdir: str = "kernel/kernel",
         "trace_end": last_t,
         "n_event_types": len(events),
         "n_procnames": len(procs),
+        "n_pid_ns": len(nss),
         "build_s": round(time.time() - t0, 1),
         "size_bytes": os.path.getsize(out_path),
     }
 
 
 def _flush(out, bucket_start: float, counts: dict) -> int:
-    for (ev, proc), n in counts.items():
-        out.write("%.3f\t%s\t%s\t%d\n" % (bucket_start, ev, proc, n))
+    for (ev, proc, ns), n in counts.items():
+        out.write(TAB.join(["%.3f" % bucket_start, ev, proc, ns, str(n)]) + chr(10))
     return len(counts)
 
 
@@ -169,6 +183,7 @@ def main() -> int:
         print("  %d events -> %d rows, %.1f MB, %s event types, %s procnames, %.0fs"
               % (r["events_decoded"], r["rows"], r["size_bytes"] / 1e6,
                  r["n_event_types"], r["n_procnames"], r["build_s"]), flush=True)
+        print("     %d pid namespaces (containers)" % r.get("n_pid_ns", 0), flush=True)
     return rc
 
 
