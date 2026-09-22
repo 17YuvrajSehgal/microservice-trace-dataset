@@ -192,7 +192,7 @@ def chart_effect(rows, path):
 
 # --- 2. how good is it, with and without? ---------------------------------------------------
 def chart_dumbbell(rows, path):
-    fig, axes = plt.subplots(1, 2, figsize=(10.4, 4.4), facecolor=SURFACE, sharey=True)
+    fig, axes = plt.subplots(1, 2, figsize=(10.4, 4.0), facecolor=SURFACE, sharey=True)
     for ax, (key, label) in zip(axes, [METRICS[0], METRICS[1]]):
         style(ax)
         ax.set_facecolor(SURFACE)
@@ -232,7 +232,7 @@ def chart_dumbbell(rows, path):
     fig.text(0.013, 0.905, "30 runs behind each dot. Problems grouped by what the fault "
                            "touches: whole host, then a datastore, then one service.",
              fontsize=9.5, color=INK_2)
-    fig.tight_layout(rect=(0, 0.06, 1, 0.88))
+    fig.tight_layout(rect=(0, 0.10, 1, 0.88))
     fig.savefig(path, dpi=200, facecolor=SURFACE)
     plt.close(fig)
     return path
@@ -277,16 +277,16 @@ def chart_ceiling(rows, path):
     ax.set_axisbelow(True)
     ax.set_xlabel("found the place WITHOUT a blueprint", fontsize=10, color=INK_2)
     ax.set_ylabel("found the place WITH a blueprint", fontsize=10, color=INK_2)
-    ax.set_title("Where there was room to improve", fontsize=14, color=INK,
-                 fontweight="bold", loc="left", pad=26)
-    ax.text(0, 1.055, "Above the line, the blueprint helped. On it, it changed nothing - and "
-                      "the reason differs at each end.",
-            transform=ax.transAxes, fontsize=9.5, color=INK_2, va="bottom")
+    fig.text(0.012, 0.972, "Where there was room to improve", fontsize=14, color=INK,
+             fontweight="bold", va="top")
+    fig.text(0.012, 0.927, "Above the line the blueprint helped. On the line it changed"
+                           " nothing -" + chr(10) + "and the reason differs at each end.",
+             fontsize=9.5, color=INK_2, va="top", linespacing=1.4)
     h = [plt.Line2D([], [], marker="o", ls="", ms=9, color=c, label=b)
          for b, _, c in BUCKETS]
     ax.legend(handles=h, loc="lower right", frameon=False, fontsize=9.5,
               labelcolor=INK_2, title="fault touches", title_fontsize=9)
-    fig.tight_layout()
+    fig.tight_layout(rect=(0, 0, 1, 0.885))
     fig.savefig(path, dpi=200, facecolor=SURFACE)
     plt.close(fig)
     return path
@@ -294,7 +294,7 @@ def chart_ceiling(rows, path):
 
 # --- 4. what it costs ------------------------------------------------------------------------
 def chart_cost(rows, path):
-    fig, axes = plt.subplots(1, 2, figsize=(10.4, 3.9), facecolor=SURFACE, sharey=True)
+    fig, axes = plt.subplots(1, 2, figsize=(10.4, 3.6), facecolor=SURFACE, sharey=True)
     for ax, (key, label, fmt, scale) in zip(
             axes, [("seconds", "Time per run (minutes)", "%.1f", 1 / 60.0),
                    ("tokens", "Tokens per run (thousands)", "%.0f", 1 / 1000.0)]):
@@ -326,9 +326,9 @@ def chart_cost(rows, path):
     fig.suptitle("What the blueprint costs", fontsize=14, color=INK, fontweight="bold",
                  x=0.013, ha="left", y=0.985)
     fig.text(0.013, 0.885, "Middle value of 30 runs. The blueprint adds tokens because it is "
-                           "long, but it does not make the agent slower.",
+                           "long - and it makes the agent FASTER, not slower.",
              fontsize=9.5, color=INK_2)
-    fig.tight_layout(rect=(0, 0.07, 1, 0.86))
+    fig.tight_layout(rect=(0, 0.11, 1, 0.86))
     fig.savefig(path, dpi=200, facecolor=SURFACE)
     plt.close(fig)
     return path
