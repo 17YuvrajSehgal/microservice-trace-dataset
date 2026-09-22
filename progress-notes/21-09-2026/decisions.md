@@ -552,3 +552,85 @@ Yuvraj was told.
 
 The honest distractors remain: the `conn*` MySQL connection threads carry MORE events than
 `stress-ng-cpu`, so the agent still has to work out which name does not belong.
+
+## 18. The dataset is now one directory
+
+Yuvraj, before the full run: "make sure our dataset is well organized in trillium... all under
+1 directory in a cleaned organized way."
+
+It was in three places that did not look related, with two more sitting beside them:
+
+| was | what | size |
+|---|---|---|
+| `data/stratatrace-v2/` | the extracted runs analysis reads | 7.7 TB |
+| `v2/` (four subdirs) | the .tar.gz release form | 844 GB |
+| `data/ctf-index/` | the count tables | 42 MB |
+| `superseded-20260917/` | retired runs | 1.3 TB |
+| `data/{l0,stratatrace-v1,agentic-runs}` | v1-era material | 2.8 TB |
+
+Nothing said which was current. That is exactly the confusion that lost ten Sock Shop families
+for two days in September, while queries quietly answered "0 runs".
+
+Now `dataset/{runs,archives,index}` plus a generated `README.md` and `INVENTORY.csv`, and
+`attic/` for what is kept but not part of the dataset.
+
+**Nothing was deleted.** Every move was a rename inside /scratch - instant, no bytes copied -
+and the old paths are symlinks in case a reference was missed.
+
+Verified after the move: 304 runs, 304 MANIFEST.json, 304 kernel dirs, 304 `_metrics`
+sidecars, 284 ground_truth.json and 284 verification.json. The 20 without are the `normal`
+baselines, which have no fault to describe. Zero runs missing a modality. `ctf_timespan` and
+`ctf_proclife` both answer through the symlinked path.
+
+`transfer/make_inventory.py` regenerates the README and CSV **from the runs themselves**, so
+the counts cannot drift from the data. Run it after adding or retiring anything.
+
+4.1 TB sits in `attic/` and could be reclaimed. Not deleted - that is the one step that cannot
+be undone, and it is Yuvraj's call.
+
+## 19. WHERE scoring would have been wrong for five of the six problems
+
+Caught while planning the full matrix. The accept lists in `q2_judge.RUBRIC` were mine, written
+from `fault_catalog.md`, and three were **empty** - so `named` could never be true for
+`anomaly_net`, `svc_net` or `svc_cpu_cap` whatever the agent answered. Another silent-zero bug
+of the same family as §11.
+
+Fixed by taking the target from each run's own `ground_truth.json`, which is where that fact
+actually lives. Ground truth belongs in the scorer; it still never goes near a tool.
+
+The real targets, now read rather than guessed:
+
+| problem | target |
+|---|---|
+| slow_db | catalogue-db |
+| anomaly_net, noisy_neighbor, anomaly_cpu | host |
+| svc_net, svc_cpu_cap | carts |
+
+### A fourth outcome: `ambiguous`
+
+A kernel trace shows `java` for **every** Java container, and Sock Shop runs several. An agent
+answering `java` for a `carts` fault has found a real signal and has **not** localised it.
+Scoring that as plain wrong hides the distinction; scoring it right would be meaningless. It
+now has its own bucket, along with node, python3, dockerd and the container runtime.
+
+That is also a result worth reporting: **from a kernel trace alone, a per-service fault in a
+Java stack may not be separable at all.** `svc_net` and `svc_cpu_cap` both target `carts`, so
+if those two come back mostly `ambiguous`, the honest conclusion is about the modality, not
+about the agent or the blueprint.
+
+## 20. Indexes on compute, agents on login
+
+15 of the 18 runs the matrix needs had no count index. Without one the tools fall back to the
+capped raw read - the behaviour the whole rerun existed to remove - and they fall back
+*silently*, so the matrix would have produced 300 plausible-looking rows built on 1.6% reads.
+The launcher now refuses to start if any index is missing.
+
+**Not a job array.** Trillium schedules by whole 192-core node, so 15 array tasks would have
+taken 15 whole nodes to run 15 single-threaded decodes - 2,880 cores to use 15. One node runs
+all of them at once and finishes in the time of the slowest. `--mem` is rejected too: every
+node has the same 745 GiB and a job gets all of it.
+
+Split by what each half needs: **indexing only reads files**, so it goes to a compute node
+where the egress block does not matter. **The agent runs need the Azure API**, so they stay on
+the login node. That also answers the 18 Sept telling-off about wasting compute - the heavy CPU
+now goes where CPU belongs, and the login node only holds processes waiting on HTTP.
