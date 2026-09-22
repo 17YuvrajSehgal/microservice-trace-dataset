@@ -64,7 +64,7 @@ import os
 import sys
 from collections import defaultdict
 
-# The six problems testable today: a blueprint exists, both applications, 10+ runs.
+# The problems testable today: a blueprint exists, both applications, 10+ runs.
 # lock_contention / priority_inversion / conn_pool_exhaustion are latency problems too but have
 # NO blueprint - see COVERAGE-which-blueprints-are-missing.md. Not in this matrix.
 PROBLEMS = {
@@ -81,6 +81,23 @@ PROBLEMS = {
                         "hint": "one service is slow while the host looks healthy"},
     "anomaly_cpu":     {"blueprint": "host-cpu-saturation",
                         "hint": "requests are slow across the board and the host looks busy"},
+
+    # Added 22-09-2026. Five families that had no blueprint, now covered from kernel traces
+    # alone - the discriminators were measured with lib/fingerprint_table.py over 41 labelled
+    # runs, and candidate signals were first put through lib/discover_signature.py (which
+    # rejected unlinkat, ftruncate, block_split, lseek and dup as window artefacts) and
+    # lib/who_makes_it.py (which rejected nagle_delayed_ack's host-wide signal as 94% our own
+    # load generator).
+    "lock_contention": {"blueprint": "lock-contention-futex-storm",
+                        "hint": "a service is slow but its CPU is not saturated"},
+    "deadlock":        {"blueprint": "deadlock-lock-order",
+                        "hint": "a service stopped responding rather than slowing down"},
+    "priority_inversion": {"blueprint": "priority-inversion-nice",
+                           "hint": "a service is slow and slower than the load explains"},
+    "conn_pool_exhaustion": {"blueprint": "connection-pool-exhaustion",
+                             "hint": "callers of a datastore are failing while it looks idle"},
+    "dependency_outage": {"blueprint": "dependency-outage-retry-storm",
+                          "hint": "requests through one path hang or fail rather than slowing"},
 }
 
 # anomaly_net and svc_net share one blueprint on purpose - does a single network blueprint serve

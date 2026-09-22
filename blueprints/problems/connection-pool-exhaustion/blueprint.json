@@ -1,0 +1,268 @@
+{
+ "id": "connection-pool-exhaustion",
+ "version": 1,
+ "title": "Connection pool exhaustion: a holder that talks to the network and does no work",
+ "problem": {
+  "summary": "Something opens connections to a datastore and holds them without using them. In the kernel it shows as a container whose events are almost all network and ioctl, with no locking and almost no CPU.",
+  "symptoms": [
+   "callers of one datastore start failing or timing out",
+   "the datastore itself is not busy",
+   "the failure is about availability of connections, not latency"
+  ],
+  "discriminators": [
+   {
+    "signal": "ioctl share",
+    "this_problem": "17.3% (n=5)",
+    "not_this_problem": "ioctl does not appear at all in any other family measured - 0.0% for lock contention, deadlock, priority inversion, both stress families and the network fault",
+    "confused_with": [
+     "db-latency-dependency-wait",
+     "dependency-outage-retry-storm"
+    ],
+    "evidence": "MEASURED on 41 labelled runs across 8 families with blueprints/lib/fingerprint_table.py (22-09-2026). conn_pool_exhaustion 17.3% (n=5); every other family measured 0.0-0.4%. This is the cleanest single separation in the table."
+   },
+   {
+    "signal": "network share with no futex",
+    "this_problem": "network 35.6% and futex 0.0% (n=5) - it talks, it does not lock",
+    "not_this_problem": "the delayed-ack fault also carries network (17.9%) but with 25.8% futex alongside it",
+    "confused_with": [
+     "nagle-delayed-ack-stall"
+    ],
+    "evidence": "MEASURED on 41 labelled runs across 8 families with blueprints/lib/fingerprint_table.py (22-09-2026). network 35.6% / futex 0.0% (n=5) against 17.9% / 25.8% for nagle_delayed_ack (n=5)."
+   },
+   {
+    "signal": "it is nearly idle for the work it appears to be doing",
+    "this_problem": "545-550 events/s with on-CPU at 3.2% (n=5) - holding, not working",
+    "not_this_problem": "a busy client would show far more on-CPU time",
+    "confused_with": [
+     "db-latency-dependency-wait"
+    ],
+    "evidence": "MEASURED on 41 labelled runs across 8 families with blueprints/lib/fingerprint_table.py (22-09-2026). 545-550 events/s (n=5), a spread of under 1% across five runs, with on_cpu 3.2%."
+   }
+  ],
+  "unverified_do_not_claim": [
+   {
+    "claim": "the exhausted pool can be seen from the datastore side",
+    "status": "NOT MEASURED",
+    "measurement": "we measured the holder container only. Whether the datastore's own container shows a matching signature was not tested.",
+    "consequence": "do not claim it. Name the holder, not the victim."
+   }
+  ]
+ },
+ "reproduction": {
+  "system": "Sock Shop under StrataTrace v2",
+  "recipe": "conn_pool_exhaustion",
+  "invoke": "see microservice-lttng-data-collection-scripts/faults/",
+  "teardown": "the recipe restores state; verify against /sys/fs/cgroup",
+  "labelled_examples": [
+   "conn_pool_exhaustion_aggressive_steady_r1",
+   "conn_pool_exhaustion_aggressive_steady_r2",
+   "conn_pool_exhaustion_aggressive_steady_r3"
+  ],
+  "harness_only": [
+   "the fault is injected as a sidecar container, which is a property of our harness. In production the same mechanism occurs inside an existing service - so the SHAPE transfers, the newcomer shortcut does not"
+  ]
+ },
+ "collection_order": {
+  "window": {
+   "baseline_s": 60,
+   "incident_s": 120,
+   "recovery_s": 60
+  },
+  "kernel_events": [
+   "syscall_entry_futex",
+   "sched_switch",
+   "sched_stat_runtime",
+   "irq_softirq_entry",
+   "net_dev_xmit",
+   "syscall_entry_ioctl"
+  ],
+  "metrics": [],
+  "logs": [],
+  "traces": [],
+  "why_these": "MEASURED BASIS. Every discriminator in this blueprint is a share of these event groups within one container. Nothing else in the trace is required, and no other modality is used - this blueprint was built and validated on kernel traces alone."
+ },
+ "processing": [
+  {
+   "step": "Make the kernel trace readable",
+   "capability": "trace.stage_ctf",
+   "expect": "a CTF directory with metadata and channel streams",
+   "produces": "a readable trace path"
+  },
+  {
+   "step": "Find containers that are active during the window and absent before it",
+   "capability": "process.creation_attribution",
+   "expect": "one container with substantial traffic during the window and none before. If none appears, this blueprint does not apply - say so and stop",
+   "produces": "candidate culprit containers, by pid_ns"
+  },
+  {
+   "step": "Measure what share of its own events that container spends on each kind of work",
+   "capability": "kernel.container.event_shares",
+   "expect": "the share profile below, within the measured range",
+   "produces": "<out>/shares.json - per-container event shares",
+   "reads": [
+    "ctf"
+   ]
+  },
+  {
+   "step": "Apply the rules and emit the verdict",
+   "capability": "verdict.apply_rules",
+   "expect": "a verdict naming the container and the mechanism, or an explicit abstain",
+   "produces": "<out>/verdict.json"
+  },
+  {
+   "step": "draw the decision card",
+   "capability": "report.decision_card",
+   "expect": "one page showing the shares, the cut, and what was ruled out",
+   "produces": "<out>/card.svg"
+  }
+ ],
+ "outputs": [
+  {
+   "kind": "json",
+   "path": "<out>/verdict.json",
+   "contains": "culprit container pid_ns, its event shares, and the shares of every other container for comparison"
+  },
+  {
+   "kind": "json",
+   "path": "<out>/shares.json",
+   "contains": "per-container event shares for the window"
+  },
+  {
+   "kind": "xy_chart",
+   "path": "<out>/card.svg",
+   "contains": "each family's measured share on the deciding axis, with this run's value marked"
+  }
+ ],
+ "decision": {
+  "verdict_when": [
+   "a container is new to the window",
+   "its share profile matches the measured range below",
+   "no sibling container shows the same profile"
+  ],
+  "rule_out": [
+   {
+    "instead": "nagle-delayed-ack-stall",
+    "when": "network is present but futex is around 26% rather than 0%"
+   },
+   {
+    "instead": "db-latency-dependency-wait",
+    "when": "no container is new to the window and the datastore itself is slow"
+   }
+  ],
+  "root_cause_is": "the container holding connections open against the datastore",
+  "fault_type": "conn_pool_exhaustion",
+  "uses_thresholds": []
+ },
+ "evidence_from_literature": [],
+ "related_blueprints": [
+  "cpu-contention-co-tenant"
+ ],
+ "mutually_exclusive_with": [],
+ "provenance": {
+  "authored_by": "measured from StrataTrace v2 kernel traces",
+  "verified_by": "PENDING human review",
+  "authored_utc": "2026-09-22T20:21:49Z",
+  "notes": "Built 22-09-2026 from blueprints/lib/fingerprint_table.py over 41 labelled runs of 8 families. Candidate signals were first put through discover_signature.py (a specificity sweep across families, which rejected unlinkat, ftruncate, block_split, lseek and dup as window artefacts) and who_makes_it.py (which rejected the nagle_delayed_ack host-wide signal as 94% our own load generator). KERNEL TRACES ONLY - no metrics, logs or spans were consulted."
+ },
+ "taxonomy": {
+  "domain": "microservices",
+  "category": "kernel-observable",
+  "subcategory": "conn_pool_exhaustion",
+  "sibling_causes": [],
+  "note": ""
+ },
+ "applicability": {
+  "apply_when": [
+   "callers of a datastore fail or time out while the datastore is idle",
+   "the symptom is about connection availability, not query latency",
+   "a kernel trace is available"
+  ],
+  "do_not_apply_when": [
+   "the datastore is itself busy or slow - see db-latency-dependency-wait",
+   "no container is new to the window"
+  ],
+  "cheap_precheck": "a container appeared whose events are mostly network and ioctl, with no futex at all"
+ },
+ "capabilities_required": [
+  {
+   "id": "trace.stage_ctf"
+  },
+  {
+   "id": "process.creation_attribution"
+  },
+  {
+   "id": "kernel.container.event_shares"
+  },
+  {
+   "id": "verdict.apply_rules"
+  },
+  {
+   "id": "report.decision_card"
+  }
+ ],
+ "stopping_conditions": {
+  "conclude": "the share profile matches and no sibling container matches it too",
+  "stop_and_switch": "a discriminating share falls outside its measured range",
+  "stop_insufficient": "no container is new to the window and none stands out",
+  "max_evidence_rounds": 3
+ },
+ "adaptation_rules": [],
+ "selection": {
+  "supported_goals": [
+   "root cause"
+  ],
+  "supported_environments": [
+   "docker-compose"
+  ],
+  "applicable_symptoms": [
+   "callers of one datastore start failing or timing out",
+   "the datastore itself is not busy",
+   "the failure is about availability of connections, not latency"
+  ],
+  "preconditions": [
+   "a kernel CTF trace",
+   "futex and sched tracepoints enabled"
+  ],
+  "estimated_overhead_pct": {
+   "min": 0,
+   "max": 0
+  },
+  "historical_effectiveness": {
+   "runs_validated": 5,
+   "note": "shares measured on 5 runs of this family"
+  }
+ },
+ "policies": {
+  "collection_order_rule": "kernel only",
+  "max_collection_overhead_pct": 0,
+  "scope": {
+   "restrict_to": "the trace supplied",
+   "never_widen_without": "an operator's say-so"
+  },
+  "privacy": [],
+  "approval": {
+   "automatic": [
+    "read the trace"
+   ],
+   "requires_approval": []
+  },
+  "autonomy_level": 2,
+  "autonomy_note": "read-only analysis"
+ },
+ "evidence_sufficiency": {
+  "confidence_floor": 0.6,
+  "if_below_floor": "report the shares and say which blueprint they sit between",
+  "report_when_stuck": "the container's shares and every sibling's, side by side"
+ },
+ "scenarios": {
+  "note": "",
+  "cases": []
+ },
+ "inputs": {
+  "trace_dir": "<trace_dir>",
+  "window": "<window>",
+  "out": "<out>",
+  "ctf": "<ctf>",
+  "note": "kernel trace only"
+ }
+}
