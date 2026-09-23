@@ -111,3 +111,75 @@ all five runs.
 
 **Method note worth keeping.** Every one of these came from two tools disagreeing, not from a
 tool failing. Checking that a tool returns something would have passed all four.
+
+## v2 on the network problems: it fixes WHEN, not WHERE - and WHERE was never a data limit
+
+Ran three arms on `svc_net` and `anomaly_net`, both applications, 48 cells each. The middle arm
+is the point: without it "v2 is better" cannot be attributed to the agent rather than to the
+plumbing fixed underneath it the same day.
+
+| | A v1+old tools | B v1+fixed | C v2+fixed |
+|---|---|---|---|
+| SS `svc_net` window IoU | 0.543 | 0.569 | **0.776** |
+| SS `anomaly_net` window IoU | 0.310 | 0.333 | **0.623** |
+| TT `svc_net` window IoU | 0.262 | 0.311 | **0.559** |
+| TT `anomaly_net` window IoU | 0.090 | 0.154 | 0.190 |
+| SS `svc_net` WHERE | 0/30 | 0/12 | **0/12** |
+| TT `svc_net` WHERE | 0/30 | 0/12 | **0/12** |
+
+**A->B is small, B->C is the move.** The tool fixes bought speed (334 s -> 115 s a cell, from
+the line samples) and about +0.04 IoU. The new agent roughly doubles IoU on three of four.
+
+**And WHERE did not move at all on `svc_net`. Zero in every arm, on both applications.**
+
+### Why: it answers `host`, and that is a guidance failure, not a data limit
+
+The agent says `host` in 10-11 of 12 cells on both applications. So I checked offline whether
+the kernel trace can localise this fault at all. The fault is `tc qdisc` netem inside one
+container's netns - 150 ms delay, 40 ms jitter, 4% loss on its eth0 - so that container's
+packets should slow while every other container's do not. Summed network events per `pid_ns`,
+baseline against the real injection window:
+
+| run | target | lowest ratio | median of the rest | separation |
+|---|---|---|---|---|
+| `svc_net_..._r1` | carts | 0.184 | 0.694 | 3.8x |
+| `svc_net_..._r2` | carts | 0.155 | 0.630 | 4.1x |
+| `svc_net_..._r3` | carts | 0.179 | 0.729 | 4.1x |
+| `tt_svc_net_..._r1` | ts-basic-service | 0.087 | 0.688 | 7.9x |
+| `tt_svc_net_..._r2` | ts-basic-service | 0.095 | 0.786 | 8.2x |
+| `tt_svc_net_..._r3` | ts-basic-service | 0.130 | 1.285 | 9.9x |
+
+**Six of six, both applications. Exactly one container collapses to 9-18% of its baseline
+packet rate while the median container sits at 63-129%.** The signal is large, consistent and
+sitting in a column the agent already has.
+
+**So `svc_net` scoring 0/60 in the published results is not evidence that kernel traces cannot
+localise a per-service network fault.** It is evidence that nothing ever told the agent to
+compute a per-container network rate and rank it. That is a blueprint change with measurement
+behind it, which is the bar this repo sets.
+
+### Two bugs found on the way, both mine, both silent
+
+`run_python` failed **80% of the time** in the first pass - and that run is what produced the
+first, worse, v2 table. 42% rejected for `import pandas as pd`, a habit no prompt wording
+prevents; 38% killed by `libgomp: Thread creation failed` when eight parallel cells each
+started a numpy child that sized an OpenMP pool to a 192-core shared login node. Those cells
+ran with no working code tool at all and nothing said so. After fixing both: failures 80% ->
+10-33%, and TT `anomaly_net` abstentions 11/12 -> 5/12. **The TT regression I was about to
+report was my sandbox, not the agent.**
+
+A second-round review crashed every cell it touched with `KeyError: '_task'` - `_after_review`
+returned the node NAME, and a plain conditional edge hands the node the whole graph state while
+`Send` hands it the per-worker payload. 13 of 48 cells, only the ones where the reviewer asked
+for more work, which reads as flakiness.
+
+### Cost
+
+| arm | secs/cell | tokens/cell |
+|---|---|---|
+| A v1 + old tools | 334 | 100k |
+| B v1 + fixed tools | 115 | 159k |
+| C v2 + fixed tools | 215 | 345k |
+
+v2 is 3.5x arm A's tokens for roughly double the window accuracy. Worth it for a study; worth
+watching before a 1320-cell campaign.
