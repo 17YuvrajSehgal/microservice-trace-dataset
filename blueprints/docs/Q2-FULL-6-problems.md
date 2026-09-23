@@ -6,8 +6,8 @@ All 360 finished. 4 hours 21 minutes. Nothing failed.
 - kernel traces only. No metrics, no logs, no spans
 - the agent is not told when the fault was, or that there was one
 - model `gpt-5.4-mini` (azure); blueprint handed over, not chosen
-- results `/scratch/yuvraj17/stratatrace/results/q2-full`
-- all 360 answers in full: `results/q2-full/review/review-<problem>.md`
+- results `/scratch/yuvraj17/stratatrace/results/attic/q2-full`
+- all 360 answers in full: `results/attic/q2-full/review/review-<problem>.md`
 
 ## Did it find the right place?
 
@@ -54,7 +54,7 @@ a `carts` fault saw `java` with no way to tell which one, and fell back to `host
 of 60 on `svc_net`, 43 on `svc_cpu_cap`.
 
 The index and all three process tools now carry `pid_ns`. A re-run of those two problems is in
-`results/q2-ns`, with everything else held fixed, so the difference is one change.
+`results/attic/q2-ns`, with everything else held fixed, so the difference is one change.
 
 ## Does the blueprint help?
 

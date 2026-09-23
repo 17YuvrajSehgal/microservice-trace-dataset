@@ -4,7 +4,7 @@ Same 60 runs, same model, same blueprint. What changed: the agent can now ask **
 running, not only **how much** is happening.
 
 All 60 finished, 80 minutes, nothing failed. Results in
-`/scratch/yuvraj17/stratatrace/results/q2b`. The old runs stay in `results/q2`.
+`/scratch/yuvraj17/stratatrace/results/attic/q2b`. The old runs stay in `results/attic/q2`.
 
 ## The headline: finding the process
 
@@ -108,7 +108,7 @@ answer class, as in the first pilot. Ignore until the six-problem matrix.
    arm where the agent picks from all 11.
 2. **Only one problem.** Everything here is `noisy_neighbor`.
 3. **The rubric is a first pass.** The full answers are in
-   `/scratch/yuvraj17/stratatrace/results/q2b/review.md`, 60 runs in the agent's own words. If
+   `/scratch/yuvraj17/stratatrace/results/attic/q2b/review.md`, 60 runs in the agent's own words. If
    a run reads correct and scored low, the rubric is wrong.
 
 ## What was changed to get here

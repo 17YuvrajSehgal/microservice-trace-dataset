@@ -569,3 +569,29 @@ two apparent mismatches, both correct on inspection:
 - `anomaly_net` WHERE is 50/60 not 0/60 - the per-problem ceiling counts `scope` as right,
   since a host-wide network fault has no service to name.
 - `described` comes from the phrase-based rescore, not the `what_score` stored at run time.
+
+## One results directory per application, superseded runs to attic
+
+The corrected `anomaly_net` was sitting in a separate dir and being substituted at report time
+with `--override`. That worked but left a false-recipe copy next to a true-recipe copy, both
+called something starting `q2-`. Folded the corrected runs in and moved the rest aside:
+
+| now | was |
+|---|---|
+| `results/q2-ss` - 360 cells, Sock Shop | `q2-ss2` + `q2-net-ss/anomaly_net` |
+| `results/q2-tt` - 360 cells, Train Ticket | `q2-tt` + `q2-net-tt/anomaly_net` |
+| `results/charts-ss`, `charts-tt` | `charts-ss`, `charts-tt`, and an older `charts` |
+| `results/attic/` | `q2-full`, `q2-ns`, `q2`, `q2b`, `charts`, both false-recipe `anomaly_net` |
+
+**Kept rather than deleted.** `WHEN-A-BLUEPRINT-HURTS.md` isolates one variable at a time, so
+it needs the old-prompt and false-recipe runs to stay reproducible. `attic/README.md` says
+which condition each one is, so nothing there can be mistaken for a current result.
+
+Verified the swap by fingerprint, not by filename: the true-recipe `anomaly_net` has 3/11
+abstentions on Sock Shop and 9/17 on Train Ticket; the false one had 0/13 and 9/23.
+
+Reports no longer carry the `--override` footnote, and the review-sheet pointer follows
+`--full` instead of hardcoding `q2-full` - it had been pointing into a directory that moved.
+
+**`q2_run_matrix.py` and `q2_run_one.py` still default `--out-dir` to `results/q2`, on purpose.**
+A run started without `--out-dir` should land somewhere throwaway, not on top of `q2-ss`.

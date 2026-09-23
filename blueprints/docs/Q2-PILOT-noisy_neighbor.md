@@ -8,7 +8,7 @@ Setup:
 - kernel traces only. No metrics, no logs, no spans
 - the agent is not told when the fault was, or that there was one
 - model `gpt-5.4-mini` (azure), blueprint `cpu-contention-co-tenant`, handed over not chosen
-- results in `/scratch/yuvraj17/stratatrace/results/q2`
+- results in `/scratch/yuvraj17/stratatrace/results/attic/q2`
 
 ## The numbers
 

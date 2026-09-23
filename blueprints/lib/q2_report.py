@@ -4,7 +4,7 @@
 Reads results only. Ground truth was already applied per cell by q2_run_one; nothing here
 re-scores, so the table cannot disagree with the individual cells it came from.
 
-    python q2_report.py --out-dir /scratch/yuvraj17/stratatrace/results/q2
+    python q2_report.py --out-dir /scratch/yuvraj17/stratatrace/results/q2-ss
 """
 from __future__ import annotations
 
@@ -65,7 +65,7 @@ def fmt_num(x, w=6, dp=2):
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--out-dir", default="/scratch/yuvraj17/stratatrace/results/q2")
+    ap.add_argument("--out-dir", default="/scratch/yuvraj17/stratatrace/results/q2-ss")
     ap.add_argument("--json", default="", help="also write the summary here")
     a = ap.parse_args()
 

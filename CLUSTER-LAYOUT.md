@@ -22,7 +22,12 @@ Before 2026-09-03 it was spread across the scratch root, mixed with four other p
 │   └── v1-and-earlier/          l0, stratatrace-v1, agentic-runs    2.8 TB
 ├── repo/          the git clone
 ├── data/          symlinks back to the above, plus packs/ and ctfcache/
-├── results/       one dir per experiment (q2, q2b, withwithout, blockio, ...)
+├── results/       one dir per experiment. The agent matrices are exactly two:
+│                 q2-ss (Sock Shop) and q2-tt (Train Ticket), 360 scored cells each,
+│                 with charts-ss/ charts-tt/ and the two RESULTS-*.md beside them.
+│                 Superseded runs live in results/attic/ - read its README before
+│                 using one. Everything else here (withwithout, blockio, flows, ...)
+│                 is evidence for a blueprint, not an agent matrix.
 ├── tools/         bt21.sh, local-bt21/ (babeltrace 2.1.2), src/
 ├── scripts/       loose helper scripts from past sessions
 ├── slurm-logs/    job .out / .err / .log files

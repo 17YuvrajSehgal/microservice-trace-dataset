@@ -385,7 +385,7 @@ Each of these looked like a finding about kernel traces. All three were my own t
 Every answer in the agent's own words, one file per problem:
 
 ```
-results/q2-full/review/review-<problem>.md
+/scratch/yuvraj17/stratatrace/results/q2-ss/review/review-<problem>.md
 ```
 
 The automatic scores sort the runs. They do not decide. If a run reads correct and scored low, the rubric is wrong and should be changed.
