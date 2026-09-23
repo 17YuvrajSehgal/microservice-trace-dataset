@@ -357,9 +357,8 @@ def n_plan(state: S) -> dict:
 
 
 def _fan(state: S):
-    tasks = state.get("again") or state["plan"]
-    return [Send("n_work", {"_task": t, "_i": i, "_round": state.get("round", 1)})
-            for i, t in enumerate(tasks)]
+    return [Send("n_work", {"_task": t, "_i": i, "_round": 1})
+            for i, t in enumerate(state["plan"])]
 
 
 def n_work(payload: dict) -> dict:
@@ -433,7 +432,20 @@ def n_review(state: S) -> dict:
 
 
 def _after_review(state: S):
-    return "n_work" if state.get("again") else "n_synth"
+    """Route to the synthesiser, or fan a second round out to fresh workers.
+
+    Returning the STRING "n_work" here was a bug: a plain conditional edge hands the node the
+    whole graph state, while n_work expects the per-worker payload that Send carries. Round one
+    worked because it arrives through Send; round two crashed with KeyError: '_task', so only
+    the cells where the reviewer actually asked for more work failed - 13 of 48, which is
+    exactly the kind of partial failure that reads as flakiness rather than a bug.
+    """
+    again = state.get("again") or []
+    if not again:
+        return "n_synth"
+    # offset the index so round-two workers get their own labels in the transcript
+    return [Send("n_work", {"_task": t, "_i": 100 + i, "_round": state.get("round", 2)})
+            for i, t in enumerate(again)]
 
 
 def n_synth(state: S) -> dict:
