@@ -62,11 +62,29 @@ behaved correctly on a false premise.**
 | gap with the false recipe | +13 | +14 |
 | gap with the true recipe | **+8** | **+8** |
 
-Both applications land on exactly +8. Train Ticket's given-arm hits went 1 to 6.
+Both land on +8. But they got there differently, and only one is clean evidence.
 
-So roughly a third of the damage was our false sentence. The rest is something else, and it is
-the same size on both applications - which is what you would expect if it comes from the
-blueprint rather than from either codebase.
+The `none` arm gets no blueprint and no recipe. It should not move between these runs at all.
+Splitting each gap into its two arms:
+
+| abstentions, out of 30 | Sock Shop | Train Ticket |
+|---|---|---|
+| given arm | 13 -> 11 | 23 -> **17** |
+| control arm (should not move) | 0 -> **3** | 9 -> 9 |
+| given-arm window hits | 7 -> 8 | 1 -> **6** |
+
+On Train Ticket the control arm did not move. The whole improvement is the given arm, and its
+window hits went 1 to 6. That is the recipe fix working.
+
+On Sock Shop the control arm drifted by 3 runs, which the recipe cannot have caused. Only 2 of
+the 5-point move belongs to the given arm.
+
+**So the recipe fix is demonstrated on Train Ticket, not on Sock Shop.** Three runs in 30 is
+the noise floor here. Do not read much into any single small change in the matrix.
+
+The fix did not close the gap on either application. The rest is something else, and it is the
+same size on both - which is what you would expect if it comes from the blueprint rather than
+from either codebase.
 
 ## The real cause, second part - and this is the finding
 

@@ -527,3 +527,45 @@ One honest caveat, stated in the tool's own output: this is a DIFFERENT sample. 
 used to return the first n matching lines in a range, which can all fall inside a few
 milliseconds; it now returns one per 100 ms bucket, spread across the range. Arguably better,
 definitely different.
+
+---
+
+## The recipe fix is proven on one application, not two
+
+Checked the corrected-recipe re-runs arm by arm before committing the reports. The `none` arm
+receives no blueprint and no kernel recipe, so it is a control: it must not move between the
+false-recipe and true-recipe runs.
+
+| abstentions, out of 30 | Sock Shop | Train Ticket |
+|---|---|---|
+| given arm | 13 -> 11 | 23 -> 17 |
+| control arm | 0 -> 3 | 9 -> 9 |
+| given-arm window hits | 7 -> 8 | 1 -> 6 |
+
+Train Ticket's control arm is flat, so all 6 points belong to the recipe. Sock Shop's control
+arm moved 3 runs on its own, so only 2 of its 5-point move is the recipe.
+
+**Why this matters.** Both applications landing on +8 read as a clean replication, and it is
+not one. Written up that way, a reviewer who re-ran it would find the Sock Shop half does not
+hold. `WHEN-A-BLUEPRINT-HURTS.md` now says which half is evidence.
+
+**It also gives us a noise floor we did not have: 3 runs in 30, about 10 points.** Any single
+cell in the matrix moving by less than that is not a result. Worth applying to the whole report
+- several per-problem deltas are in that range.
+
+## Charts and reports were already correct; only the repo copy was stale
+
+I suspected the Sock Shop charts had been built without the `anomaly_net` override, because
+`anomaly_net` still showed -13 on "found the time". Checked instead of assuming: -13 IS the
+corrected number (the false recipe gives -27), and the regenerated files are byte-identical to
+the downloaded ones. The override had been applied all along.
+
+Two measures were being confused, and the doc names both now:
+- **abstention gap** (given minus none): +13 -> +8
+- **window hit change** in percentage points: -27 -> -13
+
+Also confirmed the report's numbers against a recompute straight from `score.json`, which found
+two apparent mismatches, both correct on inspection:
+- `anomaly_net` WHERE is 50/60 not 0/60 - the per-problem ceiling counts `scope` as right,
+  since a host-wide network fault has no service to name.
+- `described` comes from the phrase-based rescore, not the `what_score` stored at run time.
