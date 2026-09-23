@@ -286,6 +286,43 @@ def _exec_tool(name, args, node, step):
     return sent
 
 
+THREAD_BUDGET = 40000    # chars of tool output kept verbatim in one worker's thread
+
+
+def _trim_thread(msgs):
+    """Keep the most recent tool output verbatim and stub what came before it.
+
+    A tool-calling thread re-sends everything before it on every step, so cost grows with the
+    square of the number of steps. Measured on the first full v2 run: one worker that used all
+    12 steps spent 322k of the run's 545k prompt tokens on its own, its per-call thread having
+    grown to 44k. A single ctf_proclife result is about 11k tokens and was re-sent nine times.
+
+    Stubbing rather than deleting, because the API requires every tool_call to still have its
+    matching tool message. And it is safe to stub precisely because the worker records what
+    matters through note_finding as it goes: the scratchpad is what reaches the synthesiser,
+    not this thread. The stub names the tool and the step so the model can call it again if it
+    genuinely needs the detail back.
+    """
+    idx = [i for i, m in enumerate(msgs) if m.get("role") == "tool"]
+    spent = 0
+    keep = set()
+    for i in reversed(idx):
+        c = msgs[i].get("content") or ""
+        if spent + len(c) > THREAD_BUDGET and keep:
+            break
+        spent += len(c)
+        keep.add(i)
+    out = []
+    for i, m in enumerate(msgs):
+        if m.get("role") == "tool" and i not in keep and len(m.get("content") or "") > 400:
+            m = dict(m)
+            m["content"] = ("[earlier result elided to keep this thread small - %d characters. "
+                            "Your note_finding entries are kept in full. Call the tool again if "
+                            "you need the detail back.]" % len(msgs[i]["content"]))
+        out.append(m)
+    return out
+
+
 def _worker_tools():
     defs = [t for t in _tool_defs(kernel_only=True)
             if t["name"] in KERNEL_ONLY_TOOLS and t["name"] != "submit_diagnosis"]
@@ -336,7 +373,7 @@ def n_work(payload: dict) -> dict:
     CTX.event("worker_start", node=node, task=task)
     found, calls = [], 0
     for step in range(MAX_WORKER_STEPS):
-        m = _call(msgs, tools, node, step)
+        m = _call(_trim_thread(msgs), tools, node, step)
         a = {"role": "assistant", "content": m.content or ""}
         if m.tool_calls:
             a["tool_calls"] = [{"id": c.id, "type": "function",
