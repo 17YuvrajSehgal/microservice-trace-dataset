@@ -467,7 +467,15 @@ def main() -> int:
                         1 for r in rs
                         if str(r.get("pred_service", "")).strip().lower() == "host")),
                     ("said bare `java`", lambda rs: sum(
-                        1 for r in rs if r.get("where") == "ambiguous"))):
+                        1 for r in rs if r.get("where") == "ambiguous")),
+                    # Added 23-09 with the verified-container scorer. Without these a reader
+                    # cannot tell "named the wrong container" from "said host" - both just
+                    # fail to appear under WHERE right, and they mean very different things
+                    # about whether the agent is looking in the right place.
+                    ("named the WRONG container", lambda rs: sum(
+                        1 for r in rs if r.get("where") == "container_wrong")),
+                    ("container we cannot verify", lambda rs: sum(
+                        1 for r in rs if r.get("where") == "container_unverified"))):
                 L.append("| %s | %s | %d/%d | %d/%d | %+d |"
                          % (prob, label, fn(b), len(b), fn(f), len(f), fn(f) - fn(b)))
         L.append("")

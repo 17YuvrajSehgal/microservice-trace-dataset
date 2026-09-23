@@ -171,9 +171,14 @@ def where_ok(where: str, problem: str) -> bool:
     ceiling = WHERE_CEILING.get(problem, "named")
     if ceiling == "scope":
         return where in ("named", "scope")
-    # `container` counts. The kernel records no service name, only one pid_ns per container,
-    # so picking one container out of the 21 on this host is the most precise answer the
-    # modality allows - and it is a different thing entirely from answering "host".
+    # `container` counts, and since 23-09 it means a VERIFIED container: q2_judge resolves the
+    # target's pid_ns through nsmap and splits the outcome three ways. So the two that do not
+    # appear here are excluded on purpose:
+    #   container_wrong       named a container, but not the injected one
+    #   container_unverified  named a container we cannot resolve, so it is not a pass
+    # The kernel records no service name, only one pid_ns per container, so naming the right
+    # container is the most precise answer the modality allows - and naming the wrong one is
+    # not an achievement just because it was specific.
     return where in ("named", "container")
 
 
