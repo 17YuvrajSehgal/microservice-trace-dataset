@@ -127,6 +127,14 @@ def _index_for(run_dir: str):
     return p if os.path.exists(p) else None
 
 
+# Same cut as build_ctf_index.py, and for the same reason: network event lines average 913
+# characters and carry transport_header with the TCP seq around char 660, so a 400-char cut
+# removed the one field that identifies a retransmission. There were TWO more copies of that
+# cut in this file, on the raw-decode paths, so fixing the index builder alone would have left
+# the bug in place for exactly the requests that fall back to a decode.
+LINE_CAP = 1200
+
+
 def _lines_for(run_dir: str):
     """The optional raw-line sample kept during the index pass, if this run has one.
 
@@ -430,8 +438,31 @@ def ctf_lines(run_dir: str, event: str, begin: str, end: str, n: int = 10,
                          "counts over wider ranges." % (t1 - t0, MAX_LINES_RANGE_S)}
     n = max(1, min(int(n), MAX_SAMPLE))
 
+    # How many there REALLY are in this range, from the count index. Without this the agent
+    # cannot tell "none exist" from "none survived the sample", and this repo has watched an
+    # agent read an empty tool result as proof that nothing happened more than once.
+    total = None
+    try:
+        idx = _index_for(run_dir)
+        if idx:
+            total = sum(c for _b, _e, _p, _n, c in
+                        _scan_index(idx, ev_re=ev_re, procname=procname, t0=t0, t1=t1))
+    except Exception:                                                   # noqa: BLE001
+        total = None
+
+    # THE SAMPLE IS ONE LINE PER (BUCKET, EVENT), so it can serve "show me what this event
+    # looks like here" and nothing narrower. Measured on svc_cpu_cap_..._r1: a 3-second window
+    # holds 15,279 net_if_receive_skb events; the sample holds about 30 of them, one per 100 ms.
+    # Ask for those 30 and it is a fair spread. Ask for the ones from a particular process, or
+    # the ones containing a particular field, and almost every match has been thrown away - the
+    # measured answer was 0 returned out of 15,279 present, in 0.4 s, with no warning.
+    #
+    # So the sample answers the unfiltered question only. A `procname` or `contains` filter
+    # means the agent is looking for specific lines rather than a representative one, and that
+    # question goes to the trace. It is slow, and being slow is correct: the alternative is
+    # fast and wrong.
     sample = _lines_for(run_dir)
-    if sample:
+    if sample and not procname and not contains:
         out, scanned = [], 0
         with gzip.open(sample, "rt") as fh:
             for row in fh:
@@ -461,6 +492,7 @@ def ctf_lines(run_dir: str, event: str, begin: str, end: str, n: int = 10,
             "event_pattern": event, "range": [begin, end], "clock": "UTC",
             "filters": {"procname": procname, "contains": contains},
             "returned": len(out), "lines": out,
+            "total_in_range": total,
             "source": "one line per 100 ms bucket, kept when the trace was indexed",
             "note": ("These are real event lines from the range, one per 100 ms bucket rather "
                      "than the first n in a row - so they are spread across the range instead "
@@ -489,7 +521,7 @@ def ctf_lines(run_dir: str, event: str, begin: str, end: str, n: int = 10,
                 pm = _PROC_RE.search(line)
                 if not pm or pm.group(1) != procname:
                     continue
-            lines.append(line.rstrip()[:400])
+            lines.append(line.rstrip()[:LINE_CAP])
             if len(lines) >= n:
                 break
         p.kill()
@@ -497,6 +529,7 @@ def ctf_lines(run_dir: str, event: str, begin: str, end: str, n: int = 10,
         "event_pattern": event, "range": [begin, end], "clock": "UTC",
         "filters": {"procname": procname, "contains": contains},
         "returned": len(lines), "lines": lines,
+        "total_in_range": total,
         "note": ("These are the first matching lines in the range, not a random sample, and "
                  "not a count. Use query_ctf if you want to know how many there were."),
     }
@@ -832,7 +865,7 @@ def _query_from_trace(run_dir: str, event: str, begin, end, sample: int,
             by_event[m.group(1)] += 1
             by_proc[proc] += 1
             if len(lines) < sample:
-                lines.append(line.rstrip()[:400])
+                lines.append(line.rstrip()[:LINE_CAP])
         p.kill()
 
     dur = (last_t - first_t) if (first_t is not None and last_t is not None) else None
