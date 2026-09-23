@@ -343,14 +343,25 @@ _TOOL_DEFS = [
                            "In your own words, 1-3 plain sentences: what is happening, to what, "
                            "and why you think so. Do not just repeat the fault_type label. If "
                            "nothing appears wrong, say that and why."},
+         # A process name is not a location. Measured on the svc_net blueprint-v4 run: the
+         # agent computed the per-container ranking in 6 of 6 given-arm cells, had all 20
+         # namespaces in its own output, and then answered `java`, `node`, `conn487` or
+         # `host`. It had the answer and reported it in a form that names nothing - this host
+         # runs several Java services and the kernel calls every one of them `java`. So when
+         # the culprit is a container, the pid_ns is required, not optional.
          "root_cause_service": {"type": "string", "description":
                                 "WHERE the problem comes from, named as it appears in the "
-                                "trace: a process name, a container, or 'host' if the cause is "
-                                "host-wide with no single culprit. Kernel process names are cut "
+                                "trace. If you have narrowed it to ONE container, you MUST "
+                                "give its pid_ns - write it as 'procname in pid_ns NNNNNNNNNN'. "
+                                "A bare runtime name like 'java' or 'node' does NOT locate "
+                                "anything, because several different services run under each "
+                                "of those names. Use 'host' only when the cause is host-wide "
+                                "with no single culprit container. Kernel process names are cut "
                                 "to 15 characters - give what you saw."},
          "culprit_kind": {"type": "string",
                           "enum": ["process", "container", "service", "host", "unknown"],
-                          "description": "what kind of thing you just named"},
+                          "description": "what kind of thing you just named. Use 'container' "
+                                         "only if root_cause_service carries a pid_ns."},
          "fault_type": {"type": "string", "enum": FAULT_TYPES},
          "evidence": {"type": "string", "description":
                       "How you found it: which tool calls, which ranges you compared, and what "
