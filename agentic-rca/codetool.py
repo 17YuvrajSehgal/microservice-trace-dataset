@@ -57,6 +57,18 @@ BANNED_TEXT = ("ground_truth", "groundtruth", "verification", "dataset/runs", "/
                "fault_state", "MANIFEST", "SHA256SUMS", "..")
 
 
+# Modules already loaded in the sandbox namespace. Importing one of these is a no-op that
+# binds a name the snippet could have used anyway; importing anything else is refused.
+IN_SCOPE = {"pandas", "numpy", "math", "statistics", "collections", "re", "json", "datetime",
+            "itertools", "functools", "operator", "heapq", "bisect", "decimal", "fractions"}
+
+
+def _import_msg(name):
+    return ("rejected: cannot import %r. Available without importing: pandas as pd, numpy as "
+            "np, math, statistics, collections, re, json, datetime, itertools, functools, "
+            "operator, heapq, bisect. There is no filesystem and no network here." % name)
+
+
 class Rejected(Exception):
     pass
 
@@ -75,10 +87,24 @@ def _scan(code):
     except SyntaxError as e:
         raise Rejected("syntax error on line %s: %s" % (e.lineno, e.msg))
     for node in ast.walk(tree):
-        if isinstance(node, (ast.Import, ast.ImportFrom)):
-            raise Rejected(
-                "rejected: no imports. pandas as pd, numpy as np, math, statistics, "
-                "collections, re, json and datetime are already in scope.")
+        # Importing something ALREADY in scope is allowed. Blanket-rejecting imports was the
+        # single biggest cause of failure in the first real run: 71 of 169 snippets, 42%, were
+        # thrown out for writing `import pandas as pd` - a habit the model has regardless of
+        # being told pd is already bound. There is nothing to gain by refusing, because
+        # `__import__` here only serves sys.modules: no new module loads, no file opens, and
+        # the descriptor cap would refuse one anyway. Anything NOT in this set is still
+        # rejected, and with a message that says what is available.
+        if isinstance(node, ast.Import):
+            for al in node.names:
+                root = al.name.partition(".")[0]
+                if root not in IN_SCOPE:
+                    raise Rejected(_import_msg(al.name))
+            continue
+        if isinstance(node, ast.ImportFrom):
+            root = (node.module or "").partition(".")[0]
+            if node.level or root not in IN_SCOPE:
+                raise Rejected(_import_msg(node.module or "."))
+            continue
         if isinstance(node, ast.Attribute) and node.attr.startswith("__"):
             raise Rejected("rejected: dunder attribute %r is not allowed." % node.attr)
         if isinstance(node, ast.Name) and node.id in BANNED_NAMES:
@@ -264,9 +290,13 @@ def _already_imported(name, globals=None, locals=None, fromlist=(), level=0):
 
 SAFE["__import__"] = _already_imported
 
+import itertools, functools, operator, heapq, bisect
+
 NS = {"__builtins__": SAFE, "df": df, "pd": pd, "np": np, "math": math,
       "statistics": statistics, "collections": collections, "re": re, "json": json,
-      "datetime": datetime, "get_lines": get_lines,
+      "datetime": datetime, "get_lines": get_lines, "itertools": itertools,
+      "functools": functools, "operator": operator, "heapq": heapq, "bisect": bisect,
+      "Counter": collections.Counter, "defaultdict": collections.defaultdict,
       "T0": T0, "T1": T1, "hms": hms, "secs": secs}
 
 sys.stdout.write(json.dumps({"ready": True, "rows": int(len(df))}) + NL)
@@ -330,7 +360,17 @@ class Sandbox:
             stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
             text=True, bufsize=1,
             # a bare environment: nothing that could point at a proxy or a credential
-            env={"PATH": "/usr/bin:/bin", "PYTHONHASHSEED": "0", "HOME": "/nonexistent"})
+            # OMP_NUM_THREADS=1 and friends are not tuning, they are the fix for a
+            # measured failure: 64 of 169 snippets in the first real run died with
+            # "libgomp: Thread creation failed: Resource temporarily unavailable". Eight
+            # matrix cells in parallel, each starting a sandbox child that loads numpy and
+            # pandas, and every one of those spawns an OpenMP pool sized to the machine -
+            # on a 192-core login node shared with other users that exhausts the per-user
+            # thread limit. Those cells then ran with NO working code tool at all, silently.
+            # This work is a groupby over a few million rows; one thread is plenty.
+            env={"PATH": "/usr/bin:/bin", "PYTHONHASHSEED": "0", "HOME": "/nonexistent",
+                 "OMP_NUM_THREADS": "1", "OPENBLAS_NUM_THREADS": "1", "MKL_NUM_THREADS": "1",
+                 "NUMEXPR_NUM_THREADS": "1", "VECLIB_MAXIMUM_THREADS": "1"})
         hello = _readline_timeout(self.p, 180)
         if not hello:
             err = ""

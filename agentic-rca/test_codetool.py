@@ -54,6 +54,10 @@ ESCAPES = [
      "import subprocess\nprint(subprocess.run(['ls']))"),
     ("open a socket",
      "import socket\nprint(socket.gethostname())"),
+    ("import a module that is not in scope",
+     chr(10).join(["import pathlib", "print(pathlib)"])),
+    ("from-import a module that is not in scope",
+     chr(10).join(["from shutil import which", "print(which)"])),
     ("relative path traversal",
      "print(open('../ground_truth.json').read())"),
 ]
@@ -82,6 +86,17 @@ WORK = [
     ("datetime and quantiles after the fd cap",
      "print(pd.to_datetime(df['bucket_start_s'].head(3), unit='s').iloc[0],"
      " df['count'].quantile(0.95))"),
+    # 42% of real snippets were rejected for this habit alone. Importing something already
+    # in scope is a no-op and must work.
+    ("import pandas, which is already in scope",
+     chr(10).join(["import pandas as pd", "import numpy as np",
+                   "print(len(df), np.int64(1))"])),
+    ("from collections import Counter",
+     chr(10).join(["from collections import Counter",
+                   "print(len(Counter(df['event'].head(50))) > 0)"])),
+    ("import itertools and functools",
+     chr(10).join(["import itertools, functools",
+                   "print(len(list(itertools.islice(range(9), 3))))"])),
     ("an error is reported, not swallowed", "print(1/0)"),
 ]
 
