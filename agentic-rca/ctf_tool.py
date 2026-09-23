@@ -56,6 +56,9 @@ GMT = ["--clock-gmt"]
 # heredoc-written patch has bitten this file twice already
 TAB = chr(9)
 
+# the index bucket width, matching BUCKET_MS in build_ctf_index.py
+BUCKET_S = 0.1
+
 MAX_SAMPLE = 40
 MAX_SCAN = 400000
 # ctf_lines decodes from the start of the trace, so a wide range is a full pass for a
@@ -226,11 +229,21 @@ def ctf_timespan(run_dir: str, ctf_subdir: str = "kernel/kernel") -> dict:
                 lo_t = bt
             hi_t = bt
         if lo_t is not None:
+            # hi_t is the START of the last bucket, and a bucket is 100 ms wide, so the
+            # recording ends one bucket later. Reporting the start as the end made two tools
+            # disagree about the same recording: query_ctf takes a half-open [begin, end) and
+            # so dropped the final bucket, while ctf_timeline covered it. Measured on
+            # svc_cpu_cap_..._r1, sched_switch over "the whole span" came back as 16,831,871
+            # from query_ctf and 16,834,031 from ctf_timeline - the 2,160 difference being
+            # exactly the last bucket. Small, but the agent is told to work out WHEN something
+            # happened, and the end of a recording is where a recovery sits.
+            hi_t += BUCKET_S
             return {
                 "begin": _fmt(lo_t), "end": _fmt(hi_t),
                 "duration_s": round(hi_t - lo_t, 1), "clock": "UTC",
                 "source": "the trace itself, via the count index",
-                "note": ("This is the whole recording, in UTC. Nothing here says where an "
+                "note": ("This is the whole recording, in UTC. `end` is exclusive, so a "
+                         "query over [begin, end) covers all of it. Nothing here says where an "
                          "incident is or whether there is one - use ctf_timeline to look for a "
                          "change across this span, then query_ctf on any range you suspect."),
             }

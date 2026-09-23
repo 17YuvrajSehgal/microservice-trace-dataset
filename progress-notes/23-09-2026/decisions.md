@@ -64,3 +64,50 @@ results are now "agent v1" and must be labelled that way, not silently compared 
 **Lesson worth keeping: the tool results were always correct.** Everything above was already
 sitting in the transcripts. The agent was never the bottleneck we thought it was; the pipe to
 it was. Before adding capability to an agent, check what it is actually receiving.
+
+## Exercising the tools on five runs found four bugs, three of them silent
+
+Ran every tool across five runs spanning five fault families and both applications, checking
+the tools against EACH OTHER rather than just checking that they return. A per-tool smoke test
+proves a tool answers; only a cross-check tells you the answer is right.
+
+**1. run_python gave wrong numbers on every Java application.** `pd.read_csv(comment="#")`
+treats `#` as starting a comment ANYWHERE in a line, not only in column 0 - and the JVM names
+its garbage-collector threads `GC Thread#0` .. `GC Thread#12`. Those rows were truncated at the
+`#`, leaving 3 fields instead of 6, so `pid_ns` came back float64 full of NaN and the counts
+dropped out of every sum.
+
+| run | rows with `#` | events they carry |
+|---|---|---|
+| `tt_slow_db_..._r1` | 594,066 | **23,013,384** |
+| `tt_deadlock_..._r1` | 372,821 | 643,085 |
+| any Sock Shop run | 0 | 0 |
+
+That is why it looked fine: Sock Shop has no `#` in any procname, so run_python matched
+query_ctf exactly there and under-reported by 2% on Train Ticket. **A tool that is wrong only
+on one application, by a few percent, with no error** - the worst kind. Now `skiprows=1` with
+no comment character.
+
+**2. ctf_timespan reported the last BUCKET START as the end of the recording.** A bucket is
+100 ms, so the recording ends one bucket later. `query_ctf` takes a half-open `[begin, end)`
+and dropped that bucket; `ctf_timeline` covered it. Two tools, same question, different answers
+- 16,831,871 against 16,834,031 on `svc_cpu_cap_..._r1`. Small, but the agent is asked to work
+out WHEN something happened, and the end of a recording is exactly where a recovery sits.
+
+**3. Printing a dtype crashed the sandbox with `KeyError: '__import__'`.** Leaving `__import__`
+out of builtins looked safe and was not usable: numpy imports lazily from inside ordinary
+operations, so `print(df['pid_ns'].dtype)` died. A baffling error for a correct line of pandas,
+which an agent would read as "the tool is broken". Now served from `sys.modules` only - nothing
+new loads, no file opens, and the AST scan still rejects the name.
+
+**4. My own test claimed a tool bug that was mine** - it summed `series[i]["count"]` when the
+key is `"n"`, and reported ctf_timeline as returning zero. Worth recording because a test that
+cries wolf costs more than no test.
+
+**What did NOT break**, across both applications: ctf_proclife's container count against the
+index, ctf_procdiff's rates, the new `value_sum` (1151.7 CPU-seconds over 244 wall-seconds on
+a 21-container host is physically sane), and the TCP header now present in network lines on
+all five runs.
+
+**Method note worth keeping.** Every one of these came from two tools disagreeing, not from a
+tool failing. Checking that a tool returns something would have passed all four.

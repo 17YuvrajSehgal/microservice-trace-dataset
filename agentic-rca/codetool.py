@@ -99,9 +99,17 @@ TAB = chr(9)
 NL = chr(10)
 TSV, LINES = sys.argv[1], sys.argv[2]
 _COLS = ["bucket_start_s", "event", "procname", "pid_ns", "count", "value_sum"]
-_ncol = len(pd.read_csv(TSV, sep=TAB, comment="#", compression="gzip",
-                        nrows=1, header=None).columns)
-df = pd.read_csv(TSV, sep=TAB, comment="#", compression="gzip", names=_COLS[:_ncol])
+# NO comment="#" HERE. pandas treats "#" as starting a comment ANYWHERE in a line, not just in
+# column 0, and the JVM names its garbage-collector threads "GC Thread#0" .. "GC Thread#12".
+# On tt_deadlock_..._r1 that is 372,821 rows: each was truncated at the "#", leaving 3 fields
+# instead of 6, so pid_ns came back as float64 full of NaN and the missing counts dropped out
+# of every sum. run_python under-reported sched_switch by 2% against query_ctf on Train Ticket
+# and matched exactly on Sock Shop, which has no "#" in any procname - a wrong number on Java
+# applications only, and silent. The header is the one line starting with "#", so skip it by
+# position instead.
+_ncol = len(pd.read_csv(TSV, sep=TAB, compression="gzip", nrows=1,
+                        skiprows=1, header=None).columns)
+df = pd.read_csv(TSV, sep=TAB, compression="gzip", names=_COLS[:_ncol], skiprows=1)
 if "value_sum" not in df.columns:
     df["value_sum"] = 0
 
@@ -153,7 +161,10 @@ for _op in (
         lambda: repr(_w.head(3)),
         lambda: str(_w.groupby("event")["count"].sum().head(3)),
         lambda: _w.head(3).to_dict(),
-        lambda: _w.head(3).to_json()):
+        lambda: _w.head(3).to_json(),
+        # printing a dtype is what exposed the missing __import__
+        lambda: str(_w['count'].dtype) + str(_w.dtypes),
+        lambda: _w['count'].isna().sum() + _w['count'].nunique()):
     try:
         _op()
     except Exception:
@@ -226,6 +237,32 @@ def secs(t):
         p.insert(0, 0.0)
     return p[0] * 3600 + p[1] * 60 + p[2]
 
+
+def _already_imported(name, globals=None, locals=None, fromlist=(), level=0):
+    """__import__ restricted to modules that are ALREADY loaded.
+
+    Leaving __import__ out of builtins entirely looked safe and was not usable: numpy and
+    pandas import lazily from inside ordinary operations, and Python resolves that through
+    builtins, so `print(df['pid_ns'].dtype)` died with `KeyError: '__import__'`. That is a
+    baffling error to hand an agent for a correct line of pandas, and it would read as "the
+    tool is broken" rather than "ask differently".
+
+    Serving only sys.modules keeps the barrier: nothing new is loaded, so no file is opened,
+    and the descriptor cap below would refuse anyway. A snippet cannot call this directly -
+    the AST scan rejects the name `__import__`, and getattr and dunder attributes are rejected
+    too - so the only callers are library internals that were going to succeed regardless.
+    """
+    mod = sys.modules.get(name)
+    if mod is None:
+        raise ImportError(
+            "%r is not available in this sandbox. pandas as pd, numpy as np, math, "
+            "statistics, collections, re, json and datetime are already in scope." % name)
+    if fromlist:
+        return mod
+    return sys.modules.get(name.partition(".")[0], mod)
+
+
+SAFE["__import__"] = _already_imported
 
 NS = {"__builtins__": SAFE, "df": df, "pd": pd, "np": np, "math": math,
       "statistics": statistics, "collections": collections, "re": re, "json": json,
