@@ -464,3 +464,66 @@ throws away the field that matters.
 The prompt change also cost noisy_neighbor 5 points. Whether to revert it is a separate
 question from the recipe fix, and it should be decided on a run where the recipe is correct -
 the two were changed together and their effects are currently confounded.
+
+## 13. The blueprint-hurts result, resolved on both applications
+
+`anomaly_net` re-ran with the corrected recipe: 60 cells per application, 120 total, 0 failed.
+Write-up in `blueprints/docs/WHEN-A-BLUEPRINT-HURTS.md`.
+
+| abstention gap, given minus none | Sock Shop | Train Ticket |
+|---|---|---|
+| false recipe | +13 | +14 |
+| **true recipe** | **+8** | **+8** |
+
+Both land on exactly +8. Train Ticket's given-arm hits went 1 -> 6.
+
+So our false sentence explained about a third of the damage. The residual is identical on two
+very different codebases, which is what you expect if it comes from the blueprint rather than
+from either application.
+
+**The residual is structural.** The discriminator is a threshold on a rate - "at least one
+interface retransmits heavily, measured 18.5% to 60.7%" - and the corrected recipe truthfully
+says the agent can show retransmission is or is not happening but cannot compute a RATE from 40
+raw lines. It can see the signal and still cannot satisfy the check as written, so it abstains.
+
+> A blueprint whose deciding check is a threshold on a quantity the deployed tools cannot
+> compute will make an agent abstain, even when the underlying signal is plainly visible.
+
+**Decision: every thresholded discriminator needs a qualitative fallback.** Here it is easy and
+true - "retransmission present at all, against a baseline of none" is what the campaign
+actually measured and what `ctf_lines` can show. Not yet implemented; it is the next change to
+the network blueprint.
+
+## 14. ctf_lines: 295 s -> 0.8 s
+
+Yuvraj asked whether runs could be parallelised, since we have the Azure API. Measured first:
+
+    11 cells running, 11 in babeltrace, 11 of 192 cores used, load 34
+
+Every cell was CPU-bound in babeltrace, not waiting on the API - which accounts for 27 s of a
+500 s run. So more `--jobs` would have spent 3x the CPU on the same wasted work: re-decoding
+385 million events to return 40 lines, five times per run.
+
+The index pass already decodes every event once, so it now keeps one raw line per
+(bucket, event). Measured on the same three calls:
+
+| | before | after |
+|---|---|---|
+| sched_switch | 72.1 s | 0.2 s |
+| sched_waking | 103.9 s | 0.3 s |
+| net_dev_xmit | 119.0 s | 0.3 s |
+| **total** | **295.1 s** | **0.8 s** |
+
+Same ten lines returned. 66 samples installed, 2.0 GB, index dir now 2.3 GB.
+
+**Built on a compute node and staged, installed only once nothing was in flight** - dropping it
+beside the live index mid-run would have changed `ctf_lines` underneath the experiment and left
+half the cells with a different cost and a different sample.
+
+A run should now be ~2 minutes rather than ~9. **Raise `--jobs` to 12-16 for the next matrix**:
+now that cells are API-bound rather than CPU-bound, parallelism finally pays.
+
+One honest caveat, stated in the tool's own output: this is a DIFFERENT sample. `ctf_lines`
+used to return the first n matching lines in a range, which can all fall inside a few
+milliseconds; it now returns one per 100 ms bucket, spread across the range. Arguably better,
+definitely different.
