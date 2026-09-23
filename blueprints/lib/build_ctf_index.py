@@ -68,7 +68,30 @@ BUCKET_MS = 100
 LINE_CAP = 1200
 
 TAB = chr(9)
-SCHEMA = TAB.join(["# bucket_start_s", "event", "procname", "pid_ns", "count"]) + chr(10)
+SCHEMA = TAB.join(["# bucket_start_s", "event", "procname", "pid_ns", "count",
+                   "value_sum"]) + chr(10)
+
+# A COUNT IS NOT A QUANTITY, and for three of our fault families the quantity is the answer.
+#
+# svc_cpu_cap caps a container's CPU. What identifies it is CPU TIME CONSUMED, which lives in
+# sched_stat_runtime's `runtime` field in nanoseconds. Counting sched_stat_runtime events
+# instead measures how often the scheduler accounted, not how much CPU was used - a throttled
+# container can be accounted just as often while getting far less time. The same argument
+# applies to bytes on the wire and sectors to disk.
+#
+# These cannot be recovered from the line sample either: it keeps ONE line per (bucket, event),
+# so summing `runtime` from it would sum one arbitrary task per 100 ms. The sum has to happen
+# here, during the single decode that already reads every event.
+#
+# Everything else gets 0 - the column is only meaningful where a payload is worth adding up.
+_VALUE_FIELD = {
+    "sched_stat_runtime": "runtime",     # nanoseconds of CPU actually consumed
+    "net_dev_xmit": "len",               # bytes out
+    "net_if_receive_skb": "len",         # bytes in
+    "block_rq_issue": "nr_sector",       # sectors requested
+    "block_rq_complete": "nr_sector",    # sectors completed
+}
+_VALUE_RE = {ev: re.compile(f + r"\s*=\s*(\d+)") for ev, f in _VALUE_FIELD.items()}
 
 
 def build(run_dir: str, out_path: str, ctf_subdir: str = "kernel/kernel",
@@ -155,7 +178,14 @@ def build(run_dir: str, out_path: str, ctf_subdir: str = "kernel/kernel",
                             "%.3f" % (cur_bucket * bw), ev, proc, ns,
                             line.rstrip()[:LINE_CAP].replace(TAB, " ")]) + chr(10))
                         n_lines_kept += 1
-                cur[k] = cur.get(k, 0) + 1
+                v = 0
+                vre = _VALUE_RE.get(ev)
+                if vre is not None:
+                    vm = vre.search(line)
+                    if vm:
+                        v = int(vm.group(1))
+                c0, v0 = cur.get(k, (0, 0))
+                cur[k] = (c0 + 1, v0 + v)
                 if verbose and n_lines % 5_000_000 == 0:
                     print("    %d M events, t=%.1fs, %.0fs elapsed"
                           % (n_lines // 1_000_000, t - (first_t or t), time.time() - t0),
@@ -193,8 +223,8 @@ def build(run_dir: str, out_path: str, ctf_subdir: str = "kernel/kernel",
 
 
 def _flush(out, bucket_start: float, counts: dict) -> int:
-    for (ev, proc, ns), n in counts.items():
-        out.write(TAB.join(["%.3f" % bucket_start, ev, proc, ns, str(n)]) + chr(10))
+    for (ev, proc, ns), (n, v) in counts.items():
+        out.write(TAB.join(["%.3f" % bucket_start, ev, proc, ns, str(n), str(v)]) + chr(10))
     return len(counts)
 
 

@@ -98,8 +98,12 @@ import pandas as pd, numpy as np
 TAB = chr(9)
 NL = chr(10)
 TSV, LINES = sys.argv[1], sys.argv[2]
-df = pd.read_csv(TSV, sep=TAB, comment="#", compression="gzip",
-                 names=["bucket_start_s", "event", "procname", "pid_ns", "count"])
+_COLS = ["bucket_start_s", "event", "procname", "pid_ns", "count", "value_sum"]
+_ncol = len(pd.read_csv(TSV, sep=TAB, comment="#", compression="gzip",
+                        nrows=1, header=None).columns)
+df = pd.read_csv(TSV, sep=TAB, comment="#", compression="gzip", names=_COLS[:_ncol])
+if "value_sum" not in df.columns:
+    df["value_sum"] = 0
 
 # THE BARRIER THAT ACTUALLY MATTERS.
 #
@@ -141,7 +145,15 @@ for _op in (
         lambda: pd.cut(_w["count"], 3),
         lambda: pd.to_datetime(_w["bucket_start_s"], unit="s"),
         lambda: np.corrcoef(_w["count"], _w["k"]),
-        lambda: np.percentile(_w["count"], 90)):
+        lambda: np.percentile(_w["count"], 90),
+        # printing a frame is its own lazy import (pandas.io.formats.string). The first v2
+        # smoke run lost a whole snippet to "Too many open files: pandas/io/formats/string.py"
+        # right after it had computed the right answer.
+        lambda: _w.head(3).to_string(),
+        lambda: repr(_w.head(3)),
+        lambda: str(_w.groupby("event")["count"].sum().head(3)),
+        lambda: _w.head(3).to_dict(),
+        lambda: _w.head(3).to_json()):
     try:
         _op()
     except Exception:
@@ -191,9 +203,34 @@ SAFE = {k: _B[k] for k in (
     "sum", "tuple", "type", "zip", "True", "False", "None", "Exception", "ValueError",
     "KeyError", "IndexError", "TypeError", "ZeroDivisionError", "AttributeError") if k in _B}
 
+# bucket_start_s is SECONDS SINCE MIDNIGHT on the trace clock, not seconds since the start of
+# the recording. In the first v2 smoke run the agent assumed 0-based and picked windows of
+# 60.0-120.0 on a recording that runs from about 55128; three snippets in a row returned zero
+# rows before it worked that out. So hand it the real bounds and the two conversions, and say
+# so in the tool description. A sandbox that makes the model rediscover its own coordinate
+# system is spending the budget it was added to save.
+T0 = float(df["bucket_start_s"].min())
+T1 = float(df["bucket_start_s"].max())
+
+
+def hms(s):
+    """Seconds on the trace clock -> 'HH:MM:SS', the format the other tools print."""
+    s = float(s)
+    return "%02d:%02d:%06.3f" % (int(s // 3600) % 24, int(s // 60) % 60, s % 60)
+
+
+def secs(t):
+    """'HH:MM:SS' (or 'HH:MM:SS.mmm') -> seconds on the trace clock."""
+    p = [float(x) for x in str(t).strip().split(":")]
+    while len(p) < 3:
+        p.insert(0, 0.0)
+    return p[0] * 3600 + p[1] * 60 + p[2]
+
+
 NS = {"__builtins__": SAFE, "df": df, "pd": pd, "np": np, "math": math,
       "statistics": statistics, "collections": collections, "re": re, "json": json,
-      "datetime": datetime, "get_lines": get_lines}
+      "datetime": datetime, "get_lines": get_lines,
+      "T0": T0, "T1": T1, "hms": hms, "secs": secs}
 
 sys.stdout.write(json.dumps({"ready": True, "rows": int(len(df))}) + NL)
 sys.stdout.flush()
@@ -319,15 +356,26 @@ TOOL_DEF = {
     "name": "run_python",
     "description": (
         "Write and run Python over this run's kernel-trace index, for any question the other "
-        "tools cannot express. Two things are already in scope, no imports needed: "
-        "df - a pandas DataFrame of the whole recording, one row per 100 ms bucket per "
-        "(event, procname, pid_ns), columns bucket_start_s (float, seconds on the trace clock), "
-        "event, procname, pid_ns, count; about 3 million rows. "
+        "tools cannot express. Already in scope, no imports needed:\n"
+        "df - a pandas DataFrame of the whole recording, about 3 million rows, one per 100 ms "
+        "bucket per (event, procname, pid_ns). Columns:\n"
+        "  bucket_start_s  float, SECONDS SINCE MIDNIGHT on the trace clock - NOT seconds from "
+        "the start of the recording. Use T0 and T1 (the real first and last bucket) and the "
+        "helpers hms(seconds) -> 'HH:MM:SS' and secs('HH:MM:SS') -> seconds. Picking a window "
+        "like 60 to 120 will match nothing.\n"
+        "  event, procname, pid_ns   pid_ns is the container.\n"
+        "  count       how many of that event landed in that bucket.\n"
+        "  value_sum   the summed PAYLOAD, where one is worth adding up: nanoseconds of CPU "
+        "for sched_stat_runtime, bytes for net_dev_xmit and net_if_receive_skb, sectors for "
+        "block_rq_issue and block_rq_complete. 0 for every other event. A count says how often "
+        "the kernel accounted; value_sum says how much was actually consumed, and for a "
+        "throttled or capped container those are very different numbers.\n"
         "get_lines(event=None, t0=None, t1=None, limit=200) - raw event lines as strings with "
-        "all their kernel fields, so you can parse what the counts do not carry (TCP seq and "
-        "ports, sched_stat_runtime nanoseconds, block sectors). "
-        "pd, np, math, statistics, collections, re, json and datetime are in scope too. "
-        "Use print() - only what you print comes back, so print summaries and not raw rows. "
+        "every kernel field, for anything the columns do not carry: TCP source_port, dest_port "
+        "and seq, scheduling priorities, block sectors. One line per bucket per event, so it "
+        "shows you the FORM of the data - do not sum over it and call it a total.\n"
+        "pd, np, math, statistics, collections, re, json and datetime are in scope too.\n"
+        "Use print() - only what you print comes back, so print summaries and not raw rows.\n"
         "There is no filesystem and no network here: this is the index for THIS run and "
         "nothing else."),
     "parameters": {"type": "object", "properties": {

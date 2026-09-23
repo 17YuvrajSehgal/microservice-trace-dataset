@@ -157,7 +157,11 @@ def _scan_index(path: str, ev_re=None, procname: str | None = None,
             if not line or line[0] == "#":
                 continue
             parts = line.rstrip().split(TAB)
-            if len(parts) == 5:
+            # Six columns is current (count + value_sum); five and four are older indexes kept
+            # readable so a run nobody has rebuilt still answers instead of crashing.
+            if len(parts) == 6:
+                b, ev, proc, ns, n, _v = parts
+            elif len(parts) == 5:
                 b, ev, proc, ns, n = parts
             elif len(parts) == 4:
                 b, ev, proc, n = parts
