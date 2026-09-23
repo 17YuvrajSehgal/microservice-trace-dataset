@@ -49,7 +49,7 @@ Each step names the capability it needs, how to get at it with the tools you hav
    expect: bytes per second per process in each window, and the process whose rate rose most
 3. confirm the path is healthy, so heavy traffic is not mistaken for a losing path
    needs: `network.retransmission_rate`
-   with your tools: query_ctf on net_dev_xmit and netif_receive_skb per range. There is no TCP retransmission tracepoint in this profile, so a retransmission RATE is not measurable - say that rather than inferring one from packet counts.
+   with your tools: the sequence numbers ARE in this trace: net_if_receive_skb carries the full IP and TCP header, so `seq` repeating on the same flow is a retransmission. Read raw lines with ctf_lines and look for repeated seq values on one flow. Be careful about what you can claim: ctf_lines returns at most 40 lines over a narrow range, so you can show retransmission IS or IS NOT happening, but you cannot compute a rate over a window with these tools. Say which of the two you did, and do not report a percentage you did not measure.
    expect: retransmission percentage per interface; this fault leaves it flat
 4. combine into the verdict and its artifacts
    needs: `verdict.apply_rules`

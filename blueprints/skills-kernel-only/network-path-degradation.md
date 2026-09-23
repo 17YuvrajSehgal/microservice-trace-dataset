@@ -46,7 +46,7 @@ Each step names the capability it needs, how to get at it with the tools you hav
    expect: a CTF directory the trace reader can open
 2. count retransmissions and queue drops per interface, baseline window against incident window
    needs: `network.retransmission_rate`
-   with your tools: query_ctf on net_dev_xmit and netif_receive_skb per range. There is no TCP retransmission tracepoint in this profile, so a retransmission RATE is not measurable - say that rather than inferring one from packet counts.
+   with your tools: the sequence numbers ARE in this trace: net_if_receive_skb carries the full IP and TCP header, so `seq` repeating on the same flow is a retransmission. Read raw lines with ctf_lines and look for repeated seq values on one flow. Be careful about what you can claim: ctf_lines returns at most 40 lines over a narrow range, so you can show retransmission IS or IS NOT happening, but you cannot compute a rate over a window with these tools. Say which of the two you did, and do not report a percentage you did not measure.
    expect: per-interface retransmission and drop rates, and the list of impaired interfaces
 3. Combine into the verdict and its artifacts: the JSON verdict, the per-interface chart, and a plain-English explanation
    needs: `verdict.apply_rules`

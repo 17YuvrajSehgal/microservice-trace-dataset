@@ -266,10 +266,24 @@ KERNEL_RECIPES = {
     "storage.io_attribution":
         "query_ctf on block_rq_issue and block_rq_complete per range, with top_procnames for "
         "who is issuing the I/O. Rates, not latencies.",
+    # CORRECTED 22-09-2026. This line used to say a retransmission rate "is not measurable",
+    # written from the general fact that there is no tcp_retransmit_skb tracepoint - without
+    # checking what this profile actually captures. It captures the FULL TCP header on
+    # net_if_receive_skb, `seq` included, which is how the campaign measured 51.9-61.8%
+    # retransmission from these very traces.
+    #
+    # The cost of that sentence was measured: it told the agent its deciding check was
+    # impossible, and the blueprint arm then abstained on 13-14 of 30 anomaly_net windows
+    # against 0-1 without the blueprint. A blueprint that says the answer cannot be reached is
+    # worse than no blueprint, and the agent was right to refuse - it was told a falsehood.
     "network.retransmission_rate":
-        "query_ctf on net_dev_xmit and netif_receive_skb per range. There is no TCP "
-        "retransmission tracepoint in this profile, so a retransmission RATE is not "
-        "measurable - say that rather than inferring one from packet counts.",
+        "the sequence numbers ARE in this trace: net_if_receive_skb carries the full IP and "
+        "TCP header, so `seq` repeating on the same flow is a retransmission. Read raw lines "
+        "with ctf_lines and look for repeated seq values on one flow. Be careful about what "
+        "you can claim: ctf_lines returns at most 40 lines over a narrow range, so you can "
+        "show retransmission IS or IS NOT happening, but you cannot compute a rate over a "
+        "window with these tools. Say which of the two you did, and do not report a percentage "
+        "you did not measure.",
     "network.egress_attribution":
         "query_ctf on net_dev_xmit with top_procnames, and ctf_procdiff on the same event to "
         "see which process's traffic changed.",

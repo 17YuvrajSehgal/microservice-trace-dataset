@@ -380,3 +380,87 @@ magnitude" because `orders` is a Sock Shop service. Reworded rather than looseni
 a false positive costs a minute, a missed leak costs the experiment.
 
 16/16 blueprints validate, 0 unrunnable commands, 0 `--gt` leaks.
+
+## 12. The prompt fix did not work, and the real cause was a sentence I wrote
+
+Sock Shop re-ran in full on the corrected prompt: 360/360, 0 failed. Identical runs, identical
+tools, one change. The comparison against `q2-full` is clean, and it says the fix failed.
+
+### It did not do what it was for
+
+The fix targeted the arm GAP, not the pass rate: the blueprint arm abstained on anomaly_net
+windows 14 times in 30 against 1 without it.
+
+| | none | given | gap |
+|---|---|---|---|
+| abstentions BEFORE | 1/30 | 14/30 | **+13** |
+| abstentions AFTER | 0/30 | 13/30 | **+13** |
+
+Unchanged. Mean IoU in the given arm did improve, 0.284 -> 0.410, and hits 5 -> 7 - but the
+behaviour the fix existed to remove is still there.
+
+### And it cost something
+
+`noisy_neighbor` without a blueprint: WHERE 20/30 -> 15/30, and `ambiguous` answers 1 -> 8. The
+new wording pushed the agent toward host-wide readings, so it answered `java` more often instead
+of naming `stress-ng-cpu`.
+
+**So: a change made on a plausible diagnosis, tested, and it failed both ways.** The evidence
+for the original diagnosis was real - the agent quoted my heuristic back while abstaining - but
+quoting a rule is not the same as being bound by it.
+
+### The real cause, and it is mine, from this morning
+
+The network blueprint's deciding discriminator is TCP retransmission rate. The kernel recipe I
+wrote for it says:
+
+> There is no TCP retransmission tracepoint in this profile, so a retransmission RATE is not
+> measurable - say that rather than inferring one from packet counts.
+
+That is **false**, and the trace says so plainly:
+
+```
+net_if_receive_skb: ... transport_header = { source_port = 8079  dest_port = 46922
+                                             seq = 148521618  ack_seq = 3861148859 ... }
+```
+
+The full TCP header is captured. A repeating `seq` on one flow IS a retransmission - which is
+exactly how the campaign measured 51.9-61.8% retransmission **from these same traces**
+(DATASET-v2-INVENTORY, issue 25). I wrote "not measurable" from the general fact that there is
+no `tcp_retransmit_skb` tracepoint, without checking what this profile captures.
+
+So the agent was told its deciding check was impossible, and honestly refused to conclude. It
+behaved correctly on a false premise.
+
+**I made this error in `blueprint_to_skill.py` - the file that enforces the evidence-first rule
+on every discriminator.** The rule applies to the recipes too, and nothing was checking them.
+
+### The finding that survives
+
+Strip the mistake away and there is still a real result underneath, and a sharper one:
+
+> A blueprint whose deciding signal is unavailable in the deployed modality is WORSE than no
+> blueprint. The agent follows the method, cannot reach the deciding check, and abstains -
+> while an agent without the blueprint looks at what is actually there and answers.
+
+That is worth stating in the paper, because it is an argument about blueprint portability
+rather than about this bug. It also gives the fix: a blueprint needs to name a FALLBACK when
+its deciding signal is unavailable, instead of leaving the agent with nothing.
+
+### Corrected, and the honest limit stated
+
+The recipe now says the sequence numbers are there and how to look, and then bounds the claim:
+`ctf_lines` returns at most 40 lines, so the agent can show retransmission **is or is not
+happening** but cannot compute a **rate** over a window. Saying which of the two it did is now
+part of the instruction.
+
+**That is a concrete tool gap.** A field histogram over the trace - count repeated `seq` per
+flow - would make `anomaly_net` properly answerable. It is the same shape as the
+`sched_stat_runtime` gap found this morning: the data is in the trace, and the count index
+throws away the field that matters.
+
+### Do not revert the prompt yet
+
+The prompt change also cost noisy_neighbor 5 points. Whether to revert it is a separate
+question from the recipe fix, and it should be decided on a run where the recipe is correct -
+the two were changed together and their effects are currently confounded.
