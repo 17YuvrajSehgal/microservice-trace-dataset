@@ -559,6 +559,38 @@
      "notes": "Measured across 41 labelled runs of 8 families. The shape separates faults that share a mechanism family: lock contention 47.0% futex against a deadlock's 4.3%, while their absolute rates differ 800-fold and would transfer to nobody. Does NOT separate a memory stressor from a CPU stressor - this profile records no mm_ or reclaim events, so both read as generic CPU work."
     }
    ]
+  },
+  "network.per_container_rate_ranking": {
+   "what": "Every container's network event rate, incident window against a baseline window, expressed as a ratio and ranked lowest first. One pid_ns is one container, so this attributes an impaired path to a container rather than only to an interface, and the shape of the ranking gives the scope: one container far below a steady rest means one service's path, everything falling together means the host's networking.",
+   "requires_events": [
+    "net_dev_xmit",
+    "net_if_receive_skb",
+    "net_dev_queue",
+    "net_if_rx"
+   ],
+   "providers": [
+    {
+     "id": "babeltrace2-cli",
+     "status": "implemented",
+     "available_when": "babeltrace2 >= 2.1 on PATH and a CTF trace directory",
+     "run": "python3 $BLUEPRINT_HOME/problems/network-path-degradation/scripts/net_loss_signature.py --ctf <ctf> --gt <window> --out <out>/netloss.json",
+     "notes": "Two traps, both measured. The same packet fires the event on more than one interface (veth then bridge), so buffers must be de-duplicated by skbaddr or every run reports about 50%. And the interface field must not be matched inside `procname`.",
+     "tier": "high_fidelity_active",
+     "platform": [
+      "linux"
+     ],
+     "estimated_overhead_pct": {
+      "min": 2,
+      "max": 5
+     },
+     "fidelity": "high",
+     "requires_permissions": [
+      "root or CAP_SYS_ADMIN for kernel tracing"
+     ],
+     "produces_contract": "per-interface retransmission and drop rates, both windows, plus the list of impaired interfaces"
+    }
+   ],
+   "measured_on": "svc_net and anomaly_net, 12 runs across two applications, 23-09-2026. On one of them the injected container ranked first in 3 of 3 runs at 0.155-0.184 of baseline against a median of 0.63-0.73. On a host-wide network fault every container fell together, median 0.075-0.089."
   }
  },
  "escalation_policy": {

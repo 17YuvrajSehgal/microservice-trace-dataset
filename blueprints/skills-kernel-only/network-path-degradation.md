@@ -1,6 +1,6 @@
 ---
 name: network-path-degradation
-version: 3
+version: 4
 authored_by: measured from the packet-loss sweep, 40 labelled runs across 8 families and two applications
 generated_from: blueprints/network-path-degradation.json
 covers: anomaly_net
@@ -33,9 +33,9 @@ Telling it apart from its look-alikes:
 ## What to look at first
 The signals below are sufficient for this problem; you do not need everything.
 
-- kernel: net_if_receive_skb, net_dev_queue, net_dev_xmit
+- kernel: net_dev_queue, net_dev_xmit, net_if_receive_skb, net_if_rx
 
-Why this set: MEASURED BASIS. net_if_receive_skb carries the full IP and TCP header, including the sequence number, so a segment repeating a sequence number already seen on its flow is a retransmission - the one effect only packet loss produces. net_dev_queue and net_dev_xmit both carry the buffer address, so a buffer queued to a device and never transmitted was dropped inside the queue, which is where the impairment sits; this corroborates. Nothing else in the kernel trace is needed, and in particular the scheduler events are irrelevant here: this fault does not change how threads are scheduled, only what happens to their packets.
+Why this set: MEASURED BASIS. net_if_receive_skb carries the full IP and TCP header, including the sequence number, so a segment repeating a sequence number already seen on its flow is a retransmission - the one effect only packet loss produces. net_dev_queue and net_dev_xmit both carry the buffer address, so a buffer queued to a device and never transmitted was dropped inside the queue, which is where the impairment sits; this corroborates. Nothing else in the kernel trace is needed, and in particular the scheduler events are irrelevant here: this fault does not change how threads are scheduled, only what happens to their packets. Every one of these also carries pid_ns, and one pid_ns is one container - which is what makes the impaired path attributable to a container rather than only to an interface.
 
 ## Investigation blueprint
 Each step names the capability it needs, how to get at it with the tools you have, and what a correct result looks like. There are no commands: you have a raw kernel trace and six read-only query tools, and nothing else. The 'with your tools' line is a starting point, not an instruction - if you see a better way with the same tools, take it and say what you did. A step marked NOT REACHABLE cannot be done from kernel data: skip it, say you skipped it, and do not treat its absence as evidence either way.
@@ -48,15 +48,19 @@ Each step names the capability it needs, how to get at it with the tools you hav
    needs: `network.retransmission_rate`
    with your tools: the sequence numbers ARE in this trace: net_if_receive_skb carries the full IP and TCP header, so `seq` repeating on the same flow is a retransmission. Read raw lines with ctf_lines and look for repeated seq values on one flow. Be careful about what you can claim: ctf_lines returns at most 40 lines over a narrow range, so you can show retransmission IS or IS NOT happening, but you cannot compute a rate over a window with these tools. Say which of the two you did, and do not report a percentage you did not measure.
    expect: per-interface retransmission and drop rates, and the list of impaired interfaces
-3. Combine into the verdict and its artifacts: the JSON verdict, the per-interface chart, and a plain-English explanation
+3. rank every container by how much its network traffic changed, baseline window against incident window, and name the one that fell furthest
+   needs: `network.per_container_rate_ranking`
+   with your tools: every network event carries pid_ns, and one pid_ns is one container, so the impaired path IS attributable. Use run_python: sum `count` for net_dev_xmit, net_if_receive_skb, net_dev_queue and net_if_rx per pid_ns over a quiet baseline range, do the same over the range you suspect, and divide the second by the first. Rank the containers by that ratio, lowest first, and report the lowest by its pid_ns. MEASURED: on one of the two applications the container whose interface was impaired ranked FIRST on this measure in 3 of 3 runs, collapsing to 0.155-0.184 of its baseline packet rate while the median container held at 0.63-0.73. On the other application the same measure produced a clear outlier too, but which container it was could not be confirmed, so treat the ranking as a strong lead there and say so rather than claiming certainty. The same numbers tell you the SCOPE, which interface counts were measured not to: if ONE container is far below while the rest sit near 1, one service's path is impaired; if EVERY container fell together - measured 0.075-0.089 median on a host-wide network fault - the host's networking is impaired and no single container is the culprit.
+   expect: containers ordered by incident/baseline packet ratio; the lowest one named, and whether the rest held steady or fell with it
+4. Combine into the verdict and its artifacts: the JSON verdict, the per-interface chart, and a plain-English explanation
    needs: `verdict.apply_rules`
    with your tools: do this yourself, from the numbers your own tool calls returned. Quote them.
-   expect: name the impaired interfaces, the retransmission rate on each, and the scope
-4. State the recommended action alongside the diagnosis
+   expect: name the impaired CONTAINER first, by its pid_ns, then the impaired interfaces, the retransmission rate on each, and the scope
+5. State the recommended action alongside the diagnosis
    needs: `report.recommended_action`
    with your tools: write it in your own words in the diagnosis.
    expect: map the impaired interfaces to their containers and inspect the queueing discipline and link health on that path
-5. draw the decision card
+6. draw the decision card
    needs: `report.decision_card`
    with your tools: NOT REACHABLE - no plotting here. Skip it; it does not affect the diagnosis.
    expect: one page showing where every fault family sits on this blueprint's deciding number, which gates passed and by how much, and what else was ruled out

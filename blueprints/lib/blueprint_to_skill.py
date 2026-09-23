@@ -276,6 +276,26 @@ KERNEL_RECIPES = {
     # impossible, and the blueprint arm then abstained on 13-14 of 30 anomaly_net windows
     # against 0-1 without the blueprint. A blueprint that says the answer cannot be reached is
     # worse than no blueprint, and the agent was right to refuse - it was told a falsehood.
+    # Added 23-09 after measuring it, not after thinking it would work. The agent answered
+    # `host` on svc_net in 10-11 of 12 cells on both applications, and WHERE scored 0/60 in the
+    # published results - which looked like "a kernel trace cannot localise a per-service
+    # network fault". It can. See the numbers in the recipe text; they are what a blueprint is
+    # allowed to assert.
+    "network.per_container_rate_ranking":
+        "every network event carries pid_ns, and one pid_ns is one container, so the impaired "
+        "path IS attributable. Use run_python: sum `count` for net_dev_xmit, "
+        "net_if_receive_skb, net_dev_queue and net_if_rx per pid_ns over a quiet baseline "
+        "range, do the same over the range you suspect, and divide the second by the first. "
+        "Rank the containers by that ratio, lowest first, and report the lowest by its pid_ns. "
+        "MEASURED: on one of the two applications the container whose interface was impaired "
+        "ranked FIRST on this measure in 3 of 3 runs, collapsing to 0.155-0.184 of its baseline "
+        "packet rate while the median container held at 0.63-0.73. On the other application the "
+        "same measure produced a clear outlier too, but which container it was could not be "
+        "confirmed, so treat the ranking as a strong lead there and say so rather than claiming ""certainty. "
+        "The same numbers tell you the SCOPE, which interface counts were measured not to: if "
+        "ONE container is far below while the rest sit near 1, one service's path is impaired; "
+        "if EVERY container fell together - measured 0.075-0.089 median on a host-wide network "
+        "fault - the host's networking is impaired and no single container is the culprit.",
     "network.retransmission_rate":
         "the sequence numbers ARE in this trace: net_if_receive_skb carries the full IP and "
         "TCP header, so `seq` repeating on the same flow is a retransmission. Read raw lines "
