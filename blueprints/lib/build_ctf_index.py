@@ -58,6 +58,15 @@ _PIDNS_RE = re.compile(r'pid_ns\s*=\s*(\d+)')
 
 BUCKET_MS = 100
 
+# Raw lines are kept up to this many characters. It was 400, which silently cut the field that
+# mattered: measured over 400k decoded events, net_if_receive_skb / net_dev_queue / net_if_rx
+# average 913 chars and carry `transport_header = { source_port, dest_port, seq, ack_seq }`
+# starting around char 660 - so the TCP sequence numbers, the one thing that identifies a
+# retransmission, were past the cut on every single line. sched_switch (mean 407, max 440) lost
+# its tail too. 1200 carries every event type measured except a rare epoll_pwait variant whose
+# tail is a long event array, and costs about 25% more bytes before gzip.
+LINE_CAP = 1200
+
 TAB = chr(9)
 SCHEMA = TAB.join(["# bucket_start_s", "event", "procname", "pid_ns", "count"]) + chr(10)
 
@@ -144,7 +153,7 @@ def build(run_dir: str, out_path: str, ctf_subdir: str = "kernel/kernel",
                         lines_seen.add(lk)
                         lines_fh.write(TAB.join([
                             "%.3f" % (cur_bucket * bw), ev, proc, ns,
-                            line.rstrip()[:400].replace(TAB, " ")]) + chr(10))
+                            line.rstrip()[:LINE_CAP].replace(TAB, " ")]) + chr(10))
                         n_lines_kept += 1
                 cur[k] = cur.get(k, 0) + 1
                 if verbose and n_lines % 5_000_000 == 0:
