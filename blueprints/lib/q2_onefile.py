@@ -418,8 +418,23 @@ def main() -> int:
                  % (prob, rs[0].get("true_service"), where, n, win, n, dtxt))
     L.append("")
     L.append("The split is by **scope**, not by difficulty. Host-wide faults are found. "
-             "Single-service faults are not - and that turned out to be a limit of the tools, "
-             "not of kernel traces. See the last section.")
+             "Single-service faults are not.")
+    L.append("")
+    L.append("**Why, and it differs by application - measured, not assumed.** A kernel trace "
+             "identifies a container by `pid_ns` and a process by its 15-character `comm`. "
+             "Neither carries a SERVICE name, so an agent can point at a container and still "
+             "not be able to say which service it is.")
+    L.append("")
+    L.append("| | containers | what the services look like |")
+    L.append("|---|---|---|")
+    L.append("| Sock Shop | 21 | 5 containers all called `java` - the name alone is ambiguous |")
+    L.append("| Train Ticket | 48 | JVM **thread** names: `http-nio-12346-`, `reactor-http-ep`, "
+             "`grpc-nio-worker`, `org.springframe` |")
+    L.append("")
+    L.append("Train Ticket's trace is the RICHER of the two - `http-nio-12346-` even carries "
+             "the service's port - and it still scored 0/60. So this is not simply \"the "
+             "process name is too vague\". Mapping either a namespace or a thread name to a "
+             "service needs the deployment config, which is not in the trace.")
     L.append("")
     L.append("---")
     L.append("")
