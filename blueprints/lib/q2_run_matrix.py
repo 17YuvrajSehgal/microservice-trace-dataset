@@ -54,7 +54,8 @@ def run_cell(c: dict, a, log_dir: str) -> dict:
            "--problem", c["problem"], "--incident", str(c["incident"]),
            "--ask", c["ask"], "--arm", c["arm"], "--repeat", str(c["repeat"]),
            "--data-root", a.data_root, "--out-dir", a.out_dir,
-           "--skills-dir", a.skills_dir, "--max-steps", str(a.max_steps)]
+           "--skills-dir", a.skills_dir, "--max-steps", str(a.max_steps),
+           "--agent", a.agent]
     if a.app:
         cmd += ["--app", a.app]
     t0 = time.time()
@@ -76,6 +77,7 @@ def main() -> int:
     ap.add_argument("--arms", default="given,none")
     ap.add_argument("--jobs", type=int, default=4)
     ap.add_argument("--max-steps", type=int, default=60)
+    ap.add_argument("--agent", default="v1", choices=["v1", "v2"])
     ap.add_argument("--python", default=os.path.expanduser("~/q2venv/bin/python"))
     ap.add_argument("--app", default="",
                     help="sockshop or trainticket; omit to take whichever "

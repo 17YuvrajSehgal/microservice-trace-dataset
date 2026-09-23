@@ -104,6 +104,8 @@ def main() -> int:
     # the budget. 60 is deliberately generous for the pilot; measure what is actually used and
     # tighten it afterwards rather than guessing now.
     ap.add_argument("--max-steps", type=int, default=60)
+    ap.add_argument("--agent", default="v1", choices=["v1", "v2"],
+                    help="v1 = agent.py (the 720 published cells); v2 = agent_v2.py, LangGraph plan/work/review/synthesise with run_python")
     args = ap.parse_args()
 
     try:
@@ -114,6 +116,12 @@ def main() -> int:
 
     import q2_harness as Q
     import config, agent, runs as R, skillreg
+    # v2 is a separate module, not a replacement: the 720 published cells were produced by v1
+    # and must stay reproducible. Both expose the same diagnose() signature on purpose, so the
+    # harness picks one and changes nothing else about the cell.
+    if args.agent == "v2":
+        import agent_v2
+        agent = agent_v2
     import q2_judge as J
     from stratatrace import load_run
 
@@ -168,7 +176,8 @@ def main() -> int:
         run, app=inc["app"], max_steps=args.max_steps,
         transcript_path=os.path.join(outd, "transcript.jsonl"),
         condition="q2|%s|%s" % (args.ask, args.arm),
-        meta={"problem": args.problem, "arm": args.arm, "ask": args.ask, "repeat": args.repeat},
+        meta={"problem": args.problem, "arm": args.arm, "ask": args.ask,
+              "repeat": args.repeat, "agent": args.agent},
         skills=skills, skill_given=(args.arm == "given"), rank_k=Q.RANK_K,
         problem_hint=(prob["hint"] if args.ask == "hint" else None),
         kernel_only=True,          # phase 1: raw kernel traces only, no logs/metrics/spans
