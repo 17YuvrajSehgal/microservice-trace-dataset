@@ -6,7 +6,7 @@ in exactly one way - whether the count index carried pid_ns, so whether the agen
 one container's `java` from another's - and everything else was held fixed: same model, same
 blueprints, same prompt, same runs, same repeats.
 
-    python q2_compare.py --before .../results/q2-full --after .../results/q2-ns
+    python q2_compare.py --before .../results/q2-ss --after .../results/q2-tt
 """
 from __future__ import annotations
 

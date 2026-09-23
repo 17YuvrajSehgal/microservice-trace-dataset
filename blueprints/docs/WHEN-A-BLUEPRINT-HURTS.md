@@ -122,10 +122,13 @@ everything else.
 
 ## Reproducing
 
-| directory | condition |
-|---|---|
-| `results/q2-full` | old prompt, false recipe |
-| `results/q2-ss2` | new prompt, false recipe (isolates the prompt) |
-| `results/q2-net-ss`, `results/q2-net-tt` | new prompt, true recipe (isolates the recipe) |
+The corrected runs are the current results. The two superseded conditions are kept in
+`results/attic/` - see its README - because this section is the only thing that needs them.
 
-Each is 60 `anomaly_net` cells per application, 3 incidents x 2 arms x 2 asks x 5 repeats.
+| condition | where it lives |
+|---|---|
+| old prompt, false recipe | `results/attic/q2-full` |
+| new prompt, false recipe | `results/attic/anomaly_net-FALSE-recipe-sockshop` and `-trainticket` |
+| new prompt, true recipe | `results/q2-ss/anomaly_net`, `results/q2-tt/anomaly_net` |
+
+Each is 60 `anomaly_net` cells per application: 3 incidents x 2 arms x 2 asks x 5 repeats.

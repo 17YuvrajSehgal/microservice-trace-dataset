@@ -139,7 +139,7 @@ def block(L, prob, rows):
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--full", default=os.path.join(ROOT, "q2-full"))
+    ap.add_argument("--full", default=os.path.join(ROOT, "q2-ss"))
     ap.add_argument("--ns", default="", help="the pid_ns before/after runs; omit to skip "
                                              "that section")
     ap.add_argument("--app-name", default="Sock Shop")
@@ -523,7 +523,7 @@ def main() -> int:
     L.append("Every answer in the agent's own words, one file per problem:")
     L.append("")
     L.append("```")
-    L.append("results/q2-full/review/review-<problem>.md")
+    L.append("%s/review/review-<problem>.md" % a.full)
     L.append("```")
     L.append("")
     L.append("The automatic scores sort the runs. They do not decide. If a run reads correct "

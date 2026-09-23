@@ -462,7 +462,7 @@ def chart_cost_raw(rows, path):
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--full", default="/scratch/yuvraj17/stratatrace/results/q2-full")
+    ap.add_argument("--full", default="/scratch/yuvraj17/stratatrace/results/q2-ss")
     ap.add_argument("--out-dir", required=True)
     # same substitution as q2_onefile: the pre-fix anomaly_net cells measure a false recipe
     ap.add_argument("--override", default="", help="problem=dir, comma-separated")

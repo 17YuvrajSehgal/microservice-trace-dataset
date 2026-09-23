@@ -24,7 +24,7 @@ but "database" or "datastore".
 A miss still means "go and read the run", not "the run is wrong". The review sheet is the
 authority; this only sorts 360 answers so a human does not have to start from scratch.
 
-    python q2_rescore.py --out-dir /scratch/yuvraj17/stratatrace/results/q2-full
+    python q2_rescore.py --out-dir /scratch/yuvraj17/stratatrace/results/q2-ss
 """
 from __future__ import annotations
 
@@ -195,7 +195,7 @@ def score_what_v2(text: str, problem: str) -> dict:
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--out-dir", default="/scratch/yuvraj17/stratatrace/results/q2-full")
+    ap.add_argument("--out-dir", default="/scratch/yuvraj17/stratatrace/results/q2-ss")
     ap.add_argument("--write", action="store_true",
                     help="write rescored.json next to each score.json (default: report only)")
     a = ap.parse_args()

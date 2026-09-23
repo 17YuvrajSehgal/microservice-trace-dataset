@@ -9,7 +9,7 @@ Each block shows what the agent said, where it pointed, when it thought it happe
 got there, and what the rubric thought. Disagreeing with the rubric is the point: if a run
 reads correct and scored low, the rubric is wrong, not the run.
 
-    python q2_review.py --out-dir .../results/q2 > review.md
+    python q2_review.py --out-dir .../results/q2-ss > review.md
 """
 from __future__ import annotations
 
@@ -58,7 +58,7 @@ def wrap(text: str, width: int = 92, indent: str = "    ") -> str:
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--out-dir", default="/scratch/yuvraj17/stratatrace/results/q2")
+    ap.add_argument("--out-dir", default="/scratch/yuvraj17/stratatrace/results/q2-ss")
     ap.add_argument("--problem", default="")
     ap.add_argument("--only", default="", help="filter, e.g. 'hint|given'")
     ap.add_argument("--split", default="",

@@ -8,7 +8,7 @@ by arm so a real effect is not cancelled by an unrelated one.
 
 Reads score.json and rescored.json. Computes nothing new - it only groups.
 
-    python q2_arms.py --out-dir /scratch/yuvraj17/stratatrace/results/q2-full
+    python q2_arms.py --out-dir /scratch/yuvraj17/stratatrace/results/q2-ss
 """
 from __future__ import annotations
 
@@ -50,7 +50,7 @@ def pct(n, d):
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--out-dir", default="/scratch/yuvraj17/stratatrace/results/q2-full")
+    ap.add_argument("--out-dir", default="/scratch/yuvraj17/stratatrace/results/q2-ss")
     a = ap.parse_args()
 
     rows = load(a.out_dir)
