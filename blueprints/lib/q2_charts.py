@@ -464,9 +464,17 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--full", default="/scratch/yuvraj17/stratatrace/results/q2-full")
     ap.add_argument("--out-dir", required=True)
+    # same substitution as q2_onefile: the pre-fix anomaly_net cells measure a false recipe
+    ap.add_argument("--override", default="", help="problem=dir, comma-separated")
     a = ap.parse_args()
 
     rows = load(a.full)
+    for spec in [x for x in a.override.split(",") if x.strip()]:
+        prob, d = spec.split("=", 1)
+        repl = [r for r in load(d) if r.get("problem") == prob]
+        if repl:
+            rows = [r for r in rows if r.get("problem") != prob] + repl
+            print("substituted %s from %s (%d runs)" % (prob, d, len(repl)))
     if not rows:
         print("no runs under %s" % a.full)
         return 1
