@@ -37,8 +37,105 @@ import source_tool
 import transcript as T
 from tools import RunTools
 
-# tool results sent to the model are capped at this many chars (full result stays in the transcript)
-SENT_CAP = 6000
+# Tool results sent to the model are capped (the full result always stays in the transcript).
+#
+# This used to be a flat 6000 chars applied as `full[:SENT_CAP]` - a slice of the JSON STRING.
+# Measured over the 720 q2 runs, that was doing real damage:
+#
+#   - 3,827 of 11,189 tool results were cut, and EVERY cut one was unparseable JSON,
+#     chopped mid-number or mid-string.
+#   - json.dumps preserves insertion order, so a prefix slice does not sample a result, it
+#     DELETES late keys outright. ctf_proclife returns two lists; the second one,
+#     `present_throughout`, reached the model in 4.7% of 742 calls. Its `how_to_read` and
+#     `n_containers_seen` reached it in 0%.
+#   - that matters because of what lands in which list. An injected stress process SPAWNS, so
+#     it appears in `present_for_only_part_of_the_recording` (99.3% delivered). A CPU-capped or
+#     network-degraded container was already running, so it only appears in `present_throughout`
+#     (4.7% delivered). The WHERE scores split exactly along that line, on both applications:
+#     spawn faults 40-55/60, already-running faults 0-24/60.
+#
+# Peak context use was 6.6% of the model's window at the median run, so the cap was destroying
+# evidence to save room nothing was using. Budgets below are sized to carry each tool's median
+# result whole; anything larger is trimmed by DROPPING WHOLE ROWS, with a note saying so.
+SENT_CAP = 12000
+SENT_CAP_BY_TOOL = {
+    "ctf_proclife": 45000,   # enumerates every container; coverage IS the answer here
+    "ctf_procdiff": 24000,
+    "ctf_lines": 18000,
+    "query_ctf": 14000,
+    "ctf_timeline": 12000,
+}
+
+_TRUNC_NOTE = (
+    "Rows were dropped to fit the reply limit. They are in the order the tool produced them, "
+    "so what is missing is the tail, not a random sample. If what you need might be among the "
+    "dropped rows, narrow the time range or add a filter and call this tool again. Do not treat "
+    "a missing row as evidence that nothing is there."
+)
+
+
+def _fit_result(obj, cap: int):
+    """Shrink a tool result to `cap` characters without breaking JSON or silently losing a key.
+
+    Trims the longest list fields by dropping whole rows, then grows them back as far as the
+    budget allows, and records what was dropped under `_truncated` so the model can tell a
+    subset from a complete answer. Returns (text, truncated, dropped_or_None).
+    """
+    full = json.dumps(obj, default=str)
+    if len(full) <= cap:
+        return full, False, None
+
+    def prefix():
+        # last resort: nothing row-shaped to trim. Keep the payload VALID json and label it.
+        return (json.dumps({"_truncated_prefix": full[:max(0, cap - 400)],
+                            "_note": "Result too large to send whole and it has no row list to "
+                                     "trim, so this is a PREFIX of the JSON and is not itself "
+                                     "complete. Narrow your query and call again."},
+                           default=str), True, {"_prefix": True})
+
+    if not isinstance(obj, dict):
+        return prefix()
+    rows = {k: v for k, v in obj.items() if isinstance(v, list) and len(v) > 1}
+    if not rows:
+        return prefix()
+
+    def render(keep):
+        t = dict(obj)
+        dropped = {}
+        for k, n in keep.items():
+            t[k] = obj[k][:n]
+            if n < len(rows[k]):
+                dropped[k] = {"shown": n, "total": len(rows[k])}
+        if dropped:
+            t["_truncated"] = {"dropped": dropped, "note": _TRUNC_NOTE}
+        return json.dumps(t, default=str), dropped
+
+    keep = {k: len(v) for k, v in rows.items()}
+    # halve whichever list currently costs the most, until the whole thing fits
+    for _ in range(400):
+        text, dropped = render(keep)
+        if len(text) <= cap:
+            break
+        k = max(keep, key=lambda k: len(json.dumps(obj[k][:keep[k]], default=str)))
+        if keep[k] <= 1:
+            return prefix()
+        keep[k] //= 2
+    else:
+        return prefix()
+    # halving overshoots, so give each list back as many rows as still fit
+    for k in sorted(keep, key=lambda k: -len(rows[k])):
+        lo, hi = keep[k], len(rows[k])
+        while lo < hi:
+            mid = (lo + hi + 1) // 2
+            trial = dict(keep)
+            trial[k] = mid
+            if len(render(trial)[0]) <= cap:
+                lo = mid
+            else:
+                hi = mid - 1
+        keep[k] = lo
+    text, dropped = render(keep)
+    return text, bool(dropped), (dropped or None)
 
 # fault vocabulary the agent must choose from (aligns with ground_truth families for scoring)
 FAULT_TYPES = [
@@ -480,6 +577,7 @@ def diagnose(run, app: str | None = None, max_steps: int = 14, verbose: bool = F
     sic = None
     tr = T.Transcript(run_id, method="agent", condition=condition, extra=meta)
     tr.meta["sent_cap_chars"] = SENT_CAP
+    tr.meta["sent_cap_by_tool"] = dict(SENT_CAP_BY_TOOL)
     tr.meta["max_steps"] = max_steps
     tr.meta["mask_names"] = config.MASK_NAMES
     tr.meta["incident_alias"] = shown_id
@@ -785,11 +883,12 @@ def _loop_anthropic(tools, user, max_steps, verbose, tr, guard, system=SYSTEM, r
             traj.append({"step": step, "tool": tu.name, "service": svc_real, "result_bytes": b})
             if verbose:
                 print(f"  [{step}] {tu.name}({svc_real or ''}) -> {b}B")
-            full = json.dumps(guard.mask_obj(res), default=str)
-            sent = full[:SENT_CAP]
+            masked = guard.mask_obj(res)
+            cap = SENT_CAP_BY_TOOL.get(tu.name, SENT_CAP)
+            sent, was_cut, dropped = _fit_result(masked, cap)
             tr.event("tool_execution", step=step, tool_use_id=tu.id, tool=tu.name,
                      arguments=dict(tu.input), result=res, result_bytes=b,
-                     sent=sent, truncated=len(full) > SENT_CAP)
+                     sent=sent, truncated=was_cut, dropped=dropped, sent_cap=cap)
             results.append({"type": "tool_result", "tool_use_id": tu.id, "content": sent})
         messages.append({"role": "user", "content": results})
         if diagnosis is not None:
@@ -847,11 +946,12 @@ def _loop_openai(tools, user, max_steps, verbose, tr, guard, system=SYSTEM, rank
             traj.append({"step": step, "tool": name, "service": svc_real, "result_bytes": b})
             if verbose:
                 print(f"  [{step}] {name}({svc_real or ''}) -> {b}B")
-            full = json.dumps(guard.mask_obj(res), default=str)
-            sent = full[:SENT_CAP]
+            masked = guard.mask_obj(res)
+            cap = SENT_CAP_BY_TOOL.get(name, SENT_CAP)
+            sent, was_cut, dropped = _fit_result(masked, cap)
             tr.event("tool_execution", step=step, tool_use_id=c.id, tool=name,
                      arguments=args, raw_arguments=c.function.arguments, result=res, result_bytes=b,
-                     sent=sent, truncated=len(full) > SENT_CAP)
+                     sent=sent, truncated=was_cut, dropped=dropped, sent_cap=cap)
             messages.append({"role": "tool", "tool_call_id": c.id, "content": sent})
         if diagnosis is not None:
             break
