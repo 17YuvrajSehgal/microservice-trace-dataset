@@ -234,3 +234,67 @@ looked like a finding about kernel traces. It was three layers of plumbing: a re
 deleted the container list, a blueprint that reasoned only about interfaces, and an answer
 schema that asked for a process name. **Check what the agent receives and what it is allowed to
 say before concluding anything about what it can do.**
+
+## svc_net at n=30: the fix is real on one application and the other fails for a reason
+
+120 cells, the published design (3 incidents x 2 arms x 2 asks x 5 repeats), 0 failures.
+This answers whether "2 of 6" survived a proper sample.
+
+| | published (v1, old tools) | re-run (v2, blueprint v4) |
+|---|---|---|
+| Sock Shop, WHERE | **0/60** | **11/60** |
+| Sock Shop, WHERE, given arm | 0/30 | **10/30 (33%)** |
+| Sock Shop, WHERE, no blueprint | 0/30 | **1/30 (3%)** |
+| Sock Shop, window hit | 39/60 | **56/60** |
+| Train Ticket, WHERE | 0/60 | **0/60** |
+| Train Ticket, window hit | 17/60 | **41/60** |
+
+**The blueprint effect is clean on Sock Shop: 33% with it, 3% without.** That is the whole
+point of the study's arm design, and it is the first time a per-service problem has shown one.
+It held at n=30, so the earlier 2 of 6 was not noise.
+
+**Precision when it commits.** Of 21 Sock Shop cells that named a container, 11 were right and
+10 wrong - so the ranking is worth following about half the time it is followed, which is worth
+saying plainly rather than quoting 33% alone.
+
+### Train Ticket still scores 0, and it is not the same zero
+
+It now NAMES containers - 17 of 60, where before it named none - and gets them wrong. 12 are
+confidently wrong (the map resolved the target and the agent named something else) and 5 are
+unresolvable.
+
+The offline measurement said TT separates MORE strongly than Sock Shop (7.9-9.9x against
+3.8-4.1x), but the target ranked #4, #21 and #5. So the ranking finds a real outlier that is
+not the injected service. The containers it picks are `ts-route-service` and `ts-train-service`,
+which sit DOWNSTREAM of the injected `ts-basic-service` in Train Ticket's call graph.
+
+**Working explanation, not yet verified:** delay and loss on a service's own interface slow the
+calls it makes, so its dependencies receive less traffic and their rates collapse harder than
+the impaired service's own. On a short call chain there is nothing much downstream to absorb
+it; on a wide fan-out there is. That is the same shape as this blueprint's existing note about
+interface counts behaving oppositely on the two systems.
+
+If that holds, the fix is a direction test - the impaired container should show the drop on
+BOTH send and receive, while a starved downstream one drops mainly on receive. Worth measuring
+before writing anything.
+
+## Operational limit found: agent runs cannot leave the login node
+
+Two Train Ticket drivers were killed mid-run at 12-way parallelism - cells stopped with no
+error and no traceback, which is a SIGKILL from the login node's watchdog rather than a
+failure. Re-running at `--jobs 4` finished all 12 remaining cells cleanly.
+
+So I checked whether the campaign could move to compute nodes, and it cannot:
+
+| | compute node tri1024 |
+|---|---|
+| DNS for the API endpoint | resolves |
+| TCP 443 to it | **BLOCKED** |
+
+**Compute nodes have no outbound internet.** Agent cells need the Azure API, so they must run
+on the login node, at a parallelism the watchdog tolerates. Measured: 12 is too many for Train
+Ticket (4.2M-row frames), 4 is safe, Sock Shop survived 12.
+
+**This sets the campaign's wall clock.** At `--jobs 4` and ~215 s a cell, 720 cells is about
+11 hours. Worth knowing before promising a turnaround, and worth testing `--jobs 6-8` on Train
+Ticket to find the real ceiling.
