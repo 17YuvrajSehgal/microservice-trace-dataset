@@ -211,9 +211,20 @@ def main() -> int:
 
     # The fairer marking: WHERE three ways, WHAT by concept coverage of the agent's own words,
     # HOW from the tool log. See q2_judge.py for why the old binary label match was unfair.
+    # The namespace of the target's container, resolved by CPU time from the cgroup snapshots.
+    # nsmap returns None when the match is ambiguous, and the scorer then records the answer as
+    # unverified rather than crediting it. Scorer-side only: nsmap must never be importable
+    # from anything the agent can reach.
+    try:
+        import nsmap
+        true_ns = nsmap.ns_for_service(
+            inc["run_dir"], (gt.get("fault") or {}).get("target_service", "")) or ""
+    except Exception:                                                   # noqa: BLE001
+        true_ns = ""
     jd = J.judge(dx.get("diagnosis") or {}, dx.get("trajectory"), args.problem,
                  true_service=(gt.get("fault") or {}).get("target_service", ""),
-                 scope=(gt.get("fault") or {}).get("scope", ""))
+                 scope=(gt.get("fault") or {}).get("scope", ""),
+                 true_ns=true_ns)
 
     # ranked_candidates puts the PRIMARY first, so the alternatives are everything after it.
     cands = ranked_all[1:]
@@ -252,7 +263,12 @@ def main() -> int:
         "tokens": ((dx.get("tokens") or {}).get("in", 0)
                    + (dx.get("tokens") or {}).get("out", 0)),
         # fairer marking, reported alongside the old columns rather than replacing them
-        "where": jd["where"]["where"],              # named | scope | wrong | none
+        "where": jd["where"]["where"],   # named | container | container_wrong |
+                                         # container_unverified | scope | ambiguous |
+                                         # wrong | none
+        "container_correct": jd["where"].get("container_correct"),
+        "pred_pid_ns": jd["where"].get("pid_ns"),
+        "true_pid_ns": jd["where"].get("true_pid_ns"),
         "named_culprit": jd["where"]["where"] == "named",
         "culprit_kind": (dx.get("diagnosis") or {}).get("culprit_kind"),
         "what_score": jd["what"]["what_score"],

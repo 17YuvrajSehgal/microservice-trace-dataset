@@ -145,7 +145,7 @@ _NS_RE = re.compile(r"\b402[0-9]{7}\b")
 
 
 def score_where(pred_service: str, kind: str, problem: str,
-                true_service: str = "", scope: str = "") -> dict:
+                true_service: str = "", scope: str = "", true_ns: str = "") -> dict:
     """Four ways, because 'host', 'java' and 'stress-ng-cpu' are three different answers.
 
     named      - identified the injected thing
@@ -187,8 +187,26 @@ def score_where(pred_service: str, kind: str, problem: str,
     # picks one container out of the 21 on this machine. It gets its own outcome so the
     # improvement is visible instead of being filed as `ambiguous` or `wrong`.
     if _NS_RE.search(str(pred_service or "")):
-        return {"where": "container", "pred": pred_service, "kind": kind,
-                "pid_ns": _NS_RE.search(str(pred_service)).group(0)}
+        # NAMING A CONTAINER IS NOT THE SAME AS NAMING THE RIGHT ONE. This branch used to
+        # credit any pid_ns at all, which was harmless while no blueprint asked the agent to
+        # pick one, and stops being harmless the moment one does - "rank the containers and
+        # name the lowest" would score right whether the ranking worked or not.
+        #
+        # `true_ns` comes from nsmap, which matches a container to a namespace by CPU time and
+        # REFUSES when the match is ambiguous. So there are three outcomes, not two, and the
+        # third is the honest one: on Train Ticket 27 of 41 containers sit within 15% of each
+        # other on CPU, so for most of them we cannot say which namespace they are.
+        got = _NS_RE.search(str(pred_service)).group(0)
+        out = {"where": "container", "pred": pred_service, "kind": kind, "pid_ns": got}
+        if true_ns:
+            out["container_correct"] = (got == true_ns)
+            out["true_pid_ns"] = true_ns
+            if got != true_ns:
+                out["where"] = "container_wrong"
+        else:
+            out["container_correct"] = None      # unresolvable, not a pass
+            out["where"] = "container_unverified"
+        return out
 
     for amb in AMBIGUOUS_RUNTIME:
         if p == amb or p.startswith(amb):
@@ -236,11 +254,11 @@ def score_how(trajectory) -> dict:
 
 
 def judge(diagnosis: dict, trajectory, problem: str,
-          true_service: str = "", scope: str = "") -> dict:
+          true_service: str = "", scope: str = "", true_ns: str = "") -> dict:
     """All three axes for one run."""
     d = diagnosis or {}
     where = score_where(d.get("root_cause_service", ""), d.get("culprit_kind", ""), problem,
-                        true_service=true_service, scope=scope)
+                        true_service=true_service, scope=scope, true_ns=true_ns)
     # Both fields, because the mechanism often lands in the evidence rather than the summary,
     # and marking it absent on a wording split would be exactly the unfairness this replaces.
     what = score_what("%s %s" % (d.get("what_is_wrong", ""), d.get("evidence", "")), problem)
