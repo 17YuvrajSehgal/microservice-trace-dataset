@@ -183,3 +183,54 @@ for more work, which reads as flakiness.
 
 v2 is 3.5x arm A's tokens for roughly double the window accuracy. Worth it for a study; worth
 watching before a 1320-cell campaign.
+
+## Per-container ranking in the network blueprint: first non-zero WHERE on svc_net
+
+Four steps, each one exposing the next.
+
+**1. Measure before writing.** Summed network events per `pid_ns`, baseline against the real
+injection window: on one application the injected container ranks FIRST in 3 of 3 runs at
+0.155-0.184 of baseline against a median of 0.63-0.73. Verified it is the RIGHT container, not
+just an outlier, with a new `nsmap.py` that matches containers to namespaces by CPU time -
+`meta/` records `cpu.stat usage_usec` per container, the index records summed
+`sched_stat_runtime` per `pid_ns`, and both measure the same thing.
+
+**2. The scorer credited any namespace as correct.** `score_where` returned `container` for ANY
+`pid_ns` the agent mentioned. Harmless until a blueprint asks the agent to pick one - then
+"rank them and name the lowest" scores right whether the ranking worked or not. **I was one
+commit from measuring exactly that.** Now three outcomes: `container`, `container_wrong`,
+`container_unverified`.
+
+`nsmap` refuses when ambiguous, and that matters: on the second application 27 of 41 adjacent
+containers sit within 15% of each other on CPU, so rank-matching put the target at rank 4, 21
+and 5 across three runs. **Everything below is therefore one-application evidence.** The other
+application is not a negative result, it is an unmeasurable one.
+
+**3. The agent computed the ranking and then threw it away.** Blueprint v4 landed: 6 of 6
+given-arm cells ran `groupby('pid_ns')`, with all 20 namespaces in their own output. Then they
+answered `java`, `node`, `conn487`, `host`. `submit_diagnosis` was asking for that - its
+description led with "a process name", so the schema and the blueprint disagreed about the
+shape of the answer. A bare `java` locates nothing on a host running several Java services.
+
+**4. Requiring the pid_ns is what produced the result.**
+
+| | WHERE correct | wrong container | still `host` |
+|---|---|---|---|
+| blueprint v3 | 0/6 | 0 | 6 |
+| blueprint v4 | 0/6 | 0 | 3 (+3 named a runtime) |
+| v4 + pid_ns required | **2/6** | 2 | 2 |
+
+The two correct ones answered `java in pid_ns 4026532538`, which is exactly the injected
+container. Of the two wrong ones, one named the database that container talks to - the victim,
+not the culprit. A sensible error rather than a random one.
+
+**Honest limits.** n=6 per cell, so 2/6 is two runs; this establishes direction and mechanism,
+not size. The window numbers moved around by 2-3 runs in both directions and should not be read
+at this n. What IS established: the signal exists, the agent now computes it, and the answer
+format was the last thing in the way.
+
+**The general lesson, and it has now cost four separate bugs today.** `svc_net` scoring 0/60
+looked like a finding about kernel traces. It was three layers of plumbing: a reply cap that
+deleted the container list, a blueprint that reasoned only about interfaces, and an answer
+schema that asked for a process name. **Check what the agent receives and what it is allowed to
+say before concluding anything about what it can do.**
