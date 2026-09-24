@@ -134,7 +134,7 @@ identically for every run. It contains no notion of a baseline, an incident wind
 or a culprit.
 
 **What is the `0` row in the container table?** Events whose namespace the decoder could not
-attribute — 57,000 of 240 million here, a fraction of a percent, mostly at container start-up
+attribute — 57,000 of 276 million here, two hundredths of a percent, mostly at container start-up
 before the namespace is established. We keep it visible rather than dropping it, so the numbers
 on screen add up to the recording.
 
