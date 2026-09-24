@@ -42,7 +42,7 @@ RUNS = {
         "gt": "gt-anomaly_cpu.json",
         "published": "55/60 found the right component",
         "confidence": "high",
-        "note": "The safe one to run live. A co-tenant workload saturates the host's CPU.",
+        "note": "A co-tenant workload saturates the host's CPU for two minutes.",
     },
     "svc_net_aggressive_steady_r3": {
         "label": "One service's network path",
@@ -50,9 +50,8 @@ RUNS = {
         "gt": "gt-svc_net.json",
         "published": "0/60 published, 10/30 after this week's fixes",
         "confidence": "low",
-        "note": "The hard one. 150 ms delay and 4% loss on one container's interface. A live "
-                "run names the right container about a third of the time - which is the number "
-                "worth discussing, not hiding.",
+        "note": "150 ms delay, 40 ms jitter and 4% packet loss on one container's "
+                "network interface for two minutes.",
     },
 }
 RUN_ID = os.environ.get("DEMO_RUN", "anomaly_cpu_aggressive_steady_r1")
@@ -321,12 +320,17 @@ def steps_from(ev, meta=None, final=None, head=True):
                                   "parallel on their own tool threads.",
                           "detail": e.get("subtasks")})
         elif t == "tool_execution" and e.get("tool") != "run_python":
-            steps.append({"kind": "tool", "title": "Tool call: " + str(e.get("tool")),
+            who = str(e.get("node") or "")
+            steps.append({"kind": "tool",
+                          "title": ("%s -> %s" % (who, e.get("tool"))) if who
+                                   else "Tool call: " + str(e.get("tool")),
                           "body": "", "detail": {"arguments": e.get("arguments"),
                                                  "node": e.get("node")}})
         elif t == "finding":
             f = e.get("finding") or {}
-            steps.append({"kind": "finding", "title": "Finding recorded",
+            steps.append({"kind": "finding",
+                          "title": ("%s -> finding" % e.get("node")) if e.get("node")
+                                   else "Finding recorded",
                           "body": f.get("claim", ""),
                           "detail": {"where": f.get("where"), "when": f.get("when"),
                                      "evidence": f.get("evidence"),
@@ -336,7 +340,9 @@ def steps_from(ev, meta=None, final=None, head=True):
                 r = s.get("result") or {}
                 if not (r.get("stdout") or "").strip():
                     continue
-                steps.append({"kind": "code", "title": "It writes and runs its own code",
+                steps.append({"kind": "code",
+                              "title": ("%s -> wrote and ran its own code" % s.get("node"))
+                                       if s.get("node") else "It writes and runs its own code",
                               "body": s.get("why") or "",
                               "detail": {"code": s.get("code"),
                                          "stdout": (r.get("stdout") or "")[:2600]}})
@@ -421,11 +427,18 @@ def _live_worker():
             os.path.join(ROOT, "blueprints", "skills-kernel-only"))
             if x.name == RUNS[RUN_ID]["blueprint"]]
 
+        # CLEAR IT FIRST. agent_v2.CTX is a module global that outlives a run, so on a second
+        # run the watcher below latched onto the PREVIOUS run's context immediately and the
+        # interface replayed all of its old steps before a single new one arrived. Nulling it
+        # makes the watcher wait for the context this run creates.
+        prev = getattr(agent_v2, "CTX", None)
+        agent_v2.CTX = None
+
         def watch():
             # agent_v2 sets its module-global CTX once diagnose() starts
-            for _ in range(600):
+            for _ in range(2400):
                 c = getattr(agent_v2, "CTX", None)
-                if c is not None and getattr(c, "tr", None) is not None:
+                if c is not None and c is not prev and getattr(c, "tr", None) is not None:
                     LIVE["tr"] = c.tr
                     return
                 time.sleep(0.25)
@@ -466,7 +479,26 @@ def live_poll(since: int):
         if d and not any(s["kind"] == "verdict" for s in steps):
             steps.append({"kind": "verdict", "title": "It commits to an answer",
                           "body": d.get("what_is_wrong", ""), "detail": d})
-    return {"steps": steps, "cursor": len(ev),
+    # Never blank. The first few seconds are setup events that match none of the interesting
+    # cases, and an empty status next to a spinner reads as "stuck" rather than "starting".
+    _SAY = {"tool_execution": None,          # filled in below, it names the tool
+            "finding": "recording a finding",
+            "plan": "planning the investigation",
+            "api_response": "thinking",
+            "skill_injected": "reading the blueprint",
+            "system_prompt": "reading its instructions",
+            "user_message": "reading the task",
+            "shared_context": "opening the trace"}
+    now = "starting" if not ev else "working"
+    for e in reversed(ev):
+        t = e.get("type")
+        if t == "tool_execution":
+            now = "calling " + str(e.get("tool"))
+            break
+        if t in _SAY and _SAY[t]:
+            now = _SAY[t]
+            break
+    return {"steps": steps, "cursor": len(ev), "doing": now, "events": len(ev),
             "running": LIVE["running"], "done": LIVE["done"],
             "error": LIVE["error"],
             "elapsed": round(time.time() - LIVE["started"], 1) if LIVE["started"] else 0,

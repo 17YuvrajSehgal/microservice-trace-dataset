@@ -17,7 +17,7 @@ Pick from the dropdown in the header.
 
 | trace | published | use it for |
 |---|---|---|
-| **Host CPU saturation** | 55/60 found the right component | the live run. It works. |
+| **Host CPU saturation** | 55/60 found the right component | the live run |
 | **One service's network path** | 0/60 published, 10/30 after this week's fixes | the interesting conversation |
 
 **Run the CPU one live.** Measured just now, twice: 133 s, names `stress-ng-cpu in pid_ns

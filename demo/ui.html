@@ -214,6 +214,7 @@ pre{background:var(--surface-2);border:1px solid var(--rule);padding:12px 14px;o
     <span class="hint" id="pstat"></span>
   </div>
   <div id="livenote"></div>
+  <div id="stepcount" class="hint" style="margin:8px 0 0"></div>
   <div id="steps"></div>
 </div>
 
@@ -416,19 +417,25 @@ function verdictHtml(d){
     <div class="cell"><span class="n">${esc(d.confidence)}</span><span class="l">confidence</span></div>
   </div><div class="hint" style="margin-top:8px">evidence</div><pre>${esc(d.evidence)}</pre>`;
 }
-let playing=false;
+let playing=false, GEN=0;
 async function play(fast){
   if(playing)return; playing=true;
+  const gen=++GEN;
+  if(liveTimer){clearTimeout(liveTimer); liveTimer=null;}
   if(!STEPS) STEPS=(await api('/api/analyze')).steps;
-  $('#steps').innerHTML=''; DX=null;
+  $('#steps').innerHTML=''; $('#livenote').innerHTML=''; DX=null;
+  $('#vans').innerHTML='<p class="hint">Replaying…</p>'; $('#vtruth').innerHTML='';
   for(let i=0;i<STEPS.length;i++){
+    if(gen!==GEN){ playing=false; return; }      // superseded by a real run
     $('#pstat').innerHTML=`<span class="spin"></span>step ${i+1} of ${STEPS.length}`;
     $('#steps').insertAdjacentHTML('beforeend',render(STEPS[i]));
     const last=$('#steps').lastElementChild;
     if(!fast) last.scrollIntoView({block:'center',behavior:'smooth'});
     if(!fast) await new Promise(r=>setTimeout(r,STEPS[i].kind==='code'?1500:700));
   }
+  if(gen!==GEN){ playing=false; return; }
   $('#pstat').textContent=`done — ${STEPS.length} steps`;
+  $('#stepcount').textContent=`${STEPS.length} steps`;
   playing=false;
   if(DX) $('#vans').innerHTML=verdictHtml(DX);
 }
@@ -442,9 +449,11 @@ async function liveTick(cursor){
     $('#steps').insertAdjacentHTML('beforeend',render(s));
     $('#steps').lastElementChild.scrollIntoView({block:'center',behavior:'smooth'});
   });
+  const n=$('#steps').children.length;
+  $('#stepcount').textContent = n ? `${n} step${n===1?'':'s'} so far` : '';
   $('#pstat').innerHTML = d.done
-    ? `finished in ${d.elapsed}s`
-    : `<span class="spin"></span>running — ${d.elapsed}s elapsed`;
+    ? `finished in ${d.elapsed}s · ${d.events} events recorded`
+    : `<span class="spin"></span>${esc(d.doing||'starting')} — ${d.elapsed}s · ${d.events} events`;
   if(d.error){
     $('#livenote').innerHTML=`<div class="note w"><p><strong>The run failed.</strong> ${esc(d.error)}</p>
       <p class="hint">Use <em>Replay a past run</em> to show the recorded investigation instead.</p></div>`;
@@ -474,7 +483,11 @@ $('#live').onclick=async()=>{
   if(!st.started){
     $('#livenote').innerHTML=`<div class="note w"><p>${esc(st.reason)}</p></div>`; return;
   }
-  $('#live').disabled=true; $('#steps').innerHTML=''; DX=null;
+  GEN++; playing=false;                          // stop a replay that is still animating
+  if(liveTimer){clearTimeout(liveTimer); liveTimer=null;}
+  $('#live').disabled=true; $('#steps').innerHTML=''; $('#pstat').textContent='';
+  $('#stepcount').textContent=''; DX=null;
+  $('#vans').innerHTML='<p class="hint">Running…</p>'; $('#vtruth').innerHTML='';
   $('#livenote').innerHTML=`<div class="note"><p><strong>Running now</strong> — same
     <code>agent_v2.diagnose</code> the study calls, on the trace in the first tab, with the
     <code>network-path-degradation</code> blueprint. Provider ${esc(r.provider)},
