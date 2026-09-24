@@ -210,6 +210,7 @@ pre{background:var(--surface-2);border:1px solid var(--rule);padding:12px 14px;o
   back a previous investigation instantly, and needs no network.</p>
   <div class="controls">
     <button class="go" id="live">Run the agent for real</button>
+    <button class="ghost go" id="stop" disabled>Stop</button>
     <button class="ghost go" id="play">Replay a past run</button>
     <span class="hint" id="pstat"></span>
   </div>
@@ -440,6 +441,12 @@ async function play(fast){
   if(DX) $('#vans').innerHTML=verdictHtml(DX);
 }
 $('#play').onclick=()=>play(false);
+$('#stop').onclick=async()=>{
+  $('#stop').disabled=true;
+  const r=await api('/api/live/stop');
+  if(!r.stopped) $('#livenote').innerHTML=`<div class="note w"><p>${esc(r.reason||'could not stop')}</p></div>`;
+  else $('#pstat').innerHTML='<span class="spin"></span>stopping at the next model call…';
+};
 
 /* ---------- a real run ---------- */
 let liveTimer=null;
@@ -451,16 +458,23 @@ async function liveTick(cursor){
   });
   const n=$('#steps').children.length;
   $('#stepcount').textContent = n ? `${n} step${n===1?'':'s'} so far` : '';
+  const nev = (d.events==null?0:d.events);
   $('#pstat').innerHTML = d.done
-    ? `finished in ${d.elapsed}s · ${d.events} events recorded`
-    : `<span class="spin"></span>${esc(d.doing||'starting')} — ${d.elapsed}s · ${d.events} events`;
+    ? (d.stopped ? `stopped after ${d.elapsed}s · ${nev} events`
+                 : `finished in ${d.elapsed}s · ${nev} events recorded`)
+    : `<span class="spin"></span>${esc(d.doing||'starting')} — ${d.elapsed}s · ${nev} events`;
   if(d.error){
-    $('#livenote').innerHTML=`<div class="note w"><p><strong>The run failed.</strong> ${esc(d.error)}</p>
+    const wasStop = d.stopped || /cancel/i.test(d.error);
+    $('#livenote').innerHTML = wasStop
+      ? `<div class="note w"><p><strong>Stopped.</strong> The run was cancelled at its next
+         model call; the partial transcript above is what it had done by then.</p></div>`
+      : `<div class="note w"><p><strong>The run failed.</strong> ${esc(d.error)}</p>
       <p class="hint">Use <em>Replay a past run</em> to show the recorded investigation instead.</p></div>`;
-    clearInterval(liveTimer); liveTimer=null; $('#live').disabled=false; return;
+    clearTimeout(liveTimer); liveTimer=null; $('#live').disabled=false;
+    $('#stop').disabled=true; return;
   }
   if(d.done){
-    clearInterval(liveTimer); liveTimer=null; $('#live').disabled=false;
+    clearTimeout(liveTimer); liveTimer=null; $('#live').disabled=false; $('#stop').disabled=true;
     const m=d.summary||{};
     $('#livenote').innerHTML=`<div class="note g"><p><strong>Done.</strong>
       ${m.wall_s}s · ${m.n_tool_calls} tool calls · ${m.n_code_snippets} snippets of its own code ·
@@ -485,7 +499,8 @@ $('#live').onclick=async()=>{
   }
   GEN++; playing=false;                          // stop a replay that is still animating
   if(liveTimer){clearTimeout(liveTimer); liveTimer=null;}
-  $('#live').disabled=true; $('#steps').innerHTML=''; $('#pstat').textContent='';
+  $('#live').disabled=true; $('#stop').disabled=false;
+  $('#steps').innerHTML=''; $('#pstat').textContent='';
   $('#stepcount').textContent=''; DX=null;
   $('#vans').innerHTML='<p class="hint">Running…</p>'; $('#vtruth').innerHTML='';
   $('#livenote').innerHTML=`<div class="note"><p><strong>Running now</strong> — same

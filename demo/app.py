@@ -385,7 +385,7 @@ def score_block():
 # agent needs no callback, no hook, and no demo-only branch.
 # ----------------------------------------------------------------------------------
 LIVE = {"running": False, "error": None, "started": 0.0, "done": False,
-        "out": None, "tr": None, "seen": 0}
+        "out": None, "tr": None, "seen": 0, "head": False, "stopped": False}
 LIVE_LOCK = threading.Lock()
 RUN_DIR = os.path.join(DATA, "run", RUN_ID)
 
@@ -462,18 +462,41 @@ def live_start():
         if not r["ready"]:
             return {"started": False, "reason": "; ".join(r["why"])}
         LIVE.update({"running": True, "error": None, "started": time.time(),
-                     "done": False, "out": None, "tr": None, "seen": 0})
+                     "done": False, "out": None, "tr": None, "seen": 0,
+                     "head": False, "stopped": False})
     threading.Thread(target=_live_worker, daemon=True).start()
     return {"started": True}
+
+
+def live_stop():
+    """Ask an in-flight run to stop.
+
+    Sets the agent's own cancel flag rather than killing a thread: the run then raises at its
+    next model call, diagnose() records the error and writes the transcript as it always does,
+    so a stopped run leaves the same audit trail as a finished one.
+    """
+    if not LIVE["running"]:
+        return {"stopped": False, "reason": "nothing is running"}
+    try:
+        sys.path.insert(0, os.path.join(ROOT, "agentic-rca"))
+        import agent_v2
+        agent_v2.CANCEL.set()
+        LIVE["stopped"] = True
+        return {"stopped": True}
+    except Exception as e:                                              # noqa: BLE001
+        return {"stopped": False, "reason": "%s: %s" % (type(e).__name__, e)}
 
 
 def live_poll(since: int):
     tr = LIVE.get("tr")
     ev = list(getattr(tr, "events", []) or []) if tr is not None else []
     new = ev[since:]
+    want_head = not LIVE["head"]
     steps = steps_from(new, getattr(tr, "meta", {}) or {},
                        (LIVE.get("out") or {}) if LIVE["done"] else None,
-                       head=(since == 0))
+                       head=want_head)
+    if want_head:
+        LIVE["head"] = True
     if LIVE["done"] and LIVE.get("out"):
         d = (LIVE["out"] or {}).get("diagnosis") or {}
         if d and not any(s["kind"] == "verdict" for s in steps):
@@ -500,7 +523,7 @@ def live_poll(since: int):
             break
     return {"steps": steps, "cursor": len(ev), "doing": now, "events": len(ev),
             "running": LIVE["running"], "done": LIVE["done"],
-            "error": LIVE["error"],
+            "error": LIVE["error"], "stopped": LIVE["stopped"],
             "elapsed": round(time.time() - LIVE["started"], 1) if LIVE["started"] else 0,
             "summary": {k: (LIVE.get("out") or {}).get(k)
                         for k in ("wall_s", "n_tool_calls", "n_code_snippets",
@@ -596,6 +619,8 @@ class H(BaseHTTPRequestHandler):
                 return self._json(live_ready())
             if p == "/api/live/start":
                 return self._json(live_start())
+            if p == "/api/live/stop":
+                return self._json(live_stop())
             if p == "/api/live/poll":
                 return self._json(live_poll(int((q.get("since") or ["0"])[0])))
             if p == "/api/truth":

@@ -35,7 +35,7 @@ network investigation, use **Replay**, and say it is a replay.
 | **Trace** | the recording: span, event types, containers, event rate across the whole run |
 | **Discriminator** | the blueprint's deciding check, computed live on a window you drag out |
 | **Blueprints** | the library, full text — the exact files handed to the agent |
-| **Agent** | **Run the agent for real**, streamed as it happens. Or replay a past run. |
+| **Agent** | **Run the agent for real**, streamed as it happens, with **Stop**. Or replay a past run. |
 | **Verdict** | its answer, then ground truth on demand |
 
 ## What to show, in order
@@ -54,6 +54,11 @@ it; a validator rejects any that does not.
 **4 · Agent — press Run the agent for real.** Two to four minutes. It plans, calls tools,
 writes and runs its own analysis code, records findings, commits. What you are watching is the
 audit record being written, not a narration built for the screen.
+
+**Stop** cancels it at the next model call, usually within fifteen seconds. The partial
+transcript stays on screen and is written to disk like any other run, so a stopped run is still
+auditable. Useful if the room has seen enough, or if you want to talk over the first minute
+rather than wait out all four.
 
 Two things worth pausing on when they appear:
 - a **code** step — it wrote that itself, against the index in tab one

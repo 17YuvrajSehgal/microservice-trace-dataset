@@ -44,6 +44,16 @@ from agent import (FAULT_TYPES, KERNEL_ONLY_TOOLS, SENT_CAP, SENT_CAP_BY_TOOL,
 from langgraph.graph import END, START, StateGraph
 from langgraph.types import Send
 
+# Set to abort an in-flight run. Checked before every model call, which is the only place a
+# run spends real time, so a cancel lands within one API round trip rather than at the end of
+# the graph. Cleared by diagnose() on entry, so a previous cancel cannot kill the next run.
+CANCEL = threading.Event()
+
+
+class Cancelled(RuntimeError):
+    pass
+
+
 MAX_ROUNDS = 2          # planner rounds; a second one only if the reviewer asks
 MAX_WORKER_STEPS = 12   # tool-calling turns inside one worker
 MAX_SUBTASKS = 4
@@ -252,6 +262,8 @@ CTX: Ctx | None = None      # set by diagnose(); the graph nodes read it
 
 def _call(messages, tools, node, step, force=None):
     """One model call. Recorded in the transcript exactly as v1 records it."""
+    if CANCEL.is_set():
+        raise Cancelled("run cancelled")
     client = config.make_client()
     kw = dict(config.openai_create_kwargs())
     schema = [{"type": "function", "function": t} for t in tools]
@@ -501,6 +513,7 @@ def diagnose(run, app=None, transcript_path=None, condition=None, meta=None,
                     "max_worker_steps": MAX_WORKER_STEPS, "max_subtasks": MAX_SUBTASKS,
                     "sent_cap_chars": SENT_CAP, "sent_cap_by_tool": dict(SENT_CAP_BY_TOOL),
                     "kernel_only": kernel_only})
+    CANCEL.clear()
     CTX = Ctx(tools, guard, tr, run_id, index_root=index_root)
 
     global _WORKER, _SYNTH
