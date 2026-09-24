@@ -19,7 +19,7 @@ incident happened, when, or where.
 | | found the right component |
 |---|---|
 | host-wide faults (CPU, network, noisy co-tenant) | **40–55 of 60** |
-| faults inside one service | **0–3 of 60** |
+| faults inside one service | **0–3 of 60** in five of six cells (a slow datastore is 24) |
 
 The same split on two applications that share no code.
 

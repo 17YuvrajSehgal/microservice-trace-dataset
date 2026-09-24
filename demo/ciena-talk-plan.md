@@ -19,7 +19,8 @@ still gets. Today's subset: kernel traces only.
 makes the numbers mean anything.
 
 ### 2 · The headline, and its trap (4 min)
-Host-wide faults 40–55 of 60. Per-service faults 0–3 of 60. Same on both applications.
+Host-wide faults 40–55 of 60. Per-service faults 0–3 of 60 in five of six cells, with a slow
+datastore at 24. Same direction on both applications.
 
 > "Our first reading was that kernel traces cannot localise a fault to a service. That reading
 > was wrong, and the rest of this is how we found out."
@@ -49,18 +50,16 @@ is right. 20 checks across 5 runs and both applications.
 Six of six incidents: the injected container's traffic collapses to 9–18% of its own baseline
 while the median container holds at 63–129%. In data the agent already had.
 
-### 5 · Live demo (5 min)
+### 5 · Live demo (10 min)
 ```
-python blueprints/lib/demo_agent.py --step
+python demo/app.py          # http://127.0.0.1:8765
 ```
-Hardest condition — no hint at all. Press Enter between sections and narrate.
+Full walkthrough with wording is in **`demo/speaker-notes.md`** — five tabs, and the agent runs
+for real rather than replaying.
 
-Beats to hit:
-- It **plans**, then workers run in parallel.
-- It **writes and runs its own analysis code** — this is the moment; pause here.
-- It **records findings with numbers**, not impressions.
-- Verdict: `java in pid_ns 4026532538`, window IoU **0.926**, right fault type.
-- Reveal ground truth last.
+Short version if time is tight: **Discriminator** tab, drag the chart, then switch the Signal
+dropdown so they see the same container separate on one measurement and not another. Then
+**Agent → Run the agent for real** and pause on a code step.
 
 **Then immediately:** "That is one run. Across 30 runs it gets the container right 10 times with
 the playbook, once without." Say it before anyone asks.
@@ -109,7 +108,7 @@ comparison that matters is 33% against 3% on the same data with the same model.
 Unknown, and worth finding out. The two applications differ — the same fault has opposite
 signatures on each. That is a result, and it is also the reason we want your incident data.
 
-**"Which model?"** `gpt-5.4-mini` via Azure. The harness is provider-agnostic. Nothing here
+**"Which model?"** The published runs used `gpt-5.4-mini` via Azure; the demo runs `gpt-5.4`. The harness is provider-agnostic. Nothing here
 depends on a specific model, and we can re-run an ablation on another.
 
 **"What does it cost to run?"** ~345k tokens and ~3.5 minutes per incident. A 720-run campaign

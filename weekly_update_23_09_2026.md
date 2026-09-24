@@ -46,7 +46,8 @@ Full reports: `blueprints/docs/SOCK-SHOP-RESULTS-22-09-2026.md` and
 | svc_net | ts-basic-service | **0/60** | 17/60 |
 
 **The pattern is the same on both applications.** Host-wide faults are found 40–55 times out of
-60. Faults inside one service are found 0–3 times out of 60.
+60. Faults inside one service are found 0–3 times out of 60 in five of the six cells; the
+exception is a slow datastore on Sock Shop, at 24.
 
 That split replicating across two different codebases is the main result so far.
 
