@@ -42,6 +42,10 @@ RUNS = {
         "gt": "gt-anomaly_cpu.json",
         "published": "55/60 found the right component",
         "confidence": "high",
+        # what the interface opens on: the signal this fault actually moves. Opening the CPU
+        # trace on a network chart makes the fault look invisible.
+        "event": "sched_switch",
+        "signal": "cpu",
         "note": "A co-tenant workload saturates the host's CPU for two minutes.",
     },
     "svc_net_aggressive_steady_r3": {
@@ -50,6 +54,8 @@ RUNS = {
         "gt": "gt-svc_net.json",
         "published": "0/60 published, 10/30 after this week's fixes",
         "confidence": "low",
+        "event": "net_if_receive_skb",
+        "signal": "network",
         "note": "150 ms delay, 40 ms jitter and 4% packet loss on one container's "
                 "network interface for two minutes.",
     },
@@ -204,21 +210,47 @@ def discriminate(group: str, b0: float, b1: float, i0: float, i1: float) -> dict
         span_b = max(1.0, b1 - b0)
         span_i = max(1.0, i1 - i0)
         rb, ri = base / span_b, inc / span_i
+        # A container that was not there before has no ratio - dividing by a zero baseline
+        # produced 6.3e18 on the CPU trace, which is a number nobody can read. Flag it as
+        # APPEARED and sort it to the top of the risers, where it belongs.
+        appeared = rb < max(1e-9, ri * 0.01) and ri > 0
         out.append({
             "pid_ns": ns,
             "baseline": round(rb, 1), "incident": round(ri, 1),
-            "ratio": round((ri + 1e-9) / (rb + 1e-9), 3),
+            "ratio": None if appeared else round((ri + 1e-9) / (rb + 1e-9), 3),
+            "appeared": appeared,
             "procs": list(agg["containers"].get(ns, {}).get("procs", {}))[:3],
         })
-    out.sort(key=lambda r: r["ratio"])
-    med = out[len(out) // 2]["ratio"] if len(out) > 2 else None
+    # newcomers last: they have no ratio and are the extreme riser by definition
+    out.sort(key=lambda r: (r["ratio"] is None, r["ratio"] if r["ratio"] is not None else 0))
+    ranked = [r for r in out if r["ratio"] is not None]
+    newcomers = [r for r in out if r["ratio"] is None]
+    med = ranked[len(ranked) // 2]["ratio"] if len(ranked) > 2 else None
+    lo = ranked[0] if ranked else None
+    hi = (newcomers[0] if newcomers else (ranked[-1] if ranked else None))
+
+    # BOTH ENDS, because which one is the culprit depends on the fault - and getting this
+    # backwards is a real finding from the study, not a display nicety. A degraded network
+    # path makes one container FALL. A CPU-saturating co-tenant is a newcomer that RISES. And
+    # for a throttled container, ranking by the biggest fall puts the culprit at #15 of 18,
+    # because when one service stalls the whole application slows and everyone else falls
+    # further. The tab reports both and lets the reader see which end separates.
+    def sep(r, against):
+        if not r or not against or not r.get("ratio"):
+            return None
+        v = against / r["ratio"] if r["ratio"] < against else r["ratio"] / against
+        return round(v, 1)
+
     return {
         "group": group, "unit": "CPU ns/s" if use_value else "events/s",
         "baseline_window": [hms(b0), hms(b1)], "incident_window": [hms(i0), hms(i1)],
         "rows": out,
-        "lowest": out[0] if out else None,
+        "lowest": lo, "highest": hi,
         "median_of_rest": med,
-        "separation": round(med / out[0]["ratio"], 1) if out and med and out[0]["ratio"] else None,
+        "separation": sep(lo, med),
+        "separation_up": sep(hi, med),
+        "newcomer": bool(newcomers),
+        "n_newcomers": len(newcomers),
     }
 
 
@@ -272,7 +304,9 @@ def blueprint_list():
             "version": int(v.group(1)) if v else None,
             "chars": len(body),
             "summary": (sig.group(1).strip().replace("\n", " ")[:190] if sig else ""),
-            "active": name == "network-path-degradation",
+            # which blueprint the SELECTED trace uses, not a hardcoded one - the tag
+            # was sitting on the network blueprint while the CPU trace was loaded
+            "active": name == RUNS[RUN_ID]["blueprint"],
         })
     return out
 

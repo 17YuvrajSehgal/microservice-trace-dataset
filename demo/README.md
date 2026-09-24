@@ -43,10 +43,18 @@ network investigation, use **Replay**, and say it is a replay.
 **1 · Trace.** Pick an event. The fault is visible in the rate without any analysis. Say: *the
 agent is told none of this.*
 
-**2 · Discriminator.** On the network trace, drag the middle of the chart. `4026532538` comes
-out lowest at **0.109×** its own baseline against a median of 0.325×. Then switch **Signal** to
-CPU or scheduling — nothing separates. That is the distinction the blueprint exists to make,
-watched rather than asserted.
+**2 · Discriminator.** Everything here follows the selected trace - the wording, the default
+signal, and which blueprint is tagged.
+
+On the **network** trace, drag the middle of the chart: `4026532538` comes out lowest at
+**0.109×** its own baseline against a median of 0.325×. Switch **Signal** to CPU or scheduling
+and nothing separates. That is the distinction the blueprint exists to make, watched rather
+than asserted.
+
+On the **CPU** trace the culprit goes the other way - `stress-ng-cpu` in `4026533601` has no
+baseline at all and is flagged **appeared**. The tab reports both ends deliberately: ranking
+only by the biggest faller was measured to find victims rather than the culprit, because when
+one service stalls the whole application slows and everything else falls further.
 
 **3 · Blueprints.** Open the one named on the Trace tab. Every check has a measurement behind
 it; a validator rejects any that does not.

@@ -176,9 +176,10 @@ pre{background:var(--surface-2);border:1px solid var(--rule);padding:12px 14px;o
 <!-- ───────────────────────────── DISCRIMINATOR ───────────────────────── -->
 <div class="panel" id="p-check">
   <h2>The blueprint's deciding check, computed live</h2>
-  <p>The network blueprint says: <em>sum network events per container over a quiet window and
-  a suspect window, divide, and rank lowest first.</em> Drag on the chart to choose the suspect
-  window — the baseline takes the quiet stretch before it.</p>
+  <p id="checkintro">The blueprint's deciding check, run on a window you choose.</p>
+  <p class="hint">Drag on the chart to set the suspect window; the baseline takes the quiet
+  stretch before it. Switch <strong>Signal</strong> to see whether the same container separates
+  on a different measurement — that is how the blueprint tells one fault from another.</p>
   <div class="controls">
     <div><label for="grp">Signal</label><select id="grp">
       <option value="network">network events</option>
@@ -304,7 +305,7 @@ async function boot(){
     await api('/api/select?run='+encodeURIComponent(e.target.value));
     SEL=null; SHADE=null; STEPS=null; DX=null; $('#steps').innerHTML=''; $('#livenote').innerHTML='';
     $('#dtab').innerHTML=''; $('#sum').innerHTML=''; $('#vans').innerHTML='<p class="hint">Run the agent first.</p>';
-    $('#vtruth').innerHTML=''; boot(); };
+    $('#vtruth').innerHTML=''; $('#bbody').textContent='Select a blueprint.'; boot(); };
   RUN=await api('/api/run');
   $('#runid').textContent=RUN.run_id;
   const m=RUN.meta||{};
@@ -315,6 +316,15 @@ async function boot(){
     ['duration',RUN.duration_s+' s'],['index rows',fmt(RUN.rows)],
     ['event types',RUN.n_events],['containers',RUN.n_containers]
   ].map(([l,v])=>`<div class="cell"><span class="n">${v}</span><span class="l">${l}</span></div>`).join('');
+  // The check's own wording, per fault. It read "the network blueprint says..." on every
+  // trace, including the CPU one, where the deciding check is the opposite direction.
+  const INTRO={
+    network:"The network blueprint says: <em>sum network events per container over a quiet "+
+            "window and a suspect window, divide, and rank lowest first.</em>",
+    cpu:"The CPU blueprint says: <em>attribute CPU time per container and look for a workload "+
+        "consuming it that was not there before.</em>"};
+  $('#checkintro').innerHTML = INTRO[m.signal] ||
+    "The blueprint's deciding check, run on a window you choose.";
   $('#runnote').innerHTML = m.note
     ? `<div class="note ${m.confidence==='high'?'g':'w'}"><p><strong>${esc(m.label)}.</strong>
        ${esc(m.note)}</p><p class="hint">Published result: ${esc(m.published)}. The blueprint
@@ -326,8 +336,10 @@ async function boot(){
       ' <span class="tag" style="background:var(--surface-3);color:var(--muted)">host</span>':''}</td>
       <td class="mono" style="color:var(--muted)">${c.procs.join(', ')}</td>
       <td class="n">${fmt(c.events)}</td><td class="n">${c.cpu_s}</td></tr>`).join('')+'</tbody>';
-  await pickEvent('net_if_receive_skb');
-  $('#ev').value='net_if_receive_skb';
+  const ev0=(m.event)||'sched_switch';
+  await pickEvent(ev0);
+  $('#ev').value=ev0;
+  if(m.signal) $('#grp').value=m.signal;
   loadBlueprints();
 }
 async function pickEvent(ev){
@@ -358,26 +370,53 @@ async function runCheck(){
   const g=$('#grp').value;
   const d=await api(`/api/discriminate?group=${g}&b0=${b0}&b1=${b1}&i0=${i0}&i1=${i1}`);
   const sep=d.separation, lo=d.lowest;
-  $('#sum').innerHTML = !lo ? '<div class="note w"><p>No container has enough traffic in that window.</p></div>' :
-    `<div class="note ${sep>=3?'g':'w'}">
-      <p><strong>${sep>=3?'One container separates.':'Nothing separates clearly here.'}</strong>
-      Lowest is <code>${lo.pid_ns}</code> at <strong>${lo.ratio}×</strong> its own baseline,
-      against a median of <strong>${d.median_of_rest}×</strong> — a separation of
-      <strong>${sep}×</strong>.</p>
+  const hi=d.highest, supUp=d.separation_up;
+  let verdict='', tone='w';
+  if(d.newcomer && hi){
+    tone='g';
+    verdict=`<strong>A container appeared.</strong> <code>${esc(hi.pid_ns)}</code>
+      (${esc(hi.procs.join(', '))}) has essentially no baseline and
+      <strong>${fmt(hi.incident)}</strong> ${esc(d.unit)} in the suspect window.`;
+  } else if(sep>=3 && lo){
+    tone='g';
+    verdict=`<strong>One container separates.</strong> <code>${esc(lo.pid_ns)}</code> falls to
+      <strong>${lo.ratio}×</strong> its own baseline against a median of
+      <strong>${d.median_of_rest}×</strong> — a separation of <strong>${sep}×</strong>.`;
+  } else if(supUp>=3 && hi){
+    tone='g';
+    verdict=`<strong>One container rises sharply.</strong> <code>${esc(hi.pid_ns)}</code>
+      (${esc(hi.procs.join(', '))}) goes to <strong>${hi.ratio}×</strong> its own baseline
+      against a median of <strong>${d.median_of_rest}×</strong>.`;
+  } else {
+    verdict=`<strong>Nothing separates clearly on this signal.</strong> The biggest faller is
+      <code>${esc((lo||{}).pid_ns)}</code> at ${(lo||{}).ratio}× and the biggest riser
+      <code>${esc((hi||{}).pid_ns)}</code> at ${(hi||{}).ratio}×, against a median of
+      ${d.median_of_rest}×.`;
+  }
+  $('#sum').innerHTML = !lo && !hi
+    ? '<div class="note w"><p>No container has enough traffic in that window.</p></div>'
+    : `<div class="note ${tone}"><p>${verdict}</p>
+      <p class="hint">A degraded path makes one container FALL; a saturating newcomer RISES.
+      Which end matters depends on the fault - ranking only by the biggest fall was measured to
+      find victims rather than the culprit.</p>
       <p class="hint">baseline ${d.baseline_window[0].slice(0,8)}–${d.baseline_window[1].slice(0,8)}
        · suspect ${d.incident_window[0].slice(0,8)}–${d.incident_window[1].slice(0,8)} · ${d.unit}</p></div>`;
   // Bar shows how far each container FELL, not its ratio: normalising by the largest ratio
   // squashed every interesting row to a sliver, because one container going up sets the scale.
   $('#dtab').innerHTML='<thead><tr><th>pid_ns</th><th>processes</th><th class="n">baseline</th>'+
     '<th class="n">suspect</th><th class="n">ratio</th><th style="width:150px">how far it fell</th></tr></thead><tbody>'+
-    d.rows.map((r,i)=>{const drop=Math.max(0,Math.min(1,1-r.ratio));
-    return `<tr class="${i===0&&sep>=3?'hit':''}">
-      <td class="mono">${r.pid_ns}</td>
-      <td class="mono" style="color:var(--muted)">${r.procs.join(', ')}</td>
+    d.rows.map((r,i)=>{
+    const isNew=r.ratio===null;
+    const drop=isNew?0:Math.max(0,Math.min(1,1-r.ratio));
+    const mark=isNew ? d.newcomer : (i===0&&sep>=3);
+    return `<tr class="${mark?'hit':''}">
+      <td class="mono">${esc(r.pid_ns)}</td>
+      <td class="mono" style="color:var(--muted)">${esc(r.procs.join(', '))}</td>
       <td class="n">${fmt(r.baseline)}</td><td class="n">${fmt(r.incident)}</td>
-      <td class="n"><strong>${r.ratio}</strong></td>
-      <td><div class="bar ${i===0&&sep>=3?'lo':''}"><i style="width:${(drop*100).toFixed(0)}%"></i></div>
-          <span class="hint" style="font-size:11px">${(drop*100).toFixed(0)}%</span></td>
+      <td class="n"><strong>${isNew?'<span class="tag">appeared</span>':r.ratio}</strong></td>
+      <td>${isNew?'<span class="hint" style="font-size:11px">no baseline to compare</span>'
+        :`<div class="bar ${mark?'lo':''}"><i style="width:${(drop*100).toFixed(0)}%"></i></div>
+          <span class="hint" style="font-size:11px">${(drop*100).toFixed(0)}% down</span>`}</td>
     </tr>`}).join('')+'</tbody>';
 }
 $('#run').onclick=runCheck;
@@ -397,7 +436,8 @@ async function loadBlueprints(){
     openBlueprint(el.dataset.n);});
   // The one used on this trace sits well down an alphabetical list; select it AND bring it
   // into view, or it looks like nothing was selected.
-  const first=$('#blist div[data-n="network-path-degradation"]')||$('#blist div[data-n]');
+  const want=(RUN&&RUN.meta&&RUN.meta.blueprint)||'';
+  const first=(want&&$(`#blist div[data-n="${want}"]`))||$('#blist div[data-n]');
   if(first){ first.click(); first.scrollIntoView({block:'center'}); }
 }
 async function openBlueprint(n){
@@ -540,7 +580,7 @@ $('#live').onclick=async()=>{
   $('#vans').innerHTML='<p class="hint">Running…</p>'; $('#vtruth').innerHTML='';
   $('#livenote').innerHTML=`<div class="note"><p><strong>Running now</strong> — same
     <code>agent_v2.diagnose</code> the study calls, on the trace in the first tab, with the
-    <code>network-path-degradation</code> blueprint. Provider ${esc(r.provider)},
+    <code>${esc((RUN&&RUN.meta&&RUN.meta.blueprint)||'')}</code> blueprint. Provider ${esc(r.provider)},
     model ${esc(r.model)}. Takes two to four minutes.</p></div>`;
   liveTick(0);
 };
