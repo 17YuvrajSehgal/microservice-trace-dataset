@@ -27,8 +27,38 @@ from urllib.parse import urlparse, parse_qs
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 DATA = os.path.join(HERE, "data")
-RUN_ID = "svc_net_aggressive_steady_r3"
-CACHE = os.path.join(DATA, "aggregate.json")
+# Two traces, chosen for opposite reasons.
+#
+# anomaly_cpu is what we are most confident about - 55 of 60 on WHERE in the published study -
+# so a LIVE run on it is very likely to succeed and is the safe one to show people.
+#
+# svc_net is our hardest: 0 of 60 published, 10 of 30 after this week's fixes. A live run on it
+# is roughly a one-in-three. It is here because it is the more interesting conversation, not
+# because it performs - and the interface says so rather than letting someone assume otherwise.
+RUNS = {
+    "anomaly_cpu_aggressive_steady_r1": {
+        "label": "Host CPU saturation",
+        "blueprint": "host-cpu-saturation",
+        "gt": "gt-anomaly_cpu.json",
+        "published": "55/60 found the right component",
+        "confidence": "high",
+        "note": "The safe one to run live. A co-tenant workload saturates the host's CPU.",
+    },
+    "svc_net_aggressive_steady_r3": {
+        "label": "One service's network path",
+        "blueprint": "network-path-degradation",
+        "gt": "gt-svc_net.json",
+        "published": "0/60 published, 10/30 after this week's fixes",
+        "confidence": "low",
+        "note": "The hard one. 150 ms delay and 4% loss on one container's interface. A live "
+                "run names the right container about a third of the time - which is the number "
+                "worth discussing, not hiding.",
+    },
+}
+RUN_ID = os.environ.get("DEMO_RUN", "anomaly_cpu_aggressive_steady_r1")
+if RUN_ID not in RUNS:
+    RUN_ID = "anomaly_cpu_aggressive_steady_r1"
+CACHE = os.path.join(DATA, "aggregate-%s.json" % RUN_ID)
 TAB = chr(9)
 HOST_NS = "4026531836"
 
@@ -100,7 +130,12 @@ def build_aggregate(path: str) -> dict:
     }
 
 
-def load_state(rebuild=False):
+def load_state(rebuild=False, run_id=None):
+    global RUN_ID, CACHE, RUN_DIR
+    if run_id and run_id in RUNS:
+        RUN_ID = run_id
+        CACHE = os.path.join(DATA, "aggregate-%s.json" % RUN_ID)
+        RUN_DIR = os.path.join(DATA, "run", RUN_ID)
     idx = os.path.join(DATA, RUN_ID + ".tsv.gz")
     if not os.path.exists(idx):
         print("MISSING %s\n  run demo/fetch_data.sh first" % idx)
@@ -113,11 +148,15 @@ def load_state(rebuild=False):
         print("first start: one pass over the index ...", end=" ", flush=True)
         t = time.time()
         agg = build_aggregate(idx)
+        agg["run_id"] = RUN_ID
         json.dump(agg, open(CACHE, "w", encoding="utf-8"))
         print("%d rows in %.0f s" % (agg["rows"], time.time() - t))
     STATE["agg"] = agg
     STATE["lines"] = os.path.join(DATA, RUN_ID + ".lines.gz")
-    gt = os.path.join(DATA, "ground_truth.json")
+    STATE["run"] = RUNS[RUN_ID]
+    # Deliberately NOT under the index root or the run directory: the code
+    # sandbox is handed the index, and the answer should not sit beside it.
+    gt = os.path.join(HERE, "answer", RUNS[RUN_ID]["gt"])
     STATE["truth"] = json.load(open(gt, encoding="utf-8")) if os.path.exists(gt) else {}
     tp = os.path.join(HERE, "demo-transcript.jsonl")
     STATE["transcript"] = json.load(open(tp, encoding="utf-8", errors="replace")) \
@@ -257,16 +296,23 @@ def blueprint_body(name: str):
 # ----------------------------------------------------------------------------------
 # The agent investigation, as a list of steps the interface plays back.
 # ----------------------------------------------------------------------------------
-def analysis_steps():
-    d = STATE.get("transcript") or {}
-    ev = d.get("events", [])
+def steps_from(ev, meta=None, final=None, head=True):
+    """Turn transcript events into interface steps.
+
+    Takes an event list rather than reading STATE, because the live run feeds it the same
+    list while it is still growing. One conversion for both paths means the recording and a
+    real run cannot drift apart in how they are presented.
+    """
+    meta = meta or {}
     steps = []
-    steps.append({"kind": "start", "title": "Investigation starts",
-                  "body": "The agent is given the trace and seven read-only tools. It is not "
-                          "told that an incident happened, when it was, or where to look.",
-                  "detail": {"incident": (d.get("meta") or {}).get("incident_alias"),
-                             "model": (d.get("meta") or {}).get("model"),
-                             "blueprint": (d.get("meta") or {}).get("skill_given")}})
+    if head:
+        steps.append({"kind": "start", "title": "Investigation starts",
+                      "body": "The agent is given the trace and seven read-only tools. It is "
+                              "not told that an incident happened, when it was, or where to "
+                              "look.",
+                      "detail": {"incident": meta.get("incident_alias"),
+                                 "model": meta.get("model"),
+                                 "blueprint": meta.get("skill_given")}})
     for e in ev:
         t = e.get("type")
         if t == "plan":
@@ -294,11 +340,17 @@ def analysis_steps():
                               "body": s.get("why") or "",
                               "detail": {"code": s.get("code"),
                                          "stdout": (r.get("stdout") or "")[:2600]}})
-    fin = (d.get("final") or {}).get("diagnosis") or {}
+    fin = (final or {}).get("diagnosis") or {}
     if fin:
         steps.append({"kind": "verdict", "title": "It commits to an answer",
                       "body": fin.get("what_is_wrong", ""), "detail": fin})
-    # tool calls are numerous and low-information one at a time; keep a sample
+    return steps
+
+
+def analysis_steps():
+    d = STATE.get("transcript") or {}
+    steps = steps_from(d.get("events", []), d.get("meta"), d.get("final"))
+    # tool calls are numerous and low-information one at a time; keep a sample in the replay
     keep, seen = [], 0
     for s in steps:
         if s["kind"] == "tool":
@@ -312,6 +364,115 @@ def analysis_steps():
 def score_block():
     d = STATE.get("transcript") or {}
     return {"score": d.get("_score") or {}, "truth": (STATE.get("truth") or {}).get("fault", {})}
+
+
+# ----------------------------------------------------------------------------------
+# A REAL run.
+#
+# This is the part that makes the demo a demo rather than a recording. It calls the same
+# agent_v2.diagnose the study calls, on the same index the agent's tools read, with the same
+# blueprint. Nothing about the agent is changed or wrapped for the occasion.
+#
+# Progress is observed by polling the agent's own Transcript object while it fills. That
+# object is exactly what gets written to disk at the end, so the interface is watching the
+# audit record being produced rather than a parallel narration built for the screen - and the
+# agent needs no callback, no hook, and no demo-only branch.
+# ----------------------------------------------------------------------------------
+LIVE = {"running": False, "error": None, "started": 0.0, "done": False,
+        "out": None, "tr": None, "seen": 0}
+LIVE_LOCK = threading.Lock()
+RUN_DIR = os.path.join(DATA, "run", RUN_ID)
+
+
+def live_ready():
+    """Can a real run happen here? Report every reason it cannot, not just the first."""
+    why = []
+    for m in ("openai", "langgraph", "pandas", "dotenv"):
+        try:
+            __import__(m)
+        except Exception:                                               # noqa: BLE001
+            why.append("missing package: " + m)
+    if not os.path.isdir(RUN_DIR):
+        why.append("no run directory at " + RUN_DIR)
+    try:
+        from dotenv import load_dotenv
+        load_dotenv(os.path.join(ROOT, ".env"))
+    except Exception:                                                   # noqa: BLE001
+        pass
+    prov = (os.environ.get("RCA_PROVIDER") or "").lower()
+    keyvar = {"azure": "AZURE_OPENAI_API_KEY", "anthropic": "ANTHROPIC_API_KEY",
+              "openai": "OPENAI_API_KEY"}.get(prov, "")
+    if keyvar and not (os.environ.get(keyvar) or "").strip():
+        why.append("no API key for provider %r" % prov)
+    return {"ready": not why, "why": why,
+            "provider": prov or "unset", "model": os.environ.get("RCA_MODEL") or "unset"}
+
+
+def _live_worker():
+    try:
+        os.environ["CTF_INDEX_ROOT"] = DATA
+        sys.path.insert(0, os.path.join(ROOT, "agentic-rca"))
+        sys.path.insert(0, ROOT)
+        from dotenv import load_dotenv
+        load_dotenv(os.path.join(ROOT, ".env"))
+        from stratatrace import load_run
+        import agent_v2, skillreg
+        sk = [x for x in skillreg.load_skills(
+            os.path.join(ROOT, "blueprints", "skills-kernel-only"))
+            if x.name == RUNS[RUN_ID]["blueprint"]]
+
+        def watch():
+            # agent_v2 sets its module-global CTX once diagnose() starts
+            for _ in range(600):
+                c = getattr(agent_v2, "CTX", None)
+                if c is not None and getattr(c, "tr", None) is not None:
+                    LIVE["tr"] = c.tr
+                    return
+                time.sleep(0.25)
+        threading.Thread(target=watch, daemon=True).start()
+        out = agent_v2.diagnose(load_run(RUN_DIR), app="sockshop",
+                                transcript_path=os.path.join(DATA, "live.json"),
+                                condition="demo-live", skills=sk, skill_given=True)
+        LIVE["out"] = out
+    except Exception as e:                                              # noqa: BLE001
+        LIVE["error"] = "%s: %s" % (type(e).__name__, e)
+    finally:
+        LIVE["done"] = True
+        LIVE["running"] = False
+
+
+def live_start():
+    with LIVE_LOCK:
+        if LIVE["running"]:
+            return {"started": False, "reason": "a run is already in progress"}
+        r = live_ready()
+        if not r["ready"]:
+            return {"started": False, "reason": "; ".join(r["why"])}
+        LIVE.update({"running": True, "error": None, "started": time.time(),
+                     "done": False, "out": None, "tr": None, "seen": 0})
+    threading.Thread(target=_live_worker, daemon=True).start()
+    return {"started": True}
+
+
+def live_poll(since: int):
+    tr = LIVE.get("tr")
+    ev = list(getattr(tr, "events", []) or []) if tr is not None else []
+    new = ev[since:]
+    steps = steps_from(new, getattr(tr, "meta", {}) or {},
+                       (LIVE.get("out") or {}) if LIVE["done"] else None,
+                       head=(since == 0))
+    if LIVE["done"] and LIVE.get("out"):
+        d = (LIVE["out"] or {}).get("diagnosis") or {}
+        if d and not any(s["kind"] == "verdict" for s in steps):
+            steps.append({"kind": "verdict", "title": "It commits to an answer",
+                          "body": d.get("what_is_wrong", ""), "detail": d})
+    return {"steps": steps, "cursor": len(ev),
+            "running": LIVE["running"], "done": LIVE["done"],
+            "error": LIVE["error"],
+            "elapsed": round(time.time() - LIVE["started"], 1) if LIVE["started"] else 0,
+            "summary": {k: (LIVE.get("out") or {}).get(k)
+                        for k in ("wall_s", "n_tool_calls", "n_code_snippets",
+                                  "n_findings", "tokens")} if LIVE["done"] else None}
 
 
 # ----------------------------------------------------------------------------------
@@ -355,6 +516,7 @@ class H(BaseHTTPRequestHandler):
                     "run_id": a["run_id"], "rows": a["rows"],
                     "begin": hms(a["t0"]), "end": hms(a["t1"]),
                     "duration_s": round(a["t1"] - a["t0"], 1),
+                    "meta": STATE.get("run") or {},
                     "n_events": len(a["events"]), "n_containers": len(cs),
                     "events": [{"event": e, "count": c} for e, c in top],
                     "containers": cs, "groups": a["groups"],
@@ -389,6 +551,21 @@ class H(BaseHTTPRequestHandler):
                 return self._json(b or {"error": "not found"})
             if p == "/api/analyze":
                 return self._json({"steps": analysis_steps()})
+            if p == "/api/runs":
+                return self._json({"current": RUN_ID,
+                                   "runs": [dict(v, id=k) for k, v in RUNS.items()]})
+            if p == "/api/select":
+                rid = (q.get("run") or [""])[0]
+                if rid in RUNS and rid != RUN_ID:
+                    with LOCK:
+                        load_state(False, rid)
+                return self._json({"current": RUN_ID})
+            if p == "/api/live/ready":
+                return self._json(live_ready())
+            if p == "/api/live/start":
+                return self._json(live_start())
+            if p == "/api/live/poll":
+                return self._json(live_poll(int((q.get("since") or ["0"])[0])))
             if p == "/api/truth":
                 return self._json(score_block())
             self.send_error(404)

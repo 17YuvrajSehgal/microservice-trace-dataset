@@ -34,7 +34,7 @@ Four independent barriers, so no single mistake is enough:
      re-checks all of them offline. A leak that somehow ran would still be visible afterwards.
 """
 from __future__ import annotations
-import ast, json, os, subprocess, sys, textwrap, time
+import ast, json, os, subprocess, sys, textwrap, threading, time
 
 INDEX_ROOT = os.environ.get(
     "CTF_INDEX_ROOT", "/scratch/yuvraj17/stratatrace/dataset/index")
@@ -116,9 +116,22 @@ def _scan(code):
 # it, and so the kernel limits apply to it alone. MEM is substituted before launch.
 # --------------------------------------------------------------------------------------
 _CHILD = '''
-import json, resource, sys, os, gzip, io, math, statistics, collections, re, datetime
-resource.setrlimit(resource.RLIMIT_FSIZE, (0, 0))          # cannot write one byte
-resource.setrlimit(resource.RLIMIT_AS, (MEM, MEM))
+import json, sys, os, gzip, io, math, statistics, collections, re, datetime
+
+# The kernel limits below are the strongest barrier this sandbox has, and they exist only on
+# POSIX. On Windows `resource` is absent, so they are skipped and the AST scan plus the
+# builtins whitelist carry the weight alone - which is weaker, because pandas and numpy do
+# their own file I/O and the descriptor cap is what stops that.
+#
+# The difference is REPORTED, not hidden: every result carries `limits_enforced`, and the demo
+# prints it. Research runs are on Linux, where all of it applies.
+LIMITS = True
+try:
+    import resource
+    resource.setrlimit(resource.RLIMIT_FSIZE, (0, 0))      # cannot write one byte
+    resource.setrlimit(resource.RLIMIT_AS, (MEM, MEM))
+except Exception:
+    LIMITS = False
 import pandas as pd, numpy as np
 
 TAB = chr(9)
@@ -197,8 +210,43 @@ for _op in (
         pass
 
 _LINES_FH = open(LINES, "rb")
-_lim = _LINES_FH.fileno() + 1
-resource.setrlimit(resource.RLIMIT_NOFILE, (_lim, _lim))
+
+# PORTABLE BARRIER, and on Windows the only one that stops this.
+#
+# pandas and numpy do their own file I/O, so removing `open` from the snippet's builtins is
+# not enough: pd.read_json on a path built up from fragments reads whatever it likes. On Linux
+# the descriptor cap below refuses it at the kernel. On Windows there is no such cap, and the
+# adversarial test confirmed the leak - a built path plus pd.read_json returned ground truth.
+#
+# So wrap the real `open` for the whole child: only the two index files may be opened, by
+# anyone, including library internals. pandas routes its readers through builtins.open, so
+# this catches them. It is checked by resolved absolute path, not by the string passed in.
+_ALLOWED = {os.path.realpath(TSV), os.path.realpath(LINES)}
+_real_open = open
+
+
+def _guarded_open(file, *a, **k):
+    try:
+        rp = os.path.realpath(file)
+    except TypeError:
+        rp = None                       # a file descriptor, not a path - already ours
+    if rp is not None and rp not in _ALLOWED:
+        raise PermissionError(
+            "this sandbox may read only its own trace index, not %r. It has no filesystem: "
+            "the data is already in `df` and get_lines()." % str(file)[:120])
+    return _real_open(file, *a, **k)
+
+
+import builtins as _b
+_b.open = _guarded_open
+io.open = _guarded_open
+
+if LIMITS:
+    try:
+        _lim = _LINES_FH.fileno() + 1
+        resource.setrlimit(resource.RLIMIT_NOFILE, (_lim, _lim))
+    except Exception:
+        LIMITS = False
 
 
 def get_lines(event=None, t0=None, t1=None, limit=200):
@@ -299,7 +347,8 @@ NS = {"__builtins__": SAFE, "df": df, "pd": pd, "np": np, "math": math,
       "Counter": collections.Counter, "defaultdict": collections.defaultdict,
       "T0": T0, "T1": T1, "hms": hms, "secs": secs}
 
-sys.stdout.write(json.dumps({"ready": True, "rows": int(len(df))}) + NL)
+sys.stdout.write(json.dumps({"ready": True, "rows": int(len(df)),
+                             "limits": bool(LIMITS)}) + NL)
 sys.stdout.flush()
 for raw in sys.stdin:
     raw = raw.strip()
@@ -323,17 +372,60 @@ for raw in sys.stdin:
 
 
 def _readline_timeout(p, timeout):
-    """Read one line from the child, or None if it does not answer in time."""
-    import selectors
-    sel = selectors.DefaultSelector()
-    sel.register(p.stdout, selectors.EVENT_READ)
-    end = time.time() + timeout
-    while time.time() < end:
-        if sel.select(max(0.05, min(0.5, end - time.time()))):
-            return p.stdout.readline()
-        if p.poll() is not None:
-            return None
-    return None
+    """Read one line from the child, or None if it does not answer in time.
+
+    A reader thread rather than selectors: selectors cannot watch a pipe on Windows - it
+    treats the handle as a socket and raises WinError 10093 - and this behaves the same on
+    both. The thread is a daemon, so a child that never answers cannot hold the process open.
+    """
+    import queue
+    q = getattr(p, "_lineq", None)
+    if q is None:
+        q = queue.Queue()
+        p._lineq = q
+
+        def pump(fh, out):
+            try:
+                for ln in iter(fh.readline, ""):
+                    out.put(ln)
+            except Exception:                                           # noqa: BLE001
+                pass
+            out.put(None)
+
+        t = threading.Thread(target=pump, args=(p.stdout, q), daemon=True)
+        t.start()
+        p._pump = t
+    try:
+        return q.get(timeout=timeout)
+    except queue.Empty:
+        return None
+
+
+# Anything that looks like a credential, and the proxy variables that could route a request
+# somewhere. Substring match, deliberately broad - a false positive costs nothing here.
+_SECRET = ("KEY", "TOKEN", "SECRET", "PASSWORD", "PASSWD", "CREDENTIAL", "AUTH", "SESSION",
+           "PROXY", "AWS_", "AZURE_", "OPENAI", "ANTHROPIC", "GEMINI")
+
+
+def _child_env():
+    """The child's environment: the parent's, minus anything sensitive, plus thread pins.
+
+    Replacing the environment outright looked safer and broke the sandbox on Windows - the
+    child could not find its own site-packages and died with ModuleNotFoundError on pandas.
+    Filtering achieves the same thing (no credential reaches a snippet) and runs everywhere.
+
+    The thread pins are not tuning. Measured: 64 of 169 snippets in the first real run died
+    with "libgomp: Thread creation failed" because eight parallel cells each started a child
+    that sized an OpenMP pool to a 192-core shared login node. Those cells ran with no working
+    code tool at all, silently. This work is a groupby over a few million rows; one thread is
+    plenty.
+    """
+    env = {k: v for k, v in os.environ.items()
+           if not any(w in k.upper() for w in _SECRET)}
+    env.update({"PYTHONHASHSEED": "0", "OMP_NUM_THREADS": "1", "OPENBLAS_NUM_THREADS": "1",
+                "MKL_NUM_THREADS": "1", "NUMEXPR_NUM_THREADS": "1",
+                "VECLIB_MAXIMUM_THREADS": "1"})
+    return env
 
 
 class Sandbox:
@@ -347,6 +439,7 @@ class Sandbox:
         self.lines = os.path.join(self.root, run_id + ".lines.gz")
         self.p = None
         self.rows = None
+        self.limits = None
         self.calls = 0
 
     def _start(self):
@@ -360,17 +453,7 @@ class Sandbox:
             stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
             text=True, bufsize=1,
             # a bare environment: nothing that could point at a proxy or a credential
-            # OMP_NUM_THREADS=1 and friends are not tuning, they are the fix for a
-            # measured failure: 64 of 169 snippets in the first real run died with
-            # "libgomp: Thread creation failed: Resource temporarily unavailable". Eight
-            # matrix cells in parallel, each starting a sandbox child that loads numpy and
-            # pandas, and every one of those spawns an OpenMP pool sized to the machine -
-            # on a 192-core login node shared with other users that exhausts the per-user
-            # thread limit. Those cells then ran with NO working code tool at all, silently.
-            # This work is a groupby over a few million rows; one thread is plenty.
-            env={"PATH": "/usr/bin:/bin", "PYTHONHASHSEED": "0", "HOME": "/nonexistent",
-                 "OMP_NUM_THREADS": "1", "OPENBLAS_NUM_THREADS": "1", "MKL_NUM_THREADS": "1",
-                 "NUMEXPR_NUM_THREADS": "1", "VECLIB_MAXIMUM_THREADS": "1"})
+            env=_child_env())
         hello = _readline_timeout(self.p, 180)
         if not hello:
             err = ""
@@ -381,7 +464,9 @@ class Sandbox:
                 pass
             self.p = None
             raise RuntimeError("sandbox failed to load the index. %s" % err)
-        self.rows = (json.loads(hello) or {}).get("rows")
+        _h = json.loads(hello) or {}
+        self.rows = _h.get("rows")
+        self.limits = bool(_h.get("limits"))
 
     def close(self):
         if self.p is not None:
@@ -418,7 +503,7 @@ class Sandbox:
         res = json.loads(line)
         out = res.get("stdout") or ""
         d = {"stdout": out[:OUT_CAP], "wall_s": round(time.time() - t0, 1),
-             "index_rows": self.rows}
+             "index_rows": self.rows, "limits_enforced": self.limits}
         if len(out) > OUT_CAP:
             d["stdout_truncated"] = ("output cut at %d chars - print a summary, not raw rows"
                                      % OUT_CAP)

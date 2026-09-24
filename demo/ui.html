@@ -123,7 +123,9 @@ pre{background:var(--surface-2);border:1px solid var(--rule);padding:12px 14px;o
 <header>
   <div class="brand">
     <h1>StrataTrace</h1>
+    <select id="runsel" style="font-size:12px;padding:4px 8px"></select>
     <span class="runid" id="runid">loading…</span>
+    <span class="hint" id="runconf"></span>
   </div>
   <p class="sub">One kernel trace, the blueprint that tells an agent how to read it, and the
   agent's own investigation. No metrics, no logs, no distributed traces.</p>
@@ -139,6 +141,7 @@ pre{background:var(--surface-2);border:1px solid var(--rule);padding:12px 14px;o
 <!-- ─────────────────────────────── TRACE ─────────────────────────────── -->
 <div class="panel on" id="p-trace">
   <h2>What was recorded</h2>
+  <div id="runnote"></div>
   <div class="grid g4" id="stats"></div>
   <p class="hint">The raw trace for this run is 15&nbsp;GB. What you are browsing is the index
   the agent's tools actually read: one row per 100&nbsp;ms bucket per (event, process,
@@ -198,14 +201,19 @@ pre{background:var(--surface-2);border:1px solid var(--rule);padding:12px 14px;o
 <!-- ─────────────────────────────── AGENT ─────────────────────────────── -->
 <div class="panel" id="p-agent">
   <h2>The investigation</h2>
-  <p>The agent was told <strong>nothing</strong> — not that an incident happened, not when, not
-  where. It plans, runs workers in parallel, writes and runs its own analysis code, records
-  findings with numbers, and commits to an answer.</p>
+  <p>The agent is given the trace and seven read-only tools, and told nothing else — not that
+  an incident happened, not when, not where. It plans, runs workers in parallel, writes and
+  runs its own analysis code, records findings with numbers, and commits to an answer.</p>
+  <p class="hint"><strong>Run the agent for real</strong> calls the same
+  <code>agent_v2.diagnose</code> the study calls, live, and takes two to four minutes —
+  what you see is the audit record being written as it happens. <strong>Replay</strong> plays
+  back a previous investigation instantly, and needs no network.</p>
   <div class="controls">
-    <button class="go" id="play">Run the agent</button>
-    <button class="ghost go" id="fast">Skip to the end</button>
+    <button class="go" id="live">Run the agent for real</button>
+    <button class="ghost go" id="play">Replay a past run</button>
     <span class="hint" id="pstat"></span>
   </div>
+  <div id="livenote"></div>
   <div id="steps"></div>
 </div>
 
@@ -275,12 +283,26 @@ function draw(cv,series,sel,shade){
 
 /* ---------- trace ---------- */
 async function boot(){
+  const rl=await api('/api/runs');
+  $('#runsel').innerHTML=rl.runs.map(r=>`<option value="${r.id}" ${r.id===rl.current?'selected':''}>${r.label}</option>`).join('');
+  $('#runsel').onchange=async e=>{ await api('/api/select?run='+encodeURIComponent(e.target.value));
+    SEL=null; SHADE=null; STEPS=null; DX=null; $('#steps').innerHTML=''; $('#livenote').innerHTML='';
+    $('#dtab').innerHTML=''; $('#sum').innerHTML=''; $('#vans').innerHTML='<p class="hint">Run the agent first.</p>';
+    $('#vtruth').innerHTML=''; boot(); };
   RUN=await api('/api/run');
   $('#runid').textContent=RUN.run_id;
+  const m=RUN.meta||{};
+  $('#runconf').innerHTML = m.published
+    ? `<span style="color:${m.confidence==='high'?'var(--good)':'var(--warn)'}">${m.published}</span>`
+    : '';
   $('#stats').innerHTML=[
     ['duration',RUN.duration_s+' s'],['index rows',fmt(RUN.rows)],
     ['event types',RUN.n_events],['containers',RUN.n_containers]
   ].map(([l,v])=>`<div class="cell"><span class="n">${v}</span><span class="l">${l}</span></div>`).join('');
+  $('#runnote').innerHTML = m.note
+    ? `<div class="note ${m.confidence==='high'?'g':'w'}"><p><strong>${esc(m.label)}.</strong>
+       ${esc(m.note)}</p><p class="hint">Published result: ${esc(m.published)}. The blueprint
+       for this fault is <code>${esc(m.blueprint)}</code>.</p></div>` : '';
   $('#ev').innerHTML=RUN.events.map(e=>`<option value="${e.event}">${e.event}</option>`).join('');
   $('#ctab').innerHTML='<thead><tr><th>pid_ns</th><th>top processes</th>'+
     '<th class="n">events</th><th class="n">CPU s</th></tr></thead><tbody>'+
@@ -411,7 +433,59 @@ async function play(fast){
   if(DX) $('#vans').innerHTML=verdictHtml(DX);
 }
 $('#play').onclick=()=>play(false);
-$('#fast').onclick=()=>play(true);
+
+/* ---------- a real run ---------- */
+let liveTimer=null;
+async function liveTick(cursor){
+  const d=await api('/api/live/poll?since='+cursor);
+  (d.steps||[]).forEach(s=>{
+    $('#steps').insertAdjacentHTML('beforeend',render(s));
+    $('#steps').lastElementChild.scrollIntoView({block:'center',behavior:'smooth'});
+  });
+  $('#pstat').innerHTML = d.done
+    ? `finished in ${d.elapsed}s`
+    : `<span class="spin"></span>running — ${d.elapsed}s elapsed`;
+  if(d.error){
+    $('#livenote').innerHTML=`<div class="note w"><p><strong>The run failed.</strong> ${esc(d.error)}</p>
+      <p class="hint">Use <em>Replay a past run</em> to show the recorded investigation instead.</p></div>`;
+    clearInterval(liveTimer); liveTimer=null; $('#live').disabled=false; return;
+  }
+  if(d.done){
+    clearInterval(liveTimer); liveTimer=null; $('#live').disabled=false;
+    const m=d.summary||{};
+    $('#livenote').innerHTML=`<div class="note g"><p><strong>Done.</strong>
+      ${m.wall_s}s · ${m.n_tool_calls} tool calls · ${m.n_code_snippets} snippets of its own code ·
+      ${m.n_findings} findings · ${((m.tokens||{}).in+(m.tokens||{}).out||0).toLocaleString()} tokens.</p>
+      <p class="hint">This ran just now against the trace in the first tab. Open Verdict to
+      score it against ground truth.</p></div>`;
+    if(DX) $('#vans').innerHTML=verdictHtml(DX);
+    return;
+  }
+  liveTimer=setTimeout(()=>liveTick(d.cursor),1200);
+}
+$('#live').onclick=async()=>{
+  const r=await api('/api/live/ready');
+  if(!r.ready){
+    $('#livenote').innerHTML=`<div class="note w"><p><strong>Cannot run live here.</strong>
+      ${esc(r.why.join('; '))}</p><p class="hint">Replay still works — it needs nothing.</p></div>`;
+    return;
+  }
+  const st=await api('/api/live/start');
+  if(!st.started){
+    $('#livenote').innerHTML=`<div class="note w"><p>${esc(st.reason)}</p></div>`; return;
+  }
+  $('#live').disabled=true; $('#steps').innerHTML=''; DX=null;
+  $('#livenote').innerHTML=`<div class="note"><p><strong>Running now</strong> — same
+    <code>agent_v2.diagnose</code> the study calls, on the trace in the first tab, with the
+    <code>network-path-degradation</code> blueprint. Provider ${esc(r.provider)},
+    model ${esc(r.model)}. Takes two to four minutes.</p></div>`;
+  liveTick(0);
+};
+/* tell the user up front whether a real run is possible here */
+api('/api/live/ready').then(r=>{
+  if(!r.ready){ $('#live').textContent='Run the agent for real (unavailable)';
+    $('#live').title=r.why.join('; '); }
+});
 
 /* ---------- verdict ---------- */
 $('#reveal').onclick=async()=>{

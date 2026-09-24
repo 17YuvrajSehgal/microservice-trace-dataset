@@ -1,71 +1,95 @@
 # StrataTrace demo
 
-A local web app for showing what we built: one kernel trace, the blueprint that tells an agent
-how to read it, and the agent's own investigation.
+A local web app: one kernel trace, the blueprint that tells an agent how to read it, and the
+agent **actually running on it**.
 
 ```
 python demo/app.py            # then open http://127.0.0.1:8765
 ```
 
-**Standard library only.** No pip install, no build step, no network, no API key. It runs from
-a laptop with this repo and `demo/data/` present, which is the only thing that matters in a
-meeting room.
+No build step. The server itself is standard library only. A live run additionally needs
+`openai langgraph langchain-core pandas python-dotenv` and an API key in `.env` — the app
+checks both on load and says plainly if it cannot run live.
 
-First start does one pass over 4.1 million index rows (about 5 seconds) and caches the
-aggregates. Every start after that is instant.
+## Two traces, chosen for opposite reasons
+
+Pick from the dropdown in the header.
+
+| trace | published | use it for |
+|---|---|---|
+| **Host CPU saturation** | 55/60 found the right component | the live run. It works. |
+| **One service's network path** | 0/60 published, 10/30 after this week's fixes | the interesting conversation |
+
+**Run the CPU one live.** Measured just now, twice: 133 s, names `stress-ng-cpu in pid_ns
+4026533601`, window `08:14:06–08:16:06` against a true `08:14:06–08:16:07`, confidence 0.97.
+
+**Do not run the network one live and hope.** It names the right container about a third of the
+time. Two real runs while building this: one correct, one answered `host`. Use it to show the
+Discriminator tab and to talk about why it is hard — and if you want to show a successful
+network investigation, use **Replay**, and say it is a replay.
 
 ## The five tabs
 
 | tab | what it shows |
 |---|---|
-| **Trace** | the recording: 243 s, 4.1M index rows, 373 event types, 21 containers. Pick an event and see its rate across the whole span. |
-| **Discriminator** | the blueprint's deciding check, computed live. Drag on the chart to pick a suspect window and watch the ranking come out. |
-| **Blueprints** | the library, and the full text of each one — the exact files handed to the agent. |
-| **Agent** | the recorded investigation, played back step by step: plan, tool calls, the code it wrote, findings, verdict. |
-| **Verdict** | its answer, then ground truth on demand. |
+| **Trace** | the recording: span, event types, containers, event rate across the whole run |
+| **Discriminator** | the blueprint's deciding check, computed live on a window you drag out |
+| **Blueprints** | the library, full text — the exact files handed to the agent |
+| **Agent** | **Run the agent for real**, streamed as it happens. Or replay a past run. |
+| **Verdict** | its answer, then ground truth on demand |
 
 ## What to show, in order
 
-**1 · Trace.** Select `net_if_receive_skb`. The collapse and recovery are visible without any
-analysis. Say: *the agent is not told any of this — not that an incident happened, not when.*
+**1 · Trace.** Pick an event. The fault is visible in the rate without any analysis. Say: *the
+agent is told none of this.*
 
-**2 · Discriminator.** This is the centre of the demo. Drag the middle of the chart.
-`4026532538` comes out lowest at **0.109×** its own baseline against a median of 0.325× — a
-**3× separation**, and an 89% drop against everyone else's 70-odd.
+**2 · Discriminator.** On the network trace, drag the middle of the chart. `4026532538` comes
+out lowest at **0.109×** its own baseline against a median of 0.325×. Then switch **Signal** to
+CPU or scheduling — nothing separates. That is the distinction the blueprint exists to make,
+watched rather than asserted.
 
-Then switch the **Signal** dropdown to *CPU time* or *scheduling*. Nothing separates. That is
-the whole point: the impairment is on one container's network path, not the machine being busy,
-and this is the distinction the blueprint exists to make.
+**3 · Blueprints.** Open the one named on the Trace tab. Every check has a measurement behind
+it; a validator rejects any that does not.
 
-**3 · Blueprints.** Open `network-path-degradation`. Scroll to *Investigation blueprint*, step 3
-— the ranking the previous tab just ran, with the measured numbers behind it.
+**4 · Agent — press Run the agent for real.** Two to four minutes. It plans, calls tools,
+writes and runs its own analysis code, records findings, commits. What you are watching is the
+audit record being written, not a narration built for the screen.
 
-**4 · Agent.** Press **Run the agent**. It plans, writes and runs its own analysis code,
-records findings, commits. Pause on a `code` step — that is the moment people react to.
+Two things worth pausing on when they appear:
+- a **code** step — it wrote that itself, against the index in tab one
+- the **evidence** in the verdict. On the CPU trace it typically says the late event-rate jump
+  is *recovery, not onset*, and that runqueue-delay corroboration was attempted and was
+  inconclusive. An agent stating what it could not verify is the point.
 
-**5 · Verdict.** Reveal ground truth. `pid_ns 4026532538` is `docker-compose_carts_1`, window
-IoU 0.926.
+**5 · Verdict.** Reveal ground truth.
 
-**Then say the honest number, before anyone asks:** across 30 runs of this problem the agent
-names the right container 10 times with the blueprint and once without.
+**Then say the honest rate before anyone asks.** Host-wide faults 40–55 of 60. Per-service
+faults were 0–3 of 60 and are now 10/30 on the network one after this week's fixes.
 
-## The trace
+## The data
 
-`svc_net_aggressive_steady_r3` — Sock Shop, 150 ms delay, 40 ms jitter, 4% packet loss on the
-`carts` container's `eth0`, for 121 seconds.
-
-The raw CTF trace is **15 GB**. What ships here is the **index**: counts per 100 ms bucket per
-(event, process, container) plus one raw event line per bucket, built by a single decode of the
-whole trace. That is what the agent's tools actually read. 37 MB, fetched by:
+The raw CTF traces are **15 GB each**. What ships is the **index** the agent's tools actually
+read — counts per 100 ms bucket per (event, process, container), plus one raw event line per
+bucket, from a single decode of the whole trace. ~37 MB per trace.
 
 ```
 demo/fetch_data.sh          # needs the Trillium ssh alias
 ```
 
-## Terminal version
+Ground truth lives in `demo/answer/`, deliberately **not** under the index root or the run
+directory, so it is not sitting beside the data the code sandbox is handed.
 
-If a browser is awkward, the same investigation replays in a terminal:
+## A note on the sandbox
+
+The agent writes and runs its own code. On Linux it is confined by kernel limits — no writes,
+capped memory, and a file-descriptor cap that stops pandas opening anything. Windows has no
+`resource` module, so those are skipped; a guard on `open` inside the child takes over and
+restricts it to the two index files. Every result reports `limits_enforced`, and
+`agentic-rca/test_codetool.py` runs 19 escape attempts on either platform.
+
+## Terminal version
 
 ```
 python blueprints/lib/demo_agent.py --step
 ```
+Replay only, no network. A fallback if the browser or the API is unavailable.

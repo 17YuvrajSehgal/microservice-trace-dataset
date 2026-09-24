@@ -1,0 +1,17 @@
+{
+  "fault": {
+    "family": "A_host_resource",
+    "name": "anomaly_cpu",
+    "scope": "host",
+    "intensity": "aggressive",
+    "parameters": {"workers": 24, "cpu_load": 100, "method": "matrixprod", "container": "anomaly-cpu-stress"},
+    "target_service": "host",
+    "expected_blast_radius": ["host", "all services"],
+    "expected_winning_modality": "kernel",
+    "target_trace_visibility": "n/a",
+    "injection_start_utc": "2026-09-05T08:14:06Z",
+    "injection_end_utc": "2026-09-05T08:16:07Z"
+  },
+  "remediation": { "action": "kill the stress-ng workers" },
+  "recipe": { "script": "anomaly_cpu.sh" }
+}
