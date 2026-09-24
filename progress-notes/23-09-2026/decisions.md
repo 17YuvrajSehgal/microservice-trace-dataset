@@ -400,3 +400,50 @@ both matter more than the score:
 
 Both were 0-1 of 60 in the published study. Neither is solved; both moved off zero for a reason
 we measured first.
+
+## svc_cpu_cap at n=30: 1/60 -> 7/60, and Train Ticket correctly refuses
+
+120 cells, published design, 0 failures. `--jobs 6` survived the login-node watchdog on both
+applications, so the earlier 12-way kill has a usable ceiling between 6 and 12.
+
+### Sock Shop: the blueprint effect repeats
+
+| | published (v1) | re-run (v2 + blueprint v4) |
+|---|---|---|
+| WHERE | 1/60 | **7/60** |
+| WHERE, given arm | - | **6/30 (20%)** |
+| WHERE, no blueprint | - | **1/30 (3%)** |
+| window hit | 49/60 | 54/60 |
+
+20% with the blueprint against 3% without. Weaker than `svc_net`'s 33% vs 3% but the same
+shape, and it is the second per-service problem to show an effect at all. Of 13 cells that
+named a container, 7 were right - about the same precision as `svc_net`'s 11 of 21.
+
+### Train Ticket: the window score fell, and that is the agent being right
+
+| | published (v1) | re-run (v2 + blueprint v4) |
+|---|---|---|
+| window hit | 15/60 | **2/60** |
+| abstained on the window | 17/60 | **41/60** |
+| said the fault was `cpu_throttling` | **21/60** | 3/60 |
+| said the fault was `normal` | 18/60 | **43/60** |
+
+This looks like a regression and is the opposite. The Train Ticket cap never engaged - the
+service uses 0.004 of a core against a 0.2 quota and was throttled 1.6 s out of 120 - so there
+is no throttling in that trace. In its own words:
+
+> The evidence does not support a CPU-throttling diagnosis. Host CPU usage does not fall; the
+> busiest container stays around 2.23-2.27 cores across the split, there is no newcomer
+> consuming >= 0.5 cores.
+
+**Correct.** The v1 agent called it `cpu_throttling` 21 times on a fault that did not happen,
+and scored 15 window hits partly by guessing a range for a non-event. The v2 agent says
+`normal` 43 times and declines to name a window 41 times.
+
+**So the scoring rubric is wrong here, not the agent.** A run whose injection did not engage
+should be scored as one where `normal` is the correct answer, and right now it counts as a
+miss. That affects any cross-application claim about `svc_cpu_cap`.
+
+**What to do:** verify engagement per run from `throttled_usec` and mark runs where the fault
+did not bite. That is a dataset-quality pass, not a scoring tweak, and it may apply to other
+families - the same calibration question hangs over every per-service fault on Train Ticket.

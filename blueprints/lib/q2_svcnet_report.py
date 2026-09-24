@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Score the svc_net re-run against the published 0/60, at the same n.
+"""Score a per-service re-run against its published score, at the same n.
 
 The point of this run is one question: is "2 of 6" real? The earlier comparison was n=6 per
 cell, where a single run is 17 points, so it could establish the mechanism and not the size.
@@ -10,7 +10,8 @@ Every WHERE outcome is printed, not just the pass count. "named the wrong contai
 "answered host" both fail, and they mean completely different things about whether the agent
 is looking in the right place.
 
-    python q2_svcnet_report.py [--new DIR] [--old-ss DIR] [--old-tt DIR]
+    python q2_svcnet_report.py --problem svc_net   --new .../svcnet-n30
+    python q2_svcnet_report.py --problem svc_cpu_cap --new .../cpucap-n30
 """
 from __future__ import annotations
 import argparse, collections, glob, json, os
@@ -21,9 +22,9 @@ ORDER = ["named", "container", "container_wrong", "container_unverified",
 PASS = {"named", "container"}       # matches q2_rescore.where_ok for a service-scoped fault
 
 
-def load(root, pre, arm=None, ask=None):
+def load(root, pre, problem, arm=None, ask=None):
     out = []
-    for sp in glob.glob("%s/svc_net/*/*/*/*/score.json" % root):
+    for sp in glob.glob("%s/%s/*/*/*/*/score.json" % (root, problem)):
         try:
             r = json.load(open(sp))
         except Exception:
@@ -54,6 +55,7 @@ def line(label, rows):
 
 def main() -> int:
     ap = argparse.ArgumentParser()
+    ap.add_argument("--problem", default="svc_net")
     ap.add_argument("--new", default=os.path.join(S, "svcnet-n30"))
     ap.add_argument("--old-ss", default=os.path.join(S, "q2-ss"))
     ap.add_argument("--old-tt", default=os.path.join(S, "q2-tt"))
@@ -61,22 +63,22 @@ def main() -> int:
 
     for pre, label, old in (("ss", "SOCK SHOP", a.old_ss), ("tt", "TRAIN TICKET", a.old_tt)):
         print("=" * 104)
-        print("%s   svc_net" % label)
+        print("%s   %s" % (label, a.problem))
         print("=" * 104)
-        print(line("published (v1, old tools)", load(old, pre)))
-        print(line("re-run (v2, blueprint v4)", load(a.new, pre)))
+        print(line("published (v1, old tools)", load(old, pre, a.problem)))
+        print(line("re-run (v2, new blueprint)", load(a.new, pre, a.problem)))
         print()
         for arm in ("given", "none"):
-            print(line("  re-run, arm=%s" % arm, load(a.new, pre, arm=arm)))
+            print(line("  re-run, arm=%s" % arm, load(a.new, pre, a.problem, arm=arm)))
         for ask in ("hint", "nohint"):
-            print(line("  re-run, ask=%s" % ask, load(a.new, pre, ask=ask)))
+            print(line("  re-run, ask=%s" % ask, load(a.new, pre, a.problem, ask=ask)))
         print()
 
     print("=" * 104)
     print("WHICH container it named, when it named one")
     print("=" * 104)
     for pre, label in (("ss", "SOCK SHOP"), ("tt", "TRAIN TICKET")):
-        rows = [r for r in load(a.new, pre)
+        rows = [r for r in load(a.new, pre, a.problem)
                 if str(r.get("where", "")).startswith("container")]
         if not rows:
             print("  %-14s none" % label)
