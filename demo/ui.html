@@ -1,0 +1,449 @@
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>StrataTrace — kernel trace, blueprint, agent</title>
+<style>
+:root{
+  --ground:#f6f7f8; --surface:#fff; --surface-2:#eef1f3; --surface-3:#e4e9ed;
+  --ink:#14181d; --ink-2:#39424c; --muted:#5a646e;
+  --rule:#dde2e6; --rule-2:#c6ced5;
+  --signal:#1f5f8b; --signal-soft:#e4edf4;
+  --warn:#a8551c; --warn-soft:#f7ece2;
+  --good:#2f6b4f; --good-soft:#e5efe9;
+  --mono:ui-monospace,"Cascadia Mono","SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+  --sans:ui-sans-serif,system-ui,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --ground:#0f1216; --surface:#161a20; --surface-2:#1d232a; --surface-3:#252c35;
+  --ink:#e8ebee; --ink-2:#c2cad2; --muted:#94a0aa;
+  --rule:#252b33; --rule-2:#333b45;
+  --signal:#6fb0d8; --signal-soft:#15232d;
+  --warn:#e0954f; --warn-soft:#2a1f14;
+  --good:#7bbf9b; --good-soft:#14231b;
+}}
+:root[data-theme="dark"]{
+  --ground:#0f1216; --surface:#161a20; --surface-2:#1d232a; --surface-3:#252c35;
+  --ink:#e8ebee; --ink-2:#c2cad2; --muted:#94a0aa;
+  --rule:#252b33; --rule-2:#333b45;
+  --signal:#6fb0d8; --signal-soft:#15232d;
+  --warn:#e0954f; --warn-soft:#2a1f14;
+  --good:#7bbf9b; --good-soft:#14231b;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--sans);
+  font-size:14px;line-height:1.55;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1180px;margin:0 auto;padding:0 20px 80px}
+header{border-bottom:1px solid var(--rule);margin-bottom:0;padding:22px 0 0}
+.brand{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
+h1{font-family:var(--mono);font-size:19px;font-weight:650;letter-spacing:-.01em;margin:0}
+.runid{font-family:var(--mono);font-size:12px;color:var(--signal);
+  background:var(--signal-soft);padding:3px 8px;border-radius:3px}
+.sub{color:var(--muted);font-size:13px;margin:6px 0 16px;max-width:76ch}
+nav{display:flex;gap:2px;flex-wrap:wrap}
+nav button{font-family:var(--mono);font-size:12px;letter-spacing:.04em;text-transform:uppercase;
+  background:none;border:none;border-bottom:2px solid transparent;color:var(--muted);
+  padding:9px 14px;cursor:pointer}
+nav button:hover{color:var(--ink)}
+nav button.on{color:var(--ink);border-bottom-color:var(--signal)}
+.panel{display:none;padding-top:26px}
+.panel.on{display:block}
+h2{font-family:var(--mono);font-size:12px;letter-spacing:.09em;text-transform:uppercase;
+  color:var(--muted);font-weight:650;margin:0 0 10px}
+h3{font-size:15px;font-weight:640;margin:22px 0 6px}
+p{margin:10px 0;max-width:80ch;color:var(--ink-2)}
+.hint{color:var(--muted);font-size:13px}
+code{font-family:var(--mono);font-size:.9em;background:var(--surface-2);padding:1px 5px;border-radius:3px}
+.grid{display:grid;gap:1px;background:var(--rule);border:1px solid var(--rule);margin:14px 0}
+.g4{grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
+.cell{background:var(--surface);padding:14px 16px}
+.cell .n{font-family:var(--mono);font-size:22px;font-weight:650;display:block;
+  font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.cell .l{font-size:12px;color:var(--muted);display:block;margin-top:3px}
+.tw{overflow-x:auto;border:1px solid var(--rule);margin:14px 0;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:13px;font-variant-numeric:tabular-nums}
+th,td{padding:7px 12px;text-align:left;border-bottom:1px solid var(--rule);white-space:nowrap}
+th{font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);font-weight:640}
+td.n,th.n{text-align:right}
+tbody tr:last-child td{border-bottom:none}
+tr.hit{background:var(--good-soft)}
+tr.hit td:first-child{box-shadow:inset 3px 0 0 var(--good)}
+.mono{font-family:var(--mono)}
+.bar{height:8px;background:var(--surface-3);border-radius:2px;overflow:hidden;min-width:70px}
+.bar i{display:block;height:100%;background:var(--signal)}
+.bar.lo i{background:var(--warn)}
+.controls{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin:12px 0}
+label{display:block;font-size:11px;letter-spacing:.05em;text-transform:uppercase;
+  color:var(--muted);margin-bottom:4px}
+select,input{font-family:var(--mono);font-size:13px;padding:6px 9px;border:1px solid var(--rule-2);
+  background:var(--surface);color:var(--ink);border-radius:3px}
+button.go{font-family:var(--sans);font-size:13px;font-weight:600;padding:7px 16px;
+  background:var(--signal);color:#fff;border:none;border-radius:3px;cursor:pointer}
+button.go:hover{filter:brightness(1.08)}
+button.ghost{background:none;color:var(--signal);border:1px solid var(--rule-2)}
+canvas{width:100%;height:170px;display:block;border:1px solid var(--rule);background:var(--surface);
+  cursor:crosshair;touch-action:none}
+.note{border-left:3px solid var(--signal);background:var(--signal-soft);padding:11px 15px;margin:14px 0}
+.note.w{border-left-color:var(--warn);background:var(--warn-soft)}
+.note.g{border-left-color:var(--good);background:var(--good-soft)}
+.note p{margin:4px 0;max-width:none}
+.split{display:grid;grid-template-columns:270px 1fr;gap:18px}
+@media(max-width:820px){.split{grid-template-columns:1fr}}
+.list{border:1px solid var(--rule);background:var(--surface);max-height:640px;overflow:auto}
+.list div{padding:9px 12px;border-bottom:1px solid var(--rule);cursor:pointer;font-size:13px}
+.list div:hover{background:var(--surface-2)}
+.list div.on{background:var(--signal-soft);box-shadow:inset 3px 0 0 var(--signal)}
+.list .bn{font-family:var(--mono);font-size:12.5px}
+.list .bc{color:var(--muted);font-size:11.5px}
+.tag{display:inline-block;font-family:var(--mono);font-size:10px;letter-spacing:.05em;
+  text-transform:uppercase;padding:1px 6px;border-radius:2px;background:var(--good-soft);
+  color:var(--good);margin-left:6px}
+pre{background:var(--surface-2);border:1px solid var(--rule);padding:12px 14px;overflow-x:auto;
+  font-family:var(--mono);font-size:12px;line-height:1.5;margin:10px 0;white-space:pre-wrap;
+  word-break:break-word;max-height:460px}
+.bp{border:1px solid var(--rule);background:var(--surface);padding:16px 18px;max-height:640px;
+  overflow:auto;font-family:var(--mono);font-size:12.5px;line-height:1.62;white-space:pre-wrap}
+.step{border:1px solid var(--rule);background:var(--surface);margin:10px 0;padding:13px 16px;
+  border-left:3px solid var(--rule-2);animation:in .28s ease-out}
+@keyframes in{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+@media(prefers-reduced-motion:reduce){.step{animation:none}}
+.step.plan{border-left-color:var(--signal)}
+.step.code{border-left-color:var(--warn)}
+.step.finding{border-left-color:var(--good)}
+.step.verdict{border-left-color:var(--ink)}
+.step .k{font-family:var(--mono);font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;
+  color:var(--muted)}
+.step .t{font-weight:640;margin:2px 0 4px}
+.step .b{color:var(--ink-2);font-size:13.5px}
+.spin{display:inline-block;width:11px;height:11px;border:2px solid var(--rule-2);
+  border-top-color:var(--signal);border-radius:50%;animation:sp .7s linear infinite;
+  vertical-align:-1px;margin-right:6px}
+@keyframes sp{to{transform:rotate(360deg)}}
+:focus-visible{outline:2px solid var(--signal);outline-offset:2px}
+</style>
+
+<div class="wrap">
+<header>
+  <div class="brand">
+    <h1>StrataTrace</h1>
+    <span class="runid" id="runid">loading…</span>
+  </div>
+  <p class="sub">One kernel trace, the blueprint that tells an agent how to read it, and the
+  agent's own investigation. No metrics, no logs, no distributed traces.</p>
+  <nav>
+    <button class="on" data-p="trace">Trace</button>
+    <button data-p="check">Discriminator</button>
+    <button data-p="bp">Blueprints</button>
+    <button data-p="agent">Agent</button>
+    <button data-p="verdict">Verdict</button>
+  </nav>
+</header>
+
+<!-- ─────────────────────────────── TRACE ─────────────────────────────── -->
+<div class="panel on" id="p-trace">
+  <h2>What was recorded</h2>
+  <div class="grid g4" id="stats"></div>
+  <p class="hint">The raw trace for this run is 15&nbsp;GB. What you are browsing is the index
+  the agent's tools actually read: one row per 100&nbsp;ms bucket per (event, process,
+  container), built by a single decode of the whole trace.</p>
+
+  <h3>Event rate across the recording</h3>
+  <div class="controls">
+    <div><label for="ev">Event</label><select id="ev"></select></div>
+    <span class="hint" id="evtot"></span>
+  </div>
+  <canvas id="c1"></canvas>
+  <p class="hint">Every kernel event carries the namespaces of the task that produced it.
+  <code>pid_ns</code> is one number per container — the only thing in a kernel trace that
+  tells <code>java</code> in one container from <code>java</code> in another.</p>
+
+  <h3>Containers seen</h3>
+  <div class="tw"><table id="ctab"></table></div>
+</div>
+
+<!-- ───────────────────────────── DISCRIMINATOR ───────────────────────── -->
+<div class="panel" id="p-check">
+  <h2>The blueprint's deciding check, computed live</h2>
+  <p>The network blueprint says: <em>sum network events per container over a quiet window and
+  a suspect window, divide, and rank lowest first.</em> Drag on the chart to choose the suspect
+  window — the baseline takes the quiet stretch before it.</p>
+  <div class="controls">
+    <div><label for="grp">Signal</label><select id="grp">
+      <option value="network">network events</option>
+      <option value="cpu">CPU time</option>
+      <option value="sched">scheduling</option>
+      <option value="block">block I/O</option>
+    </select></div>
+    <div><label for="i0">Suspect from</label><input id="i0" size="11"></div>
+    <div><label for="i1">to</label><input id="i1" size="11"></div>
+    <button class="go" id="run">Run the check</button>
+    <button class="ghost go" id="reset">Reset</button>
+  </div>
+  <canvas id="c2"></canvas>
+  <div id="sum"></div>
+  <div class="tw"><table id="dtab"></table></div>
+  <p class="hint">Try the other signals. If a container separates on <em>network</em> and not on
+  CPU or scheduling, the impairment is on its network path and not the machine being busy —
+  which is the distinction the blueprint exists to make.</p>
+</div>
+
+<!-- ───────────────────────────── BLUEPRINTS ──────────────────────────── -->
+<div class="panel" id="p-bp">
+  <h2>Blueprint library</h2>
+  <p>A blueprint is a diagnostic procedure whose every check has a measurement behind it. A
+  validator rejects any check that does not. These are the exact files handed to the agent.</p>
+  <div class="split">
+    <div class="list" id="blist"></div>
+    <div class="bp" id="bbody">Select a blueprint.</div>
+  </div>
+</div>
+
+<!-- ─────────────────────────────── AGENT ─────────────────────────────── -->
+<div class="panel" id="p-agent">
+  <h2>The investigation</h2>
+  <p>The agent was told <strong>nothing</strong> — not that an incident happened, not when, not
+  where. It plans, runs workers in parallel, writes and runs its own analysis code, records
+  findings with numbers, and commits to an answer.</p>
+  <div class="controls">
+    <button class="go" id="play">Run the agent</button>
+    <button class="ghost go" id="fast">Skip to the end</button>
+    <span class="hint" id="pstat"></span>
+  </div>
+  <div id="steps"></div>
+</div>
+
+<!-- ────────────────────────────── VERDICT ────────────────────────────── -->
+<div class="panel" id="p-verdict">
+  <h2>Its answer</h2>
+  <div id="vans"><p class="hint">Run the agent first.</p></div>
+  <div class="controls"><button class="go" id="reveal">Reveal ground truth</button></div>
+  <div id="vtruth"></div>
+</div>
+</div>
+
+<script>
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const api=p=>fetch(p).then(r=>r.json());
+let RUN=null, SERIES=null, SEL=null, STEPS=null, DX=null, SHADE=null;
+
+/* ---------- nav ---------- */
+$$('nav button').forEach(b=>b.onclick=()=>{
+  $$('nav button').forEach(x=>x.classList.toggle('on',x===b));
+  $$('.panel').forEach(p=>p.classList.toggle('on',p.id==='p-'+b.dataset.p));
+  // a canvas inside a display:none panel measures 0 wide, so it draws nothing. Redraw the
+  // moment its panel is visible, not when the data arrives.
+  requestAnimationFrame(()=>{ if(!SERIES) return;
+    if(b.dataset.p==='trace') draw($('#c1'),SERIES,null,SHADE);
+    if(b.dataset.p==='check'){ draw($('#c2'),SERIES,SEL,null); if(!$('#dtab').innerHTML) runCheck(); }
+  });
+});
+
+const css=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const fmt=n=>n==null?'—':n.toLocaleString();
+
+/* ---------- canvas line chart with optional drag-select ---------- */
+function draw(cv,series,sel,shade){
+  const d=cv.getContext('2d'), R=devicePixelRatio||1;
+  const W=cv.clientWidth, H=cv.clientHeight;
+  cv.width=W*R; cv.height=H*R; d.setTransform(R,0,0,R,0,0);
+  d.clearRect(0,0,W,H);
+  if(!series||!series.length) return;
+  const pad={l:52,r:10,t:10,b:20}, w=W-pad.l-pad.r, h=H-pad.t-pad.b;
+  const max=Math.max(1,...series.map(p=>p.n));
+  const x=i=>pad.l+w*i/(series.length-1||1), y=v=>pad.t+h-h*v/max;
+  d.strokeStyle=css('--rule'); d.lineWidth=1; d.fillStyle=css('--muted');
+  d.font='10px '+css('--mono'); d.textAlign='right';
+  for(let g=0;g<=3;g++){const v=max*g/3, yy=y(v);
+    d.beginPath();d.moveTo(pad.l,yy);d.lineTo(W-pad.r,yy);d.stroke();
+    d.fillText(v>=1000?(v/1000).toFixed(0)+'k':v.toFixed(0),pad.l-6,yy+3);}
+  if(shade){ // ground-truth window
+    const a=x(Math.max(0,shade[0])), b=x(Math.min(series.length-1,shade[1]));
+    d.fillStyle=css('--warn'); d.globalAlpha=.10; d.fillRect(a,pad.t,b-a,h); d.globalAlpha=1;
+    d.strokeStyle=css('--warn'); d.setLineDash([3,3]);
+    d.beginPath();d.moveTo(a,pad.t);d.lineTo(a,pad.t+h);d.moveTo(b,pad.t);d.lineTo(b,pad.t+h);
+    d.stroke(); d.setLineDash([]);
+  }
+  if(sel){
+    const a=x(Math.max(0,sel[0])), b=x(Math.min(series.length-1,sel[1]));
+    d.fillStyle=css('--signal'); d.globalAlpha=.14; d.fillRect(a,pad.t,b-a,h); d.globalAlpha=1;
+  }
+  d.beginPath(); series.forEach((p,i)=>i?d.lineTo(x(i),y(p.n)):d.moveTo(x(i),y(p.n)));
+  d.strokeStyle=css('--signal'); d.lineWidth=1.6; d.stroke();
+  d.lineTo(x(series.length-1),pad.t+h); d.lineTo(x(0),pad.t+h); d.closePath();
+  d.fillStyle=css('--signal'); d.globalAlpha=.10; d.fill(); d.globalAlpha=1;
+  d.fillStyle=css('--muted'); d.textAlign='left';
+  d.fillText(series[0].t.slice(0,8),pad.l,H-6);
+  d.textAlign='right'; d.fillText(series[series.length-1].t.slice(0,8),W-pad.r,H-6);
+}
+
+/* ---------- trace ---------- */
+async function boot(){
+  RUN=await api('/api/run');
+  $('#runid').textContent=RUN.run_id;
+  $('#stats').innerHTML=[
+    ['duration',RUN.duration_s+' s'],['index rows',fmt(RUN.rows)],
+    ['event types',RUN.n_events],['containers',RUN.n_containers]
+  ].map(([l,v])=>`<div class="cell"><span class="n">${v}</span><span class="l">${l}</span></div>`).join('');
+  $('#ev').innerHTML=RUN.events.map(e=>`<option value="${e.event}">${e.event}</option>`).join('');
+  $('#ctab').innerHTML='<thead><tr><th>pid_ns</th><th>top processes</th>'+
+    '<th class="n">events</th><th class="n">CPU s</th></tr></thead><tbody>'+
+    RUN.containers.map(c=>`<tr><td class="mono">${c.pid_ns}${c.is_host?
+      ' <span class="tag" style="background:var(--surface-3);color:var(--muted)">host</span>':''}</td>
+      <td class="mono" style="color:var(--muted)">${c.procs.join(', ')}</td>
+      <td class="n">${fmt(c.events)}</td><td class="n">${c.cpu_s}</td></tr>`).join('')+'</tbody>';
+  await pickEvent('net_if_receive_skb');
+  $('#ev').value='net_if_receive_skb';
+  loadBlueprints();
+}
+async function pickEvent(ev){
+  const d=await api('/api/timeline?event='+encodeURIComponent(ev));
+  SERIES=d.series; $('#evtot').textContent=fmt(d.total)+' events total';
+  draw($('#c1'),SERIES,null,SHADE); draw($('#c2'),SERIES,SEL,null);
+  if(!SEL){ const n=SERIES.length; SEL=[Math.round(n*.25),Math.round(n*.75)]; syncInputs(); }
+}
+$('#ev').onchange=e=>pickEvent(e.target.value);
+
+/* ---------- discriminator ---------- */
+function syncInputs(){ if(!SERIES||!SEL)return;
+  $('#i0').value=SERIES[SEL[0]].t.slice(0,8); $('#i1').value=SERIES[SEL[1]].t.slice(0,8); }
+function bindDrag(cv){
+  let a=null;
+  const at=e=>{const r=cv.getBoundingClientRect(),pl=52,pr=10;
+    const f=Math.min(1,Math.max(0,((e.clientX-r.left)-pl)/(r.width-pl-pr)));
+    return Math.round(f*(SERIES.length-1));};
+  cv.onpointerdown=e=>{if(!SERIES)return;a=at(e);cv.setPointerCapture(e.pointerId);};
+  cv.onpointermove=e=>{if(a==null)return;const b=at(e);
+    SEL=[Math.min(a,b),Math.max(a,b)];syncInputs();draw(cv,SERIES,SEL,null);};
+  cv.onpointerup=()=>{a=null;if(SEL&&SEL[1]-SEL[0]>3)runCheck();};
+}
+async function runCheck(){
+  if(!SERIES||!SEL)return;
+  const i0=SERIES[SEL[0]].s, i1=SERIES[SEL[1]].s;
+  const b1=Math.max(SERIES[0].s+2,i0-3), b0=Math.max(SERIES[0].s,b1-45);
+  const g=$('#grp').value;
+  const d=await api(`/api/discriminate?group=${g}&b0=${b0}&b1=${b1}&i0=${i0}&i1=${i1}`);
+  const sep=d.separation, lo=d.lowest;
+  $('#sum').innerHTML = !lo ? '<div class="note w"><p>No container has enough traffic in that window.</p></div>' :
+    `<div class="note ${sep>=3?'g':'w'}">
+      <p><strong>${sep>=3?'One container separates.':'Nothing separates clearly here.'}</strong>
+      Lowest is <code>${lo.pid_ns}</code> at <strong>${lo.ratio}×</strong> its own baseline,
+      against a median of <strong>${d.median_of_rest}×</strong> — a separation of
+      <strong>${sep}×</strong>.</p>
+      <p class="hint">baseline ${d.baseline_window[0].slice(0,8)}–${d.baseline_window[1].slice(0,8)}
+       · suspect ${d.incident_window[0].slice(0,8)}–${d.incident_window[1].slice(0,8)} · ${d.unit}</p></div>`;
+  // Bar shows how far each container FELL, not its ratio: normalising by the largest ratio
+  // squashed every interesting row to a sliver, because one container going up sets the scale.
+  $('#dtab').innerHTML='<thead><tr><th>pid_ns</th><th>processes</th><th class="n">baseline</th>'+
+    '<th class="n">suspect</th><th class="n">ratio</th><th style="width:150px">how far it fell</th></tr></thead><tbody>'+
+    d.rows.map((r,i)=>{const drop=Math.max(0,Math.min(1,1-r.ratio));
+    return `<tr class="${i===0&&sep>=3?'hit':''}">
+      <td class="mono">${r.pid_ns}</td>
+      <td class="mono" style="color:var(--muted)">${r.procs.join(', ')}</td>
+      <td class="n">${fmt(r.baseline)}</td><td class="n">${fmt(r.incident)}</td>
+      <td class="n"><strong>${r.ratio}</strong></td>
+      <td><div class="bar ${i===0&&sep>=3?'lo':''}"><i style="width:${(drop*100).toFixed(0)}%"></i></div>
+          <span class="hint" style="font-size:11px">${(drop*100).toFixed(0)}%</span></td>
+    </tr>`}).join('')+'</tbody>';
+}
+$('#run').onclick=runCheck;
+$('#grp').onchange=runCheck;
+$('#reset').onclick=()=>{const n=SERIES.length;SEL=[Math.round(n*.25),Math.round(n*.75)];
+  syncInputs();draw($('#c2'),SERIES,SEL,null);runCheck();};
+
+/* ---------- blueprints ---------- */
+async function loadBlueprints(){
+  const d=await api('/api/blueprints');
+  $('#blist').innerHTML=d.blueprints.map(b=>`<div data-n="${b.name}">
+    <div class="bn">${b.name}${b.active?'<span class="tag">used here</span>':''}</div>
+    <div class="bc">${b.covers||'—'} · v${b.version??'?'} · ${(b.chars/1000).toFixed(1)}k chars</div>
+  </div>`).join('');
+  $$('#blist div[data-n]').forEach(el=>el.onclick=()=>{
+    $$('#blist div[data-n]').forEach(x=>x.classList.toggle('on',x===el));
+    openBlueprint(el.dataset.n);});
+  // The one used on this trace sits well down an alphabetical list; select it AND bring it
+  // into view, or it looks like nothing was selected.
+  const first=$('#blist div[data-n="network-path-degradation"]')||$('#blist div[data-n]');
+  if(first){ first.click(); first.scrollIntoView({block:'center'}); }
+}
+async function openBlueprint(n){
+  const d=await api('/api/blueprint?name='+encodeURIComponent(n));
+  $('#bbody').textContent=d.body||'not found';
+  $('#bbody').scrollTop=0;
+}
+
+/* ---------- agent ---------- */
+const esc=s=>String(s??'').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+function render(s){
+  let extra='';
+  if(s.kind==='plan'&&Array.isArray(s.detail))
+    extra='<ol style="margin:8px 0 0;padding-left:20px;font-size:13px">'+
+      s.detail.map(t=>`<li><strong>${esc(t.title)}</strong><br><span class="hint">${esc(t.instruction)}</span></li>`).join('')+'</ol>';
+  if(s.kind==='code')
+    extra=`<pre>${esc(s.detail.code)}</pre><div class="hint" style="margin:6px 0 2px">output</div><pre>${esc(s.detail.stdout)}</pre>`;
+  if(s.kind==='finding')
+    extra=`<div class="hint" style="margin-top:6px">where <code>${esc(s.detail.where)}</code> · when <code>${esc(s.detail.when)}</code> · confidence ${esc(s.detail.confidence)}</div>`;
+  if(s.kind==='tool')
+    extra=`<pre>${esc(JSON.stringify(s.detail.arguments))}</pre>`;
+  if(s.kind==='verdict'){DX=s.detail;extra=verdictHtml(s.detail);}
+  return `<div class="step ${s.kind}"><div class="k">${s.kind}</div>
+    <div class="t">${esc(s.title)}</div>
+    ${s.body?`<div class="b">${esc(s.body)}</div>`:''}${extra}</div>`;
+}
+function verdictHtml(d){
+  return `<div class="grid g4" style="margin-top:12px">
+    <div class="cell"><span class="n mono" style="font-size:15px">${esc(d.root_cause_service)}</span><span class="l">where</span></div>
+    <div class="cell"><span class="n mono" style="font-size:15px">${esc(d.incident_window)}</span><span class="l">when</span></div>
+    <div class="cell"><span class="n mono" style="font-size:15px">${esc(d.fault_type)}</span><span class="l">fault</span></div>
+    <div class="cell"><span class="n">${esc(d.confidence)}</span><span class="l">confidence</span></div>
+  </div><div class="hint" style="margin-top:8px">evidence</div><pre>${esc(d.evidence)}</pre>`;
+}
+let playing=false;
+async function play(fast){
+  if(playing)return; playing=true;
+  if(!STEPS) STEPS=(await api('/api/analyze')).steps;
+  $('#steps').innerHTML=''; DX=null;
+  for(let i=0;i<STEPS.length;i++){
+    $('#pstat').innerHTML=`<span class="spin"></span>step ${i+1} of ${STEPS.length}`;
+    $('#steps').insertAdjacentHTML('beforeend',render(STEPS[i]));
+    const last=$('#steps').lastElementChild;
+    if(!fast) last.scrollIntoView({block:'center',behavior:'smooth'});
+    if(!fast) await new Promise(r=>setTimeout(r,STEPS[i].kind==='code'?1500:700));
+  }
+  $('#pstat').textContent=`done — ${STEPS.length} steps`;
+  playing=false;
+  if(DX) $('#vans').innerHTML=verdictHtml(DX);
+}
+$('#play').onclick=()=>play(false);
+$('#fast').onclick=()=>play(true);
+
+/* ---------- verdict ---------- */
+$('#reveal').onclick=async()=>{
+  const d=await api('/api/truth'); const t=d.truth||{}, s=d.score||{};
+  const ok=s.container_correct===true;
+  $('#vtruth').innerHTML=`<div class="note ${ok?'g':'w'}">
+    <p><strong>${ok?'Correct container.':'Wrong container.'}</strong>
+    Scored <code>${esc(s.where)}</code>, window <code>${esc(s.window_verdict)}</code>
+    at IoU <strong>${esc(s.window_iou)}</strong>.</p></div>
+    <div class="tw"><table><tbody>
+    <tr><th>injected</th><td class="mono">${esc(t.name)}</td></tr>
+    <tr><th>target service</th><td class="mono">${esc(t.target_service)}</td></tr>
+    <tr><th>container</th><td class="mono">${esc((t.parameters||{}).container)}</td></tr>
+    <tr><th>parameters</th><td class="mono">${esc(JSON.stringify(t.parameters))}</td></tr>
+    <tr><th>true window</th><td class="mono">${esc(t.injection_start_utc)} → ${esc(t.injection_end_utc)}</td></tr>
+    <tr><th>agent said</th><td class="mono">${esc(s.pred_pid_ns)} (true ${esc(s.true_pid_ns)})</td></tr>
+    </tbody></table></div>
+    <p class="hint">The kernel records no service name. <code>pid_ns</code> is one number per
+    container, so naming the container is the most precise answer this data allows. Across 30
+    runs of this problem the agent names the right container 10 times with the blueprint, and
+    once without.</p>`;
+  // shade the true window on the trace chart
+  if(SERIES){
+    const p=t.injection_start_utc||'', q=t.injection_end_utc||'';
+    const S=x=>{const m=/T(\d\d):(\d\d):(\d\d)/.exec(x);return m?(+m[1])*3600+(+m[2])*60+(+m[3]):null;};
+    const a=S(p),b=S(q);
+    if(a&&b){const i0=SERIES.findIndex(r=>r.s>=a), i1=SERIES.findIndex(r=>r.s>=b);
+      SHADE=[i0<0?0:i0,i1<0?SERIES.length-1:i1]; draw($('#c1'),SERIES,null,SHADE);}
+  }
+};
+
+addEventListener('resize',()=>{if(SERIES){draw($('#c1'),SERIES,null,SHADE);draw($('#c2'),SERIES,SEL,null);}});
+bindDrag($('#c2'));
+boot();
+</script>

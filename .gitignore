@@ -28,3 +28,6 @@ agentic-rca/results/
 DOCS/reading-papers
 # downloaded cluster results - large, and they live on Trillium
 results-download/
+
+# demo trace index - 37 MB, fetched by demo/fetch_data.sh
+demo/data/*.gz

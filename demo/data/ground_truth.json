@@ -1,0 +1,17 @@
+{
+  "fault": {
+    "family": "B_service_resource",
+    "name": "svc_net_carts",
+    "scope": "service",
+    "intensity": "aggressive",
+    "parameters": {"container": "docker-compose_carts_1", "iface": "eth0", "delay_ms": 150, "jitter_ms": 40, "loss_pct": 4},
+    "target_service": "carts",
+    "expected_blast_radius": ["carts", "front-end"],
+    "expected_winning_modality": "traces",
+    "target_trace_visibility": "covered",
+    "injection_start_utc": "2026-09-05T17:14:03Z",
+    "injection_end_utc": "2026-09-05T17:16:04Z"
+  },
+  "remediation": { "action": "tc qdisc del root inside the container netns" },
+  "recipe": { "script": "svc_net.sh" }
+}
