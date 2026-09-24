@@ -1,17 +1,32 @@
 {
-  "fault": {
-    "family": "B_service_resource",
-    "name": "svc_net_carts",
-    "scope": "service",
-    "intensity": "aggressive",
-    "parameters": {"container": "docker-compose_carts_1", "iface": "eth0", "delay_ms": 150, "jitter_ms": 40, "loss_pct": 4},
-    "target_service": "carts",
-    "expected_blast_radius": ["carts", "front-end"],
-    "expected_winning_modality": "traces",
-    "target_trace_visibility": "covered",
-    "injection_start_utc": "2026-09-05T17:14:03Z",
-    "injection_end_utc": "2026-09-05T17:16:04Z"
+ "fault": {
+  "family": "B_service_resource",
+  "name": "svc_net_carts",
+  "scope": "service",
+  "intensity": "aggressive",
+  "parameters": {
+   "container": "docker-compose_carts_1",
+   "iface": "eth0",
+   "delay_ms": 150,
+   "jitter_ms": 40,
+   "loss_pct": 4
   },
-  "remediation": { "action": "tc qdisc del root inside the container netns" },
-  "recipe": { "script": "svc_net.sh" }
+  "target_service": "carts",
+  "expected_blast_radius": [
+   "carts",
+   "front-end"
+  ],
+  "expected_winning_modality": "traces",
+  "target_trace_visibility": "covered",
+  "injection_start_utc": "2026-09-05T17:14:03Z",
+  "injection_end_utc": "2026-09-05T17:16:04Z",
+  "target_pid_ns": "4026532538"
+ },
+ "remediation": {
+  "action": "tc qdisc del root inside the container netns"
+ },
+ "recipe": {
+  "script": "svc_net.sh"
+ },
+ "_pid_ns_provenance": "resolved by blueprints/lib/nsmap.py on the full run directory: cgroup cpu.stat usage_usec matched against summed sched_stat_runtime per pid_ns. Unambiguous on this run."
 }

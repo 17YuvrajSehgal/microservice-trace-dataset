@@ -60,13 +60,22 @@ transcript stays on screen and is written to disk like any other run, so a stopp
 auditable. Useful if the room has seen enough, or if you want to talk over the first minute
 rather than wait out all four.
 
+Every tool call shows **asked** and **got back** - the arguments, then the few numbers that
+came back. That is where the reasoning is visible: two `ctf_timeline` calls look identical
+until you see one returned 25.3M events and the other 358k.
+
 Two things worth pausing on when they appear:
 - a **code** step — it wrote that itself, against the index in tab one
 - the **evidence** in the verdict. On the CPU trace it typically says the late event-rate jump
   is *recovery, not onset*, and that runqueue-delay corroboration was attempted and was
   inconclusive. An agent stating what it could not verify is the point.
 
-**5 · Verdict.** Reveal ground truth.
+**5 · Verdict.** Reveal ground truth. It scores the run you just watched, using the study's
+own scorer - not a demo copy, and not the recording's score.
+
+**Every run is a new run.** Two measured back to back made 42 and 37 tool calls, wrote 3 and 6
+snippets of code, and produced different plans. They open the same way because all four workers
+independently call `ctf_timespan` first; the results underneath differ from there.
 
 **Then say the honest rate before anyone asks.** Host-wide faults 40–55 of 60. Per-service
 faults were 0–3 of 60 and are now 10/30 on the network one after this week's fixes.

@@ -65,6 +65,9 @@ td.n,th.n{text-align:right}
 tbody tr:last-child td{border-bottom:none}
 tr.hit{background:var(--good-soft)}
 tr.hit td:first-child{box-shadow:inset 3px 0 0 var(--good)}
+.kvtab th{width:150px;text-align:left;vertical-align:top;padding-right:18px;
+  text-transform:none;letter-spacing:0;font-size:12.5px}
+.kvtab td{white-space:normal;word-break:break-word}
 .mono{font-family:var(--mono)}
 .bar{height:8px;background:var(--surface-3);border-radius:2px;overflow:hidden;min-width:70px}
 .bar i{display:block;height:100%;background:var(--signal)}
@@ -112,6 +115,15 @@ pre{background:var(--surface-2);border:1px solid var(--rule);padding:12px 14px;o
   color:var(--muted)}
 .step .t{font-weight:640;margin:2px 0 4px}
 .step .b{color:var(--ink-2);font-size:13.5px}
+.io{margin-top:8px;display:grid;grid-template-columns:70px 1fr;gap:5px 12px;align-items:baseline}
+.io .ask{font-family:var(--mono);font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;
+  color:var(--muted)}
+.sm{font-size:12.5px;color:var(--ink-2);word-break:break-word}
+.ret{display:flex;flex-wrap:wrap;gap:5px 8px}
+.kv{font-size:12.5px;background:var(--surface-2);border:1px solid var(--rule);
+  border-radius:3px;padding:2px 8px}
+.kv b{font-family:var(--mono);font-size:11px;font-weight:600;color:var(--muted);
+  text-transform:lowercase;margin-right:5px}
 .spin{display:inline-block;width:11px;height:11px;border:2px solid var(--rule-2);
   border-top-color:var(--signal);border-radius:50%;animation:sp .7s linear infinite;
   vertical-align:-1px;margin-right:6px}
@@ -287,7 +299,9 @@ function draw(cv,series,sel,shade){
 async function boot(){
   const rl=await api('/api/runs');
   $('#runsel').innerHTML=rl.runs.map(r=>`<option value="${r.id}" ${r.id===rl.current?'selected':''}>${r.label}</option>`).join('');
-  $('#runsel').onchange=async e=>{ await api('/api/select?run='+encodeURIComponent(e.target.value));
+  $('#runsel').onchange=async e=>{ GEN++; playing=false;
+    if(liveTimer){clearTimeout(liveTimer); liveTimer=null;}
+    await api('/api/select?run='+encodeURIComponent(e.target.value));
     SEL=null; SHADE=null; STEPS=null; DX=null; $('#steps').innerHTML=''; $('#livenote').innerHTML='';
     $('#dtab').innerHTML=''; $('#sum').innerHTML=''; $('#vans').innerHTML='<p class="hint">Run the agent first.</p>';
     $('#vtruth').innerHTML=''; boot(); };
@@ -396,6 +410,13 @@ async function openBlueprint(n){
 const esc=s=>String(s??'').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
 function render(s){
   let extra='';
+  if(s.kind==='start'&&s.detail){
+    const d=s.detail;
+    extra=`<div class="io"><div class="ask">this run</div><div class="ret">`+
+      [['started',d.started],['incident',d.incident],['model',d.model],['blueprint',d.blueprint]]
+      .filter(([,v])=>v).map(([k,v])=>`<span class="kv"><b>${esc(k)}</b> ${esc(String(v))}</span>`)
+      .join('')+`</div></div>`;
+  }
   if(s.kind==='plan'&&Array.isArray(s.detail))
     extra='<ol style="margin:8px 0 0;padding-left:20px;font-size:13px">'+
       s.detail.map(t=>`<li><strong>${esc(t.title)}</strong><br><span class="hint">${esc(t.instruction)}</span></li>`).join('')+'</ol>';
@@ -403,8 +424,18 @@ function render(s){
     extra=`<pre>${esc(s.detail.code)}</pre><div class="hint" style="margin:6px 0 2px">output</div><pre>${esc(s.detail.stdout)}</pre>`;
   if(s.kind==='finding')
     extra=`<div class="hint" style="margin-top:6px">where <code>${esc(s.detail.where)}</code> · when <code>${esc(s.detail.when)}</code> · confidence ${esc(s.detail.confidence)}</div>`;
-  if(s.kind==='tool')
-    extra=`<pre>${esc(JSON.stringify(s.detail.arguments))}</pre>`;
+  if(s.kind==='tool'){
+    const args=s.detail.arguments||{}, ret=s.detail.returned;
+    const argtxt=Object.keys(args).length?Object.entries(args)
+      .map(([k,v])=>`${k}=${typeof v==='string'?v:JSON.stringify(v)}`).join('  '):'no arguments';
+    extra=`<div class="io"><div class="ask">asked</div><div class="mono sm">${esc(argtxt)}</div>`;
+    if(ret){
+      extra+=`<div class="ask">got back</div><div class="ret">`+
+        Object.entries(ret).map(([k,v])=>
+          `<span class="kv"><b>${esc(k)}</b> ${esc(String(v))}</span>`).join('')+`</div>`;
+    }
+    extra+=`</div>`;
+  }
   if(s.kind==='verdict'){DX=s.detail;extra=verdictHtml(s.detail);}
   return `<div class="step ${s.kind}"><div class="k">${s.kind}</div>
     <div class="t">${esc(s.title)}</div>
@@ -424,19 +455,23 @@ async function play(fast){
   const gen=++GEN;
   if(liveTimer){clearTimeout(liveTimer); liveTimer=null;}
   if(!STEPS) STEPS=(await api('/api/analyze')).steps;
+  // Work from a LOCAL copy. The fetch above and the sleep below both yield, and switching
+  // trace nulls the global STEPS in between - the loop then read STEPS.length on null.
+  const steps=STEPS||[];
+  if(gen!==GEN){ playing=false; return; }
   $('#steps').innerHTML=''; $('#livenote').innerHTML=''; DX=null;
   $('#vans').innerHTML='<p class="hint">Replaying…</p>'; $('#vtruth').innerHTML='';
-  for(let i=0;i<STEPS.length;i++){
-    if(gen!==GEN){ playing=false; return; }      // superseded by a real run
-    $('#pstat').innerHTML=`<span class="spin"></span>step ${i+1} of ${STEPS.length}`;
-    $('#steps').insertAdjacentHTML('beforeend',render(STEPS[i]));
+  for(let i=0;i<steps.length;i++){
+    if(gen!==GEN){ playing=false; return; }      // superseded by a real run or a trace switch
+    $('#pstat').innerHTML=`<span class="spin"></span>step ${i+1} of ${steps.length}`;
+    $('#steps').insertAdjacentHTML('beforeend',render(steps[i]));
     const last=$('#steps').lastElementChild;
-    if(!fast) last.scrollIntoView({block:'center',behavior:'smooth'});
-    if(!fast) await new Promise(r=>setTimeout(r,STEPS[i].kind==='code'?1500:700));
+    if(!fast && last) last.scrollIntoView({block:'center',behavior:'smooth'});
+    if(!fast) await new Promise(r=>setTimeout(r,steps[i].kind==='code'?1500:700));
   }
   if(gen!==GEN){ playing=false; return; }
-  $('#pstat').textContent=`done — ${STEPS.length} steps`;
-  $('#stepcount').textContent=`${STEPS.length} steps`;
+  $('#pstat').textContent=`done — ${steps.length} steps`;
+  $('#stepcount').textContent=`${steps.length} steps`;
   playing=false;
   if(DX) $('#vans').innerHTML=verdictHtml(DX);
 }
@@ -518,12 +553,24 @@ api('/api/live/ready').then(r=>{
 /* ---------- verdict ---------- */
 $('#reveal').onclick=async()=>{
   const d=await api('/api/truth'); const t=d.truth||{}, s=d.score||{};
-  const ok=s.container_correct===true;
-  $('#vtruth').innerHTML=`<div class="note ${ok?'g':'w'}">
-    <p><strong>${ok?'Correct container.':'Wrong container.'}</strong>
+  // Say what the outcome actually was. "Correct container" is wrong for a host-scoped fault
+  // where the agent named the injected process, and it is wrong again for an unverifiable
+  // container - three different results were all printing the same sentence.
+  const SAY={named:['g','Correct - it named the injected thing.'],
+             container:['g','Correct - it named the right container.'],
+             scope:['w','Right level, but not the specific component.'],
+             container_wrong:['w','It named a container, but not the injected one.'],
+             container_unverified:['w','It named a container, which cannot be verified here.'],
+             ambiguous:['w','Too vague to place - a shared runtime name.'],
+             wrong:['w','Not the injected component.']};
+  const [tone,line]=SAY[s.where]||['w','Scored '+(s.where||'unknown')+'.'];
+  $('#vtruth').innerHTML=`<div class="note ${tone}">
+    <p><strong>${esc(line)}</strong>
     Scored <code>${esc(s.where)}</code>, window <code>${esc(s.window_verdict)}</code>
-    at IoU <strong>${esc(s.window_iou)}</strong>.</p></div>
-    <div class="tw"><table><tbody>
+    at IoU <strong>${esc(s.window_iou)}</strong>.</p>
+    <p class="hint">This is ${esc(s.of||'the run shown above')}, scored by the study's own
+    scorer - the same code that produced the published results.</p></div>
+    <div class="tw"><table class="kvtab"><tbody>
     <tr><th>injected</th><td class="mono">${esc(t.name)}</td></tr>
     <tr><th>target service</th><td class="mono">${esc(t.target_service)}</td></tr>
     <tr><th>container</th><td class="mono">${esc((t.parameters||{}).container)}</td></tr>

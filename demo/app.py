@@ -157,7 +157,11 @@ def load_state(rebuild=False, run_id=None):
     # sandbox is handed the index, and the answer should not sit beside it.
     gt = os.path.join(HERE, "answer", RUNS[RUN_ID]["gt"])
     STATE["truth"] = json.load(open(gt, encoding="utf-8")) if os.path.exists(gt) else {}
-    tp = os.path.join(HERE, "demo-transcript.jsonl")
+    # One recording per trace. A single shared file meant selecting the network trace and
+    # pressing Replay showed the CPU investigation, scored against the wrong ground truth.
+    tp = os.path.join(HERE, "demo-transcript-%s.jsonl" % RUN_ID)
+    if not os.path.exists(tp):
+        tp = os.path.join(HERE, "demo-transcript.jsonl")
     STATE["transcript"] = json.load(open(tp, encoding="utf-8", errors="replace")) \
         if os.path.exists(tp) else {}
 
@@ -295,6 +299,68 @@ def blueprint_body(name: str):
 # ----------------------------------------------------------------------------------
 # The agent investigation, as a list of steps the interface plays back.
 # ----------------------------------------------------------------------------------
+def _digest(tool, res):
+    """The few numbers that show what a tool call ACTUALLY returned.
+
+    The interface used to show a tool call's arguments and nothing else, so the investigation
+    read as a list of questions with no answers - and "how did it reach the verdict" was
+    exactly the thing you could not see. The full result is up to 45 KB, which is unreadable
+    on a screen, so this pulls out what a person would look at.
+    """
+    if not isinstance(res, dict):
+        return None
+    if res.get("error"):
+        return {"error": str(res["error"])[:180]}
+    try:
+        if tool == "ctf_timespan":
+            return {"recording": "%s to %s" % (res.get("begin"), res.get("end")),
+                    "duration": "%s s" % res.get("duration_s")}
+        if tool == "ctf_timeline":
+            ser = res.get("series") or []
+            ns = [int(b.get("n") or 0) for b in ser]
+            d = {"total events": res.get("matched"), "buckets": len(ser)}
+            if ns:
+                lo, hi = min(ns), max(ns)
+                d["per bucket"] = "%s low, %s high" % ("{:,}".format(lo), "{:,}".format(hi))
+                if lo and hi / max(lo, 1) >= 2:
+                    at = ser[ns.index(lo)].get("t", "")
+                    d["biggest dip"] = "%sx, around %s" % (round(hi / max(lo, 1), 1), at[:8])
+            return d
+        if tool == "query_ctf":
+            top = res.get("top_by_container") or []
+            d = {"matched": res.get("matched"), "rate": "%s/s" % res.get("rate_per_s")}
+            if top:
+                t0 = top[0]
+                d["busiest container"] = "%s (%s) %s events" % (
+                    t0.get("pid_ns"), t0.get("procname"), "{:,}".format(t0.get("count") or 0))
+            return d
+        if tool == "ctf_proclife":
+            return {"containers": res.get("n_containers_seen"),
+                    "present only part of the recording":
+                        len(res.get("present_for_only_part_of_the_recording") or []),
+                    "present throughout": len(res.get("present_throughout") or [])}
+        if tool == "ctf_procdiff":
+            big = res.get("biggest_changes") or []
+            d = {"only in range A": len(res.get("only_in_a") or []),
+                 "only in range B": len(res.get("only_in_b") or []),
+                 "rate A -> B": "%s/s -> %s/s" % (res.get("total_rate_a"),
+                                                  res.get("total_rate_b"))}
+            if big:
+                b0 = big[0]
+                d["biggest mover"] = "%s (%s)" % (b0.get("procname"), b0.get("pid_ns"))
+            return d
+        if tool == "ctf_lines":
+            ls = res.get("lines") or []
+            d = {"lines returned": res.get("returned"),
+                 "of this many in range": res.get("total_in_range")}
+            if ls:
+                d["first line"] = str(ls[0])[:240]
+            return d
+    except Exception:                                                   # noqa: BLE001
+        return None
+    return None
+
+
 def steps_from(ev, meta=None, final=None, head=True):
     """Turn transcript events into interface steps.
 
@@ -309,7 +375,8 @@ def steps_from(ev, meta=None, final=None, head=True):
                       "body": "The agent is given the trace and seven read-only tools. It is "
                               "not told that an incident happened, when it was, or where to "
                               "look.",
-                      "detail": {"incident": meta.get("incident_alias"),
+                      "detail": {"started": meta.get("started_utc"),
+                                 "incident": meta.get("incident_alias"),
                                  "model": meta.get("model"),
                                  "blueprint": meta.get("skill_given")}})
     for e in ev:
@@ -324,8 +391,11 @@ def steps_from(ev, meta=None, final=None, head=True):
             steps.append({"kind": "tool",
                           "title": ("%s -> %s" % (who, e.get("tool"))) if who
                                    else "Tool call: " + str(e.get("tool")),
-                          "body": "", "detail": {"arguments": e.get("arguments"),
-                                                 "node": e.get("node")}})
+                          "body": "",
+                          "detail": {"arguments": e.get("arguments"),
+                                     "node": e.get("node"),
+                                     "returned": _digest(e.get("tool"), e.get("result")),
+                                     "bytes": e.get("result_bytes")}})
         elif t == "finding":
             f = e.get("finding") or {}
             steps.append({"kind": "finding",
@@ -367,9 +437,54 @@ def analysis_steps():
     return keep
 
 
+def _score_diagnosis(dx):
+    """Score a diagnosis with the study's own scorer, not a demo-only copy.
+
+    Imported lazily and from blueprints/lib so the numbers on screen are produced by exactly
+    the code that produced the published results. Returns {} if the scorer cannot be loaded,
+    rather than inventing something.
+    """
+    try:
+        import importlib.util
+        sys.path.insert(0, os.path.join(ROOT, "blueprints", "lib"))
+        sys.path.insert(0, os.path.join(ROOT, "agentic-rca"))
+        spec = importlib.util.spec_from_file_location(
+            "q2one", os.path.join(ROOT, "blueprints", "lib", "q2_run_one.py"))
+        one = importlib.util.module_from_spec(spec)
+        try:
+            spec.loader.exec_module(one)
+        except SystemExit:
+            pass
+        import q2_judge as J
+        gt_full = STATE.get("truth") or {}
+        f = gt_full.get("fault") or {}
+        problem = "anomaly_cpu" if RUN_ID.startswith("anomaly_cpu") else "svc_net"
+        w = J.score_where(dx.get("root_cause_service", ""), dx.get("culprit_kind", ""),
+                          problem, true_service=f.get("target_service", ""),
+                          scope=f.get("scope", ""), true_ns=f.get("target_pid_ns", ""))
+        win = one.score_window(dx.get("incident_window"), gt_full)
+        return {"where": w.get("where"), "container_correct": w.get("container_correct"),
+                "pred_pid_ns": w.get("pid_ns"), "true_pid_ns": w.get("true_pid_ns"),
+                "window_verdict": win.get("verdict"), "window_iou": win.get("iou")}
+    except Exception:                                                   # noqa: BLE001
+        return {}
+
+
 def score_block():
+    # After a real run, score THAT run. Showing the recording's score next to a live verdict
+    # would be quietly wrong - the two are different investigations.
+    out = LIVE.get("out") if LIVE.get("done") else None
+    dx = (out or {}).get("diagnosis") if out else None
+    if dx:
+        sc = _score_diagnosis(dx)
+        if sc:
+            sc["of"] = "the run you just watched"
+            return {"score": sc, "truth": (STATE.get("truth") or {}).get("fault", {})}
     d = STATE.get("transcript") or {}
-    return {"score": d.get("_score") or {}, "truth": (STATE.get("truth") or {}).get("fault", {})}
+    sc = dict(d.get("_score") or {})
+    if sc:
+        sc["of"] = "the replayed run"
+    return {"score": sc, "truth": (STATE.get("truth") or {}).get("fault", {})}
 
 
 # ----------------------------------------------------------------------------------
