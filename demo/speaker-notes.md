@@ -9,12 +9,63 @@ verbatim; everything else is background so you can answer questions.
 python demo/app.py          # http://127.0.0.1:8765
 ```
 
-One framing sentence before you touch anything:
+## 0 · Before you open anything — what exists behind the demo
 
-> "We collected labelled faults from two microservice applications with four kinds of telemetry
-> running at once. Then we take telemetry *away* and measure what an automated agent can still
-> work out. Today you're seeing the hardest subset — kernel traces only. No metrics, no logs,
-> no distributed traces."
+Thirty seconds of scale-setting, so they know the app is a window onto a real dataset rather
+than a toy.
+
+> "We collected labelled faults from two microservice applications — Sock Shop and Train
+> Ticket — with four kinds of telemetry running at once: metrics, logs, distributed traces, and
+> kernel traces. **304 runs, about 8 terabytes.**
+>
+> Every run is one injected fault with known ground truth: what was injected, into which
+> container, with which parameters, and the exact second it started and stopped. And every run
+> carries a fault-free reference so there's always something to compare against.
+>
+> Then we take telemetry *away* and measure what an automated agent can still work out. Today
+> you're seeing the hardest subset — **kernel traces only.** No metrics, no logs, no spans."
+
+### The numbers, if you want them on a slide
+
+| | |
+|---|---|
+| runs | **304** — 170 Sock Shop, 134 Train Ticket |
+| kernel traces with zero event loss | **303 of 304** |
+| fault families | **23**, plus a fault-free reference |
+| runs usable with no caveat | **293** |
+| blueprints written so far | **16** |
+| problems the agent study runs end to end | **11** |
+
+> "Twenty-three distinct fault families. Not twenty-three runs — twenty-three *kinds* of
+> failure, each collected five to eleven times on each application so a result isn't one lucky
+> recording."
+
+### Which families, and what has a blueprint
+
+Worth naming out loud, because the spread is the point — this is not three CPU faults wearing
+different hats.
+
+- **Host-wide resource:** CPU saturation, disk saturation, memory pressure, network degradation,
+  a noisy co-tenant
+- **Inside one service:** CPU cap, memory cap, network path, slow datastore, dependency outage,
+  connection-pool exhaustion, file-descriptor exhaustion
+- **Concurrency:** lock contention, deadlock, priority inversion, fork storm
+- **Protocol and network:** DNS delay, Nagle / delayed-ACK interaction
+- **Application-level:** error storm, queue backlog, resource abuse, data exfiltration, and five
+  real code defects patched into Sock Shop's own Go and Node source
+
+> "Sixteen of those twenty-three have a blueprint written and validated. Eleven are wired into
+> the agent study end to end — that's what today's numbers come from. The rest are collected and
+> waiting; writing a blueprint takes measurement, not an afternoon, which is the next section."
+
+**If they ask why not all 23:** three reasons, all honest.
+- Some are genuinely not separable from a kernel trace. Memory pressure is the clearest —
+  the tracepoints that would show reclaim aren't in our profile, so we can't tell it from a
+  noisy co-tenant. That's a *finding* about the modality, and it's the first real "you need
+  metrics for this" case we have.
+- Some are collected but not yet measured hard enough to author a blueprint honestly.
+- Two are Sock-Shop-only by construction — Train Ticket has no message broker and sends no
+  internal DNS — so they can't carry a cross-application claim.
 
 ---
 
@@ -418,6 +469,58 @@ Then the turn:
 > The signal was always there — six of six incidents, three to ten times separation. After
 > fixing all three, on the network fault: **10 of 30 with the blueprint, 1 of 30 without.**
 > Not solved. But off zero, for a reason we measured first."
+
+---
+
+## 6 · RESULTS — the study behind the demo
+
+The last tab. Everything before it was one incident; this is all of them.
+
+> "What you've just watched was one run. This is the whole study — every fault family, both
+> applications, 720 scored runs."
+
+Point at the column headers.
+
+> "Each cell is fifteen runs: three separate incidents, five repeats each. And these are the
+> **no-hint** runs — the agent is told nothing at all, not even a symptom. So the only
+> difference between the *with* and *without* columns is the blueprint. Nothing else changes."
+
+### Read the top table — the shape is the result
+
+> "Host-wide faults, the top three: it finds the right component nearly every time, with or
+> without. Faults inside one service, the bottom three: it mostly doesn't.
+>
+> And look across — Sock Shop and Train Ticket behave the same way. Two applications that share
+> no code, collected separately. That replication is the main result, more than any single
+> number."
+
+### Two cells worth pointing at
+
+**Noisy co-tenant, Sock Shop: 14/15 with, 9/15 without.** Five runs' difference from the
+blueprint alone.
+
+**Slow datastore: 11/15 on Sock Shop, 0/15 on Train Ticket.** Same fault, same blueprint,
+opposite outcome.
+
+> "That one is honest and we don't fully explain it yet. The same blueprint, the same fault
+> family, and it works on one application and not the other. It's in the paper as an open
+> question, not smoothed over."
+
+### The second table, briefly
+
+> "Finding *when* is scored separately, and the pattern is different — it often finds the window
+> on a fault whose component it can't name. Those are two different abilities and we score them
+> apart, because reporting one number would hide that."
+
+### Then close with what changed
+
+Point at the note underneath.
+
+> "These are the published numbers, and they're the ones we got wrong. Three bugs in our own
+> plumbing were hiding the per-service signal. After fixing them, the service network fault goes
+> from **0 out of 30 to 10 out of 30** with the blueprint, against 1 out of 30 without.
+>
+> Not solved. Off zero, for a reason we measured first — and that's the honest state of it."
 
 ---
 

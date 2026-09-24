@@ -68,6 +68,14 @@ tr.hit td:first-child{box-shadow:inset 3px 0 0 var(--good)}
 .kvtab th{width:150px;text-align:left;vertical-align:top;padding-right:18px;
   text-transform:none;letter-spacing:0;font-size:12.5px}
 .kvtab td{white-space:normal;word-break:break-word}
+.sc{font-variant-numeric:tabular-nums;font-weight:640}
+.sc.good{color:var(--good)}
+.sc.bad{color:var(--warn)}
+.sc.mid{color:var(--ink)}
+.rt th.grp{text-align:center;border-bottom:1px solid var(--rule-2)}
+.rt td.lab{white-space:normal}
+.rt tr.scope td{background:var(--surface-2);font-family:var(--mono);font-size:11px;
+  letter-spacing:.07em;text-transform:uppercase;color:var(--muted);padding:5px 12px}
 .mono{font-family:var(--mono)}
 .bar{height:8px;background:var(--surface-3);border-radius:2px;overflow:hidden;min-width:70px}
 .bar i{display:block;height:100%;background:var(--signal)}
@@ -147,6 +155,7 @@ pre{background:var(--surface-2);border:1px solid var(--rule);padding:12px 14px;o
     <button data-p="bp">Blueprints</button>
     <button data-p="agent">Agent</button>
     <button data-p="verdict">Verdict</button>
+    <button data-p="results">Results</button>
   </nav>
 </header>
 
@@ -232,6 +241,17 @@ pre{background:var(--surface-2);border:1px solid var(--rule);padding:12px 14px;o
   <div id="steps"></div>
 </div>
 
+<!-- ────────────────────────────── RESULTS ────────────────────────────── -->
+<div class="panel" id="p-results">
+  <h2>The study behind the demo</h2>
+  <p id="rlede">Loading…</p>
+  <h3>Did it find the right component?</h3>
+  <div class="tw"><table id="rwhere"></table></div>
+  <h3>Did it find when?</h3>
+  <div class="tw"><table id="rwin"></table></div>
+  <div id="rnote"></div>
+</div>
+
 <!-- ────────────────────────────── VERDICT ────────────────────────────── -->
 <div class="panel" id="p-verdict">
   <h2>Its answer</h2>
@@ -255,6 +275,7 @@ $$('nav button').forEach(b=>b.onclick=()=>{
   requestAnimationFrame(()=>{ if(!SERIES) return;
     if(b.dataset.p==='trace') draw($('#c1'),SERIES,null,SHADE);
     if(b.dataset.p==='check'){ draw($('#c2'),SERIES,SEL,null); if(!$('#dtab').innerHTML) runCheck(); }
+    if(b.dataset.p==='results') loadResults();
   });
 });
 
@@ -631,6 +652,52 @@ $('#reveal').onclick=async()=>{
       SHADE=[i0<0?0:i0,i1<0?SERIES.length-1:i1]; draw($('#c1'),SERIES,null,SHADE);}
   }
 };
+
+/* ---------- results ---------- */
+// Green above 70%, red below 30%, plain ink in between. Thresholds are about legibility,
+// not significance - the counts are always shown next to the colour.
+function tone(w,n){ if(!n) return 'mid'; const f=w/n; return f>=0.7?'good':(f<0.3?'bad':'mid'); }
+function sc(c){ return `<span class="sc ${tone(c.where,c.n)}">${c.where}/${c.n}</span>`; }
+function scw(c){ return `<span class="sc ${tone(c.win,c.n)}">${c.win}/${c.n}</span>`; }
+
+function resultsTable(rows, cellfn){
+  const head = '<thead><tr><th rowspan="2">Fault</th>'+
+    '<th class="grp n" colspan="2">Sock Shop</th>'+
+    '<th class="grp n" colspan="2">Train Ticket</th></tr>'+
+    '<tr><th class="n">with</th><th class="n">without</th>'+
+    '<th class="n">with</th><th class="n">without</th></tr></thead>';
+  let body='', scope=null;
+  rows.forEach(r=>{
+    if(r.scope!==scope){ scope=r.scope;
+      body+=`<tr class="scope"><td colspan="5">${scope==='host'?
+        'whole host':'inside one service'}</td></tr>`; }
+    body+=`<tr><td class="lab">${esc(r.label)}</td>`+
+      ['ss_given','ss_none','tt_given','tt_none']
+        .map(k=>`<td class="n">${cellfn(r[k])}</td>`).join('')+'</tr>';
+  });
+  return head+'<tbody>'+body+'</tbody>';
+}
+
+let RESLOADED=false;
+async function loadResults(){
+  if(RESLOADED) return; RESLOADED=true;
+  const d=await api('/api/results');
+  if(d.error){ $('#rlede').textContent=d.error; return; }
+  $('#rlede').innerHTML=`Every fault family, both applications, from the published
+    <strong>720-run</strong> study. Each cell is <strong>${d.n_per_cell}</strong> runs
+    (${esc(d.design)}). The agent is given <strong>no symptom hint at all</strong>, so the only
+    difference between <em>with</em> and <em>without</em> is the blueprint.`;
+  $('#rwhere').className='rt'; $('#rwin').className='rt';
+  $('#rwhere').innerHTML=resultsTable(d.rows, sc);
+  $('#rwin').innerHTML=resultsTable(d.rows, scw);
+  $('#rnote').innerHTML=`<div class="note"><p><strong>Host-wide faults it finds; per-service
+    faults it did not.</strong> The same split on two applications that share no code — that
+    replication is the main result.</p>
+    <p class="hint">These are the published numbers. Three bugs in our own plumbing were hiding
+    the per-service signal; after fixing them the service network fault goes from 0/30 to 10/30
+    with the blueprint, against 1/30 without. Not solved — off zero, for a reason we measured
+    first.</p></div>`;
+}
 
 addEventListener('resize',()=>{if(SERIES){draw($('#c1'),SERIES,null,SHADE);draw($('#c2'),SERIES,SEL,null);}});
 bindDrag($('#c2'));

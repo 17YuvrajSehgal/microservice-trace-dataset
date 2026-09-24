@@ -1,0 +1,159 @@
+{
+ "generated": "2026-09-24",
+ "source": "results/q2-ss and results/q2-tt, the published 720-run study",
+ "arm": "nohint only - the agent is given no symptom at all, so the only difference between the two columns is the blueprint",
+ "n_per_cell": 15,
+ "design": "3 incidents x 5 repeats per cell",
+ "rows": [
+  {
+   "id": "anomaly_cpu",
+   "label": "Host CPU saturation",
+   "scope": "host",
+   "ss_given": {
+    "n": 15,
+    "where": 15,
+    "win": 11
+   },
+   "ss_none": {
+    "n": 15,
+    "where": 13,
+    "win": 12
+   },
+   "tt_given": {
+    "n": 15,
+    "where": 15,
+    "win": 15
+   },
+   "tt_none": {
+    "n": 15,
+    "where": 13,
+    "win": 13
+   }
+  },
+  {
+   "id": "anomaly_net",
+   "label": "Host network degradation",
+   "scope": "host",
+   "ss_given": {
+    "n": 15,
+    "where": 13,
+    "win": 4
+   },
+   "ss_none": {
+    "n": 15,
+    "where": 11,
+    "win": 6
+   },
+   "tt_given": {
+    "n": 15,
+    "where": 13,
+    "win": 5
+   },
+   "tt_none": {
+    "n": 15,
+    "where": 11,
+    "win": 3
+   }
+  },
+  {
+   "id": "noisy_neighbor",
+   "label": "Noisy co-tenant",
+   "scope": "host",
+   "ss_given": {
+    "n": 15,
+    "where": 14,
+    "win": 12
+   },
+   "ss_none": {
+    "n": 15,
+    "where": 9,
+    "win": 9
+   },
+   "tt_given": {
+    "n": 15,
+    "where": 14,
+    "win": 14
+   },
+   "tt_none": {
+    "n": 15,
+    "where": 14,
+    "win": 14
+   }
+  },
+  {
+   "id": "slow_db",
+   "label": "Slow datastore",
+   "scope": "service",
+   "ss_given": {
+    "n": 15,
+    "where": 11,
+    "win": 2
+   },
+   "ss_none": {
+    "n": 15,
+    "where": 4,
+    "win": 0
+   },
+   "tt_given": {
+    "n": 15,
+    "where": 0,
+    "win": 7
+   },
+   "tt_none": {
+    "n": 15,
+    "where": 2,
+    "win": 9
+   }
+  },
+  {
+   "id": "svc_cpu_cap",
+   "label": "Service CPU cap",
+   "scope": "service",
+   "ss_given": {
+    "n": 15,
+    "where": 0,
+    "win": 15
+   },
+   "ss_none": {
+    "n": 15,
+    "where": 0,
+    "win": 10
+   },
+   "tt_given": {
+    "n": 15,
+    "where": 0,
+    "win": 2
+   },
+   "tt_none": {
+    "n": 15,
+    "where": 0,
+    "win": 5
+   }
+  },
+  {
+   "id": "svc_net",
+   "label": "Service network path",
+   "scope": "service",
+   "ss_given": {
+    "n": 15,
+    "where": 0,
+    "win": 8
+   },
+   "ss_none": {
+    "n": 15,
+    "where": 0,
+    "win": 14
+   },
+   "tt_given": {
+    "n": 15,
+    "where": 0,
+    "win": 4
+   },
+   "tt_none": {
+    "n": 15,
+    "where": 0,
+    "win": 5
+   }
+  }
+ ]
+}

@@ -772,6 +772,14 @@ class H(BaseHTTPRequestHandler):
                 return self._json(live_stop())
             if p == "/api/live/poll":
                 return self._json(live_poll(int((q.get("since") or ["0"])[0])))
+            if p == "/api/results":
+                # Derived once from the scored cells and shipped as a small file: the full
+                # results tree is ~220 MB and is not in the repo, so the demo cannot compute
+                # this on another machine. demo/results.json records how it was derived.
+                f = os.path.join(HERE, "results.json")
+                if not os.path.exists(f):
+                    return self._json({"error": "demo/results.json is missing"})
+                return self._json(json.load(open(f, encoding="utf-8")))
             if p == "/api/truth":
                 return self._json(score_block())
             self.send_error(404)

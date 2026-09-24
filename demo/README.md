@@ -37,6 +37,7 @@ network investigation, use **Replay**, and say it is a replay.
 | **Blueprints** | the library, full text — the exact files handed to the agent |
 | **Agent** | **Run the agent for real**, streamed as it happens, with **Stop**. Or replay a past run. |
 | **Verdict** | its answer, then ground truth on demand |
+| **Results** | the whole 720-run study: every fault family, both applications, with and without the blueprint |
 
 ## What to show, in order
 
