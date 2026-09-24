@@ -298,3 +298,47 @@ Ticket (4.2M-row frames), 4 is safe, Sock Shop survived 12.
 **This sets the campaign's wall clock.** At `--jobs 4` and ~215 s a cell, 720 cells is about
 11 hours. Worth knowing before promising a turnaround, and worth testing `--jobs 6-8` on Train
 Ticket to find the real ceiling.
+
+## svc_cpu_cap: a discriminator on one application, and a dead fault on the other
+
+### The Train Ticket injection does not engage
+
+| | cap (cpus) | CPU before | CPU during | throttled over 120 s |
+|---|---|---|---|---|
+| Sock Shop `carts` | 0.2 | 0.514 | **0.198** | **522 s** |
+| Train Ticket `ts-travel-service` | 0.2 | **0.004** | 0.006 | **1.6 s** |
+
+Sock Shop's carts wants half a core and is pinned at exactly its 0.2 quota. Train Ticket's
+ts-travel-service wants **0.004 of a core** - the cap is fifty times what the service uses, so
+it almost never binds, and the kernel held it off the CPU for 1.6 seconds out of 120.
+
+**So `svc_cpu_cap` on Train Ticket is a fault in name only, and its 0/60 is not an agent
+failure - there is close to nothing in the trace to find.** The published results report the
+two side by side as though they were the same fault. They are not, and that needs saying in the
+paper rather than being read as a cross-application replication.
+
+This is the intensity calibration CLAUDE.md records as still owed. Train Ticket spreads its
+work across 40+ services, so a quota that bites a Sock Shop service is irrelevant to one of
+them. A per-service cap has to be set from what the service actually uses, not as a constant.
+
+### The Sock Shop discriminator: pinned, not suppressed
+
+Three statistics failed before one worked, and the failures are the useful part.
+
+**Ranking by CPU drop fails, 0 of 6** - the capped container ranks #15 of 18. It falls to 40%
+of baseline while the median container falls to 18%. **When one service stalls the whole
+application slows, so every other container loses more CPU than the throttled one does.** This
+is the same trap as the Train Ticket network case: ranking by "fell furthest" finds victims.
+
+**Clipping (top of the distribution cut harder than the middle) fails, 0 of 6** - #7 of 20.
+
+**Flatness among containers that actually use CPU works, 3 of 3.** A quota cannot show on a
+container that never approaches it, so the population is containers consuming real CPU; among
+those, the throttled one has the flattest per-bucket CPU series because it is held at a ceiling
+rather than varying with load. Unfiltered flatness put it at #2 of 20 - beaten by a nearly idle
+container, which is trivially flat.
+
+**And one more of my own bugs.** The first three measurements divided both windows by the
+nominal 120 s when only 48 s of pre-injection recording exists, understating every baseline by
+2.5x. It scaled all containers equally so the rankings survived, but every rate I printed was
+wrong until I checked one against a number measured on 22-09 and they disagreed.
