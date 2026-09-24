@@ -115,3 +115,14 @@ restricts it to the two index files. Every result reports `limits_enforced`, and
 python blueprints/lib/demo_agent.py --step
 ```
 Replay only, no network. A fallback if the browser or the API is unavailable.
+
+## The rest of the meeting pack
+
+| file | what it is |
+|---|---|
+| `speaker-notes.md` | **what to say on each of the five tabs**, with the background under each claim |
+| `ciena-talk-plan.md` | running order for the whole meeting, expected questions, what not to say |
+| `ciena-brief.md` | one page they can read in two minutes |
+| `ciena-results-v2.html` | the shareable results page (published as an artifact) |
+| `demo-transcript-*.jsonl` | one recorded investigation per trace, for Replay |
+| `answer/` | ground truth, deliberately outside the index root the sandbox is handed |
