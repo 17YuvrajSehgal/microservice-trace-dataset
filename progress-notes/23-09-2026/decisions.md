@@ -342,3 +342,61 @@ container, which is trivially flat.
 nominal 120 s when only 48 s of pre-injection recording exists, understating every baseline by
 2.5x. It scaled all containers equally so the rankings survived, but every rate I printed was
 wrong until I checked one against a number measured on 22-09 and they disagreed.
+
+## svc_cpu_cap at n=30: better on one application, and honest on the other
+
+120 cells, published design, 0 failures, `--jobs 6` (which the login node tolerated on both
+applications - 12 did not, 4 did, so 6 is the working ceiling).
+
+### Sock Shop: the blueprint effect is real again
+
+| | published (v1) | re-run (v2 + blueprint v4) |
+|---|---|---|
+| WHERE | 1/60 | **7/60** |
+| WHERE, with blueprint | 0/30 | **6/30 (20%)** |
+| WHERE, without | 1/30 | 1/30 (3%) |
+| window hit | 49/60 | **54/60** |
+
+20% against 3%. Smaller than `svc_net`'s 33% against 3%, and in the same direction. Of the 13
+cells that named a container, 7 were right and 6 wrong.
+
+### Train Ticket: the score fell, and the agent got better
+
+| | published (v1) | re-run (v2) |
+|---|---|---|
+| window hit | 15/60 | **2/60** |
+| said `cpu_throttling` | 21 | **3** |
+| said `normal` | 18 | **43** |
+
+**43 of 60 now say there is no fault.** In the agent's own words:
+
+> The evidence does not support a CPU-throttling diagnosis. The busiest container stays around
+> 2.23-2.27 cores across the split, there is no newcomer consuming >= 0.5 cores, and no
+> container flattening at a ceiling.
+
+**It is right.** The cap is 0.2 CPU against a service that uses 0.004, so it binds for 1.6
+seconds out of 120. The blueprint now tells the agent what to conclude when nothing is pinned,
+and on this application nothing is pinned because nothing was ever throttled.
+
+The published run said `cpu_throttling` 21 times and hit the window 15 times - it scored better
+by confidently describing a fault that barely occurred.
+
+**So the metric punishes the agent for being right about a non-event.** Two things follow, and
+both matter more than the score:
+
+1. **`svc_cpu_cap` on Train Ticket should not be reported as a comparable arm of the same
+   fault.** It is a miscalibrated injection, and its numbers on either side of the fix say
+   nothing about whether an agent can localise CPU throttling.
+2. **A window-hit metric rewards asserting a window.** For families where the injection may not
+   engage, "abstained" and "miss" need separating in the headline, not just in the detail - an
+   agent that abstains on a non-event is doing the right thing and currently scores as failing.
+
+### Where the two fixed problems now stand
+
+| | Sock Shop WHERE, given arm |
+|---|---|
+| `svc_net` | 0/30 -> **10/30** |
+| `svc_cpu_cap` | 0/30 -> **6/30** |
+
+Both were 0-1 of 60 in the published study. Neither is solved; both moved off zero for a reason
+we measured first.
