@@ -591,6 +591,53 @@
     }
    ],
    "measured_on": "svc_net and anomaly_net, 12 runs across two applications, 23-09-2026. On one of them the injected container ranked first in 3 of 3 runs at 0.155-0.184 of baseline against a median of 0.63-0.73. On a host-wide network fault every container fell together, median 0.075-0.089."
+  },
+  "kernel.scheduler.cpu_ceiling": {
+   "what": "Per-container CPU time per 100 ms bucket, restricted to containers consuming real CPU, ranked by how flat the series is. A cgroup quota holds a container at a ceiling instead of letting it vary with load, so the throttled one is the flattest of the busy ones and its absolute rate reads off the quota.",
+   "requires_events": [
+    "sched_stat_runtime"
+   ],
+   "providers": [
+    {
+     "id": "babeltrace2-cli",
+     "status": "implemented",
+     "available_when": "babeltrace2 >= 2.1 on PATH and a CTF trace directory",
+     "run": "python3 $BLUEPRINT_HOME/problems/cpu-contention-co-tenant/scripts/oncpu_share.py --ctf <ctf> --gt <window> --out <out>/oncpu.json",
+     "notes": "One tracepoint is enough. Validated by recovering the injected cgroup cap of the noisy-neighbour recipe to within 1% (1.0 -> measured 0.988-0.997; 2.0 -> measured 1.978-2.002).",
+     "tier": "high_fidelity_active",
+     "platform": [
+      "linux"
+     ],
+     "estimated_overhead_pct": {
+      "min": 2,
+      "max": 5
+     },
+     "fidelity": "high",
+     "requires_permissions": [
+      "root or CAP_SYS_ADMIN for kernel tracing"
+     ],
+     "produces_contract": "per-process cores baseline vs incident, host utilisation per window, newcomer and loser lists"
+    },
+    {
+     "id": "cadvisor-metrics",
+     "status": "not implemented here",
+     "available_when": "container metrics are already being scraped",
+     "run": null,
+     "notes": "Container CPU counters answer the same question more cheaply when they already exist, but attribute per container rather than per process and miss anything outside a container.",
+     "tier": "existing_evidence",
+     "platform": [
+      "linux"
+     ],
+     "estimated_overhead_pct": {
+      "min": 0,
+      "max": 0
+     },
+     "fidelity": "medium",
+     "requires_permissions": [],
+     "produces_contract": "per-container cpu seconds over time"
+    }
+   ],
+   "measured_on": "svc_cpu_cap, 3 runs, 23-09-2026. The capped container was the flattest busy container in 3 of 3, pinned at 0.198-0.202 CPU against a 0.2 quota while using 0.509-0.516 before. Ranking by CPU DROP instead put it at #15 of 18. Unfiltered flatness put it at #2 of 20, beaten by a nearly idle container."
   }
  },
  "escalation_policy": {

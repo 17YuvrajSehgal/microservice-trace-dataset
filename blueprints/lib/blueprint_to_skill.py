@@ -281,6 +281,27 @@ KERNEL_RECIPES = {
     # published results - which looked like "a kernel trace cannot localise a per-service
     # network fault". It can. See the numbers in the recipe text; they are what a blueprint is
     # allowed to assert.
+    # Added 23-09 after three statistics failed. The failures are the useful part and are
+    # written into the recipe, because the obvious one is actively misleading here.
+    "kernel.scheduler.cpu_ceiling":
+        "sched_stat_runtime carries `runtime` in nanoseconds, and the index sums it per "
+        "container per 100 ms bucket in the `value_sum` column - so with run_python you can "
+        "get each container's actual CPU time, which no count of events gives you. "
+        "DO NOT rank containers by how much their CPU FELL. Measured: the capped container "
+        "ranked #15 of 18 that way, because it falls to about 40% of its baseline while the "
+        "median container falls to about 18% - when one service stalls, the whole application "
+        "slows and everything else loses MORE CPU than the throttled service does. Ranking by "
+        "the biggest drop finds victims. "
+        "What works, measured 3 of 3: a quota is a CEILING, so the throttled container's CPU "
+        "per bucket stops varying and sits flat. Take only containers actually consuming CPU - "
+        "a quota cannot show on one that never approaches it, and a nearly idle series is "
+        "trivially flat - then among those compare p95 to p50 of per-bucket CPU. The flattest "
+        "is the throttled one. Confirm it by reading its ABSOLUTE rate: a quota is a round "
+        "number, and measured it sat at 0.198-0.202 CPU against a 0.2 cap while using 0.51 "
+        "before. Report that rate; it tells the operator what the quota was set to. "
+        "If NO busy container is pinned flat, say so. A cap set far above what a service "
+        "actually uses never binds, and then there is nothing here to find - which is a real "
+        "finding, not a failure to look.",
     "network.per_container_rate_ranking":
         "every network event carries pid_ns, and one pid_ns is one container, so the impaired "
         "path IS attributable. Use run_python: sum `count` for net_dev_xmit, "

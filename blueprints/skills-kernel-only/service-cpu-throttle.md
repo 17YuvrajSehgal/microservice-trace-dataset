@@ -1,6 +1,6 @@
 ---
 name: service-cpu-throttle
-version: 3
+version: 4
 authored_by: measured from the CPU-cluster sweep, 17 labelled runs across four families
 generated_from: blueprints/service-cpu-throttle.json
 covers: svc_cpu_cap
@@ -52,15 +52,19 @@ Each step names the capability it needs, how to get at it with the tools you hav
    needs: `kernel.scheduler.runqueue_delay`
    with your tools: the delay is sched_waking to the sched_switch that runs the thread. You cannot join those two per thread with these tools, so use the rate of sched_waking against sched_switch as a proxy, and say in your evidence that it is a proxy.
    expect: per-process p95 runqueue delay raised while utilisation falls
-4. Combine into the verdict and its artifacts: the JSON verdict, the CPU breakdown chart, and a plain-English explanation
+4. among the containers actually consuming CPU, find the one whose per-bucket CPU time is held flattest - a quota is a ceiling, not a slowdown
+   needs: `kernel.scheduler.cpu_ceiling`
+   with your tools: sched_stat_runtime carries `runtime` in nanoseconds, and the index sums it per container per 100 ms bucket in the `value_sum` column - so with run_python you can get each container's actual CPU time, which no count of events gives you. DO NOT rank containers by how much their CPU FELL. Measured: the capped container ranked #15 of 18 that way, because it falls to about 40% of its baseline while the median container falls to about 18% - when one service stalls, the whole application slows and everything else loses MORE CPU than the throttled service does. Ranking by the biggest drop finds victims. What works, measured 3 of 3: a quota is a CEILING, so the throttled container's CPU per bucket stops varying and sits flat. Take only containers actually consuming CPU - a quota cannot show on one that never approaches it, and a nearly idle series is trivially flat - then among those compare p95 to p50 of per-bucket CPU. The flattest is the throttled one. Confirm it by reading its ABSOLUTE rate: a quota is a round number, and measured it sat at 0.198-0.202 CPU against a 0.2 cap while using 0.51 before. Report that rate; it tells the operator what the quota was set to. If NO busy container is pinned flat, say so. A cap set far above what a service actually uses never binds, and then there is nothing here to find - which is a real finding, not a failure to look.
+   expect: containers that use real CPU, ranked by how flat their CPU series is, with the flattest named by pid_ns and its CPU rate reported as an absolute figure
+5. Combine into the verdict and its artifacts: the JSON verdict, the CPU breakdown chart, and a plain-English explanation
    needs: `verdict.apply_rules`
    with your tools: do this yourself, from the numbers your own tool calls returned. Quote them.
-   expect: state that a CPU quota is throttling some service, why the host looks quiet, and that the service is NOT identified by this evidence
-5. State the recommended action alongside the diagnosis
+   expect: name the throttled CONTAINER by its pid_ns, the CPU rate it is pinned at, and what that rate implies the quota is
+6. State the recommended action alongside the diagnosis
    needs: `report.recommended_action`
    with your tools: write it in your own words in the diagnosis.
    expect: inspect cgroup cpu.max and cpu.stat throttling counters for the services on the stalled path, and raise or remove the quota on the one that is throttling
-6. draw the decision card
+7. draw the decision card
    needs: `report.decision_card`
    with your tools: NOT REACHABLE - no plotting here. Skip it; it does not affect the diagnosis.
    expect: one page showing where every fault family sits on this blueprint's deciding number, which gates passed and by how much, and what else was ruled out
