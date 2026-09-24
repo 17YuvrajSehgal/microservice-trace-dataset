@@ -43,18 +43,73 @@ Then the key idea:
 
 ### Show the event chart
 
-Pick `sched_switch` from the dropdown, then try one or two others.
+Leave it on **`sched_switch`** to start. On the CPU trace it reads *25,301,636 events total*.
 
-> "Pick any event and you see its rate across the whole recording. You can already see something
-> happen here" — *(on the CPU trace the collapse and recovery are visible)* — "and I want to be
-> clear: the agent is not told any of this. Not that an incident happened, not when, not where."
+> "This is one event type out of 440, counted across the whole recording. `sched_switch` is the
+> kernel putting a different thread onto a CPU — so it's a direct measure of how much the
+> machine is juggling. Twenty-five million of them in four minutes."
+
+**Trace the shape with your finger — left to right.**
+
+> "Steady around 126,000 a second. A rise, a peak. Then a step down, a long flat stretch at
+> about 85,000. Then it climbs back to where it started, and falls off a cliff at the very end."
+
+Then the point:
+
+> "Something happened in the middle of this recording, and you can see it without any analysis
+> at all. **The agent is told none of it.** Not that an incident occurred, not when, not where.
+> Working that out is the task."
+
+### Two things to draw out here — both are the whole method in miniature
+
+**1 · The fault makes the machine do LESS, not more.**
+
+> "This is a CPU saturation fault — a workload pinning the processors. And the graph goes
+> *down*. Context switches fall to **68%** of their baseline.
+>
+> That's the right answer, and it catches people out. A CPU-bound thread runs its whole time
+> slice and doesn't yield, so you get *fewer* switches, not more. Everything else on the box is
+> starved and does less work too."
+
+**Now change the dropdown to `sched_stat_runtime`** — the event that carries CPU time consumed.
+
+> "Same recording, same window, opposite direction. That one goes **up**, 1.29 times.
+>
+> So 'which way should the line move' has no general answer — it depends on the event. That is
+> exactly why a blueprint has to say *which* signal decides, and in which direction. An agent
+> given only 'look for a change' will find the wrong one."
+
+**2 · The biggest step in the chart is not the fault.**
+
+Point at the cliff at the far right.
+
+> "The largest single-second change in this whole recording is right there at the end — and it's
+> the tracer shutting down, not the incident. The second largest is the start-up.
+>
+> This is written into our blueprints as a warning, because it is the commonest way to get this
+> wrong: when a heavy workload *stops*, the backlog drains and the counters jump. The biggest
+> step in a count chart is very often the **recovery**, sitting just after the problem."
 
 ### Show the container table
 
 > "Every kernel event carries the namespaces of the task that produced it. One of those,
 > `pid_ns`, is one number per container. That matters more than it sounds, because the kernel
 > records no service names at all. This host runs several Java services and the kernel calls
-> every one of them `java`. The namespace is the only thing that tells them apart."
+> every one of them `java` — there are four separate rows here, all called `java`, and they are
+> four different services. The namespace is the only thing that tells them apart."
+
+**Then point at the two right-hand columns. This is the single best moment on this tab.**
+
+> "Sort in your head by the **events** column. `stress-ng-cpu` — the injected workload, the thing
+> that actually caused this incident — is **eighth**. Nine million events, behind toxiproxy and
+> a couple of Java services.
+>
+> Now look at the **CPU seconds** column. It's **first**. 763 seconds of CPU, more than the host
+> itself.
+>
+> Counting events told you almost nothing. Measuring consumed CPU put the culprit at the top of
+> the list immediately. That is why our index stores a summed quantity next to every count — and
+> when we didn't have that column, this fault family scored 1 out of 60."
 
 ### Background — if they ask
 
@@ -77,6 +132,15 @@ agent makes.
 **Is the index tuned per fault?** No. It's built before anyone asks a question of it, and
 identically for every run. It contains no notion of a baseline, an incident window, a fault,
 or a culprit.
+
+**What is the `0` row in the container table?** Events whose namespace the decoder could not
+attribute — 57,000 of 240 million here, a fraction of a percent, mostly at container start-up
+before the namespace is established. We keep it visible rather than dropping it, so the numbers
+on screen add up to the recording.
+
+**Why is the host row so large?** `4026531836` is the host namespace, not a container. Every
+kernel thread and the container runtime itself land there, which is why it dominates the event
+count. The agent is told this, and the tools exclude it from per-container rankings.
 
 ---
 
