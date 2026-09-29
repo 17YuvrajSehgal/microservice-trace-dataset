@@ -37,6 +37,17 @@ _DEFAULT_MODEL = {
     "azure":  "gpt-5.4-mini",
     "gemini": "gemini-2.5-flash",
     "ollama": "llama3.1:8b",
+    "openrouter": "openai/gpt-6-luna",
+}
+
+# OpenRouter routes one key to several upstreams. Our access is pinned to specific upstream
+# providers, and requests must say so or they fall through to a provider we are not paying for
+# and are not entitled to. `allow_fallbacks: False` is the part that makes it a hard pin rather
+# than a preference. Naser's setup mail is the source; keep this table in step with it.
+OPENROUTER_UPSTREAM = {
+    "openai/gpt-6-luna": "azure",
+    "deepseek/deepseek-v4-flash": "azure",
+    "google/gemini-3.8-flash": "google-ai-studio",
 }
 # base_url + api-key env var per OpenAI-compatible provider (None base_url = the SDK default host)
 _OPENAI_COMPAT = {
@@ -45,6 +56,13 @@ _OPENAI_COMPAT = {
     "gemini": (os.environ.get("GEMINI_BASE_URL", "https://generativelanguage.googleapis.com/v1beta/openai/"),
                "GEMINI_API_KEY"),
     "ollama": (os.environ.get("OLLAMA_URL", "http://localhost:11434/v1"), None),
+    # Both spellings are accepted: the setup mail says OPENROUTER_API_KEY and the .env as
+    # written says OPEN_ROUTER_API_KEY. Failing over a missing underscore is a silly way to
+    # lose an evening.
+    "openrouter": (os.environ.get("OPEN_ROUTER_ENDPOINT")
+                   or os.environ.get("OPENROUTER_ENDPOINT")
+                   or "https://openrouter.ai/api/v1",
+                   "OPEN_ROUTER_API_KEY"),
 }
 
 
@@ -78,6 +96,8 @@ def make_client():
     import openai
     base_url, key_var = _OPENAI_COMPAT[PROVIDER]
     api_key = os.environ.get(key_var) if key_var else "ollama"
+    if not api_key and PROVIDER == "openrouter":
+        api_key = os.environ.get("OPENROUTER_API_KEY")
     if not api_key:
         raise RuntimeError(f"{key_var} not set for RCA_PROVIDER={PROVIDER} (put it in .env)")
     kwargs = {"api_key": api_key}
@@ -89,6 +109,16 @@ def make_client():
 def openai_create_kwargs() -> dict:
     """Extra create() kwargs for the OpenAI family: max_completion_tokens (GPT-5 convention) and
     temperature only when explicitly opted in (reasoning models reject a non-default value)."""
+    if PROVIDER == "openrouter":
+        # max_tokens, not max_completion_tokens: that is what the verified-working example
+        # uses, and OpenRouter forwards the body to whichever upstream it routes to.
+        kw = {"max_tokens": MAX_TOKENS}
+        up = OPENROUTER_UPSTREAM.get(model_id())
+        if up:
+            kw["extra_body"] = {"provider": {"only": [up], "allow_fallbacks": False}}
+        if SEND_TEMPERATURE:
+            kw["temperature"] = TEMPERATURE
+        return kw
     kw = {"max_completion_tokens": MAX_TOKENS}
     if SEND_TEMPERATURE:
         kw["temperature"] = TEMPERATURE
