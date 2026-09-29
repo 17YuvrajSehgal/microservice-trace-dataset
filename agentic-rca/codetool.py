@@ -53,8 +53,12 @@ BANNED_NAMES = {
     "urllib", "requests", "httpx", "pickle", "marshal", "ctypes", "sysconfig", "builtins",
 }
 # Substrings that betray an attempt to reach the dataset rather than the index.
+# `..` on its own matched range notation in ordinary printed output - "11:16..11:18" - and
+# rejected a legitimate snippet. Only the path forms can traverse anywhere, and the descriptor
+# cap below stops a traversal regardless, so this list is defence in depth rather than the
+# barrier.
 BANNED_TEXT = ("ground_truth", "groundtruth", "verification", "dataset/runs", "/runs/",
-               "fault_state", "MANIFEST", "SHA256SUMS", "..")
+               "fault_state", "MANIFEST", "SHA256SUMS", "../", "/..")
 
 
 # Modules already loaded in the sandbox namespace. Importing one of these is a no-op that
@@ -152,6 +156,13 @@ df = pd.read_csv(TSV, sep=TAB, compression="gzip", names=_COLS[:_ncol], skiprows
 if "value_sum" not in df.columns:
     df["value_sum"] = 0
 
+# `count` collides with DataFrame.count, so `df.groupby("event").count.sum()` silently returns
+# the METHOD and then dies with "'function' object has no attribute 'sum'". Measured: three
+# snippets lost to it in one run, including the one computing the blueprint's deciding test.
+# `df["count"]` works and `df.count` does not, which is a trap of our own making - we chose the
+# column name. `n` is the same column under a name nothing shadows.
+df["n"] = df["count"]
+
 # THE BARRIER THAT ACTUALLY MATTERS.
 #
 # Blocking `open` in builtins is not enough, because pandas and numpy do their own file I/O:
@@ -187,6 +198,19 @@ for _op in (
         lambda: _w["event"].value_counts().nlargest(5),
         lambda: _w["procname"].str.contains("a"),
         lambda: _w.pivot_table(index="event", values="count", aggfunc="sum"),
+        # unstack/pivot pull in pandas.core.reshape.reshape on first use. Four snippets in one
+        # run died on "Too many open files: pandas/core/reshape/reshape.py" because the fd cap
+        # lands before that import. Exercise every reshape entry point here, while opening
+        # files is still allowed.
+        lambda: _w.groupby(["event", "pid_ns"])["count"].sum().unstack(fill_value=0),
+        lambda: _w.groupby(["event", "pid_ns"])["count"].sum().unstack(0),
+        lambda: _w.set_index(["event", "pid_ns"])["count"].unstack(),
+        lambda: _w.pivot_table(index="event", columns="pid_ns", values="count",
+                               aggfunc="sum", fill_value=0),
+        lambda: _w.groupby("event")["count"].sum().reset_index().melt(id_vars="event"),
+        lambda: pd.concat([_w.head(3), _w.head(3)], axis=1),
+        lambda: _w.head(5).stack(),
+        lambda: _w.head(5).T,
         lambda: _w.sort_values("count").rolling(3, on="bucket_start_s")["k"].mean(),
         lambda: _w.merge(_w, on="event", how="inner").head(1),
         lambda: pd.cut(_w["count"], 3),
@@ -428,6 +452,31 @@ def _child_env():
     return env
 
 
+# Errors the model cannot act on, turned into ones it can. `df.groupby(x).count.sum()` dies
+# with "'function' object has no attribute 'sum'", which says nothing about the real cause: our
+# index has a column named `count`, and that shadows DataFrame.count, so the attribute form
+# returns the METHOD. Measured: three snippets lost to this in a single run, one of them the
+# blueprint's deciding test. We cannot fix pandas and we are not renaming the column that every
+# existing index carries, so the next best thing is an error that names the fix.
+_HINTS = (
+    ("'function' object has no attribute",
+     " -- HINT: `count` is a column AND a DataFrame method, so `.count` returns the method. "
+     "Use df['count'] or the identical alias df.n, e.g. groupby('event').n.sum()."),
+    ("Too many open files",
+     " -- HINT: this sandbox cannot open new files. If a pandas operation triggered it, the "
+     "operation itself is fine - try expressing it another way, e.g. groupby().sum() instead "
+     "of the reshape you used."),
+    ("memory", " -- HINT: filter before you aggregate; the frame has about 3 million rows."),
+)
+
+
+def _explain(msg):
+    for needle, hint in _HINTS:
+        if needle in msg:
+            return msg + hint
+    return msg
+
+
 class Sandbox:
     """One long-lived child per run. Loading a 3M-row index takes seconds, so it is loaded once
     and reused across snippets; a snippet that hangs kills the child and the next call reloads."""
@@ -501,6 +550,8 @@ class Sandbox:
                              % TIMEOUT_S,
                     "wall_s": round(time.time() - t0, 1)}
         res = json.loads(line)
+        if res.get("error"):
+            res["error"] = _explain(res["error"])
         out = res.get("stdout") or ""
         d = {"stdout": out[:OUT_CAP], "wall_s": round(time.time() - t0, 1),
              "index_rows": self.rows, "limits_enforced": self.limits}
@@ -526,7 +577,11 @@ TOOL_DEF = {
         "helpers hms(seconds) -> 'HH:MM:SS' and secs('HH:MM:SS') -> seconds. Picking a window "
         "like 60 to 120 will match nothing.\n"
         "  event, procname, pid_ns   pid_ns is the container.\n"
-        "  count       how many of that event landed in that bucket.\n"
+        "  count       how many of that event landed in that bucket. NOTE: write df['count'], "
+        "never df.count - `count` is also a DataFrame method, so the attribute form returns the "
+        "method and fails. The identical column `n` is provided precisely so df.n and "
+        "groupby(...).n.sum() work.\n"
+        "  n           an alias for count, safe to use with attribute access.\n"
         "  value_sum   the summed PAYLOAD, where one is worth adding up: nanoseconds of CPU "
         "for sched_stat_runtime, bytes for net_dev_xmit and net_if_receive_skb, sectors for "
         "block_rq_issue and block_rq_complete. 0 for every other event. A count says how often "
