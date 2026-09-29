@@ -654,6 +654,24 @@
     }
    ],
    "measured_on": "dependency_outage, 6 runs across two applications, 28-09-2026. Exactly one container fell to 0.09-1.19% of its own baseline while the next quietest stayed at 23-89%. It ranked first in 6 of 6 and is the ground-truth target in both applications."
+  },
+  "kernel.datastore.connection_setup_collapse": {
+   "what": "Per-connection setup syscalls - getpeername, gettid, access - per container, incident window against that container's own baseline, counting only containers that were doing such work beforehand. A datastore whose pool is exhausted keeps serving its existing clients but stops completing new connections, so this work collapses while its other activity continues.",
+   "requires_events": [
+    "syscall_entry_getpeername",
+    "syscall_entry_gettid",
+    "syscall_entry_access"
+   ],
+   "providers": [
+    {
+     "id": "babeltrace2-cli",
+     "status": "implemented",
+     "available_when": "babeltrace2 >= 2.1 on PATH and a CTF trace directory",
+     "run": "python3 $BLUEPRINT_HOME/lib/container_event_shares.py --ctf <ctf> --window <window> --out <out>/shares.json",
+     "notes": "Measured across 41 labelled runs of 8 families. The shape separates faults that share a mechanism family: lock contention 47.0% futex against a deadlock's 4.3%, while their absolute rates differ 800-fold and would transfer to nobody. Does NOT separate a memory stressor from a CPU stressor - this profile records no mm_ or reclaim events, so both read as generic CPU work."
+    }
+   ],
+   "measured_on": "conn_pool_exhaustion, 6 runs on two applications, 28-09-2026. 169-177/s falling to 0.0-0.9/s, ranked first in 3 of 3 where applicable; not applicable on a system whose callers pool connections, where the baseline is 0.7-1.1/s."
   }
  },
  "escalation_policy": {

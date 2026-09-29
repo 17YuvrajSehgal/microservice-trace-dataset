@@ -1,42 +1,33 @@
 {
  "id": "connection-pool-exhaustion",
- "version": 1,
- "title": "Connection pool exhaustion: a holder that talks to the network and does no work",
+ "version": 2,
+ "title": "Connection pool exhaustion: the datastore stops completing new connections",
  "problem": {
-  "summary": "Something opens connections to a datastore and holds them without using them. In the kernel it shows as a container whose events are almost all network and ioctl, with no locking and almost no CPU.",
+  "summary": "Something holds connections open against a datastore until the server will accept no more. The answer is the DATASTORE, not the thing holding the connections. The datastore stays alive and keeps serving its existing clients, so it does not go quiet and it does not saturate - what stops is the per-connection setup work it does for each NEW client. A container that appears and talks mostly on the network is the holder; naming it answers the wrong question.",
   "symptoms": [
-   "callers of one datastore start failing or timing out",
-   "the datastore itself is not busy",
-   "the failure is about availability of connections, not latency"
+   "callers of a datastore fail or time out while the datastore itself looks healthy",
+   "the symptom is about connection availability, not query latency",
+   "the datastore keeps serving existing clients"
   ],
   "discriminators": [
    {
-    "signal": "ioctl share",
-    "this_problem": "17.3% (n=5)",
-    "not_this_problem": "ioctl does not appear at all in any other family measured - 0.0% for lock contention, deadlock, priority inversion, both stress families and the network fault",
+    "signal": "per-connection setup syscalls inside the datastore - getpeername, gettid and access - as a rate, incident window against its own baseline",
+    "this_problem": "they collapse while the container keeps running: 169-177/s before against 0.0-0.9/s during, a ratio of 0.00-0.01, in 3 of 3 runs. The container that collapses IS the exhausted datastore and is the answer to WHERE",
+    "not_this_problem": "the datastore goes silent altogether - that is a stopped dependency, not an exhausted pool. An exhausted pool keeps serving the clients it already has",
     "confused_with": [
-     "db-latency-dependency-wait",
-     "dependency-outage-retry-storm"
-    ],
-    "evidence": "MEASURED on 41 labelled runs across 8 families with blueprints/lib/fingerprint_table.py (22-09-2026). conn_pool_exhaustion 17.3% (n=5); every other family measured 0.0-0.4%. This is the cleanest single separation in the table."
-   },
-   {
-    "signal": "network share with no futex",
-    "this_problem": "network 35.6% and futex 0.0% (n=5) - it talks, it does not lock",
-    "not_this_problem": "the delayed-ack fault also carries network (17.9%) but with 25.8% futex alongside it",
-    "confused_with": [
-     "nagle-delayed-ack-stall"
-    ],
-    "evidence": "MEASURED on 41 labelled runs across 8 families with blueprints/lib/fingerprint_table.py (22-09-2026). network 35.6% / futex 0.0% (n=5) against 17.9% / 25.8% for nagle_delayed_ack (n=5)."
-   },
-   {
-    "signal": "it is nearly idle for the work it appears to be doing",
-    "this_problem": "545-550 events/s with on-CPU at 3.2% (n=5) - holding, not working",
-    "not_this_problem": "a busy client would show far more on-CPU time",
-    "confused_with": [
+     "dependency-outage-retry-storm",
      "db-latency-dependency-wait"
     ],
-    "evidence": "MEASURED on 41 labelled runs across 8 families with blueprints/lib/fingerprint_table.py (22-09-2026). 545-550 events/s (n=5), a spread of under 1% across five runs, with on_cpu 3.2%."
+    "evidence": "MEASURED 28-09-2026 across 6 runs on two applications. Ranked the target first among containers doing per-connection work in 3 of 3 runs on the application where the datastore does such work at all."
+   },
+   {
+    "signal": "a container present in the window and absent before it, talking on the network",
+    "this_problem": "the holder: about a third of its events are network and its futex share is zero, measured 36% and 0%. It corroborates, and it tells you WHAT is exhausting the pool",
+    "not_this_problem": "naming this container as the root cause. It is the agent of the fault, not the exhausted resource. The answer is the datastore whose setup work collapsed",
+    "confused_with": [
+     "cpu-contention-co-tenant"
+    ],
+    "evidence": "MEASURED 28-09-2026, 3 runs on one application."
    }
   ],
   "unverified_do_not_claim": [
@@ -95,6 +86,15 @@
    "produces": "candidate culprit containers, by pid_ns"
   },
   {
+   "step": "rank containers by how far their per-connection setup rate fell, counting only those that were doing such work before the window",
+   "produces": "<out>/setup_collapse.json",
+   "reads": [
+    "<out>/ctf"
+   ],
+   "expect": "containers that were establishing connections, ranked by the collapse in that work, the steepest named by pid_ns, with its before and after rates",
+   "capability": "kernel.datastore.connection_setup_collapse"
+  },
+  {
    "step": "Measure what share of its own events that container spends on each kind of work",
    "capability": "kernel.container.event_shares",
    "expect": "the share profile below, within the measured range",
@@ -106,8 +106,11 @@
   {
    "step": "Apply the rules and emit the verdict",
    "capability": "verdict.apply_rules",
-   "expect": "a verdict naming the container and the mechanism, or an explicit abstain",
-   "produces": "<out>/verdict.json"
+   "expect": "name the DATASTORE by its pid_ns, its setup rate before and during, and separately name the holder container if one appeared",
+   "produces": "<out>/verdict.json",
+   "reads": [
+    "<out>/setup_collapse.json"
+   ]
   },
   {
    "step": "draw the decision card",
@@ -135,23 +138,30 @@
  ],
  "decision": {
   "verdict_when": [
-   "a container is new to the window",
-   "its share profile matches the measured range below",
-   "no sibling container shows the same profile"
+   "a container was doing at least {SETUP_BASELINE_MIN_PER_S} per-connection setup syscalls per second before the window",
+   "that rate falls to {SETUP_COLLAPSE_MAX} or less of itself during the window, while the container keeps producing other events",
+   "the container did NOT go silent overall - an exhausted pool still serves its existing clients"
   ],
   "rule_out": [
    {
-    "instead": "nagle-delayed-ack-stall",
-    "when": "network is present but futex is around 26% rather than 0%"
+    "instead": "dependency-outage-retry-storm",
+    "when": "the container went silent altogether rather than only stopping new connections - a stopped dependency does no work at all"
    },
    {
     "instead": "db-latency-dependency-wait",
-    "when": "no container is new to the window and the datastore itself is slow"
+    "when": "the datastore still completes new connections at its usual rate and is merely slow - that is latency, not exhaustion"
+   },
+   {
+    "instead": "cpu-contention-co-tenant",
+    "when": "you are about to name the container that APPEARED. That one is holding the connections; the answer is the datastore it is holding them against"
    }
   ],
-  "root_cause_is": "the container holding connections open against the datastore",
+  "root_cause_is": "the datastore whose per-connection setup work collapsed, named by its pid_ns. The container that appeared is the holder and is not the answer",
   "fault_type": "conn_pool_exhaustion",
-  "uses_thresholds": []
+  "uses_thresholds": [
+   "SETUP_BASELINE_MIN_PER_S",
+   "SETUP_COLLAPSE_MAX"
+  ]
  },
  "evidence_from_literature": [],
  "related_blueprints": [
@@ -162,7 +172,7 @@
   "authored_by": "measured from StrataTrace v2 kernel traces",
   "verified_by": "PENDING human review",
   "authored_utc": "2026-09-22T20:21:49Z",
-  "notes": "Built 22-09-2026 from blueprints/lib/fingerprint_table.py over 41 labelled runs of 8 families. Candidate signals were first put through discover_signature.py (a specificity sweep across families, which rejected unlinkat, ftruncate, block_split, lseek and dup as window artefacts) and who_makes_it.py (which rejected the nagle_delayed_ack host-wide signal as 94% our own load generator). KERNEL TRACES ONLY - no metrics, logs or spans were consulted."
+  "notes": "Rewritten 28-09-2026. The generated version concluded on the container that was NEW to the window, which is the holder; ground truth names the datastore. Measured the datastore instead: its per-connection setup syscalls fall from 169-177/s to 0.0-0.9/s while it keeps running, ranking it first in 3 of 3 runs. On the second application the datastore does 0.7-1.1 such calls/s at baseline because its callers hold pooled connections, so the signature is absent there and the blueprint now says the check is not applicable rather than pointing elsewhere."
  },
  "taxonomy": {
   "domain": "microservices",
@@ -173,15 +183,15 @@
  },
  "applicability": {
   "apply_when": [
-   "callers of a datastore fail or time out while the datastore is idle",
-   "the symptom is about connection availability, not query latency",
-   "a kernel trace is available"
+   "callers of a datastore fail or time out while the datastore is not slow",
+   "the datastore is still running rather than stopped",
+   "the datastore was establishing new connections at a steady rate before the window"
   ],
   "do_not_apply_when": [
-   "the datastore is itself busy or slow - see db-latency-dependency-wait",
-   "no container is new to the window"
+   "the suspect container went silent - that is a stopped dependency",
+   "no container was doing per-connection setup work before the window. Where callers hold pooled connections that are already established, a datastore does almost no setup work and this blueprint can see nothing - measured 0.7-1.1 calls/s on such a system against 169-177 where it works. Report that the check was not applicable rather than naming another container"
   ],
-  "cheap_precheck": "a container appeared whose events are mostly network and ioctl, with no futex at all"
+  "cheap_precheck": "find containers doing at least {SETUP_BASELINE_MIN_PER_S} getpeername/gettid/access calls per second before the window, then see whether any fell to {SETUP_COLLAPSE_MAX} or less of that during it"
  },
  "capabilities_required": [
   {
@@ -198,12 +208,16 @@
   },
   {
    "id": "report.decision_card"
+  },
+  {
+   "id": "kernel.datastore.connection_setup_collapse",
+   "why": "WHERE: the exhausted datastore is the target, and this is the only measured signal that names it rather than naming the holder."
   }
  ],
  "stopping_conditions": {
-  "conclude": "the share profile matches and no sibling container matches it too",
-  "stop_and_switch": "a discriminating share falls outside its measured range",
-  "stop_insufficient": "no container is new to the window and none stands out",
+  "conclude": "a container that was doing per-connection setup work fell to {SETUP_COLLAPSE_MAX} or less of its own rate while still producing other events",
+  "stop_and_switch": "the container went silent altogether, which is a stopped dependency; or its setup rate held, which means the pool is not exhausted",
+  "stop_insufficient": "no container reached {SETUP_BASELINE_MIN_PER_S} setup calls per second in the baseline. Say the check was not applicable on this system - do not substitute another signal",
   "max_evidence_rounds": 3
  },
  "adaptation_rules": [],
@@ -251,8 +265,8 @@
  },
  "evidence_sufficiency": {
   "confidence_floor": 0.6,
-  "if_below_floor": "report the shares and say which blueprint they sit between",
-  "report_when_stuck": "the container's shares and every sibling's, side by side"
+  "if_below_floor": "report the per-container setup rates before and during, and say whether any container was doing enough of that work to judge",
+  "report_when_stuck": "the ranked setup-rate table with the pid_ns of each container"
  },
  "scenarios": {
   "note": "",

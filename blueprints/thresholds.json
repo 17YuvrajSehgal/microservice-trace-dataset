@@ -361,6 +361,28 @@
     "lock-contention-futex-storm"
    ],
    "measured": "priority inversion 10.9-13.4% against lock contention 4.8-5.9%, on both applications, with no overlap"
+  },
+  "SETUP_COLLAPSE_MAX": {
+   "value": 0.05,
+   "unit": "share of the container's own baseline per-connection setup rate",
+   "op": "<=",
+   "transfers": "yes",
+   "why_transfers": "self-relative, so it carries no assumption about how many connections a datastore normally serves or how fast the machine is",
+   "used_by": [
+    "connection-pool-exhaustion"
+   ],
+   "measured": "the exhausted datastore fell from 169-177 setup calls/s to 0.0-0.9, a ratio of 0.00-0.01, in 3 of 3 runs, and ranked first among the containers doing such work"
+  },
+  "SETUP_BASELINE_MIN_PER_S": {
+   "value": 20,
+   "unit": "per-connection setup syscalls per second, before the window",
+   "op": ">=",
+   "transfers": "partly",
+   "why_transfers": "an absolute rate, and it is a GATE rather than a verdict: it says whether this blueprint can see anything at all. A datastore whose callers hold pooled connections never reaches it, and then the absence of a collapse means nothing",
+   "used_by": [
+    "connection-pool-exhaustion"
+   ],
+   "measured": "169-177/s on the application where the signature works, against 0.7-1.1/s on the one where it does not - the difference is pooled connections, not a weaker fault"
   }
  }
 }

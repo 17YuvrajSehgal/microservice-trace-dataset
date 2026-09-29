@@ -224,3 +224,56 @@ a service name. Reworded to "roughly a hundredfold". The scanner is right; the p
 problem.
 
 All 16 blueprints regenerate clean.
+
+## connection-pool-exhaustion: name the datastore, not the holder
+
+The generated version concluded on the container that was NEW to the window. That container is
+the holder - the thing doing the exhausting. Ground truth names the DATASTORE being exhausted.
+Naming the holder answers the wrong question by construction.
+
+### What the datastore actually does
+
+Asked the data rather than guessing which syscall should move. Inside the target container, the
+per-connection setup path collapses while everything else keeps running:
+
+| | before | during |
+|---|---|---|
+| `getpeername`, `gettid`, `access` | 169-177/s | **0.0-0.9/s** |
+| the container's other events | continue | continue |
+
+Ratio 0.00-0.01, ranked first among containers doing per-connection work in **3 of 3 runs**.
+
+That is mechanically the right signature. An exhausted pool does not make a datastore quiet and
+does not make it busy - it keeps serving the clients it already has and stops completing NEW
+ones. So the work that stops is the work done per new connection.
+
+### The scope limit is explainable, which makes it worth stating
+
+On the second application the datastore does **0.7-1.1** of those calls per second at BASELINE,
+against 169-177 on the first. Its callers hold pooled connections that are already established,
+so the datastore barely does per-connection setup even when healthy. There is nothing to
+collapse.
+
+**That is not a weaker fault and not a failed detector - it is a different client architecture.**
+The blueprint now gates on `SETUP_BASELINE_MIN_PER_S` (20/s) and tells the agent to report that
+the check was not applicable, rather than falling back to naming the busiest container or the
+newcomer. `SETUP_COLLAPSE_MAX` (0.05) is self-relative and transfers; the baseline floor is
+marked `transfers: partly` because it is a gate on visibility, not a verdict.
+
+### Where the five now stand
+
+| blueprint | deciding signal | measured |
+|---|---|---|
+| `dependency-outage-retry-storm` | one container falls to <=2% of its own rate, next quietest >=20% | 6/6, both applications |
+| `connection-pool-exhaustion` | datastore's per-connection setup collapses to <=5% | 3/3 where applicable; not applicable on the other |
+| `lock-contention-futex-storm` | newcomer >=10k events/s, softirq <9% | 6/6, both applications |
+| `priority-inversion-nice` | newcomer >=10k events/s, softirq >=9% | 6/6, both applications |
+| `deadlock-lock-order` | newcomer <=2k events/s | 6/6, both applications |
+
+Every one of the five now decides on something measured on the traces it will be run against,
+and every threshold is a named entry in thresholds.json with its `transfers` field set honestly.
+Three of them still carry the sidecar caveat: those faults are injected as separate containers,
+so a match says an injected workload of that shape is present, not that the application itself
+is contended.
+
+All 16 blueprints validate and generate clean, with no unresolved placeholders.

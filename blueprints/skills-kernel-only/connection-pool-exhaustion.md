@@ -1,30 +1,29 @@
 ---
 name: connection-pool-exhaustion
-version: 1
+version: 2
 authored_by: measured from StrataTrace v2 kernel traces
 generated_from: blueprints/connection-pool-exhaustion.json
 covers: conn_pool_exhaustion
 ---
 ## When this applies
-- callers of a datastore fail or time out while the datastore is idle
-- the symptom is about connection availability, not query latency
-- a kernel trace is available
+- callers of a datastore fail or time out while the datastore is not slow
+- the datastore is still running rather than stopped
+- the datastore was establishing new connections at a steady rate before the window
 
 Do NOT use this blueprint when:
-- the datastore is itself busy or slow - see db-latency-dependency-wait
-- no container is new to the window
+- the suspect container went silent - that is a stopped dependency
+- no container was doing per-connection setup work before the window. Where callers hold pooled connections that are already established, a datastore does almost no setup work and this blueprint can see nothing - measured 0.7-1.1 calls/s on such a system against 169-177 where it works. Report that the check was not applicable rather than naming another container
 
-Cheapest check first: a container appeared whose events are mostly network and ioctl, with no futex at all
+Cheapest check first: find containers doing at least 20 getpeername/gettid/access calls per second before the window, then see whether any fell to 0.05 or less of that during it
 
 ## Problem signature
-- callers of one datastore start failing or timing out
-- the datastore itself is not busy
-- the failure is about availability of connections, not latency
+- callers of a datastore fail or time out while the datastore itself looks healthy
+- the symptom is about connection availability, not query latency
+- the datastore keeps serving existing clients
 
 Telling it apart from its look-alikes:
-- **ioctl share** — this problem: 17.3% (n=5). Not this problem: ioctl does not appear at all in any other family measured - 0.0% for lock contention, deadlock, priority inversion, both stress families and the network fault.
-- **network share with no futex** — this problem: network 35.6% and futex 0.0% (n=5) - it talks, it does not lock. Not this problem: the delayed-ack fault also carries network (17.9%) but with 25.8% futex alongside it.
-- **it is nearly idle for the work it appears to be doing** — this problem: 545-550 events/s with on-CPU at 3.2% (n=5) - holding, not working. Not this problem: a busy client would show far more on-CPU time.
+- **per-connection setup syscalls inside the datastore - getpeername, gettid and access - as a rate, incident window against its own baseline** — this problem: they collapse while the container keeps running: 169-177/s before against 0.0-0.9/s during, a ratio of 0.00-0.01, in 3 of 3 runs. The container that collapses IS the exhausted datastore and is the answer to WHERE. Not this problem: the datastore goes silent altogether - that is a stopped dependency, not an exhausted pool. An exhausted pool keeps serving the clients it already has.
+- **a container present in the window and absent before it, talking on the network** — this problem: the holder: about a third of its events are network and its futex share is zero, measured 36% and 0%. It corroborates, and it tells you WHAT is exhausting the pool. Not this problem: naming this container as the root cause. It is the agent of the fault, not the exhausted resource. The answer is the datastore whose setup work collapsed.
 
 ## What to look at first
 The signals below are sufficient for this problem; you do not need everything.
@@ -44,15 +43,19 @@ Each step names the capability it needs, how to get at it with the tools you hav
    needs: `process.creation_attribution`
    with your tools: ctf_proclife shows arrivals and departures directly. sched_process_fork and sched_process_exec rates via query_ctf show how fast processes are being created.
    expect: one container with substantial traffic during the window and none before. If none appears, this blueprint does not apply - say so and stop
-3. Measure what share of its own events that container spends on each kind of work
+3. rank containers by how far their per-connection setup rate fell, counting only those that were doing such work before the window
+   needs: `kernel.datastore.connection_setup_collapse`
+   with your tools: the answer here is the DATASTORE, not the container that appeared. A container that shows up talking mostly on the network is holding the connections open - it is the agent of the fault, and naming it answers the wrong question. An exhausted datastore does not go quiet and does not saturate: it keeps serving the clients it already has, and stops completing NEW connections. So look for the work it does per new connection. With run_python, count syscall_entry_getpeername, syscall_entry_gettid and syscall_entry_access per pid_ns per second, over a baseline range and over the range you suspect, and keep only containers that were doing at least ~20 of those per second BEFORE - a container that never establishes connections cannot show this. Rank the survivors by how far that rate fell. MEASURED: the exhausted datastore fell from 169-177/s to 0.0-0.9/s while its other events continued, and ranked first among such containers in 3 of 3 runs. IMPORTANT SCOPE. On the second application measured, the datastore did only 0.7-1.1 of these calls per second even before the fault, because its callers hold pooled connections that are already established. There is nothing to collapse, so this check simply does not apply there. If no container clears the baseline floor, say the check was not applicable - do not fall back to naming the busiest container or the newcomer.
+   expect: containers that were establishing connections, ranked by the collapse in that work, the steepest named by pid_ns, with its before and after rates
+4. Measure what share of its own events that container spends on each kind of work
    needs: `kernel.container.event_shares`
    with your tools: no direct equivalent from a kernel trace - say the step was not run.
    expect: the share profile below, within the measured range
-4. Apply the rules and emit the verdict
+5. Apply the rules and emit the verdict
    needs: `verdict.apply_rules`
    with your tools: do this yourself, from the numbers your own tool calls returned. Quote them.
-   expect: a verdict naming the container and the mechanism, or an explicit abstain
-5. draw the decision card
+   expect: name the DATASTORE by its pid_ns, its setup rate before and during, and separately name the holder container if one appeared
+6. draw the decision card
    needs: `report.decision_card`
    with your tools: NOT REACHABLE - no plotting here. Skip it; it does not affect the diagnosis.
    expect: one page showing the shares, the cut, and what was ruled out
@@ -64,20 +67,21 @@ Each step names the capability it needs, how to get at it with the tools you hav
 
 ## Resolution template
 Conclude this problem when ALL of:
-- a container is new to the window
-- its share profile matches the measured range below
-- no sibling container shows the same profile
+- a container was doing at least 20 per-connection setup syscalls per second before the window
+- that rate falls to 0.05 or less of itself during the window, while the container keeps producing other events
+- the container did NOT go silent overall - an exhausted pool still serves its existing clients
 
 Prefer a different explanation when:
-- nagle-delayed-ack-stall — network is present but futex is around 26% rather than 0%
-- db-latency-dependency-wait — no container is new to the window and the datastore itself is slow
+- dependency-outage-retry-storm — the container went silent altogether rather than only stopping new connections - a stopped dependency does no work at all
+- db-latency-dependency-wait — the datastore still completes new connections at its usual rate and is merely slow - that is latency, not exhaustion
+- cpu-contention-co-tenant — you are about to name the container that APPEARED. That one is holding the connections; the answer is the datastore it is holding them against
 
-Root cause is: the container holding connections open against the datastore
+Root cause is: the datastore whose per-connection setup work collapsed, named by its pid_ns. The container that appeared is the holder and is not the answer
 
 ## When to stop
-- Conclude when: the share profile matches and no sibling container matches it too
-- Stop and switch: a discriminating share falls outside its measured range
-- Evidence insufficient: no container is new to the window and none stands out
+- Conclude when: a container that was doing per-connection setup work fell to 0.05 or less of its own rate while still producing other events
+- Stop and switch: the container went silent altogether, which is a stopped dependency; or its setup rate held, which means the pool is not exhausted
+- Evidence insufficient: no container reached 20 setup calls per second in the baseline. Say the check was not applicable on this system - do not substitute another signal
 - Do not exceed 3 rounds of gathering more evidence before reporting what is missing.
 
 ## Constraints you must respect
@@ -85,8 +89,8 @@ Root cause is: the container holding connections open against the datastore
 
 ## If you are not confident enough
 - Do not report a diagnosis below 0.6 confidence.
-- report the shares and say which blueprint they sit between
-- the container's shares and every sibling's, side by side
+- report the per-container setup rates before and during, and say whether any container was doing enough of that work to judge
+- the ranked setup-rate table with the pid_ns of each container
 
 ## Signals that do NOT work for this problem
 Each of these was measured on our own data and found unusable. Do not reason

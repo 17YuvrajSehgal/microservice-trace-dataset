@@ -305,6 +305,13 @@ KERNEL_RECIPES = {
     # Added 28-09 after testing the generated blueprint against the traces. It told the
     # agent to look for a NEW container; this fault removes one. The recipe leads with
     # that, because both intuitive moves here are wrong.
+    # Added 28-09. The generated blueprint named the container that APPEARED, which is the
+    # holder doing the exhausting, when the target is the datastore being exhausted.
+    "kernel.datastore.connection_setup_collapse":
+        "the answer here is the DATASTORE, not the container that appeared. A container that shows up talking mostly on the network is holding the connections open - it is the agent of the fault, and naming it answers the wrong question. "
+        "An exhausted datastore does not go quiet and does not saturate: it keeps serving the clients it already has, and stops completing NEW connections. So look for the work it does per new connection. With run_python, count syscall_entry_getpeername, syscall_entry_gettid and syscall_entry_access per pid_ns per second, over a baseline range and over the range you suspect, and keep only containers that were doing at least ~20 of those per second BEFORE - a container that never establishes connections cannot show this. Rank the survivors by how far that rate fell. "
+        "MEASURED: the exhausted datastore fell from 169-177/s to 0.0-0.9/s while its other events continued, and ranked first among such containers in 3 of 3 runs. "
+        "IMPORTANT SCOPE. On the second application measured, the datastore did only 0.7-1.1 of these calls per second even before the fault, because its callers hold pooled connections that are already established. There is nothing to collapse, so this check simply does not apply there. If no container clears the baseline floor, say the check was not applicable - do not fall back to naming the busiest container or the newcomer.",
     "kernel.container.silence_ranking":
         "this fault REMOVES a workload rather than adding one, so looking for a newcomer finds nothing - measured, there was no new container in 3 of 3 runs on one application. "
         "And do not name the busiest container: the one that storms is the VICTIM calling into the dependency that stopped. "
