@@ -332,7 +332,7 @@ COMPUTED_OUT_CAP = 12000     # matches the largest run_python result measured
 COMPUTED_TOTAL_CAP = 240000  # about 60k tokens; observed worst case was 58k chars
 
 
-def _trim_thread(msgs):
+def _trim_thread(msgs, node=None, step=None):
     """Keep the most recent tool output verbatim and stub what came before it.
 
     A tool-calling thread re-sends everything before it on every step, so cost grows with the
@@ -355,14 +355,27 @@ def _trim_thread(msgs):
             break
         spent += len(c)
         keep.add(i)
-    out = []
+    out, elided = [], []
     for i, m in enumerate(msgs):
         if m.get("role") == "tool" and i not in keep and len(m.get("content") or "") > 400:
+            elided.append({"index": i, "chars": len(msgs[i]["content"])})
             m = dict(m)
             m["content"] = ("[earlier result elided to keep this thread small - %d characters. "
                             "Your note_finding entries are kept in full. Call the tool again if "
                             "you need the detail back.]" % len(msgs[i]["content"]))
         out.append(m)
+    # Record the SHAPE of every step and exactly what trimming removed. The thread itself is not
+    # stored - it is reconstructable from api_response plus tool_execution, both of which carry
+    # node and step, and storing it per step would be quadratic. What could not be reconstructed
+    # is what was dropped, so that is what goes in.
+    if CTX is not None:
+        CTX.event("thread_step", node=node, step=step,
+                  messages=len(msgs), tool_messages=len(idx),
+                  chars_sent=sum(len(m.get("content") or "") for m in out
+                                 if isinstance(m.get("content"), str)),
+                  chars_before_trim=sum(len(m.get("content") or "") for m in msgs
+                                        if isinstance(m.get("content"), str)),
+                  elided=elided, budget=THREAD_BUDGET)
     return out
 
 
@@ -413,10 +426,16 @@ def n_work(payload: dict) -> dict:
              "YOUR SUBTASK: %s\n\n%s\n\nRecord findings with note_finding as you go."
              % (task.get("title", "?"), task.get("instruction", ""))}]
     CTX.event("worker_start", node=node, task=task)
+    # The planner's and synthesiser's prompts are recorded; a worker's were not, which is where
+    # the cost and all the tool use happen. The system prompt is identical across workers but
+    # recorded per worker anyway - it differs between the given and none arms, and a reader
+    # should not have to know that to trust what they are looking at.
+    CTX.event("worker_prompt", node=node, system=msgs[0]["content"], user=msgs[1]["content"],
+              tools=[t["name"] for t in tools])
     found, calls = [], 0
     nudged = False
     for step in range(MAX_WORKER_STEPS):
-        m = _call(_trim_thread(msgs), tools, node, step)
+        m = _call(_trim_thread(msgs, node, step), tools, node, step)
         a = {"role": "assistant", "content": m.content or ""}
         if m.tool_calls:
             a["tool_calls"] = [{"id": c.id, "type": "function",
@@ -454,7 +473,11 @@ def n_work(payload: dict) -> dict:
             calls += 1
             msgs.append({"role": "tool", "tool_call_id": c.id,
                          "content": _exec_tool(name, args, node, step)})
-    CTX.event("worker_end", node=node, n_findings=len(found), n_tool_calls=calls)
+    CTX.event("worker_end", node=node, n_findings=len(found), n_tool_calls=calls,
+              steps_used=step + 1, max_steps=MAX_WORKER_STEPS,
+              final_thread_messages=len(msgs),
+              final_thread_chars=sum(len(m.get("content") or "") for m in msgs
+                                     if isinstance(m.get("content"), str)))
     return {"findings": found,
             "worker_stats": [{"node": node, "tool_calls": calls, "findings": len(found)}]}
 
