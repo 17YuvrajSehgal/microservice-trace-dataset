@@ -52,7 +52,11 @@ def score_window(claimed: str | None, gt: dict) -> dict:
     t0 = _clock_s((f.get("injection_start_utc") or "").split("T")[-1].rstrip("Z"))
     t1 = _clock_s((f.get("injection_end_utc") or "").split("T")[-1].rstrip("Z"))
     out = {"claimed": claimed, "true_window": None, "iou": None,
-           "recall": None, "precision": None, "verdict": None}
+           "recall": None, "precision": None, "verdict": None,
+           # earliness: see the module docstring in q2_rescore_earliness.py for why four
+           # numbers rather than one, and why an abstention is None rather than 0
+           "onset_error_s": None, "detect_delay_s": None,
+           "earliness": None, "earliness_gated": None}
     if t0 is None or t1 is None or t1 <= t0:
         out["verdict"] = "ground truth window unreadable"
         return out
@@ -77,6 +81,20 @@ def score_window(claimed: str | None, gt: dict) -> dict:
     out["iou"] = round(inter / union, 3) if union > 0 else 0.0
     out["verdict"] = ("hit" if out["iou"] >= 0.5 else
                       "partial" if inter > 0 else "miss")
+
+    # HOW EARLY, not just whether it overlapped. Two answers with the same IoU can differ by a
+    # minute in when they noticed, and IoU calls them equal - measured on our own runs, IoU
+    # moved 0.543 -> 0.776 between agent versions while onset error moved 121 s -> 7 s at p90.
+    dur = t1 - t0
+    out["onset_error_s"] = round(c0 - t0, 1)            # signed; negative = noticed early
+    out["detect_delay_s"] = round(max(0.0, c0 - t0), 1)  # lateness only
+    # 1.0 caught it as it started, 0.5 halfway through, 0.0 not until it was over. Normalised
+    # by the incident's own duration so faults of different lengths compare.
+    out["earliness"] = round(max(0.0, min(1.0, 1.0 - out["detect_delay_s"] / dur)), 3)
+    # Gated on IoU, because earliness alone is trivially gamed: claim the whole recording and
+    # the delay is zero by construction. IoU punishes an over-wide claim through precision, so
+    # the product can only be high for a window that is both early AND tight.
+    out["earliness_gated"] = round(out["earliness"] * out["iou"], 3)
     return out
 
 
@@ -286,6 +304,12 @@ def main() -> int:
         "window_iou": win.get("iou"), "window_recall": win.get("recall"),
         "window_precision": win.get("precision"), "window_verdict": win.get("verdict"),
         "window_true": win.get("true_window"),
+        # HOW EARLY it noticed, not only whether the range overlapped. See
+        # q2_rescore_earliness.py for why four numbers and why an abstention is None.
+        "onset_error_s": win.get("onset_error_s"),      # signed; negative = early
+        "detect_delay_s": win.get("detect_delay_s"),    # lateness only
+        "earliness": win.get("earliness"),              # 1 - delay/duration
+        "earliness_gated": win.get("earliness_gated"),  # earliness x IoU, the headline
         "error": dx.get("error"),
     }
 
@@ -320,6 +344,9 @@ def main() -> int:
     print("  verdict   %s   IoU=%s recall=%s precision=%s"
           % (row["window_verdict"], row["window_iou"], row["window_recall"],
              row["window_precision"]))
+    if row.get("onset_error_s") is not None:
+        print("  when      noticed %+.1fs from onset; earliness %.2f, gated %.2f"
+              % (row["onset_error_s"], row["earliness"], row["earliness_gated"]))
     print("  why       %s" % str(row["window_evidence"])[:200])
 
     print("\n== metrics collected ==")
