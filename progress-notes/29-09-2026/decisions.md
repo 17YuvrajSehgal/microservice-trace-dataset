@@ -147,3 +147,75 @@ section is present. It runs locally in a second.
 That test exists because the failure mode this week has repeatedly been a break BETWEEN two
 correct components - a slice, a column-name collision, a cap, a filter. Scoring and reporting
 are two components, and nothing was checking the join.
+
+## conn_pool_exhaustion, first full matrix: 27/30 with the blueprint against 2/30 without
+
+60 cells, Sock Shop, the published design, **0 failures and 0 rate-limit retries**. The first
+time this blueprint has been run at all.
+
+| arm | ask | n | container right | window hit | noticed |
+|---|---|---|---|---|---|
+| given | hint | 15 | **13** | 11 | -1s |
+| given | nohint | 15 | **14** | 14 | -2s |
+| none | hint | 15 | 2 | 8 | -2s |
+| none | nohint | 15 | **0** | 0 | **+177s** |
+
+**90% with the blueprint, 7% without.** That is the largest blueprint effect measured anywhere
+in this study, and it is on the problem whose rewrite changed most - the generated version named
+the connection HOLDER when the ground-truth target is the DATASTORE being exhausted.
+
+### The earliness metric earned its place immediately
+
+Look at the `none/nohint` row: **+177s median onset**. Without a blueprint and without a hint the
+agent notices the trouble nearly three minutes after it starts, on a 120-second fault - it is
+describing the recovery, not the incident. Every other arm notices within 2 seconds.
+
+IoU could not have shown that. It would have reported "0 of 15 hit" and left the reason
+invisible. The first real matrix run since adding the metric is also the first one where the
+metric changed what we know.
+
+### A rate limit that arrived as a success
+
+The first attempt at this matrix lost all 120 cells. OpenRouter reports a token rate limit as
+HTTP 200 with `choices: null` and the status buried in an error body, so the SDK raised nothing
+and our retry never fired. Every cell died on `'NoneType' object is not subscriptable`, a
+message that says nothing about the cause.
+
+Fixed by raising on a 200-with-an-error-body, which puts it back on the retry path that already
+existed, and by lengthening the backoff for rate limits specifically - 2/4/8 seconds put all
+three retries inside the same exhausted window. Concurrency was the underlying cause: 6 cells x
+2 applications x up to 4 workers is up to 48 concurrent calls. One application at `--jobs 3` is
+12, and ran 60 cells with zero retries.
+
+### The fault vocabulary had no word for this fault
+
+`fault_ok` scored **0/60**, and it is an artifact rather than a failure. `conn_pool_exhaustion`
+was not in `FAULT_TYPES`, so the agent could not utter it; it said `other` 33 times, which its
+blueprint explicitly tells it to do when nothing fits, and was marked wrong every time.
+
+This is not a general problem with the vocabulary - the six published problems map onto the
+descriptive names and score 5-52 of 60. Four families simply had no entry: `conn_pool_exhaustion`,
+`deadlock`, `lock_contention`, `priority_inversion`. All four added.
+
+**The same shape as every other failure this week: the agent behaved correctly and the harness
+could not record it.**
+
+### Harness health
+
+| | |
+|---|---|
+| tool results truncated | 1 of ~1900 - a `ctf_lines` result of 37,512 chars against a 25,000 cap |
+| thread messages elided | 280, mean 10.6 KB - re-sent less often, not lost, since run_python output reaches the synthesiser separately |
+| runs with no findings | 0 |
+| workers nudged for silence | 0 |
+| code snippets that errored | 32 of 1,166 (2.7%, down from 80% a week ago) |
+| peak prompt | 53k tokens, 13.3% of the window |
+
+The one truncation is worth raising `ctf_lines` for; 40 raw network lines can exceed 25 KB
+because each carries the full TCP header.
+
+### Cost, measured rather than estimated
+
+749k prompt tokens median, 410 s median wall. 60 cells cost about **$5** and took **2.4 hours**
+at `--jobs 3`. A full 1,320-cell campaign is roughly **$120 and 50 hours** at this concurrency -
+worth deciding deliberately rather than assuming.

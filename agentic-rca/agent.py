@@ -148,6 +148,14 @@ FAULT_TYPES = [
     "cpu_saturation", "memory_pressure", "disk_io", "network_latency", "db_latency",
     "dependency_outage", "error_storm", "noisy_neighbor", "cpu_throttling",
     "memory_limit", "service_network", "queue_backlog", "normal",
+    # Added 29-09 after conn_pool_exhaustion scored 0/60 on fault type across a clean 60-cell
+    # matrix. There was no word for it here, so the agent said "other" 33 times - which its
+    # blueprint explicitly tells it to do when nothing fits - and was marked wrong every time.
+    # The six published problems map onto the descriptive names above and score 5-52 of 60, so
+    # this is not a general failure of the vocabulary; these four families simply had no entry.
+    # A label is a tally convenience, not the answer - what_is_wrong is what gets read - but a
+    # label the agent cannot utter makes the tally meaningless.
+    "conn_pool_exhaustion", "deadlock", "lock_contention", "priority_inversion",
 ]
 
 _SYS_HEAD = (
