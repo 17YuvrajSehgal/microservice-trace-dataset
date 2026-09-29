@@ -315,11 +315,21 @@ def _exec_tool(name, args, node, step):
     return sent
 
 
-THREAD_BUDGET = 40000    # chars of tool output kept verbatim in one worker's thread
+# Chars of tool output kept verbatim in one worker's thread. This one is NOT sized for
+# generosity: a thread is re-sent on every step, so its cost grows with the square of the turns,
+# and raising it was measured to take a run from 303k tokens to 545k. It is safe to trim here
+# precisely because run_python output is captured separately and reaches the synthesiser whole -
+# nothing is lost, only re-sent less often. Measured: 0 threads had anything elided in either
+# test run at this budget.
+THREAD_BUDGET = 80000
 # How much of each run_python output travels to the synthesiser. Enough for a ranking table -
 # the thing that was lost was a 3-row table - without carrying whole dumps.
-COMPUTED_OUT_CAP = 1600
-COMPUTED_TOTAL_CAP = 24000   # across all snippets in one run
+# Measured: the 1,600 cap cut 25 of 47 computations, and the 24,000 total dropped more than
+# half of what the workers produced - 57,852 chars in one run. Both are now set so that a real
+# run carries everything. Uncapped the synthesiser prompt reaches about 22k tokens, which is
+# 5.5% of the window; these are a backstop against a pathological run, not a routine trim.
+COMPUTED_OUT_CAP = 12000     # matches the largest run_python result measured
+COMPUTED_TOTAL_CAP = 240000  # about 60k tokens; observed worst case was 58k chars
 
 
 def _trim_thread(msgs):

@@ -57,13 +57,19 @@ from tools import RunTools
 # Peak context use was 6.6% of the model's window at the median run, so the cap was destroying
 # evidence to save room nothing was using. Budgets below are sized to carry each tool's median
 # result whole; anything larger is trimmed by DROPPING WHOLE ROWS, with a note saying so.
-SENT_CAP = 12000
+# Re-sized 29-09 from the measured distribution over 140 tool calls in two full runs, after an
+# inspection showed run_python being cut at 12,000 when its largest real result was 12,177.
+# Each cap is the observed maximum with at least 50% headroom. The headroom is affordable: the
+# largest prompt any model call saw was 23k tokens against a 400k window, so we were destroying
+# information to save context that was 94% empty.
+SENT_CAP = 30000
 SENT_CAP_BY_TOOL = {
-    "ctf_proclife": 45000,   # enumerates every container; coverage IS the answer here
-    "ctf_procdiff": 24000,
-    "ctf_lines": 18000,
-    "query_ctf": 14000,
-    "ctf_timeline": 12000,
+    "ctf_proclife": 60000,   # enumerates every container; coverage IS the answer here. max 36,709
+    "ctf_procdiff": 40000,
+    "run_python": 30000,     # max 12,177, and an agent-written aggregation can be much larger
+    "ctf_lines": 25000,      # max 6,703
+    "query_ctf": 20000,      # max 2,485
+    "ctf_timeline": 20000,   # max 201
 }
 
 _TRUNC_NOTE = (
