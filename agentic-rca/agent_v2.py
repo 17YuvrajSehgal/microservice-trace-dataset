@@ -67,6 +67,11 @@ class S(TypedDict, total=False):
     shown_id: str
     plan: list
     findings: Annotated[list, operator.add]   # the scratchpad; workers append concurrently
+    # What the workers COMPUTED, as opposed to what they chose to claim. Captured
+    # automatically from every run_python call so that a result cannot be lost by a worker
+    # moving on without writing it down - which is exactly how the dependency_outage answer
+    # was lost on 29-09.
+    computed: Annotated[list, operator.add]
     round: int
     again: list
     diagnosis: dict | None
@@ -245,6 +250,7 @@ class Ctx:
         self.tok_in = 0
         self.tok_out = 0
         self.snippets = []
+        self.computed = []
 
     def event(self, kind, **kw):
         with self.tr_lock:
@@ -285,6 +291,17 @@ def _exec_tool(name, args, node, step):
             res = CTX.sb.run(args.get("code") or "")
         CTX.snippets.append({"node": node, "code": args.get("code"),
                              "why": args.get("why"), "result": res})
+        # Capture it for the synthesiser too. The full snippet is already in the transcript;
+        # this is the short version that travels with the run.
+        out = (res.get("stdout") or "").strip()
+        if out or res.get("error"):
+            CTX.computed.append({
+                "node": node,
+                "why": (args.get("why") or "")[:160],
+                "output": out[:COMPUTED_OUT_CAP],
+                "truncated": len(out) > COMPUTED_OUT_CAP,
+                "error": (res.get("error") or "")[:160] or None,
+            })
         b = len(json.dumps(res, default=str))
     else:
         res, b = _run_tool(CTX.tools, name, args, CTX.guard)
@@ -299,6 +316,10 @@ def _exec_tool(name, args, node, step):
 
 
 THREAD_BUDGET = 40000    # chars of tool output kept verbatim in one worker's thread
+# How much of each run_python output travels to the synthesiser. Enough for a ranking table -
+# the thing that was lost was a 3-row table - without carrying whole dumps.
+COMPUTED_OUT_CAP = 1600
+COMPUTED_TOTAL_CAP = 24000   # across all snippets in one run
 
 
 def _trim_thread(msgs):
@@ -383,6 +404,7 @@ def n_work(payload: dict) -> dict:
              % (task.get("title", "?"), task.get("instruction", ""))}]
     CTX.event("worker_start", node=node, task=task)
     found, calls = [], 0
+    nudged = False
     for step in range(MAX_WORKER_STEPS):
         m = _call(_trim_thread(msgs), tools, node, step)
         a = {"role": "assistant", "content": m.content or ""}
@@ -393,6 +415,19 @@ def n_work(payload: dict) -> dict:
                                for c in m.tool_calls]
         msgs.append(a)
         if not m.tool_calls:
+            # A worker that recorded nothing has told the synthesiser nothing, and silence
+            # reads identically to "checked and found nothing". Ask once.
+            if not found and not nudged:
+                nudged = True
+                CTX.event("worker_nudge", node=node, step=step)
+                msgs.append({"role": "user", "content":
+                             "You have not recorded a single finding, so nothing you did "
+                             "reaches the synthesiser - it cannot see your tool output, only "
+                             "what you write with note_finding. Record what you found, AND "
+                             "record what you checked and ruled out, with the numbers. If your "
+                             "subtask genuinely produced nothing, say that as a finding with "
+                             "ruled_out=true rather than leaving it blank."})
+                continue
             break
         for c in m.tool_calls:
             name = c.function.name
@@ -460,12 +495,42 @@ def _after_review(state: S):
             for i, t in enumerate(again)]
 
 
+def _computed_block() -> str:
+    """What the workers actually computed, newest last, under a total budget.
+
+    The synthesiser has no tools, so anything a worker computed and did not write down used to
+    be unreachable. This is the safety net: raw output, not a claim, so the synthesiser can see
+    a result even when the worker that produced it drew no conclusion from it - and can notice
+    when one worker's claim contradicts another worker's table.
+    """
+    if not CTX or not CTX.computed:
+        return "(no code was run)"
+    out, used = [], 0
+    for c in CTX.computed:
+        blk = "- [%s] %s\n%s%s" % (
+            c["node"], c["why"] or "(no reason given)", c["output"],
+            "\n  ...output truncated" if c["truncated"] else "")
+        if c["error"]:
+            blk += "\n  ERROR: %s" % c["error"]
+        if used + len(blk) > COMPUTED_TOTAL_CAP:
+            out.append("- ...%d further results omitted for length; they are in the transcript"
+                       % (len(CTX.computed) - len(out)))
+            break
+        out.append(blk)
+        used += len(blk)
+    return "\n".join(out)
+
+
 def n_synth(state: S) -> dict:
     defs = [t for t in _tool_defs(kernel_only=True) if t["name"] == "submit_diagnosis"]
     msgs = [{"role": "system", "content": _SYNTH},
             {"role": "user", "content":
-             "Kernel trace '%s'. Everything the workers recorded:\n\n%s\n\nCall "
-             "submit_diagnosis." % (state["shown_id"], _scratchpad(state))}]
+             "Kernel trace '%s'.\n\nWHAT THE WORKERS RECORDED:\n\n%s\n\n"
+             "WHAT THE WORKERS COMPUTED - raw output from the code they ran. A worker may have "
+             "computed something and drawn no conclusion from it, or drawn a conclusion that "
+             "another worker's numbers contradict. Read these against the findings above and "
+             "trust the numbers over the summary:\n\n%s\n\nCall submit_diagnosis."
+             % (state["shown_id"], _scratchpad(state), _computed_block())}]
     CTX.event("synth_prompt", text=_SYNTH, user=msgs[1]["content"])
     dx = None
     for attempt in range(2):
@@ -557,6 +622,7 @@ def diagnose(run, app=None, transcript_path=None, condition=None, meta=None,
     stats = final.get("worker_stats") or []
     n_calls = sum(s["tool_calls"] for s in stats)
     tr.event("scratchpad", findings=final.get("findings") or [])
+    tr.event("computed", computed=CTX.computed)
     tr.event("code_snippets", snippets=CTX.snippets)
     out = {
         "run_id": run_id, "diagnosis": dx,
@@ -566,6 +632,7 @@ def diagnose(run, app=None, transcript_path=None, condition=None, meta=None,
         "n_tool_calls": n_calls,
         "n_code_snippets": len(CTX.snippets),
         "n_findings": len(final.get("findings") or []),
+        "n_computed": len(CTX.computed),
         "bytes_touched": CTX.bytes,
         "tokens": {"in": CTX.tok_in, "out": CTX.tok_out},
         "model": config.model_id(), "wall_s": round(time.time() - t0, 1),
