@@ -493,7 +493,29 @@ _RETRYABLE = ("429", "rate limit", "rate_limit", "500", "502", "503", "504", "ti
               "overloaded", "invalid_prompt")
 
 
-def _api_call(call, tr, step, tries: int = 4):
+class ProviderError(RuntimeError):
+    """A provider returned 200 with an error body instead of a completion.
+
+    OpenRouter does this for rate limits and upstream failures: HTTP is fine, `choices` is null
+    and the real status sits in `error.code`. The SDK cannot raise on that, so nothing retried
+    and a whole 120-cell matrix died on 'NoneType is not subscriptable'. Raising here puts it
+    back on the path _api_call already handles - its retry list has matched "429" and
+    "rate limit" all along, it was simply never given anything to match.
+    """
+
+
+def checked(r):
+    """Return the response, or raise if the provider smuggled an error into a 200."""
+    if getattr(r, "choices", None):
+        return r
+    err = getattr(r, "error", None) or {}
+    if not isinstance(err, dict):
+        err = {"message": str(err)}
+    raise ProviderError("provider returned no choices: code=%s %s"
+                        % (err.get("code"), str(err.get("message"))[:200]))
+
+
+def _api_call(call, tr, step, tries: int = 6):
     for attempt in range(tries):
         try:
             return call()
@@ -502,7 +524,12 @@ def _api_call(call, tr, step, tries: int = 4):
             if attempt == tries - 1 or not any(t in msg for t in _RETRYABLE):
                 raise
             tr.event("api_retry", step=step, attempt=attempt + 1, error=repr(e)[:300])
-            time.sleep(2 * 2 ** attempt)
+            # A TOKEN rate limit is a budget refilling over about a minute, not a momentary
+            # blip, so the old 2/4/8 seconds put all three retries inside the same exhausted
+            # window and every one of them failed. Back off on a scale that can actually
+            # outlast the limit; everything else keeps the short curve.
+            rate = "429" in msg or "rate limit" in msg or "rate_limit" in msg
+            time.sleep((20 * 2 ** attempt) if rate else (2 * 2 ** attempt))
 
 
 def _run_tool(tools: RunTools, name: str, args: dict, guard=None):
@@ -808,12 +835,12 @@ def diagnose_oneshot(run, app: str | None = None, transcript_path: str | None = 
                 diagnosis = _unmask_diagnosis(dict(tu.input), guard, tr)
         else:
             schema = [{"type": "function", "function": t} for t in defs]
-            r = _api_call(lambda: client.chat.completions.create(
+            r = _api_call(lambda: checked(client.chat.completions.create(
                 model=config.model_id(),
                 messages=[{"role": "system", "content": SYSTEM}, {"role": "user", "content": user}],
                 tools=schema,
                 tool_choice={"type": "function", "function": {"name": "submit_diagnosis"}},
-                **config.openai_create_kwargs()), tr, 0)
+                **config.openai_create_kwargs())), tr, 0)
             tr.event("api_response", step=0, latency_ms=int((time.time() - tc) * 1000),
                      response=T.to_jsonable(r))
             u = r.usage
@@ -925,8 +952,8 @@ def _loop_openai(tools, user, max_steps, verbose, tr, guard, system=SYSTEM, rank
     nudges = 0
     for step in range(max_steps):
         tc = time.time()
-        r = _api_call(lambda: client.chat.completions.create(
-            model=config.model_id(), messages=messages, tools=schema, **ck), tr, step)
+        r = _api_call(lambda: checked(client.chat.completions.create(
+            model=config.model_id(), messages=messages, tools=schema, **ck)), tr, step)
         tr.event("api_response", step=step, latency_ms=int((time.time() - tc) * 1000),
                  response=T.to_jsonable(r))
         u = r.usage

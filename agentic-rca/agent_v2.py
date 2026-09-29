@@ -38,6 +38,7 @@ import leakguard
 import transcript as T
 from tools import RunTools
 from agent import (FAULT_TYPES, KERNEL_ONLY_TOOLS, SENT_CAP, SENT_CAP_BY_TOOL,
+                   checked,
                    _api_call, _fit_result, _run_tool, _tool_defs, _unmask_diagnosis,
                    _KO_HEAD, _FAULT_VOCAB, _KO_RULES)
 
@@ -276,8 +277,11 @@ def _call(messages, tools, node, step, force=None):
     if force:
         kw["tool_choice"] = {"type": "function", "function": {"name": force}}
     t0 = time.time()
-    r = _api_call(lambda: client.chat.completions.create(
-        model=config.model_id(), messages=messages, tools=schema, **kw), CTX.tr, step)
+    # checked() raises when the provider returns 200 with an error body - OpenRouter does that
+    # for rate limits - so _api_call's retry can see it. Without it the SDK hands back an object
+    # whose .choices is None and the next line dies with a TypeError that says nothing.
+    r = _api_call(lambda: checked(client.chat.completions.create(
+        model=config.model_id(), messages=messages, tools=schema, **kw)), CTX.tr, step)
     CTX.event("api_response", node=node, step=step,
               latency_ms=int((time.time() - t0) * 1000), response=T.to_jsonable(r))
     CTX.add_tokens(r)
