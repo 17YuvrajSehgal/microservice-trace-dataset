@@ -48,9 +48,12 @@ def line(label, rows):
     c = collections.Counter(r.get("where") for r in rows)
     ok = sum(c[k] for k in PASS)
     hit = sum(1 for r in rows if r.get("window_verdict") == "hit")
+    # how early it noticed, not only whether the range overlapped
+    on = sorted(r["onset_error_s"] for r in rows if r.get("onset_error_s") is not None)
+    ontxt = "  onset %+5.0fs" % on[len(on) // 2] if on else "  onset   n/a"
     bits = "  ".join("%s=%d" % (k, c[k]) for k in ORDER if c[k])
-    return ("  %-26s %5d   WHERE %2d/%-3d (%3.0f%%)   window %2d/%-3d   %s"
-            % (label, n, ok, n, 100.0 * ok / n, hit, n, bits))
+    return ("  %-26s %5d   WHERE %2d/%-3d (%3.0f%%)   window %2d/%-3d%s   %s"
+            % (label, n, ok, n, 100.0 * ok / n, hit, n, ontxt, bits))
 
 
 def main() -> int:

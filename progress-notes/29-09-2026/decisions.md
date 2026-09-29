@@ -95,3 +95,55 @@ roughly 900M tokens. Worth sizing deliberately rather than assuming.
 the fault is a sidecar injection, so there is no service to map a namespace to. The agent named
 the injector correctly. The scorer has no way to confirm that, which is the sidecar caveat
 already recorded on 28-09 showing up in the scoring rather than in the blueprint.
+
+## Earliness scoring, built for the next campaign rather than retrofitted to the last
+
+The rescorer for existing runs was dropped: everything is being re-run anyway, so salvaging old
+scores is wasted work. What matters is that the NEXT run produces the metric end to end.
+
+### The metric
+
+| | |
+|---|---|
+| `onset_error_s` | claimed start minus true start, signed. Negative = named a start before the fault began |
+| `detect_delay_s` | lateness only. Being early is not rewarded without limit - past a point it is an over-wide claim |
+| `earliness` | `1 - delay/duration`, normalised by the incident's own length so faults of different durations compare |
+| `earliness_gated` | **earliness x IoU. The headline** |
+
+**The gate is the part that matters.** Earliness alone is trivially gamed - claim the whole
+recording and the delay is zero by construction. Verified on constructed cases:
+
+| case | onset | earliness | gated |
+|---|---|---|---|
+| exact | +0s | 1.00 | **1.00** |
+| 30 s late | +30s | 0.75 | 0.56 |
+| 60 s late | +60s | 0.50 | 0.25 |
+| noticed after it ended | +128s | 0.00 | 0.00 |
+| **claimed the whole trace** | -222s | **1.00** | **0.20** |
+
+**An abstention scores None, not zero.** The agent's schema says a wrong window is worse than an
+admitted gap; scoring an abstention as maximum lateness would contradict that and make honesty
+cost more than guessing. They are excluded from the average and counted separately.
+
+### Why this was worth doing at all
+
+Measured on our own runs, IoU moved 0.543 -> 0.776 between agent versions while onset error
+moved 121 s -> 7 s at p90. **The metric we published was hiding most of the difference.**
+
+### Scored is not reported
+
+Adding it to `score.json` and stopping there would have been the same as not having it. The
+per-problem table now carries a `noticed` column - median onset error - and the report has a
+section explaining the four numbers, the gate, and the abstention policy. `q2_svcnet_report` and
+`q2_cmp_agents` print a median onset column too.
+
+### Tested without the cluster, on purpose
+
+`test_earliness_report.py` synthesises a results tree and generates a real report, checking that
+a problem which notices instantly and one which notices a minute late come out distinguishable
+(+0s against +62s), that the abstention does not drag the average, and that the explanatory
+section is present. It runs locally in a second.
+
+That test exists because the failure mode this week has repeatedly been a break BETWEEN two
+correct components - a slice, a column-name collision, a cap, a filter. Scoring and reporting
+are two components, and nothing was checking the join.

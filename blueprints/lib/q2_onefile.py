@@ -60,6 +60,22 @@ def med(vals):
     return v[len(v) // 2] if v else 0
 
 
+def onset_stats(rs):
+    """(median onset error, mean gated earliness, n scored) over runs that have the fields.
+
+    Runs scored before earliness existed carry None, and an abstention is None on purpose - the
+    schema tells the agent a wrong window is worse than an admitted gap, so scoring an
+    abstention as maximum lateness would make honesty cost more than guessing. Both are
+    excluded from the average rather than counted as zero.
+    """
+    on = [r.get("onset_error_s") for r in rs if r.get("onset_error_s") is not None]
+    ga = [r.get("earliness_gated") for r in rs if r.get("earliness_gated") is not None]
+    if not on:
+        return None, None, 0
+    on.sort()
+    return on[len(on) // 2], (sum(ga) / len(ga) if ga else None), len(on)
+
+
 def describe(rs):
     v = [r["_v2"].get("what_score_v2") for r in rs
          if isinstance(r["_v2"].get("what_score_v2"), (int, float))]
@@ -404,8 +420,8 @@ def main() -> int:
     L.append("")
     L.append("## All six problems at a glance")
     L.append("")
-    L.append("| problem | target | WHERE right | window hits | described |")
-    L.append("|---|---|---|---|---|")
+    L.append("| problem | target | WHERE right | window hits | noticed | described |")
+    L.append("|---|---|---|---|---|---|")
     for prob in problems:
         rs = [r for r in full if r.get("problem") == prob]
         if not rs:
@@ -413,12 +429,46 @@ def main() -> int:
         n = len(rs)
         where = sum(1 for r in rs if RS.where_ok(r.get("where", ""), prob))
         win = sum(1 for r in rs if r.get("window_verdict") == "hit")
+        med, gated, n_on = onset_stats(rs)
+        # "noticed" is the median onset error: how long after the fault began the agent says it
+        # started. A hit/miss verdict cannot show this - two answers with the same IoU can
+        # differ by a minute - which is why the column is here.
+        ontxt = "not scored" if med is None else "%+.0fs" % med
         dtxt, _ = describe(rs)
-        L.append("| %s | `%s` | **%d/%d** | %d/%d | %s |"
-                 % (prob, rs[0].get("true_service"), where, n, win, n, dtxt))
+        L.append("| %s | `%s` | **%d/%d** | %d/%d | %s | %s |"
+                 % (prob, rs[0].get("true_service"), where, n, win, n, ontxt, dtxt))
     L.append("")
     L.append("The split is by **scope**, not by difficulty. Host-wide faults are found. "
              "Single-service faults are not.")
+    L.append("")
+    L.append("### How early it noticed")
+    L.append("")
+    L.append("`window hits` only asks whether the claimed range overlapped the real one. That "
+             "cannot separate two answers that overlap equally well but differ by a minute in "
+             "when they say the trouble started - and for an operator that difference is the "
+             "whole point. So every run is also scored on WHEN it noticed.")
+    L.append("")
+    L.append("| | |")
+    L.append("|---|---|")
+    L.append("| `onset_error_s` | claimed start minus true start. Negative means it named a "
+             "start before the fault began. This is the `noticed` column above |")
+    L.append("| `detect_delay_s` | lateness only. Being early is not rewarded without limit - "
+             "past a point it is just an over-wide claim |")
+    L.append("| `earliness` | `1 - delay / duration`. 1.0 caught it as it began, 0.5 halfway "
+             "through, 0.0 not until it was over. Normalised by the incident's own length so "
+             "faults of different durations compare |")
+    L.append("| `earliness_gated` | **earliness x IoU.** The headline |")
+    L.append("")
+    L.append("The gate is the part that matters. Earliness on its own is trivially gamed: "
+             "claim the whole recording and the delay is zero by construction. IoU punishes an "
+             "over-wide claim through its precision term, so the product is high only for a "
+             "window that is both early AND tight. A whole-trace claim scores 1.00 on "
+             "earliness and 0.20 gated.")
+    L.append("")
+    L.append("**An abstention scores nothing, not zero.** The agent is told a wrong window is "
+             "worse than an admitted gap. Scoring an abstention as maximum lateness would "
+             "contradict that and make honesty cost more than guessing, so abstentions are "
+             "excluded from the average and counted separately.")
     L.append("")
     L.append("**Why, and it differs by application - measured, not assumed.** A kernel trace "
              "identifies a container by `pid_ns` and a process by its 15-character `comm`. "

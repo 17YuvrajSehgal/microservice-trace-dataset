@@ -60,6 +60,10 @@ def summarise(rows, problem):
         "hit": v["hit"], "partial": v["partial"], "abstained": v["abstained"], "miss": v["miss"],
         "fault": sum(1 for r in rows if r.get("fault_ok")),
         "iou": sum(r.get("window_iou") or 0 for r in rows) / n,
+        # median onset error, over the runs that carry it. IoU cannot express how EARLY a
+        # window was, and that is the comparison this table exists to make.
+        "onset": (lambda v: v[len(v) // 2] if v else None)(
+            sorted(r["onset_error_s"] for r in rows if r.get("onset_error_s") is not None)),
         "calls": sum(r.get("calls") or r.get("n_tool_calls") or 0 for r in rows) / n,
         "secs": sum(r.get("seconds") or r.get("wall_s") or 0 for r in rows) / n,
         "tok": sum(r.get("tokens") or 0 for r in rows) / n,
@@ -93,8 +97,9 @@ def main() -> int:
         for problem in PROBLEMS:
             print()
             print("  %s" % problem)
-            print("  %-22s %5s %-16s %-16s %-16s %8s %7s" %
-                  ("arm", "n", "WHERE right", "window hit", "abstained", "mean IoU", "calls"))
+            print("  %-22s %5s %-16s %-16s %-16s %8s %9s %7s" %
+                  ("arm", "n", "WHERE right", "window hit", "abstained", "mean IoU",
+                   "onset med", "calls"))
             print("  " + "-" * 96)
             for name, roots in ARMS:
                 rows = load(roots[pre], pre, problem)
@@ -102,9 +107,11 @@ def main() -> int:
                 if not s:
                     print("  %-22s %5s  (no cells yet)" % (name, "-"))
                     continue
-                print("  %-22s %5d %-16s %-16s %-16s %8.3f %7.1f"
+                print("  %-22s %5d %-16s %-16s %-16s %8.3f %9s %7.1f"
                       % (name, s["n"], pct(s["where"], s["n"]), pct(s["hit"], s["n"]),
-                         pct(s["abstained"], s["n"]), s["iou"], s["calls"]))
+                         pct(s["abstained"], s["n"]), s["iou"],
+                         "n/a" if s["onset"] is None else "%+.0fs" % s["onset"],
+                         s["calls"]))
     print()
     print("=" * 100)
     print("cost per cell")
