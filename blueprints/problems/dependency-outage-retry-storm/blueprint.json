@@ -1,44 +1,33 @@
 {
  "id": "dependency-outage-retry-storm",
- "version": 1,
- "title": "Dependency outage: one caller spins while its siblings stay flat",
+ "version": 2,
+ "title": "Dependency outage: one container goes silent while its peers carry on",
  "problem": {
-  "summary": "A dependency is stopped, and the ONE service that calls it starts spinning on retries. No new container appears - this fault removes a container rather than adding one - so the newcomer route cannot find it. The signature is a syscall storm confined to a single existing container.",
+  "summary": "A dependency is stopped, so the container serving it stops producing kernel events almost entirely. No new container appears - this fault REMOVES a workload rather than adding one - so any rule that looks for a newcomer cannot find it. The portable signature is silence: exactly one container that was busy falls to about 1% of its own baseline rate while every other container keeps running.",
   "symptoms": [
    "requests through one path fail or hang rather than slowing",
-   "one service's resource use rises sharply while its peers do not",
-   "a dependency produces little or no traffic"
+   "one container stops producing kernel events while its peers do not",
+   "no new container appeared during the window"
   ],
   "discriminators": [
    {
-    "signal": "getrusage rate in a single container, against its identical siblings",
-    "this_problem": "one java container goes from 5.3/s to 2,474-2,701/s while three other java containers stay at 6.7/s (n=2 runs)",
-    "not_this_problem": "a host-wide fault moves every container together. If the siblings move too, this is not it",
+    "signal": "each container's total kernel event rate, incident window against its own baseline, ranked lowest first",
+    "this_problem": "exactly ONE container falls to 0.09-1.19% of its baseline rate while the next quietest container is still at 23-89%. That container is the stopped dependency and it is the answer to WHERE",
+    "not_this_problem": "nothing falls that far, or several containers fall together - several falling together is host-wide, not one dependency",
     "confused_with": [
      "host-cpu-saturation",
      "cpu-contention-co-tenant"
     ],
-    "evidence": "MEASURED on 41 labelled runs across 8 families with blueprints/lib/fingerprint_table.py (22-09-2026). MEASURED with blueprints/lib/who_makes_it.py on dependency_outage r1 and r2: getrusage 5.3/s -> 2474.1/s and 5.3 -> 2700.9 in pid_ns 4026533460, with the other three java namespaces at 6.7/s in both runs. 100% of the change is application processes, 0% the harness."
+    "evidence": "MEASURED on 6 runs across two applications, 28-09-2026. The silent container ran at 1360, 1382 and 1521 events/s before against 1, 2 and 5 during on one application; 377, 462 and 422 against 4, 3 and 4 on the other. Exactly one such container in all 6 runs, ranked first by this measure in all 6."
    },
    {
-    "signal": "no container is new to the window",
-    "this_problem": "none. This fault stops an existing container; across every run measured, the newcomer search returns nothing",
-    "not_this_problem": "every other fault family we measured injects a sidecar container, so a newcomer is present",
+    "signal": "getrusage rate in the container that CALLS the stopped dependency",
+    "this_problem": "on one of the two applications the caller storms: 6.7/s before against 2474-2701/s during, a 371-404x rise, while sibling containers running the same image stay flat",
+    "not_this_problem": "on the OTHER application the same fault produced NO getrusage rise at all - 1.0x, measured on 2 runs. Absence of a storm is therefore not evidence against this problem, and this signal must never be required. Use it to corroborate and to name the victim, never to decide",
     "confused_with": [
-     "lock-contention-futex-storm",
-     "connection-pool-exhaustion",
-     "cpu-contention-co-tenant"
+     "host-cpu-saturation"
     ],
-    "evidence": "MEASURED on 41 labelled runs across 8 families with blueprints/lib/fingerprint_table.py (22-09-2026). fault_fingerprint.py reports 'no newcomer container found' for every dependency_outage run, while finding one in all five runs of each of six other families."
-   },
-   {
-    "signal": "new outbound socket binds in the caller",
-    "this_problem": "bind 2.7/s -> 22.9/s in the caller container (n=2)",
-    "not_this_problem": "bind stays within 1.1-1.6x in every other family",
-    "confused_with": [
-     "network-path-degradation"
-    ],
-    "evidence": "MEASURED on 41 labelled runs across 8 families with blueprints/lib/fingerprint_table.py (22-09-2026). bind x7.3 for dependency_outage against x1.1-1.6 for all seven other families in the specificity sweep."
+    "evidence": "MEASURED 28-09-2026 on both applications. Portable on only one of them, which is why the silence test above is the deciding one."
    }
   ],
   "unverified_do_not_claim": [
@@ -112,10 +101,22 @@
    ]
   },
   {
+   "step": "rank every container by its incident event rate divided by its own baseline rate, lowest first, and name the one that went silent",
+   "produces": "<out>/silence_ranking.json",
+   "reads": [
+    "<out>/ctf"
+   ],
+   "expect": "containers ranked by how far their own rate fell, the lowest named by pid_ns, and the next-lowest reported so the size of the gap is visible",
+   "capability": "kernel.container.silence_ranking"
+  },
+  {
    "step": "Apply the rules and emit the verdict",
    "capability": "verdict.apply_rules",
-   "expect": "a verdict naming the container and the mechanism, or an explicit abstain",
-   "produces": "<out>/verdict.json"
+   "expect": "name the SILENT container by its pid_ns, its before and after rates, and the next-quietest container's rate as the contrast",
+   "produces": "<out>/verdict.json",
+   "reads": [
+    "<out>/silence_ranking.json"
+   ]
   },
   {
    "step": "draw the decision card",
@@ -143,9 +144,9 @@
  ],
  "decision": {
   "verdict_when": [
-   "a container is new to the window",
-   "its share profile matches the measured range below",
-   "no sibling container shows the same profile"
+   "exactly one container that was busy before falls to {SILENT_MAX_SHARE} or less of its own baseline event rate",
+   "the next quietest container is still at {SILENT_PEER_MIN_SHARE} or more of its own baseline, so the drop is an outlier rather than a general slowdown",
+   "no new container appeared - this fault removes a workload rather than adding one"
   ],
   "rule_out": [
    {
@@ -154,12 +155,19 @@
    },
    {
     "instead": "host-cpu-saturation",
-    "when": "every container moved together rather than one moving alone"
+    "when": "many containers fell together rather than one falling alone. Measured, the next quietest container here still runs at 23-89% of its baseline"
+   },
+   {
+    "instead": "service-cpu-throttle",
+    "when": "the suspect is still running but held at a flat ceiling. A stopped dependency goes to near zero, not to a steady reduced rate"
    }
   ],
-  "root_cause_is": "the stopped dependency. The container that spins is the VICTIM, and naming it as the culprit is the mistake this blueprint exists to prevent",
+  "root_cause_is": "the container that went silent. It is the stopped dependency and it is the answer to WHERE. A container that storms on getrusage is the VICTIM calling into it, and naming that one is the mistake this blueprint exists to prevent",
   "fault_type": "dependency_outage",
-  "uses_thresholds": []
+  "uses_thresholds": [
+   "SILENT_MAX_SHARE",
+   "SILENT_PEER_MIN_SHARE"
+  ]
  },
  "evidence_from_literature": [],
  "related_blueprints": [
@@ -170,7 +178,7 @@
   "authored_by": "measured from StrataTrace v2 kernel traces",
   "verified_by": "PENDING human review",
   "authored_utc": "2026-09-22T20:21:49Z",
-  "notes": "Built 22-09-2026 from blueprints/lib/fingerprint_table.py over 41 labelled runs of 8 families. Candidate signals were first put through discover_signature.py (a specificity sweep across families, which rejected unlinkat, ftruncate, block_split, lseek and dup as window artefacts) and who_makes_it.py (which rejected the nagle_delayed_ack host-wide signal as 94% our own load generator). KERNEL TRACES ONLY - no metrics, logs or spans were consulted."
+  "notes": "Rewritten 28-09-2026 after testing the generated version against the traces. Its verdict_when said 'a container is new to the window' while its own applicability said 'no new container appeared' - a generator template had overwritten a correct summary. The trace agrees with the summary: no newcomer in 3 of 3 runs on one application. The deciding test is now silence, measured on both applications, and the getrusage storm is kept as corroboration with its single-application scope stated."
  },
  "taxonomy": {
   "domain": "microservices",
@@ -182,14 +190,15 @@
  "applicability": {
   "apply_when": [
    "requests through one path fail or hang rather than slowing",
-   "one service's activity rises sharply while its peers do not",
+   "one container stopped producing kernel events while its peers did not",
    "no new container appeared during the window"
   ],
   "do_not_apply_when": [
    "a new container appeared - use the newcomer blueprints instead",
-   "every container moved together, which is host-wide"
+   "every container moved together, which is host-wide",
+   "the suspect is running at a reduced but steady rate rather than near zero"
   ],
-  "cheap_precheck": "one container's syscall rate rose roughly a hundredfold while containers running the same image did not move"
+  "cheap_precheck": "rank containers by incident event rate divided by their own baseline rate. If the lowest is at or below {SILENT_MAX_SHARE} and the next is at or above {SILENT_PEER_MIN_SHARE}, this is it."
  },
  "capabilities_required": [
   {
@@ -206,12 +215,16 @@
   },
   {
    "id": "report.decision_card"
+  },
+  {
+   "id": "kernel.container.silence_ranking",
+   "why": "WHERE: the stopped dependency IS the silent container, so this discriminator names the target directly. Measured to rank it first in 6 of 6 runs across both applications."
   }
  ],
  "stopping_conditions": {
-  "conclude": "the share profile matches and no sibling container matches it too",
-  "stop_and_switch": "a discriminating share falls outside its measured range",
-  "stop_insufficient": "no container is new to the window and none stands out",
+  "conclude": "exactly one container fell to {SILENT_MAX_SHARE} or less of its own baseline while the next quietest stayed at {SILENT_PEER_MIN_SHARE} or more",
+  "stop_and_switch": "several containers fell together, which is host-wide; or the lowest is only moderately reduced, which is throttling rather than an outage",
+  "stop_insufficient": "no container fell far below its own baseline. Say so rather than naming the busiest container, which is the victim at best",
   "max_evidence_rounds": 3
  },
  "adaptation_rules": [],
@@ -259,8 +272,8 @@
  },
  "evidence_sufficiency": {
   "confidence_floor": 0.6,
-  "if_below_floor": "report the shares and say which blueprint they sit between",
-  "report_when_stuck": "the container's shares and every sibling's, side by side"
+  "if_below_floor": "report the per-container before and after rates and say that no container went silent",
+  "report_when_stuck": "the ranked list of containers by incident rate over baseline rate, with the pid_ns of the lowest"
  },
  "scenarios": {
   "note": "",

@@ -302,6 +302,15 @@ KERNEL_RECIPES = {
         "If NO busy container is pinned flat, say so. A cap set far above what a service "
         "actually uses never binds, and then there is nothing here to find - which is a real "
         "finding, not a failure to look.",
+    # Added 28-09 after testing the generated blueprint against the traces. It told the
+    # agent to look for a NEW container; this fault removes one. The recipe leads with
+    # that, because both intuitive moves here are wrong.
+    "kernel.container.silence_ranking":
+        "this fault REMOVES a workload rather than adding one, so looking for a newcomer finds nothing - measured, there was no new container in 3 of 3 runs on one application. "
+        "And do not name the busiest container: the one that storms is the VICTIM calling into the dependency that stopped. "
+        "What to do instead, with run_python: sum `count` per pid_ns over a quiet baseline range and over the range you suspect, divide each container's incident rate by its OWN baseline rate, and rank lowest first. Report the lowest by its pid_ns, and report the SECOND lowest too - the gap between them is what separates one stopped workload from a host-wide slowdown. "
+        "MEASURED on 6 runs across two applications: exactly one container fell to 0.09-1.19% of its own baseline while the next quietest was still at 23-89%. It ranked first in all 6 and was the injected target in both applications. That is a separation of 20x to 75x, so this is not a marginal call. "
+        "If the lowest is only moderately reduced rather than near zero, this is not an outage - a throttled container keeps running at a steady reduced rate. If several containers fell together, that is host-wide. Say which of the three you saw.",
     "network.per_container_rate_ranking":
         "every network event carries pid_ns, and one pid_ns is one container, so the impaired "
         "path IS attributable. Use run_python: sum `count` for net_dev_xmit, "
@@ -523,6 +532,19 @@ def to_skill(bp: dict, kernel_only: bool = False) -> str:
 
     body = "\n".join(sig + [""] + order + [""] + steps + [""] + outs + [""] + res
                      + ([""] + warn if warn else []))
+    # Substitute thresholds ONCE over the finished body, not per-section.
+    #
+    # fill_thresholds used to be called in exactly two places - verdict_when and rule_out - so
+    # a {NAME} written anywhere else reached the agent as a literal brace. Found 28-09 in three
+    # generated skills, including db-latency-dependency-wait, which is the `slow_db` problem in
+    # the published study: it was handing the agent "{BLOCK_PARKED_X}" and "{STARVED_RQ_X}"
+    # where a number belonged, and slow_db scored 24/60 and 3/60.
+    #
+    # Doing it here rather than at each site is deliberate: a per-section call has to be
+    # remembered every time a section is added, and it was not. This one cannot be missed, and
+    # a name with no entry in thresholds.json is still left visible rather than silently
+    # blanked, so the validator's error is the thing that catches a typo.
+    body = fill_thresholds(body, load_thresholds())
 
     fm = [
         "---",

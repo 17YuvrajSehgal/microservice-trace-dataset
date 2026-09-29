@@ -1,306 +1,328 @@
 {
-  "_comment": [
-    "SINGLE SOURCE OF TRUTH for every number a blueprint decides on.",
-    "",
-    "Why this file exists. The numbers used to live twice: as prose inside each",
-    "blueprint.json, and as Python constants inside lib/blueprint_decide.py. Nothing checked",
-    "the two agreed, and they drifted. host-disk-saturation still told a reader 'at least 2000",
-    "disk requests per second' months after the engine stopped using that number - it had been",
-    "replaced by a ratio because 2000 was read off one machine and scored 1/10 on the other.",
-    "A reader following the blueprint and the engine running it were doing different things.",
-    "",
-    "Now there is one copy. blueprint_decide.py imports these values; blueprint.json quotes",
-    "them by NAME in {braces} and the skill generator substitutes the live value. Changing a",
-    "number here changes the document and the code together. Drift is not possible.",
-    "",
-    "The `transfers` field is the other reason. A threshold with UNITS measures our hardware,",
-    "not the fault: 0.5 cores is a lot on a 4-core box and noise on a 64-core one. A threshold",
-    "that is a ratio to the run's own baseline, a share of capacity, or a presence test,",
-    "travels to any machine. Every entry says which kind it is, so the ones that cannot travel",
-    "are visible rather than buried."
-  ],
-  "thresholds": {
-    "SATURATED": {
-      "value": 0.95,
-      "unit": "share of all cores",
-      "op": ">=",
-      "transfers": "yes",
-      "why_transfers": "bounded 0..1. A full machine is full on any hardware.",
-      "used_by": [
-        "host-cpu-saturation",
-        "cpu-contention-co-tenant"
-      ],
-      "measured": "host saturation measured 0.991-0.998; the next family down tops out at 0.681"
-    },
-    "COLLAPSE_RATIO": {
-      "value": 0.8,
-      "unit": "x its own baseline",
-      "op": "<=",
-      "transfers": "yes",
-      "why_transfers": "a ratio to the same run's baseline, so the machine cancels out",
-      "used_by": [
-        "service-cpu-throttle"
-      ],
-      "measured": "cap runs fell to 0.25-0.73 of baseline; healthy runs sat at 1.04-1.15"
-    },
-    "THIEF_CORES": {
-      "value": 0.5,
-      "unit": "cores",
-      "op": ">=",
-      "transfers": "no, and kept anyway",
-      "why_transfers": "CORES. Tested as a share of host cores over 272 runs on a 12-core and a 16-core host and it was measurably WORSE: the band in cores admits zero negatives, the same band in share units admits eight. Absolute wins because the fault itself is absolute - a co-tenant is a container configured with N workers, not with a fraction of the machine. This will still need recalibrating on a host whose core count is far from 12-16.",
-      "used_by": [
-        "cpu-contention-co-tenant",
-        "service-cpu-throttle"
-      ],
-      "measured": "co-tenant newcomers took 0.988-2.002; the largest healthy one was 0.296"
-    },
-    "BIG_THIEF": {
-      "value": 4.0,
-      "unit": "cores",
-      "op": "<",
-      "transfers": "no",
-      "why_transfers": "CORES, same problem at the other end of the band",
-      "used_by": [],
-      "measured": "RETIRED in favour of BIG_THIEF_SHARE. Kept for the record: host-saturation newcomers took 6.54-6.62 cores; co-tenant never above 2.002."
-    },
-    "LOSER_CORES": {
-      "value": -0.3,
-      "unit": "cores",
-      "op": "<=",
-      "transfers": "no",
-      "why_transfers": "CORES - but the more useful finding is that this gate barely discriminates in EITHER form. Over 272 runs, 219 negatives fall inside its band in cores and 220 in share units. It is carried by the other gates in the throttle rule, not by itself.",
-      "used_by": [
-        "service-cpu-throttle"
-      ],
-      "measured": "cap runs lost 0.357-0.876; healthy and co-tenant lost 0.024-0.160"
-    },
-    "BLOCK_X": {
-      "value": 5.0,
-      "unit": "x its own baseline",
-      "op": ">=",
-      "transfers": "yes",
-      "why_transfers": "a ratio to the same run's baseline",
-      "used_by": [
-        "db-latency-dependency-wait"
-      ],
-      "measured": "datastore fault measured 36.8x; its control 1.12x"
-    },
-    "RETRANS_FIRE_PCT": {
-      "value": 12.0,
-      "unit": "% of segments",
-      "op": ">=",
-      "transfers": "yes",
-      "why_transfers": "a percentage of the traffic itself, not a rate",
-      "used_by": [
-        "network-path-degradation"
-      ],
-      "measured": "network 18.5-60.7%, slow datastore never above 7.14%, every other family at or near 0. A cut at 12 sits 1.7x above the datastore ceiling and 1.5x below the network floor."
-    },
-    "RETRANS_VETO_PCT": {
-      "value": 12.0,
-      "unit": "% of segments",
-      "op": "<",
-      "transfers": "yes",
-      "why_transfers": "a percentage of the traffic itself",
-      "used_by": [
-        "db-latency-dependency-wait",
-        "dns-delay"
-      ],
-      "measured": "the same number that makes the network blueprint fire, used here to rule the datastore OUT. One fact, two uses. Also used by dns-delay, where it is the gate that does the real work: slow name resolution and a degraded path are the only two families that raise EMFILE, and they are opposite on packet loss."
-    },
-    "RETRANS_BASELINE_MAX": {
-      "value": 2.0,
-      "unit": "% of segments",
-      "op": "<=",
-      "transfers": "yes",
-      "why_transfers": "a percentage of the traffic itself",
-      "used_by": [
-        "network-path-degradation"
-      ],
-      "measured": "baseline retransmission was 0.00% in all 40 runs on both applications, so 2.0 is a generous ceiling"
-    },
-    "QUEUE_DROP_MIN": {
-      "value": 0.0,
-      "unit": "% of buffers dropped",
-      "op": ">",
-      "transfers": "yes",
-      "why_transfers": "a presence test, not a level - the strongest kind for travelling",
-      "used_by": [
-        "network-path-degradation"
-      ],
-      "measured": "across 84 runs on two applications, queue drops were non-zero ONLY where netem was applied. No other family produced one above 0.001%."
-    },
-    "ENDPOINT_SLOWDOWN_MIN": {
-      "value": 18.0,
-      "unit": "x its own baseline",
-      "op": ">=",
-      "transfers": "yes",
-      "why_transfers": "a ratio to the same run's baseline",
-      "used_by": [
-        "db-latency-dependency-wait"
-      ],
-      "measured": "slow datastore 38.60-47.57x against an 8.58x ceiling for every non-network family. HONEST COST: on the second application the datastore fault reaches only 9.75x on two of four runs, so this gate loses them."
-    },
-    "STARVED_RQ_X": {
-      "value": 5.0,
-      "unit": "x its own baseline",
-      "op": ">=",
-      "transfers": "yes",
-      "why_transfers": "a ratio to the same run's baseline",
-      "used_by": [
-        "service-cpu-throttle",
-        "db-latency-dependency-wait"
-      ],
-      "measured": "slow datastore runqueue 1.04-2.59 on either app; cgroup cap 13.54-29.17. A 2.0 cut sat inside the datastore range and misdiagnosed two runs; 5.0 leaves 1.9x and 2.7x margin."
-    },
-    "DISK_IOPS_PER_IRQ": {
-      "value": 450.0,
-      "unit": "requests/s per x of interrupt rise",
-      "op": ">",
-      "transfers": "partly",
-      "why_transfers": "a mix of two measures, which is why it beat the raw count, but requests/s still scales with the device. A faster disk moves this.",
-      "used_by": [
-        "host-disk-saturation",
-        "service-memory-cap",
-        "cpu-contention-co-tenant"
-      ],
-      "measured": "anomaly_disk 545.8-719.1 against svc_mem_cap 62.6-352.4, on both applications. Highest negative anywhere 352.4, lowest positive 545.8; 450 is the midpoint.",
-      "replaced": "DISK_IOPS_GAINED = 2000 req/s, which was read off Sock Shop v1 and scored 1/10 on v2. Sock Shop's disk fault gains 1893-2015 req/s so exactly one run cleared it; Train Ticket's gains only 698-897 because TT's own tracing already writes 176 MB/s of a 206 MB/s disk. No single arrival count holds both machines - which is the whole argument for dimensionless thresholds."
-    },
-    "IRQ_X": {
-      "value": 2.0,
-      "unit": "x its own baseline",
-      "op": ">=",
-      "transfers": "yes",
-      "why_transfers": "a ratio to the same run's baseline",
-      "used_by": [
-        "service-memory-cap",
-        "cpu-contention-co-tenant"
-      ],
-      "measured": "highest non-disk negative 1.19 against memcap floors of 3.21 and 2.73. The old pair IRQ_X=2.5 with MEMCAP_IOPS_MAX=500 scored 3/16, because most memcap runs were vetoed by their own disk activity."
-    },
-    "FORK_NEWCOMER_PER_S": {
-      "value": 26.34,
-      "unit": "forks/s",
-      "op": ">",
-      "transfers": "no",
-      "why_transfers": "a RATE. Depends on how busy the machine already is - this host already forks 134/s from Java thread pools and the trace collector.",
-      "used_by": [],
-      "measured": "RETIRED in favour of FORK_NEWCOMER_SHARE. Kept for the record: the fault gains 96.36 forks/s on Sock Shop and 96.22 on Train Ticket; the highest gain in any other family is 22.42 and 26.34."
-    },
-    "TX_NEWCOMER_BYTES_PER_S": {
-      "value": 3640000.0,
-      "unit": "bytes/s",
-      "op": ">",
-      "transfers": "no, and kept anyway",
-      "why_transfers": "A RATE tied to the network card. The dimensionless form - the newcomer's share of all outbound bytes in the window - was measured at 10/10, same as absolute, but its margin collapses from 22.3x to 1.15x because ordinary traffic can dominate egress too. We call 1.01x dangerous elsewhere, so 1.15x is not worth trading a 22x margin for. Kept absolute, and it MUST be recalibrated on a host with a different link speed.",
-      "used_by": [
-        "data-exfiltration"
-      ],
-      "measured": "the fault gains 8.11e7 bytes/s on both applications; the highest gain in any other family is 1.98e6 and 3.64e6"
-    },
-    "EMFILE_PER_S_MIN": {
-      "value": 0.13,
-      "unit": "errors/s",
-      "op": ">=",
-      "transfers": "no",
-      "why_transfers": "a RATE tied to the descriptor limit and the request load",
-      "used_by": [],
-      "measured": "RETIRED in favour of the share form. holds all 7 campaign-confirmed positives. An UNCONFIRMED run sits at 0.033/s, below this floor, so the floor is a property of how hard we injected."
-    },
-    "EMFILE_PER_S_MAX": {
-      "value": 9.28,
-      "unit": "errors/s",
-      "op": "<=",
-      "transfers": "no",
-      "why_transfers": "a RATE, same problem",
-      "used_by": [],
-      "measured": "RETIRED in favour of the share form. dns_delay reaches 234-310 EMFILE/s and anomaly_net 63.8, against 0.27-8.65 from the descriptor cap itself - a factor of 170. The ceiling exists only to exclude an upstream stall."
-    },
-    "RQ_X": {
-      "value": 2.0,
-      "unit": "x its own baseline",
-      "op": ">=",
-      "transfers": "yes",
-      "why_transfers": "a ratio, but it decides nothing",
-      "used_by": [],
-      "measured": "DESCRIPTIVE ONLY. 'runqueue is raised at all'. Used to describe a run in the verdict text, never to decide one."
-    },
-    "CONTENDED": {
-      "value": 0.55,
-      "unit": "share of all cores",
-      "op": ">=",
-      "transfers": "no",
-      "why_transfers": "RETIRED. A deployment LEVEL, not a physical bound. It was read off Sock Shop, where co-tenant runs floor at 0.619 and healthy ones ceiling at 0.531. On Train Ticket the ordering INVERTS - noisy_neighbor runs at 0.213-0.282 while healthy runs sit at 0.657-0.710 - so the clause called every healthy run contended and every contended run healthy. It scored 8/16, all eight misses on one application.",
-      "used_by": [],
-      "measured": "RETIRED, kept as the worked example of a threshold that does not travel. See cpu-contention-co-tenant's rule for the full note."
-    },
-    "BIG_THIEF_SHARE": {
-      "value": 0.297,
-      "unit": "share of host cores",
-      "op": "<",
-      "transfers": "yes",
-      "why_transfers": "a share of whatever the host has, so core count cancels out",
-      "used_by": [
-        "cpu-contention-co-tenant"
-      ],
-      "measured": "REPLACES BIG_THIEF = 4.0 cores. This is a CEILING, so it is placed with headroom on both sides, not at a separation cut. Measured over 272 runs on a 12-core and a 16-core host: co-tenant thief share reaches 0.1670 at most, host saturation starts at 0.5283. The geometric midpoint 0.297 sits 1.78x above one and 1.78x below the other. FIRST ATTEMPT WAS 0.167, taken from the value that separates host saturation from everything below it - but that is the FLOOR of saturation and it lands exactly on the TOP of the co-tenant range, so as a strict upper bound it excluded the largest co-tenant run and cost one of sixteen. A separation cut and a ceiling are not the same number."
-    },
-    "FORK_NEWCOMER_SHARE": {
-      "value": 0.176,
-      "unit": "x the host's own baseline fork rate",
-      "op": ">",
-      "transfers": "yes",
-      "why_transfers": "a ratio to the same host's baseline, so how busy the machine already is cancels out",
-      "used_by": [
-        "fork-storm"
-      ],
-      "measured": "REPLACES FORK_NEWCOMER_PER_S = 26.34 forks/s. 10/10 either way over 272 runs; margin 3.65x absolute against 2.69x here. The absolute rate was tied to this host already forking ~134/s from Java thread pools and the trace collector."
-    },
-    "EMFILE_SHARE_MIN": {
-      "value": 5.638e-06,
-      "unit": "share of all failing syscalls",
-      "op": ">=",
-      "transfers": "yes",
-      "why_transfers": "a share of the failures themselves, so load and descriptor limits cancel out",
-      "used_by": [
-        "fd-exhaustion"
-      ],
-      "measured": "REPLACES EMFILE_PER_S_MIN. 10/10 over 272 runs. The obvious normaliser - a ratio to the baseline - is UNDEFINED here, because EMFILE is exactly zero in almost every baseline window. Share of all failing syscalls is defined everywhere and needs no baseline at all."
-    },
-    "EMFILE_SHARE_MAX": {
-      "value": 0.001762,
-      "unit": "share of all failing syscalls",
-      "op": "<=",
-      "transfers": "yes",
-      "why_transfers": "a share of the failures themselves",
-      "used_by": [
-        "fd-exhaustion"
-      ],
-      "measured": "REPLACES EMFILE_PER_S_MAX. The ceiling still exists only to exclude an upstream stall, which exhausts descriptors far harder than the descriptor cap itself."
-    },
-    "BLOCK_PARKED_X": {
-      "value": 306.0,
-      "unit": "x its own baseline",
-      "op": "<",
-      "transfers": "yes",
-      "why_transfers": "a ratio to the same run's baseline",
-      "used_by": [
-        "db-latency-dependency-wait"
-      ],
-      "measured": "THE ANTI-PATTERN CEILING. Measured over 272 runs: a genuinely slow dependency inflates its caller's socket wait to at most 144x, while every one of the 25 code-defect runs reaches 651x or more. 306 is the geometric midpoint, 2.13x clear on both sides. It keeps 22 of 22 slow-datastore runs and excludes 25 of 25 anti-pattern runs. WHY THE MECHANISM WORKS: a slow dependency still ANSWERS, so the caller keeps doing work, just more slowly. A blocked event loop or a serialised await chain means the service has stopped doing work at all, so its poll call sits parked for most of the window. Waiting a thousand times longer than normal is not a slower callee - it is a caller that stopped. It also excludes 5/5 dns_delay, 5/10 fd_exhaustion and 1/10 conn_pool_exhaustion runs, all of which were false fires too."
-    },
-    "DNS_EMFILE_SHARE_MIN": {
-      "value": 0.0175,
-      "unit": "share of all failing syscalls",
-      "op": ">=",
-      "transfers": "yes",
-      "why_transfers": "a share of the failures themselves, so request load and descriptor limits cancel out",
-      "used_by": [
-        "dns-delay"
-      ],
-      "measured": "MEASURED over 272 runs. Slow name resolution makes the front-end pile up sockets waiting for answers, so descriptor exhaustion becomes a large fraction of everything that fails: 0.0197 to 0.0476 of all failing syscalls. A descriptor cap itself reaches only 0.00000564 to 0.00176 - more than 10x lower - because it exhausts descriptors slowly rather than in bursts. The only other family with any EMFILE at all is a network fault, at up to 0.0156, and that is excluded by the retransmission gate rather than by this one. 0.0175 is the geometric midpoint between the two. Against the fault this bar actually has to exclude - a descriptor cap - the margin is 11x."
-    }
+ "_comment": [
+  "SINGLE SOURCE OF TRUTH for every number a blueprint decides on.",
+  "",
+  "Why this file exists. The numbers used to live twice: as prose inside each",
+  "blueprint.json, and as Python constants inside lib/blueprint_decide.py. Nothing checked",
+  "the two agreed, and they drifted. host-disk-saturation still told a reader 'at least 2000",
+  "disk requests per second' months after the engine stopped using that number - it had been",
+  "replaced by a ratio because 2000 was read off one machine and scored 1/10 on the other.",
+  "A reader following the blueprint and the engine running it were doing different things.",
+  "",
+  "Now there is one copy. blueprint_decide.py imports these values; blueprint.json quotes",
+  "them by NAME in {braces} and the skill generator substitutes the live value. Changing a",
+  "number here changes the document and the code together. Drift is not possible.",
+  "",
+  "The `transfers` field is the other reason. A threshold with UNITS measures our hardware,",
+  "not the fault: 0.5 cores is a lot on a 4-core box and noise on a 64-core one. A threshold",
+  "that is a ratio to the run's own baseline, a share of capacity, or a presence test,",
+  "travels to any machine. Every entry says which kind it is, so the ones that cannot travel",
+  "are visible rather than buried."
+ ],
+ "thresholds": {
+  "SATURATED": {
+   "value": 0.95,
+   "unit": "share of all cores",
+   "op": ">=",
+   "transfers": "yes",
+   "why_transfers": "bounded 0..1. A full machine is full on any hardware.",
+   "used_by": [
+    "host-cpu-saturation",
+    "cpu-contention-co-tenant"
+   ],
+   "measured": "host saturation measured 0.991-0.998; the next family down tops out at 0.681"
+  },
+  "COLLAPSE_RATIO": {
+   "value": 0.8,
+   "unit": "x its own baseline",
+   "op": "<=",
+   "transfers": "yes",
+   "why_transfers": "a ratio to the same run's baseline, so the machine cancels out",
+   "used_by": [
+    "service-cpu-throttle"
+   ],
+   "measured": "cap runs fell to 0.25-0.73 of baseline; healthy runs sat at 1.04-1.15"
+  },
+  "THIEF_CORES": {
+   "value": 0.5,
+   "unit": "cores",
+   "op": ">=",
+   "transfers": "no, and kept anyway",
+   "why_transfers": "CORES. Tested as a share of host cores over 272 runs on a 12-core and a 16-core host and it was measurably WORSE: the band in cores admits zero negatives, the same band in share units admits eight. Absolute wins because the fault itself is absolute - a co-tenant is a container configured with N workers, not with a fraction of the machine. This will still need recalibrating on a host whose core count is far from 12-16.",
+   "used_by": [
+    "cpu-contention-co-tenant",
+    "service-cpu-throttle"
+   ],
+   "measured": "co-tenant newcomers took 0.988-2.002; the largest healthy one was 0.296"
+  },
+  "BIG_THIEF": {
+   "value": 4.0,
+   "unit": "cores",
+   "op": "<",
+   "transfers": "no",
+   "why_transfers": "CORES, same problem at the other end of the band",
+   "used_by": [],
+   "measured": "RETIRED in favour of BIG_THIEF_SHARE. Kept for the record: host-saturation newcomers took 6.54-6.62 cores; co-tenant never above 2.002."
+  },
+  "LOSER_CORES": {
+   "value": -0.3,
+   "unit": "cores",
+   "op": "<=",
+   "transfers": "no",
+   "why_transfers": "CORES - but the more useful finding is that this gate barely discriminates in EITHER form. Over 272 runs, 219 negatives fall inside its band in cores and 220 in share units. It is carried by the other gates in the throttle rule, not by itself.",
+   "used_by": [
+    "service-cpu-throttle"
+   ],
+   "measured": "cap runs lost 0.357-0.876; healthy and co-tenant lost 0.024-0.160"
+  },
+  "BLOCK_X": {
+   "value": 5.0,
+   "unit": "x its own baseline",
+   "op": ">=",
+   "transfers": "yes",
+   "why_transfers": "a ratio to the same run's baseline",
+   "used_by": [
+    "db-latency-dependency-wait"
+   ],
+   "measured": "datastore fault measured 36.8x; its control 1.12x"
+  },
+  "RETRANS_FIRE_PCT": {
+   "value": 12.0,
+   "unit": "% of segments",
+   "op": ">=",
+   "transfers": "yes",
+   "why_transfers": "a percentage of the traffic itself, not a rate",
+   "used_by": [
+    "network-path-degradation"
+   ],
+   "measured": "network 18.5-60.7%, slow datastore never above 7.14%, every other family at or near 0. A cut at 12 sits 1.7x above the datastore ceiling and 1.5x below the network floor."
+  },
+  "RETRANS_VETO_PCT": {
+   "value": 12.0,
+   "unit": "% of segments",
+   "op": "<",
+   "transfers": "yes",
+   "why_transfers": "a percentage of the traffic itself",
+   "used_by": [
+    "db-latency-dependency-wait",
+    "dns-delay"
+   ],
+   "measured": "the same number that makes the network blueprint fire, used here to rule the datastore OUT. One fact, two uses. Also used by dns-delay, where it is the gate that does the real work: slow name resolution and a degraded path are the only two families that raise EMFILE, and they are opposite on packet loss."
+  },
+  "RETRANS_BASELINE_MAX": {
+   "value": 2.0,
+   "unit": "% of segments",
+   "op": "<=",
+   "transfers": "yes",
+   "why_transfers": "a percentage of the traffic itself",
+   "used_by": [
+    "network-path-degradation"
+   ],
+   "measured": "baseline retransmission was 0.00% in all 40 runs on both applications, so 2.0 is a generous ceiling"
+  },
+  "QUEUE_DROP_MIN": {
+   "value": 0.0,
+   "unit": "% of buffers dropped",
+   "op": ">",
+   "transfers": "yes",
+   "why_transfers": "a presence test, not a level - the strongest kind for travelling",
+   "used_by": [
+    "network-path-degradation"
+   ],
+   "measured": "across 84 runs on two applications, queue drops were non-zero ONLY where netem was applied. No other family produced one above 0.001%."
+  },
+  "ENDPOINT_SLOWDOWN_MIN": {
+   "value": 18.0,
+   "unit": "x its own baseline",
+   "op": ">=",
+   "transfers": "yes",
+   "why_transfers": "a ratio to the same run's baseline",
+   "used_by": [
+    "db-latency-dependency-wait"
+   ],
+   "measured": "slow datastore 38.60-47.57x against an 8.58x ceiling for every non-network family. HONEST COST: on the second application the datastore fault reaches only 9.75x on two of four runs, so this gate loses them."
+  },
+  "STARVED_RQ_X": {
+   "value": 5.0,
+   "unit": "x its own baseline",
+   "op": ">=",
+   "transfers": "yes",
+   "why_transfers": "a ratio to the same run's baseline",
+   "used_by": [
+    "service-cpu-throttle",
+    "db-latency-dependency-wait"
+   ],
+   "measured": "slow datastore runqueue 1.04-2.59 on either app; cgroup cap 13.54-29.17. A 2.0 cut sat inside the datastore range and misdiagnosed two runs; 5.0 leaves 1.9x and 2.7x margin."
+  },
+  "DISK_IOPS_PER_IRQ": {
+   "value": 450.0,
+   "unit": "requests/s per x of interrupt rise",
+   "op": ">",
+   "transfers": "partly",
+   "why_transfers": "a mix of two measures, which is why it beat the raw count, but requests/s still scales with the device. A faster disk moves this.",
+   "used_by": [
+    "host-disk-saturation",
+    "service-memory-cap",
+    "cpu-contention-co-tenant"
+   ],
+   "measured": "anomaly_disk 545.8-719.1 against svc_mem_cap 62.6-352.4, on both applications. Highest negative anywhere 352.4, lowest positive 545.8; 450 is the midpoint.",
+   "replaced": "DISK_IOPS_GAINED = 2000 req/s, which was read off Sock Shop v1 and scored 1/10 on v2. Sock Shop's disk fault gains 1893-2015 req/s so exactly one run cleared it; Train Ticket's gains only 698-897 because TT's own tracing already writes 176 MB/s of a 206 MB/s disk. No single arrival count holds both machines - which is the whole argument for dimensionless thresholds."
+  },
+  "IRQ_X": {
+   "value": 2.0,
+   "unit": "x its own baseline",
+   "op": ">=",
+   "transfers": "yes",
+   "why_transfers": "a ratio to the same run's baseline",
+   "used_by": [
+    "service-memory-cap",
+    "cpu-contention-co-tenant"
+   ],
+   "measured": "highest non-disk negative 1.19 against memcap floors of 3.21 and 2.73. The old pair IRQ_X=2.5 with MEMCAP_IOPS_MAX=500 scored 3/16, because most memcap runs were vetoed by their own disk activity."
+  },
+  "FORK_NEWCOMER_PER_S": {
+   "value": 26.34,
+   "unit": "forks/s",
+   "op": ">",
+   "transfers": "no",
+   "why_transfers": "a RATE. Depends on how busy the machine already is - this host already forks 134/s from Java thread pools and the trace collector.",
+   "used_by": [],
+   "measured": "RETIRED in favour of FORK_NEWCOMER_SHARE. Kept for the record: the fault gains 96.36 forks/s on Sock Shop and 96.22 on Train Ticket; the highest gain in any other family is 22.42 and 26.34."
+  },
+  "TX_NEWCOMER_BYTES_PER_S": {
+   "value": 3640000.0,
+   "unit": "bytes/s",
+   "op": ">",
+   "transfers": "no, and kept anyway",
+   "why_transfers": "A RATE tied to the network card. The dimensionless form - the newcomer's share of all outbound bytes in the window - was measured at 10/10, same as absolute, but its margin collapses from 22.3x to 1.15x because ordinary traffic can dominate egress too. We call 1.01x dangerous elsewhere, so 1.15x is not worth trading a 22x margin for. Kept absolute, and it MUST be recalibrated on a host with a different link speed.",
+   "used_by": [
+    "data-exfiltration"
+   ],
+   "measured": "the fault gains 8.11e7 bytes/s on both applications; the highest gain in any other family is 1.98e6 and 3.64e6"
+  },
+  "EMFILE_PER_S_MIN": {
+   "value": 0.13,
+   "unit": "errors/s",
+   "op": ">=",
+   "transfers": "no",
+   "why_transfers": "a RATE tied to the descriptor limit and the request load",
+   "used_by": [],
+   "measured": "RETIRED in favour of the share form. holds all 7 campaign-confirmed positives. An UNCONFIRMED run sits at 0.033/s, below this floor, so the floor is a property of how hard we injected."
+  },
+  "EMFILE_PER_S_MAX": {
+   "value": 9.28,
+   "unit": "errors/s",
+   "op": "<=",
+   "transfers": "no",
+   "why_transfers": "a RATE, same problem",
+   "used_by": [],
+   "measured": "RETIRED in favour of the share form. dns_delay reaches 234-310 EMFILE/s and anomaly_net 63.8, against 0.27-8.65 from the descriptor cap itself - a factor of 170. The ceiling exists only to exclude an upstream stall."
+  },
+  "RQ_X": {
+   "value": 2.0,
+   "unit": "x its own baseline",
+   "op": ">=",
+   "transfers": "yes",
+   "why_transfers": "a ratio, but it decides nothing",
+   "used_by": [],
+   "measured": "DESCRIPTIVE ONLY. 'runqueue is raised at all'. Used to describe a run in the verdict text, never to decide one."
+  },
+  "CONTENDED": {
+   "value": 0.55,
+   "unit": "share of all cores",
+   "op": ">=",
+   "transfers": "no",
+   "why_transfers": "RETIRED. A deployment LEVEL, not a physical bound. It was read off Sock Shop, where co-tenant runs floor at 0.619 and healthy ones ceiling at 0.531. On Train Ticket the ordering INVERTS - noisy_neighbor runs at 0.213-0.282 while healthy runs sit at 0.657-0.710 - so the clause called every healthy run contended and every contended run healthy. It scored 8/16, all eight misses on one application.",
+   "used_by": [],
+   "measured": "RETIRED, kept as the worked example of a threshold that does not travel. See cpu-contention-co-tenant's rule for the full note."
+  },
+  "BIG_THIEF_SHARE": {
+   "value": 0.297,
+   "unit": "share of host cores",
+   "op": "<",
+   "transfers": "yes",
+   "why_transfers": "a share of whatever the host has, so core count cancels out",
+   "used_by": [
+    "cpu-contention-co-tenant"
+   ],
+   "measured": "REPLACES BIG_THIEF = 4.0 cores. This is a CEILING, so it is placed with headroom on both sides, not at a separation cut. Measured over 272 runs on a 12-core and a 16-core host: co-tenant thief share reaches 0.1670 at most, host saturation starts at 0.5283. The geometric midpoint 0.297 sits 1.78x above one and 1.78x below the other. FIRST ATTEMPT WAS 0.167, taken from the value that separates host saturation from everything below it - but that is the FLOOR of saturation and it lands exactly on the TOP of the co-tenant range, so as a strict upper bound it excluded the largest co-tenant run and cost one of sixteen. A separation cut and a ceiling are not the same number."
+  },
+  "FORK_NEWCOMER_SHARE": {
+   "value": 0.176,
+   "unit": "x the host's own baseline fork rate",
+   "op": ">",
+   "transfers": "yes",
+   "why_transfers": "a ratio to the same host's baseline, so how busy the machine already is cancels out",
+   "used_by": [
+    "fork-storm"
+   ],
+   "measured": "REPLACES FORK_NEWCOMER_PER_S = 26.34 forks/s. 10/10 either way over 272 runs; margin 3.65x absolute against 2.69x here. The absolute rate was tied to this host already forking ~134/s from Java thread pools and the trace collector."
+  },
+  "EMFILE_SHARE_MIN": {
+   "value": 5.638e-06,
+   "unit": "share of all failing syscalls",
+   "op": ">=",
+   "transfers": "yes",
+   "why_transfers": "a share of the failures themselves, so load and descriptor limits cancel out",
+   "used_by": [
+    "fd-exhaustion"
+   ],
+   "measured": "REPLACES EMFILE_PER_S_MIN. 10/10 over 272 runs. The obvious normaliser - a ratio to the baseline - is UNDEFINED here, because EMFILE is exactly zero in almost every baseline window. Share of all failing syscalls is defined everywhere and needs no baseline at all."
+  },
+  "EMFILE_SHARE_MAX": {
+   "value": 0.001762,
+   "unit": "share of all failing syscalls",
+   "op": "<=",
+   "transfers": "yes",
+   "why_transfers": "a share of the failures themselves",
+   "used_by": [
+    "fd-exhaustion"
+   ],
+   "measured": "REPLACES EMFILE_PER_S_MAX. The ceiling still exists only to exclude an upstream stall, which exhausts descriptors far harder than the descriptor cap itself."
+  },
+  "BLOCK_PARKED_X": {
+   "value": 306.0,
+   "unit": "x its own baseline",
+   "op": "<",
+   "transfers": "yes",
+   "why_transfers": "a ratio to the same run's baseline",
+   "used_by": [
+    "db-latency-dependency-wait"
+   ],
+   "measured": "THE ANTI-PATTERN CEILING. Measured over 272 runs: a genuinely slow dependency inflates its caller's socket wait to at most 144x, while every one of the 25 code-defect runs reaches 651x or more. 306 is the geometric midpoint, 2.13x clear on both sides. It keeps 22 of 22 slow-datastore runs and excludes 25 of 25 anti-pattern runs. WHY THE MECHANISM WORKS: a slow dependency still ANSWERS, so the caller keeps doing work, just more slowly. A blocked event loop or a serialised await chain means the service has stopped doing work at all, so its poll call sits parked for most of the window. Waiting a thousand times longer than normal is not a slower callee - it is a caller that stopped. It also excludes 5/5 dns_delay, 5/10 fd_exhaustion and 1/10 conn_pool_exhaustion runs, all of which were false fires too."
+  },
+  "DNS_EMFILE_SHARE_MIN": {
+   "value": 0.0175,
+   "unit": "share of all failing syscalls",
+   "op": ">=",
+   "transfers": "yes",
+   "why_transfers": "a share of the failures themselves, so request load and descriptor limits cancel out",
+   "used_by": [
+    "dns-delay"
+   ],
+   "measured": "MEASURED over 272 runs. Slow name resolution makes the front-end pile up sockets waiting for answers, so descriptor exhaustion becomes a large fraction of everything that fails: 0.0197 to 0.0476 of all failing syscalls. A descriptor cap itself reaches only 0.00000564 to 0.00176 - more than 10x lower - because it exhausts descriptors slowly rather than in bursts. The only other family with any EMFILE at all is a network fault, at up to 0.0156, and that is excluded by the retransmission gate rather than by this one. 0.0175 is the geometric midpoint between the two. Against the fault this bar actually has to exclude - a descriptor cap - the margin is 11x."
+  },
+  "SILENT_MAX_SHARE": {
+   "value": 0.02,
+   "unit": "share of the container's OWN baseline event rate",
+   "op": "<=",
+   "transfers": "yes",
+   "why_transfers": "self-relative, so it carries no assumption about how busy a container is or how fast the machine is. A stopped process emits nothing on any hardware.",
+   "used_by": [
+    "dependency-outage-retry-storm"
+   ],
+   "measured": "the stopped container fell to 0.0009-0.0119 of its own baseline across 6 runs on two applications, so 0.02 clears the highest observed value with room and still sits an order of magnitude below the next quietest container"
+  },
+  "SILENT_PEER_MIN_SHARE": {
+   "value": 0.2,
+   "unit": "share of that container's OWN baseline event rate",
+   "op": ">=",
+   "transfers": "yes",
+   "why_transfers": "self-relative, same reason as SILENT_MAX_SHARE",
+   "used_by": [
+    "dependency-outage-retry-storm"
+   ],
+   "measured": "the SECOND quietest container sat at 0.23-0.89 of its own baseline across the same 6 runs. This is the contrast test: it separates one workload stopping from every workload slowing, and without it a host-wide fault passes the silence test too"
   }
+ }
 }

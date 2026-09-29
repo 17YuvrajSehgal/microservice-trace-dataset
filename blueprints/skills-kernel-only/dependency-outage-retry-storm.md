@@ -1,30 +1,30 @@
 ---
 name: dependency-outage-retry-storm
-version: 1
+version: 2
 authored_by: measured from StrataTrace v2 kernel traces
 generated_from: blueprints/dependency-outage-retry-storm.json
 covers: dependency_outage
 ---
 ## When this applies
 - requests through one path fail or hang rather than slowing
-- one service's activity rises sharply while its peers do not
+- one container stopped producing kernel events while its peers did not
 - no new container appeared during the window
 
 Do NOT use this blueprint when:
 - a new container appeared - use the newcomer blueprints instead
 - every container moved together, which is host-wide
+- the suspect is running at a reduced but steady rate rather than near zero
 
-Cheapest check first: one container's syscall rate rose roughly a hundredfold while containers running the same image did not move
+Cheapest check first: rank containers by incident event rate divided by their own baseline rate. If the lowest is at or below 0.02 and the next is at or above 0.2, this is it.
 
 ## Problem signature
 - requests through one path fail or hang rather than slowing
-- one service's resource use rises sharply while its peers do not
-- a dependency produces little or no traffic
+- one container stops producing kernel events while its peers do not
+- no new container appeared during the window
 
 Telling it apart from its look-alikes:
-- **getrusage rate in a single container, against its identical siblings** — this problem: one java container goes from 5.3/s to 2,474-2,701/s while three other java containers stay at 6.7/s (n=2 runs). Not this problem: a host-wide fault moves every container together. If the siblings move too, this is not it.
-- **no container is new to the window** — this problem: none. This fault stops an existing container; across every run measured, the newcomer search returns nothing. Not this problem: every other fault family we measured injects a sidecar container, so a newcomer is present.
-- **new outbound socket binds in the caller** — this problem: bind 2.7/s -> 22.9/s in the caller container (n=2). Not this problem: bind stays within 1.1-1.6x in every other family.
+- **each container's total kernel event rate, incident window against its own baseline, ranked lowest first** — this problem: exactly ONE container falls to 0.09-1.19% of its baseline rate while the next quietest container is still at 23-89%. That container is the stopped dependency and it is the answer to WHERE. Not this problem: nothing falls that far, or several containers fall together - several falling together is host-wide, not one dependency.
+- **getrusage rate in the container that CALLS the stopped dependency** — this problem: on one of the two applications the caller storms: 6.7/s before against 2474-2701/s during, a 371-404x rise, while sibling containers running the same image stay flat. Not this problem: on the OTHER application the same fault produced NO getrusage rise at all - 1.0x, measured on 2 runs. Absence of a storm is therefore not evidence against this problem, and this signal must never be required. Use it to corroborate and to name the victim, never to decide.
 
 ## What to look at first
 The signals below are sufficient for this problem; you do not need everything.
@@ -48,11 +48,15 @@ Each step names the capability it needs, how to get at it with the tools you hav
    needs: `kernel.container.event_shares`
    with your tools: no direct equivalent from a kernel trace - say the step was not run.
    expect: the share profile below, within the measured range
-4. Apply the rules and emit the verdict
+4. rank every container by its incident event rate divided by its own baseline rate, lowest first, and name the one that went silent
+   needs: `kernel.container.silence_ranking`
+   with your tools: this fault REMOVES a workload rather than adding one, so looking for a newcomer finds nothing - measured, there was no new container in 3 of 3 runs on one application. And do not name the busiest container: the one that storms is the VICTIM calling into the dependency that stopped. What to do instead, with run_python: sum `count` per pid_ns over a quiet baseline range and over the range you suspect, divide each container's incident rate by its OWN baseline rate, and rank lowest first. Report the lowest by its pid_ns, and report the SECOND lowest too - the gap between them is what separates one stopped workload from a host-wide slowdown. MEASURED on 6 runs across two applications: exactly one container fell to 0.09-1.19% of its own baseline while the next quietest was still at 23-89%. It ranked first in all 6 and was the injected target in both applications. That is a separation of 20x to 75x, so this is not a marginal call. If the lowest is only moderately reduced rather than near zero, this is not an outage - a throttled container keeps running at a steady reduced rate. If several containers fell together, that is host-wide. Say which of the three you saw.
+   expect: containers ranked by how far their own rate fell, the lowest named by pid_ns, and the next-lowest reported so the size of the gap is visible
+5. Apply the rules and emit the verdict
    needs: `verdict.apply_rules`
    with your tools: do this yourself, from the numbers your own tool calls returned. Quote them.
-   expect: a verdict naming the container and the mechanism, or an explicit abstain
-5. draw the decision card
+   expect: name the SILENT container by its pid_ns, its before and after rates, and the next-quietest container's rate as the contrast
+6. draw the decision card
    needs: `report.decision_card`
    with your tools: NOT REACHABLE - no plotting here. Skip it; it does not affect the diagnosis.
    expect: one page showing the shares, the cut, and what was ruled out
@@ -64,20 +68,21 @@ Each step names the capability it needs, how to get at it with the tools you hav
 
 ## Resolution template
 Conclude this problem when ALL of:
-- a container is new to the window
-- its share profile matches the measured range below
-- no sibling container shows the same profile
+- exactly one container that was busy before falls to 0.02 or less of its own baseline event rate
+- the next quietest container is still at 0.2 or more of its own baseline, so the drop is an outlier rather than a general slowdown
+- no new container appeared - this fault removes a workload rather than adding one
 
 Prefer a different explanation when:
 - cpu-contention-co-tenant — a container IS new to the window - this fault removes a container, it does not add one
-- host-cpu-saturation — every container moved together rather than one moving alone
+- host-cpu-saturation — many containers fell together rather than one falling alone. Measured, the next quietest container here still runs at 23-89% of its baseline
+- service-cpu-throttle — the suspect is still running but held at a flat ceiling. A stopped dependency goes to near zero, not to a steady reduced rate
 
-Root cause is: the stopped dependency. The container that spins is the VICTIM, and naming it as the culprit is the mistake this blueprint exists to prevent
+Root cause is: the container that went silent. It is the stopped dependency and it is the answer to WHERE. A container that storms on getrusage is the VICTIM calling into it, and naming that one is the mistake this blueprint exists to prevent
 
 ## When to stop
-- Conclude when: the share profile matches and no sibling container matches it too
-- Stop and switch: a discriminating share falls outside its measured range
-- Evidence insufficient: no container is new to the window and none stands out
+- Conclude when: exactly one container fell to 0.02 or less of its own baseline while the next quietest stayed at 0.2 or more
+- Stop and switch: several containers fell together, which is host-wide; or the lowest is only moderately reduced, which is throttling rather than an outage
+- Evidence insufficient: no container fell far below its own baseline. Say so rather than naming the busiest container, which is the victim at best
 - Do not exceed 3 rounds of gathering more evidence before reporting what is missing.
 
 ## Constraints you must respect
@@ -85,8 +90,8 @@ Root cause is: the stopped dependency. The container that spins is the VICTIM, a
 
 ## If you are not confident enough
 - Do not report a diagnosis below 0.6 confidence.
-- report the shares and say which blueprint they sit between
-- the container's shares and every sibling's, side by side
+- report the per-container before and after rates and say that no container went silent
+- the ranked list of containers by incident rate over baseline rate, with the pid_ns of the lowest
 
 ## Signals that do NOT work for this problem
 Each of these was measured on our own data and found unusable. Do not reason

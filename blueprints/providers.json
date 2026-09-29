@@ -638,6 +638,22 @@
     }
    ],
    "measured_on": "svc_cpu_cap, 3 runs, 23-09-2026. The capped container was the flattest busy container in 3 of 3, pinned at 0.198-0.202 CPU against a 0.2 quota while using 0.509-0.516 before. Ranking by CPU DROP instead put it at #15 of 18. Unfiltered flatness put it at #2 of 20, beaten by a nearly idle container."
+  },
+  "kernel.container.silence_ranking": {
+   "what": "Every container's total kernel event rate in the incident window divided by its own rate in a quiet baseline, ranked lowest first. A stopped dependency produces almost no events, so it falls far below every other container, and the gap to the next quietest says whether one workload stopped or the whole host slowed.",
+   "requires_events": [
+    "any"
+   ],
+   "providers": [
+    {
+     "id": "babeltrace2-cli",
+     "status": "implemented",
+     "available_when": "babeltrace2 >= 2.1 on PATH and a CTF trace directory",
+     "run": "python3 $BLUEPRINT_HOME/lib/container_event_shares.py --ctf <ctf> --window <window> --out <out>/shares.json",
+     "notes": "Measured across 41 labelled runs of 8 families. The shape separates faults that share a mechanism family: lock contention 47.0% futex against a deadlock's 4.3%, while their absolute rates differ 800-fold and would transfer to nobody. Does NOT separate a memory stressor from a CPU stressor - this profile records no mm_ or reclaim events, so both read as generic CPU work."
+    }
+   ],
+   "measured_on": "dependency_outage, 6 runs across two applications, 28-09-2026. Exactly one container fell to 0.09-1.19% of its own baseline while the next quietest stayed at 23-89%. It ranked first in 6 of 6 and is the ground-truth target in both applications."
   }
  },
  "escalation_policy": {

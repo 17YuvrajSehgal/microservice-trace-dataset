@@ -98,7 +98,7 @@ Root cause is: the converged-on datastore component itself, never its callers, w
 
 ## When to stop
 - Conclude when: one component's socket-waiting syscall is inflated by roughly an order of magnitude while its runqueue delay stays flat
-- Stop and switch: socket wait at or above {BLOCK_PARKED_X}x baseline -> the caller has stopped working; look for a defect in the calling service, not in the dependency. Runqueue delay at or above {STARVED_RQ_X}x -> the component is starved of CPU. Retransmission at or above {RETRANS_VETO_PCT}% -> the path is losing packets. IMPORTANT: switching away does not mean the investigation is over. Each of these names a DIFFERENT cause for the same symptom, so carry the measurement across rather than starting again - the wait you measured here is still real, it just has another source.
+- Stop and switch: socket wait at or above 306x baseline -> the caller has stopped working; look for a defect in the calling service, not in the dependency. Runqueue delay at or above 5x -> the component is starved of CPU. Retransmission at or above 12% -> the path is losing packets. IMPORTANT: switching away does not mean the investigation is over. Each of these names a DIFFERENT cause for the same symptom, so carry the measurement across rather than starting again - the wait you measured here is still real, it just has another source.
 - Evidence insufficient: the endpoint measurement is missing, so 'something is answering slowly' cannot be confirmed -> request it and re-run. Do NOT treat an unavailable check as passed: three false diagnoses were produced exactly that way before this was changed.
 - Do not exceed 2 rounds of gathering more evidence before reporting what is missing.
 

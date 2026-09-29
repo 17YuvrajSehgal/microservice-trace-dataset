@@ -95,3 +95,56 @@ traces cannot do this".** It would be the same mistake we spent this week undoin
 `nsmap` mislabelled the silent Train Ticket container - it ranked it #7 of 45 while the raw
 measurement shows it going 422 events/s to 4. The container identification on Train Ticket is
 still the weakest link in the scoring, and it is now blocking two separate results.
+
+## dependency_outage rewritten, and a generator bug it exposed
+
+### The rewrite
+
+Its deciding test is now silence, which is what the traces show:
+
+| | |
+|---|---|
+| verdict | exactly one container falls to `SILENT_MAX_SHARE` (0.02) or less of its OWN baseline rate |
+| contrast | the next quietest is still at `SILENT_PEER_MIN_SHARE` (0.20) or more |
+| and | no new container appeared - this fault removes a workload |
+
+Both numbers are new entries in `thresholds.json`, so they cannot drift from the prose. They
+are deliberately self-relative - a share of the container's own baseline - which is why they
+transfer: a stopped process emits nothing on any hardware, at any scale.
+
+Measured basis: the silent container fell to 0.09-1.19% of its baseline in 6 of 6 runs across
+both applications, while the next quietest sat at 23-89%. Separation of 20x to 75x.
+
+**The getrusage storm is kept, with its scope stated.** It is real - 6.7/s against 2474-2701/s,
+a 371-404x rise - but ONLY on one of the two applications; the other measured 1.0x. So the
+blueprint says explicitly that its absence is not evidence against the problem, and that this
+signal names the VICTIM rather than deciding the verdict. That is the distinction the previous
+version got backwards.
+
+**Dropped:** "one caller spins" as a general claim. Zero containers rose above 1.5x on total
+event rate in any of the 6 runs. The blueprint is still named `-retry-storm`, which now
+overstates what we can show on more than one application.
+
+### The generator was leaking raw placeholders to the agent
+
+`fill_thresholds` was called in exactly two places - `verdict_when` and `rule_out` - so a
+`{NAME}` written in any other field reached the agent as a literal brace. Three skills were
+affected:
+
+| skill | leaked |
+|---|---|
+| `db-latency-dependency-wait` | `{BLOCK_PARKED_X}` `{RETRANS_VETO_PCT}` `{STARVED_RQ_X}` |
+| `dns-delay` | `{RETRANS_VETO_PCT}` |
+| `dependency-outage-retry-storm` | the two new ones |
+
+**`db-latency-dependency-wait` is the `slow_db` problem in the published study**, which scored
+24/60 and 3/60. It has been handing the agent `{STARVED_RQ_X}` where a number belonged. That
+is not the whole explanation for 3/60 on the window, but it is a defect in a published result
+and it was invisible because nothing checked the generated output for unresolved names.
+
+Fixed by substituting once over the finished body rather than per section - a per-section call
+has to be remembered every time a section is added, and it was not. A name absent from
+`thresholds.json` is still left visible so the validator catches a typo rather than silently
+blanking it.
+
+All 16 blueprints regenerate clean with no placeholders remaining.

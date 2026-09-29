@@ -85,7 +85,7 @@ Root cause is: unreliable name resolution for one service, identified by the ser
 
 ## When to stop
 - Conclude when: EMFILE is a large share of all failing syscalls while the path carries traffic without loss
-- Stop and switch: retransmission at or above {RETRANS_VETO_PCT}% -> network-path-degradation; EMFILE present but a far smaller share of failures -> fd-exhaustion. IMPORTANT: switching away does not end the investigation. All three name a different cause for the same symptom - descriptors running out - so carry the measurement across rather than starting again.
+- Stop and switch: retransmission at or above 12% -> network-path-degradation; EMFILE present but a far smaller share of failures -> fd-exhaustion. IMPORTANT: switching away does not end the investigation. All three name a different cause for the same symptom - descriptors running out - so carry the measurement across rather than starting again.
 - Evidence insufficient: syscall exit events were not recorded, so return values are unavailable -> request them and re-run. Do NOT fall back to the total failing-syscall rate: the baseline already runs roughly 16,000 failing syscalls per second, almost all EAGAIN on non-blocking reads, and EMFILE disappears into it.
 - Do not exceed 2 rounds of gathering more evidence before reporting what is missing.
 
