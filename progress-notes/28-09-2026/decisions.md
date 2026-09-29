@@ -277,3 +277,66 @@ so a match says an injected workload of that shape is present, not that the appl
 is contended.
 
 All 16 blueprints validate and generate clean, with no unresolved placeholders.
+
+## OpenRouter wired up, and the smoke test found a real v2 bug
+
+### Setup
+
+`config.py` gains an `openrouter` provider. One key routes to several upstreams, and a request
+that does not name one falls through to a provider we are neither paying for nor entitled to -
+so `OPENROUTER_UPSTREAM` pins each model and `allow_fallbacks: False` makes it a hard pin.
+`max_tokens` rather than `max_completion_tokens` for this provider, matching the working
+example. Both `OPEN_ROUTER_API_KEY` and `OPENROUTER_API_KEY` are accepted because the setup
+mail and the .env disagree by one underscore.
+
+Verified through our own config rather than a standalone snippet - all three models answer and
+all three accept a tool schema:
+
+| model | chat | tools | pinned to |
+|---|---|---|---|
+| `openai/gpt-6-luna` | ok | ok | azure |
+| `deepseek/deepseek-v4-flash` | ok | ok | azure |
+| `google/gemini-3.8-flash` | ok | ok | google-ai-studio |
+
+**Cost changed.** A full v2 cell on the new model: 227-508 s and 641k-752k tokens, against 215 s
+and 345k on the old one. Roughly double the tokens. The campaign estimate needs redoing before
+anything large is launched.
+
+**A mistake worth not repeating:** I rsynced `config.py` to the cluster without committing it,
+then ran `git reset --hard`, which wiped it. The first re-run died on
+`unknown RCA_PROVIDER='openrouter'`. Anything the cluster needs must be committed, not copied.
+
+### The smoke test found the real bug
+
+The rewritten `dependency_outage` blueprint improved the window - IoU 0.983 against 0.923 - and
+the agent still answered `normal` with `root_cause_service: unknown`. But it had already
+computed the right answer. Snippet 17:
+
+| pid_ns | baseline/s | incident/s | ratio |
+|---|---|---|---|
+| **4026532822** | **1242.8** | **0** | **0.00** |
+| 4026532751 | 86,596.9 | 44,476.8 | 0.51 |
+| 4026533886 | 29,030.6 | 15,764.7 | 0.54 |
+
+Lowest 0.00, next 0.51. Both verdict conditions satisfied exactly as written.
+
+**It never became a finding.** 0 of 9 findings mention that namespace, and it never reached the
+synthesiser. Two separate failures:
+
+1. **A worker filtered out the answer and recorded the exclusion as evidence of absence.**
+   `worker1.2` restricted to containers with baseline CPU >= 0.02 CPU-s/s, which excluded the
+   silent container - it produces only 1,242 events/s against 86,000 for the busiest - and then
+   wrote the finding "Container-level sched_stat_runtime confirms no near-silent container".
+   A filter chosen for tidiness became a positive claim about the data.
+2. **A correct computation in one worker never became a finding at all.** Snippet 17 belonged to
+   a different worker, which moved on without calling note_finding.
+
+**This is the third time the agent has computed the discriminator and not acted on it** -
+`svc_net` computed the ranking and answered `java`, `svc_cpu_cap` the same, and now this. The
+first two looked like answer-format problems and were fixed as such. This one shows the deeper
+cause: the scratchpad carries only what a worker chooses to write, so anything computed and not
+written down is lost, and a worker's own filtering choices become assertions the synthesiser
+cannot check.
+
+Worth fixing before any campaign: a worker that runs code whose output bears on the blueprint's
+deciding test should be required to record the result, whichever way it came out.
