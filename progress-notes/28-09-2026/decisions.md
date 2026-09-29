@@ -148,3 +148,79 @@ has to be remembered every time a section is added, and it was not. A name absen
 blanking it.
 
 All 16 blueprints regenerate clean with no placeholders remaining.
+
+## The other three sidecar blueprints, and a measurement error of mine that nearly inverted the result
+
+### I was measuring the wrong container on Train Ticket
+
+My first pass found the injected container by asking which container was NEW to the window.
+That works on one application and not the other: on Train Ticket the injector sometimes starts
+a few seconds before `injection_start_utc`, so it appears in the baseline and the newcomer test
+picks up a load generator instead - a container with ~81k events and a 5% futex share.
+
+That is what produced "on Train Ticket the discriminator is inverted, the injector sits at 5%
+futex". **Wrong.** Locating the injector by its process names instead:
+
+| family | application | events/s | futex | softirq |
+|---|---|---|---|---|
+| lock_contention | one | 62,796-63,380 | 47% | 5.9% |
+| lock_contention | the other | 62,774-63,060 | 57% | 4.8% |
+| priority_inversion | one | 19,470-19,632 | 41% | 13.4% |
+| priority_inversion | the other | 16,476-16,763 | 52% | 10.9% |
+
+**The injector behaves almost identically on both applications** - its event rate matches to
+within 1%. The earlier finding was my detection method, not the data.
+
+### What was still wrong with the blueprints
+
+The futex-share comparison really does invert, just not the way I first described:
+
+| | injector futex | busiest sibling |
+|---|---|---|
+| one application | 41-47% | 33% - injector ABOVE |
+| the other | 52-58% | 60% - injector BELOW |
+
+Java services park threads on futexes, so a futex-heavy container is ordinary where the services
+are JVMs. "The container whose futex share is far above every other container" names an innocent
+service there. The claim was wrong; my explanation of why was also wrong.
+
+**What transfers instead:** the newcomer test plus the injector's own event rate and softirq
+share, neither of which is a comparison against siblings.
+
+| family | events/s | softirq |
+|---|---|---|
+| lock_contention | 62.8-63.4k | 4.8-5.9% |
+| priority_inversion | 16.5-19.6k | 10.9-13.4% |
+| deadlock | 87-731 | 4.4% |
+
+Three bands about a hundredfold apart on rate, and softirq separates the two spinning faults
+with no overlap on either application. Now `NEWCOMER_BUSY_PER_S` (10,000), `NEWCOMER_IDLE_PER_S`
+(2,000) and `SOFTIRQ_INVERSION_MIN` (0.09) in thresholds.json.
+
+### The caveat that goes in the paper, not just the code
+
+`NEWCOMER_BUSY_PER_S` and `NEWCOMER_IDLE_PER_S` are ABSOLUTE rates, and their `transfers` field
+says "partly" for a reason: they encode how hard our injector was configured to push and how
+fast this testbed is. They held to within 1% across two applications **on identical hardware**.
+
+More importantly, all three of these faults are injected as separate sidecar containers. **So
+this signature is partly the signature of our injector rather than of lock contention arising
+inside a service.** A real application holding a lock too long would show futex pressure in the
+SERVICE container with no newcomer at all. Each blueprint now says this in its summary, and
+tells the agent to report "an injected workload of this shape is present" rather than claiming
+the application is contended.
+
+That is worth stating plainly in the write-up. Three of our eleven problems test whether the
+agent can spot a foreign container, not whether it can diagnose the named fault.
+
+### Two more validator behaviours worth recording
+
+`used_by` in thresholds.json must agree with `uses_thresholds` in each blueprint, and the
+validator checks both directions. Rather than editing both lists by hand I now derive `used_by`
+from what the blueprints declare - the validator exists because those two drift.
+
+And the leak scanner rejected "two orders of magnitude" for a second time, because `orders` is
+a service name. Reworded to "roughly a hundredfold". The scanner is right; the phrase is the
+problem.
+
+All 16 blueprints regenerate clean.

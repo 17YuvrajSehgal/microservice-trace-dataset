@@ -1,6 +1,6 @@
 ---
 name: priority-inversion-nice
-version: 1
+version: 2
 authored_by: measured from StrataTrace v2 kernel traces
 generated_from: blueprints/priority-inversion-nice.json
 covers: priority_inversion
@@ -11,10 +11,11 @@ covers: priority_inversion
 - a kernel trace is available
 
 Do NOT use this blueprint when:
-- the container is nearly idle - see deadlock-lock-order
-- futex share is near zero
+- no container is new to the window
+- an EXISTING container went silent - that is a stopped dependency
+- the suspect is an ordinary service with a high futex share and no arrival - on a JVM that is normal, not a fault
 
-Cheapest check first: a container with a futex share above 40% and softirq above 10%
+Cheapest check first: find a container present in the window and absent before it, then read its events per second: at or above 10000 is one of the spinning faults, at or below 2000 is a deadlock.
 
 ## Problem signature
 - a service is slow and its CPU is not saturated
@@ -22,9 +23,7 @@ Cheapest check first: a container with a futex share above 40% and softirq above
 - some requests are far slower than others
 
 Telling it apart from its look-alikes:
-- **futex share, which puts it in the lock family** — this problem: 41.0% (n=5). Not this problem: a deadlock sits at 4.3%; the stress and network families at 0%.
-- **softirq share, which separates it from plain lock contention** — this problem: 13.4% (n=5). Not this problem: lock contention sits at 5.9% (n=5), less than half.
-- **threads migrate LESS than under plain contention** — this problem: migrate 2.0% (n=5) - they are held off CPU, not bouncing. Not this problem: lock contention 5.0% (n=5).
+- **the newcomer container's kernel event rate and softirq share** — this problem: 16,476-19,632 events/s and 10.9-13.4% softirq across 6 runs on two applications. Not this problem: DO NOT decide this by finding the container with the highest futex share. Measured on two applications: the injected container sits at 41-47% futex against siblings at 33% on one, and at 52-58% against siblings at 60% on the other. Where services run on a JVM, threads park on futexes and an ordinary service is futex-heavy by nature, so the comparison inverts and the rule names an innocent service. Use the newcomer test and the rate..
 
 ## What to look at first
 The signals below are sufficient for this problem; you do not need everything.
@@ -64,20 +63,20 @@ Each step names the capability it needs, how to get at it with the tools you hav
 
 ## Resolution template
 Conclude this problem when ALL of:
-- a container is new to the window
-- its share profile matches the measured range below
-- no sibling container shows the same profile
+- a container is present in the window that was absent before it
+- it produces 10000 kernel events per second or more
+- its softirq share is 0.09 or above, which is what separates it from plain lock contention
 
 Prefer a different explanation when:
-- lock-contention-futex-storm — migration is around 5% and softirq around 6%, measured against 2.0% and 13.4% here
-- deadlock-lock-order — futex falls to a few percent and the container goes nearly silent
+- lock-contention-futex-storm — softirq is below 0.09 - measured 4.8-5.9% there against 10.9-13.4% here
+- deadlock-lock-order — the newcomer produces 2000 events per second or fewer
 
-Root cause is: the container whose threads hold a lock while being scheduled away
+Root cause is: the newcomer container, named by its pid_ns
 
 ## When to stop
-- Conclude when: the share profile matches and no sibling container matches it too
+- Conclude when: a newcomer matched the rate and softirq ranges above
 - Stop and switch: a discriminating share falls outside its measured range
-- Evidence insufficient: no container is new to the window and none stands out
+- Evidence insufficient: no container is new to the window. Say so rather than naming the most futex-heavy container, which on a JVM application is an ordinary service
 - Do not exceed 3 rounds of gathering more evidence before reporting what is missing.
 
 ## Constraints you must respect

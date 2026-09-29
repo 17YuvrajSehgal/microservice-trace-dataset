@@ -1,9 +1,9 @@
 {
  "id": "deadlock-lock-order",
- "version": 1,
- "title": "Deadlock: the container goes quiet instead of busy",
+ "version": 2,
+ "title": "Deadlock: an injected workload appears and then does almost nothing",
  "problem": {
-  "summary": "Threads take locks in conflicting orders and park forever. The giveaway is the opposite of what people look for: the container produces FEWER events than an idle one, because blocked threads make no syscalls.",
+  "summary": "An injected workload appears and then does almost nothing. The deciding evidence is a container that was absent before the window and present during it, identified by its event RATE and its softirq share rather than by its futex share. SCOPE OF THIS SIGNATURE. This fault is injected as a separate sidecar container, so what is described here is the footprint of an injected workload, not of lock contention arising inside a service. A real application holding a lock too long would show the futex pressure in the SERVICE container and no newcomer would appear at all. Treat a match as evidence that an injected workload of this shape is present, and say so rather than claiming the application itself is contended.",
   "symptoms": [
    "a service stops responding rather than slowing down",
    "its CPU use falls instead of rising",
@@ -11,33 +11,14 @@
   ],
   "discriminators": [
    {
-    "signal": "the container's total event rate",
-    "this_problem": "70-84 events/s (n=5). Quieter than an idle container",
-    "not_this_problem": "lock contention runs 62,780-63,647 events/s with the same mechanism family - a factor of 800. Anything busy is not this",
+    "signal": "the newcomer container's kernel event rate and softirq share",
+    "this_problem": "87-731 events/s across 6 runs on two applications, against 16,476-63,380 for the two spinning faults - roughly a hundredfold apart",
+    "not_this_problem": "DO NOT decide this by finding the container with the highest futex share. Measured on two applications: the injected container sits at 41-47% futex against siblings at 33% on one, and at 52-58% against siblings at 60% on the other. Where services run on a JVM, threads park on futexes and an ordinary service is futex-heavy by nature, so the comparison inverts and the rule names an innocent service. Use the newcomer test and the rate.",
     "confused_with": [
      "lock-contention-futex-storm",
-     "cpu-contention-co-tenant"
+     "dependency-outage-retry-storm"
     ],
-    "evidence": "MEASURED on 41 labelled runs across 8 families with blueprints/lib/fingerprint_table.py (22-09-2026). deadlock 70-84 events/s (n=5) against lock_contention 62,780-63,647 (n=5), priority_inversion 19,439-19,632 (n=5), conn_pool_exhaustion 545-550 (n=5)."
-   },
-   {
-    "signal": "futex share, which is LOW here and not high",
-    "this_problem": "4.3% (n=5) - the locks were taken once and never contended again",
-    "not_this_problem": "lock contention 47.0% and priority inversion 41.0%. A high futex share rules this out, which is the reverse of the intuition",
-    "confused_with": [
-     "lock-contention-futex-storm",
-     "priority-inversion-nice"
-    ],
-    "evidence": "MEASURED on 41 labelled runs across 8 families with blueprints/lib/fingerprint_table.py (22-09-2026). 4.3% (n=5) against 47.0% and 41.0% (n=5 each)."
-   },
-   {
-    "signal": "what little it does do is file operations",
-    "this_problem": "file ops 22.1% (n=5) - close, fcntl and openat2, which is the respawn loop opening and closing its lock files",
-    "not_this_problem": "no other family exceeds 0.6% on file ops. It is 0.0% for lock contention and priority inversion",
-    "confused_with": [
-     "lock-contention-futex-storm"
-    ],
-    "evidence": "MEASURED on 41 labelled runs across 8 families with blueprints/lib/fingerprint_table.py (22-09-2026). file ops 22.1% (n=5) against 0.0% for lock_contention and priority_inversion, 0.6% anomaly_mem, 0.1% noisy_neighbor."
+    "evidence": "MEASURED 28-09-2026 on 6 runs across two applications, by locating the injected container from its process names rather than assuming it is the busiest or the most futex-heavy."
    }
   ],
   "unverified_do_not_claim": [
@@ -136,23 +117,26 @@
  ],
  "decision": {
   "verdict_when": [
-   "a container is new to the window",
-   "its share profile matches the measured range below",
-   "no sibling container shows the same profile"
+   "a container is present in the window that was absent before it",
+   "it produces {NEWCOMER_IDLE_PER_S} kernel events per second or fewer - it arrived and then stopped working",
+   "no sibling container went silent, which would be a stopped dependency instead"
   ],
   "rule_out": [
    {
     "instead": "lock-contention-futex-storm",
-    "when": "the container is busy - tens of thousands of events per second with futex near 47%"
+    "when": "the newcomer produces {NEWCOMER_BUSY_PER_S} events per second or more - it is spinning, not parked"
    },
    {
-    "instead": "connection-pool-exhaustion",
-    "when": "it is quiet but its events are network and ioctl rather than file operations"
+    "instead": "dependency-outage-retry-storm",
+    "when": "no container is new and an EXISTING one went silent - that is a stopped dependency, not a deadlock"
    }
   ],
-  "root_cause_is": "the container that appeared and then went nearly silent",
+  "root_cause_is": "the newcomer container, named by its pid_ns",
   "fault_type": "deadlock",
-  "uses_thresholds": []
+  "uses_thresholds": [
+   "NEWCOMER_BUSY_PER_S",
+   "NEWCOMER_IDLE_PER_S"
+  ]
  },
  "evidence_from_literature": [],
  "related_blueprints": [
@@ -163,7 +147,7 @@
   "authored_by": "measured from StrataTrace v2 kernel traces",
   "verified_by": "PENDING human review",
   "authored_utc": "2026-09-22T20:21:49Z",
-  "notes": "Built 22-09-2026 from blueprints/lib/fingerprint_table.py over 41 labelled runs of 8 families. Candidate signals were first put through discover_signature.py (a specificity sweep across families, which rejected unlinkat, ftruncate, block_split, lseek and dup as window artefacts) and who_makes_it.py (which rejected the nagle_delayed_ack host-wide signal as 94% our own load generator). KERNEL TRACES ONLY - no metrics, logs or spans were consulted."
+  "notes": "Rewritten 28-09-2026. The generated version decided on 'the container whose futex share is far above every other container', which was measured to invert between the two applications - 41-47% against siblings at 33% on one, 52-58% against siblings at 60% on the other. Replaced with a newcomer test plus event rate and softirq share, both of which held to within a few percent across both applications. The over-fitting caveat is stated in the summary: this is a sidecar injection, so the signature is partly our injector's."
  },
  "taxonomy": {
   "domain": "microservices",
@@ -179,10 +163,11 @@
    "a kernel trace is available"
   ],
   "do_not_apply_when": [
-   "the suspect container is busy - that is contention, not deadlock",
-   "no container went quiet during the window"
+   "no container is new to the window",
+   "an EXISTING container went silent - that is a stopped dependency",
+   "the suspect is an ordinary service with a high futex share and no arrival - on a JVM that is normal, not a fault"
   ],
-  "cheap_precheck": "a container appeared in the window and produces under a few hundred events per second while the application is under load"
+  "cheap_precheck": "find a container present in the window and absent before it, then read its events per second: at or above {NEWCOMER_BUSY_PER_S} is one of the spinning faults, at or below {NEWCOMER_IDLE_PER_S} is a deadlock."
  },
  "capabilities_required": [
   {
@@ -202,9 +187,9 @@
   }
  ],
  "stopping_conditions": {
-  "conclude": "the share profile matches and no sibling container matches it too",
+  "conclude": "a newcomer matched the rate and softirq ranges above",
   "stop_and_switch": "a discriminating share falls outside its measured range",
-  "stop_insufficient": "no container is new to the window and none stands out",
+  "stop_insufficient": "no container is new to the window. Say so rather than naming the most futex-heavy container, which on a JVM application is an ordinary service",
   "max_evidence_rounds": 3
  },
  "adaptation_rules": [],

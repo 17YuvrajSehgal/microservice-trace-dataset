@@ -1,6 +1,6 @@
 ---
 name: deadlock-lock-order
-version: 1
+version: 2
 authored_by: measured from StrataTrace v2 kernel traces
 generated_from: blueprints/deadlock-lock-order.json
 covers: deadlock
@@ -11,10 +11,11 @@ covers: deadlock
 - a kernel trace is available
 
 Do NOT use this blueprint when:
-- the suspect container is busy - that is contention, not deadlock
-- no container went quiet during the window
+- no container is new to the window
+- an EXISTING container went silent - that is a stopped dependency
+- the suspect is an ordinary service with a high futex share and no arrival - on a JVM that is normal, not a fault
 
-Cheapest check first: a container appeared in the window and produces under a few hundred events per second while the application is under load
+Cheapest check first: find a container present in the window and absent before it, then read its events per second: at or above 10000 is one of the spinning faults, at or below 2000 is a deadlock.
 
 ## Problem signature
 - a service stops responding rather than slowing down
@@ -22,9 +23,7 @@ Cheapest check first: a container appeared in the window and produces under a fe
 - requests time out rather than returning late
 
 Telling it apart from its look-alikes:
-- **the container's total event rate** — this problem: 70-84 events/s (n=5). Quieter than an idle container. Not this problem: lock contention runs 62,780-63,647 events/s with the same mechanism family - a factor of 800. Anything busy is not this.
-- **futex share, which is LOW here and not high** — this problem: 4.3% (n=5) - the locks were taken once and never contended again. Not this problem: lock contention 47.0% and priority inversion 41.0%. A high futex share rules this out, which is the reverse of the intuition.
-- **what little it does do is file operations** — this problem: file ops 22.1% (n=5) - close, fcntl and openat2, which is the respawn loop opening and closing its lock files. Not this problem: no other family exceeds 0.6% on file ops. It is 0.0% for lock contention and priority inversion.
+- **the newcomer container's kernel event rate and softirq share** — this problem: 87-731 events/s across 6 runs on two applications, against 16,476-63,380 for the two spinning faults - roughly a hundredfold apart. Not this problem: DO NOT decide this by finding the container with the highest futex share. Measured on two applications: the injected container sits at 41-47% futex against siblings at 33% on one, and at 52-58% against siblings at 60% on the other. Where services run on a JVM, threads park on futexes and an ordinary service is futex-heavy by nature, so the comparison inverts and the rule names an innocent service. Use the newcomer test and the rate..
 
 ## What to look at first
 The signals below are sufficient for this problem; you do not need everything.
@@ -64,20 +63,20 @@ Each step names the capability it needs, how to get at it with the tools you hav
 
 ## Resolution template
 Conclude this problem when ALL of:
-- a container is new to the window
-- its share profile matches the measured range below
-- no sibling container shows the same profile
+- a container is present in the window that was absent before it
+- it produces 2000 kernel events per second or fewer - it arrived and then stopped working
+- no sibling container went silent, which would be a stopped dependency instead
 
 Prefer a different explanation when:
-- lock-contention-futex-storm — the container is busy - tens of thousands of events per second with futex near 47%
-- connection-pool-exhaustion — it is quiet but its events are network and ioctl rather than file operations
+- lock-contention-futex-storm — the newcomer produces 10000 events per second or more - it is spinning, not parked
+- dependency-outage-retry-storm — no container is new and an EXISTING one went silent - that is a stopped dependency, not a deadlock
 
-Root cause is: the container that appeared and then went nearly silent
+Root cause is: the newcomer container, named by its pid_ns
 
 ## When to stop
-- Conclude when: the share profile matches and no sibling container matches it too
+- Conclude when: a newcomer matched the rate and softirq ranges above
 - Stop and switch: a discriminating share falls outside its measured range
-- Evidence insufficient: no container is new to the window and none stands out
+- Evidence insufficient: no container is new to the window. Say so rather than naming the most futex-heavy container, which on a JVM application is an ordinary service
 - Do not exceed 3 rounds of gathering more evidence before reporting what is missing.
 
 ## Constraints you must respect

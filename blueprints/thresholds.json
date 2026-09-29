@@ -323,6 +323,44 @@
     "dependency-outage-retry-storm"
    ],
    "measured": "the SECOND quietest container sat at 0.23-0.89 of its own baseline across the same 6 runs. This is the contrast test: it separates one workload stopping from every workload slowing, and without it a host-wide fault passes the silence test too"
+  },
+  "NEWCOMER_BUSY_PER_S": {
+   "value": 10000,
+   "unit": "kernel events per second from one container",
+   "op": ">=",
+   "transfers": "partly",
+   "why_transfers": "an absolute rate, so it carries an assumption about machine speed and about how hard the injected workload was configured to push. It held to within 1% across two applications on identical hardware; treat it as calibrated to this testbed, not as a property of lock contention",
+   "used_by": [
+    "deadlock-lock-order",
+    "lock-contention-futex-storm",
+    "priority-inversion-nice"
+   ],
+   "measured": "the injected container ran at 62,774-63,380 events/s for lock contention and 16,476-19,632 for priority inversion, on both applications; an idle newcomer ran at 87-731"
+  },
+  "NEWCOMER_IDLE_PER_S": {
+   "value": 2000,
+   "unit": "kernel events per second from one container",
+   "op": "<=",
+   "transfers": "partly",
+   "why_transfers": "absolute, same caveat as NEWCOMER_BUSY_PER_S",
+   "used_by": [
+    "deadlock-lock-order",
+    "lock-contention-futex-storm",
+    "priority-inversion-nice"
+   ],
+   "measured": "a deadlocked newcomer ran at 87-731 events/s against 16,476-63,380 for the two spinning faults - roughly a hundredfold apart, on both applications"
+  },
+  "SOFTIRQ_INVERSION_MIN": {
+   "value": 0.09,
+   "unit": "share of that container's own events",
+   "op": ">=",
+   "transfers": "yes",
+   "why_transfers": "a share of the container's own events, so it is independent of machine speed and of how busy the rest of the host is",
+   "used_by": [
+    "priority-inversion-nice",
+    "lock-contention-futex-storm"
+   ],
+   "measured": "priority inversion 10.9-13.4% against lock contention 4.8-5.9%, on both applications, with no overlap"
   }
  }
 }

@@ -1,6 +1,6 @@
 ---
 name: lock-contention-futex-storm
-version: 1
+version: 2
 authored_by: measured from StrataTrace v2 kernel traces
 generated_from: blueprints/lock-contention-futex-storm.json
 covers: lock_contention
@@ -11,11 +11,11 @@ covers: lock_contention
 - a kernel trace is available and futex syscalls are traced
 
 Do NOT use this blueprint when:
-- the suspect container is nearly idle - see deadlock-lock-order
 - no container is new to the window
-- futex is not in the collection profile, in which case this cannot be measured at all
+- an EXISTING container went silent - that is a stopped dependency
+- the suspect is an ordinary service with a high futex share and no arrival - on a JVM that is normal, not a fault
 
-Cheapest check first: one container's futex share is above 40% while every other is near zero
+Cheapest check first: find a container present in the window and absent before it, then read its events per second: at or above 10000 is one of the spinning faults, at or below 2000 is a deadlock.
 
 ## Problem signature
 - a service is slow but its CPU is not saturated
@@ -23,9 +23,7 @@ Cheapest check first: one container's futex share is above 40% while every other
 - the slowdown does not follow a call path to a dependency
 
 Telling it apart from its look-alikes:
-- **share of the container's own events spent on futex** — this problem: 47.0% (n=5, range 46.6-47.3). Not this problem: a deadlock sits at 4.3% because parked threads make no calls; a stress container, a memory stressor and a connection-pool holder all sit at 0%.
-- **thread migration share, which separates it from priority inversion** — this problem: 5.0% (n=5) - threads bounce between CPUs chasing the lock. Not this problem: priority inversion sits at 2.0% and carries more softirq (13.4% against 5.9%). This is the weaker of the two discriminators and must not decide on its own.
-- **the container is busy, not idle** — this problem: sched churn 26.4% and on-CPU 14.7% (n=5): work is being done. Not this problem: a deadlock is nearly silent - measured 70-84 events/s against 62,780-63,647 here, a factor of 800.
+- **the newcomer container's kernel event rate and softirq share** — this problem: 62,774-63,380 events/s and 4.8-5.9% softirq across 6 runs on two applications. Not this problem: DO NOT decide this by finding the container with the highest futex share. Measured on two applications: the injected container sits at 41-47% futex against siblings at 33% on one, and at 52-58% against siblings at 60% on the other. Where services run on a JVM, threads park on futexes and an ordinary service is futex-heavy by nature, so the comparison inverts and the rule names an innocent service. Use the newcomer test and the rate..
 
 ## What to look at first
 The signals below are sufficient for this problem; you do not need everything.
@@ -65,21 +63,21 @@ Each step names the capability it needs, how to get at it with the tools you hav
 
 ## Resolution template
 Conclude this problem when ALL of:
-- a container is new to the window
-- its share profile matches the measured range below
-- no sibling container shows the same profile
+- a container is present in the window that was absent before it
+- it produces 10000 kernel events per second or more
+- its softirq share is BELOW 0.09, which is what separates it from priority inversion
 
 Prefer a different explanation when:
-- deadlock-lock-order — the container's futex share is near 4% and it produces only tens of events per second - parked, not spinning
-- priority-inversion-nice — softirq is above 10% and migration below 3%, measured 13.4% and 2.0% there against 5.9% and 5.0% here
-- cpu-contention-co-tenant — futex is 0% and softirq above 35% - a stress container, not a lock
+- priority-inversion-nice — softirq is 0.09 or above - measured 10.9-13.4% there against 4.8-5.9% here
+- deadlock-lock-order — the newcomer produces 2000 events per second or fewer - it is parked, not spinning
+- cpu-contention-co-tenant — the newcomer's futex share is near zero - a stress workload, not a lock
 
-Root cause is: the container whose futex share is far above every other container
+Root cause is: the newcomer container, named by its pid_ns
 
 ## When to stop
-- Conclude when: the share profile matches and no sibling container matches it too
+- Conclude when: a newcomer matched the rate and softirq ranges above
 - Stop and switch: a discriminating share falls outside its measured range
-- Evidence insufficient: no container is new to the window and none stands out
+- Evidence insufficient: no container is new to the window. Say so rather than naming the most futex-heavy container, which on a JVM application is an ordinary service
 - Do not exceed 3 rounds of gathering more evidence before reporting what is missing.
 
 ## Constraints you must respect
