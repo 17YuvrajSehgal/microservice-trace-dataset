@@ -1,0 +1,17 @@
+id: wert-2015-dynamicspotter
+title: DynamicSpotter - Automatic, Experiment-based Diagnostics of Performance Problems
+authors: Wert, A.
+year: 2015
+venue: ICPE 2015, Invited Demonstration Paper, pp. 105-106
+doi: 10.1145/2668930.2693844
+url: http://sopeco.github.io/DynamicSpotter/
+retrieved: '2026-09-10'
+type: peer_reviewed
+status: V
+summary_by: user
+verified: true
+blueprints:
+- prof-recommendation
+files:
+- paper.md
+- paper.pdf

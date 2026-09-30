@@ -1034,3 +1034,132 @@ sources:
     kind: html
     html_only: true   # a bibliography listing, not prose - nothing for trafilatura to extract
     blueprints: [17]
+
+  # ================================================================ prof-recommendation
+  # Papers the supervisor recommended, in blueprint-references/prof-recommendation/.
+  # The first five already have hand-written summaries (originally in
+  # research-papers-md-files/); the last four are long documents with no summary yet.
+
+  shahedi-2026-performance-archetypes:
+    title: "Discovering Performance Archetypes - Critical-Path-Aware Pattern Analysis and Regression Detection"
+    authors: "Shahedi, K.; Li, H.; Lamothe, M.; Khomh, F."
+    year: 2026
+    venue: "ASE 2026 (41st IEEE/ACM Int. Conf. on Automated Software Engineering), Munich"
+    doi: "10.1145/3832783.3834426"
+    url: "https://arxiv.org/abs/2609.17179"
+    url_page: "https://github.com/mooselab/performance-archetypes"
+    type: peer_reviewed
+    status: V
+    summary_by: user
+    kind: local
+    from: "prof-recommendation/1Discovering Performance Archetypes.pdf"
+    blueprints: [18]
+
+  fu-2025-msofsanomaly:
+    title: "A failure analysis framework to provide pure anomalous data using multi-source data of fault-sensitive microservices (MSoFSAnomaly)"
+    authors: "Fu, N.; Cheng, G.; Dai, G.; Mei, H.; Qiu, X.; Teng, Y."
+    year: 2025
+    venue: "Journal of Systems and Software 230, Article 112513"
+    doi: "10.1016/j.jss.2025.112513"
+    url_page: "https://github.com/FuN312/MSoFSAnomaly"
+    type: peer_reviewed
+    status: V
+    summary_by: user
+    kind: local
+    from: "prof-recommendation/2MSoFSAnomaly.pdf"
+    blueprints: [18]
+
+  song-2024-asfc:
+    title: "Autonomous selection of the fault classification models for diagnosing microservice applications (ASFC)"
+    authors: "Song, Y.; Xin, R.; Chen, P.; Zhang, R.; Chen, J.; Zhao, Z."
+    year: 2024
+    venue: "Future Generation Computer Systems 153, pp. 326-339"
+    doi: "10.1016/j.future.2023.12.005"
+    type: peer_reviewed
+    status: V
+    summary_by: user
+    note: "Uses Sock Shop. Data link given in the paper - surfdrive.surf.nl/files/index.php/s/FjmBjVQnDRWqDmV"
+    kind: local
+    from: "prof-recommendation/3ASFC.pdf"
+    blueprints: [18]
+
+  wert-2015-dynamicspotter:
+    title: "DynamicSpotter - Automatic, Experiment-based Diagnostics of Performance Problems"
+    authors: "Wert, A."
+    year: 2015
+    venue: "ICPE 2015, Invited Demonstration Paper, pp. 105-106"
+    doi: "10.1145/2668930.2693844"
+    url_page: "http://sopeco.github.io/DynamicSpotter/"
+    type: peer_reviewed
+    status: V
+    summary_by: user
+    kind: local
+    from: "prof-recommendation/4dynamicspotter-paper.pdf"
+    blueprints: [18]
+
+  wert-2013-ppd:
+    title: "Supporting Swift Reaction - Automatically Uncovering Performance Problems by Systematic Experiments"
+    authors: "Wert, A.; Happe, J.; Happe, L."
+    year: 2013
+    venue: "ICSE 2013, San Francisco, pp. 552-561"
+    type: peer_reviewed
+    status: V
+    summary_by: user
+    kind: local
+    from: "prof-recommendation/5PPD_paper.md.pdf"
+    blueprints: [18]
+
+  # ---- long documents, no summary yet
+  wert-thesis-dissertation:
+    title: "Performance Problem Diagnostics by Systematic Experimentation (doctoral dissertation, KIT)"
+    authors: "Wert, A."
+    venue: "Dissertation, Karlsruher Institut fuer Technologie"
+    type: peer_reviewed
+    status: V
+    pages: "329 pages"
+    note: "Same work as wert-thesis-book, which is the published Karlsruhe Series version (486 pp).
+      Both are the long form of wert-2013-ppd and wert-2015-dynamicspotter. Summarise ONE of them,
+      not both."
+    kind: local
+    from: "prof-recommendation/Wert_Alexander_300pg.pdf"
+    blueprints: [18]
+
+  wert-thesis-book:
+    title: "Performance Problem Diagnostics by Systematic Experimentation (Karlsruhe Series on Software Design and Quality, vol. 20)"
+    authors: "Wert, A."
+    venue: "The Karlsruhe Series on Software Design and Quality, 20"
+    type: peer_reviewed
+    status: V
+    pages: "486 pages"
+    note: "Published book version of wert-thesis-dissertation. Duplicate content."
+    kind: local
+    from: "prof-recommendation/Performance_Problem_Diagnostics_486pg.pdf"
+    blueprints: [18]
+
+  ghosh-tracing-patterns-thesis:
+    title: "System and Application Performance Analysis Patterns Using Software Tracing"
+    authors: "Ghosh, S."
+    venue: "Master's thesis"
+    type: peer_reviewed
+    status: V
+    pages: "147 pages"
+    note: "Closest of the four long documents to our work - performance analysis PATTERNS from
+      software tracing, which is the same idea as a blueprint. Worth summarising first."
+    kind: local
+    from: "prof-recommendation/Sauradip_Ghosh_40115287_147pg.pdf"
+    blueprints: [18]
+
+  vostokov-crash-dump-encyclopedia:
+    title: "Encyclopedia of Crash Dump Analysis Patterns, Second Edition"
+    authors: "Vostokov, D."
+    venue: "Software Diagnostics Institute (commercial book)"
+    type: industrial
+    status: V
+    pages: "1200 pages"
+    note: "A commercially published book, and this copy carries a libgen watermark in its filename.
+      It is a reference work rather than a citable research result, and at 1200 pages of pattern
+      entries it is closer to a dictionary than a paper. Catalogued for completeness; do not
+      redistribute, and prefer citing specific named patterns rather than the book as a whole."
+    kind: local
+    from: "prof-recommendation/Encyclopedia of Crash Dump 1200pg - libgen.lc.pdf"
+    blueprints: [18]

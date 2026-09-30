@@ -125,6 +125,16 @@ blueprints:
   - waseem-2021-issues-five-microservices
   - waseem-2023-issues-causes-solutions
   - xpert-2023
+  prof-recommendation:
+  - fu-2025-msofsanomaly
+  - ghosh-tracing-patterns-thesis
+  - shahedi-2026-performance-archetypes
+  - song-2024-asfc
+  - vostokov-crash-dump-encyclopedia
+  - wert-2013-ppd
+  - wert-2015-dynamicspotter
+  - wert-thesis-book
+  - wert-thesis-dissertation
 sources:
   aiopslab-2025:
     title: AIOpsLab - A Holistic Framework to Evaluate AI Agents for Enabling Autonomous
@@ -164,6 +174,7 @@ sources:
     title: Metastable Failures in Distributed Systems
     have: true
     files:
+    - paper.md
     - paper.pdf
   brooker-metastability:
     title: Metastability and Distributed Systems
@@ -189,6 +200,7 @@ sources:
     title: Understanding Real-World Timeout Problems in Cloud Server Systems
     have: true
     files:
+    - paper.md
     - paper.pdf
   danluu-container-throttling:
     title: The container throttling problem
@@ -224,11 +236,20 @@ sources:
     title: FixItFlow - Automated Troubleshooting Guide Generation from Cloud Incidents
     have: true
     files:
+    - paper.md
     - paper.pdf
   franke-2002-futexes:
     title: 'Fuss, Futexes and Furwocks: Fast Userlevel Locking in Linux'
     have: true
     files:
+    - paper.md
+    - paper.pdf
+  fu-2025-msofsanomaly:
+    title: A failure analysis framework to provide pure anomalous data using multi-source
+      data of fault-sensitive microservices (MSoFSAnomaly)
+    have: true
+    files:
+    - paper.md
     - paper.pdf
   futex-internals:
     title: Futex Internals (Linux Kernel Internals)
@@ -253,10 +274,16 @@ sources:
     have: true
     files:
     - paper.pdf
+  ghosh-tracing-patterns-thesis:
+    title: System and Application Performance Analysis Patterns Using Software Tracing
+    have: true
+    files:
+    - paper.pdf
   giraldeau-2016-wait-analysis:
     title: Wait Analysis of Distributed Systems Using Kernel Tracing
     have: true
     files:
+    - paper.md
     - paper.pdf
   gregg-offcpu-analysis:
     title: Off-CPU Analysis
@@ -404,6 +431,7 @@ sources:
     title: System Performance Anomaly Detection using Tracing Data Analysis (PhD thesis)
     have: true
     files:
+    - paper.md
     - paper.pdf
   lagresle-connection-timeouts:
     title: A reason for unexplained connection timeouts on Kubernetes/Docker
@@ -434,6 +462,7 @@ sources:
       Bug Characteristics'
     have: true
     files:
+    - paper.md
     - paper.pdf
   lwn-cfs-bandwidth-control:
     title: CFS bandwidth control (LWN, 2011)
@@ -499,6 +528,7 @@ sources:
       Using Host Kernel Tracing
     have: true
     files:
+    - paper.md
     - paper.pdf
   neo4j-issue-1799:
     title: Too many open files (neo4j#1799)
@@ -511,6 +541,7 @@ sources:
     title: Nissist - An Incident Mitigation Copilot based on Troubleshooting Guides
     have: true
     files:
+    - paper.md
     - paper.pdf
   openjdk-jdk-6900441:
     title: 'JDK-6900441: PlatformEvent.park(millis) on Linux could still be affected
@@ -528,6 +559,7 @@ sources:
       Telemetry Data'
     have: true
     files:
+    - paper.md
     - paper.pdf
   pumputis-racy-conntrack:
     title: Racy conntrack and DNS lookup timeouts
@@ -556,6 +588,7 @@ sources:
     title: Multi-Level Execution Trace Based Lock Contention Analysis
     have: true
     files:
+    - paper.md
     - paper.pdf
   rfc-1122-host-requirements:
     title: RFC 1122 - Requirements for Internet Hosts, Communication Layers
@@ -595,11 +628,26 @@ sources:
     title: 'Priority Inheritance Protocols: An Approach to Real-Time Synchronization'
     have: true
     files:
+    - paper.md
+    - paper.pdf
+  shahedi-2026-performance-archetypes:
+    title: Discovering Performance Archetypes - Critical-Path-Aware Pattern Analysis
+      and Regression Detection
+    have: true
+    files:
+    - paper.md
     - paper.pdf
   siriushelper:
     title: SiriusHelper - An LLM Agent-Based Operations Assistant for Big Data Platforms
     have: true
     files:
+    - paper.pdf
+  song-2024-asfc:
+    title: Autonomous selection of the fault classification models for diagnosing
+      microservice applications (ASFC)
+    have: true
+    files:
+    - paper.md
     - paper.pdf
   spring-boot-datasource-defaults:
     title: Spring Boot reference - SQL databases (connection pool defaults; HikariCP
@@ -630,9 +678,16 @@ sources:
     title: CPU bandwidth control for CFS (in Proceedings of the Linux Symposium 2010)
     have: true
     files:
+    - paper.md
     - paper.pdf
   ugedal-2022-unnecessary-throttling:
     title: Mitigating Unnecessary Throttling in Linux CFS Bandwidth Control
+    have: true
+    files:
+    - paper.md
+    - paper.pdf
+  vostokov-crash-dump-encyclopedia:
+    title: Encyclopedia of Crash Dump Analysis Patterns, Second Edition
     have: true
     files:
     - paper.pdf
@@ -649,6 +704,32 @@ sources:
     - paper.pdf
   weiner-2022-tmo:
     title: 'TMO: Transparent Memory Offloading in Datacenters'
+    have: true
+    files:
+    - paper.pdf
+  wert-2013-ppd:
+    title: Supporting Swift Reaction - Automatically Uncovering Performance Problems
+      by Systematic Experiments
+    have: true
+    files:
+    - paper.md
+    - paper.pdf
+  wert-2015-dynamicspotter:
+    title: DynamicSpotter - Automatic, Experiment-based Diagnostics of Performance
+      Problems
+    have: true
+    files:
+    - paper.md
+    - paper.pdf
+  wert-thesis-book:
+    title: Performance Problem Diagnostics by Systematic Experimentation (Karlsruhe
+      Series on Software Design and Quality, vol. 20)
+    have: true
+    files:
+    - paper.pdf
+  wert-thesis-dissertation:
+    title: Performance Problem Diagnostics by Systematic Experimentation (doctoral
+      dissertation, KIT)
     have: true
     files:
     - paper.pdf
@@ -674,6 +755,7 @@ sources:
     title: A Deep Dive into DNS Query Failures
     have: true
     files:
+    - paper.md
     - paper.pdf
   zhang-2013-cpi2:
     title: 'CPI2: CPU performance isolation for shared compute clusters'

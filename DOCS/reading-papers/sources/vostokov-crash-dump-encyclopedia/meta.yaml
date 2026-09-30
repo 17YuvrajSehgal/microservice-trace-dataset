@@ -1,0 +1,17 @@
+id: vostokov-crash-dump-encyclopedia
+title: Encyclopedia of Crash Dump Analysis Patterns, Second Edition
+authors: Vostokov, D.
+venue: Software Diagnostics Institute (commercial book)
+retrieved: '2026-09-23'
+type: industrial
+status: V
+verified: true
+blueprints:
+- prof-recommendation
+files:
+- paper.pdf
+note: A commercially published book, and this copy carries a libgen watermark in its
+  filename. It is a reference work rather than a citable research result, and at 1200
+  pages of pattern entries it is closer to a dictionary than a paper. Catalogued for
+  completeness; do not redistribute, and prefer citing specific named patterns rather
+  than the book as a whole.

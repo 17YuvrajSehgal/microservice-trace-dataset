@@ -1,0 +1,16 @@
+id: wert-thesis-dissertation
+title: Performance Problem Diagnostics by Systematic Experimentation (doctoral dissertation,
+  KIT)
+authors: Wert, A.
+venue: Dissertation, Karlsruher Institut fuer Technologie
+retrieved: '2026-09-10'
+type: peer_reviewed
+status: V
+verified: true
+blueprints:
+- prof-recommendation
+files:
+- paper.pdf
+note: Same work as wert-thesis-book, which is the published Karlsruhe Series version
+  (486 pp). Both are the long form of wert-2013-ppd and wert-2015-dynamicspotter.
+  Summarise ONE of them, not both.

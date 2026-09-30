@@ -1,0 +1,16 @@
+id: wert-2013-ppd
+title: Supporting Swift Reaction - Automatically Uncovering Performance Problems by
+  Systematic Experiments
+authors: Wert, A.; Happe, J.; Happe, L.
+year: 2013
+venue: ICSE 2013, San Francisco, pp. 552-561
+retrieved: '2026-09-10'
+type: peer_reviewed
+status: V
+summary_by: user
+verified: true
+blueprints:
+- prof-recommendation
+files:
+- paper.md
+- paper.pdf

@@ -3,7 +3,6 @@ title: Multi-Level Execution Trace Based Lock Contention Analysis
 authors: Rezazadeh, A.; Ezzati-Jivan, N.; Galea, P.; Dagenais, M. R.
 year: 2020
 venue: ISSRE Workshops 2020
-url: null
 retrieved: '2026-09-30'
 type: peer_reviewed
 status: V
@@ -12,4 +11,5 @@ blueprints:
 - lock-contention-futex-storm
 - priority-inversion-nice
 files:
+- paper.md
 - paper.pdf

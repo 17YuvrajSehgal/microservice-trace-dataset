@@ -1,0 +1,14 @@
+id: wert-thesis-book
+title: Performance Problem Diagnostics by Systematic Experimentation (Karlsruhe Series
+  on Software Design and Quality, vol. 20)
+authors: Wert, A.
+venue: The Karlsruhe Series on Software Design and Quality, 20
+retrieved: '2026-09-10'
+type: peer_reviewed
+status: V
+verified: true
+blueprints:
+- prof-recommendation
+files:
+- paper.pdf
+note: Published book version of wert-thesis-dissertation. Duplicate content.

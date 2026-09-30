@@ -1,0 +1,18 @@
+id: shahedi-2026-performance-archetypes
+title: Discovering Performance Archetypes - Critical-Path-Aware Pattern Analysis and
+  Regression Detection
+authors: Shahedi, K.; Li, H.; Lamothe, M.; Khomh, F.
+year: 2026
+venue: ASE 2026 (41st IEEE/ACM Int. Conf. on Automated Software Engineering), Munich
+doi: 10.1145/3832783.3834426
+url: https://arxiv.org/abs/2609.17179
+retrieved: '2026-09-28'
+type: peer_reviewed
+status: V
+summary_by: user
+verified: true
+blueprints:
+- prof-recommendation
+files:
+- paper.md
+- paper.pdf

@@ -11,4 +11,5 @@ verified: true
 blueprints:
 - dns-delay
 files:
+- paper.md
 - paper.pdf

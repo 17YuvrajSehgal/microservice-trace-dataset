@@ -12,5 +12,6 @@ verified: true
 blueprints:
 - db-latency-dependency-wait
 files:
+- paper.md
 - paper.pdf
 url_note: PhD thesis of the first author; the TCC article itself is paywalled

@@ -11,4 +11,5 @@ verified: true
 blueprints:
 - service-cpu-throttle
 files:
+- paper.md
 - paper.pdf

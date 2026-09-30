@@ -12,4 +12,5 @@ verified: false
 blueprints:
 - misc
 files:
+- paper.md
 - paper.pdf

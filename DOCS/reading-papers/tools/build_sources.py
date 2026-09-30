@@ -158,20 +158,33 @@ def main() -> int:
             # can tell a read-and-checked source from one seen only in a search snippet
             "type": meta.get("type"),
             "status": meta.get("status"),
+            # who wrote paper.md. Worth recording: the prof-recommendation summaries were
+            # written by hand before this pipeline existed, and follow the same format but
+            # were not produced by it.
+            "summary_by": meta.get("summary_by"),
             "verified": meta.get("status") == "V",
             "blueprints": [blueprint_id(n) for n in meta.get("blueprints", [])],
             "files": sorted(copied),
         }
+
         if not meta_out["commit"]:
             del meta_out["commit"]          # only present where it means something
         # a key with `null` under it tells a reader nothing; leave it out
-        for k in ("authors", "year", "venue", "doi", "retrieved"):
+        for k in ("authors", "year", "venue", "doi", "url", "retrieved", "summary_by"):
             if meta_out.get(k) in (None, ""):
                 meta_out.pop(k, None)
         if meta.get("note"):
             meta_out["note"] = meta["note"]
         if meta.get("url_note"):
             meta_out["url_note"] = meta["url_note"]
+        # A summary written by hand lives in sources/ and never existed in a numbered
+        # directory, so find_in_dirs cannot see it. Count it if it is on disk, otherwise
+        # meta.yaml claims the source has no summary when it does.
+        existing_md = os.path.join(out, "paper.md")
+        if os.path.exists(existing_md) and "paper.md" not in copied:
+            copied.append("paper.md")
+            meta_out["files"] = sorted(copied)
+
         if not copied:
             meta_out["files"] = []
             meta_out["note"] = ((meta_out.get("note", "") + " ")

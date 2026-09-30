@@ -50,6 +50,10 @@ DIRS = {
     # Everything the pack cites that is not tied to one blueprint: the cross-cutting method
     # sources, the "Related families (short)" section, and the whole related-work review.
     17: "misc",
+    # Papers the supervisor recommended. Five already have hand-written summaries;
+    # four are long documents (a 1200-page reference book, two copies of the same
+    # thesis, and a Master's thesis) with none yet.
+    18: "prof-recommendation",
 }
 
 UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "

@@ -12,6 +12,7 @@ verified: false
 blueprints:
 - priority-inversion-nice
 files:
+- paper.md
 - paper.pdf
 url_note: IEEE original is paywalled; this is a course mirror at Padova. Verified
   200/application/pdf, 1.3 MB.

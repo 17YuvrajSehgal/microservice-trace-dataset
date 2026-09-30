@@ -6,7 +6,7 @@ for us"** is what changes in our work because of it.
 Read the **Citation problems** section first — four of these papers are currently cited in a
 way the paper does not support.
 
-Status: **15 of 41 papers summarised.** All three 50+ page documents are done. Full summaries live in
+Status: **21 of 50 papers summarised** (16 by me, 5 by you). All three 50+ page documents from the reference pack are done. All three 50+ page documents are done. Full summaries live in
 `sources/<slug>/paper.md`. The remaining 29 are listed at the bottom.
 
 ---
@@ -74,6 +74,31 @@ does not support.
 | **Bronson et al. 2021** <br> *Metastable Failures, HotOS* | *"It is common for an outage... to be initially blamed on the trigger, but the true root cause is the sustaining effect."* Vulnerable ≠ overloaded; many systems run there deliberately | The exact citation behind blueprint 5 reporting trigger and sustaining loop **separately**. **But our paused container is not metastable** by their own definition — it resolves when the trigger stops |
 
 ---
+
+## Supervisor-recommended papers (`prof-recommendation`)
+
+Five already had hand-written summaries; they are now in `sources/<slug>/paper.md` with
+`meta.yaml`, marked `summary_by: user`.
+
+| Source | Paper | Summary |
+|---|---|---|
+| `shahedi-2026-performance-archetypes` | Discovering Performance Archetypes, ASE 2026 | yours |
+| `fu-2025-msofsanomaly` | MSoFSAnomaly, JSS 2025 | yours |
+| `song-2024-asfc` | ASFC, FGCS 2024 — **uses Sock Shop** | yours |
+| `wert-2015-dynamicspotter` | DynamicSpotter, ICPE 2015 | yours |
+| `wert-2013-ppd` | Supporting Swift Reaction, ICSE 2013 | yours |
+
+### The four long ones — two observations before summarising them
+
+| Source | Pages | Note |
+|---|---|---|
+| `ghosh-tracing-patterns-thesis` | 147 | *System and Application Performance Analysis Patterns Using Software Tracing*. **The closest of the four to our work** — performance analysis *patterns* from software tracing is the same idea as a blueprint. Worth doing first |
+| `wert-thesis-dissertation` | 329 | Wert's KIT doctoral dissertation |
+| `wert-thesis-book` | 486 | **The same work**, published as Karlsruhe Series vol. 20. Summarise one, not both |
+| `vostokov-crash-dump-encyclopedia` | 1200 | *Encyclopedia of Crash Dump Analysis Patterns, 2nd ed.* A commercial reference book, not a research result. The filename carries a libgen watermark |
+
+Both Wert theses are the long form of `wert-2013-ppd` and `wert-2015-dynamicspotter`, which
+already have summaries — so the marginal value of summarising a 486-page duplicate is low.
 
 ## Still to do — 26 papers
 
