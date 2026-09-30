@@ -144,6 +144,100 @@ def ns_for_service(run_dir: str, service: str, index_root: str | None = None):
     return best[0] if d2 / d1 >= MARGIN else None
 
 
+def _clock_s(s: str):
+    """'HH:MM:SS[.frac]' -> seconds since midnight. None if it does not parse.
+
+    A copy of q2_run_one's, deliberately. nsmap is imported BY the scorer and must not import it
+    back, and eight lines duplicated is cheaper than a circular import between two files that
+    both have to stay off the agent's side of the fence.
+    """
+    try:
+        parts = s.strip().split(":")
+        if len(parts) != 3:
+            return None
+        return int(parts[0]) * 3600 + int(parts[1]) * 60 + float(parts[2])
+    except (ValueError, AttributeError):
+        return None
+
+
+# How far outside the injection window a workload container's lifespan may sit and still be
+# recognised. The container is created just after gt_begin stamps the start and torn down just
+# before gt_end, so in practice it sits INSIDE the window - measured on
+# deadlock_aggressive_steady_r1 at +1.5 s and -1.2 s. Ten seconds is slack, not a fit.
+WORKLOAD_TOL_S = 10.0
+
+
+def ns_lifespans(run_id: str, index_root: str | None = None) -> dict:
+    """{pid_ns: (first_bucket_s, last_bucket_s)} - when each namespace is first and last seen.
+
+    Buckets are seconds-of-day, the same clock `_clock_s` produces from ground truth, so the two
+    can be compared without conversion.
+    """
+    p = os.path.join(index_root or INDEX_ROOT, run_id + ".tsv.gz")
+    if not os.path.exists(p):
+        return {}
+    span = {}
+    with gzip.open(p, "rt", errors="replace") as fh:
+        for line in fh:
+            if not line or line[0] == "#":
+                continue
+            f = line.rstrip(chr(10)).split(TAB)
+            if len(f) < 5:
+                continue
+            try:
+                b = float(f[0])
+            except ValueError:
+                continue
+            ns = f[3]
+            lo, hi = span.get(ns, (b, b))
+            span[ns] = (min(lo, b), max(hi, b))
+    return span
+
+
+def ns_for_workload(run_dir: str, gt: dict, index_root: str | None = None):
+    """The pid_ns of a fault's OWN co-located container, or None when it cannot be resolved.
+
+    Several families do not degrade a Sock Shop service at all - they start a container of their
+    own (deadlock.py, the noisy neighbour). Ground truth records those as target_service=host
+    with the real container named in parameters.container, so `ns_for_service` has nothing to
+    look up and every correct answer was scored `container_unverified`. On the first deadlock
+    matrix the agent named the same namespace in 6 of 9 cells and was credited for none of them.
+
+    The workload container is identifiable without guessing, because it is born when the fault
+    starts and dies when it ends while every service namespace spans the whole recording. That
+    is a property of the recipe (`workload_start` ... `workload_stop`), not a pattern fitted to
+    one trace.
+
+    Refuses - returns None - unless exactly one namespace qualifies. Same discipline as
+    ns_for_service: an unverified answer is recorded as unverified, never credited.
+    """
+    f = (gt or {}).get("fault") or {}
+    if not ((f.get("parameters") or {}).get("container")):
+        return None                                   # no co-located container in this recipe
+    t0 = _clock_s((f.get("injection_start_utc") or "").split("T")[-1].rstrip("Z"))
+    t1 = _clock_s((f.get("injection_end_utc") or "").split("T")[-1].rstrip("Z"))
+    if t0 is None or t1 is None or t1 <= t0:
+        return None
+
+    run_id = os.path.basename(run_dir.rstrip("/"))
+    spans = ns_lifespans(run_id, index_root)
+    if not spans:
+        return None
+    # namespaces already claimed by a compose service are services, whatever their lifespan
+    known = set(build(run_dir, index_root).get("by_ns") or {})
+
+    hits = []
+    for ns, (lo, hi) in spans.items():
+        if ns == HOST_NS or ns in known:
+            continue
+        if lo < t0 - WORKLOAD_TOL_S or hi > t1 + WORKLOAD_TOL_S:
+            continue                                  # outlives the fault, so it is not the fault
+        if (hi - lo) < 0.5 * (t1 - t0):
+            continue                                  # too brief to be the workload itself
+        hits.append(ns)
+    return hits[0] if len(hits) == 1 else None
+
+
 if __name__ == "__main__":
     rd = sys.argv[1]
     m = build(rd)

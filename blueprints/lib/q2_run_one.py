@@ -237,6 +237,14 @@ def main() -> int:
         import nsmap
         true_ns = nsmap.ns_for_service(
             inc["run_dir"], (gt.get("fault") or {}).get("target_service", "")) or ""
+        # Some recipes degrade no service at all - they start a container of their own, and
+        # ground truth records that as target_service=host with the container in
+        # parameters.container. ns_for_service has nothing to look up there, so every correct
+        # answer scored `container_unverified`: on the first deadlock matrix the agent named the
+        # same namespace in 6 of 9 cells and was credited for none. Fall back to resolving the
+        # workload container by its lifespan, which starts and ends with the fault.
+        if not true_ns:
+            true_ns = nsmap.ns_for_workload(inc["run_dir"], gt) or ""
     except Exception:                                                   # noqa: BLE001
         true_ns = ""
     jd = J.judge(dx.get("diagnosis") or {}, dx.get("trajectory"), args.problem,
