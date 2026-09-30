@@ -5,9 +5,10 @@ for us"** is what changes in our work because of it.
 
 Read the **Citation problems** section first — twelve citations have been corrected so far.
 
-Status: **42 of 50 papers summarised** (37 by me, 5 by you). All three 50+ page documents from
-the reference pack are done. Full summaries live in `sources/<slug>/paper.md`. The remaining 8
-are listed at the bottom.
+Status: **45 of 50 papers summarised** (40 by me, 5 by you). All three 50+ page documents from
+the reference pack are done. Full summaries live in `sources/<slug>/paper.md`. **Everything that
+supports a blueprint is now read.** The 10 remaining are all related-work (LLM agents and
+troubleshooting guides), listed at the bottom.
 
 ---
 
@@ -72,6 +73,8 @@ JVM observation is ours to prove, backed by a chain of citations. Both left alon
 
 | Paper | What it actually says | What it means for us |
 |---|---|---|
+| **Weiner et al. 2022** <br> *TMO, ASPLOS* <br> **(the paper PSI came from)** | **PSI measures lost work due to lack of a resource**, per process/container/machine. **`some`** = at least one process stalled; **`full`** = all of them. **CPU `full` is only possible inside a container**, from "outside competition" or "configured limits on the cgroup's CPU cycles". Memory pressure comes from exactly three events: **reclaim on allocation, refault IO wait, swap-in block**. Saves **20-32% of memory** across millions of Meta servers | Confirms the pack's reading that CPU PSI is our **runnable-wait**. Three things to take: the **`some`/`full` split** we do not make; **their two causes of CPU `full` are exactly blueprints 7 and 10**, named by PSI's author; and the **three memory events** as a discriminator list for `service-memory-cap`. Their rejection of *promotion rate* is a warning that **rate thresholds do not transfer across hardware**. Their "before PSI" paragraph **describes what a blueprint does** - worth quoting honestly. PSI is a counter, never says *which* container took the resource: that gap is our WHERE axis |
+| **Mogul & Minshall 2001** <br> *Rethinking the TCP Nagle Algorithm, SIGCOMM CCR* | Nagle waits for an ACK before sending sub-MSS data; delayed ACK waits for data before ACKing. Deadlock until the timer fires - **200 ms on BSD, up to 500 ms**. Triggers on **OF+SFS**: length strictly between **(2N+1)xMSS and (2N+2)xMSS**; **never below 2xMSS**. In a real HTTP trace **6.71-18.78% of responses** had a vulnerable length | Three things the pack lacked for `nagle_delayed_ack`: the **exact trigger bands** (2,921-4,379 bytes at MSS 1460 - **check the recipe targets one, or the injection reproduces nothing**), a **measured prevalence**, and their taxonomy placing **pipelined soft-realtime traffic - i.e. keep-alive/gRPC microservice traffic - in the class they declare unfixable**. So the real fix is `TCP_NODELAY`, a rule-out the blueprint needs. The delay is **quantised at a timer boundary**, unlike `network-path-degradation`'s variable delays - candidate discriminator. 2001, BSD stacks; Linux is adaptive and carries Minshall's variant |
 | **Ugedal & Kumar 2022** <br> *Unnecessary Throttling, SBAC-PAD* | CFS throttles processes **that have not used their quota**, because negative runtime from one period is repaid from the next. Same workload, same quota ratio: **0% throttled periods unlimited → 6.8% at 100 ms → 49% at 10 ms**. Throttling is **per logical CPU** | The citation for blueprint 10's most counter-intuitive claim. Also fixes our wording: not all threads stop together. Note we infer throttling from scheduler behaviour — `nr_throttled` lives in `cpu.stat`, which we do not collect |
 | **Sha, Rajkumar & Lehoczky 1990** <br> *Priority Inheritance, IEEE TC* | Defines priority inversion. Assumes **strict priorities**, uniprocessor, binary semaphores. Priority ceiling bounds blocking to one critical section **and prevents deadlock** | **Our fault is not this.** Under CFS `nice` is a weight, so the holder still runs, just less. Call ours "weighted lock-holder starvation". Linux applies inheritance only to PI futexes / RT — which is *why* our fault is observable at all |
 | **Turner, Rao & Rao 2010** <br> *CPU bandwidth control for CFS, OLS* <br> *(pp. 245-254 of the proceedings)* | The **design paper** for the mechanism. Hybrid global/local quota pools, slices, per-`cfs_rq` throttling. **Their §6.3 names the slack-time bug**: over-commit bounded by `num_cpus × batch_slice`, fix proposed as generation counters | **The 2010 authors predicted the bug Ugedal measured in 2022** — and Ugedal's "slush fund" is essentially their proposed fix, twelve years later. Also confirms: throttling is per run-queue, tasks are never throttled (only groups), limits are hierarchical with **no feasibility check** |
@@ -103,6 +106,7 @@ JVM observation is ours to prove, backed by a chain of citations. Both left alon
 
 | Paper | What it actually says | What it means for us |
 |---|---|---|
+| **El Khairi et al. 2024** <br> *REPLICAWATCHER, NDSS* | Training-less anomaly detection by **comparing a container against its own replicas**, on kernel events via Sysdig. 13 real-CVE scenarios, **avg AUC 0.9960 / 0.9827**, precision 0.9248, recall 0.9813 - and it **holds across image updates where three training-based baselines collapse**. Motivation: **almost every new version of GOB's `cart` added one previously unseen syscall** over ten versions | Closest published work to our setting. **Its feature study is the part that matters:** ranking candidates by dissimilarity across *identical replicas under identical load*, **syscall frequency, latency, delta time, IPs/ports and buffer length all showed "substantial dissimilarity"** and were rejected; only **process-based features** were stable. Several of our discriminators are rate-based - **test our fault-window ratios against the no-fault window-to-window variation of the same container before trusting them.** Two caveats: the method **needs replicas** (our Sock Shop has none), and every scenario is an **adversarial CVE**, not a performance fault |
 | **Pham et al. 2025** <br> *RCAEval, WWW Companion* | 735 failure cases, 3 systems (**incl. Sock Shop and Train Ticket**), 11 fault types, metrics + logs + traces, 15 baselines. Best Avg@5 ≈ 0.80. **DISK 1.00 vs DELAY 0.47** | Our nearest dataset neighbour. **It has no kernel traces** — that is the gap we fill, in the most complete public benchmark available. Their network-fault weakness is the number to compare against. **Scores are not comparable** — different task, different inputs |
 
 ---
@@ -156,11 +160,7 @@ citation problems were found while reading them** — see below the table.
 
 ---
 
-## Still to do — 8 papers
-
-**Mechanism:** `weiner-2022-tmo`, `mogul-2001-nagle`
-
-**Empirical:** `replicawatcher-2024`
+## Still to do — 10 papers, all in the LLM-agent / TSG related-work group
 
 **Related work (LLM agents / TSGs):** `autotsg-2022`, `stepfly-2026`, `rcacopilot-2024`,
 `roy-2024-llm-agents-rca`, `xpert-2023`, `aiopslab-2025`, `beyond-fault-localization`,
