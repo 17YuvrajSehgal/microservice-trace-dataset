@@ -219,3 +219,70 @@ because each carries the full TCP header.
 749k prompt tokens median, 410 s median wall. 60 cells cost about **$5** and took **2.4 hours**
 at `--jobs 3`. A full 1,320-cell campaign is roughly **$120 and 50 hours** at this concurrency -
 worth deciding deliberately rather than assuming.
+
+## deadlock: 30/30 with the blueprint, 3/30 without - and the scorer could not see it
+
+60 cells, Sock Shop, 0 failed, 0 rate-limit retries, 3.5 hours. First run of this blueprint.
+
+| arm | ask | n | container right | window hit | noticed |
+|---|---|---|---|---|---|
+| given | hint | 15 | **15** | 15 | +1s |
+| given | nohint | 15 | **15** | 15 | +1s |
+| none | hint | 15 | 3 | 2 | +180s |
+| none | nohint | 15 | **0** | 0 | +180s |
+
+Every blueprint cell got both the container and the window right. The fault runs 125 s, so the
+`+180s` in the no-blueprint arms means they describe the recovery rather than the incident.
+
+### The scorer was blind to correct answers, again
+
+`deadlock` degrades no Sock Shop service. The recipe starts a container of its own running
+`deadlock.py`, so ground truth says `target_service: host` with the real container buried in
+`parameters.container`. `ns_for_service` had `host` to look up, resolved nothing, and every
+correct answer scored `container_unverified`.
+
+The agent named `pid_ns 4026533609` in 6 of the first 9 cells and was credited for none. That
+namespace runs python3 where Sock Shop is Java/Go/Node, is absent from all 14 compose services,
+and exists only 04:05:48.5-04:07:50.8 against an injection of 04:05:47-04:07:52. It is born with
+the fault and dies with it.
+
+**Third time this week that a "limit of kernel traces" was our own plumbing.**
+
+`nsmap.ns_for_workload` resolves it by that lifespan - a property of `workload_start`/
+`workload_stop`, not a pattern fitted to one trace. It refuses unless exactly one namespace
+qualifies.
+
+### The first version of that fix would have corrupted the other matrix
+
+`conn_pool_exhaustion` also starts its own container, but its target is the DATASTORE being
+exhausted - the victim, not the attacker. An unguarded fallback would have supplied the attacker
+namespace as truth and marked every correct answer wrong. The fallback now fires only when
+`target_service` is host or empty. Verified on real runs:
+
+| | resolved via | changed by re-score |
+|---|---|---|
+| deadlock | `workload` 60/60 | 8 cells, all `container_unverified -> container` |
+| conn_pool_exhaustion | `service` 60/60 | **0 of 60** |
+
+That zero is the regression test passing on real data. It also confirms conn_pool independently:
+the agent answered `mysqld in pid_ns 4026533886` and `catalogue-db` resolves to that namespace.
+
+### Two process lessons, both self-inflicted
+
+**I reset the cluster repo mid-matrix**, which CLAUDE.md says not to do. It split the run's
+scoring across two versions. It did NOT affect the agent - `agent.py` was committed before
+launch - so the 60 cells stay comparable, and re-scoring made them consistent. Cheap this time
+because only the scorer had changed. It would not have been if I had touched the agent.
+
+**The rescorer's first dry run tried to change all 60 cells to `none`.** Two bugs: `diagnosis.json`
+IS the diagnosis rather than `{"diagnosis": ...}`, and `judge` returns the WHERE axis one level
+down. Had it written, all 60 scores would have been destroyed and only a 3.5-hour re-run could
+have recovered them. **Dry-run-before-write is the only reason that was a non-event.**
+
+### Why re-score rather than re-run
+
+Standing preference is to re-run. It was wrong here: the RUN was right and the SCORER was wrong,
+so the answers on disk are already correct and a re-run costs 3.5 hours and about $5 to reach
+them again. `q2_rescore_where.py` reads only files the run already wrote, calls no model, and is
+idempotent - a second pass changes nothing. `score.json` now records `true_ns` and `true_ns_via`
+so this class of problem is visible on disk next time instead of needing to be re-derived by hand.
