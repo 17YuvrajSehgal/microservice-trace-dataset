@@ -3,18 +3,17 @@
 One row per paper. **"What it actually says"** is the finding worth citing; **"What it means
 for us"** is what changes in our work because of it.
 
-Read the **Citation problems** section first — twelve citations have been corrected so far.
+Read the **Citation problems** section first — thirteen citations have been corrected so far.
 
-Status: **45 of 50 papers summarised** (40 by me, 5 by you). All three 50+ page documents from
-the reference pack are done. Full summaries live in `sources/<slug>/paper.md`. **Everything that
-supports a blueprint is now read.** The 10 remaining are all related-work (LLM agents and
-troubleshooting guides), listed at the bottom.
+Status: **all 55 papers summarised** (50 by me, 5 by you). All three 50+ page documents from
+the reference pack are done. Full summaries live in `sources/<slug>/paper.md`. **Nothing is left
+to read** except the Salesforce patent, which is scanned images and needs OCR.
 
 ---
 
 ## Citation problems — all found, all fixed (30 Sept 2026)
 
-**Twelve corrections**, made after reading each paper in full. Most were a case of citing a
+**Thirteen corrections**, made after reading each paper in full. Most were a case of citing a
 paper for something it does not say; three were plain bibliographic errors.
 
 **All eight were confined to `blueprints/REFERENCE-PACK-FOR-KERNEL-TRACE.md`.** The
@@ -37,7 +36,8 @@ changed, and no completed run is affected.**
 | 9 | `FUTURE-BLUEPRINT-REFERENCES.md`, `code_n_plus_one` | Chen 2014 "reports that N+1 costs **more than an order of magnitude**" | **Chen reports no such thing for N+1.** The order-of-magnitude figure (130 s → 2 s) is the *excessive data* pattern in Pet Clinic. **One-by-one processing is -17%** in their micro-benchmark and **+8% to -32%** across Broadleaf, significant in only 5 of 10 suites |
 | 10 | `FUTURE-BLUEPRINT-REFERENCES.md` + `meta.yaml`, `resource_abuse` | "Suneja et al., IPDS 2020" | **Karn, Kudva, Huang, Suneja & Elfadel, IEEE TPDS 32(3):674-691, 2021.** Suneja is the **fourth** author; "IPDS" is not the venue; 2020 is the acceptance year |
 | 11 | Cross-cutting §8 + blueprint 9, Zhou et al. | cited as "IEEE TSE, 2018/2021", status [M] | **IEEE TSE 47(2):243-260, 2021.** The repository PDF's "2018" running header is a stale draft template. Now [V] |
-| 12 | Blueprint 10 (addition, not an error) | no empirical source for the `prev_state=0` / `swapper` test | **Gelle et al. 2021 §4.3 publish exactly that `sched_switch` line**, from a 1% cpu cgroup cap on Cassandra, with 100 ms periodicity. Added as a supporting row |
+| 12 | `table.md`, FixItFlow row | "Top TSG complaints: missing information 32.24%, broken links 13.32%, incorrect instructions 11.21%" | **Those are AutoTSG's Table 1**, from 400+ on-call feedback items. FixItFlow restates them as "an internal study" without naming the source in that sentence. **Cite Shetty et al. 2022** |
+| 13 | Blueprint 10 (addition, not an error) | no empirical source for the `prev_state=0` / `swapper` test | **Gelle et al. 2021 §4.3 publish exactly that `sched_switch` line**, from a 1% cpu cgroup cap on Cassandra, with 100 ms periodicity. Added as a supporting row |
 
 ### Two that were already right
 
@@ -113,10 +113,28 @@ JVM observation is ours to prove, backed by a chain of citations. Both left alon
 
 ## Related work — the blueprint idea itself
 
+### The four that bear on our harness design
+
 | Paper | What it actually says | What it means for us |
 |---|---|---|
+| **Chen et al. 2025** <br> *AIOpsLab, MLSys* | **The closest published thing to `agentic-rca/`** — deploy, inject, collect, score. Four-level taxonomy: detection, localisation, RCA, mitigation. Best overall **59.32%**; **localisation Acc@1 46-62%**, RCA 36-45%. Non-LLM baselines **15.38%** and **7.69%**. Agents **waste steps generating non-existent APIs**; accuracy rises with the step limit then **plateaus** | **Not comparable to our numbers** — their agent works a live cluster with `kubectl`, their telemetry is metrics/logs/traces, their faults are mostly *functional* (pod at zero replicas, revoked auth). Write the comparison ourselves before a reviewer does. Two of their findings we hit independently (wasted steps, step-limit plateau). **Adopt their task taxonomy** — it makes our scope boundary (no mitigation) explicit. Their **Acc@3 exceeds Acc@1 by 8-15 pp**: worth reporting both |
+| **Huang et al.** <br> *OpsHarness — self-evolving harness* | **Specialised RCA agents now lose to general agents**: 36.1% average vs 17.9% (RCA-Agent) and 5.6% (mABC) across 4 models and 2 benchmarks. RCA-Agent drops **31.8% → 1.9%** off its own benchmark. The bottleneck is **the harness**. Their **K1 tier auto-generates a system profile that replaces a per-dataset adapter** | The most architecturally relevant paper to our repo. **We have a hard-coded loader where they have a generated profile** — producing a per-run profile (pid_ns inventory, containers, tracepoints, clock anchors) would make the harness portable to Train Ticket without touching tool code. We also have **no evolve/verify loop**; their `verify` step is the mechanism that would let mined knowledge coexist with our evidence-first rule |
+| **Lu et al.** <br> *Beyond Fault Localization* | **A direct critique of how we score.** Endpoint correctness *"provides no indication of the evidentiary basis for a diagnosis or the propagation route"*. 3,500 trajectories, hand-annotated propagation paths, **Edge F1 never exceeds 0.67** while Node F1 is far higher. **Acc@1 collapses with causal depth** (85.5% → 57.1%). Failures reduce to **OMIT / MIS / GEN** | Our WHERE axis **is** the endpoint correctness they attack — though `container_unverified` is closer to their point than a binary. **Their GEN3, "abandons an evidence channel after a failed or empty query", is exactly the `ctf_lines` silent-empty bug we fixed.** Their taxonomy is validated on 154 hand-coded trajectories and **our logs could be coded against it in an afternoon.** Their depth finding warns that our best results are on *short* causal chains |
+| **Roy et al. 2024** <br> *Exploring LLM-based Agents for RCA, FSE* | ReAct on real Azure incidents, **97 predictions hand-labelled**. Correctness **35% vs 39%** for baselines — but hallucination **6% vs 49%**, because **66% of its wrong answers say it lacks the evidence to decide**. **Surfacing tool error messages as observations let it consistently self-correct.** Died at the **20-step limit** after 1-2 useful steps, wasting the rest on a **stateless retrieval tool** | **We have no abstention category** — a confident wrong answer and an honest "unknown" score identically, and we have the data to split them. Independent confirmation of our `_HINTS` fix. Their stateless-tool waste is worth checking for in our tools. Their framing of *why* an agent — *"each troubleshooting step yields previously unknown information"* — is better than ours |
+
+### The TSG line — three approaches, and none of them creates the knowledge
+
+
+
+| Paper | What it actually says | What it means for us |
+|---|---|---|
+| **Shetty et al. 2022** <br> *AutoTSG* | 4,000+ TSGs mapped to thousands of incidents by **actual on-call click-throughs**. **Mean TTM 19 hrs without a TSG vs 13 hrs with one** (sev 1-2). Taxonomy from 400+ feedback items: **Completeness 32.24%, Broken Link 13.32%, Correctness 11.21%**, and **Empty 7.24%** ("currently just has TODO"). Converts prose TSGs to executable workflows: **0.89 / 0.94 / 0.91** | **The evidence that written guides work**, which our whole blueprint idea assumes. Its quality taxonomy is a design spec for what a blueprint must not be - and by it, our three blueprints with an empty `evidence_from_literature` are the **Empty** category. Its technique is the **opposite** of ours: it automates existing prose and so **inherits the 11.21% that have wrong steps**. **Do not quote its severity-1 TTM figures** - the paper says 36 hrs is "lesser" than 2 hrs, so they are transposed |
 | **An et al. 2024** <br> *Nissist* | Turns messy TSGs into nodes of **intent + action + linker**. Retrieves on *intent*, not document text. **Incidents with a TSG had 60% shorter TTM** across ~1,000 real incidents | The 60% figure is a better motivating citation than their own TTM numbers (5 incidents, no baseline). **`linker` — outcome → next intent — is worth stealing**; our "stop and switch" is prose, theirs is a field |
-| **Unnikrishnan et al. 2026** <br> *FixItFlow* | Generates TSGs from incident history. **Top TSG complaints: missing information 32.24%, broken links 13.32%, incorrect instructions 11.21%** | **Cite only the statistic.** Its own table shows satisfaction 2.58/5, **NPS −100, 0% adoption**. Useful as a **negative result**: generate-from-history produces readable guides nobody uses — which strengthens the case for measure-first |
+| **Unnikrishnan et al. 2026** <br> *FixItFlow* | Generates TSGs from incident history. ~~Top TSG complaints: missing information 32.24%...~~ **Those percentages are not FixItFlow's - they are AutoTSG's Table 1** (400+ on-call feedback items), restated by FixItFlow as "an internal study". **Cite Shetty et al. 2022.** Corrected 30 Sept 2026 | **Cite only the statistic.** Its own table shows satisfaction 2.58/5, **NPS −100, 0% adoption**. Useful as a **negative result**: generate-from-history produces readable guides nobody uses — which strengthens the case for measure-first |
+| **Mao, Li et al. 2026** <br> *StepFly, FSE* | Empirical study of **92 real TSGs**: most are ~3K tokens and 5-15 steps; **~46% have parallelisable steps** (Independent Paths 40.5%); query templates are **35.85% of tokens**. Quality taxonomy: **Clarity & Precision 37.4%** (dominant sub-issues **"Missing Description of the Action"** and **"Unquantifiable Condition"**), Database Instruction 27.2%, Data Flow 20.4%. **~94% success on GPT-4.1**, **32.9-70.4% time cut** for parallelisable TSGs | **The most actionable idea in the related work: our rule-out lists are their Independent Paths.** Both AIOpsLab and Roy say the step limit is where hard cases die; parallelising independent rule-outs attacks that directly. Their **"Unquantifiable Condition"** is a named defect and is exactly a discriminator written before its threshold was measured. Their **Query Preparation Plugins** are the preventive version of our reactive `_HINTS`. **~94% is procedure adherence, not diagnosis accuracy** |
+| **Jiang et al. 2024** <br> *Xpert, ICSE* | Recommends KQL queries from two years of incident history, few-shot, no fine-tuning. Defines **Xcore**: validity + semantic soundness + output correctness. **Post-processing moved BLEU 34.95 → 36.61 but Xcore 11.63 → 35.99** | **We judge the diagnosis, never the code.** Xcore's three axes map onto us and we have only the first (did it run). Their post-processing result says most generated queries *looked* fine and were not — the analogue for us is a `run_python` block that executes cleanly and aggregates the wrong column. Two cheap checks: log whether each computation touched the columns the blueprint names, and count degenerate results (empty frame, all zeros) |
+| **Saha & Hoi 2022** <br> *Mining Root Cause Knowledge, ICSE-SEIP* | Mines **2,000 Salesforce Sev0/1/2 incident post-mortems** into a Causal Knowledge Graph; 60 symptom clusters; ~76% of extracted topics judged informative | Minor as related work, but **free prevalence evidence**: its mined clusters name **conn pool (three separate clusters)**, thread starvation, deadlock, high CPU, high memory, packet loss latency and auto throttle — seven of our fault families, in the post-mortem record of 2,000 severe incidents. **The weights are cluster weights, not incident counts.** Narrows the connection-pool gap from a third direction |
+| **Shen et al.** <br> *SiriusHelper (Tencent)* | Deployed big-data-platform assistant. **73% accuracy / 81% usefulness** vs DeepSearch 62%, RAG 57%, CoT 54%. **Hierarchical knowledge base beats flat** (62 → 65%). Ticket volume down **~20.8%** | The most peripheral entry — not microservice RCA, no telemetry. Two things worth keeping: **CoT was both least accurate and slowest (25.91 s)**, so grounding an agent need not cost time; and their **SOP Reviewer generates multiple drafts from the same input and checks consistency** — the run-level analogue would tell us whether a correct diagnosis was knowledge or luck |
 | **Bronson et al. 2021** <br> *Metastable Failures, HotOS* | *"It is common for an outage... to be initially blamed on the trigger, but the true root cause is the sustaining effect."* Vulnerable ≠ overloaded; many systems run there deliberately | The exact citation behind blueprint 5 reporting trigger and sustaining loop **separately**. **But our paused container is not metastable** by their own definition — it resolves when the trigger stops |
 
 ---
@@ -160,12 +178,7 @@ citation problems were found while reading them** — see below the table.
 
 ---
 
-## Still to do — 10 papers, all in the LLM-agent / TSG related-work group
-
-**Related work (LLM agents / TSGs):** `autotsg-2022`, `stepfly-2026`, `rcacopilot-2024`,
-`roy-2024-llm-agents-rca`, `xpert-2023`, `aiopslab-2025`, `beyond-fault-localization`,
-`self-evolving-rca-harness`, `mining-root-cause-knowledge-2022`, `siriushelper`
-
+## Still to do — one, and it needs OCR
 
 ### Cannot be summarised
 
