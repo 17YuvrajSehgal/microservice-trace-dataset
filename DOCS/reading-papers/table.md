@@ -11,13 +11,36 @@ Status: **21 of 50 papers summarised** (16 by me, 5 by you). All three 50+ page 
 
 ---
 
-## Citation problems found so far
+## Citation problems — all found, all fixed (30 Sept 2026)
 
-These are not summary issues. They are places where a blueprint says something the cited paper
-does not support.
+Eight corrections, made after reading each paper in full. Every one was a case of citing a
+paper for something it does not say.
 
-| # | Where | Problem | Fix |
+**All eight were confined to `blueprints/REFERENCE-PACK-FOR-KERNEL-TRACE.md`.** The
+`blueprint.json` files and the generated `skill.md` files were clean — three of the affected
+blueprints have an empty `evidence_from_literature`, and `service-cpu-throttle`'s actual
+discriminator says "broad, simultaneous loss of CPU time across many unrelated processes",
+which is about the process population and is correct. **So no blueprint changed, no skill
+changed, and no completed run is affected.**
+
+| # | Where | What it said | What the paper says |
 |---|---|---|---|
+| 1 | Cross-cutting §1, Giraldeau | the backbone method for our discriminators | needs `sched_ttwu` (kprobe — the stock `sched_wakeup` loses the wake-up **source**) and socket-level netfilter events. **We collect neither.** Cite the principle, not the implementation |
+| 2 | Blueprint 4, Rezazadeh | "Supports: lock waits reconstructed from traces" | the paper's contribution is that kernel-only tracing **cannot see** user-space locks. Cite it for the **limit** |
+| 3 | Blueprint 4, DepGraph | "a cycle in it = deadlock" | **the paper never mentions deadlock or cycle detection.** Its use cases are lock, CPU and disk contention. The cycle argument is ours |
+| 4 | Blueprint 6, Rezazadeh | "lock contention can be seen in kernel traces" | in **multi-level** traces. The kernel level alone is the thing the paper says is insufficient |
+| 5 | Blueprint 6, Franke | futex rate is a contention signal | **measured on C/C++.** That is *why* the JVM case is an exception, not a contradiction. The paper also names busy-waiting as invisible from the kernel |
+| 6 | Blueprint 7, CPI² | "the same logic as 'who preempted me' in `sched_switch`" | CPI² **correlates statistically** because cache interference cannot be attributed directly. `sched_switch` names the culprit outright — **ours is stronger, not equivalent**. CPI² also targets cache/memory-bus, not CPU time |
+| 7 | Blueprint 8, Rezazadeh | "lock-holder and waiter analysis from traces" | only with user-space `lock_req`/`lock_acq` tracepoints, which split *waiting for* from *holding*. We cannot make that split |
+| 8 | Blueprint 10 | "**all** its threads stop at the same time" | throttling is per `cfs_rq` — **per logical CPU per cgroup**. One pool stopping does not stop the others, and a task is never throttled, only its group |
+
+### Two that were already right
+
+Blueprint 1's Lozi row correctly says **Refines** — cores can be idle while threads wait, so
+per-CPU idle time is a needed rule-out. And blueprint 6's framing paragraph already said the
+JVM observation is ours to prove, backed by a chain of citations. Both left alone.
+
+---|---|---|---|
 | 1 | Blueprints **4, 6, 8** cite Rezazadeh 2020 | Cited as "lock waits can be reconstructed from traces". The paper's actual contribution is that **kernel-only tracing cannot see user-space locks** — hence their `LD_PRELOAD` pthreads tracepoints, which we do not have | Cite it for the **limitation**, not the capability |
 | 2 | Blueprint **10** | Says "**all** its threads stop at the same time". Ugedal 2022 shows throttling is enforced **per logical CPU**; one pool being throttled does not throttle the others | Reword to "threads on a throttled CPU stop together, while CPUs are idle" |
 | 3 | Blueprint **6** | The futex-means-contention rule comes from Franke 2002, which benchmarks **C/C++ only**. Our JVM finding is the exception, not a contradiction | Cite Franke for the general rule, our measurement for the JVM exception. Already framed correctly in the reference pack |
