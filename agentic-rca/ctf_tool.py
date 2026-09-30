@@ -445,10 +445,19 @@ def ctf_lines(run_dir: str, event: str, begin: str, end: str, n: int = 10,
         return {"error": "bad event pattern: %s" % e}
     t0, t1 = _secs_safe(begin), _secs_safe(end)
     if t0 is None or t1 is None or t1 <= t0:
-        return {"error": "begin and end are required, as HH:MM:SS, with end after begin"}
+        return {"error": "begin and end are required, as HH:MM:SS, with end after begin. "
+                         "ctf_timespan gives the recording's real start and end; ctf_timeline "
+                         "or query_ctf will show you which part of it is worth reading."}
     if t1 - t0 > MAX_LINES_RANGE_S:
-        return {"error": "range is %.1f s; ask for at most %d s of lines. Use query_ctf for "
-                         "counts over wider ranges." % (t1 - t0, MAX_LINES_RANGE_S)}
+        return {"error": "range is %.1f s; ask for at most %d s of lines%s. Use query_ctf for "
+                         "counts over wider ranges - it reads the whole range from the index "
+                         "instead of decoding it."
+                         % (t1 - t0, MAX_LINES_RANGE_S,
+                            (". You set a %s filter, and a filtered read has to scan past "
+                             "everything else to reach it - this trace carries over a million "
+                             "events per second, so keep a filtered range under a second"
+                             % ("procname" if procname else "contains"))
+                            if (procname or contains) else "")}
     n = max(1, min(int(n), MAX_SAMPLE))
 
     # How many there REALLY are in this range, from the count index. Without this the agent
@@ -1010,7 +1019,13 @@ LINES_DEF = {
         "Read real event lines, with all their fields, straight from the raw trace. Use it to "
         "see WHAT an event actually contains once query_ctf has told you where to look - the "
         "processes involved, the CPU, the prev/next task, the syscall arguments. Narrow ranges "
-        "only (at most %d s) and a few lines at a time." % int(MAX_LINES_RANGE_S)),
+        "only (at most %d s) and a few lines at a time. THIS TRACE CARRIES OVER A MILLION "
+        "EVENTS PER SECOND. An unfiltered read finds its lines at once, but setting procname "
+        "or contains means scanning past everything else to reach them, so keep a FILTERED "
+        "range UNDER ONE SECOND. If a result comes back with scan_truncated it stopped early "
+        "and found nothing - that means 'not read', NOT 'not present' - and it returns "
+        "busiest_100ms_buckets telling you exactly when to ask again."
+        % int(MAX_LINES_RANGE_S)),
     "parameters": {"type": "object", "properties": {
         "event": {"type": "string", "description": "event name substring or regex"},
         "begin": {"type": "string", "description": "start clock 'HH:MM:SS' UTC (required)"},

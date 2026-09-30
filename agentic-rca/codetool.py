@@ -467,6 +467,31 @@ _HINTS = (
      "operation itself is fine - try expressing it another way, e.g. groupby().sum() instead "
      "of the reshape you used."),
     ("memory", " -- HINT: filter before you aggregate; the frame has about 3 million rows."),
+    # The rest were MEASURED across 2,460 run_python calls on the first two campaigns. Each is
+    # the agent reaching for a pandas idiom that does not fit this frame's shape, so the fix is
+    # to say what the shape IS rather than only that the call failed.
+    ("Only valid with DatetimeIndex",
+     " -- HINT: there is no datetime index here. `bucket_start_s` is a FLOAT of seconds since "
+     "midnight UTC, already bucketed at 100 ms. To re-bucket, do arithmetic on it - e.g. "
+     "df.assign(sec=(df.bucket_start_s // 1).astype(int)).groupby('sec').n.sum() for per-second "
+     "totals. Do not use resample() or to_datetime()."),
+    ("cannot be interpreted as an integer",
+     " -- HINT: bucket_start_s is a float, so it cannot go straight into range() or .iloc[]. "
+     "Wrap it in int(), or use // to floor it first."),
+    ("timed out",
+     " -- HINT: the frame has about 3 million rows. Filter FIRST - by event, pid_ns or a time "
+     "range on bucket_start_s - and aggregate second. A groupby over everything will not "
+     "finish."),
+    ("is not available in this sandbox",
+     " -- HINT: this sandbox has pandas, numpy, math, json, re, collections and statistics, and "
+     "nothing else. There is no filesystem, no network and no os/sys. Everything you need is "
+     "already in the frames you were given."),
+    ("dunder attribute",
+     " -- HINT: attributes starting with __ are blocked. Use the plain pandas API - if you were "
+     "inspecting a type, df.dtypes and df.columns tell you the same thing."),
+    ("'list' object has no attribute",
+     " -- HINT: `lines` is a LIST of strings, not a DataFrame or one big string. Iterate it, or "
+     "use [l for l in lines if ...]. Join it with chr(10).join(lines) if you need one string."),
 )
 
 
