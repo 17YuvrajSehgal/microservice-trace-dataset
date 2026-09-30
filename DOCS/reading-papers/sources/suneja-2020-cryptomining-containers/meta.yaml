@@ -1,14 +1,15 @@
 id: suneja-2020-cryptomining-containers
 title: Cryptomining Detection in Container Clouds Using System Calls and Explainable
   Machine Learning
-authors: Suneja, S. et al.
-year: 2020
-venue: IEEE IPDS 2020
+authors: Karn, R. R.; Kudva, P.; Huang, H.; Suneja, S.; Elfadel, I. M.
+year: 2021
+venue: IEEE Transactions on Parallel and Distributed Systems 32(3):674-691
 url: http://www.cs.toronto.edu/~sahil/suneja-ipds20.pdf
+doi: 10.1109/TPDS.2020.3029088
 retrieved: '2026-09-30'
 type: peer_reviewed
-status: S
-verified: false
+status: V
+verified: true
 blueprints:
 - future-blueprints
 files:
@@ -16,3 +17,7 @@ files:
 note: 'The closest published work to our resource_abuse fault: cryptomining, in CONTAINERS,
   detected from SYSTEM CALLS. Notes that containers sharing a host kernel make per-container
   attribution hard - the same problem our pid_ns work solves.'
+citation_note: >-
+  The slug says "suneja-2020" and the original metadata said "IPDS 2020". Both are wrong.
+  Cite as Karn et al., IEEE TPDS 32(3):674-691, 2021. Suneja is the FOURTH author; 2020 is
+  the acceptance year. Corrected 30 Sept 2026 after reading the paper.

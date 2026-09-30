@@ -3,19 +3,18 @@
 One row per paper. **"What it actually says"** is the finding worth citing; **"What it means
 for us"** is what changes in our work because of it.
 
-Read the **Citation problems** section first — four of these papers are currently cited in a
-way the paper does not support.
+Read the **Citation problems** section first — eleven citations have been corrected so far.
 
-Status: **33 of 50 papers summarised** (28 by me, 5 by you). All three 50+ page documents from
-the reference pack are done. Full summaries live in `sources/<slug>/paper.md`. The remaining 17
+Status: **37 of 50 papers summarised** (32 by me, 5 by you). All three 50+ page documents from
+the reference pack are done. Full summaries live in `sources/<slug>/paper.md`. The remaining 13
 are listed at the bottom.
 
 ---
 
 ## Citation problems — all found, all fixed (30 Sept 2026)
 
-Eight corrections, made after reading each paper in full. Every one was a case of citing a
-paper for something it does not say.
+**Eleven corrections**, made after reading each paper in full. Most were a case of citing a
+paper for something it does not say; three were plain bibliographic errors.
 
 **All eight were confined to `blueprints/REFERENCE-PACK-FOR-KERNEL-TRACE.md`.** The
 `blueprint.json` files and the generated `skill.md` files were clean — three of the affected
@@ -34,6 +33,9 @@ changed, and no completed run is affected.**
 | 6 | Blueprint 7, CPI² | "the same logic as 'who preempted me' in `sched_switch`" | CPI² **correlates statistically** because cache interference cannot be attributed directly. `sched_switch` names the culprit outright — **ours is stronger, not equivalent**. CPI² also targets cache/memory-bus, not CPU time |
 | 7 | Blueprint 8, Rezazadeh | "lock-holder and waiter analysis from traces" | only with user-space `lock_req`/`lock_acq` tracepoints, which split *waiting for* from *holding*. We cannot make that split |
 | 8 | Blueprint 10 | "**all** its threads stop at the same time" | throttling is per `cfs_rq` — **per logical CPU per cgroup**. One pool stopping does not stop the others, and a task is never throttled, only its group |
+| 9 | `FUTURE-BLUEPRINT-REFERENCES.md`, `code_n_plus_one` | Chen 2014 "reports that N+1 costs **more than an order of magnitude**" | **Chen reports no such thing for N+1.** The order-of-magnitude figure (130 s → 2 s) is the *excessive data* pattern in Pet Clinic. **One-by-one processing is -17%** in their micro-benchmark and **+8% to -32%** across Broadleaf, significant in only 5 of 10 suites |
+| 10 | `FUTURE-BLUEPRINT-REFERENCES.md` + `meta.yaml`, `resource_abuse` | "Suneja et al., IPDS 2020" | **Karn, Kudva, Huang, Suneja & Elfadel, IEEE TPDS 32(3):674-691, 2021.** Suneja is the **fourth** author; "IPDS" is not the venue; 2020 is the acceptance year |
+| 11 | Blueprint 10 (addition, not an error) | no empirical source for the `prev_state=0` / `swapper` test | **Gelle et al. 2021 §4.3 publish exactly that `sched_switch` line**, from a 1% cpu cgroup cap on Cassandra, with 100 ms periodicity. Added as a supporting row |
 
 ### Two that were already right
 
@@ -135,7 +137,21 @@ Five already had hand-written summaries; they are now in `sources/<slug>/paper.m
 Both Wert theses are the long form of `wert-2013-ppd` and `wert-2015-dynamicspotter`, which
 already have summaries — so the marginal value of summarising a 486-page duplicate is low.
 
-## Still to do — 17 papers
+## The `code_*` families — references for blueprints that do not exist yet
+
+These four back the five `code_*` fault families in `FUTURE-BLUEPRINT-REFERENCES.md`. **Three
+citation problems were found while reading them** — see below the table.
+
+| Paper | What it actually says | What it means for us |
+|---|---|---|
+| **Davis, Williamson & Lee 2018** <br> *First-Class Timeouts, USENIX Security* <br> → `code_event_loop_block` | Names **Event Handler Poisoning**: one long callback blocks the single Event Loop and every client with it. **403 of 1,132 npm vulnerabilities (35%) are EHP vectors**; both their attacks give **complete DoS, zero throughput**. Killing the blocked loop is **itself a DoS**, so timeouts must be first-class. Node.cure: **0-24%** overhead | Gives the family a name, a mechanism and a prevalence. The discriminator against `svc_cpu_cap` falls straight out: **EHP = one thread busy on-CPU; throttling = nobody running and the CPU idle**, periodic on 100 ms. Their **Event Loop vs 4-worker pool** split predicts two different signatures - we have not checked which one our injection hits |
+| **Chen et al. 2014** <br> *ORM Performance Anti-patterns, ICSE* <br> → `code_n_plus_one` | **One-by-one processing**, a special case of *Empty Semi Trucks*. **228 instances in a 206 KLOC e-commerce system.** But the effect is **not** reliably large: their micro-benchmark is **-17%**, Broadleaf's suites range **+8% to -32%** and are significant in only **5 of 10**. *"Not all anti-patterns are worth fixing"* - **schema cardinality and baseline latency decide** | **Our pack said Chen reports "more than an order of magnitude" for N+1. It does not** - that figure is the *excessive data* pattern in Pet Clinic. Corrected. The weak numbers are an argument **for** our modality: their measurement is wall-clock, ours is a **count of round trips**, and a count survives noise a duration does not. Also flags a calibration risk for the injected fault |
+| **Turcotte et al. 2022** <br> *DrAsync, ICSE* <br> → `code_serial_awaits` | `loopOverArrayWithAwait` is our fault, named, with an ESLint rule. **293 static instances, only 30 executed.** Refactoring **every** instance in two projects removed ~1.1K and ~1.2K promises and changed run time **not at all**, because *"the application was waiting on another operation which takes longer than the sum of the eliminated lifetimes"* | **Their failure to measure it is the sharpest case in the pack for kernel traces.** Serial awaits and `Promise.all` issue the **same number** of round trips; the difference is **overlap** - the serial version never has two in flight. Readable off socket timestamps, invisible to them. Also separates this fault from `code_n_plus_one`: too many round trips vs the right number with zero concurrency |
+| **Karn, Kudva, Huang, Suneja & Elfadel 2021** <br> *Cryptomining Detection, IEEE TPDS* <br> → `resource_abuse` | Detects mining pods from **syscalls**, not CPU, because *"CPU usage is a good first-order metric"* that **false-alarms on legitimately busy workloads**. 8 miners vs 8 deliberately CPU-heavy benign apps. **Decision tree 97.1%**, beating an LSTM by 18 points at **1/500** the training time. Of 100 miner syscalls, **12 unique, 88 shared** | **We cited it as "Suneja et al., IPDS 2020" - wrong first author, venue and year.** Fixed. Its argument is our coverage sweep's problem stated by someone else, and its answer is an axis we have in stronger form (continuous, not 1-min round-robin). **But their miners do real network and file work; if our recipe is a bare spin loop it may emit no distinctive syscalls at all** - check before citing as support. Their own data: **Hadoop and Cassandra out-emit most miners**, so volume is not the signal |
+
+---
+
+## Still to do — 13 papers
 
 **Method / DORSAL:** `gassais-2020-host-ids`
 
@@ -149,9 +165,6 @@ already have summaries — so the marginal value of summarising a 486-page dupli
 `roy-2024-llm-agents-rca`, `xpert-2023`, `aiopslab-2025`, `beyond-fault-localization`,
 `self-evolving-rca-harness`, `mining-root-cause-knowledge-2022`, `siriushelper`
 
-Plus the `code_*` family references, which have no cached text yet:
-`chen-2014-orm-antipatterns`, `drasync-2022`, `davis-2018-first-class-timeouts`,
-`suneja-2020-cryptomining-containers`.
 
 ### Cannot be summarised
 
