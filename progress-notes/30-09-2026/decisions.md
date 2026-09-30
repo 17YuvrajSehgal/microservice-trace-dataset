@@ -1,6 +1,6 @@
 # 30 September 2026
 
-## Reading the reference papers in full — twelve citation corrections, and a result we did not have
+# Part 1: thirteen citation corrections, and a result we did not have
 
 Continuation of yesterday's rule: nothing enters a blueprint until it is measured. Today's
 version of it is: **nothing stays cited until the paper has been read.** Eleven of the papers in
@@ -140,3 +140,151 @@ the 5 named miners.**
 **38 of 50 papers summarised** (33 by me, 5 by the user). 12 left, listed at the bottom of
 `table.md`. The Salesforce connection-pool patent still needs OCR — 21 pages of scanned images,
 no text layer; the user will supply screenshots.
+
+---
+
+# 30 September 2026 — part 2: the rest of the papers
+
+All 55 are now read. Only the Salesforce connection-pool patent is left, and it needs OCR.
+
+## The one that criticises our scoring, and is right
+
+**Lu et al., *Beyond Fault Localization*.** Their opening is about us:
+
+> Existing evaluations ... uniformly assess diagnostic performance by **endpoint correctness**:
+> whether a method localizes the responsible service ... **it provides no indication of the
+> evidentiary basis for a diagnosis or the propagation route.**
+
+They hand-annotated fault-propagation paths for a benchmark, normalised **3,500 trajectories**,
+and showed **Edge F1 never exceeds 0.67 while Node F1 is far higher** — an agent names the right
+service and still cannot say how the fault got there.
+
+**Decision: do the cheap half now, skip the expensive half, and say why.**
+
+- **Cheap, before the campaign:** check whether the winning container appears in the evidence the
+  worker actually retrieved, not only in its conclusion. We already log every `run_python` result.
+- **Skip:** annotating propagation paths. **Most of our faults do not propagate across services** —
+  a CPU cap on one container is local. `dependency-outage-retry-storm` is the only family where an
+  Edge-F1 analogue would mean anything. That is a real difference in fault design, not a gap.
+
+**Their depth finding is the warning we should answer before a reviewer asks.** Acc@1 collapsed
+**85.5% → 57.1%** as the causal chain deepened. Our 30/30 on `deadlock` is a **short-chain**
+result: inject in one container, observe in that container.
+
+## Their failure taxonomy already named one of our bugs
+
+Three families, from **154 hand-coded failed trajectories**:
+
+| Family | Meaning | Where we have seen it |
+|---|---|---|
+| **OMIT** | evidence reachable but never queried | `out_of_steps`, `late_findings` |
+| **MIS** | retrieved but misread, or scoped to the wrong dependency | wrong `pid_ns` |
+| **GEN3** | **"abandons an evidence channel after a failed or empty query"** | **the `ctf_lines` silent-empty bug, exactly** |
+
+**Decision: code a sample of our failures against OMIT/MIS/GEN.** The taxonomy is already
+validated; we get a ranked list of what to fix without inventing a scheme.
+
+## The abstention gap — three papers converge on it
+
+**Roy et al.** hand-labelled 97 ReAct predictions: correctness **35% vs 39%** for the baselines,
+but hallucination **6% vs 49%**, because **66% of its wrong answers say it lacks the evidence to
+decide**.
+
+**Our scoring cannot tell those apart.** A confident wrong answer and an honest "unknown" score
+identically. Beyond-FL attacks this from the trajectory side, Roy from the abstention side, and
+SiriusHelper's SOP Reviewer (multiple drafts, cross-checked) from the consistency side.
+
+**Decision: split declines from assertions in `run_digest.py` before the campaign.** We have the
+data. A 27/30 with three abstentions is a different result from 27/30 with three confident errors.
+
+## What the agent papers say about the step limit
+
+Three findings, same direction:
+
+- **AIOpsLab:** accuracy rises with the step limit, then **plateaus** — needing *"better planning,
+  improved feedback mechanisms for intermediate steps"*, not more room.
+- **Roy:** the agent died at the **20-step limit after one or two useful diagnostic steps**,
+  wasting the rest on a **stateless retrieval tool** that kept re-returning the same documents.
+- **StepFly:** **~46% of real TSGs have parallelisable steps** (Independent Paths 40.5%), worth
+  **32.9-70.4%** wall-clock.
+
+**Our rule-out lists are StepFly's Independent Paths.** "Is the host saturated / is a foreign task
+on the CPU / is the group throttled" are independent questions over the same trace, and we run
+them in sequence inside one worker's budget.
+
+**Decision: parallelising independent rule-outs is the right next harness change**, not another
+step-limit increase. We raised `MAX_WORKER_STEPS` 12→18 last week; these three say that road is
+short.
+
+**Also worth a check:** is any of our tools stateless in the way Roy's was — returning the same
+thing twice and burning steps?
+
+## Two things we cannot check today but should note
+
+**We never verify the *code*, only the diagnosis.** Xpert's `Xcore` scores generated queries on
+validity + semantic soundness + output correctness. Their post-processing moved **BLEU +1.7 but
+Xcore +24.4** — most generated queries *looked* fine and were not. Our analogue: a `run_python`
+block that executes cleanly, returns a plausible number, and aggregated the wrong column. **We
+have no signal for that at all**, which is the same shape as the reply-cap bug: invisible because
+nothing errored.
+
+**Cheap fixes if we want them:** log whether each computation touched the columns the blueprint
+names; count degenerate results (empty frame, all zeros, single row).
+
+## A disagreement to record rather than resolve
+
+| | Claim |
+|---|---|
+| **OpsHarness** | the **harness** is the bottleneck; a good one gains **+63.4%** over a bare agent |
+| **Beyond-FL** | the **model** is the bottleneck; frameworks span **2.0 pp**, a model swap gains **10.8 pp** |
+
+Both are preprints. Possible resolution: Beyond-FL compares existing frameworks, which may all be
+thin; OpsHarness compares bare-agent to engineered-harness. **Note it, do not pick a side.**
+
+OpsHarness also has a finding that should make us uncomfortable and then not: **specialised RCA
+agents lose to general agents**, badly — RCA-Agent drops **31.8% → 1.9%** off its own benchmark.
+Reading our design against theirs, we are mostly the *harness layer* they advocate. **Two real
+gaps: no evolve/verify loop, and our system knowledge is compiled into tools rather than produced
+as a readable profile.** Their K1 — a generated per-run profile replacing a hard-coded loader — is
+cheap and would make the harness portable to Train Ticket without touching tool code.
+
+## Numbers a reviewer will put next to ours
+
+**Write the comparison ourselves.** AIOpsLab: localisation **Acc@1 46-62%**, RCA 36-45%, non-LLM
+baselines **15.38%** and **7.69%**. OpsHarness: **59.0%**. Roy: **35-39%** correctness.
+
+**None is comparable to ours** and the reasons are specific: their agents work a live cluster with
+`kubectl`, their telemetry is metrics/logs/traces, and **their fault mixes are mostly functional**
+— a pod at zero replicas, revoked auth. Those announce themselves. Ours are performance faults,
+which per Waseem are the ones nobody files issues about.
+
+**Also worth adopting: AIOpsLab's task taxonomy** (detection → localisation → RCA → mitigation).
+It is better vocabulary than our ad-hoc axes and makes explicit that **we stop before mitigation**.
+And **their Acc@3 exceeds Acc@1 by 8-15 pp** — reporting both would say whether our agent knows
+the answer but ranks it badly.
+
+## Citation correction 13
+
+The TSG-complaint percentages our docs credit to FixItFlow — **32.24% / 13.32% / 11.21%** — are
+**AutoTSG's Table 1**, from 400+ on-call feedback items. FixItFlow restates them as "an internal
+study" without naming the source in that sentence. **Cite Shetty et al. 2022.**
+
+AutoTSG also carries the measurement our blueprint idea assumes and we did not have: **mean TTM
+19 hrs without a linked TSG, 13 hrs with one**, from actual on-call click-throughs. Its quality
+taxonomy is a design spec for what a blueprint must not be — and by its **Empty** category
+(7.24%, *"currently just has TODO"*), **our three blueprints with an empty
+`evidence_from_literature` are that category.**
+
+## Prevalence evidence that arrived sideways
+
+Saha & Hoi mined **2,000 Salesforce Sev0/1/2 post-mortems**. Their cluster phrases name **conn
+pool (three separate clusters)**, thread starvation, deadlock, high CPU, high memory, packet loss
+latency and auto throttle — **seven of our fault families**. The weights are cluster weights, not
+incident counts, so this is a weak claim: *these families appear by name in the post-mortem record
+of 2,000 severe incidents at a major provider.* **It narrows the connection-pool gap from a third
+direction** (after Zhou's F5 and Ghanavati's leak study).
+
+## State
+
+**All 55 summaries on disk.** 13 citation corrections, none of which reached a blueprint or a
+generated skill. The Salesforce patent still needs screenshots for OCR.
