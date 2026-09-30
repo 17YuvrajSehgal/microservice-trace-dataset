@@ -247,11 +247,13 @@ def main() -> int:
         # of its own, but its target is catalogue-db - the victim, not the attacker - and it
         # scores by procname with true_ns unset. Falling back there would hand the scorer the
         # ATTACKER's namespace as truth and mark every correct answer wrong.
+        ns_via = "service" if true_ns else ""
         _tsvc = ((gt.get("fault") or {}).get("target_service") or "").strip().lower()
         if not true_ns and _tsvc in ("", "host"):
             true_ns = nsmap.ns_for_workload(inc["run_dir"], gt) or ""
+            ns_via = "workload" if true_ns else "unresolved"
     except Exception:                                                   # noqa: BLE001
-        true_ns = ""
+        true_ns, ns_via = "", "error"
     jd = J.judge(dx.get("diagnosis") or {}, dx.get("trajectory"), args.problem,
                  true_service=(gt.get("fault") or {}).get("target_service", ""),
                  scope=(gt.get("fault") or {}).get("scope", ""),
@@ -279,6 +281,10 @@ def main() -> int:
         "problem": args.problem, "run_id": inc["run_id"], "app": inc["app"],
         "arm": args.arm, "ask": args.ask, "repeat": args.repeat,
         "model": config.model_id(), "provider": config.PROVIDER,
+        # which namespace the scorer treated as truth, and how it got there. Without this a
+        # reader cannot tell a correct answer from an unverifiable one after the fact - the
+        # first deadlock cells recorded `container_unverified` and nothing said why.
+        "true_ns": true_ns or "", "true_ns_via": ns_via,
         "service_ok": score.get("service_hit"), "fault_ok": score.get("fault_hit"),
         "both_ok": score.get("both"), "no_answer": score.get("no_answer"),
         "rank": rank, "n_candidates": n_cand,
