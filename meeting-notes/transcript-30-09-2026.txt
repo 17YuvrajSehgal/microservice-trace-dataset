@@ -1,0 +1,656 @@
+Naser Ezzati-Jivan   29:52
+Your master's thesis. All right. Thank you, Sneh. Thank you very much. Great work. Let's move on to Yuvraj Sehgal. Yuvraj, how do you pronounce your family name, Sehgal?
+
+Sneh Patel   29:55
+Thank you.
+
+Yuvraj Sehgal   30:02
+Sehgal.
+
+Naser Ezzati-Jivan   30:03
+There you go.
+
+Yuvraj Sehgal   30:05
+Yeah.
+
+Naser Ezzati-Jivan   30:05
+Yuvraj Sehgal.
+
+Yuvraj Sehgal   30:06
+Yes.
+
+Naser Ezzati-Jivan   30:18
+Yeah.
+
+Yuvraj Sehgal   30:18
+having more blueprints in the catalog. And we also discussed about improving the agent. So I have implemented that. The major thing I worked on was about adding references. So I'll explain what I have done about the adding references.
+
+Naser Ezzati-Jivan   30:32
+Sneh.
+
+Yuvraj Sehgal   30:37
+So first we had all these kernel, like the blueprints. So you gave me some of the papers, like five or six of them, and I took them. And what I did was I explained our idea to Claude, what we are working on, and what are the blueprints and what kind of problems we are working on. And then I asked it to fetch.
+
+Naser Ezzati-Jivan   30:38
+But.
+Ke.
+
+Yuvraj Sehgal   31:02
+some good resources that we can reference. And so it gave over like 100 resources, which include a lot of research papers and US patents on some ideas. Moreover, it has like some web resources as well. So what I did was I collected all of them.
+
+Naser Ezzati-Jivan   31:24
+You're talking about the teasers, students?
+
+Yuvraj Sehgal   31:24
+And download.
+Sorry?
+
+Naser Ezzati-Jivan   31:27
+You talking about the teasers I gave you last week?
+
+Yuvraj Sehgal   31:30
+Thesis plus like I collected more resources that we can put, yes, put references in our blueprints. Yeah. So for example, like Lord, it gave me this reference. I'll give you one example. So you, it is one of your paper only, this one, De.
+
+Naser Ezzati-Jivan   31:33
+Joseph.
+Okay, nice.
+
+Yuvraj Sehgal   31:48
+graph. So it was under, yeah, under the deadlock problem that you are solving. So once we downloaded this, I have also created like, turned these research papers into text so that first of all, agents can read it easily. And second of all, I'll be using it myself as well. I'll go over through each and every paper.
+
+Naser Ezzati-Jivan   31:49
+Yeah.
+
+Yuvraj Sehgal   32:10
+So for example, if I open, it has the summary results, your approach, everything about your paper here. And then I have collected like some metadata, like how like what it is about, under what blueprint can we use it. Now all I have to do is read each one of these.
+and find some important points. So for example, for this one, I see that you have mentioned that you use a scheduler, this try to wake up a system call and you found that it is important to find like contention and log related problems.
+But when I saw my blueprint, it was missing. So what I will do, yeah, yeah, yeah.
+
+Naser Ezzati-Jivan   32:52
+Yeah, wait, wait, wait. That event I think is gone forever. It's not there anymore. The Linux kernel doesn't have that event anymore. It was there when I was doing this paper a few years ago. But I think that event has gone forever. I think kernel removed that event from what I remember.
+
+Yuvraj Sehgal   32:57
+Oh, okay, okay, okay.
+
+Naser Ezzati-Jivan   33:12
+Now there's no try to wake up, there's only wake up and wake in two minutes.
+
+Yuvraj Sehgal   33:13
+Okay.
+Okay, okay, okay. So what I will do is I'll add the same reference to your paper and do some research and see what is the latest available version of that TTEWU and then put it and put your reference over there as well. So this is what we have right now about the
+
+Naser Ezzati-Jivan   33:34
+Nah.
+
+Yuvraj Sehgal   33:36
+References one thing, yeah.
+
+Naser Ezzati-Jivan   33:36
+I.
+So, you're saying that you're reading papers and each paper creates a new blueprint or you're adding to your existing blueprints?
+
+Yuvraj Sehgal   33:46
+existing blueprints. So I will add more information. So for example, if a contention like a deadlock related blueprint we already have over here, this one is deadlock related only. What I will do is I'll add maybe a section in this blueprint which will
+
+Naser Ezzati-Jivan   33:48
+Mm.
+
+Yuvraj Sehgal   34:06
+reference and put key points from your research paper so that like it has some legit resource that we can show that, hey, the blueprint is not only based on our research work, it also has some knowledge from existing research papers and like.
+
+Naser Ezzati-Jivan   34:12
+Po.
+Yeah.
+
+Yuvraj Sehgal   34:25
+good web resources.
+
+Naser Ezzati-Jivan   34:30
+Mhm.
+
+Mahsa Panahandeh   34:30
+So can we see one of those references? I didn't get it here.
+
+Yuvraj Sehgal   34:34
+It is not in blueprint. Yeah, it is not in the blueprint right now. I'll have to, yeah, read each and every one and then put it by myself or like use Claude to like do summary and put it here because I think there are over 100. I don't think I'll be able to read everything.
+
+Mahsa Panahandeh   34:37
+Yeah.
+Okay.
+
+Naser Ezzati-Jivan   34:48
+Mm.
+
+Mahsa Panahandeh   34:52
+Yeah.
+
+Yuvraj Sehgal   34:52
+But yeah, yeah, but if you have any suggestions.
+
+Mahsa Panahandeh   34:54
+So, you've collected metadata, you collected metadata, but you've not OK, so...
+
+Yuvraj Sehgal   34:56
+Yes, yes.
+Yeah, but like if you have some good suggestions on how to use this references, I'm like open to new ideas. But what I was thinking is, so for example, we have different objects here, right? I was thinking of creating one more like references and then put all the information related to those reference.
+
+Naser Ezzati-Jivan   35:20
+The.
+
+Yuvraj Sehgal   35:20
+And then the key points about it.
+
+Mahsa Panahandeh   35:25
+Time.
+
+Naser Ezzati-Jivan   35:25
+You know, go ahead, Mahsa.
+
+Yuvraj Sehgal   35:27
+Yeah.
+
+Mahsa Panahandeh   35:27
+Yeah, I'm thinking of also referring to the GitHub of those papers too. Since a part of the things that you could add to your blueprint, we talked about that even before too, it could be extracted from their source code. For instance, for detecting this symptom, you can use what they've done or...
+
+Yuvraj Sehgal   35:40
+Okay.
+
+Naser Ezzati-Jivan   35:42
+The.
+
+Mahsa Panahandeh   35:47
+you know, get at least some idea.
+
+Yuvraj Sehgal   35:49
+Okay, okay. So what I will do is while I'm looking at the papers, I'll see if there is a GitHub repository for it available. And if it is, then I'll try to put that reference as well. So in case if agent is able to use the web, it can go and scrape the GitHub as well while doing the.
+
+Mahsa Panahandeh   36:05
+Yeah.
+
+Naser Ezzati-Jivan   36:06
+Yes.
+
+Mahsa Panahandeh   36:08
+You know, personally, if I was doing it myself, even I prioritise that one first. Since right now, I don't know how you want to use the references in kind of textual, how do you want to add it? You mean integrated in the text of kind of the prompt that you're writing?
+
+Yuvraj Sehgal   36:14
+Mhm.
+
+Mahsa Panahandeh   36:26
+Is it the case that you're having in your mind to...
+
+Yuvraj Sehgal   36:29
+Yeah, so so like the blueprint right now it go it gets injected into the prompt right now. That's how it works. Yeah.
+
+Mahsa Panahandeh   36:36
+Okay.
+Okay, yeah, we should. It's interesting how it affects, of course, but yeah, I'm also interested to see the other part using the source code too.
+
+Yuvraj Sehgal   36:47
+Sure, sure.
+
+Naser Ezzati-Jivan   36:49
+Yeah, there was a question, but what's the final goal? What you will have at the end of the day?
+
+Yuvraj Sehgal   36:50
+Yeah, yeah.
+Like I think last time you only told me that like blueprints are okay, but they do not have any good references. So I started working on that only.
+
+Mahsa Panahandeh   37:09
+The goal was doing our say, yeah.
+
+Naser Ezzati-Jivan   37:09
+No, that's fine. Let's discuss it here, OK? Let's discuss it here.
+
+Yuvraj Sehgal   37:12
+Yeah, yeah, goal is doing RCA. So that is us like for the given problem, right? Like if.
+
+Naser Ezzati-Jivan   37:14
+Or say of what? Yeah.
+Yeah, RCA, definitely analysis and then RCA, right? Analysis sounds important, but you know...
+
+Yuvraj Sehgal   37:20
+Yes.
+Yes, yes.
+
+Naser Ezzati-Jivan   37:27
+The problem is you are not making a mental model around this research. Every time you're working on a task using AI and you don't get it, you don't digest it yourself. That's my problem now. I want to make sure that you understand where we are going and what you will have at the end of the day. So I told you, hey, blueprint is the most important, but at the heart of the world.
+And then you try to, and I said, you know, just explaining the high level would not work. You need to add some references, correct? And then you found like 200 papers and trying to add those papers randomly or kind of blindly to those blueprints. This does not work. This will not work. No, I can guarantee.
+OK, and also, but I gave you a thesis and I said that the teaser has a good category that's like catalog. Did you look at that? Did you have time to read that?
+
+Yuvraj Sehgal   38:17
+I haven't started that one. Yeah, I lived but like last time you shared two or three papers that were 13 or 15 pages that one I did read.
+
+Naser Ezzati-Jivan   38:18
+That's fine, but overall, yes.
+You're not good. I'm not here to blame you. I'm just trying to discuss about what you should do, you know, what is your thesis about. And this is my understanding. You might say that, no, let's change something or Mahsa may ask us to help us to do something else. You know, what I think now, you know, for your work.
+No, so let's call it the your thesis will be similar to the thesis I shared last time, right? But the work at that time was like very ad hoc. The student did like some work and he spent like a few months and whatever he could do, he like put together in his thesis and then defend as well.
+If I to finish Facebook, right? But here, let's do it like more kind of, you know, top-down approach, right? Say that, you know, at the end of the day, we will have a catalog.
+of performance problems that our system can detect, can analyze. Detect and analyse means RC and everything else about, right? Can digest the problem very well. Okay. So you started before about like CPU contention. That's a good and great category for sure, right?
+And then today you're talking about deadlock, deadlock, something like that, because you found the paper about, right? So we will have many categories like this. These are fine, right? And I don't want you to find all of those categories now, because you don't have that understanding of the domain, which is fine, right? But you at least know, let's say,
+One of them very well now. You know the latency very well now, right? So for sure, we will have one or more categories around latency problems. Because latency is one of the most important problems in like system-level analysis, right? Because it comes from dependency and...
+So...
+But you have one task toward that, like catalog. You have one big task, but you cannot stop everything. I said that I'm going to work on the catalogue first. It's not possible. It's iterative. You need to build gradually. You know, build your catalog. I have one, two categories now, two items to put in the catalog, then I will add more later on when I see new problems.
+So whenever you see new paper, new problem, then you'll see that, okay, fine, does it fit to any existing one or I need to create a new category? And then I still create a new category, then you look for papers, resources, and so on. But what happens for each category? Now let's discuss about it. So the overall so far, you have one big goal.
+right, to create that catalogue at the end of the day. You will go toward that code. This is the first code. The second code, now for each category.
+We have some specific problems. For example, for deadlock, what are the problems?
+What are the specific deadlock related performance or system or runtime problem, not necessarily performance, can be security as well, runtime problem, right? Or latency related problems, right? So then each problem can come from one or more papers.
+
+Mahsa Panahandeh   41:29
+Symptoms.
+
+Naser Ezzati-Jivan   41:45
+I can say I know the deadlock. I found like 2 papers about this is the problem, so I put it as a as a problem in my system in my catalog, right? So, eventually, we have N categories and M problems at each of them under each of them, right?
+And then for each of those problems, let's say a specific latency problem or a specific deadlock problem, what you will have, you will need to have the blueprint, a detailed technical.
+Expect retail or expert review the blueprint.
+Correct, this is what you're doing.
+This is what I think that you should do. And then for each of them, for each of those blueprints, and then you might have one big blueprint for the category, or one like summarised blueprint for the category, and one detailed blueprint for each problem.
+
+Yuvraj Sehgal   42:44
+Okay.
+
+Naser Ezzati-Jivan   42:44
+What do you think? And then each blueprint has all the details, has references, as masses, as some GitHub repos, and some detailed explanations, codes, how to visualise them, how to show them, and so on and so forth.
+
+Yuvraj Sehgal   42:46
+****.
+
+Mahsa Panahandeh   43:01
+Yeah, I think...
+
+Naser Ezzati-Jivan   43:01
+This is, I think, yeah.
+
+Mahsa Panahandeh   43:03
+I think now it's been mixed how we're using those references. Once we want them to identify different categories, that I think this is the point that last time it's been said, and you've done so far to kind of, you know, find out different.
+
+Naser Ezzati-Jivan   43:12
+Po.
+
+Mahsa Panahandeh   43:22
+problems and the next time we need references for developing or writing those blueprints. That part is the one that I refer to as using the GitHub. So I still, it's why for the textual part, when I was not sure how we could use these references since I don't know how much they could be helpful when we.
+put it or integrate it in the prompt. So I think this one that you're doing right now is good to identify different categories like, you know, CPU exhaustion or CPU attacked or like that, you know, whatever is related to CPU.
+
+Naser Ezzati-Jivan   44:03
+Yeah, yeah, that's what you're doing. OK, so Yuvraj, is this clear now? I think...
+
+Yuvraj Sehgal   44:08
+Yeah, yeah, I'll.
+
+Naser Ezzati-Jivan   44:09
+It's clear what you're doing, right? So you, we still the blueprint is the heart of the problem, of the method, the solution, your work, but we are building a category hierarchy around that, and that hierarchy is also important.
+
+Yuvraj Sehgal   44:11
+Yes.
+Sure.
+
+Mahsa Panahandeh   44:24
+Isn't it?
+
+Naser Ezzati-Jivan   44:24
+But this way, you know, this way the system, the agent will easily be able to find a relevant blueprint and find and solve the system.
+
+Yuvraj Sehgal   44:34
+Mhm.
+
+Mahsa Panahandeh   44:36
+Isn't it better for now to refocus on the first layer, like first, like, you know, let's say first develop blueprint for the CPU or for the latency, then for instance, we pick, let's say 5 issues or problems, and then we will go inside.
+And just, you know, dig deeper to generate blueprints for specific problems. Isn't it better?
+
+Naser Ezzati-Jivan   45:03
+Yeah, yeah, that's what we're doing. As I said, you know, we're not stopping everything to develop the catalogue first. No, but we are going to, we will have that goal, you know. We know that we are, we need to develop a catalogue at the end of the day, by the end of the day, right, by the end of the year. But for now, for sure, we need to focus on one problem.
+
+Mahsa Panahandeh   45:09
+Okay, yeah.
+
+Naser Ezzati-Jivan   45:21
+And design and develop a blueprint, test it, and so on, and even each each each category can be have a can be a paper for itself.
+
+Mahsa Panahandeh   45:30
+um
+
+Naser Ezzati-Jivan   45:31
+You know, look at that this way. You know, each category can turn to its own paper.
+
+Mahsa Panahandeh   45:39
+Just one more thing. No, no, no, go ahead. Sorry, too late.
+
+Naser Ezzati-Jivan   45:39
+Okay.
+I think for now, you know, you have explored the latency problems, right? And the CPU also another thing that you can work on it, and Sneh has worked on that too, right? CPU contention, CPU, there are lots of CPU, there are lots of CPU related problems, and there's a good overlap between CPU and latency problems.
+
+Mahsa Panahandeh   45:53
+Mmh.
+
+Naser Ezzati-Jivan   46:02
+You should choose one of them, you know. And by the way, the whole research is from the kernel point of view.
+Any problem, anything we're discussing from 10 operating system point of view, not from user, because user can be huge and heavy. We cannot cover it. Just from a system point of view. Okay? So for now, choose one category. Let's say go back to your CPU, like latency or CPU problem or lock. It doesn't really matter.
+
+Yuvraj Sehgal   46:17
+Yeah.
+Yeah.
+
+Naser Ezzati-Jivan   46:31
+But instead of like fitting each and every paper to one of these categories, don't do that. Find one category. Try to understand it yourself clearly. This is the import, the most important part that I want from you is this one. You understand the problem very, very well. Even if it's needed, create a problem like that. Try to visualise it with trace compass or other thing or ask lots of it.
+that explain that problem is you understand that problem very, very well. Without that, you cannot do anything with it.
+You cannot contribute anything toward that.
+You need to understand, whenever we're talking about like a CPU latency problem, what does it mean? How kernel can do that? Read some of these papers. Again, when I say read, I mean review it, right? You can use review with AI, that's fine. Find 10 papers around like CPU contention, for example, or latency or lock or whatever. Choose only one category, one type of problem.
+Try to find some papers rather than understand it, understand how Kernel helps to work that problem.
+
+Yuvraj Sehgal   47:29
+Yeah.
+
+Naser Ezzati-Jivan   47:29
+How from kernel pointer, from kernel data, kernel tracing, we can detect that and how we can analyse that and how we can find the reason and the root cause behind those problems or that problem. When you understand this, then you can develop a very good and detailed and accurate blueprint.
+Then you design A blueprint and you have an overall like format, right, for your blueprints. So write that blueprint.
+
+Yuvraj Sehgal   47:54
+Yes.
+
+Naser Ezzati-Jivan   47:57
+with the knowledge that you get from that specific problem.
+Right? Focus only on one problem in that category, write the blueprint.
+And then play with that and see and try to generate the problem again. Try to use agent different, like two, three different agents with your blueprint and see if they can really find, analyse the problem using your blueprint. Stop the blueprint with and without blueprint or ask or force AI agent to.
+Use only your blueprint, if any it has, even if it has more knowledge, say focus only on my blueprint and try to fix. And after that, say that now let's improve the blueprint. You know what I'm saying? So you understand what you are doing, what you are doing, but AI is there to help you, right? So eventually we'll have a very detailed blueprint around that specific problem.
+
+Yuvraj Sehgal   48:44
+Yeah.
+
+Naser Ezzati-Jivan   48:49
+And you have already read four or five papers or reviews on that, so you can add those papers as citations and references to the blueprint. Right? So when one blueprint is done, you design it, develop it, evaluate it, run it on different problems, that's done.
+
+Mahsa Panahandeh   48:52
+Yes.
+
+Yuvraj Sehgal   48:58
+Makes sense.
+
+Naser Ezzati-Jivan   49:06
+Let's do this one problem, one blueprint very, very good. Then after that, the second one will be much faster and much easier.
+
+Yuvraj Sehgal   49:16
+Sure, sure, yeah.
+
+Naser Ezzati-Jivan   49:17
+Right? And I'm sure if the first one takes, let's say, three days or one week or 10 days, the next one will take half of it. And after that, you will be able to design, let's say, two blueprint per day, believe me.
+Right? And when you are, let's say, done with like 10, 20 of them or two categories, we can think about how we can make it patient.
+
+Yuvraj Sehgal   49:39
+Sure, yeah.
+
+Naser Ezzati-Jivan   49:40
+Right, so this value is not just about blueprint or agent, because this is kind of dangerous if you focus on your blueprint, because AI agents are progressing and improving like every single day, like every day is a different world, they're bringing something new, right? And if you just work on blueprint, it's going to be very, so you're creating a detailed agent.
+Friendly catalog.
+
+Yuvraj Sehgal   50:02
+Mhm.
+
+Naser Ezzati-Jivan   50:02
+right? So I would say your thesis is going to be the same thesis as the Concordia guide, but it's going to be agent-friendly and with more details and evaluated catalogue of text issues.
+
+Yuvraj Sehgal   50:19
+Okay, got it.
+
+Naser Ezzati-Jivan   50:21
+And this can be trained, this can be used to train the next generation of LLMs as well, right? So then you will be very happy about it.
+
+Yuvraj Sehgal   50:28
+Mhm.
+
+Naser Ezzati-Jivan   50:29
+Right, yeah.
+You, you got Yuvraj, you got it?
+
+Yuvraj Sehgal   50:33
+Yeah, I got your point.
+
+Naser Ezzati-Jivan   50:34
+So next time, choose one problem that we have already developed or designed a lot. But then dig into that, go into the details, read the blueprint, try to understand the problem yourself very well. Try, ask AI to teach it to you, to teach the problem and how to use, this is very important, how to use kernel.
+
+Yuvraj Sehgal   50:55
+Mhm.
+
+Naser Ezzati-Jivan   50:55
+Level data system calls, logs, trace, everything that can just cannot.
+
+Yuvraj Sehgal   51:02
+Sure.
+
+Naser Ezzati-Jivan   51:02
+to solve that problem, to not solve, to detect and to analyse that problem.
+
+Mahsa Panahandeh   51:06
+Detect.
+
+Naser Ezzati-Jivan   51:08
+Right, when you understand it, when you fully actually understood, then it will be easier to design and develop blueprints for it and other things.
+
+Yuvraj Sehgal   51:10
+Yeah.
+Okay, okay, sure. Got the idea.
+
+Naser Ezzati-Jivan   51:22
+Yeah. And also then at the end, when you're done with that, then try to evaluate with blueprint, 100% with blueprint, no blueprint or ask, force AI to not only follow your blueprint, but also don't use anything else, just your blueprint and instruction, instruction and see how it works.
+
+Yuvraj Sehgal   51:40
+Okay.
+
+Naser Ezzati-Jivan   51:43
+Right, and then measure how long does it take, how long did it take, how accurate was it with and without blueprint, the time, and explain everything around that part, then write a report around one, that one problem. That's it.
+
+Yuvraj Sehgal   51:57
+Okay.
+
+Naser Ezzati-Jivan   51:58
+OK, clear. I think this way would be. And then if you then do like some analysis yourself, make sure you also record the trace, zip file them, put them in a folder, a zip file in a folder, so we can provide those data set as well. At the end of the video catalog, we will have a data set.
+
+Yuvraj Sehgal   52:00
+Yeah.
+Yeah.
+
+Naser Ezzati-Jivan   52:22
+Data same means we'll have several examples of each and every problem.
+
+Yuvraj Sehgal   52:27
+Sure, sure, got it.
+
+Naser Ezzati-Jivan   52:28
+OK, and you know something else for you here, you know, relevant. So, if you, I think you have seen this before, the lab that I was talking with this about that trace his lab.
+But.
+Look at this, OK?
+Trace with love.
+OK, I'm gonna copy it for you here.
+Nah.
+Yeah, the first one. Click on that, please.
+Go to the Labs folder.
+Okay, so you know what? There's no category, there's no category, so each of them is a is a case, is a problem, is an analysis, you know? Your work, you know, for each of the problems.
+that you are analyzing, you will have such a lab in your GitHub. But it will be, each problem will be under a category, under like a high level, a hierarchy. So that this problem, this category, this first level, second level, then my problem, under problem, you will explain the problem first. It's going to be your blueprint. Your blueprint will be a...
+
+Yuvraj Sehgal   53:30
+Okay.
+
+Naser Ezzati-Jivan   53:45
+They know the lab in this system, kind of.
+So this is the problem, this is the symptom, these are the symptoms, these are the like references, how to detect them, workflow and so on and so forth.
+Correct. Let's do this. Next time, in your GitHub repo, I believe you have a GitHub repo this project, right? Create a new folder, call it like blueprint catalog, something like that, right? And then under that, you will have like categories, but you don't have the categories yet. Just put random like.
+
+Yuvraj Sehgal   54:01
+Yeah, yeah.
+Yeah.
+Yeah.
+
+Naser Ezzati-Jivan   54:20
+category one, category two. Under category one, there will be 1 HTML file, one MD file, or one folder for each problem. For example, CPU contention, whatever problem that was there. So we'll have one long document about that. That will be the blueprint. I mean,
+The blueprint will be one of the documents inside that folder. You can have other things as well, references, trace data, read me first, and so on.
+
+Yuvraj Sehgal   54:48
+Okay, makes sense.
+
+Mahsa Panahandeh   54:51
+Like.
+
+Naser Ezzati-Jivan   54:51
+But again, you also need to understand that yourself. You need to understand the problem digested very, very well. This is a very, very important problem. And I don't want you like to come up with like 200 problems. No. If you do like 10 problems very, very well, you know, you're done. You might be done, but it depends. We'll see later. We'll decide on how many you need to do.
+And, but at least for now, the first call will be, let's say, 10 good blueprints for them.
+
+Yuvraj Sehgal   55:19
+Ohh.
+
+Naser Ezzati-Jivan   55:19
+But 10 good, developed, designed, evaluated, and and and written, you know, published or something like that.
+
+Yuvraj Sehgal   55:27
+Okay, makes sense.
+
+Naser Ezzati-Jivan   55:29
+And this will also turn you to an expert in like general analysis, you know, it can help you a lot in the future.
+
+Yuvraj Sehgal   55:37
+Yeah.
+
+Naser Ezzati-Jivan   55:39
+All right, thank you.
+
+Yuvraj Sehgal   55:41
+Thank you.
+
+Mahsa Panahandeh   55:41
+Just can I add something or ask something? Do you remember that I think Germany lab that you've shared and we talked about bad smells or anti-patterns?
+
+Yuvraj Sehgal   55:43
+Sure, ****.
+
+Naser Ezzati-Jivan   55:43
+Please, yes.
+
+Yuvraj Sehgal   55:52
+And.
+Yes.
+
+Mahsa Panahandeh   55:57
+I don't know, Yuvraj, you do have a chance to cheque it too. All right, since, okay, so, yeah, since I remember it was said, and I think at some point, even in, you know, the direction that we talked today, it's not far separate than what we talked before, and I think at some point we will need something like that.
+
+Yuvraj Sehgal   56:00
+No, no, that that was.
+
+Mahsa Panahandeh   56:18
+Since right now, how we want to develop blueprints, it's not a strategy. It's like doing, you know, prompt engineering for sending a prompt or request to the LLM, but we want to make it a structure in a blueprint. And I think that at some point we need to have an...
+kind of, you know, a design or a strategy that why we're doing that, or how, for instance, if we say you pick at the beginning working on latency, as it said, you need to know what's the symptom for detecting that problem, or let's say the latency generally.
+
+Naser Ezzati-Jivan   56:57
+I see.
+
+Mahsa Panahandeh   56:59
+So those sentence, how you want to identify those. So for some of them, you can get it from those paper references that for instance, you can have latency when there is a timeout in a part of a system and so on. But there are much more kind of symptoms.
+
+Naser Ezzati-Jivan   56:59
+I.
+
+Mahsa Panahandeh   57:18
+specifically for those problems that they are harder than latency to be detected. And I think it's good to look for something like that, like anti-patterns or similar ideas. I recently read another paper. I will find it out and share it. It was almost the same idea too.
+
+Yuvraj Sehgal   57:28
+Mhm.
+
+Mahsa Panahandeh   57:38
+That maybe you could say that, you know, for this problem, I have these references. Some of the symptoms, they could be extracted from those papers, and some they could be extracted from the patterns, like, you know, patterns or anti-patterns that it's been discussed. We do not have a kind of comprehensive
+
+Yuvraj Sehgal   57:48
+Mhm.
+
+Mahsa Panahandeh   57:58
+Performance catalog, but we have something, some of them they've been shared by large enterprises, some of them they've been published like that academic group, but yeah, I just wanted to, you know, remind everyone of us that, yeah, I think that part was really interesting, and for writing a paper or part of your thesis.
+
+Yuvraj Sehgal   58:11
+Mhm.
+About yeah.
+
+Mahsa Panahandeh   58:22
+you will need it. Otherwise, it's like kind of ad hoc design choice to say how I came up with that blueprint design.
+
+Yuvraj Sehgal   58:31
+Yeah, I'll read the Antwi pattern paper as well, along with the, I think Professor, you are on mute.
+
+Mahsa Panahandeh   58:35
+Yeah.
+Kwan.
+
+Naser Ezzati-Jivan   58:38
+That can be one of the outputs of your work eventually. That's not the focus now. You can do, you can write the papers like that for each of your categories.
+
+Yuvraj Sehgal   58:42
+Yeah.
+Yeah.
+
+Naser Ezzati-Jivan   58:48
+You know, they are just systematic where they are provided to say, cheque this, cheque that, cheque that. It's not a very strong work, honestly. They have published books and papers and things like that, but it's not that strong. But it can be, you know, for each category, you can write a paper like that.
+
+Yuvraj Sehgal   59:03
+Okay, okay, makes sense. Yeah, like, and for example, latency, I can add like what are the Antwi patterns related to this problem and then the blueprint.
+
+Naser Ezzati-Jivan   59:04
+Yeah.
+No. But for now, choose one or two problems. For each problem, try to gather references, try to understand the problem first, and then get some references, try to review all of them, and then go back to a blueprint. Now, what to add to your blueprint, how to improve it, reference all of them. Have one very good blueprint.
+
+Yuvraj Sehgal   59:17
+Sure.
+Mhm.
+Okay, sure.
+
+Naser Ezzati-Jivan   59:31
+or two very good blueprints, then we can review it all together and then we can even present it like purple, like to show it to senior people. And then we can add more and more and more. But while doing this, I'm sure we can write other papers as well, like the Germany one and many other papers.
+
+Yuvraj Sehgal   59:45
+Anything?
+Yeah, yeah.
+
+Naser Ezzati-Jivan   59:50
+All right, good.
+
+Yuvraj Sehgal   59:51
+Got it.
+
+Naser Ezzati-Jivan   59:53
+All right, thank you. Anything else?
+
+Yuvraj Sehgal   59:54
+Perfect, yeah.
+No, I think that's.
+
+Naser Ezzati-Jivan   59:57
+No? Okay, good. And Yuvraj, I will send you, if not e-mail me, I will send you the transcription so you can get that part for us. All right, thank you, Mahsa. Thank you, Mahsa, do we talk? I have a few minutes, I have to leave, but we can talk in a few minutes. Do you want to talk about the workshop or is it fine, it's clear?
+
+Yuvraj Sehgal   1:00:06
+Sure, sure.
+Thanks.
+
+Mahsa Panahandeh   1:00:09
+Thank you.
+
+Yuvraj Sehgal   1:00:09
+Yeah.
+
+Sneh Patel   1:00:10
+Thank you.
+
+Mahsa Panahandeh   1:00:11
+Ahh.
+Okay, it's fine. If you want to live, I think, yeah.
+It's clear, I think, for now. I will share it with Moja and see, you know, how it's fit to explain. Thank you. Yeah.
+
+Naser Ezzati-Jivan   1:00:21
+Okay, good.
+
+Sneh Patel   1:00:26
+Thanks, I'm good. Bye.
+
+Yuvraj Sehgal   1:00:29
+Bye.
+
+Naser Ezzati-Jivan   1:00:29
+Winter.
+
+Mahsa Panahandeh   1:00:29
+Right.
+
+Naser Ezzati-Jivan stopped transcription
