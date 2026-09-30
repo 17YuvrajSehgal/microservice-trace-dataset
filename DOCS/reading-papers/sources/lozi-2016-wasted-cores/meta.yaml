@@ -12,4 +12,5 @@ verified: true
 blueprints:
 - host-cpu-saturation
 files:
+- paper.md
 - paper.pdf

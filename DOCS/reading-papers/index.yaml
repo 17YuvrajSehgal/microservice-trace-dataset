@@ -267,6 +267,7 @@ sources:
       Using Waiting Dependency Graphs and Software Tracing'
     have: true
     files:
+    - paper.md
     - paper.pdf
   facebook-psi-overview:
     title: Getting Started with PSI (oomd)
@@ -351,6 +352,7 @@ sources:
     title: Why Does the Cloud Stop Computing (SoCC root copy)
     have: true
     files:
+    - paper.md
     - paper.pdf
   hazelcast-parknanos:
     title: LockSupport.parkNanos() Under the Hood and the Curious Case of Parking
@@ -476,6 +478,7 @@ sources:
       data analysis and NLP
     have: true
     files:
+    - paper.md
     - paper.pdf
   kohyarnejadfard-2022-thesis:
     title: System Performance Anomaly Detection using Tracing Data Analysis (PhD thesis)
@@ -501,11 +504,13 @@ sources:
     title: 'Heracles: Improving Resource Efficiency at Scale'
     have: true
     files:
+    - paper.md
     - paper.pdf
   lozi-2016-wasted-cores:
     title: 'The Linux Scheduler: a Decade of Wasted Cores'
     have: true
     files:
+    - paper.md
     - paper.pdf
   lu-2008-concurrency-bugs:
     title: 'Learning from Mistakes: A Comprehensive Study on Real World Concurrency
@@ -744,6 +749,7 @@ sources:
     title: Understanding Real-World Concurrency Bugs in Go
     have: true
     files:
+    - paper.md
     - paper.pdf
   turner-2010-cpu-bandwidth:
     title: CPU bandwidth control for CFS (in Proceedings of the Linux Symposium 2010)
@@ -832,6 +838,7 @@ sources:
     title: 'CPI2: CPU performance isolation for shared compute clusters'
     have: true
     files:
+    - paper.md
     - paper.pdf
   zhou-2018-train-ticket:
     title: 'Fault Analysis and Debugging of Microservice Systems: Industrial Survey,

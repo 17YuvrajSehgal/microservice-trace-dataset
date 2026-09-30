@@ -11,4 +11,5 @@ verified: false
 blueprints:
 - deadlock-lock-order
 files:
+- paper.md
 - paper.pdf

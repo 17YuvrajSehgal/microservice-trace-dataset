@@ -13,6 +13,7 @@ verified: true
 blueprints:
 - misc
 files:
+- paper.md
 - paper.pdf
 url_note: PMC answers 203 to an automated fetch; this is the Springer open-access
   PDF of the same article.
