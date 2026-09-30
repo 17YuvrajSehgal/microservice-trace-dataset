@@ -1,0 +1,12 @@
+id: self-evolving-rca-harness
+title: From General Agents to RCA Experts - A Self-Evolving Harness for Root Cause
+  Analysis
+url: https://arxiv.org/pdf/2608.25661
+retrieved: '2026-09-30'
+type: peer_reviewed
+status: S
+verified: false
+blueprints:
+- misc
+files:
+- paper.pdf

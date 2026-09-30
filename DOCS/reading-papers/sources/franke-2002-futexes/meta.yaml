@@ -1,0 +1,15 @@
+id: franke-2002-futexes
+title: 'Fuss, Futexes and Furwocks: Fast Userlevel Locking in Linux'
+authors: Franke, H.; Russell, R.; Kirkwood, M.
+year: 2002
+venue: Ottawa Linux Symposium 2002
+url: null
+retrieved: '2026-09-30'
+type: peer_reviewed
+status: M
+verified: false
+blueprints:
+- deadlock-lock-order
+- lock-contention-futex-storm
+files:
+- paper.pdf

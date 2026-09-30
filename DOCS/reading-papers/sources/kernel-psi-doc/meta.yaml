@@ -1,0 +1,15 @@
+id: kernel-psi-doc
+title: PSI - Pressure Stall Information
+authors: Weiner, J. (Linux kernel documentation)
+url: https://docs.kernel.org/accounting/psi.html
+retrieved: '2026-09-30'
+type: doc
+status: V
+verified: true
+blueprints:
+- host-cpu-saturation
+- host-disk-saturation
+files:
+- page.html
+- page.md
+- page_files/

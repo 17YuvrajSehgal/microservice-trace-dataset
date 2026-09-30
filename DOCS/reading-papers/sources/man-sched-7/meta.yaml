@@ -1,0 +1,13 @@
+id: man-sched-7
+title: sched(7) - overview of CPU scheduling
+url: https://man7.org/linux/man-pages/man7/sched.7.html
+retrieved: '2026-09-30'
+type: doc
+status: M
+verified: false
+blueprints:
+- priority-inversion-nice
+files:
+- page.html
+- page.md
+- page_files/

@@ -1,0 +1,12 @@
+id: nissist-2024
+title: Nissist - An Incident Mitigation Copilot based on Troubleshooting Guides
+year: 2024
+url: https://arxiv.org/pdf/2402.17531
+retrieved: '2026-09-30'
+type: peer_reviewed
+status: V
+verified: true
+blueprints:
+- misc
+files:
+- paper.pdf

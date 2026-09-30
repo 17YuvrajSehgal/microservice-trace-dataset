@@ -1,0 +1,18 @@
+id: kohyarnejadfard-2022-anomaly
+title: Anomaly detection in microservice environments using distributed tracing data
+  analysis and NLP
+authors: Kohyarnejadfard, I.; Aloise, D.; Azhari, S. V.; Dagenais, M. R.
+year: 2022
+venue: Journal of Cloud Computing 11:25
+doi: 10.1186/s13677-022-00296-4
+url: https://link.springer.com/content/pdf/10.1186/s13677-022-00296-4.pdf
+retrieved: '2026-09-30'
+type: peer_reviewed
+status: V
+verified: true
+blueprints:
+- misc
+files:
+- paper.pdf
+url_note: PMC answers 203 to an automated fetch; this is the Springer open-access
+  PDF of the same article.

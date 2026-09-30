@@ -1,0 +1,14 @@
+id: kohyarnejadfard-2022-thesis
+title: System Performance Anomaly Detection using Tracing Data Analysis (PhD thesis)
+authors: Kohyarnejadfard, I.
+year: 2022
+venue: Polytechnique Montreal
+url: https://publications.polymtl.ca/10281/1/2022_ImanKohyarnejadfard.pdf
+retrieved: '2026-09-30'
+type: peer_reviewed
+status: V
+verified: true
+blueprints:
+- misc
+files:
+- paper.pdf

@@ -1,0 +1,14 @@
+id: gregg-offcpu-analysis
+title: Off-CPU Analysis
+authors: Gregg, B.
+url: https://www.brendangregg.com/offcpuanalysis.html
+retrieved: '2026-09-30'
+type: industrial
+status: M
+verified: false
+blueprints:
+- db-latency-dependency-wait
+files:
+- page.html
+- page.md
+- page_files/

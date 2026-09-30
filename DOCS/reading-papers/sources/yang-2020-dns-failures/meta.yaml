@@ -1,0 +1,14 @@
+id: yang-2020-dns-failures
+title: A Deep Dive into DNS Query Failures
+authors: Yang, D. et al.
+year: 2020
+venue: USENIX ATC 2020
+url: https://www.usenix.org/system/files/atc20-yang.pdf
+retrieved: '2026-09-30'
+type: peer_reviewed
+status: V
+verified: true
+blueprints:
+- dns-delay
+files:
+- paper.pdf

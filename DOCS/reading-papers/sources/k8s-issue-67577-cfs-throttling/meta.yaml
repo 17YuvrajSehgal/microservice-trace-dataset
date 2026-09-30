@@ -1,0 +1,13 @@
+id: k8s-issue-67577-cfs-throttling
+title: CFS quota throttles containers with low CPU usage (kubernetes#67577)
+url: https://github.com/kubernetes/kubernetes/issues/67577
+retrieved: '2026-09-30'
+type: issue
+status: M
+verified: false
+blueprints:
+- service-cpu-throttle
+files:
+- page.html
+- page.md
+- page_files/

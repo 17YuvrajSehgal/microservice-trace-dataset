@@ -1,0 +1,11 @@
+id: siriushelper
+title: SiriusHelper - An LLM Agent-Based Operations Assistant for Big Data Platforms
+url: https://arxiv.org/pdf/2605.00043
+retrieved: '2026-09-30'
+type: peer_reviewed
+status: S
+verified: false
+blueprints:
+- misc
+files:
+- paper.pdf

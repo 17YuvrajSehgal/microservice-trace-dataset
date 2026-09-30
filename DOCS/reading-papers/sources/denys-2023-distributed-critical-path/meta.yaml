@@ -1,0 +1,16 @@
+id: denys-2023-distributed-critical-path
+title: Distributed computation of the critical path from execution traces
+authors: Denys, G. et al.
+year: 2023
+venue: 'Software: Practice and Experience'
+doi: 10.1002/spe.3210
+url: https://onlinelibrary.wiley.com/doi/full/10.1002/spe.3210
+type: peer_reviewed
+status: V
+verified: true
+blueprints:
+- misc
+files: []
+note: Wiley returns 403 to every route tried - pdfdirect, epdf and the article page,
+  with curl and with trafilatura. Needs institutional access or a manual browser save.
+  NOT DOWNLOADED - see index.yaml missing list

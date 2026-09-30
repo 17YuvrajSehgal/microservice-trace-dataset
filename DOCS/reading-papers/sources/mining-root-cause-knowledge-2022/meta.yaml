@@ -1,0 +1,14 @@
+id: mining-root-cause-knowledge-2022
+title: Mining root cause knowledge from cloud service incident investigations for
+  AIOps
+year: 2022
+venue: ICSE-SEIP 2022
+url: https://arxiv.org/pdf/2204.11598
+retrieved: '2026-09-30'
+type: peer_reviewed
+status: S
+verified: false
+blueprints:
+- misc
+files:
+- paper.pdf

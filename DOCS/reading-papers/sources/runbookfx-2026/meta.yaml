@@ -1,0 +1,16 @@
+id: runbookfx-2026
+title: RunbookFX - type and effect safe LLM synthesis of executable runbooks
+authors: Xiao; Li; Ge
+year: 2026
+venue: PACMPL 10(ICFP)
+doi: 10.1145/3828675
+url: https://dl.acm.org/doi/10.1145/3828675
+type: peer_reviewed
+status: S
+verified: false
+blueprints:
+- misc
+files: []
+note: ACM DL returns 403 to both the PDF and the article page. No arXiv preprint found.
+  Needs institutional access or a manual browser save. NOT DOWNLOADED - see index.yaml
+  missing list

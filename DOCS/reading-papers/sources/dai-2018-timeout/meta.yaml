@@ -1,0 +1,17 @@
+id: dai-2018-timeout
+title: Understanding Real-World Timeout Problems in Cloud Server Systems
+authors: Dai, T.; He, J.; Gu, X.; Lu, S.
+year: 2018
+venue: IEEE IC2E 2018
+doi: 10.1109/IC2E.2018.00022
+url: https://dance.csc.ncsu.edu/papers/IC2E18.pdf
+retrieved: '2026-09-30'
+type: peer_reviewed
+status: V
+verified: true
+blueprints:
+- connection-pool-exhaustion
+- dependency-outage-retry-storm
+- db-latency-dependency-wait
+files:
+- paper.pdf

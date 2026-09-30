@@ -1,0 +1,12 @@
+id: patent-11750692-conn-pool
+title: US Patent 11,750,692 - Connection pool anomaly detection mechanism (Salesforce)
+url: https://image-ppubs.uspto.gov/dirsearch-public/print/downloadPdf/11750692
+retrieved: '2026-09-30'
+type: industrial
+status: S
+verified: false
+blueprints:
+- connection-pool-exhaustion
+files:
+- paper.pdf
+note: Patent text, not peer reviewed. The reference pack flags it as weak support.

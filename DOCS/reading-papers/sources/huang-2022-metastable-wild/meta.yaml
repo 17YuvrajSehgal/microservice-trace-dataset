@@ -1,0 +1,15 @@
+id: huang-2022-metastable-wild
+title: Metastable Failures in the Wild
+authors: Huang, L. et al.
+year: 2022
+venue: OSDI 2022
+url: https://www.usenix.org/publications/loginonline/metastable-failures-wild
+retrieved: '2026-09-30'
+type: peer_reviewed
+status: V
+verified: true
+blueprints:
+- dependency-outage-retry-storm
+files:
+- page.html
+- page_files/

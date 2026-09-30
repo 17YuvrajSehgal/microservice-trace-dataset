@@ -1,0 +1,13 @@
+id: cheshire-nagle-delayed-ack
+title: TCP Performance problems from Nagle and Delayed ACK interaction
+authors: Cheshire, S.
+url: https://www.stuartcheshire.org/papers/nagledelayedack/
+retrieved: '2026-09-30'
+type: industrial
+status: V
+verified: true
+blueprints:
+- misc
+files:
+- page.html
+- page_files/

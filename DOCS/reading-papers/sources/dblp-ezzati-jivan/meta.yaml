@@ -1,0 +1,14 @@
+id: dblp-ezzati-jivan
+title: dblp - Naser Ezzati-Jivan (where HybridRCA is listed)
+url: https://dblp.org/pid/54/10412.html
+retrieved: '2026-09-30'
+type: doc
+status: S
+verified: false
+blueprints:
+- misc
+files:
+- page.html
+- page_files/
+note: The pack cites HybridRCA from this dblp listing; venue unknown at the time of
+  writing.

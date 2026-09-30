@@ -1,0 +1,15 @@
+id: lo-2016-heracles
+title: 'Heracles: Improving Resource Efficiency at Scale'
+authors: Lo, D.; Cheng, L.; Govindaraju, R.; Ranganathan, P.; Kozyrakis, C.
+year: 2016
+venue: ACM TOCS (orig. ISCA 2015)
+doi: 10.1145/2882783
+url: http://csl.stanford.edu/~christos/publications/2016.heracles.tocs.pdf
+retrieved: '2026-09-30'
+type: peer_reviewed
+status: V
+verified: true
+blueprints:
+- cpu-contention-co-tenant
+files:
+- paper.pdf

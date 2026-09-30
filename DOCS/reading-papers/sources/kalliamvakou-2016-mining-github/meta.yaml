@@ -1,0 +1,20 @@
+id: kalliamvakou-2016-mining-github
+title: An in-depth study of the promises and perils of mining GitHub
+authors: Kalliamvakou, E.; Gousios, G.; Blincoe, K.; Singer, L.; German, D. M.; Damian,
+  D.
+year: 2016
+venue: Empirical Software Engineering 21(5)
+doi: 10.1007/s10664-015-9393-5
+url: https://link.springer.com/article/10.1007/s10664-015-9393-5
+retrieved: '2026-09-30'
+type: peer_reviewed
+status: V
+verified: true
+blueprints:
+- misc
+files:
+- page.html
+- page_files/
+url_note: No open PDF found - Radboud and Auckland repository copies both resolve
+  to landing pages, and gousios.gr has a broken certificate. Only the Springer article
+  page is archived; the full text needs institutional access.

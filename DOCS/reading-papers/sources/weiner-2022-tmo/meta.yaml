@@ -1,0 +1,15 @@
+id: weiner-2022-tmo
+title: 'TMO: Transparent Memory Offloading in Datacenters'
+authors: Weiner, J. et al.
+year: 2022
+venue: ASPLOS 2022
+doi: 10.1145/3503222.3507731
+url: https://www.cs.cmu.edu/~dskarlat/publications/tmo_asplos22.pdf
+retrieved: '2026-09-30'
+type: peer_reviewed
+status: S
+verified: false
+blueprints:
+- service-memory-cap
+files:
+- paper.pdf

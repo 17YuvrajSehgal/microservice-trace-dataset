@@ -1,0 +1,17 @@
+id: jewell-2011-exfiltration-syscalls
+title: Host-Based Data Exfiltration Detection via System Call Sequences
+authors: Jewell, B.; Beaver, J.
+year: 2011
+venue: ICIW 2011, pp. 134-142 (ORNL)
+url: https://www.ornl.gov/publication/host-based-data-exfiltration-detection-system-call-sequences
+retrieved: '2026-09-30'
+type: peer_reviewed
+status: S
+verified: false
+blueprints:
+- data-exfiltration
+files:
+- page.html
+- page_files/
+- paper.md
+note: ORNL landing page only; no open PDF found. Paywalled via ICIW proceedings.

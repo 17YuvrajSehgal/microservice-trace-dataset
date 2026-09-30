@@ -1,0 +1,14 @@
+id: ugedal-2022-unnecessary-throttling
+title: Mitigating Unnecessary Throttling in Linux CFS Bandwidth Control
+authors: Ugedal, O.; Kannan, R.
+year: 2022
+venue: SBAC-PAD 2022
+url: https://rakeshk.folk.ntnu.no/pubs/SBACPAD22.pdf
+retrieved: '2026-09-30'
+type: peer_reviewed
+status: V
+verified: true
+blueprints:
+- service-cpu-throttle
+files:
+- paper.pdf

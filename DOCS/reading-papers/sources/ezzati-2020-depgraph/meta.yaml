@@ -1,0 +1,15 @@
+id: ezzati-2020-depgraph
+title: 'DepGraph: Localizing Performance Bottlenecks in Multi-Core Applications Using
+  Waiting Dependency Graphs and Software Tracing'
+authors: Ezzati-Jivan, N.; Fournier, Q.; Dagenais, M. R.; Hamou-Lhadj, A.
+year: 2020
+venue: SCAM 2020
+url: null
+retrieved: '2026-09-30'
+type: peer_reviewed
+status: S
+verified: false
+blueprints:
+- deadlock-lock-order
+files:
+- paper.pdf

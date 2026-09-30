@@ -1,0 +1,13 @@
+id: futex-internals
+title: Futex Internals (Linux Kernel Internals)
+url: https://kernel-internals.org/locking/futex/
+retrieved: '2026-09-30'
+type: doc
+status: S
+verified: false
+blueprints:
+- misc
+files:
+- page.html
+- page.md
+- page_files/

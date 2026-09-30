@@ -1,0 +1,15 @@
+id: rcacopilot-2024
+title: Automatic Root Cause Analysis via Large Language Models for Cloud Incidents
+  (RCACopilot)
+authors: Chen, Y. et al.
+year: 2024
+venue: EuroSys 2024
+url: https://arxiv.org/pdf/2305.15778
+retrieved: '2026-09-30'
+type: peer_reviewed
+status: V
+verified: true
+blueprints:
+- misc
+files:
+- paper.pdf

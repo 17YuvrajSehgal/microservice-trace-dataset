@@ -1,0 +1,12 @@
+id: beyond-fault-localization
+title: Beyond Fault Localization - A Trajectory-Level Study of LLM Agents for Microservice
+  RCA
+url: https://arxiv.org/pdf/2608.21310
+retrieved: '2026-09-30'
+type: peer_reviewed
+status: S
+verified: false
+blueprints:
+- misc
+files:
+- paper.pdf

@@ -1,0 +1,13 @@
+id: autotsg-2022
+title: AutoTSG - Learning and Synthesis for Incident Troubleshooting
+year: 2022
+venue: ESEC/FSE 2022 Industry
+url: https://arxiv.org/pdf/2205.13457
+retrieved: '2026-09-30'
+type: peer_reviewed
+status: V
+verified: true
+blueprints:
+- misc
+files:
+- paper.pdf

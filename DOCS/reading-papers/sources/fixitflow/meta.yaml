@@ -1,0 +1,11 @@
+id: fixitflow
+title: FixItFlow - Automated Troubleshooting Guide Generation from Cloud Incidents
+url: https://arxiv.org/pdf/2607.13035
+retrieved: '2026-09-30'
+type: peer_reviewed
+status: S
+verified: false
+blueprints:
+- misc
+files:
+- paper.pdf

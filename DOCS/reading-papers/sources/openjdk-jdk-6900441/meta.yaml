@@ -1,0 +1,12 @@
+id: openjdk-jdk-6900441
+title: 'JDK-6900441: PlatformEvent.park(millis) on Linux could still be affected by
+  changes to the time-of-day clock'
+url: https://bugs.openjdk.org/browse/JDK-6900441
+retrieved: '2026-09-30'
+type: issue
+status: V
+verified: true
+blueprints:
+- lock-contention-futex-storm
+files:
+- page.md

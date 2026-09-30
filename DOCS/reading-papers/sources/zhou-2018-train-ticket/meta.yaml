@@ -1,0 +1,16 @@
+id: zhou-2018-train-ticket
+title: 'Fault Analysis and Debugging of Microservice Systems: Industrial Survey, Benchmark
+  System, and Empirical Study'
+authors: Zhou, X. et al.
+year: 2018
+venue: IEEE TSE
+doi: 10.1109/TSE.2018.2887384
+url: null
+retrieved: '2026-09-30'
+type: peer_reviewed
+status: M
+verified: false
+blueprints:
+- db-latency-dependency-wait
+files:
+- paper.pdf

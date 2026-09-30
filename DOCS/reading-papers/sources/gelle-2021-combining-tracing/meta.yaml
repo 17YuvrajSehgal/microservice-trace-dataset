@@ -1,0 +1,19 @@
+id: gelle-2021-combining-tracing
+title: Combining Distributed and Kernel Tracing for Performance Analysis of Cloud
+  Applications
+authors: Gelle, L.; Ezzati-Jivan, N.; Dagenais, M. R.
+year: 2021
+venue: Electronics 10(21):2610
+doi: 10.3390/electronics10212610
+url: https://pdfs.semanticscholar.org/c991/e68a0405d1f66f504c125171f7973d3db532.pdf
+retrieved: '2026-09-30'
+type: peer_reviewed
+status: V
+verified: true
+blueprints:
+- cpu-contention-co-tenant
+files:
+- paper.pdf
+url_note: MDPI returns 403 to any automated fetch, browser UA and referer included.
+  This is the Semantic Scholar mirror of the same CC-BY PDF; verified by decompressing
+  the streams and finding the author name. Open access, so the mirror is legitimate.

@@ -1,0 +1,15 @@
+id: bronson-2021-metastable
+title: Metastable Failures in Distributed Systems
+authors: Bronson, N.; Aghayev, A.; Charapko, A.; Zhu, T.
+year: 2021
+venue: HotOS 2021
+doi: 10.1145/3458336.3465286
+url: null
+retrieved: '2026-09-30'
+type: peer_reviewed
+status: V
+verified: true
+blueprints:
+- dependency-outage-retry-storm
+files:
+- paper.pdf

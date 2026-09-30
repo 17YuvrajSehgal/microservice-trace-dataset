@@ -1,0 +1,15 @@
+id: hikaricp-readme
+title: HikariCP README (pool behaviour and defaults)
+authors: Wooldridge, B.
+url: https://github.com/brettwooldridge/HikariCP
+retrieved: '2026-09-30'
+commit: a4d93f4f85517f90e632b795486d7102e933d7ff
+type: industrial
+status: V
+verified: true
+blueprints:
+- connection-pool-exhaustion
+files:
+- page.html
+- page.md
+- page_files/

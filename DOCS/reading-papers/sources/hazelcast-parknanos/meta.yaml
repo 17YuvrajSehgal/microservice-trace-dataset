@@ -1,0 +1,15 @@
+id: hazelcast-parknanos
+title: LockSupport.parkNanos() Under the Hood and the Curious Case of Parking
+authors: Hamala, S. (Hazelcast)
+year: 2019
+url: https://hazelcast.com/blog/locksupport-parknanos-under-the-hood-and-the-curious-case-of-parking/
+retrieved: '2026-09-30'
+type: industrial
+status: S
+verified: false
+blueprints:
+- lock-contention-futex-storm
+files:
+- page.html
+- page.md
+- page_files/

@@ -1,0 +1,14 @@
+id: kernel-futex-requeue-pi
+title: Futex Requeue PI
+url: https://docs.kernel.org/locking/futex-requeue-pi.html
+retrieved: '2026-09-30'
+type: doc
+status: S
+verified: false
+blueprints:
+- lock-contention-futex-storm
+- priority-inversion-nice
+files:
+- page.html
+- page.md
+- page_files/

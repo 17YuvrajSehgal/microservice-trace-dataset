@@ -1,0 +1,13 @@
+id: azure-retry-storm
+title: Retry Storm antipattern (Azure Architecture Center)
+url: https://learn.microsoft.com/en-us/azure/architecture/antipatterns/retry-storm/
+retrieved: '2026-09-30'
+type: industrial
+status: S
+verified: false
+blueprints:
+- dependency-outage-retry-storm
+files:
+- page.html
+- page.md
+- page_files/

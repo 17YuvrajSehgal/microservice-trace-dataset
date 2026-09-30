@@ -1,0 +1,16 @@
+id: ghanavati-2020-resource-leaks
+title: Memory and resource leak defects and their repairs in Java projects
+authors: Ghanavati, M.; Costa, D.; Seboek, J.; Lo, D.; Andrzejak, A.
+year: 2020
+venue: Empirical Software Engineering 25(1)
+doi: 10.1007/s10664-019-09731-8
+url: https://arxiv.org/pdf/1810.00101
+retrieved: '2026-09-30'
+type: peer_reviewed
+status: V
+verified: true
+blueprints:
+- connection-pool-exhaustion
+- fd-exhaustion
+files:
+- paper.pdf

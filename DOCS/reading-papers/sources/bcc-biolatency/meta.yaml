@@ -1,0 +1,13 @@
+id: bcc-biolatency
+title: biolatency (BCC tool source)
+authors: Gregg, B.
+url: https://raw.githubusercontent.com/iovisor/bcc/master/tools/biolatency.py
+retrieved: '2026-09-30'
+commit: e58d68063637393e01a7788215f0ddc6e479e6b4
+type: doc
+status: S
+verified: false
+blueprints:
+- host-disk-saturation
+files:
+- biolatency (BCC tool source).py

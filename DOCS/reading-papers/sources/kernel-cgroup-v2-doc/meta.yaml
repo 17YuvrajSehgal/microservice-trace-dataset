@@ -1,0 +1,13 @@
+id: kernel-cgroup-v2-doc
+title: Control Group v2 (memory.max, memory.events)
+url: https://docs.kernel.org/admin-guide/cgroup-v2.html
+retrieved: '2026-09-30'
+type: doc
+status: S
+verified: false
+blueprints:
+- service-memory-cap
+files:
+- page.html
+- page.md
+- page_files/

@@ -1,0 +1,13 @@
+id: hikaricp-pool-sizing
+title: HikariCP - About Pool Sizing (wiki)
+authors: Wooldridge, B.
+url: https://github.com/brettwooldridge/HikariCP/wiki/About-Pool-Sizing
+retrieved: '2026-09-30'
+commit: 6a950a32dacd9c57203ce47711c3916e49e3b3a8
+type: industrial
+status: M
+verified: false
+blueprints:
+- connection-pool-exhaustion
+files:
+- page.md

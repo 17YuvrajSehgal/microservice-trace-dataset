@@ -1,0 +1,13 @@
+id: ncsu-timeout-project
+title: Timeout bug detection project page (TScope ICAC 2018, TFix ICDCS 2019)
+authors: He, J.; Dai, T.; Gu, X.
+url: https://dance.csc.ncsu.edu/projects/sysMD/timeout.html
+retrieved: '2026-09-30'
+type: doc
+status: V
+verified: true
+blueprints:
+- misc
+files:
+- page.html
+- page.md

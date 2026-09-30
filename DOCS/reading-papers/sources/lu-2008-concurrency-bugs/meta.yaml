@@ -1,0 +1,16 @@
+id: lu-2008-concurrency-bugs
+title: 'Learning from Mistakes: A Comprehensive Study on Real World Concurrency Bug
+  Characteristics'
+authors: Lu, S.; Park, S.; Seo, E.; Zhou, Y.
+year: 2008
+venue: ASPLOS 2008
+doi: 10.1145/1346281.1346323
+url: null
+retrieved: '2026-09-30'
+type: peer_reviewed
+status: M
+verified: false
+blueprints:
+- deadlock-lock-order
+files:
+- paper.pdf

@@ -1,0 +1,15 @@
+id: brooker-tcp-nodelay
+title: It is always TCP_NODELAY. Every damn time.
+authors: Brooker, M.
+year: 2024
+url: https://brooker.co.za/blog/2024/05/09/nagle.html
+retrieved: '2026-09-30'
+type: industrial
+status: V
+verified: true
+blueprints:
+- misc
+files:
+- page.html
+- page.md
+- page_files/

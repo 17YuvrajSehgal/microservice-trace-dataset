@@ -1,0 +1,14 @@
+id: turner-2010-cpu-bandwidth
+title: CPU bandwidth control for CFS (in Proceedings of the Linux Symposium 2010)
+authors: Turner, P.; Rao, B. B.; Rao, N.
+year: 2010
+venue: Linux Symposium (OLS) 2010, pp. 245-254
+url: https://www.kernel.org/doc/mirror/ols2010.pdf
+retrieved: '2026-09-30'
+type: peer_reviewed
+status: V
+verified: true
+blueprints:
+- service-cpu-throttle
+files:
+- paper.pdf

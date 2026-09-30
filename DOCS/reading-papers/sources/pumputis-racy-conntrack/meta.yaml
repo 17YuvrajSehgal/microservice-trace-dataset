@@ -1,0 +1,14 @@
+id: pumputis-racy-conntrack
+title: Racy conntrack and DNS lookup timeouts
+authors: Pumputis, M. (Weave Works)
+year: 2018
+url: https://lambda.lt/blog/2018/racy_conntrack.html
+retrieved: '2026-09-30'
+type: industrial
+status: V
+verified: true
+blueprints:
+- dns-delay
+files:
+- page.html
+- page.md

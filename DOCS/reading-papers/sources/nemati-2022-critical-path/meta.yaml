@@ -1,0 +1,16 @@
+id: nemati-2022-critical-path
+title: Critical Path Analysis through Hierarchical Distributed Virtualized Environments
+  Using Host Kernel Tracing
+authors: Nemati, H.; Tetreault, F.; Puncher, J.; Dagenais, M. R.
+year: 2022
+venue: IEEE Trans. Cloud Computing 10
+url: https://publications.polymtl.ca/3902/1/2019_HaniNemati.pdf
+retrieved: '2026-09-30'
+type: peer_reviewed
+status: V
+verified: true
+blueprints:
+- db-latency-dependency-wait
+files:
+- paper.pdf
+url_note: PhD thesis of the first author; the TCC article itself is paywalled

@@ -1,0 +1,13 @@
+id: rfc-6298-tcp-rto
+title: 'RFC 6298: Computing TCP''s Retransmission Timer'
+url: https://www.rfc-editor.org/rfc/rfc6298
+retrieved: '2026-09-30'
+type: doc
+status: M
+verified: false
+blueprints:
+- network-path-degradation
+files:
+- page.html
+- page.md
+- page_files/

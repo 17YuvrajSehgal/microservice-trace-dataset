@@ -1,0 +1,18 @@
+id: giraldeau-2016-wait-analysis
+title: Wait Analysis of Distributed Systems Using Kernel Tracing
+authors: Giraldeau, F.; Dagenais, M.
+year: 2016
+venue: IEEE TPDS 27(8)
+doi: 10.1109/TPDS.2015.2488629
+url: null
+retrieved: '2026-09-30'
+type: peer_reviewed
+status: M
+verified: false
+blueprints:
+- host-cpu-saturation
+- network-path-degradation
+- cpu-contention-co-tenant
+- db-latency-dependency-wait
+files:
+- paper.pdf

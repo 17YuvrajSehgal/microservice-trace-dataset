@@ -1,0 +1,14 @@
+id: mogul-2001-nagle
+title: Rethinking the TCP Nagle Algorithm
+authors: Mogul, J. C.; Minshall, G.
+year: 2001
+venue: ACM SIGCOMM CCR
+url: http://ccr.sigcomm.org/archive/2001/jan01/ccr-200101-mogul.pdf
+retrieved: '2026-09-30'
+type: peer_reviewed
+status: V
+verified: true
+blueprints:
+- misc
+files:
+- paper.pdf

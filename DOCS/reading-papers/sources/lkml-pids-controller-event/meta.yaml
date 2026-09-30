@@ -1,0 +1,14 @@
+id: lkml-pids-controller-event
+title: '[PATCH] cgroup: Add pids controller event when fork fails because of pid limit'
+authors: Yu, K.
+year: 2016
+url: https://lkml.iu.edu/hypermail/linux/kernel/1606.2/03729.html
+retrieved: '2026-09-30'
+type: doc
+status: V
+verified: true
+blueprints:
+- fork-storm
+files:
+- page.html
+- page.md

@@ -1,0 +1,16 @@
+id: gassais-2020-host-ids
+title: Multi-level host-based intrusion detection system for Internet of things
+authors: Gassais, R.; Ezzati-Jivan, N.; Fernandez, J. M.; Aloise, D.; Dagenais, M.
+  R.
+year: 2020
+venue: Journal of Cloud Computing 9:62
+doi: 10.1186/s13677-020-00206-6
+url: https://link.springer.com/content/pdf/10.1186/s13677-020-00206-6.pdf
+retrieved: '2026-09-30'
+type: peer_reviewed
+status: V
+verified: true
+blueprints:
+- data-exfiltration
+files:
+- paper.pdf

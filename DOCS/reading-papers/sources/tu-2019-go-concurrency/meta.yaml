@@ -1,0 +1,15 @@
+id: tu-2019-go-concurrency
+title: Understanding Real-World Concurrency Bugs in Go
+authors: Tu, T.; Liu, X.; Song, L.; Zhang, Y.
+year: 2019
+venue: ASPLOS 2019
+doi: 10.1145/3297858.3304069
+url: null
+retrieved: '2026-09-30'
+type: peer_reviewed
+status: M
+verified: false
+blueprints:
+- deadlock-lock-order
+files:
+- paper.pdf

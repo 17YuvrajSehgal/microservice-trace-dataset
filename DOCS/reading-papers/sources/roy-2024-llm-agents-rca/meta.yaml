@@ -1,0 +1,15 @@
+id: roy-2024-llm-agents-rca
+title: Exploring LLM-based Agents for Root Cause Analysis
+authors: Roy, D. et al.
+year: 2024
+venue: FSE 2024 Companion (Industry)
+doi: 10.1145/3663529.3663841
+url: https://arxiv.org/pdf/2403.04123
+retrieved: '2026-09-30'
+type: peer_reviewed
+status: V
+verified: true
+blueprints:
+- misc
+files:
+- paper.pdf

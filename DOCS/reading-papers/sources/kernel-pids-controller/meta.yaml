@@ -1,0 +1,13 @@
+id: kernel-pids-controller
+title: Process Number Controller (cgroup v1 pids)
+url: https://docs.kernel.org/admin-guide/cgroup-v1/pids.html
+retrieved: '2026-09-30'
+type: doc
+status: V
+verified: true
+blueprints:
+- fork-storm
+files:
+- page.html
+- page.md
+- page_files/

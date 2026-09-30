@@ -1,0 +1,15 @@
+id: lozi-2016-wasted-cores
+title: 'The Linux Scheduler: a Decade of Wasted Cores'
+authors: Lozi, J.-P.; Lepers, B.; Funston, J.; Gaud, F.; Quema, V.; Fedorova, A.
+year: 2016
+venue: EuroSys 2016
+doi: 10.1145/2901318.2901326
+url: https://people.ece.ubc.ca/sasha/papers/eurosys16-final29.pdf
+retrieved: '2026-09-30'
+type: peer_reviewed
+status: V
+verified: true
+blueprints:
+- host-cpu-saturation
+files:
+- paper.pdf

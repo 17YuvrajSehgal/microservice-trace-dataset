@@ -1,0 +1,16 @@
+id: stepfly-2026
+title: StepFly - Agentic Troubleshooting Guide Automation for Incident Diagnosis
+authors: Mao et al.
+year: 2026
+venue: Proc. ACM Softw. Eng. 3(FSE)
+doi: 10.1145/3808143
+url: https://arxiv.org/pdf/2510.10074
+retrieved: '2026-09-30'
+commit: a6229192a69dd2eebc58d9b8f754dbc396029c4e
+type: peer_reviewed
+status: V
+verified: true
+blueprints:
+- misc
+files:
+- paper.pdf

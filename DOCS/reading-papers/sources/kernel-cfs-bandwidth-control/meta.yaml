@@ -1,0 +1,13 @@
+id: kernel-cfs-bandwidth-control
+title: CFS Bandwidth Control
+url: https://docs.kernel.org/scheduler/sched-bwc.html
+retrieved: '2026-09-30'
+type: doc
+status: V
+verified: true
+blueprints:
+- service-cpu-throttle
+files:
+- page.html
+- page.md
+- page_files/

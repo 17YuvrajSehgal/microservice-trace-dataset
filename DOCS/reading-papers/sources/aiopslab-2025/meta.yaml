@@ -1,0 +1,13 @@
+id: aiopslab-2025
+title: AIOpsLab - A Holistic Framework to Evaluate AI Agents for Enabling Autonomous
+  Clouds
+year: 2025
+url: https://arxiv.org/pdf/2501.06706
+retrieved: '2026-09-30'
+type: peer_reviewed
+status: M
+verified: false
+blueprints:
+- misc
+files:
+- paper.pdf

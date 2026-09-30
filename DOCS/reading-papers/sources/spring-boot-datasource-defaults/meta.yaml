@@ -1,0 +1,14 @@
+id: spring-boot-datasource-defaults
+title: Spring Boot reference - SQL databases (connection pool defaults; HikariCP is
+  the default pool)
+url: https://docs.spring.io/spring-boot/reference/data/sql.html
+retrieved: '2026-09-30'
+type: doc
+status: V
+verified: true
+blueprints:
+- connection-pool-exhaustion
+files:
+- page.html
+- page.md
+- page_files/

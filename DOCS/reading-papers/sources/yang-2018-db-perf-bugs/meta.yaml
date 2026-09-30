@@ -1,0 +1,16 @@
+id: yang-2018-db-perf-bugs
+title: 'How not to Structure Your Database-Backed Web Applications: A Study of Performance
+  Bugs in the Wild'
+authors: Yang, J.; Subramaniam, P.; Lu, S.; Yan, C.; Cheung, A.
+year: 2018
+venue: ICSE 2018
+doi: 10.1145/3180155.3180194
+url: http://hyperloop.cs.uchicago.edu/220-HowNotStructure.pdf
+retrieved: '2026-09-30'
+type: peer_reviewed
+status: V
+verified: true
+blueprints:
+- db-latency-dependency-wait
+files:
+- paper.pdf

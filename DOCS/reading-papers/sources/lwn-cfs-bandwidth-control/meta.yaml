@@ -1,0 +1,13 @@
+id: lwn-cfs-bandwidth-control
+title: CFS bandwidth control (LWN, 2011)
+url: https://lwn.net/Articles/428230/
+retrieved: '2026-09-30'
+type: industrial
+status: V
+verified: true
+blueprints:
+- service-cpu-throttle
+files:
+- page.html
+- page.md
+- page_files/

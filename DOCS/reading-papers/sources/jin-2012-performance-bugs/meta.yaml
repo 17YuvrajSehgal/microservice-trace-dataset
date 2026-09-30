@@ -1,0 +1,15 @@
+id: jin-2012-performance-bugs
+title: Understanding and Detecting Real-World Performance Bugs
+authors: Jin, G.; Song, L.; Shi, X.; Scherpelz, J.; Lu, S.
+year: 2012
+venue: PLDI 2012
+doi: 10.1145/2254064.2254075
+url: http://pages.cs.wisc.edu/~shanlu/paper/pldi118-jin.pdf
+retrieved: '2026-09-30'
+type: peer_reviewed
+status: M
+verified: false
+blueprints:
+- misc
+files:
+- paper.pdf

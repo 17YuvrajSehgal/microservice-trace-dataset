@@ -1,0 +1,12 @@
+id: kernel-cgroup-v2-txt
+title: Control Group v2 (kernel.org plain-text copy; PID section)
+url: https://www.kernel.org/doc/Documentation/cgroup-v2.txt
+retrieved: '2026-09-30'
+type: doc
+status: V
+verified: true
+blueprints:
+- fork-storm
+files:
+- page.md
+- page.txt

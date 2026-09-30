@@ -1,0 +1,15 @@
+id: pham-2024-rcaeval
+title: 'RCAEval: A Benchmark for Root Cause Analysis of Microservice Systems with
+  Telemetry Data'
+authors: Pham, L. et al.
+year: 2025
+venue: WWW 2025 Companion
+url: https://arxiv.org/pdf/2412.17015
+retrieved: '2026-09-30'
+type: peer_reviewed
+status: M
+verified: false
+blueprints:
+- misc
+files:
+- paper.pdf

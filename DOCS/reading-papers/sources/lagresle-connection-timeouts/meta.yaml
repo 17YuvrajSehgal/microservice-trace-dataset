@@ -1,0 +1,15 @@
+id: lagresle-connection-timeouts
+title: A reason for unexplained connection timeouts on Kubernetes/Docker
+authors: Lagresle, M. (XING)
+year: 2018
+url: https://maximelagresle.fr/posts/a-reason-for-unexplained-connection-timeouts-on-kubernetes-docker
+retrieved: '2026-09-30'
+type: industrial
+status: S
+verified: false
+blueprints:
+- dns-delay
+files:
+- page.html
+- page.md
+- page_files/

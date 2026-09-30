@@ -1,0 +1,12 @@
+id: rfc-1122-host-requirements
+title: RFC 1122 - Requirements for Internet Hosts, Communication Layers
+url: https://www.rfc-editor.org/rfc/rfc1122.txt
+retrieved: '2026-09-30'
+type: doc
+status: M
+verified: false
+blueprints:
+- misc
+files:
+- page.md
+- page.txt

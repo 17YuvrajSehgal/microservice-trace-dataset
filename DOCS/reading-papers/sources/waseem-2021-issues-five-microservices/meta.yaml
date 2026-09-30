@@ -1,0 +1,14 @@
+id: waseem-2021-issues-five-microservices
+title: 'On the Nature of Issues in Five Open Source Microservices Systems: An Empirical
+  Study'
+authors: Waseem, M. et al.
+year: 2021
+url: https://arxiv.org/pdf/2104.12192
+retrieved: '2026-09-30'
+type: peer_reviewed
+status: V
+verified: true
+blueprints:
+- misc
+files:
+- paper.pdf

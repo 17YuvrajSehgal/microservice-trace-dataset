@@ -1,0 +1,15 @@
+id: brooker-metastability
+title: Metastability and Distributed Systems
+authors: Brooker, M.
+year: 2021
+url: https://brooker.co.za/blog/2021/05/24/metastable.html
+retrieved: '2026-09-30'
+type: industrial
+status: V
+verified: true
+blueprints:
+- dependency-outage-retry-storm
+files:
+- page.html
+- page.md
+- page_files/

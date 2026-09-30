@@ -1,0 +1,13 @@
+id: man-resolv-conf-5
+title: resolv.conf(5)
+url: https://man7.org/linux/man-pages/man5/resolv.conf.5.html
+retrieved: '2026-09-30'
+type: doc
+status: S
+verified: false
+blueprints:
+- dns-delay
+files:
+- page.html
+- page.md
+- page_files/

@@ -1,0 +1,12 @@
+id: rfc-896-congestion
+title: RFC 896 - Congestion Control in IP-TCP Internetworks (Nagle)
+url: https://www.rfc-editor.org/rfc/rfc896.txt
+retrieved: '2026-09-30'
+type: doc
+status: M
+verified: false
+blueprints:
+- misc
+files:
+- page.md
+- page.txt

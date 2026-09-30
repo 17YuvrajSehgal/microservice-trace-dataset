@@ -1,0 +1,15 @@
+id: zhang-2013-cpi2
+title: 'CPI2: CPU performance isolation for shared compute clusters'
+authors: Zhang, X.; Tune, E.; Hagmann, R.; Jnagal, R.; Gokhale, V.; Wilkes, J.
+year: 2013
+venue: EuroSys 2013
+doi: 10.1145/2465351.2465388
+url: https://research.google.com/pubs/archive/40737.pdf
+retrieved: '2026-09-30'
+type: peer_reviewed
+status: M
+verified: false
+blueprints:
+- cpu-contention-co-tenant
+files:
+- paper.pdf

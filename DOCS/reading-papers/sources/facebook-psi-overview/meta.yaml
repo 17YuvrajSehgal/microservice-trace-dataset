@@ -1,0 +1,13 @@
+id: facebook-psi-overview
+title: Getting Started with PSI (oomd)
+url: https://facebookmicrosites.github.io/psi/docs/overview
+retrieved: '2026-09-30'
+type: industrial
+status: S
+verified: false
+blueprints:
+- service-memory-cap
+files:
+- page.html
+- page.md
+- page_files/

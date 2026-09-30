@@ -1,0 +1,12 @@
+id: quarkus-discussion-30231
+title: 'Techempower benchmark spends 7.7% of time in LockSupport.unpark()? (quarkus
+  discussion #30231)'
+url: https://github.com/quarkusio/quarkus/discussions/30231
+retrieved: '2026-09-30'
+type: issue
+status: S
+verified: false
+blueprints:
+- lock-contention-futex-storm
+files:
+- page.md

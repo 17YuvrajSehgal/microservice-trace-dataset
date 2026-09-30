@@ -1,0 +1,1036 @@
+# Reference manifest for blueprints/REFERENCE-PACK-FOR-KERNEL-TRACE.md
+#
+# One entry per SOURCE, keyed by slug. `blueprints` lists every numbered directory the source
+# belongs in - a source used by three blueprints is downloaded once and copied into all three,
+# because the numbered directories are for reading, not for storage.
+#
+# kind:  pdf   -> fetch `url` as paper.pdf
+#        html  -> fetch `url` as page.html AND render page.md with trafilatura
+#        both  -> a landing page (md) plus a pdf
+#        local -> already downloaded by hand; `from` names an existing file to adopt
+#
+# status mirrors the reference pack's tags: V seen, S snippet only, M from memory.
+# `note` records why something cannot be fetched, so a [x] in the pack has a reason here.
+
+sources:
+
+  # ---------------------------------------------------------------- cross-cutting
+  giraldeau-2016-wait-analysis:
+    title: "Wait Analysis of Distributed Systems Using Kernel Tracing"
+    authors: "Giraldeau, F.; Dagenais, M."
+    year: 2016
+    venue: "IEEE TPDS 27(8)"
+    doi: "10.1109/TPDS.2015.2488629"
+    type: peer_reviewed
+    status: M
+    kind: local
+    from: "1 host-cpu-saturation (anomaly_cpu)/2016_Giraldeau_Wait_analysis_distributed_systems_using.pdf"
+    blueprints: [1, 2, 7, 9]
+
+  gelle-2021-combining-tracing:
+    title: "Combining Distributed and Kernel Tracing for Performance Analysis of Cloud Applications"
+    authors: "Gelle, L.; Ezzati-Jivan, N.; Dagenais, M. R."
+    year: 2021
+    venue: "Electronics 10(21):2610"
+    doi: "10.3390/electronics10212610"
+    url: "https://pdfs.semanticscholar.org/c991/e68a0405d1f66f504c125171f7973d3db532.pdf"
+    url_page: "https://www.mdpi.com/2079-9292/10/21/2610"
+    url_note: "MDPI returns 403 to any automated fetch, browser UA and referer included.
+      This is the Semantic Scholar mirror of the same CC-BY PDF; verified by decompressing
+      the streams and finding the author name. Open access, so the mirror is legitimate."
+    type: peer_reviewed
+    status: V
+    kind: pdf
+    blueprints: [7]
+
+  gregg-use-method:
+    title: "The USE Method"
+    authors: "Gregg, B."
+    url: "https://www.brendangregg.com/usemethod.html"
+    type: industrial
+    status: M
+    kind: local
+    from: "1 host-cpu-saturation (anomaly_cpu)/The USE Method.html"
+    also: ["1 host-cpu-saturation (anomaly_cpu)/The USE Method.md"]
+    blueprints: [1, 14]
+
+  gregg-offcpu-analysis:
+    title: "Off-CPU Analysis"
+    authors: "Gregg, B."
+    url: "https://www.brendangregg.com/offcpuanalysis.html"
+    type: industrial
+    status: M
+    kind: html
+    blueprints: [9]
+
+  kernel-psi-doc:
+    title: "PSI - Pressure Stall Information"
+    authors: "Weiner, J. (Linux kernel documentation)"
+    url: "https://docs.kernel.org/accounting/psi.html"
+    type: doc
+    status: V
+    kind: local
+    from: "1 host-cpu-saturation (anomaly_cpu)/PSI - Pressure Stall Information — The Linux Kernel documentation.html"
+    also: ["1 host-cpu-saturation (anomaly_cpu)/psi.md"]
+    blueprints: [1, 14]
+
+  # ---------------------------------------------------------------- 7 cpu-contention-co-tenant
+  zhang-2013-cpi2:
+    title: "CPI2: CPU performance isolation for shared compute clusters"
+    authors: "Zhang, X.; Tune, E.; Hagmann, R.; Jnagal, R.; Gokhale, V.; Wilkes, J."
+    year: 2013
+    venue: "EuroSys 2013"
+    doi: "10.1145/2465351.2465388"
+    url: "https://research.google.com/pubs/archive/40737.pdf"
+    type: peer_reviewed
+    status: M
+    kind: pdf
+    blueprints: [7]
+
+  lo-2016-heracles:
+    title: "Heracles: Improving Resource Efficiency at Scale"
+    authors: "Lo, D.; Cheng, L.; Govindaraju, R.; Ranganathan, P.; Kozyrakis, C."
+    year: 2016
+    venue: "ACM TOCS (orig. ISCA 2015)"
+    doi: "10.1145/2882783"
+    url: "http://csl.stanford.edu/~christos/publications/2016.heracles.tocs.pdf"
+    type: peer_reviewed
+    status: V
+    kind: pdf
+    blueprints: [7]
+
+  # ---------------------------------------------------------------- 8 priority-inversion-nice
+  sha-1990-priority-inheritance:
+    title: "Priority Inheritance Protocols: An Approach to Real-Time Synchronization"
+    authors: "Sha, L.; Rajkumar, R.; Lehoczky, J. P."
+    year: 1990
+    venue: "IEEE Trans. Computers 39(9)"
+    doi: "10.1109/12.57058"
+    url: "https://www.math.unipd.it/~tullio/RTS/2009/SRL-1990.pdf"
+    url_note: "IEEE original is paywalled; this is a course mirror at Padova. Verified
+      200/application/pdf, 1.3 MB."
+    type: peer_reviewed
+    status: M
+    kind: pdf
+    blueprints: [8]
+
+  kernel-cfs-design-doc:
+    title: "CFS Scheduler design documentation"
+    url: "https://docs.kernel.org/scheduler/sched-design-CFS.html"
+    type: doc
+    status: M
+    kind: html
+    blueprints: [8]
+
+  man-sched-7:
+    title: "sched(7) - overview of CPU scheduling"
+    url: "https://man7.org/linux/man-pages/man7/sched.7.html"
+    type: doc
+    status: M
+    kind: html
+    blueprints: [8]
+
+  wikipedia-cfs-eevdf:
+    title: "Completely Fair Scheduler (records the EEVDF replacement in Linux 6.6)"
+    url: "https://en.wikipedia.org/wiki/Completely_Fair_Scheduler"
+    type: doc
+    status: S
+    kind: html
+    blueprints: [8]
+
+  kernel-futex-requeue-pi:
+    title: "Futex Requeue PI"
+    url: "https://docs.kernel.org/locking/futex-requeue-pi.html"
+    type: doc
+    status: S
+    kind: local
+    from: "6 lock-contention-futex-storm (lock_contention)/Futex Requeue PI — The Linux Kernel documentation.html"
+    also: ["6 lock-contention-futex-storm (lock_contention)/Futex Requeue PI.md"]
+    blueprints: [6, 8]
+
+  rezazadeh-2020-lock-contention:
+    title: "Multi-Level Execution Trace Based Lock Contention Analysis"
+    authors: "Rezazadeh, A.; Ezzati-Jivan, N.; Galea, P.; Dagenais, M. R."
+    year: 2020
+    venue: "ISSRE Workshops 2020"
+    type: peer_reviewed
+    status: V
+    kind: local
+    from: "6 lock-contention-futex-storm (lock_contention)/Multi-Level_Execution_Trace_Based_Lock_Contention_Analysis.pdf"
+    blueprints: [6, 8]
+
+  # ---------------------------------------------------------------- 9 db-latency-dependency-wait
+  yang-2018-db-perf-bugs:
+    title: "How not to Structure Your Database-Backed Web Applications: A Study of Performance Bugs in the Wild"
+    authors: "Yang, J.; Subramaniam, P.; Lu, S.; Yan, C.; Cheung, A."
+    year: 2018
+    venue: "ICSE 2018"
+    doi: "10.1145/3180155.3180194"
+    url: "http://hyperloop.cs.uchicago.edu/220-HowNotStructure.pdf"
+    type: peer_reviewed
+    status: V
+    kind: pdf
+    blueprints: [9]
+
+  dai-2018-timeout:
+    title: "Understanding Real-World Timeout Problems in Cloud Server Systems"
+    authors: "Dai, T.; He, J.; Gu, X.; Lu, S."
+    year: 2018
+    venue: "IEEE IC2E 2018"
+    doi: "10.1109/IC2E.2018.00022"
+    url: "https://dance.csc.ncsu.edu/papers/IC2E18.pdf"
+    type: peer_reviewed
+    status: V
+    # already downloaded by hand into 3 and (under a shorter name) 5; adopt rather than
+    # re-fetch, so blueprint 5 does not end up with the same paper under two file names
+    kind: local
+    from: "3 connection-pool-exhaustion (conn_pool_exhaustion)/Understanding Real-World Timeout Problems in Cloud Server Systems.pdf"
+    blueprints: [3, 5, 9]
+
+  nemati-2022-critical-path:
+    title: "Critical Path Analysis through Hierarchical Distributed Virtualized Environments Using Host Kernel Tracing"
+    authors: "Nemati, H.; Tetreault, F.; Puncher, J.; Dagenais, M. R."
+    year: 2022
+    venue: "IEEE Trans. Cloud Computing 10"
+    type: peer_reviewed
+    status: V
+    url: "https://publications.polymtl.ca/3902/1/2019_HaniNemati.pdf"
+    url_note: "PhD thesis of the first author; the TCC article itself is paywalled"
+    kind: pdf
+    blueprints: [9]
+
+  zhou-2018-train-ticket:
+    title: "Fault Analysis and Debugging of Microservice Systems: Industrial Survey, Benchmark System, and Empirical Study"
+    authors: "Zhou, X. et al."
+    year: 2018
+    venue: "IEEE TSE"
+    doi: "10.1109/TSE.2018.2887384"
+    type: peer_reviewed
+    status: M
+    kind: local
+    from: "Fault analysis and debugging of microservice systems_ Industrial.pdf"
+    blueprints: [9]
+
+  # ---------------------------------------------------------------- 10 service-cpu-throttle
+  kernel-cfs-bandwidth-control:
+    title: "CFS Bandwidth Control"
+    url: "https://docs.kernel.org/scheduler/sched-bwc.html"
+    type: doc
+    status: V
+    kind: html
+    blueprints: [10]
+
+  turner-2010-cpu-bandwidth:
+    title: "CPU bandwidth control for CFS (in Proceedings of the Linux Symposium 2010)"
+    authors: "Turner, P.; Rao, B. B.; Rao, N."
+    year: 2010
+    venue: "Linux Symposium (OLS) 2010, pp. 245-254"
+    url: "https://www.kernel.org/doc/mirror/ols2010.pdf"
+    type: peer_reviewed
+    status: V
+    # This is the WHOLE 272-page OLS 2010 proceedings, not a standalone paper. Turner, Rao and
+    # Rao begin on page 245 - verified by extracting the text. kernel.org publishes no
+    # per-paper split, so the proceedings is the citable artifact.
+    pages: "245-254 of the proceedings PDF"
+    kind: pdf
+    blueprints: [10]
+
+  ugedal-2022-unnecessary-throttling:
+    title: "Mitigating Unnecessary Throttling in Linux CFS Bandwidth Control"
+    authors: "Ugedal, O.; Kannan, R."
+    year: 2022
+    venue: "SBAC-PAD 2022"
+    url: "https://rakeshk.folk.ntnu.no/pubs/SBACPAD22.pdf"
+    type: peer_reviewed
+    status: V
+    kind: pdf
+    blueprints: [10]
+
+  danluu-container-throttling:
+    title: "The container throttling problem"
+    authors: "Luu, D."
+    url: "https://danluu.com/cgroup-throttling/"
+    type: industrial
+    status: M
+    kind: html
+    blueprints: [10]
+
+  k8s-issue-67577-cfs-throttling:
+    title: "CFS quota throttles containers with low CPU usage (kubernetes#67577)"
+    url: "https://github.com/kubernetes/kubernetes/issues/67577"
+    type: issue
+    status: M
+    kind: html
+    blueprints: [10]
+
+  lwn-cfs-bandwidth-control:
+    title: "CFS bandwidth control (LWN, 2011)"
+    url: "https://lwn.net/Articles/428230/"
+    type: industrial
+    status: V
+    kind: html
+    blueprints: [10]
+
+  # ---------------------------------------------------------------- 11 dns-delay
+  yang-2020-dns-failures:
+    title: "A Deep Dive into DNS Query Failures"
+    authors: "Yang, D. et al."
+    year: 2020
+    venue: "USENIX ATC 2020"
+    url: "https://www.usenix.org/system/files/atc20-yang.pdf"
+    type: peer_reviewed
+    status: V
+    kind: pdf
+    blueprints: [11]
+
+  pumputis-racy-conntrack:
+    title: "Racy conntrack and DNS lookup timeouts"
+    authors: "Pumputis, M. (Weave Works)"
+    year: 2018
+    url: "https://lambda.lt/blog/2018/racy_conntrack.html"
+    type: industrial
+    status: V
+    kind: html
+    blueprints: [11]
+
+  man-resolv-conf-5:
+    title: "resolv.conf(5)"
+    url: "https://man7.org/linux/man-pages/man5/resolv.conf.5.html"
+    type: doc
+    status: S
+    kind: html
+    blueprints: [11]
+
+  lagresle-connection-timeouts:
+    title: "A reason for unexplained connection timeouts on Kubernetes/Docker"
+    authors: "Lagresle, M. (XING)"
+    year: 2018
+    url: "https://maximelagresle.fr/posts/a-reason-for-unexplained-connection-timeouts-on-kubernetes-docker"
+    type: industrial
+    status: S
+    kind: html
+    blueprints: [11]
+
+  # ---------------------------------------------------------------- 12 fd-exhaustion
+  ghanavati-2020-resource-leaks:
+    title: "Memory and resource leak defects and their repairs in Java projects"
+    authors: "Ghanavati, M.; Costa, D.; Seboek, J.; Lo, D.; Andrzejak, A."
+    year: 2020
+    venue: "Empirical Software Engineering 25(1)"
+    doi: "10.1007/s10664-019-09731-8"
+    url: "https://arxiv.org/pdf/1810.00101"
+    type: peer_reviewed
+    status: V
+    kind: local
+    from: "3 connection-pool-exhaustion (conn_pool_exhaustion)/Memory and Resource Leak Defects and their repairs in Java Projects.pdf"
+    blueprints: [3, 12]
+
+  neo4j-issue-1799:
+    title: "Too many open files (neo4j#1799)"
+    url: "https://github.com/neo4j/neo4j/issues/1799"
+    type: issue
+    status: S
+    kind: html
+    blueprints: [12]
+
+  sveltekit-issue-11617:
+    title: "EMFILE: too many open files (sveltejs/kit#11617)"
+    url: "https://github.com/sveltejs/kit/issues/11617"
+    type: issue
+    status: S
+    kind: html
+    blueprints: [12]
+
+  man-open-2:
+    title: "open(2)"
+    url: "https://man7.org/linux/man-pages/man2/open.2.html"
+    type: doc
+    status: M
+    kind: html
+    blueprints: [12]
+
+  man-errno-3:
+    title: "errno(3)"
+    url: "https://man7.org/linux/man-pages/man3/errno.3.html"
+    type: doc
+    status: M
+    kind: html
+    blueprints: [12]
+
+  # ---------------------------------------------------------------- 13 fork-storm
+  kernel-pids-controller:
+    title: "Process Number Controller (cgroup v1 pids)"
+    url: "https://docs.kernel.org/admin-guide/cgroup-v1/pids.html"
+    type: doc
+    status: V
+    kind: html
+    blueprints: [13]
+
+  kernel-cgroup-v2-txt:
+    title: "Control Group v2 (kernel.org plain-text copy; PID section)"
+    url: "https://www.kernel.org/doc/Documentation/cgroup-v2.txt"
+    type: doc
+    status: V
+    # a .txt, not a web page - trafilatura finds no HTML structure and yields an empty .md
+    kind: text
+    blueprints: [13]
+
+  k8s-issue-43783-pids-limit:
+    title: "Allow setting pids-limit on containers (kubernetes#43783)"
+    url: "https://github.com/kubernetes/kubernetes/issues/43783"
+    type: issue
+    status: V
+    kind: html
+    blueprints: [13]
+
+  lkml-pids-controller-event:
+    title: "[PATCH] cgroup: Add pids controller event when fork fails because of pid limit"
+    authors: "Yu, K."
+    year: 2016
+    url: "https://lkml.iu.edu/hypermail/linux/kernel/1606.2/03729.html"
+    type: doc
+    status: V
+    kind: html
+    blueprints: [13]
+
+  # ---------------------------------------------------------------- 14 host-disk-saturation
+  bcc-biolatency:
+    title: "biolatency (BCC tool source)"
+    authors: "Gregg, B."
+    url: "https://raw.githubusercontent.com/iovisor/bcc/master/tools/biolatency.py"
+    commit: "e58d68063637393e01a7788215f0ddc6e479e6b4"   # last commit touching this file
+    url_page: "https://github.com/iovisor/bcc/blob/master/tools/biolatency.py"
+    type: doc
+    status: S
+    kind: raw
+    ext: py
+    blueprints: [14]
+
+  # ---------------------------------------------------------------- 15 service-memory-cap
+  kernel-cgroup-v2-doc:
+    title: "Control Group v2 (memory.max, memory.events)"
+    url: "https://docs.kernel.org/admin-guide/cgroup-v2.html"
+    type: doc
+    status: S
+    kind: html
+    blueprints: [15]
+
+  weiner-2022-tmo:
+    title: "TMO: Transparent Memory Offloading in Datacenters"
+    authors: "Weiner, J. et al."
+    year: 2022
+    venue: "ASPLOS 2022"
+    doi: "10.1145/3503222.3507731"
+    url: "https://www.cs.cmu.edu/~dskarlat/publications/tmo_asplos22.pdf"
+    type: peer_reviewed
+    status: S
+    kind: pdf
+    blueprints: [15]
+
+  facebook-psi-overview:
+    title: "Getting Started with PSI (oomd)"
+    url: "https://facebookmicrosites.github.io/psi/docs/overview"
+    type: industrial
+    status: S
+    kind: html
+    blueprints: [15]
+
+  k8s-issue-128339-tmpfs-oom:
+    title: "Containers using tmpfs keep OOMing after restarts (kubernetes#128339)"
+    url: "https://github.com/kubernetes/kubernetes/issues/128339"
+    type: issue
+    status: V
+    kind: html
+    blueprints: [15]
+
+  # ---------------------------------------------------------------- 16 data-exfiltration
+  gassais-2020-host-ids:
+    title: "Multi-level host-based intrusion detection system for Internet of things"
+    authors: "Gassais, R.; Ezzati-Jivan, N.; Fernandez, J. M.; Aloise, D.; Dagenais, M. R."
+    year: 2020
+    venue: "Journal of Cloud Computing 9:62"
+    doi: "10.1186/s13677-020-00206-6"
+    url: "https://link.springer.com/content/pdf/10.1186/s13677-020-00206-6.pdf"
+    type: peer_reviewed
+    status: V
+    kind: pdf
+    blueprints: [16]
+
+  jewell-2011-exfiltration-syscalls:
+    title: "Host-Based Data Exfiltration Detection via System Call Sequences"
+    authors: "Jewell, B.; Beaver, J."
+    year: 2011
+    venue: "ICIW 2011, pp. 134-142 (ORNL)"
+    url: "https://www.ornl.gov/publication/host-based-data-exfiltration-detection-system-call-sequences"
+    type: peer_reviewed
+    status: S
+    kind: html
+    note: "ORNL landing page only; no open PDF found. Paywalled via ICIW proceedings."
+    blueprints: [16]
+
+  replicawatcher-2024:
+    title: "REPLICAWATCHER: Training-less Anomaly Detection in Containerized Microservices"
+    year: 2024
+    venue: "NDSS 2024"
+    url: "https://www.ndss-symposium.org/wp-content/uploads/2024-286-paper.pdf"
+    type: peer_reviewed
+    status: S
+    kind: pdf
+    blueprints: [16]
+
+  # ---------------------------------------------------------------- already downloaded by hand
+  # Catalogued so sources/ and index.yaml cover blueprints 1-6 too. Files stay where they are;
+  # these entries only record what each one IS.
+
+  lozi-2016-wasted-cores:
+    title: "The Linux Scheduler: a Decade of Wasted Cores"
+    authors: "Lozi, J.-P.; Lepers, B.; Funston, J.; Gaud, F.; Quema, V.; Fedorova, A."
+    year: 2016
+    venue: "EuroSys 2016"
+    doi: "10.1145/2901318.2901326"
+    url: "https://people.ece.ubc.ca/sasha/papers/eurosys16-final29.pdf"
+    type: peer_reviewed
+    status: V
+    kind: local
+    from: "1 host-cpu-saturation (anomaly_cpu)/The Linux Scheduler- a Decade of Wasted Cores.pdf"
+    blueprints: [1]
+
+  rfc-6298-tcp-rto:
+    title: "RFC 6298: Computing TCP's Retransmission Timer"
+    url: "https://www.rfc-editor.org/rfc/rfc6298"
+    type: doc
+    status: M
+    kind: local
+    from: "2 network-path-degradation (anomaly_net, svc_net)/RFC 6298_ Computing TCP's Retransmission Timer _ RFC Editor.html"
+    also: ["2 network-path-degradation (anomaly_net, svc_net)/RFC 6298_ Computing TCP's Retransmission Timer.md"]
+    blueprints: [2]
+
+  arzani-2016-netpoirot:
+    title: "Taking the Blame Game out of Data Centers Operations with NetPoirot"
+    authors: "Arzani, B.; Ciraci, S.; Loo, B. T.; Schuster, A.; Outhred, G."
+    year: 2016
+    venue: "SIGCOMM 2016"
+    doi: "10.1145/2934872.2934884"
+    type: peer_reviewed
+    status: M
+    kind: local
+    from: "2 network-path-degradation (anomaly_net, svc_net)/Taking the Blame Game out of Data Centers Operations with NetPoirot.pdf"
+    blueprints: [2]
+
+  gunawi-2016-cloud-outages:
+    title: "Why Does the Cloud Stop Computing? Lessons from Hundreds of Service Outages"
+    authors: "Gunawi, H. S. et al."
+    year: 2016
+    venue: "SoCC 2016"
+    doi: "10.1145/2987550.2987583"
+    type: peer_reviewed
+    status: M
+    kind: local
+    from: "2 network-path-degradation (anomaly_net, svc_net)/Why Does the Cloud Stop Computing.pdf"
+    blueprints: [2]
+
+  hikaricp-pool-sizing:
+    title: "HikariCP - About Pool Sizing (wiki)"
+    authors: "Wooldridge, B."
+    url: "https://github.com/brettwooldridge/HikariCP/wiki/About-Pool-Sizing"
+    type: industrial
+    status: M
+    kind: local
+    commit: "6a950a32dacd9c57203ce47711c3916e49e3b3a8"   # latest revision of the wiki page
+    from: "3 connection-pool-exhaustion (conn_pool_exhaustion)/HikariCP-wiki-git.md"
+    blueprints: [3]
+
+  patent-11750692-conn-pool:
+    title: "US Patent 11,750,692 - Connection pool anomaly detection mechanism (Salesforce)"
+    url: "https://image-ppubs.uspto.gov/dirsearch-public/print/downloadPdf/11750692"
+    type: industrial
+    status: S
+    note: "Patent text, not peer reviewed. The reference pack flags it as weak support."
+    no_text_layer: true          # 21 pages of scanned images, as USPTO PDFs usually are
+    kind: local
+    from: "3 connection-pool-exhaustion (conn_pool_exhaustion)/US Patent 11,750,692 Connection pool anomaly detection mechanism (Salesforce).pdf"
+    blueprints: [3]
+
+  ezzati-2020-depgraph:
+    title: "DepGraph: Localizing Performance Bottlenecks in Multi-Core Applications Using Waiting Dependency Graphs and Software Tracing"
+    authors: "Ezzati-Jivan, N.; Fournier, Q.; Dagenais, M. R.; Hamou-Lhadj, A."
+    year: 2020
+    venue: "SCAM 2020"
+    type: peer_reviewed
+    status: S
+    kind: local
+    from: "4 deadlock-lock-order (deadlock)/DepGraph Localizing Performance Bottlenecks in Multi-Core.pdf"
+    blueprints: [4]
+
+  franke-2002-futexes:
+    title: "Fuss, Futexes and Furwocks: Fast Userlevel Locking in Linux"
+    authors: "Franke, H.; Russell, R.; Kirkwood, M."
+    year: 2002
+    venue: "Ottawa Linux Symposium 2002"
+    type: peer_reviewed
+    status: M
+    kind: local
+    from: "4 deadlock-lock-order (deadlock)/Fuss, Futexes and Furwocks- Fast Userlevel Locking.pdf"
+    blueprints: [4, 6]
+
+  lu-2008-concurrency-bugs:
+    title: "Learning from Mistakes: A Comprehensive Study on Real World Concurrency Bug Characteristics"
+    authors: "Lu, S.; Park, S.; Seo, E.; Zhou, Y."
+    year: 2008
+    venue: "ASPLOS 2008"
+    doi: "10.1145/1346281.1346323"
+    type: peer_reviewed
+    status: M
+    kind: local
+    from: "4 deadlock-lock-order (deadlock)/Learning from Mistakes — A Comprehensive Study on RealWorld Concurrency Bug Characteristics.pdf"
+    blueprints: [4]
+
+  tu-2019-go-concurrency:
+    title: "Understanding Real-World Concurrency Bugs in Go"
+    authors: "Tu, T.; Liu, X.; Song, L.; Zhang, Y."
+    year: 2019
+    venue: "ASPLOS 2019"
+    doi: "10.1145/3297858.3304069"
+    type: peer_reviewed
+    status: M
+    kind: local
+    from: "4 deadlock-lock-order (deadlock)/Understanding Real-World Concurrency Bugs in Go.pdf"
+    blueprints: [4]
+
+  brooker-metastability:
+    title: "Metastability and Distributed Systems"
+    authors: "Brooker, M."
+    year: 2021
+    url: "https://brooker.co.za/blog/2021/05/24/metastable.html"
+    type: industrial
+    status: V
+    kind: local
+    from: "5 dependency-outage-retry-storm (dependency_outage)/Metastability and Distributed Systems - Marc's Blog.html"
+    also: ["5 dependency-outage-retry-storm (dependency_outage)/Metastability and Distributed Systems.md"]
+    blueprints: [5]
+
+  bronson-2021-metastable:
+    title: "Metastable Failures in Distributed Systems"
+    authors: "Bronson, N.; Aghayev, A.; Charapko, A.; Zhu, T."
+    year: 2021
+    venue: "HotOS 2021"
+    doi: "10.1145/3458336.3465286"
+    type: peer_reviewed
+    status: V
+    kind: local
+    from: "5 dependency-outage-retry-storm (dependency_outage)/Metastable Failures in Distributed Systems.pdf"
+    blueprints: [5]
+
+  huang-2022-metastable-wild:
+    title: "Metastable Failures in the Wild"
+    authors: "Huang, L. et al."
+    year: 2022
+    venue: "OSDI 2022"
+    url: "https://www.usenix.org/publications/loginonline/metastable-failures-wild"
+    type: peer_reviewed
+    status: V
+    kind: local
+    from: "5 dependency-outage-retry-storm (dependency_outage)/Metastable Failures in the Wild _ USENIX.html"
+    blueprints: [5]
+
+  azure-retry-storm:
+    title: "Retry Storm antipattern (Azure Architecture Center)"
+    url: "https://learn.microsoft.com/en-us/azure/architecture/antipatterns/retry-storm/"
+    type: industrial
+    status: S
+    kind: local
+    from: "5 dependency-outage-retry-storm (dependency_outage)/Retry Storm Antipattern - Azure Architecture Center _ Microsoft Learn.html"
+    also: ["5 dependency-outage-retry-storm (dependency_outage)/Retry Storm antipattern.md"]
+    blueprints: [5]
+
+  hazelcast-parknanos:
+    title: "LockSupport.parkNanos() Under the Hood and the Curious Case of Parking"
+    authors: "Hamala, S. (Hazelcast)"
+    year: 2019
+    url: "https://hazelcast.com/blog/locksupport-parknanos-under-the-hood-and-the-curious-case-of-parking/"
+    type: industrial
+    status: S
+    kind: local
+    from: "6 lock-contention-futex-storm (lock_contention)/LockSupport.parkNanos() Under the Hood and the Curious Case of Parking _ Hazelcast.html"
+    also: ["6 lock-contention-futex-storm (lock_contention)/LockSupport.parkNanos() Under the Hood and the Curious Case of Parking.md"]
+    blueprints: [6]
+
+  quarkus-discussion-30231:
+    title: "Techempower benchmark spends 7.7% of time in LockSupport.unpark()? (quarkus discussion #30231)"
+    url: "https://github.com/quarkusio/quarkus/discussions/30231"
+    type: issue
+    status: S
+    kind: local
+    from: "6 lock-contention-futex-storm (lock_contention)/Quarkus discussion #30231.md"
+    blueprints: [6]
+
+  # ---------------------------------------------------------------- the [x] items
+  # Three entries the reference pack marks [x] as "could not download". All three resolved:
+  # one was already on disk, one needed a different fetcher, one was never a single document.
+
+  openjdk-jdk-6900441:
+    title: "JDK-6900441: PlatformEvent.park(millis) on Linux could still be affected by changes to the time-of-day clock"
+    url: "https://bugs.openjdk.org/browse/JDK-6900441"
+    type: issue
+    status: V
+    # bugs.openjdk.org returns 403 to curl but answers trafilatura, so the markdown exists and
+    # the archive .html does not. Confirms the pack's JVM chain: the bug discusses Thread.sleep,
+    # Object.wait and LockSupport.park all resting on pthread_cond via PlatformEvent/Parker.
+    kind: md
+    quote: "The real fix here is to change the pthread_cond so that it is associated with the
+      monotonic clock ... I believe this will cover Thread.sleep and Object.wait."
+    blueprints: [6]
+
+  spring-boot-datasource-defaults:
+    title: "Spring Boot reference - SQL databases (connection pool defaults; HikariCP is the default pool)"
+    url: "https://docs.spring.io/spring-boot/reference/data/sql.html"
+    type: doc
+    status: V
+    # Half of the pack's "Brett Wooldridge / Spring defaults" note, which was never one
+    # document. This is the Spring half: what a framework actually defaults to.
+    kind: html
+    blueprints: [3]
+
+  hikaricp-readme:
+    title: "HikariCP README (pool behaviour and defaults)"
+    authors: "Wooldridge, B."
+    url: "https://github.com/brettwooldridge/HikariCP"
+    commit: "a4d93f4f85517f90e632b795486d7102e933d7ff"   # repo HEAD when retrieved
+    type: industrial
+    status: V
+    # The Wooldridge half of the same note. Together with hikaricp-pool-sizing this covers the
+    # claim the pack could not point at a single source for: pooled callers make few connect()
+    # calls in steady state, so "few connects" is the NORMAL state, not a fault.
+    kind: html
+    blueprints: [3]
+
+  # ================================================================ misc
+  # References the pack cites outside blueprints 1-16: cross-cutting method sources, the
+  # "Related families (short)" section, and the related-work review.
+
+  # ---- cross-cutting (section "Cross-cutting references")
+  kohyarnejadfard-2022-anomaly:
+    title: "Anomaly detection in microservice environments using distributed tracing data analysis and NLP"
+    authors: "Kohyarnejadfard, I.; Aloise, D.; Azhari, S. V.; Dagenais, M. R."
+    year: 2022
+    venue: "Journal of Cloud Computing 11:25"
+    doi: "10.1186/s13677-022-00296-4"
+    url: "https://link.springer.com/content/pdf/10.1186/s13677-022-00296-4.pdf"
+    url_note: "PMC answers 203 to an automated fetch; this is the Springer open-access PDF of the same article."
+    type: peer_reviewed
+    status: V
+    kind: pdf
+    blueprints: [17]
+
+  kohyarnejadfard-2022-thesis:
+    title: "System Performance Anomaly Detection using Tracing Data Analysis (PhD thesis)"
+    authors: "Kohyarnejadfard, I."
+    year: 2022
+    venue: "Polytechnique Montreal"
+    url: "https://publications.polymtl.ca/10281/1/2022_ImanKohyarnejadfard.pdf"
+    type: peer_reviewed
+    status: V
+    kind: pdf
+    blueprints: [17]
+
+  denys-2023-distributed-critical-path:
+    title: "Distributed computation of the critical path from execution traces"
+    authors: "Denys, G. et al."
+    year: 2023
+    venue: "Software: Practice and Experience"
+    doi: "10.1002/spe.3210"
+    url: "https://onlinelibrary.wiley.com/doi/full/10.1002/spe.3210"
+    type: peer_reviewed
+    status: V
+    kind: unavailable
+    note: "Wiley returns 403 to every route tried - pdfdirect, epdf and the article page,
+      with curl and with trafilatura. Needs institutional access or a manual browser save."
+    blueprints: [17]
+
+  pham-2024-rcaeval:
+    title: "RCAEval: A Benchmark for Root Cause Analysis of Microservice Systems with Telemetry Data"
+    authors: "Pham, L. et al."
+    year: 2025
+    venue: "WWW 2025 Companion"
+    url: "https://arxiv.org/pdf/2412.17015"
+    type: peer_reviewed
+    status: M
+    kind: local
+    from: "2412.17015v5.pdf"
+    blueprints: [17]
+
+  waseem-2021-issues-five-microservices:
+    title: "On the Nature of Issues in Five Open Source Microservices Systems: An Empirical Study"
+    authors: "Waseem, M. et al."
+    year: 2021
+    url: "https://arxiv.org/pdf/2104.12192"
+    type: peer_reviewed
+    status: V
+    kind: pdf
+    blueprints: [17]
+
+  waseem-2023-issues-causes-solutions:
+    title: "Understanding the Issues, Their Causes and Solutions in Microservices Systems"
+    authors: "Waseem, M. et al."
+    year: 2023
+    venue: "Journal of Systems and Software"
+    url: "https://arxiv.org/pdf/2302.01894"
+    type: peer_reviewed
+    status: V
+    kind: pdf
+    blueprints: [17]
+
+  kalliamvakou-2016-mining-github:
+    title: "An in-depth study of the promises and perils of mining GitHub"
+    authors: "Kalliamvakou, E.; Gousios, G.; Blincoe, K.; Singer, L.; German, D. M.; Damian, D."
+    year: 2016
+    venue: "Empirical Software Engineering 21(5)"
+    doi: "10.1007/s10664-015-9393-5"
+    url: "https://link.springer.com/article/10.1007/s10664-015-9393-5"
+    url_note: "No open PDF found - Radboud and Auckland repository copies both resolve to
+      landing pages, and gousios.gr has a broken certificate. Only the Springer article page
+      is archived; the full text needs institutional access."
+    type: peer_reviewed
+    status: V
+    kind: html
+    html_only: true   # Springer serves the abstract behind a paywall; no article text to render
+    blueprints: [17]
+
+  gunawi-2016-socc-root:
+    title: "Why Does the Cloud Stop Computing (SoCC root copy)"
+    authors: "Gunawi, H. S. et al."
+    year: 2016
+    venue: "SoCC 2016"
+    doi: "10.1145/2987550.2987583"
+    type: peer_reviewed
+    status: V
+    kind: local
+    from: "2016_SoCC_COS.pdf"
+    blueprints: [17]
+
+  # ---- related families (short)
+  mogul-2001-nagle:
+    title: "Rethinking the TCP Nagle Algorithm"
+    authors: "Mogul, J. C.; Minshall, G."
+    year: 2001
+    venue: "ACM SIGCOMM CCR"
+    url: "http://ccr.sigcomm.org/archive/2001/jan01/ccr-200101-mogul.pdf"
+    type: peer_reviewed
+    status: V
+    kind: pdf
+    blueprints: [17]
+
+  cheshire-nagle-delayed-ack:
+    title: "TCP Performance problems from Nagle and Delayed ACK interaction"
+    authors: "Cheshire, S."
+    url: "https://www.stuartcheshire.org/papers/nagledelayedack/"
+    type: industrial
+    status: V
+    kind: html
+    html_only: true   # 1990s hand-written HTML; trafilatura finds no article structure
+    blueprints: [17]
+
+  brooker-tcp-nodelay:
+    title: "It is always TCP_NODELAY. Every damn time."
+    authors: "Brooker, M."
+    year: 2024
+    url: "https://brooker.co.za/blog/2024/05/09/nagle.html"
+    type: industrial
+    status: V
+    kind: html
+    blueprints: [17]
+
+  rfc-896-congestion:
+    title: "RFC 896 - Congestion Control in IP-TCP Internetworks (Nagle)"
+    url: "https://www.rfc-editor.org/rfc/rfc896.txt"
+    type: doc
+    status: M
+    kind: text
+    blueprints: [17]
+
+  rfc-1122-host-requirements:
+    title: "RFC 1122 - Requirements for Internet Hosts, Communication Layers"
+    url: "https://www.rfc-editor.org/rfc/rfc1122.txt"
+    type: doc
+    status: M
+    kind: text
+    blueprints: [17]
+
+  jin-2012-performance-bugs:
+    title: "Understanding and Detecting Real-World Performance Bugs"
+    authors: "Jin, G.; Song, L.; Shi, X.; Scherpelz, J.; Lu, S."
+    year: 2012
+    venue: "PLDI 2012"
+    doi: "10.1145/2254064.2254075"
+    url: "http://pages.cs.wisc.edu/~shanlu/paper/pldi118-jin.pdf"
+    type: peer_reviewed
+    status: M
+    kind: pdf
+    blueprints: [17]
+
+  ncsu-timeout-project:
+    title: "Timeout bug detection project page (TScope ICAC 2018, TFix ICDCS 2019)"
+    authors: "He, J.; Dai, T.; Gu, X."
+    url: "https://dance.csc.ncsu.edu/projects/sysMD/timeout.html"
+    type: doc
+    status: V
+    kind: html
+    blueprints: [17]
+
+  # ---- related work: TSGs and runbooks
+  autotsg-2022:
+    title: "AutoTSG - Learning and Synthesis for Incident Troubleshooting"
+    year: 2022
+    venue: "ESEC/FSE 2022 Industry"
+    url: "https://arxiv.org/pdf/2205.13457"
+    type: peer_reviewed
+    status: V
+    kind: pdf
+    blueprints: [17]
+
+  stepfly-2026:
+    title: "StepFly - Agentic Troubleshooting Guide Automation for Incident Diagnosis"
+    authors: "Mao et al."
+    year: 2026
+    venue: "Proc. ACM Softw. Eng. 3(FSE)"
+    doi: "10.1145/3808143"
+    url: "https://arxiv.org/pdf/2510.10074"
+    url_page: "https://github.com/microsoft/StepFly"
+    commit: "a6229192a69dd2eebc58d9b8f754dbc396029c4e"   # repo HEAD when retrieved
+    type: peer_reviewed
+    status: V
+    kind: pdf
+    blueprints: [17]
+
+  nissist-2024:
+    title: "Nissist - An Incident Mitigation Copilot based on Troubleshooting Guides"
+    year: 2024
+    url: "https://arxiv.org/pdf/2402.17531"
+    type: peer_reviewed
+    status: V
+    kind: pdf
+    blueprints: [17]
+
+  fixitflow:
+    title: "FixItFlow - Automated Troubleshooting Guide Generation from Cloud Incidents"
+    url: "https://arxiv.org/pdf/2607.13035"
+    type: peer_reviewed
+    status: S
+    kind: pdf
+    blueprints: [17]
+
+  runbookfx-2026:
+    title: "RunbookFX - type and effect safe LLM synthesis of executable runbooks"
+    authors: "Xiao; Li; Ge"
+    year: 2026
+    venue: "PACMPL 10(ICFP)"
+    doi: "10.1145/3828675"
+    url: "https://dl.acm.org/doi/10.1145/3828675"
+    type: peer_reviewed
+    status: S
+    kind: unavailable
+    note: "ACM DL returns 403 to both the PDF and the article page. No arXiv preprint found.
+      Needs institutional access or a manual browser save."
+    blueprints: [17]
+
+  # ---- related work: LLM agents for RCA
+  rcacopilot-2024:
+    title: "Automatic Root Cause Analysis via Large Language Models for Cloud Incidents (RCACopilot)"
+    authors: "Chen, Y. et al."
+    year: 2024
+    venue: "EuroSys 2024"
+    url: "https://arxiv.org/pdf/2305.15778"
+    type: peer_reviewed
+    status: V
+    kind: pdf
+    blueprints: [17]
+
+  roy-2024-llm-agents-rca:
+    title: "Exploring LLM-based Agents for Root Cause Analysis"
+    authors: "Roy, D. et al."
+    year: 2024
+    venue: "FSE 2024 Companion (Industry)"
+    doi: "10.1145/3663529.3663841"
+    url: "https://arxiv.org/pdf/2403.04123"
+    type: peer_reviewed
+    status: V
+    kind: pdf
+    blueprints: [17]
+
+  xpert-2023:
+    title: "Xpert - Empowering Incident Management with Query Recommendations via LLMs"
+    url: "https://arxiv.org/pdf/2312.11988"
+    type: peer_reviewed
+    status: V
+    kind: pdf
+    blueprints: [17]
+
+  aiopslab-2025:
+    title: "AIOpsLab - A Holistic Framework to Evaluate AI Agents for Enabling Autonomous Clouds"
+    year: 2025
+    url: "https://arxiv.org/pdf/2501.06706"
+    type: peer_reviewed
+    status: M
+    kind: pdf
+    blueprints: [17]
+
+  beyond-fault-localization:
+    title: "Beyond Fault Localization - A Trajectory-Level Study of LLM Agents for Microservice RCA"
+    url: "https://arxiv.org/pdf/2608.21310"
+    type: peer_reviewed
+    status: S
+    kind: pdf
+    blueprints: [17]
+
+  self-evolving-rca-harness:
+    title: "From General Agents to RCA Experts - A Self-Evolving Harness for Root Cause Analysis"
+    url: "https://arxiv.org/pdf/2608.25661"
+    type: peer_reviewed
+    status: S
+    kind: pdf
+    blueprints: [17]
+
+  mining-root-cause-knowledge-2022:
+    title: "Mining root cause knowledge from cloud service incident investigations for AIOps"
+    year: 2022
+    venue: "ICSE-SEIP 2022"
+    url: "https://arxiv.org/pdf/2204.11598"
+    type: peer_reviewed
+    status: S
+    kind: pdf
+    blueprints: [17]
+
+  siriushelper:
+    title: "SiriusHelper - An LLM Agent-Based Operations Assistant for Big Data Platforms"
+    url: "https://arxiv.org/pdf/2605.00043"
+    type: peer_reviewed
+    status: S
+    kind: pdf
+    blueprints: [17]
+
+  # ---- extra entries from the pack's own Sources list
+  futex-internals:
+    title: "Futex Internals (Linux Kernel Internals)"
+    url: "https://kernel-internals.org/locking/futex/"
+    type: doc
+    status: S
+    kind: html
+    blueprints: [17]
+
+  morning-paper-heracles:
+    title: "Heracles - Improving Resource Efficiency at Scale (the morning paper)"
+    url: "https://blog.acolyer.org/2015/06/16/heracles-improving-resource-efficiency-at-scale/"
+    type: industrial
+    status: S
+    kind: html
+    blueprints: [17]
+
+  dblp-ezzati-jivan:
+    title: "dblp - Naser Ezzati-Jivan (where HybridRCA is listed)"
+    url: "https://dblp.org/pid/54/10412.html"
+    type: doc
+    status: S
+    note: "The pack cites HybridRCA from this dblp listing; venue unknown at the time of writing."
+    kind: html
+    html_only: true   # a bibliography listing, not prose - nothing for trafilatura to extract
+    blueprints: [17]
