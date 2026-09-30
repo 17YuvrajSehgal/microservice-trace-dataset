@@ -533,7 +533,13 @@ class Sandbox:
             err = ""
             try:
                 self.p.kill()
-                err = (self.p.stderr.read() or "")[-600:]
+                # BOUNDED. This was self.p.stderr.read(), which blocks until EOF, and EOF never
+                # comes if the child survives the kill or a grandchild still holds the write
+                # end. Measured once in a 12-cell smoke: a cell sat in pipe_read for 43 minutes
+                # with its sandbox child alive and idle at 6 s of CPU. One stalled cell holds a
+                # worker slot for the whole campaign, so nothing here may block without a clock.
+                _o, _e = self.p.communicate(timeout=10)
+                err = (_e or "")[-600:]
             except Exception:
                 pass
             self.p = None
@@ -543,10 +549,22 @@ class Sandbox:
         self.limits = bool(_h.get("limits"))
 
     def close(self):
+        """Kill the child AND reap it. kill() alone leaves a zombie holding its pipe ends, so
+        the descriptors the next sandbox needs are still taken."""
         if self.p is not None:
             try:
                 self.p.kill()
-            except Exception:
+            except Exception:                                           # noqa: BLE001
+                pass
+            for fh in (self.p.stdin, self.p.stdout, self.p.stderr):
+                try:
+                    if fh:
+                        fh.close()
+                except Exception:                                       # noqa: BLE001
+                    pass
+            try:
+                self.p.wait(timeout=10)
+            except Exception:                                           # noqa: BLE001
                 pass
             self.p = None
 

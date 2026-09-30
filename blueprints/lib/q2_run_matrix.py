@@ -59,9 +59,24 @@ def run_cell(c: dict, a, log_dir: str) -> dict:
     if a.app:
         cmd += ["--app", a.app]
     t0 = time.time()
+    # A CELL MUST NOT BE ABLE TO BLOCK A SLOT FOREVER. There was no clock here at all, and a
+    # 12-cell smoke found the failure mode it allows: one cell sat 43 minutes in a blocking
+    # pipe read with its sandbox child alive and idle. At --jobs 3 that is a third of the
+    # campaign's throughput held by a process doing nothing, and nothing in the log says so.
+    #
+    # The cap is generous on purpose - the slowest cell we have MEASURED finished at 2,030 s,
+    # so this only fires on something genuinely stuck, never on a slow-but-working run.
     with open(log, "w") as fh:
-        rc = subprocess.call(cmd, stdout=fh, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL)
-    return {"tag": tag, "rc": rc, "s": round(time.time() - t0, 1), "log": log, **c}
+        try:
+            rc = subprocess.call(cmd, stdout=fh, stderr=subprocess.STDOUT,
+                                 stdin=subprocess.DEVNULL, timeout=a.cell_timeout)
+        except subprocess.TimeoutExpired:
+            rc = 124                                   # the conventional timeout exit code
+            fh.write(chr(10) + "KILLED by the driver after %d s. The cell was not making "
+                               "progress; the slowest cell measured so far finished at "
+                               "2,030 s." % a.cell_timeout + chr(10))
+    return {"tag": tag, "rc": rc, "s": round(time.time() - t0, 1), "log": log,
+            "timed_out": rc == 124, **c}
 
 
 def main() -> int:
@@ -79,6 +94,9 @@ def main() -> int:
     ap.add_argument("--max-steps", type=int, default=60)
     ap.add_argument("--agent", default="v1", choices=["v1", "v2"])
     ap.add_argument("--python", default=os.path.expanduser("~/q2venv/bin/python"))
+    ap.add_argument("--cell-timeout", type=int, default=3600,
+                    help="seconds before a cell is killed as stuck. Measured: the slowest "
+                         "healthy cell took 2,030 s, so the default leaves plenty of room.")
     ap.add_argument("--app", default="",
                     help="sockshop or trainticket; omit to take whichever "
                          "comes first, which is always sockshop")
