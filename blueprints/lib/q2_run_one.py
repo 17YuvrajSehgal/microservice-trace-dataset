@@ -243,7 +243,12 @@ def main() -> int:
         # answer scored `container_unverified`: on the first deadlock matrix the agent named the
         # same namespace in 6 of 9 cells and was credited for none. Fall back to resolving the
         # workload container by its lifespan, which starts and ends with the fault.
-        if not true_ns:
+        # Only when the recipe targets NO service. conn_pool_exhaustion also starts a container
+        # of its own, but its target is catalogue-db - the victim, not the attacker - and it
+        # scores by procname with true_ns unset. Falling back there would hand the scorer the
+        # ATTACKER's namespace as truth and mark every correct answer wrong.
+        _tsvc = ((gt.get("fault") or {}).get("target_service") or "").strip().lower()
+        if not true_ns and _tsvc in ("", "host"):
             true_ns = nsmap.ns_for_workload(inc["run_dir"], gt) or ""
     except Exception:                                                   # noqa: BLE001
         true_ns = ""
