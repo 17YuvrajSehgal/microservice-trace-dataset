@@ -56,7 +56,17 @@ class Cancelled(RuntimeError):
 
 
 MAX_ROUNDS = 2          # planner rounds; a second one only if the reviewer asks
-MAX_WORKER_STEPS = 12   # tool-calling turns inside one worker
+# Raised from 12 after measuring 554 workers. The distribution of steps used was roughly
+# flat from 7 to 11 (53, 48, 46, 54, 42 workers) and then spiked to 280 at exactly 12 -
+# that is a wall, not a natural stopping point. 51% of workers were hitting it.
+#
+# This costs nothing for the half that conclude early: a worker that is done stops, and
+# never touches the extra room. It is only spent by the workers that were being cut off,
+# and those recorded a median of 1 finding against 2 for workers that finished.
+#
+# Affordable because the context window is nowhere near full - the worst single call in
+# 120 runs used 63k of 400k tokens, 15.7%.
+MAX_WORKER_STEPS = 18   # tool-calling turns inside one worker
 MAX_SUBTASKS = 4
 
 
@@ -325,7 +335,12 @@ def _exec_tool(name, args, node, step):
 # precisely because run_python output is captured separately and reaches the synthesiser whole -
 # nothing is lost, only re-sent less often. Measured: 0 threads had anything elided in either
 # test run at this budget.
-THREAD_BUDGET = 80000
+# Raised from 80,000. Measured: threads reach 143,632 chars before trimming, so the old
+# budget was discarding real content on the longest steps. Trimming only fires on 4% of
+# steps, so this changes almost nothing for a typical worker and stops the longest ones
+# losing what they gathered. With more steps allowed, threads get longer, so the two
+# changes belong together.
+THREAD_BUDGET = 150000
 # How much of each run_python output travels to the synthesiser. Enough for a ranking table -
 # the thing that was lost was a 3-row table - without carrying whole dumps.
 # Measured: the 1,600 cap cut 25 of 47 computations, and the 24,000 total dropped more than

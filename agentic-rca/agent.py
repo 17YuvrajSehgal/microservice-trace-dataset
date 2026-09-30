@@ -67,7 +67,11 @@ SENT_CAP_BY_TOOL = {
     "ctf_proclife": 60000,   # enumerates every container; coverage IS the answer here. max 36,709
     "ctf_procdiff": 40000,
     "run_python": 30000,     # max 12,177, and an agent-written aggregation can be much larger
-    "ctf_lines": 25000,      # max 6,703
+    # Raised from 25,000 after measuring 1,114 real calls: the worst was 37,512 chars and
+    # it was the ONLY result of 7,729 tool calls that ever exceeded its cap. Raw network
+    # lines carry a full TCP header each, so 40 of them overflow where 40 scheduler lines
+    # would not. Every other tool peaks at 30-65% of its own cap and needs nothing.
+    "ctf_lines": 42000,      # measured max 37,512
     "query_ctf": 20000,      # max 2,485
     "ctf_timeline": 20000,   # max 201
 }
