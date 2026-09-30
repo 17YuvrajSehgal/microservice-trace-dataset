@@ -25,7 +25,34 @@ agentic-rca/results/
 /data-sample/
 /stratatrace-v1/
 
-DOCS/reading-papers
+# reading-papers: this is a PUBLIC repo, so the rule here is DEFAULT DENY.
+# Everything under it is excluded, and only files WE wrote are added back.
+#
+# Why default-deny rather than listing what to exclude: a deny-list has to be
+# updated every time a new kind of file appears. The first attempt at this
+# listed paper.pdf and page.html by name, and silently let through 84 PDFs
+# (197 MB) sitting in claude-recommendations/ and prof-recommendation/ -
+# directories the old blanket rule had been covering. Default-deny cannot
+# fail that way: anything new is excluded until someone adds it on purpose.
+#
+# NOTE: patterns must start at column 0. A leading space makes the pattern
+# match a path that literally begins with a space, i.e. nothing.
+DOCS/reading-papers/**
+# re-include directories so git will descend into them and see the files below
+!DOCS/reading-papers/**/
+# ---- our own writing, and nothing else ----
+!DOCS/reading-papers/sources/**/paper.md
+!DOCS/reading-papers/sources/**/meta.yaml
+!DOCS/reading-papers/tools/*.py
+!DOCS/reading-papers/tools/manifest.yaml
+!DOCS/reading-papers/table.md
+!DOCS/reading-papers/index.yaml
+!DOCS/reading-papers/README.md
+# the extracted text layer of the PDFs is the FULL TEXT of IEEE/ACM papers.
+# Excluded by the blanket rule above; restated because it is the single worst
+# thing that could reach a public repo. Regenerable with tools/pdf_text.py.
+DOCS/reading-papers/tools/.cache/**
+
 # downloaded cluster results - large, and they live on Trillium
 results-download/
 
