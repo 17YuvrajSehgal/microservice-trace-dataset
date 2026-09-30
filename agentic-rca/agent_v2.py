@@ -438,6 +438,7 @@ def n_work(payload: dict) -> dict:
               tools=[t["name"] for t in tools])
     found, calls = [], 0
     nudged = False
+    concluded = False
     for step in range(MAX_WORKER_STEPS):
         m = _call(_trim_thread(msgs, node, step), tools, node, step)
         a = {"role": "assistant", "content": m.content or ""}
@@ -461,6 +462,7 @@ def n_work(payload: dict) -> dict:
                              "subtask genuinely produced nothing, say that as a finding with "
                              "ruled_out=true rather than leaving it blank."})
                 continue
+            concluded = True
             break
         for c in m.tool_calls:
             name = c.function.name
@@ -477,7 +479,43 @@ def n_work(payload: dict) -> dict:
             calls += 1
             msgs.append({"role": "tool", "tool_call_id": c.id,
                          "content": _exec_tool(name, args, node, step)})
+    # MEASURED on the first two campaigns: 234 of 554 workers ran out of steps with tool calls
+    # still pending, and 98 of those had recorded NOTHING - a whole investigation that never
+    # reached the synthesiser, because only note_finding does. Workers that concluded on their
+    # own recorded a median of 2 findings and none recorded zero.
+    #
+    # Raising MAX_WORKER_STEPS would cost a step on every worker. This costs ONE call, and only
+    # on the workers that were about to be dropped silently. Same reasoning as the nudge above:
+    # silence from a worker reads identically to "checked and found nothing".
+    if not concluded:
+        CTX.event("worker_out_of_steps", node=node, findings_so_far=len(found))
+        msgs.append({"role": "user", "content":
+                     "You are out of steps. Do not call any more query tools - there is no "
+                     "turn left to read their output. Record what you have ALREADY seen using "
+                     "note_finding, with the numbers you measured. Only note_finding reaches "
+                     "the synthesiser; anything you do not record is lost. If you checked "
+                     "something and it came to nothing, record that too with ruled_out=true."})
+        try:
+            m = _call(_trim_thread(msgs, node, MAX_WORKER_STEPS),
+                      [t for t in tools if t["name"] == "note_finding"],
+                      node, MAX_WORKER_STEPS)
+            for c in (m.tool_calls or []):
+                if c.function.name != "note_finding":
+                    continue
+                try:
+                    args = json.loads(c.function.arguments or "{}")
+                except Exception:                                       # noqa: BLE001
+                    continue
+                args["_from"] = node
+                args["_late"] = True          # recorded in the wrap-up, not during the work
+                found.append(args)
+                CTX.event("finding", node=node, step=MAX_WORKER_STEPS, finding=args)
+        except Exception as e:                                          # noqa: BLE001
+            # a failed wrap-up must not lose the findings the worker already has
+            CTX.event("worker_wrapup_failed", node=node, error=repr(e)[:200])
+
     CTX.event("worker_end", node=node, n_findings=len(found), n_tool_calls=calls,
+              ran_out_of_steps=not concluded,
               steps_used=step + 1, max_steps=MAX_WORKER_STEPS,
               final_thread_messages=len(msgs),
               final_thread_chars=sum(len(m.get("content") or "") for m in msgs

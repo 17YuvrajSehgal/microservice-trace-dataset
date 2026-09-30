@@ -50,6 +50,16 @@ def one(tp):
     elided = sum(len(e.get("elided") or []) for e in ev if e.get("type") == "thread_step")
     peak = max([int((((e.get("response") or {}).get("usage") or {}).get("prompt_tokens")) or 0)
                 for e in ev if e.get("type") == "api_response"] or [0])
+    # a worker that ran out of steps was cut off mid-investigation; before the wrap-up turn
+    # existed, 98 of them reached the synthesiser with nothing at all
+    out_of_steps = sum(1 for e in ev if e.get("type") == "worker_out_of_steps")
+    late = sum(1 for e in ev
+               if e.get("type") == "finding" and (e.get("finding") or {}).get("_late"))
+    # a tool result that says "not read" rather than "not present" - the distinction the
+    # ctf_lines scan cap used to hide
+    scan_cut = sum(1 for e in ev if e.get("type") == "tool_execution"
+                   and isinstance(e.get("result"), dict)
+                   and e["result"].get("scan_truncated"))
     comp = next((e.get("computed") for e in ev if e.get("type") == "computed"), []) or []
     snips = next((e.get("snippets") for e in ev if e.get("type") == "code_snippets"), []) or []
     errs = sum(1 for s in snips if (s.get("result") or {}).get("error"))
@@ -66,6 +76,7 @@ def one(tp):
         "findings": sum(1 for e in ev if e.get("type") == "finding"),
         "computed": len(comp), "snippets": len(snips), "snippet_errors": errs,
         "nudged": sum(1 for e in ev if e.get("type") == "worker_nudge"),
+        "out_of_steps": out_of_steps, "late_findings": late, "scan_cut": scan_cut,
         "peak_tok": peak,
         "tok_in": (fin.get("tokens") or {}).get("in", 0),
         "wall": fin.get("wall_s"), "tools": tools, "path": tp,
@@ -104,6 +115,14 @@ def main() -> int:
     w("| thread messages elided | **%d** %s |" % (bad_el, "" if not bad_el else "<- check what"))
     w("| runs with no findings recorded | %d |" % sum(1 for r in rows if not r["findings"]))
     w("| workers nudged for silence | %d |" % sum(r["nudged"] for r in rows))
+    oos = sum(r["out_of_steps"] for r in rows)
+    lat = sum(r["late_findings"] for r in rows)
+    w("| workers that ran out of steps | %d %s |"
+      % (oos, "" if not oos else "<- cut off mid-investigation; %d findings recovered by the "
+                                 "wrap-up turn" % lat))
+    sc = sum(r["scan_cut"] for r in rows)
+    w("| ctf_lines results that stopped early | %d %s |"
+      % (sc, "" if not sc else "<- reported as 'not read', not 'not present'"))
     w("| code snippets that errored | %d of %d |"
       % (sum(r["snippet_errors"] for r in rows), sum(r["snippets"] for r in rows)))
     w("| peak prompt, p90 / max | %s / %s tokens (%.1f%% of 400k) |"
