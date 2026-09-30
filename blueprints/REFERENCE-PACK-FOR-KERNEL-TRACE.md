@@ -6,8 +6,8 @@ Every blueprint can be grounded in the literature, but not in one way: each need
 
 - **The priority blueprints are well supported.** The kernel docs explain the signals (CFS bandwidth control, pids controller, cgroup v2 memory.max, PSI, futex). Mining studies give "it happens in the wild" evidence: Lu et al. ASPLOS 2008 (concurrency), Dai et al. IC2E 2018 (timeouts), Ghanavati et al. EMSE 2020 (resource leaks), Yang et al. ICSE 2018 (DB performance bugs), Huang et al. OSDI 2022 (metastable failures / retry storms), Gunawi et al. SoCC 2016 (597 unplanned outages from 1,247 news and post-mortem reports at 32 services). The DORSAL papers (Giraldeau & Dagenais 2016, Nemati et al. 2022, Rezazadeh et al. 2020, Kohyarnejadfard et al. 2022) show that your data source (LTTng kernel traces with sched_switch and wakeups) is an accepted method.
 - **Some sources refine or contradict your discriminators, and you should say so openly.** Examples: CFS throttling can happen while average CPU use is low (Dan Luu; Ugedal et al. 2022). JVM parking goes through pthread_cond and then futex, so a high futex share is normal on Java services. Nice values under CFS are weights, not strict priorities, so "priority inversion via nice" is weaker than the classic real-time definition (Sha et al. 1990). Bronson et al. warn that metastable outages are often wrongly blamed on the trigger.
-- **Six citations were corrected on 30 Sept 2026, after the papers were read in full.** Each
-  was a case of citing a paper for something it does not say. The corrections are in the tables
+- **Eleven citations were corrected on 30 Sept 2026, after the papers were read in full.** Most
+  were a case of citing a paper for something it does not say; three were bibliographic errors. The corrections are in the tables
   below; in summary: Rezazadeh 2020 argues that kernel-only tracing **cannot** see user-space
   locks (it is a limit for us, not a capability); DepGraph **never mentions deadlock or cycle
   detection**; CPI2 correlates statistically because cache interference cannot be attributed
@@ -16,8 +16,24 @@ Every blueprint can be grounded in the literature, but not in one way: each need
   futex result is measured on **C/C++**, which is why the JVM case is an exception rather than a
   contradiction; and CFS throttling is enforced **per run-queue**, not across all of a
   container's threads. Full notes per paper in `DOCS/reading-papers/sources/<slug>/paper.md`.
-  **None of these reached a blueprint or a generated skill** - they were confined to this
-  document - so no run is affected.
+  Three more were in `DOCS/reading-papers/FUTURE-BLUEPRINT-REFERENCES.md`: Chen 2014 does **not**
+  report an order of magnitude for N+1 (that figure is a different anti-pattern, and one-by-one
+  processing is -17%); "Suneja et al., IPDS 2020" is **Karn et al., IEEE TPDS 32(3), 2021**; and
+  Zhou et al. is **TSE 2021**, not 2018.
+  **None of these reached a blueprint or a generated skill** - they were confined to documents -
+  so no run is affected.
+- **The strongest single result for the kernel modality is in Zhou et al. 2021, and it is a
+  failure.** They replicated 22 real industrial faults on TrainTicket and re-debugged each at
+  three tooling levels, up to distributed trace visualisation. **Two could not be debugged at any
+  level, and both are non-functional *environment* faults** - a JVM/Docker memory-limit conflict
+  (our `service-memory-cap`) and fine-grained SSL offloading. Their conclusion: *"most fault cases
+  **except those caused by environmental settings** can benefit from trace visualisation."* The
+  environment is the kernel's layer. Three other papers measure the same shortfall from different
+  angles: **Dai 2018** (60% of timeout bugs produce no error message), **Gunawi 2016** (59% of 597
+  outages have no reported root cause), **Ghanavati 2020** (1 of 491 leak issues found by static
+  analysis; 63% only visible at runtime). Four independent studies, four different failure
+  families, one conclusion: **the evidence needed to diagnose these is not in the code, the logs,
+  or the spans.**
 - **The blueprint idea itself fits a growing line of work on troubleshooting guides (TSGs) and LLM agents.** The main works are AutoTSG, Nissist, RCACopilot, Roy et al. FSE 2024, StepFly (FSE 2026: empirical study of 92 real TSGs; the paper reports "a ~94% success rate on GPT-4.1" and a 32.9%–70.4% time reduction for parallelizable TSGs) and FixItFlow. None of them works from kernel traces, and that is your gap and your contribution.
 
 ## How to read this report
@@ -40,7 +56,7 @@ Each reference also has a **relation** to the blueprint claim: **supports**, **r
 5. **Denys et al. "Distributed computation of the critical path from execution traces." Software: Practice and Experience, 2023.** DOI: 10.1002/spe.3210 [V]. It scales the Giraldeau critical-path algorithm and notes that critical paths across several traces need near-perfect clock sync.\[6\] **Refines** any cross-container, cross-trace step in your blueprints.
 6. **Brendan Gregg, USE Method** (https://www.brendangregg.com/usemethod.html) and **Off-CPU Analysis** (https://www.brendangregg.com/offcpuanalysis.html) [M]. USE checks Utilization, Saturation and Errors for every resource. Off-CPU analysis explains blocked time. **Supports** the blueprint structure: check the resource, then saturation, then errors.
 7. **Linux PSI docs (Weiner).** https://docs.kernel.org/accounting/psi.html [V via helper]. Quote: "When CPU, memory or IO devices are contended, workloads experience latency spikes, throughput losses, and run the risk of OOM kills." PSI exists per cgroup (cpu.pressure, memory.pressure, io.pressure).\[7\] **Supports** the idea of "stall time" as the central signal. PSI is not in your LTTng trace, but you can rebuild it from the runnable-but-waiting time between sched_wakeup and sched_switch.
-8. **Empirical base for microservice faults:** Zhou et al., "Fault Analysis and Debugging of Microservice Systems: Industrial Survey, Benchmark System, and Empirical Study," IEEE TSE, 2018/2021 (Train Ticket), DOI 10.1109/TSE.2018.2887384 [M]. Pham et al., RCAEval, WWW 2025 Companion, arXiv:2412.17015 [M]. Waseem et al., "On the Nature of Issues in Five Open Source Microservices Systems," arXiv:2104.12192 [V].\[8\] Waseem et al., "Understanding the Issues, Their Causes and Solutions in Microservices Systems," which mined 2,641 issues from 15 open-source microservice systems on GitHub, plus 15 interviews and a survey of 150 practitioners, arXiv:2302.01894, now in the Journal of Systems and Software [V].\[9\] **These are the MSR-style GitHub-mining papers your supervisor asked for, at the microservice level.**
+8. **Empirical base for microservice faults:** Zhou, Peng, Xie, Sun, Ji, Li & Ding, "Fault Analysis and Debugging of Microservice Systems: Industrial Survey, Benchmark System, and Empirical Study," **IEEE TSE 47(2):243-260, 2021** (the paper that created Train Ticket), DOI 10.1109/TSE.2018.2887384 [V]. **Read in full 30 Sept 2026, and it carries the single strongest result in this pack for the kernel modality.** 16 developers from 12 companies reported 22 real faults; the authors replicated all 22 on TrainTicket and re-debugged each at three tooling levels - basic logs, visual logs, visual traces. **Two faults could not be debugged at ANY level, and both are non-functional *environment* faults**: F3 (JVM memory config conflicts with the Docker cluster limit, so Docker kills the JVM - our `service-memory-cap`) and F4 (fine-grained SSL offloading in almost every container). Their own summary: *"most fault cases **except those caused by environmental settings** can benefit from trace visualisation."* The environment is the kernel's layer. Also useful: time to locate and fix scales **9.5 h (1 microservice) -> 20 h (2) -> 40 h (3) -> 48 h (>3)**, and for interaction faults initial understanding alone takes **3 h with visual traces vs 21 h with basic logs**. Caveat the authors state: TrainTicket is **smaller and less heterogeneous** than the industrial systems surveyed, and the times are participant estimates cross-checked against issue trackers. Pham et al., RCAEval, WWW 2025 Companion, arXiv:2412.17015 [M]. Waseem et al., "On the Nature of Issues in Five Open Source Microservices Systems," arXiv:2104.12192 [V].\[8\] Waseem et al., "Understanding the Issues, Their Causes and Solutions in Microservices Systems," which mined 2,641 issues from 15 open-source microservice systems on GitHub, plus 15 interviews and a survey of 150 practitioners, arXiv:2302.01894, now in the Journal of Systems and Software [V].\[9\] **These are the MSR-style GitHub-mining papers your supervisor asked for, at the microservice level.**
 9. **Method caution for MSR work:** Kalliamvakou et al., "An in-depth study of the promises and perils of mining GitHub," EMSE 21(5), 2016, DOI 10.1007/s10664-015-9393-5 [V].\[10\] Cite it in your threats-to-validity section if you use GitHub issues as evidence.
 
 ---
@@ -86,6 +102,8 @@ Each reference also has a **relation** to the blueprint claim: **supports**, **r
 | US Patent 11,750,692 "Connection pool anomaly detection mechanism" (Salesforce) [S], https://image-ppubs.uspto.gov/dirsearch-public/print/downloadPdf/11750692                                                                               | Industrial | **Supports** (weak): says exhaustion "may occur frequently" in production and separates "sustained" from "intermittent" exhaustion. Patent text, not peer reviewed. |\[15\]
 
 **Honest gap:** I found **no peer-reviewed MSR paper focused only on connection-pool exhaustion.** The best academic chain is: leak study (Ghanavati) + timeout study (Dai) + pool-sizing theory (HikariCP, industrial). Say this in the thesis. It is a real gap that your work partly fills.
+
+**The gap is narrower than that, though.** Zhou et al. 2021 **F5** is a verified industrial case of exactly this fault, in a peer-reviewed venue: a microservice whose **thread pool is shared between two request types**; high load of one exhausts it and **the other type fails with timeouts**. Reported by an industrial developer, **6 days to locate**, and **replicated in TrainTicket** (ticket-reservation service, shared by searching and booking) so it can be run. It is not a paper *about* pool exhaustion, but it is no longer true that the fault has no peer-reviewed industrial instance.
 
 ### 4. deadlock-lock-order (deadlock)
 
@@ -164,7 +182,7 @@ Each reference also has a **relation** to the blueprint claim: **supports**, **r
 | Dai et al., IC2E 2018 [V] | Empirical | **Supports**: a slow dependency without a proper timeout turns into a hang for the caller. |
 | Giraldeau & Dagenais 2016 [M]; Nemati et al. 2022 [V] | Method | **Supports**: the critical path crosses from the caller's blocked recv to the DB's work, which is exactly "whose fault is the wait." |
 | Gregg, Off-CPU Analysis [M] | Method | **Supports**: blocked time, not CPU time, is where the latency goes. |
-| Zhou et al., TSE (Train Ticket) [M] | Empirical | **Supports**: dependency and DB-related faults are among the fault types in the industrial survey. |
+| Zhou et al., IEEE TSE 47(2), 2021 (Train Ticket) [V] | Empirical (22 industrial fault cases) | **Supports**: dependency and DB-related faults are among the fault types in the industrial survey. Specifically **F6** (endless recursive requests caused by SQL errors in a dependency, 3 days to locate), **F7** (overload of a third-party service leads to denial of service, 2 days) and **F17** (nested `select`/`from` clauses, the `slow_query` shape). |
 
 **Rule-out vs. connection-pool exhaustion:** in slow_db, threads wait on the *socket* (network wait). In pool exhaustion, they wait on a *futex* (user-space lock) before any socket I/O. This is a strong discriminator, and it follows directly from the wait-analysis categories.
 

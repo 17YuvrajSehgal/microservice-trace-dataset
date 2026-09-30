@@ -3,17 +3,17 @@
 One row per paper. **"What it actually says"** is the finding worth citing; **"What it means
 for us"** is what changes in our work because of it.
 
-Read the **Citation problems** section first — eleven citations have been corrected so far.
+Read the **Citation problems** section first — twelve citations have been corrected so far.
 
-Status: **37 of 50 papers summarised** (32 by me, 5 by you). All three 50+ page documents from
-the reference pack are done. Full summaries live in `sources/<slug>/paper.md`. The remaining 13
+Status: **38 of 50 papers summarised** (33 by me, 5 by you). All three 50+ page documents from
+the reference pack are done. Full summaries live in `sources/<slug>/paper.md`. The remaining 12
 are listed at the bottom.
 
 ---
 
 ## Citation problems — all found, all fixed (30 Sept 2026)
 
-**Eleven corrections**, made after reading each paper in full. Most were a case of citing a
+**Twelve corrections**, made after reading each paper in full. Most were a case of citing a
 paper for something it does not say; three were plain bibliographic errors.
 
 **All eight were confined to `blueprints/REFERENCE-PACK-FOR-KERNEL-TRACE.md`.** The
@@ -35,7 +35,8 @@ changed, and no completed run is affected.**
 | 8 | Blueprint 10 | "**all** its threads stop at the same time" | throttling is per `cfs_rq` — **per logical CPU per cgroup**. One pool stopping does not stop the others, and a task is never throttled, only its group |
 | 9 | `FUTURE-BLUEPRINT-REFERENCES.md`, `code_n_plus_one` | Chen 2014 "reports that N+1 costs **more than an order of magnitude**" | **Chen reports no such thing for N+1.** The order-of-magnitude figure (130 s → 2 s) is the *excessive data* pattern in Pet Clinic. **One-by-one processing is -17%** in their micro-benchmark and **+8% to -32%** across Broadleaf, significant in only 5 of 10 suites |
 | 10 | `FUTURE-BLUEPRINT-REFERENCES.md` + `meta.yaml`, `resource_abuse` | "Suneja et al., IPDS 2020" | **Karn, Kudva, Huang, Suneja & Elfadel, IEEE TPDS 32(3):674-691, 2021.** Suneja is the **fourth** author; "IPDS" is not the venue; 2020 is the acceptance year |
-| 11 | Blueprint 10 (addition, not an error) | no empirical source for the `prev_state=0` / `swapper` test | **Gelle et al. 2021 §4.3 publish exactly that `sched_switch` line**, from a 1% cpu cgroup cap on Cassandra, with 100 ms periodicity. Added as a supporting row |
+| 11 | Cross-cutting §8 + blueprint 9, Zhou et al. | cited as "IEEE TSE, 2018/2021", status [M] | **IEEE TSE 47(2):243-260, 2021.** The repository PDF's "2018" running header is a stale draft template. Now [V] |
+| 12 | Blueprint 10 (addition, not an error) | no empirical source for the `prev_state=0` / `swapper` test | **Gelle et al. 2021 §4.3 publish exactly that `sched_switch` line**, from a 1% cpu cgroup cap on Cassandra, with 100 ms periodicity. Added as a supporting row |
 
 ### Two that were already right
 
@@ -90,6 +91,7 @@ JVM observation is ours to prove, backed by a chain of citations. Both left alon
 | **Yang et al. 2018** <br> *How not to structure your DB-backed web apps, ICSE* | 12 Rails apps, ~200 issues, **9 ORM anti-patterns**. **11 of 12 apps have pages over 2 s** under a modest workload; server time is **>80% of load time for half the slow pages**. 64 manual fixes gave **median 2x, up to 39x**, **78% under 5 lines** - about **6x** total degradation | Blueprint 9's "it happens in the wild" source; the citation is accurate. The gift is the **vocabulary**: N+1 (**many tiny round-trips**) and missing-index (**one long one**) are **opposite kernel-trace signatures** we could separate by counting syscalls. **Our injected `slow_query` is one shape out of nine** - do not imply we cover the family. Rails only; of our two apps only Train Ticket is an ORM app |
 | **Ghanavati et al. 2020** <br> *Memory and Resource Leak Defects, EMSE* | 491 issues, 15 Java projects. **76% manifest on error-free paths.** Top causes: forgot to close **30%**, bad exception handling **20%**, collection mismanagement **19%**. **Only 1 of 491 was found by a static analyser**; **63% only showed up at runtime**, via heap dumps and `lsof`. Fixes are small: **54% touch one file**, median churn **<20 lines** | Cited by blueprints 3 and 12, both correctly. The **1-in-491** number is the one we were not using and should be - it is a direct argument for runtime evidence. Also names our limitation: real leaks accumulate slowly on hot paths, and **the thread that hits the limit is not the one that leaked**. Two causes have different shapes we could test - steady growth vs bursts on error paths. **Java only** |
 | **Gunawi et al. 2016** <br> *Why Does the Cloud Stop Computing?, SoCC* | 597 outages, 32 services, 1,247 news and post-mortem reports, 2009-2015. **355 of 597 (59%) have an UNKNOWN root cause.** Among the known: **UPGRADE 16%, NETWORK 15%, BUGS 15%**. NETWORK caused **52 outages across 21 services** | Blueprint 2's prevalence source. **Keep the qualifier**: 15% is of outages with a *known* cause; of all 597 it is 8.7%. The better citation is the **59% unknown** - it sits beside Dai's 60% and Ghanavati's 1-in-491 as the third independent measurement that **the evidence is not in the record**. No telemetry, so never cite it for a signature |
+| **Zhou et al. 2021** <br> *Fault Analysis and Debugging of Microservice Systems, IEEE TSE* <br> **(the paper that created Train Ticket)** | 16 developers, 12 companies, **22 real industrial faults**, all replicated on **TrainTicket (41 services, 4 languages)** and re-debugged at three tooling levels. **Two could not be debugged at ANY level - F3 and F4, both non-functional *environment* faults.** Time to locate scales **9.5 h -> 20 h -> 40 h -> 48 h** as the fault spans 1 -> 3+ services | **The strongest single result in the pack for our modality, and it is a failure.** Their conclusion - *"most fault cases except those caused by environmental settings can benefit from trace visualisation"* - names the gap we fill, from industrial data, seven years early. **F3 is our `service-memory-cap`; F5 is a verified industrial case of connection-pool exhaustion** (shared pool, one request type starves another, 6 days to locate), which narrows the "no peer-reviewed paper" gap blueprint 3 records. Cite as **TSE 2021**, and carry their caveat that TrainTicket is smaller and less heterogeneous than the systems surveyed |
 | **Arzani et al. 2016** <br> *NetPoirot, SIGCOMM* | **Blame allocation** - client, network or server - from a **client-side TCP agent only**, no application knowledge. Up to **96% for some failure types**. Key insight: **non-network failures still change how TCP behaves** (slow reader → zero-window probing; router drops → duplicate ACKs; client CPU load → less data sent) | Blueprint 2's closest academic match, and the citation is right. Their **blame-allocation framing is our WHERE axis stated by someone else**, with a production story behind it. Their three TCP signals are a checklist: **we have none of the flag-level ones** and infer loss from timing gaps. Their **10.55% per-machine partition error** is independent support for our v1 region-confound worry |
 
 ---
