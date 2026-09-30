@@ -172,6 +172,8 @@ One score is not enough, because "right answer" has several independent parts.
 median onset against a 125-second fault — they are describing the recovery, not the incident.
 IoU alone would have said "0 of 15 hit" and left the reason invisible.
 
+Every line of a digest's Result block is explained in [`docs/SCORING-EXPLAINED.md`](docs/SCORING-EXPLAINED.md).
+
 `score.json` also records `true_ns` and `true_ns_via` — which namespace the scorer treated
 as truth and how it resolved it — so a verdict can be audited afterwards instead of
 re-derived by hand.
@@ -252,7 +254,7 @@ verification is part of the loop, not an afterthought.
 
 Measured, not estimated: **60 cells ≈ $5 and 2.5–3.5 hours** at 3 parallel runs, at about
 750k prompt tokens per run. A full 11-problem campaign on both applications is roughly
-**$120 and 50 hours** — worth deciding deliberately rather than assuming.
+**\$120 and 50 hours** — worth deciding deliberately rather than assuming.
 
 ## Not done yet
 
