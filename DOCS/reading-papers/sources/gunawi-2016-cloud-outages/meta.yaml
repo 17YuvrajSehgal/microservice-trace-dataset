@@ -10,5 +10,6 @@ status: M
 verified: false
 blueprints:
 - network-path-degradation
+- future-blueprints
 files:
 - paper.pdf

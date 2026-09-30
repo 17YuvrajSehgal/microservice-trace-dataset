@@ -11,5 +11,6 @@ status: S
 verified: false
 blueprints:
 - service-memory-cap
+- future-blueprints
 files:
 - paper.pdf

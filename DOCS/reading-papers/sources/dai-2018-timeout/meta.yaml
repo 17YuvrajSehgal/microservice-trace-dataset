@@ -13,6 +13,7 @@ blueprints:
 - connection-pool-exhaustion
 - dependency-outage-retry-storm
 - db-latency-dependency-wait
+- future-blueprints
 files:
 - paper.md
 - paper.pdf

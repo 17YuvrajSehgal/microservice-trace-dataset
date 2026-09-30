@@ -1,0 +1,15 @@
+id: drasync-2022
+title: DrAsync - Identifying and Visualizing Anti-Patterns in Asynchronous JavaScript
+venue: ICSE 2022
+url: https://www.franktip.org/pubs/icse2022-drasync.pdf
+retrieved: '2026-09-30'
+type: peer_reviewed
+status: S
+verified: false
+blueprints:
+- future-blueprints
+files:
+- paper.pdf
+note: Detects async anti-patterns including loopOverArrayWithAwait - awaiting inside
+  a loop instead of awaiting once over Promise.all. That IS our code_serial_awaits
+  fault. The only paper found that names this pattern specifically.

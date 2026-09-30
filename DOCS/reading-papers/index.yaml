@@ -135,6 +135,26 @@ blueprints:
   - wert-2015-dynamicspotter
   - wert-thesis-book
   - wert-thesis-dissertation
+  future-blueprints:
+  - bronson-2021-metastable
+  - chen-2014-orm-antipatterns
+  - dai-2018-timeout
+  - davis-2018-first-class-timeouts
+  - db-access-bugs-java-2024
+  - drasync-2022
+  - gassais-2020-host-ids
+  - ghanavati-2020-resource-leaks
+  - gunawi-2016-cloud-outages
+  - jin-2012-performance-bugs
+  - kernel-mm-concepts
+  - kernel-psi-doc
+  - lu-2008-concurrency-bugs
+  - nodejs-dont-block-event-loop
+  - rabbitmq-consumers-doc
+  - rezazadeh-2020-lock-contention
+  - suneja-2020-cryptomining-containers
+  - weiner-2022-tmo
+  - yang-2018-db-perf-bugs
 sources:
   aiopslab-2025:
     title: AIOpsLab - A Holistic Framework to Evaluate AI Agents for Enabling Autonomous
@@ -190,6 +210,12 @@ sources:
     - page.html
     - page.md
     - page_files/
+  chen-2014-orm-antipatterns:
+    title: Detecting Performance Anti-patterns for Applications Developed using Object-Relational
+      Mapping
+    have: true
+    files:
+    - paper.pdf
   cheshire-nagle-delayed-ack:
     title: TCP Performance problems from Nagle and Delayed ACK interaction
     have: true
@@ -209,6 +235,18 @@ sources:
     - page.html
     - page.md
     - page_files/
+  davis-2018-first-class-timeouts:
+    title: A Sense of Time for JavaScript and Node.js - First-Class Timeouts as a
+      Cure for Event Handler Poisoning
+    have: true
+    files:
+    - paper.pdf
+  db-access-bugs-java-2024:
+    title: An Empirical Study on the Characteristics of Database Access Bugs in Java
+      Applications
+    have: true
+    files:
+    - paper.pdf
   dblp-ezzati-jivan:
     title: dblp - Naser Ezzati-Jivan (where HybridRCA is listed)
     have: true
@@ -219,6 +257,11 @@ sources:
     title: Distributed computation of the critical path from execution traces
     have: false
     files: []
+  drasync-2022:
+    title: DrAsync - Identifying and Visualizing Anti-Patterns in Asynchronous JavaScript
+    have: true
+    files:
+    - paper.pdf
   ezzati-2020-depgraph:
     title: 'DepGraph: Localizing Performance Bottlenecks in Multi-Core Applications
       Using Waiting Dependency Graphs and Software Tracing'
@@ -407,6 +450,13 @@ sources:
     - page.html
     - page.md
     - page_files/
+  kernel-mm-concepts:
+    title: Concepts overview - Linux memory management documentation
+    have: true
+    files:
+    - page.html
+    - page.md
+    - page_files/
   kernel-pids-controller:
     title: Process Number Controller (cgroup v1 pids)
     have: true
@@ -543,6 +593,13 @@ sources:
     files:
     - paper.md
     - paper.pdf
+  nodejs-dont-block-event-loop:
+    title: Don't Block the Event Loop (or the Worker Pool) - Node.js docs
+    have: true
+    files:
+    - page.html
+    - page.md
+    - page_files/
   openjdk-jdk-6900441:
     title: 'JDK-6900441: PlatformEvent.park(millis) on Linux could still be affected
       by changes to the time-of-day clock'
@@ -573,6 +630,14 @@ sources:
     have: true
     files:
     - page.md
+  rabbitmq-consumers-doc:
+    title: RabbitMQ - Consumers (acknowledgement, prefetch, and what happens when
+      consumers stop)
+    have: true
+    files:
+    - page.html
+    - page.md
+    - page_files/
   rcacopilot-2024:
     title: Automatic Root Cause Analysis via Large Language Models for Cloud Incidents
       (RCACopilot)
@@ -659,6 +724,12 @@ sources:
     - page_files/
   stepfly-2026:
     title: StepFly - Agentic Troubleshooting Guide Automation for Incident Diagnosis
+    have: true
+    files:
+    - paper.pdf
+  suneja-2020-cryptomining-containers:
+    title: Cryptomining Detection in Container Clouds Using System Calls and Explainable
+      Machine Learning
     have: true
     files:
     - paper.pdf

@@ -10,6 +10,7 @@ status: V
 verified: true
 blueprints:
 - dependency-outage-retry-storm
+- future-blueprints
 files:
 - paper.md
 - paper.pdf

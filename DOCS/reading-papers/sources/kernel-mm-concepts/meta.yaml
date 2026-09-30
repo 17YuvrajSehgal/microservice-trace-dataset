@@ -1,0 +1,17 @@
+id: kernel-mm-concepts
+title: Concepts overview - Linux memory management documentation
+url: https://docs.kernel.org/admin-guide/mm/concepts.html
+retrieved: '2026-09-30'
+type: doc
+status: S
+verified: false
+blueprints:
+- future-blueprints
+files:
+- page.html
+- page.md
+- page_files/
+note: Host-level reclaim and page-cache behaviour, as distinct from the per-cgroup
+  memory.max path that service-memory-cap already covers. The coverage sweep found
+  anomaly_mem inseparable from svc_mem_cap on our data, so a blueprint here needs
+  a mechanism argument, not just a threshold.

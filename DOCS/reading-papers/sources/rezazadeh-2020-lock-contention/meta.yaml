@@ -10,6 +10,7 @@ verified: true
 blueprints:
 - lock-contention-futex-storm
 - priority-inversion-nice
+- future-blueprints
 files:
 - paper.md
 - paper.pdf

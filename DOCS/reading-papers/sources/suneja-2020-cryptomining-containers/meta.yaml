@@ -1,0 +1,18 @@
+id: suneja-2020-cryptomining-containers
+title: Cryptomining Detection in Container Clouds Using System Calls and Explainable
+  Machine Learning
+authors: Suneja, S. et al.
+year: 2020
+venue: IEEE IPDS 2020
+url: http://www.cs.toronto.edu/~sahil/suneja-ipds20.pdf
+retrieved: '2026-09-30'
+type: peer_reviewed
+status: S
+verified: false
+blueprints:
+- future-blueprints
+files:
+- paper.pdf
+note: 'The closest published work to our resource_abuse fault: cryptomining, in CONTAINERS,
+  detected from SYSTEM CALLS. Notes that containers sharing a host kernel make per-container
+  attribution hard - the same problem our pid_ns work solves.'

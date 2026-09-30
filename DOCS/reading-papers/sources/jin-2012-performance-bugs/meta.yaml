@@ -11,5 +11,6 @@ status: M
 verified: false
 blueprints:
 - misc
+- future-blueprints
 files:
 - paper.pdf

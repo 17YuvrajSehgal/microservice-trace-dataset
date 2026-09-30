@@ -54,6 +54,10 @@ DIRS = {
     # four are long documents (a 1200-page reference book, two copies of the same
     # thesis, and a Master's thesis) with none yet.
     18: "prof-recommendation",
+    # References for the ten fault families that have a recipe and data but no blueprint yet,
+    # gathered before the blueprint is written rather than after. The five code_* families had
+    # nothing at all in the reference pack; they are most of what is here.
+    19: "future-blueprints",
 }
 
 UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "

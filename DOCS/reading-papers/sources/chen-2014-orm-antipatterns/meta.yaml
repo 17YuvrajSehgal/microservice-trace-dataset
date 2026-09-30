@@ -1,0 +1,18 @@
+id: chen-2014-orm-antipatterns
+title: Detecting Performance Anti-patterns for Applications Developed using Object-Relational
+  Mapping
+authors: Chen, T.-H.; Shang, W.; Jiang, Z. M.; Hassan, A. E.; Nasser, M.; Flora, P.
+year: 2014
+venue: ICSE 2014
+url: https://petertsehsun.github.io/papers/peter_icse2014.pdf
+retrieved: '2026-09-30'
+type: peer_reviewed
+status: S
+verified: false
+blueprints:
+- future-blueprints
+files:
+- paper.pdf
+note: The canonical paper on ORM performance anti-patterns, including the N+1 pattern
+  our recipe injects. Reports an order-of-magnitude execution-time penalty for N+1
+  against the equivalent single SQL query.

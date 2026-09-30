@@ -48,6 +48,7 @@ DOCS/reading-papers/**
 !DOCS/reading-papers/table.md
 !DOCS/reading-papers/index.yaml
 !DOCS/reading-papers/README.md
+!DOCS/reading-papers/FUTURE-BLUEPRINT-REFERENCES.md
 # the extracted text layer of the PDFs is the FULL TEXT of IEEE/ACM papers.
 # Excluded by the blanket rule above; restated because it is the single worst
 # thing that could reach a public repo. Regenerable with tools/pdf_text.py.

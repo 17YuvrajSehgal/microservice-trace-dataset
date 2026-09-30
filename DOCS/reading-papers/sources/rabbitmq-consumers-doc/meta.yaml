@@ -1,0 +1,17 @@
+id: rabbitmq-consumers-doc
+title: RabbitMQ - Consumers (acknowledgement, prefetch, and what happens when consumers
+  stop)
+url: https://www.rabbitmq.com/docs/consumers
+retrieved: '2026-09-30'
+type: doc
+status: S
+verified: false
+blueprints:
+- future-blueprints
+files:
+- page.html
+- page.md
+- page_files/
+note: Our recipe pauses queue-master, the sole consumer of the shipping queue. This
+  is the mechanism reference for what a stalled consumer does to a queue. No academic
+  study of microservice queue backlog was found - that is a real gap.

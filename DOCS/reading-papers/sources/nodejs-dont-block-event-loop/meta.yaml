@@ -1,0 +1,13 @@
+id: nodejs-dont-block-event-loop
+title: Don't Block the Event Loop (or the Worker Pool) - Node.js docs
+url: https://nodejs.org/en/learn/asynchronous-work/dont-block-the-event-loop
+retrieved: '2026-09-30'
+type: doc
+status: S
+verified: false
+blueprints:
+- future-blueprints
+files:
+- page.html
+- page.md
+- page_files/

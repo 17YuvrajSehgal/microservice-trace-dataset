@@ -11,6 +11,7 @@ status: M
 verified: false
 blueprints:
 - deadlock-lock-order
+- future-blueprints
 files:
 - paper.md
 - paper.pdf

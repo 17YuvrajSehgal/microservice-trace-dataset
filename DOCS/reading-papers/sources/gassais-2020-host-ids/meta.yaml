@@ -12,5 +12,6 @@ status: V
 verified: true
 blueprints:
 - data-exfiltration
+- future-blueprints
 files:
 - paper.pdf

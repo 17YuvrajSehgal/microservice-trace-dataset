@@ -1,0 +1,12 @@
+id: db-access-bugs-java-2024
+title: An Empirical Study on the Characteristics of Database Access Bugs in Java Applications
+year: 2024
+url: https://arxiv.org/pdf/2405.15008
+retrieved: '2026-09-30'
+type: peer_reviewed
+status: S
+verified: false
+blueprints:
+- future-blueprints
+files:
+- paper.pdf

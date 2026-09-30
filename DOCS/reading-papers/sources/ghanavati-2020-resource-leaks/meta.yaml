@@ -12,5 +12,6 @@ verified: true
 blueprints:
 - connection-pool-exhaustion
 - fd-exhaustion
+- future-blueprints
 files:
 - paper.pdf

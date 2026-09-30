@@ -72,7 +72,8 @@ sources:
     kind: local
     from: "1 host-cpu-saturation (anomaly_cpu)/PSI - Pressure Stall Information — The Linux Kernel documentation.html"
     also: ["1 host-cpu-saturation (anomaly_cpu)/psi.md"]
-    blueprints: [1, 14]
+    also_for: "anomaly_mem - memory.pressure"
+    blueprints: [1, 14, 19]
 
   # ---------------------------------------------------------------- 7 cpu-contention-co-tenant
   zhang-2013-cpi2:
@@ -157,7 +158,8 @@ sources:
     status: V
     kind: local
     from: "6 lock-contention-futex-storm (lock_contention)/Multi-Level_Execution_Trace_Based_Lock_Contention_Analysis.pdf"
-    blueprints: [6, 8]
+    also_for: "code_lock_across_io - and the honest limit: kernel data may not separate contention from a coding mistake"
+    blueprints: [6, 8, 19]
 
   # ---------------------------------------------------------------- 9 db-latency-dependency-wait
   yang-2018-db-perf-bugs:
@@ -170,7 +172,8 @@ sources:
     type: peer_reviewed
     status: V
     kind: pdf
-    blueprints: [9]
+    also_for: "code_n_plus_one - ORM misuse is their top cause category"
+    blueprints: [9, 19]
 
   dai-2018-timeout:
     title: "Understanding Real-World Timeout Problems in Cloud Server Systems"
@@ -185,7 +188,8 @@ sources:
     # re-fetch, so blueprint 5 does not end up with the same paper under two file names
     kind: local
     from: "3 connection-pool-exhaustion (conn_pool_exhaustion)/Understanding Real-World Timeout Problems in Cloud Server Systems.pdf"
-    blueprints: [3, 5, 9]
+    also_for: "error_storm - timeout handling and retry behaviour"
+    blueprints: [3, 5, 9, 19]
 
   nemati-2022-critical-path:
     title: "Critical Path Analysis through Hierarchical Distributed Virtualized Environments Using Host Kernel Tracing"
@@ -323,7 +327,8 @@ sources:
     status: V
     kind: local
     from: "3 connection-pool-exhaustion (conn_pool_exhaustion)/Memory and Resource Leak Defects and their repairs in Java Projects.pdf"
-    blueprints: [3, 12]
+    also_for: "code_unbounded_cache - unbounded growth is a leak shape"
+    blueprints: [3, 12, 19]
 
   neo4j-issue-1799:
     title: "Too many open files (neo4j#1799)"
@@ -425,7 +430,8 @@ sources:
     type: peer_reviewed
     status: S
     kind: pdf
-    blueprints: [15]
+    also_for: "anomaly_mem - PSI-measured memory pressure before any OOM"
+    blueprints: [15, 19]
 
   facebook-psi-overview:
     title: "Getting Started with PSI (oomd)"
@@ -454,7 +460,8 @@ sources:
     type: peer_reviewed
     status: V
     kind: pdf
-    blueprints: [16]
+    also_for: "resource_abuse - LTTng host IDS, lists exfiltration and abuse"
+    blueprints: [16, 19]
 
   jewell-2011-exfiltration-syscalls:
     title: "Host-Based Data Exfiltration Detection via System Call Sequences"
@@ -527,7 +534,8 @@ sources:
     status: M
     kind: local
     from: "2 network-path-degradation (anomaly_net, svc_net)/Why Does the Cloud Stop Computing.pdf"
-    blueprints: [2]
+    also_for: "error_storm - outage causes in the wild"
+    blueprints: [2, 19]
 
   hikaricp-pool-sizing:
     title: "HikariCP - About Pool Sizing (wiki)"
@@ -583,7 +591,8 @@ sources:
     status: M
     kind: local
     from: "4 deadlock-lock-order (deadlock)/Learning from Mistakes — A Comprehensive Study on RealWorld Concurrency Bug Characteristics.pdf"
-    blueprints: [4]
+    also_for: "code_lock_across_io - real-world concurrency bug shapes"
+    blueprints: [4, 19]
 
   tu-2019-go-concurrency:
     title: "Understanding Real-World Concurrency Bugs in Go"
@@ -619,7 +628,8 @@ sources:
     status: V
     kind: local
     from: "5 dependency-outage-retry-storm (dependency_outage)/Metastable Failures in Distributed Systems.pdf"
-    blueprints: [5]
+    also_for: "error_storm, queue_backlog - their 2.3 slow error handling IS error_storm"
+    blueprints: [5, 19]
 
   huang-2022-metastable-wild:
     title: "Metastable Failures in the Wild"
@@ -866,7 +876,8 @@ sources:
     type: peer_reviewed
     status: M
     kind: pdf
-    blueprints: [17]
+    also_for: "code_lock_across_io, code_unbounded_cache - real performance bugs"
+    blueprints: [17, 19]
 
   ncsu-timeout-project:
     title: "Timeout bug detection project page (TScope ICAC 2018, TFix ICDCS 2019)"
@@ -1163,3 +1174,124 @@ sources:
     kind: local
     from: "prof-recommendation/Encyclopedia of Crash Dump 1200pg - libgen.lc.pdf"
     blueprints: [18]
+
+  # ================================================================ future-blueprints
+  # References for the TEN fault families that have a recipe and data but NO blueprint yet.
+  # Gathered now so the evidence is on disk before the blueprint is written, not after.
+  #
+  # Each entry records `for_family` - which uncovered fault it is meant to ground. Several
+  # existing sources also serve these families and carry blueprint 19 as well, so the
+  # directory is self-contained.
+  #
+  # The five code_* families had NO references anywhere in the reference pack. They are the
+  # real gap and most of what follows is for them.
+
+  # ---- code_n_plus_one : one extra query per returned row
+  chen-2014-orm-antipatterns:
+    title: "Detecting Performance Anti-patterns for Applications Developed using Object-Relational Mapping"
+    authors: "Chen, T.-H.; Shang, W.; Jiang, Z. M.; Hassan, A. E.; Nasser, M.; Flora, P."
+    year: 2014
+    venue: "ICSE 2014"
+    url: "https://petertsehsun.github.io/papers/peter_icse2014.pdf"
+    type: peer_reviewed
+    status: S
+    for_family: code_n_plus_one
+    note: "The canonical paper on ORM performance anti-patterns, including the N+1 pattern our
+      recipe injects. Reports an order-of-magnitude execution-time penalty for N+1 against the
+      equivalent single SQL query."
+    kind: pdf
+    blueprints: [19]
+
+  db-access-bugs-java-2024:
+    title: "An Empirical Study on the Characteristics of Database Access Bugs in Java Applications"
+    year: 2024
+    url: "https://arxiv.org/pdf/2405.15008"
+    type: peer_reviewed
+    status: S
+    for_family: code_n_plus_one
+    kind: pdf
+    blueprints: [19]
+
+  # ---- code_event_loop_block : synchronous CPU work inside a request handler
+  davis-2018-first-class-timeouts:
+    title: "A Sense of Time for JavaScript and Node.js - First-Class Timeouts as a Cure for Event Handler Poisoning"
+    authors: "Davis, J. C.; Williamson, E. R.; Lee, D."
+    year: 2018
+    venue: "USENIX Security 2018"
+    url: "https://www.usenix.org/system/files/conference/usenixsecurity18/sec18-davis.pdf"
+    type: peer_reviewed
+    status: S
+    for_family: code_event_loop_block
+    note: "Names the failure mode - Event Handler Poisoning. A single long-running callback
+      poisons the event loop, so a single-threaded runtime stalls ENTIRELY, including requests
+      that never touch the slow path. That is exactly the shape our recipe injects.
+      The earlier EUROSEC 2017 paper by the same authors (10.1145/3065913.3065916) is the
+      original statement of EHP but is paywalled."
+    kind: pdf
+    blueprints: [19]
+
+  nodejs-dont-block-event-loop:
+    title: "Don't Block the Event Loop (or the Worker Pool) - Node.js docs"
+    url: "https://nodejs.org/en/learn/asynchronous-work/dont-block-the-event-loop"
+    type: doc
+    status: S
+    for_family: code_event_loop_block
+    kind: html
+    blueprints: [19]
+
+  # ---- code_serial_awaits : work done one at a time that was meant to be parallel
+  drasync-2022:
+    title: "DrAsync - Identifying and Visualizing Anti-Patterns in Asynchronous JavaScript"
+    venue: "ICSE 2022"
+    url: "https://www.franktip.org/pubs/icse2022-drasync.pdf"
+    type: peer_reviewed
+    status: S
+    for_family: code_serial_awaits
+    note: "Detects async anti-patterns including loopOverArrayWithAwait - awaiting inside a loop
+      instead of awaiting once over Promise.all. That IS our code_serial_awaits fault. The only
+      paper found that names this pattern specifically."
+    kind: pdf
+    blueprints: [19]
+
+  # ---- resource_abuse : mining-shaped CPU + periodic short connections
+  suneja-2020-cryptomining-containers:
+    title: "Cryptomining Detection in Container Clouds Using System Calls and Explainable Machine Learning"
+    authors: "Suneja, S. et al."
+    year: 2020
+    venue: "IEEE IPDS 2020"
+    url: "http://www.cs.toronto.edu/~sahil/suneja-ipds20.pdf"
+    type: peer_reviewed
+    status: S
+    for_family: resource_abuse
+    note: "The closest published work to our resource_abuse fault: cryptomining, in CONTAINERS,
+      detected from SYSTEM CALLS. Notes that containers sharing a host kernel make per-container
+      attribution hard - the same problem our pid_ns work solves."
+    kind: pdf
+    blueprints: [19]
+
+  # ---- queue_backlog : the sole consumer of a queue is paused
+  rabbitmq-consumers-doc:
+    title: "RabbitMQ - Consumers (acknowledgement, prefetch, and what happens when consumers stop)"
+    url: "https://www.rabbitmq.com/docs/consumers"
+    type: doc
+    status: S
+    for_family: queue_backlog
+    note: "Our recipe pauses queue-master, the sole consumer of the shipping queue. This is the
+      mechanism reference for what a stalled consumer does to a queue. No academic study of
+      microservice queue backlog was found - that is a real gap."
+    kind: html
+    blueprints: [19]
+
+  # ---- anomaly_mem : host-wide memory pressure
+  kernel-mm-concepts:
+    title: "Concepts overview - Linux memory management documentation"
+    url: "https://docs.kernel.org/admin-guide/mm/concepts.html"
+    type: doc
+    status: S
+    for_family: anomaly_mem
+    note: "Host-level reclaim and page-cache behaviour, as distinct from the per-cgroup
+      memory.max path that service-memory-cap already covers. The coverage sweep found
+      anomaly_mem inseparable from svc_mem_cap on our data, so a blueprint here needs a
+      mechanism argument, not just a threshold."
+    kind: html
+    blueprints: [19]

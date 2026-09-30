@@ -1,0 +1,20 @@
+id: davis-2018-first-class-timeouts
+title: A Sense of Time for JavaScript and Node.js - First-Class Timeouts as a Cure
+  for Event Handler Poisoning
+authors: Davis, J. C.; Williamson, E. R.; Lee, D.
+year: 2018
+venue: USENIX Security 2018
+url: https://www.usenix.org/system/files/conference/usenixsecurity18/sec18-davis.pdf
+retrieved: '2026-09-30'
+type: peer_reviewed
+status: S
+verified: false
+blueprints:
+- future-blueprints
+files:
+- paper.pdf
+note: Names the failure mode - Event Handler Poisoning. A single long-running callback
+  poisons the event loop, so a single-threaded runtime stalls ENTIRELY, including
+  requests that never touch the slow path. That is exactly the shape our recipe injects.
+  The earlier EUROSEC 2017 paper by the same authors (10.1145/3065913.3065916) is
+  the original statement of EHP but is paywalled.

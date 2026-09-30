@@ -9,6 +9,7 @@ verified: true
 blueprints:
 - host-cpu-saturation
 - host-disk-saturation
+- future-blueprints
 files:
 - page.html
 - page.md

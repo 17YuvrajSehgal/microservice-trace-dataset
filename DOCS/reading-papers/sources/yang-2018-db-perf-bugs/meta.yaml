@@ -12,5 +12,6 @@ status: V
 verified: true
 blueprints:
 - db-latency-dependency-wait
+- future-blueprints
 files:
 - paper.pdf
