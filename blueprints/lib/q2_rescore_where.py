@@ -74,6 +74,9 @@ def main() -> int:
         d = os.path.dirname(sp)
         try:
             sc = json.load(io.open(sp, encoding="utf-8"))
+            # diagnosis.json IS the diagnosis, not {"diagnosis": ...} - q2_run_one unwraps it
+            # before writing. Reading it as if it were wrapped silently yields an empty answer
+            # and scores all sixty cells `none`, which the dry run caught.
             dx = json.load(io.open(os.path.join(d, "diagnosis.json"), encoding="utf-8"))
             gt = json.load(io.open(os.path.join(d, "ground_truth.json"), encoding="utf-8"))
         except Exception as e:                                          # noqa: BLE001
@@ -89,13 +92,20 @@ def main() -> int:
 
         ns, via = resolve_ns(rd, gt)
         f = gt.get("fault") or {}
-        jd = J.judge(dx.get("diagnosis") or {}, dx.get("trajectory"), sc.get("problem") or "",
+        # judge returns {"where": {...}, "what": {...}, "how": {...}} - the WHERE axis is one
+        # level down. The trajectory lives in the transcript, not here, so `how` is computed
+        # from nothing; that is fine because only WHERE is being re-scored and the rest is
+        # carried unchanged from the original score.
+        jd = J.judge(dx, None, sc.get("problem") or "",
                      true_service=f.get("target_service", ""), scope=f.get("scope", ""),
                      true_ns=ns)
-        # the window scoring is unchanged, so carry it rather than recomputing and risking drift
+        w = jd["where"]
         before = (sc.get("where"), sc.get("container_correct"))
-        sc["where"] = jd.get("where")
-        sc["container_correct"] = jd.get("container_correct")
+        sc["where"] = w["where"]
+        sc["container_correct"] = w.get("container_correct")
+        sc["pred_pid_ns"] = w.get("pid_ns")
+        sc["true_pid_ns"] = w.get("true_pid_ns")
+        sc["named_culprit"] = w["where"] == "named"
         sc["true_ns"], sc["true_ns_via"] = ns, via
         after = (sc["where"], sc["container_correct"])
 
