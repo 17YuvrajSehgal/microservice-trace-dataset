@@ -513,6 +513,23 @@ def ctf_lines(run_dir: str, event: str, begin: str, end: str, n: int = 10,
                      "if you want to know how many there were."),
         }
 
+    # Where the matches actually are, at 100 ms resolution, straight from the index. The raw
+    # decode below can only read about a quarter-second of a range this dense, so when it stops
+    # early the agent needs somewhere precise to look next rather than just being told it
+    # failed. Costs one index scan we already know how to do.
+    hot = []
+    try:
+        idx2 = _index_for(run_dir)
+        if idx2:
+            per_bucket = {}
+            for b, _e, _p, _n, c in _scan_index(idx2, ev_re=ev_re, procname=procname,
+                                                t0=t0, t1=t1):
+                per_bucket[b] = per_bucket.get(b, 0) + c
+            hot = [{"at": _fmt(b), "events": n}
+                   for b, n in sorted(per_bucket.items(), key=lambda kv: -kv[1])[:6]]
+    except Exception:                                                   # noqa: BLE001
+        hot = []
+
     cmd = [BT2] + GMT + [ctf, "--begin", begin, "--end", end]
     lines, scanned = [], 0
     try:
@@ -520,10 +537,20 @@ def ctf_lines(run_dir: str, event: str, begin: str, end: str, n: int = 10,
                              text=True, bufsize=1 << 20)
     except OSError as e:
         return {"error": "cannot run babeltrace2 (%s): %r" % (BT2, e)}
+    truncated_scan = False
     with p:
         for line in p.stdout:
             scanned += 1
             if scanned > MAX_SCAN:
+                # MEASURED: these traces emit about 1.56 MILLION events per second, and
+                # `scanned` counts every line in the range rather than only matching ones. So
+                # this cap is reached about a quarter of a second into ANY request. Before this
+                # flag existed the tool returned `lines: []` and a note calling them "the first
+                # matching lines in the range" - which reads as "there are none". On the first
+                # two campaigns that happened in 132 of 1114 calls, every one of them with a
+                # procname filter, because an unfiltered request finds matches immediately and
+                # a filtered one has to scan past the flood to reach its process.
+                truncated_scan = True
                 break
             m = _EVENT_RE.search(line)
             if not m or not ev_re.search(m.group(1)):
@@ -543,8 +570,22 @@ def ctf_lines(run_dir: str, event: str, begin: str, end: str, n: int = 10,
         "filters": {"procname": procname, "contains": contains},
         "returned": len(lines), "lines": lines,
         "total_in_range": total,
-        "note": ("These are the first matching lines in the range, not a random sample, and "
-                 "not a count. Use query_ctf if you want to know how many there were."),
+        "scan_truncated": truncated_scan,
+        "scanned_lines": scanned,
+        # only when it matters - a successful read does not need directions
+        "busiest_100ms_buckets": hot if truncated_scan else None,
+        "note": (
+            ("STOPPED EARLY. This range holds far more events than one request can read, so "
+             "only about the first %s lines of it were examined - roughly the first fraction "
+             "of a second. %s Treat this as 'not read', NOT as 'not present': ask again for a "
+             "much shorter range, or use query_ctf, which counts from the index and reads the "
+             "whole range. busiest_100ms_buckets lists exactly where the matches are."
+             % ("{:,}".format(MAX_SCAN),
+                ("The index says %s matching events DO exist in this range." % total)
+                if total else ""))
+            if truncated_scan else
+            ("These are the first matching lines in the range, not a random sample, and "
+             "not a count. Use query_ctf if you want to know how many there were.")),
     }
 
 
