@@ -284,6 +284,8 @@ def _call(messages, tools, node, step, force=None):
     client = config.make_client()
     kw = dict(config.openai_create_kwargs())
     schema = [{"type": "function", "function": t} for t in tools]
+    if schema:
+        kw["tools"] = schema          # tools=[] is rejected by some providers; omit instead
     if force:
         kw["tool_choice"] = {"type": "function", "function": {"name": force}}
     t0 = time.time()
@@ -291,7 +293,7 @@ def _call(messages, tools, node, step, force=None):
     # for rate limits - so _api_call's retry can see it. Without it the SDK hands back an object
     # whose .choices is None and the next line dies with a TypeError that says nothing.
     r = _api_call(lambda: checked(client.chat.completions.create(
-        model=config.model_id(), messages=messages, tools=schema, **kw)), CTX.tr, step)
+        model=config.model_id(), messages=messages, **kw)), CTX.tr, step)
     CTX.event("api_response", node=node, step=step,
               latency_ms=int((time.time() - t0) * 1000), response=T.to_jsonable(r))
     CTX.add_tokens(r)
@@ -747,3 +749,102 @@ if __name__ == "__main__":
                                      os.path.basename(rd.rstrip("/")) + ".json"))
     o = diagnose(load_run(rd), app=os.environ.get("STRATATRACE_APP"), transcript_path=tp)
     print(json.dumps(o, indent=2, default=str))
+
+
+# --------------------------------------------------------------------------------------
+# Interactive follow-up. After a run has committed to a verdict, a human can ask it
+# questions, and it answers with the SAME tools, the same guard discipline and the same
+# transcript format as the run itself - so a chat answer is as auditable as a verdict.
+#
+# This is one tool-calling thread, not the plan/work/review graph: a question is one
+# worker's worth of work, and the graph exists to decompose an investigation, which a
+# question already is. note_finding is dropped (there is no synthesiser to write to) and
+# submit_diagnosis is dropped (the verdict already exists); everything else is identical.
+# --------------------------------------------------------------------------------------
+MAX_CHAT_STEPS = 10
+
+_CHAT_SYS = (
+    "You are the investigator that just analysed a Linux kernel trace of a microservice "
+    "incident and committed to a verdict. An operator now asks you follow-up questions.\n"
+    "- Answer from evidence. When a question needs data, use your tools - do not answer "
+    "from memory of the run alone if a query can check it.\n"
+    "- Give numbers, time windows (HH:MM:SS) and pid_ns ids, briefly. Plain text, no markdown "
+    "tables.\n"
+    "- If the evidence cannot answer the question, say exactly that and what is missing.\n"
+    "- Never invent events, processes or values not present in tool output.")
+
+
+class Chat:
+    """A follow-up conversation grounded in a finished run. One instance per run."""
+
+    def __init__(self, run, app=None, skill=None, diagnosis=None, findings=None,
+                 computed=None, index_root=None):
+        run_id = os.path.basename(run.run_dir.rstrip("/"))
+        # enabled=False: the run's verdict was already unmasked for the human, so chat must
+        # speak real names too - a masked alias would not match the question being asked.
+        guard = leakguard.Guard(enabled=False)
+        tr = T.Transcript(run_id, method="agent_v2-chat", condition="chat")
+        self.ctx = Ctx(RunTools(run, app=app), guard, tr, run_id, index_root=index_root)
+        sysp = _CHAT_SYS
+        if skill is not None:
+            sysp += "\n\nBLUEPRINT USED IN THE INVESTIGATION:\n" + skill.body
+        seed = []
+        if diagnosis:
+            seed.append("YOUR SUBMITTED VERDICT:\n" + json.dumps(diagnosis, indent=1))
+        if findings:
+            seed.append("FINDINGS YOUR WORKERS RECORDED:\n" + "\n".join(
+                "- [%s] %s" % (f.get("_from", "?"),
+                               json.dumps({k: v for k, v in f.items()
+                                           if not k.startswith("_")}))
+                for f in findings))
+        if computed:
+            seed.append("RAW OUTPUT OF CODE YOUR WORKERS RAN:\n" + "\n".join(
+                "- [%s] %s\n%s" % (c.get("node", "?"), c.get("why") or "",
+                                   (c.get("output") or "")[:COMPUTED_OUT_CAP])
+                for c in computed)[:COMPUTED_TOTAL_CAP])
+        if seed:
+            sysp += ("\n\nCONTEXT FROM THE RUN YOU JUST FINISHED:\n\n" + "\n\n".join(seed))
+        self.msgs = [{"role": "system", "content": sysp}]
+        self.tools = [t for t in _worker_tools() if t["name"] != "note_finding"]
+        self.turn = 0
+        self.ctx.event("chat_open", system=sysp, tools=[t["name"] for t in self.tools])
+
+    def ask(self, question: str) -> str:
+        """Answer one question. Blocking; every model call and tool call is recorded in
+        self.ctx.tr as it happens, so a poller watching the transcript sees the work live."""
+        global CTX
+        CTX = self.ctx           # _call/_exec_tool read the module global, same as the graph
+        CANCEL.clear()
+        self.turn += 1
+        node = "chat%d" % self.turn
+        self.ctx.event("chat_question", node=node, text=question)
+        self.msgs.append({"role": "user", "content": question})
+        for step in range(MAX_CHAT_STEPS):
+            m = _call(_trim_thread(self.msgs, node, step), self.tools, node, step)
+            a = {"role": "assistant", "content": m.content or ""}
+            if m.tool_calls:
+                a["tool_calls"] = [{"id": c.id, "type": "function",
+                                    "function": {"name": c.function.name,
+                                                 "arguments": c.function.arguments}}
+                                   for c in m.tool_calls]
+            self.msgs.append(a)
+            if not m.tool_calls:
+                self.ctx.event("chat_answer", node=node, text=m.content or "")
+                return m.content or ""
+            for c in m.tool_calls:
+                try:
+                    args = json.loads(c.function.arguments or "{}")
+                except Exception:                                       # noqa: BLE001
+                    args = {}
+                self.msgs.append({"role": "tool", "tool_call_id": c.id,
+                                  "content": _exec_tool(c.function.name, args, node, step)})
+        # out of steps: one final call with no tools forces a text answer from what it has
+        self.msgs.append({"role": "user", "content":
+                          "You are out of tool steps. Answer now from what you have seen."})
+        m = _call(_trim_thread(self.msgs, node, MAX_CHAT_STEPS), [], node, MAX_CHAT_STEPS)
+        self.msgs.append({"role": "assistant", "content": m.content or ""})
+        self.ctx.event("chat_answer", node=node, text=m.content or "")
+        return m.content or ""
+
+    def close(self):
+        self.ctx.sb.close()

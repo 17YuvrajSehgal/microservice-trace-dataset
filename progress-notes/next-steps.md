@@ -94,3 +94,7 @@ Then delete the instance **and** the archive disk (`auto-delete=no`, so it survi
   two-application rule. Today's Node-vs-Go finding makes a third runtime genuinely interesting.
 - `explanation.txt` / `recommended_action.txt` are declared by blueprints and written by nothing.
 - H1 with/without agent comparison; H2 parent/child blueprint tree.
+
+## After 07-10
+- Ask-the-agent chat is demo-only state (in-memory, one session). If it should survive a
+  server restart, persist the chat transcript next to live.json.

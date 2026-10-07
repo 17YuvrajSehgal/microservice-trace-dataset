@@ -556,8 +556,10 @@ def live_ready():
         pass
     prov = (os.environ.get("RCA_PROVIDER") or "").lower()
     keyvar = {"azure": "AZURE_OPENAI_API_KEY", "anthropic": "ANTHROPIC_API_KEY",
-              "openai": "OPENAI_API_KEY"}.get(prov, "")
-    if keyvar and not (os.environ.get(keyvar) or "").strip():
+              "openai": "OPENAI_API_KEY", "openrouter": "OPEN_ROUTER_API_KEY"}.get(prov, "")
+    has_key = bool((os.environ.get(keyvar) or "").strip()) or (
+        prov == "openrouter" and (os.environ.get("OPENROUTER_API_KEY") or "").strip())
+    if keyvar and not has_key:
         why.append("no API key for provider %r" % prov)
     return {"ready": not why, "why": why,
             "provider": prov or "unset", "model": os.environ.get("RCA_MODEL") or "unset"}
@@ -613,6 +615,13 @@ def live_start():
         LIVE.update({"running": True, "error": None, "started": time.time(),
                      "done": False, "out": None, "tr": None, "seen": 0,
                      "head": False, "stopped": False})
+        # chat is grounded in a specific run's verdict; a new run makes the old seed stale
+        if CHAT.get("obj") is not None:
+            try:
+                CHAT["obj"].close()
+            except Exception:                                           # noqa: BLE001
+                pass
+        CHAT.update({"obj": None, "busy": False, "error": None, "seen": 0, "for": None})
     threading.Thread(target=_live_worker, daemon=True).start()
     return {"started": True}
 
@@ -677,6 +686,86 @@ def live_poll(since: int):
             "summary": {k: (LIVE.get("out") or {}).get(k)
                         for k in ("wall_s", "n_tool_calls", "n_code_snippets",
                                   "n_findings", "tokens")} if LIVE["done"] else None}
+
+
+# ----------------------------------------------------------------------------------
+# Ask the agent. After a live run commits to a verdict, follow-up questions go to
+# agent_v2.Chat - the same tools, recorded in a transcript of its own, which the UI polls
+# exactly the way it polls the run. Seeded with what THAT run found, so "why did you say
+# carts?" is answerable; a question needing fresh data triggers real tool calls.
+# ----------------------------------------------------------------------------------
+CHAT = {"obj": None, "busy": False, "error": None, "seen": 0, "for": None}
+CHAT_LOCK = threading.Lock()
+
+
+def _chat_seed():
+    """diagnosis + findings + computed from the finished live run's transcript."""
+    out = LIVE.get("out") or {}
+    ev = list(getattr(LIVE.get("tr"), "events", []) or [])
+    find = next((e.get("findings") for e in reversed(ev) if e.get("type") == "scratchpad"), None)
+    comp = next((e.get("computed") for e in reversed(ev) if e.get("type") == "computed"), None)
+    return out.get("diagnosis"), find, comp
+
+
+def chat_ask(q: str):
+    if not q.strip():
+        return {"accepted": False, "reason": "empty question"}
+    if LIVE["running"] or not (LIVE["done"] and LIVE.get("out")):
+        return {"accepted": False, "reason": "finish a live run first - chat is grounded in it"}
+    with CHAT_LOCK:
+        if CHAT["busy"]:
+            return {"accepted": False, "reason": "still answering the previous question"}
+        CHAT["busy"], CHAT["error"] = True, None
+
+    def work():
+        try:
+            os.environ["CTF_INDEX_ROOT"] = DATA
+            sys.path.insert(0, os.path.join(ROOT, "agentic-rca"))
+            sys.path.insert(0, ROOT)
+            from stratatrace import load_run
+            import agent_v2, skillreg
+            if CHAT["obj"] is None or CHAT["for"] != RUN_ID:
+                if CHAT["obj"] is not None:
+                    try:
+                        CHAT["obj"].close()
+                    except Exception:                                   # noqa: BLE001
+                        pass
+                dx, find, comp = _chat_seed()
+                sk = [x for x in skillreg.load_skills(
+                    os.path.join(ROOT, "blueprints", "skills-kernel-only"))
+                    if x.name == RUNS[RUN_ID]["blueprint"]]
+                CHAT["obj"] = agent_v2.Chat(load_run(RUN_DIR), app="sockshop",
+                                            skill=sk[0] if sk else None, diagnosis=dx,
+                                            findings=find, computed=comp)
+                CHAT["for"] = RUN_ID
+                CHAT["seen"] = 0
+            CHAT["obj"].ask(q)
+        except Exception as e:                                          # noqa: BLE001
+            CHAT["error"] = "%s: %s" % (type(e).__name__, e)
+        finally:
+            CHAT["busy"] = False
+    threading.Thread(target=work, daemon=True).start()
+    return {"accepted": True}
+
+
+def chat_poll(since: int):
+    c = CHAT.get("obj")
+    ev = list(getattr(c.ctx.tr, "events", []) or []) if c is not None else []
+    new = ev[since:]
+    # In event order, so several turns fetched in one poll stay interleaved. steps_from is
+    # per-event stateless, so feeding it one event at a time changes nothing but the order.
+    steps = []
+    for e in new:
+        t = e.get("type")
+        if t == "chat_question":
+            steps.append({"kind": "question", "title": "You ask", "body": e.get("text", "")})
+        elif t == "chat_answer":
+            steps.append({"kind": "answer", "title": "It answers", "body": e.get("text", "")})
+        else:
+            steps.extend(steps_from([e], {}, None, head=False))
+    return {"steps": steps, "cursor": len(ev), "busy": CHAT["busy"],
+            "error": CHAT["error"],
+            "ready": bool(LIVE["done"] and LIVE.get("out") and not LIVE["running"])}
 
 
 # ----------------------------------------------------------------------------------
@@ -770,6 +859,10 @@ class H(BaseHTTPRequestHandler):
                 return self._json(live_start())
             if p == "/api/live/stop":
                 return self._json(live_stop())
+            if p == "/api/chat/ask":
+                return self._json(chat_ask((q.get("q") or [""])[0]))
+            if p == "/api/chat/poll":
+                return self._json(chat_poll(int((q.get("since") or ["0"])[0])))
             if p == "/api/live/poll":
                 return self._json(live_poll(int((q.get("since") or ["0"])[0])))
             if p == "/api/results":

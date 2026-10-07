@@ -472,6 +472,25 @@ Then the turn:
 
 ---
 
+## 5b · Ask the agent — if there is time
+
+Below the run there is a question box. It opens after a run finishes.
+
+> "The run is not the end of the conversation. I can question the verdict, and it answers
+> with the same tools it just used - watch, the tool calls appear the same way."
+
+Good live questions, tested:
+- *"Which container was the second-biggest CPU consumer during the fault window?"* - answers
+  from what the run already computed, instantly.
+- *"How many block_rq_issue events happened in the five minutes before the fault?"* - the run
+  never computed that, so it goes back to the trace. It also catches that the recording only
+  covers 73 seconds before the fault, and says so instead of guessing.
+
+That second behaviour is the one to point at: it checked the bounds first, and it refuses the
+part of the question the data cannot answer.
+
+---
+
 ## 6 · RESULTS — the study behind the demo
 
 The last tab. Everything before it was one incident; this is all of them.

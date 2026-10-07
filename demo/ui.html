@@ -119,6 +119,8 @@ pre{background:var(--surface-2);border:1px solid var(--rule);padding:12px 14px;o
 .step.code{border-left-color:var(--warn)}
 .step.finding{border-left-color:var(--good)}
 .step.verdict{border-left-color:var(--ink)}
+.step.question{border-left-color:var(--signal);background:var(--signal-soft)}
+.step.answer{border-left-color:var(--good)}
 .step .k{font-family:var(--mono);font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;
   color:var(--muted)}
 .step .t{font-weight:640;margin:2px 0 4px}
@@ -239,6 +241,16 @@ pre{background:var(--surface-2);border:1px solid var(--rule);padding:12px 14px;o
   <div id="livenote"></div>
   <div id="stepcount" class="hint" style="margin:8px 0 0"></div>
   <div id="steps"></div>
+
+  <h3>Ask the agent</h3>
+  <p class="hint">After a run finishes you can question its verdict. It answers with the same
+  tools it used in the run — every tool call it makes appears below, like the run itself.</p>
+  <div class="controls">
+    <input id="q" placeholder="e.g. which container was second-busiest during the fault?"
+           style="flex:1;min-width:260px" disabled>
+    <button class="go" id="ask" disabled>Ask</button>
+  </div>
+  <div id="chat"></div>
 </div>
 
 <!-- ────────────────────────────── RESULTS ────────────────────────────── -->
@@ -578,6 +590,7 @@ async function liveTick(cursor){
       <p class="hint">This ran just now against the trace in the first tab. Open Verdict to
       score it against ground truth.</p></div>`;
     if(DX) $('#vans').innerHTML=verdictHtml(DX);
+    if(!d.error && !d.stopped) chatEnable(true);
     return;
   }
   liveTimer=setTimeout(()=>liveTick(d.cursor),1200);
@@ -598,6 +611,8 @@ $('#live').onclick=async()=>{
   $('#live').disabled=true; $('#stop').disabled=false;
   $('#steps').innerHTML=''; $('#pstat').textContent='';
   $('#stepcount').textContent=''; DX=null;
+  $('#chat').innerHTML=''; chatCursor=0; chatEnable(false);
+  if(chatTimer){clearTimeout(chatTimer); chatTimer=null;}
   $('#vans').innerHTML='<p class="hint">Running…</p>'; $('#vtruth').innerHTML='';
   $('#livenote').innerHTML=`<div class="note"><p><strong>Running now</strong> — same
     <code>agent_v2.diagnose</code> the study calls, on the trace in the first tab, with the
@@ -605,6 +620,41 @@ $('#live').onclick=async()=>{
     model ${esc(r.model)}. Takes two to four minutes.</p></div>`;
   liveTick(0);
 };
+/* ---------- ask the agent ---------- */
+let chatCursor=0, chatTimer=null;
+function chatEnable(on){ $('#q').disabled=!on; $('#ask').disabled=!on; }
+async function chatTick(){
+  const d=await api('/api/chat/poll?since='+chatCursor);
+  chatCursor=d.cursor;
+  (d.steps||[]).forEach(s=>{
+    $('#chat').insertAdjacentHTML('beforeend',render(s));
+    $('#chat').lastElementChild.scrollIntoView({block:'nearest',behavior:'smooth'});
+  });
+  if(d.error){
+    $('#chat').insertAdjacentHTML('beforeend',
+      `<div class="note w"><p>${esc(d.error)}</p></div>`);
+  }
+  if(d.busy){ chatTimer=setTimeout(chatTick,1000); }
+  else { chatTimer=null; chatEnable(true); $('#q').focus(); }
+}
+async function askAgent(){
+  const q=$('#q').value.trim();
+  if(!q) return;
+  chatEnable(false);
+  const r=await api('/api/chat/ask?q='+encodeURIComponent(q));
+  if(!r.accepted){
+    $('#chat').insertAdjacentHTML('beforeend',`<div class="note w"><p>${esc(r.reason)}</p></div>`);
+    chatEnable(true); return;
+  }
+  $('#q').value='';
+  if(!chatTimer) chatTick();
+}
+$('#ask').onclick=askAgent;
+$('#q').addEventListener('keydown',e=>{ if(e.key==='Enter') askAgent(); });
+
+/* a reload must not strand chat disabled when the server already has a finished run */
+api('/api/chat/poll?since=0').then(d=>{ if(d.ready) chatEnable(true); });
+
 /* tell the user up front whether a real run is possible here */
 api('/api/live/ready').then(r=>{
   if(!r.ready){ $('#live').textContent='Run the agent for real (unavailable)';
