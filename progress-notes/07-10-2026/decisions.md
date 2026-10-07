@@ -31,3 +31,16 @@
   users could not tell whether anything was running.
 - run_python calls now render as code steps in chat (steps_from leaves them to the end-of-run
   code_snippets event, which chat never emits).
+
+## Sessions: runs + chats persist (demo)
+- One JSON file per session under demo/data/sessions/ (gitignored, ~1 MB each): the run's
+  transcript + verdict, and the chat's message thread + events. A finished run auto-saves;
+  every answered question folds back into the file.
+- Resume = the stored thread verbatim (agent_v2.Chat restore=snapshot). The thread IS the
+  context, so nothing is re-derived; sessions are isolated by construction - one file, one
+  thread, no cross-session reads. Claude-style continuation without context explosion.
+- Boot logic: page refresh reattaches to an in-flight run, else restores the newest session
+  (steps, charts, conversation).
+- Verified across a server kill: 102 run steps + chat + chart restored; asked "in the chart
+  you drew earlier, what was the peak?" - the resumed agent re-ran the computation (the model
+  never sees PLOT numbers) and answered 7.255 cores at 08:15:38, measured not remembered.

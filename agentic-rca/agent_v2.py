@@ -789,7 +789,7 @@ class Chat:
     """A follow-up conversation grounded in a finished run. One instance per run."""
 
     def __init__(self, run, app=None, skill=None, diagnosis=None, findings=None,
-                 computed=None, index_root=None):
+                 computed=None, index_root=None, restore=None):
         run_id = os.path.basename(run.run_dir.rstrip("/"))
         # enabled=False: the run's verdict was already unmasked for the human, so chat must
         # speak real names too - a masked alias would not match the question being asked.
@@ -815,10 +815,17 @@ class Chat:
                 for c in computed)[:COMPUTED_TOTAL_CAP])
         if seed:
             sysp += ("\n\nCONTEXT FROM THE RUN YOU JUST FINISHED:\n\n" + "\n\n".join(seed))
-        self.msgs = [{"role": "system", "content": sysp}]
         self.tools = [t for t in _worker_tools() if t["name"] != "note_finding"]
-        self.turn = 0
-        self.ctx.event("chat_open", system=sysp, tools=[t["name"] for t in self.tools])
+        if restore:
+            # Resuming a stored conversation: the thread IS the context, so nothing is
+            # rebuilt - the system prompt, seed and every earlier turn arrive verbatim.
+            self.msgs = list(restore.get("msgs") or [])
+            self.turn = int(restore.get("turn") or 0)
+            self.ctx.event("chat_resume", turns=self.turn, messages=len(self.msgs))
+        else:
+            self.msgs = [{"role": "system", "content": sysp}]
+            self.turn = 0
+            self.ctx.event("chat_open", system=sysp, tools=[t["name"] for t in self.tools])
 
     def ask(self, question: str) -> str:
         """Answer one question. Blocking; every model call and tool call is recorded in
@@ -856,6 +863,10 @@ class Chat:
         self.msgs.append({"role": "assistant", "content": m.content or ""})
         self.ctx.event("chat_answer", node=node, text=m.content or "")
         return m.content or ""
+
+    def snapshot(self) -> dict:
+        """Everything needed to resume this conversation later, in another process."""
+        return {"msgs": self.msgs, "turn": self.turn}
 
     def close(self):
         self.ctx.sb.close()

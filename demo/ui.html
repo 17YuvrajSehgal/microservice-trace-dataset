@@ -244,6 +244,14 @@ pre{background:var(--surface-2);border:1px solid var(--rule);padding:12px 14px;o
   <div id="stepcount" class="hint" style="margin:8px 0 0"></div>
   <div id="steps"></div>
 
+  <div class="controls" style="margin-top:20px">
+    <div><label>Past sessions</label>
+      <select id="sess" style="min-width:300px"><option value="">— none yet —</option></select>
+    </div>
+    <span class="hint">every finished run is saved with its conversation; pick one to
+      revisit it and keep asking — each session keeps only its own context</span>
+  </div>
+
   <h3>Ask the agent</h3>
   <p class="hint">After a run finishes you can question its verdict. It answers with the same
   tools it used in the run — every tool call it makes appears below, like the run itself.</p>
@@ -597,6 +605,7 @@ async function liveTick(cursor){
       score it against ground truth.</p></div>`;
     if(DX) $('#vans').innerHTML=verdictHtml(DX);
     if(!d.error && !d.stopped) chatEnable(true);
+    refreshSessions().then(ss=>{ if(ss.length) $('#sess').value=ss[0].id; });
     return;
   }
   liveTimer=setTimeout(()=>liveTick(d.cursor),1200);
@@ -690,17 +699,51 @@ function drawPlot(cv,spec){
   if(spec.xlabel){g.textAlign='center';g.fillText(spec.xlabel,L+pw/2,Hc-3);}
 }
 
+/* ---------- sessions ---------- */
+function renderChatSteps(steps){
+  steps.forEach(st=>{
+    $('#chat').insertAdjacentHTML('beforeend',render(st));
+    if(st.kind==='plot') drawPlot(document.getElementById(st._pid),st.detail);
+  });
+}
+async function refreshSessions(select){
+  const d=await api('/api/sessions');
+  const opts=(d.sessions||[]).map(x=>{
+    const dt=new Date((x.created||0)*1000);
+    const when=dt.toLocaleString(undefined,{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
+    return `<option value="${x.id}">${when} · ${esc(x.run_id||'')} · ${x.turns||0} question${x.turns===1?'':'s'}</option>`;
+  }).join('');
+  $('#sess').innerHTML=opts||'<option value="">— none yet —</option>';
+  if(select) $('#sess').value=select;
+  return d.sessions||[];
+}
+async function loadSession(id){
+  const d=await api('/api/session?id='+encodeURIComponent(id));
+  if(d.error){ $('#livenote').innerHTML=`<div class="note w"><p>${esc(d.error)}</p></div>`; return; }
+  GEN++; playing=false;
+  if(liveTimer){clearTimeout(liveTimer);liveTimer=null;}
+  if(chatTimer){clearTimeout(chatTimer);chatTimer=null;}
+  $('#steps').innerHTML=''; $('#chat').innerHTML=''; $('#livenote').innerHTML=''; DX=null;
+  (d.run_steps||[]).forEach(st=>$('#steps').insertAdjacentHTML('beforeend',render(st)));
+  renderChatSteps(d.chat_steps||[]);
+  chatCursor=0;
+  $('#stepcount').textContent=`${(d.run_steps||[]).length} steps · restored`;
+  $('#pstat').textContent='';
+  if(DX) $('#vans').innerHTML=verdictHtml(DX);
+  $('#vtruth').innerHTML='';
+  chatEnable(true);
+}
+$('#sess').onchange=e=>{ if(e.target.value) loadSession(e.target.value); };
+
 /* ---------- ask the agent ---------- */
 let chatCursor=0, chatTimer=null;
 function chatEnable(on){ $('#q').disabled=!on; $('#ask').disabled=!on; }
 async function chatTick(){
   const d=await api('/api/chat/poll?since='+chatCursor);
   chatCursor=d.cursor;
-  (d.steps||[]).forEach(s=>{
-    $('#chat').insertAdjacentHTML('beforeend',render(s));
-    if(s.kind==='plot') drawPlot(document.getElementById(s._pid),s.detail);
+  renderChatSteps(d.steps||[]);
+  if((d.steps||[]).length)
     $('#chat').lastElementChild.scrollIntoView({block:'nearest',behavior:'smooth'});
-  });
   if(d.error){
     $('#chat').insertAdjacentHTML('beforeend',
       `<div class="note w"><p>${esc(d.error)}</p></div>`);
@@ -729,8 +772,20 @@ async function askAgent(){
 $('#ask').onclick=askAgent;
 $('#q').addEventListener('keydown',e=>{ if(e.key==='Enter') askAgent(); });
 
-/* a reload must not strand chat disabled when the server already has a finished run */
-api('/api/chat/poll?since=0').then(d=>{ if(d.ready) chatEnable(true); });
+/* boot: a refresh loses nothing. If a run is in flight, reattach to its feed; otherwise
+   restore the newest saved session - transcript, charts, conversation and all. */
+(async()=>{
+  const lp=await api('/api/live/poll?since=0');
+  if(lp.running){
+    $('#live').disabled=true; $('#stop').disabled=false;
+    $('#livenote').innerHTML='<div class="note"><p><strong>A run is in progress</strong> — reattached to its feed.</p></div>';
+    liveTick(0);
+    refreshSessions();
+    return;
+  }
+  const ss=await refreshSessions();
+  if(ss.length){ $('#sess').value=ss[0].id; await loadSession(ss[0].id); }
+})();
 
 /* tell the user up front whether a real run is possible here */
 api('/api/live/ready').then(r=>{

@@ -20,7 +20,7 @@ The first start does one pass over 4.1 million index rows and caches the aggrega
 takes about half a minute. Every start after that is instant.
 """
 from __future__ import annotations
-import argparse, gzip, json, os, re, sys, threading, time
+import argparse, glob, gzip, json, os, re, sys, threading, time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse, parse_qs
 
@@ -598,6 +598,16 @@ def _live_worker():
                                 transcript_path=os.path.join(DATA, "live.json"),
                                 condition="demo-live", skills=sk, skill_given=True)
         LIVE["out"] = out
+        # Every finished run becomes a session on disk, so a refresh or restart loses
+        # nothing: the transcript replays, and the chat continues where it stopped.
+        tr = LIVE.get("tr")
+        if out and tr is not None:
+            sid = time.strftime("%Y%m%d-%H%M%S")
+            _sess_write({"id": sid, "run_id": RUN_ID, "created": time.time(),
+                         "meta": dict(getattr(tr, "meta", {}) or {}),
+                         "out": out, "run_events": list(tr.events),
+                         "chat": {"msgs": [], "turn": 0, "events": []}})
+            CHAT.update({"sid": sid, "obj": None, "base_events": []})
     except Exception as e:                                              # noqa: BLE001
         LIVE["error"] = "%s: %s" % (type(e).__name__, e)
     finally:
@@ -621,7 +631,8 @@ def live_start():
                 CHAT["obj"].close()
             except Exception:                                           # noqa: BLE001
                 pass
-        CHAT.update({"obj": None, "busy": False, "error": None, "seen": 0, "for": None})
+        CHAT.update({"obj": None, "busy": False, "error": None,
+                     "sid": None, "base_events": []})
     threading.Thread(target=_live_worker, daemon=True).start()
     return {"started": True}
 
@@ -694,24 +705,99 @@ def live_poll(since: int):
 # exactly the way it polls the run. Seeded with what THAT run found, so "why did you say
 # carts?" is answerable; a question needing fresh data triggers real tool calls.
 # ----------------------------------------------------------------------------------
-CHAT = {"obj": None, "busy": False, "error": None, "seen": 0, "for": None}
+CHAT = {"obj": None, "busy": False, "error": None, "t0": 0.0,
+        "sid": None, "base_events": []}
 CHAT_LOCK = threading.Lock()
 
+# One file per session: the run (its transcript + verdict) and the whole conversation held
+# about it. A session is the unit of persistence AND the unit of context - resuming one
+# restores its message thread verbatim, and no session ever sees another's.
+SESS_DIR = os.path.join(DATA, "sessions")
+os.makedirs(SESS_DIR, exist_ok=True)
 
-def _chat_seed():
-    """diagnosis + findings + computed from the finished live run's transcript."""
-    out = LIVE.get("out") or {}
-    ev = list(getattr(LIVE.get("tr"), "events", []) or [])
-    find = next((e.get("findings") for e in reversed(ev) if e.get("type") == "scratchpad"), None)
-    comp = next((e.get("computed") for e in reversed(ev) if e.get("type") == "computed"), None)
-    return out.get("diagnosis"), find, comp
+
+def _sess_path(sid):
+    return os.path.join(SESS_DIR, re.sub(r"[^0-9A-Za-z_-]", "", sid) + ".json")
+
+
+def _sess_load(sid):
+    try:
+        return json.load(open(_sess_path(sid), encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+
+
+def _sess_write(sess):
+    tmp = _sess_path(sess["id"]) + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as fh:
+        json.dump(sess, fh, default=str)
+    os.replace(tmp, _sess_path(sess["id"]))
+
+
+def save_chat():
+    """Fold the in-memory conversation back into its session file."""
+    sid, obj = CHAT.get("sid"), CHAT.get("obj")
+    if not sid or obj is None:
+        return
+    sess = _sess_load(sid)
+    if not sess:
+        return
+    snap = obj.snapshot()
+    sess["chat"] = {"msgs": snap["msgs"], "turn": snap["turn"],
+                    "events": (CHAT.get("base_events") or []) + list(obj.ctx.tr.events)}
+    _sess_write(sess)
+
+
+def sessions_list():
+    out = []
+    for f in sorted(glob.glob(os.path.join(SESS_DIR, "*.json")), reverse=True):
+        try:
+            sess = json.load(open(f, encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        d = (sess.get("out") or {}).get("diagnosis") or {}
+        out.append({"id": sess.get("id"), "run_id": sess.get("run_id"),
+                    "created": sess.get("created"),
+                    "where": d.get("root_cause_service"),
+                    "turns": (sess.get("chat") or {}).get("turn") or 0})
+    return {"sessions": out}
+
+
+def session_open(sid):
+    """Make a stored session current: its steps for the screen, its thread for the chat."""
+    if LIVE["running"]:
+        return {"error": "a live run is in progress - stop it or let it finish first"}
+    if CHAT["busy"]:
+        return {"error": "still answering a question"}
+    sess = _sess_load(sid)
+    if not sess:
+        return {"error": "no such session"}
+    if CHAT.get("obj") is not None:
+        try:
+            CHAT["obj"].close()
+        except Exception:                                               # noqa: BLE001
+            pass
+    CHAT.update({"sid": sess["id"], "obj": None, "error": None,
+                 "base_events": list((sess.get("chat") or {}).get("events") or [])})
+    steps = steps_from(sess.get("run_events") or [], sess.get("meta") or {},
+                       sess.get("out") or {}, head=True)
+    d = (sess.get("out") or {}).get("diagnosis") or {}
+    if d and not any(st["kind"] == "verdict" for st in steps):
+        steps.append({"kind": "verdict", "title": "It commits to an answer",
+                      "body": d.get("what_is_wrong", ""), "detail": d})
+    return {"id": sess["id"], "run_id": sess.get("run_id"),
+            "run_steps": steps,
+            "chat_steps": chat_steps_from(CHAT["base_events"]), "ready": True}
 
 
 def chat_ask(q: str):
     if not q.strip():
         return {"accepted": False, "reason": "empty question"}
-    if LIVE["running"] or not (LIVE["done"] and LIVE.get("out")):
-        return {"accepted": False, "reason": "finish a live run first - chat is grounded in it"}
+    if LIVE["running"]:
+        return {"accepted": False, "reason": "wait for the run to finish"}
+    if not CHAT.get("sid"):
+        return {"accepted": False,
+                "reason": "run the agent, or open a past session - chat is grounded in one"}
     with CHAT_LOCK:
         if CHAT["busy"]:
             return {"accepted": False, "reason": "still answering the previous question"}
@@ -725,22 +811,32 @@ def chat_ask(q: str):
             sys.path.insert(0, ROOT)
             from stratatrace import load_run
             import agent_v2, skillreg
-            if CHAT["obj"] is None or CHAT["for"] != RUN_ID:
-                if CHAT["obj"] is not None:
-                    try:
-                        CHAT["obj"].close()
-                    except Exception:                                   # noqa: BLE001
-                        pass
-                dx, find, comp = _chat_seed()
+            if CHAT["obj"] is None:
+                sess = _sess_load(CHAT["sid"]) or {}
+                rid = sess.get("run_id") or RUN_ID
+                rd = os.path.join(DATA, "run", rid)
                 sk = [x for x in skillreg.load_skills(
                     os.path.join(ROOT, "blueprints", "skills-kernel-only"))
-                    if x.name == RUNS[RUN_ID]["blueprint"]]
-                CHAT["obj"] = agent_v2.Chat(load_run(RUN_DIR), app="sockshop",
-                                            skill=sk[0] if sk else None, diagnosis=dx,
-                                            findings=find, computed=comp)
-                CHAT["for"] = RUN_ID
-                CHAT["seen"] = 0
+                    if x.name == RUNS.get(rid, {}).get("blueprint")]
+                snap = sess.get("chat") or {}
+                if snap.get("msgs"):
+                    # resume: the stored thread is the whole context, verbatim
+                    CHAT["obj"] = agent_v2.Chat(load_run(rd), app="sockshop",
+                                                skill=sk[0] if sk else None,
+                                                restore=snap)
+                else:
+                    # first question in this session: seed from the stored run
+                    rev = sess.get("run_events") or []
+                    dx = (sess.get("out") or {}).get("diagnosis")
+                    find = next((e.get("findings") for e in reversed(rev)
+                                 if e.get("type") == "scratchpad"), None)
+                    comp = next((e.get("computed") for e in reversed(rev)
+                                 if e.get("type") == "computed"), None)
+                    CHAT["obj"] = agent_v2.Chat(load_run(rd), app="sockshop",
+                                                skill=sk[0] if sk else None, diagnosis=dx,
+                                                findings=find, computed=comp)
             CHAT["obj"].ask(q)
+            save_chat()
         except Exception as e:                                          # noqa: BLE001
             CHAT["error"] = "%s: %s" % (type(e).__name__, e)
         finally:
@@ -749,14 +845,11 @@ def chat_ask(q: str):
     return {"accepted": True}
 
 
-def chat_poll(since: int):
-    c = CHAT.get("obj")
-    ev = list(getattr(c.ctx.tr, "events", []) or []) if c is not None else []
-    new = ev[since:]
-    # In event order, so several turns fetched in one poll stay interleaved. steps_from is
-    # per-event stateless, so feeding it one event at a time changes nothing but the order.
+def chat_steps_from(events):
+    """Chat transcript events -> interface steps, in event order. steps_from is per-event
+    stateless, so feeding it one event at a time changes nothing but the order."""
     steps = []
-    for e in new:
+    for e in events:
         t = e.get("type")
         if t == "chat_question":
             steps.append({"kind": "question", "title": "You ask", "body": e.get("text", "")})
@@ -783,6 +876,13 @@ def chat_poll(since: int):
                                   "detail": spec})
                 except ValueError:
                     pass
+    return steps
+
+
+def chat_poll(since: int):
+    c = CHAT.get("obj")
+    ev = list(getattr(c.ctx.tr, "events", []) or []) if c is not None else []
+    steps = chat_steps_from(ev[since:])
     doing = "thinking"
     for e in reversed(ev):
         t = e.get("type")
@@ -799,7 +899,7 @@ def chat_poll(since: int):
     return {"steps": steps, "cursor": len(ev), "busy": CHAT["busy"], "doing": doing,
             "elapsed": round(time.time() - CHAT.get("t0", time.time()), 1),
             "error": CHAT["error"],
-            "ready": bool(LIVE["done"] and LIVE.get("out") and not LIVE["running"])}
+            "ready": bool(CHAT.get("sid")) and not LIVE["running"]}
 
 
 # ----------------------------------------------------------------------------------
@@ -893,6 +993,10 @@ class H(BaseHTTPRequestHandler):
                 return self._json(live_start())
             if p == "/api/live/stop":
                 return self._json(live_stop())
+            if p == "/api/sessions":
+                return self._json(sessions_list())
+            if p == "/api/session":
+                return self._json(session_open((q.get("id") or [""])[0]))
             if p == "/api/chat/ask":
                 return self._json(chat_ask((q.get("q") or [""])[0]))
             if p == "/api/chat/poll":
