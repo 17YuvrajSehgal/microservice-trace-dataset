@@ -71,3 +71,18 @@
 - Bug fixed en route: the demo loaded .env only inside the live-run path, so a server that went
   straight to chat fell back to provider=claude (AttributeError: Anthropic has no .chat). Now
   loaded once at startup.
+
+## UI redesign (demo)
+- Decision: full visual overhaul in the EXISTING stack (custom CSS design system, no build
+  step), not a React/Vue rewrite. Rationale: the demo's value is "one command, works offline,
+  nothing to install", and all logic (polling, charts, chat, sessions, code-connect) is wired
+  and tested; a framework rewrite risks that the day before the Ciena talk for visual gains CSS
+  already delivers. Offered the React path if they want it later.
+- New design system: soft shadows, 12px radii, pill nav tabs, logo monogram, rounded stat/
+  table/step/chat cards, refined indigo accent, focus rings, custom scrollbars, sticky blurred
+  header. Kept EVERY class/id hook the JS and the two canvas renderers depend on; only the
+  token VALUES and component styling changed, plus a few added tokens (shadows, radius).
+- Added a light/dark toggle (◐) that remembers the choice in localStorage and otherwise
+  follows the OS; it redraws the canvases (which read CSS vars) on switch.
+- Verified: all six tabs in both themes, zero console errors; chat charts still render and
+  repaint after a theme toggle (sampled canvas pixels).
