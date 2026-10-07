@@ -748,6 +748,28 @@ def save_chat():
     _sess_write(sess)
 
 
+def session_fork(sid):
+    """A fresh conversation about the SAME stored run - the run cost minutes, a chat is free.
+
+    Copies the run data into a new session with an empty chat, so the new thread starts from
+    the verdict seed alone and the old conversation stays untouched in its own file."""
+    if LIVE["running"]:
+        return {"error": "a live run is in progress"}
+    if CHAT["busy"]:
+        return {"error": "still answering a question"}
+    src = _sess_load(sid)
+    if not src:
+        return {"error": "no such session"}
+    nid = time.strftime("%Y%m%d-%H%M%S")
+    while os.path.exists(_sess_path(nid)):
+        nid += "b"
+    _sess_write({"id": nid, "run_id": src.get("run_id"), "created": time.time(),
+                 "meta": src.get("meta"), "out": src.get("out"),
+                 "run_events": src.get("run_events"), "forked_from": sid,
+                 "chat": {"msgs": [], "turn": 0, "events": []}})
+    return session_open(nid)
+
+
 def sessions_list():
     out = []
     for f in sorted(glob.glob(os.path.join(SESS_DIR, "*.json")), reverse=True):
@@ -995,6 +1017,8 @@ class H(BaseHTTPRequestHandler):
                 return self._json(live_stop())
             if p == "/api/sessions":
                 return self._json(sessions_list())
+            if p == "/api/session/fork":
+                return self._json(session_fork((q.get("id") or [""])[0]))
             if p == "/api/session":
                 return self._json(session_open((q.get("id") or [""])[0]))
             if p == "/api/chat/ask":

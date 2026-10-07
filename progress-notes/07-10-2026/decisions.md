@@ -44,3 +44,13 @@
 - Verified across a server kill: 102 run steps + chat + chart restored; asked "in the chart
   you drew earlier, what was the peak?" - the resumed agent re-ran the computation (the model
   never sees PLOT numbers) and answered 7.255 cores at 08:15:38, measured not remembered.
+
+## Session sidebar + the blank-chart bug
+- The restored chart drew blank after refresh because the boot restore runs while the Agent
+  tab is display:none - a hidden canvas has zero clientWidth, so the chart painted into
+  nothing. Fix: drawPlot remembers every spec (PLOTSPEC) and skips zero-width canvases;
+  redrawPlots() fires on tab open and window resize. The chat text was never affected.
+- Sessions moved from a dropdown to a left sidebar on the Agent tab (Claude-style): newest
+  first, active highlighted, question count per session. Two explicit starts: "Run the agent
+  (new session)" and "New chat on this run" - the latter forks the stored run into a new
+  session with an empty chat, because the run costs minutes and a chat is free.

@@ -234,34 +234,36 @@ pre{background:var(--surface-2);border:1px solid var(--rule);padding:12px 14px;o
   <code>agent_v2.diagnose</code> the study calls, live, and takes two to four minutes —
   what you see is the audit record being written as it happens. <strong>Replay</strong> plays
   back a previous investigation instantly, and needs no network.</p>
-  <div class="controls">
-    <button class="go" id="live">Run the agent for real</button>
-    <button class="ghost go" id="stop" disabled>Stop</button>
-    <button class="ghost go" id="play">Replay a past run</button>
-    <span class="hint" id="pstat"></span>
-  </div>
-  <div id="livenote"></div>
-  <div id="stepcount" class="hint" style="margin:8px 0 0"></div>
-  <div id="steps"></div>
-
-  <div class="controls" style="margin-top:20px">
-    <div><label>Past sessions</label>
-      <select id="sess" style="min-width:300px"><option value="">— none yet —</option></select>
+  <div class="split" style="margin-top:16px">
+    <div>
+      <button class="go" id="live" style="width:100%">Run the agent (new session)</button>
+      <button class="ghost go" id="fork" style="width:100%;margin-top:8px" disabled>New chat on this run</button>
+      <div class="hint" style="margin:14px 0 6px">Sessions — every run is saved with its
+        conversation. Each keeps only its own context.</div>
+      <div class="list" id="sesslist"><div class="bc" style="cursor:default">none yet</div></div>
     </div>
-    <span class="hint">every finished run is saved with its conversation; pick one to
-      revisit it and keep asking — each session keeps only its own context</span>
-  </div>
+    <div>
+      <div class="controls" style="margin-top:0">
+        <button class="ghost go" id="stop" disabled>Stop</button>
+        <button class="ghost go" id="play">Replay a past run</button>
+        <span class="hint" id="pstat"></span>
+      </div>
+      <div id="livenote"></div>
+      <div id="stepcount" class="hint" style="margin:8px 0 0"></div>
+      <div id="steps"></div>
 
-  <h3>Ask the agent</h3>
-  <p class="hint">After a run finishes you can question its verdict. It answers with the same
-  tools it used in the run — every tool call it makes appears below, like the run itself.</p>
-  <div class="controls">
-    <input id="q" placeholder="e.g. which container was second-busiest during the fault?"
-           style="flex:1;min-width:260px" disabled>
-    <button class="go" id="ask" disabled>Ask</button>
-    <span class="hint" id="cstat"></span>
+      <h3>Ask the agent</h3>
+      <p class="hint">After a run finishes you can question its verdict. It answers with the same
+      tools it used in the run — every tool call it makes appears below, like the run itself.</p>
+      <div class="controls">
+        <input id="q" placeholder="e.g. which container was second-busiest during the fault?"
+               style="flex:1;min-width:260px" disabled>
+        <button class="go" id="ask" disabled>Ask</button>
+        <span class="hint" id="cstat"></span>
+      </div>
+      <div id="chat"></div>
+    </div>
   </div>
-  <div id="chat"></div>
 </div>
 
 <!-- ────────────────────────────── RESULTS ────────────────────────────── -->
@@ -299,6 +301,7 @@ $$('nav button').forEach(b=>b.onclick=()=>{
     if(b.dataset.p==='trace') draw($('#c1'),SERIES,null,SHADE);
     if(b.dataset.p==='check'){ draw($('#c2'),SERIES,SEL,null); if(!$('#dtab').innerHTML) runCheck(); }
     if(b.dataset.p==='results') loadResults();
+    if(b.dataset.p==='agent') redrawPlots();
   });
 });
 
@@ -605,7 +608,8 @@ async function liveTick(cursor){
       score it against ground truth.</p></div>`;
     if(DX) $('#vans').innerHTML=verdictHtml(DX);
     if(!d.error && !d.stopped) chatEnable(true);
-    refreshSessions().then(ss=>{ if(ss.length) $('#sess').value=ss[0].id; });
+    refreshSessions().then(ss=>{
+      if(ss.length){ CURSID=ss[0].id; markActive(); $('#fork').disabled=false; } });
     return;
   }
   liveTimer=setTimeout(()=>liveTick(d.cursor),1200);
@@ -643,8 +647,11 @@ function mdl(t){ return esc(t).replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
 let PLOTN=0;
 const hhmmss=v=>{const t=Math.round(v);return String(Math.floor(t/3600)%24).padStart(2,'0')+':'+
   String(Math.floor(t/60)%60).padStart(2,'0')+':'+String(t%60).padStart(2,'0');};
+const PLOTSPEC={};
 function drawPlot(cv,spec){
   if(!cv||!spec)return;
+  PLOTSPEC[cv.id]=spec;
+  if(!cv.clientWidth)return;      // hidden tab: zero-size canvas; redrawn when shown
   const css=getComputedStyle(document.documentElement);
   const col=n=>css.getPropertyValue(n).trim();
   const pal=[col('--signal'),col('--warn'),col('--good'),col('--ink-2'),col('--muted')];
@@ -699,6 +706,11 @@ function drawPlot(cv,spec){
   if(spec.xlabel){g.textAlign='center';g.fillText(spec.xlabel,L+pw/2,Hc-3);}
 }
 
+function redrawPlots(){
+  $$('canvas.plotc').forEach(c=>{ if(c.clientWidth&&PLOTSPEC[c.id]) drawPlot(c,PLOTSPEC[c.id]); });
+}
+addEventListener('resize',()=>redrawPlots());
+
 /* ---------- sessions ---------- */
 function renderChatSteps(steps){
   steps.forEach(st=>{
@@ -706,20 +718,29 @@ function renderChatSteps(steps){
     if(st.kind==='plot') drawPlot(document.getElementById(st._pid),st.detail);
   });
 }
-async function refreshSessions(select){
+let CURSID=null;
+async function refreshSessions(){
   const d=await api('/api/sessions');
-  const opts=(d.sessions||[]).map(x=>{
+  const ss=d.sessions||[];
+  $('#sesslist').innerHTML=ss.length?ss.map(x=>{
     const dt=new Date((x.created||0)*1000);
     const when=dt.toLocaleString(undefined,{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
-    return `<option value="${x.id}">${when} · ${esc(x.run_id||'')} · ${x.turns||0} question${x.turns===1?'':'s'}</option>`;
-  }).join('');
-  $('#sess').innerHTML=opts||'<option value="">— none yet —</option>';
-  if(select) $('#sess').value=select;
-  return d.sessions||[];
+    const nq=`${x.turns||0} question${x.turns===1?'':'s'}`;
+    return `<div data-sid="${x.id}" class="${x.id===CURSID?'on':''}">
+      <span class="bn">${esc((x.run_id||'').replace(/_aggressive_steady/,''))}</span>
+      <span class="tag">${nq}</span><br>
+      <span class="bc">${when}${x.where?' · '+esc(x.where):''}</span></div>`;
+  }).join(''):'<div class="bc" style="cursor:default">none yet — run the agent</div>';
+  $$('#sesslist [data-sid]').forEach(el=>el.onclick=()=>loadSession(el.dataset.sid));
+  return ss;
+}
+function markActive(){
+  $$('#sesslist [data-sid]').forEach(el=>el.classList.toggle('on',el.dataset.sid===CURSID));
 }
 async function loadSession(id){
   const d=await api('/api/session?id='+encodeURIComponent(id));
   if(d.error){ $('#livenote').innerHTML=`<div class="note w"><p>${esc(d.error)}</p></div>`; return; }
+  CURSID=d.id; markActive(); $('#fork').disabled=false;
   GEN++; playing=false;
   if(liveTimer){clearTimeout(liveTimer);liveTimer=null;}
   if(chatTimer){clearTimeout(chatTimer);chatTimer=null;}
@@ -732,8 +753,17 @@ async function loadSession(id){
   if(DX) $('#vans').innerHTML=verdictHtml(DX);
   $('#vtruth').innerHTML='';
   chatEnable(true);
+  redrawPlots();
 }
-$('#sess').onchange=e=>{ if(e.target.value) loadSession(e.target.value); };
+$('#fork').onclick=async()=>{
+  if(!CURSID) return;
+  const d=await api('/api/session/fork?id='+encodeURIComponent(CURSID));
+  if(d.error){ $('#livenote').innerHTML=`<div class="note w"><p>${esc(d.error)}</p></div>`; return; }
+  CURSID=d.id;
+  await refreshSessions();
+  await loadSession(d.id);
+  $('#q').focus();
+};
 
 /* ---------- ask the agent ---------- */
 let chatCursor=0, chatTimer=null;
@@ -784,7 +814,7 @@ $('#q').addEventListener('keydown',e=>{ if(e.key==='Enter') askAgent(); });
     return;
   }
   const ss=await refreshSessions();
-  if(ss.length){ $('#sess').value=ss[0].id; await loadSession(ss[0].id); }
+  if(ss.length) await loadSession(ss[0].id);
 })();
 
 /* tell the user up front whether a real run is possible here */
