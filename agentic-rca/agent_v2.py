@@ -42,6 +42,9 @@ from agent import (FAULT_TYPES, KERNEL_ONLY_TOOLS, SENT_CAP, SENT_CAP_BY_TOOL,
                    _api_call, _fit_result, _run_tool, _tool_defs, _unmask_diagnosis,
                    _KO_HEAD, _FAULT_VOCAB, _KO_RULES)
 
+# the chat-only code tools return file text; give them the room ctf_lines gets
+SENT_CAP_BY_TOOL.update({"code_read": 18000, "code_grep": 14000, "code_tree": 14000})
+
 from langgraph.graph import END, START, StateGraph
 from langgraph.types import Send
 
@@ -318,6 +321,9 @@ def _exec_tool(name, args, node, step):
                 "truncated": len(out) > COMPUTED_OUT_CAP,
                 "error": (res.get("error") or "")[:160] or None,
             })
+        b = len(json.dumps(res, default=str))
+    elif name.startswith("code_") and CTX.repo is not None:
+        res = CTX.repo.call(name, args)
         b = len(json.dumps(res, default=str))
     else:
         res, b = _run_tool(CTX.tools, name, args, CTX.guard)
@@ -789,7 +795,7 @@ class Chat:
     """A follow-up conversation grounded in a finished run. One instance per run."""
 
     def __init__(self, run, app=None, skill=None, diagnosis=None, findings=None,
-                 computed=None, index_root=None, restore=None):
+                 computed=None, index_root=None, restore=None, code_root=None):
         run_id = os.path.basename(run.run_dir.rstrip("/"))
         # enabled=False: the run's verdict was already unmasked for the human, so chat must
         # speak real names too - a masked alias would not match the question being asked.
@@ -816,14 +822,33 @@ class Chat:
         if seed:
             sysp += ("\n\nCONTEXT FROM THE RUN YOU JUST FINISHED:\n\n" + "\n\n".join(seed))
         self.tools = [t for t in _worker_tools() if t["name"] != "note_finding"]
+        code_note = ""
+        if code_root:
+            import coderepo
+            self.ctx.repo = coderepo.CodeRepo(code_root)
+            self.tools += coderepo.TOOL_DEFS
+            code_note = (
+                chr(10) * 2 +
+                "CODE REPOSITORY CONNECTED at %s. Explore it read-only with code_tree, "
+                "code_grep and code_read - grep first, then read only the region a match "
+                "points at, never whole trees. When the trace evidence suggests a code-level "
+                "cause, find the responsible file and QUOTE the exact lines as path:line in "
+                "your answer. If the code contradicts a hypothesis, say so. Keep trace "
+                "evidence primary: the code explains a mechanism, the trace proves it "
+                "happened." % self.ctx.repo.root)
         if restore:
             # Resuming a stored conversation: the thread IS the context, so nothing is
             # rebuilt - the system prompt, seed and every earlier turn arrive verbatim.
             self.msgs = list(restore.get("msgs") or [])
             self.turn = int(restore.get("turn") or 0)
+            # a repo connected after the thread began is announced mid-thread, once
+            if code_note and not any(
+                    "CODE REPOSITORY CONNECTED" in str(m.get("content") or "")
+                    for m in self.msgs):
+                self.msgs.append({"role": "system", "content": code_note.strip()})
             self.ctx.event("chat_resume", turns=self.turn, messages=len(self.msgs))
         else:
-            self.msgs = [{"role": "system", "content": sysp}]
+            self.msgs = [{"role": "system", "content": sysp + code_note}]
             self.turn = 0
             self.ctx.event("chat_open", system=sysp, tools=[t["name"] for t in self.tools])
 

@@ -766,8 +766,50 @@ def session_fork(sid):
     _sess_write({"id": nid, "run_id": src.get("run_id"), "created": time.time(),
                  "meta": src.get("meta"), "out": src.get("out"),
                  "run_events": src.get("run_events"), "forked_from": sid,
+                 "code_root": src.get("code_root"),
                  "chat": {"msgs": [], "turn": 0, "events": []}})
     return session_open(nid)
+
+
+def code_connect(path):
+    """Attach a local source directory to the CURRENT session, read-only."""
+    sid = CHAT.get("sid")
+    if not sid:
+        return {"error": "open or run a session first"}
+    if CHAT["busy"]:
+        return {"error": "still answering a question"}
+    sess = _sess_load(sid)
+    if not sess:
+        return {"error": "no such session"}
+    if not path:                                   # disconnect
+        sess.pop("code_root", None)
+    else:
+        sys.path.insert(0, os.path.join(ROOT, "agentic-rca"))
+        import coderepo
+        try:
+            repo = coderepo.CodeRepo(path)
+        except ValueError as e:
+            return {"error": str(e)}
+        n = len(repo.call("code_tree", {"depth": 4}).get("entries") or [])
+        sess["code_root"] = repo.root
+    # keep the conversation, drop the object: the next ask rebuilds it with the code tools
+    if CHAT.get("obj") is not None:
+        save_chat()
+        sess = _sess_load(sid)                     # re-read: save_chat rewrote the file
+        if path:
+            sess["code_root"] = repo.root
+        else:
+            sess.pop("code_root", None)
+        try:
+            CHAT["obj"].close()
+        except Exception:                          # noqa: BLE001
+            pass
+        CHAT["obj"] = None
+        CHAT["base_events"] = list((sess.get("chat") or {}).get("events") or [])
+    _sess_write(sess)
+    if not path:
+        return {"connected": None}
+    return {"connected": sess["code_root"], "entries_seen": n}
 
 
 def sessions_list():
@@ -808,6 +850,7 @@ def session_open(sid):
         steps.append({"kind": "verdict", "title": "It commits to an answer",
                       "body": d.get("what_is_wrong", ""), "detail": d})
     return {"id": sess["id"], "run_id": sess.get("run_id"),
+            "code_root": sess.get("code_root"),
             "run_steps": steps,
             "chat_steps": chat_steps_from(CHAT["base_events"]), "ready": True}
 
@@ -841,11 +884,12 @@ def chat_ask(q: str):
                     os.path.join(ROOT, "blueprints", "skills-kernel-only"))
                     if x.name == RUNS.get(rid, {}).get("blueprint")]
                 snap = sess.get("chat") or {}
+                croot = sess.get("code_root")
                 if snap.get("msgs"):
                     # resume: the stored thread is the whole context, verbatim
                     CHAT["obj"] = agent_v2.Chat(load_run(rd), app="sockshop",
                                                 skill=sk[0] if sk else None,
-                                                restore=snap)
+                                                restore=snap, code_root=croot)
                 else:
                     # first question in this session: seed from the stored run
                     rev = sess.get("run_events") or []
@@ -856,7 +900,8 @@ def chat_ask(q: str):
                                  if e.get("type") == "computed"), None)
                     CHAT["obj"] = agent_v2.Chat(load_run(rd), app="sockshop",
                                                 skill=sk[0] if sk else None, diagnosis=dx,
-                                                findings=find, computed=comp)
+                                                findings=find, computed=comp,
+                                                code_root=croot)
             CHAT["obj"].ask(q)
             save_chat()
         except Exception as e:                                          # noqa: BLE001
@@ -1017,6 +1062,8 @@ class H(BaseHTTPRequestHandler):
                 return self._json(live_stop())
             if p == "/api/sessions":
                 return self._json(sessions_list())
+            if p == "/api/code/connect":
+                return self._json(code_connect((q.get("path") or [""])[0]))
             if p == "/api/session/fork":
                 return self._json(session_fork((q.get("id") or [""])[0]))
             if p == "/api/session":
@@ -1043,6 +1090,13 @@ class H(BaseHTTPRequestHandler):
 
 
 def main() -> int:
+    # Load the provider config once, at startup. It used to load inside the live-run path
+    # only, so a server that went straight to chat fell back to the default provider.
+    try:
+        from dotenv import load_dotenv
+        load_dotenv(os.path.join(ROOT, ".env"))
+    except ImportError:
+        pass
     ap = argparse.ArgumentParser()
     ap.add_argument("--port", type=int, default=8765)
     ap.add_argument("--rebuild", action="store_true", help="discard the cached aggregate")

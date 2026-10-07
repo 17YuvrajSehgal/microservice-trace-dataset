@@ -38,6 +38,7 @@ network investigation, use **Replay**, and say it is a replay.
 | **Agent** | **Run the agent for real**, streamed as it happens, with **Stop**. Or replay a past run. |
 | **Verdict** | its answer, then ground truth on demand |
 | **Agent → Ask the agent** | after a live run, question its verdict; it answers with the same tools, and every tool call shows in the feed |
+| **Agent → Connect code** | point the agent at a local source directory; it explores it read-only (tree / grep / read, jailed + denylisted) and quotes file:line when a code-level cause fits the trace evidence |
 | **Agent → Past sessions** | every finished run is saved to `demo/data/sessions/` with its whole conversation; a refresh or restart restores the newest one, and picking any session resumes its chat with full context — sessions never see each other |
 | **Results** | the whole 720-run study: every fault family, both applications, with and without the blueprint |
 

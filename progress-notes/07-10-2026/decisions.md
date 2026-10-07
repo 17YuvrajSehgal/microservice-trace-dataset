@@ -54,3 +54,20 @@
   first, active highlighted, question count per session. Two explicit starts: "Run the agent
   (new session)" and "New chat on this run" - the latter forks the stored run into a new
   session with an empty chat, because the run costs minutes and a chat is free.
+
+## Connect code: one-point RCA + code analysis (demo chat)
+- New agentic-rca/coderepo.py: jailed read-only access to a user-connected directory. Three
+  tools (code_tree/code_grep/code_read) mirroring Claude Code's core trio. Jail = realpath
+  must stay under root (symlinks cannot escape); denylist = ground_truth*/verification*/.env/
+  keys unreadable even if the connected dir contains run data (upholds the "nothing the agent
+  can reach may read ground_truth" rule); caps = grep-before-read context discipline.
+- Chat gains code tools only when a repo is connected; prompt tells it to grep first, read the
+  region, keep trace evidence primary, and quote file:line. code_root is stored in the session
+  file, so the connection survives refresh/restart and a fork inherits it.
+- Tested live on the real catalogue Go fork (C:\workplace\catalogue): asked where the sock-list
+  SQL is built - it grepped, read service.go, and quoted service.go:55 (the SELECT), 101-103
+  (per-row tag split), 109 (pagination AFTER the query). Every cited line verified exact in the
+  file. Found a real issue: pagination applied post-query, so large listings fetch-and-discard.
+- Bug fixed en route: the demo loaded .env only inside the live-run path, so a server that went
+  straight to chat fell back to provider=claude (AttributeError: Anthropic has no .chat). Now
+  loaded once at startup.
