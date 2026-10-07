@@ -489,6 +489,14 @@ Good live questions, tested:
 That second behaviour is the one to point at: it checked the bounds first, and it refuses the
 part of the question the data cannot answer.
 
+It can also draw. Tested live:
+- *"Draw a graph comparing the CPU use of the top 3 containers over the whole recording."* -
+  it writes pandas code, buckets to one second, and a real chart appears in the feed. The
+  workload's arrival and exit are visible as a step in one line.
+- *"Can you draw a latency graph?"* - it says in one sentence that request latency is not in a
+  kernel trace, then charts scheduler event rates instead and says exactly what the chart is.
+  Honest substitution, not refusal.
+
 ---
 
 ## 6 · RESULTS — the study behind the demo

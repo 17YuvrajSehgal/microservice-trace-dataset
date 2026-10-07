@@ -761,16 +761,27 @@ if __name__ == "__main__":
 # question already is. note_finding is dropped (there is no synthesiser to write to) and
 # submit_diagnosis is dropped (the verdict already exists); everything else is identical.
 # --------------------------------------------------------------------------------------
-MAX_CHAT_STEPS = 10
+MAX_CHAT_STEPS = 14
 
 _CHAT_SYS = (
     "You are the investigator that just analysed a Linux kernel trace of a microservice "
     "incident and committed to a verdict. An operator now asks you follow-up questions.\n"
     "- Answer from evidence. When a question needs data, use your tools - do not answer "
-    "from memory of the run alone if a query can check it.\n"
-    "- Give numbers, time windows (HH:MM:SS) and pid_ns ids, briefly. Plain text, no markdown "
-    "tables.\n"
-    "- If the evidence cannot answer the question, say exactly that and what is missing.\n"
+    "from memory of the run alone if a query can check it. For anything the fixed tools "
+    "cannot express (joins, distributions, rankings, correlations), write and run code "
+    "with run_python.\n"
+    "- Give numbers, time windows (HH:MM:SS) and pid_ns ids, briefly.\n"
+    "- CHARTS: you can draw one. In run_python, print exactly one line of the form\n"
+    '  PLOT {"title": "...", "kind": "line", "xlabel": "s of day", "ylabel": "...", '
+    '"x": [..], "series": [{"name": "...", "y": [..]}]}\n'
+    "  kind is line or bar; with kind bar, x may be a list of string labels. Keep each "
+    "series under 600 points (bucket first). The operator screen renders the PLOT line "
+    "as a real chart, so when a question asks for a graph, produce one.\n"
+    "- If the exact quantity asked for is not in the trace (e.g. request latency), say so "
+    "in one sentence - then chart the nearest thing the trace DOES record (e.g. scheduler "
+    "or network event rates) and state exactly what the chart shows instead.\n"
+    "- If the evidence cannot answer the question at all, say exactly that and what is "
+    "missing.\n"
     "- Never invent events, processes or values not present in tool output.")
 
 

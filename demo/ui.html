@@ -121,6 +121,8 @@ pre{background:var(--surface-2);border:1px solid var(--rule);padding:12px 14px;o
 .step.verdict{border-left-color:var(--ink)}
 .step.question{border-left-color:var(--signal);background:var(--signal-soft)}
 .step.answer{border-left-color:var(--good)}
+.plotc{width:100%;height:250px;display:block;border:1px solid var(--rule);
+  background:var(--surface);margin-top:10px}
 .step .k{font-family:var(--mono);font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;
   color:var(--muted)}
 .step .t{font-weight:640;margin:2px 0 4px}
@@ -249,6 +251,7 @@ pre{background:var(--surface-2);border:1px solid var(--rule);padding:12px 14px;o
     <input id="q" placeholder="e.g. which container was second-busiest during the fault?"
            style="flex:1;min-width:260px" disabled>
     <button class="go" id="ask" disabled>Ask</button>
+    <span class="hint" id="cstat"></span>
   </div>
   <div id="chat"></div>
 </div>
@@ -510,9 +513,12 @@ function render(s){
     extra+=`</div>`;
   }
   if(s.kind==='verdict'){DX=s.detail;extra=verdictHtml(s.detail);}
+  if(s.kind==='plot'){ s._pid='plt'+(++PLOTN);
+    extra=`<canvas class="plotc" id="${s._pid}"></canvas>`; }
+  const body=s.body?`<div class="b">${(s.kind==='answer'||s.kind==='question')?mdl(s.body):esc(s.body)}</div>`:'';
   return `<div class="step ${s.kind}"><div class="k">${s.kind}</div>
     <div class="t">${esc(s.title)}</div>
-    ${s.body?`<div class="b">${esc(s.body)}</div>`:''}${extra}</div>`;
+    ${body}${extra}</div>`;
 }
 function verdictHtml(d){
   return `<div class="grid g4" style="margin-top:12px">
@@ -620,6 +626,70 @@ $('#live').onclick=async()=>{
     model ${esc(r.model)}. Takes two to four minutes.</p></div>`;
   liveTick(0);
 };
+/* bold and backtick-code only - answers arrive as text with light markdown */
+function mdl(t){ return esc(t).replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+  .replace(/`([^`]+?)`/g,'<code>$1</code>'); }
+
+/* ---------- charts the agent draws ---------- */
+let PLOTN=0;
+const hhmmss=v=>{const t=Math.round(v);return String(Math.floor(t/3600)%24).padStart(2,'0')+':'+
+  String(Math.floor(t/60)%60).padStart(2,'0')+':'+String(t%60).padStart(2,'0');};
+function drawPlot(cv,spec){
+  if(!cv||!spec)return;
+  const css=getComputedStyle(document.documentElement);
+  const col=n=>css.getPropertyValue(n).trim();
+  const pal=[col('--signal'),col('--warn'),col('--good'),col('--ink-2'),col('--muted')];
+  const dpr=devicePixelRatio||1, W=cv.clientWidth, Hc=cv.clientHeight;
+  cv.width=W*dpr; cv.height=Hc*dpr;
+  const g=cv.getContext('2d'); g.scale(dpr,dpr); g.font='11px '+css.getPropertyValue('--mono');
+  const series=(spec.series||[]).filter(sr=>Array.isArray(sr.y)&&sr.y.length);
+  if(!series.length)return;
+  const xs=spec.x||series[0].y.map((_,i)=>i);
+  const numeric=typeof xs[0]==='number';
+  const L=56,R=10,T=spec.title?26:12,B=34, pw=W-L-R, ph=Hc-T-B;
+  let ymin=Infinity,ymax=-Infinity;
+  series.forEach(sr=>sr.y.forEach(v=>{if(v!=null&&isFinite(v)){ymin=Math.min(ymin,v);ymax=Math.max(ymax,v);}}));
+  if(!isFinite(ymin))return;
+  if(ymin>0&&ymin<ymax*0.4)ymin=0;
+  if(ymin===ymax){ymax=ymin+1;}
+  const xmin=numeric?Math.min(...xs):0, xmax=numeric?Math.max(...xs):xs.length-1;
+  const X=v=>L+(numeric?(v-xmin)/((xmax-xmin)||1):v/((xs.length-1)||1))*pw;
+  const Y=v=>T+ph-(v-ymin)/(ymax-ymin)*ph;
+  g.strokeStyle=col('--rule');g.fillStyle=col('--muted');
+  for(let i=0;i<=4;i++){const yv=ymin+(ymax-ymin)*i/4,yy=Y(yv);
+    g.beginPath();g.moveTo(L,yy);g.lineTo(W-R,yy);g.stroke();
+    g.textAlign='right';g.fillText(yv>=1000?yv.toExponential(1):(Math.round(yv*100)/100),L-6,yy+4);}
+  g.textAlign='center';
+  const nt=Math.min(6,xs.length);
+  for(let i=0;i<nt;i++){const k=Math.round(i*(xs.length-1)/((nt-1)||1));
+    const xv=xs[k], xx=numeric?X(xv):L+k/((xs.length-1)||1)*pw;
+    g.fillText(numeric?(xv>10000?hhmmss(xv):String(Math.round(xv*10)/10)):String(xv).slice(0,12),xx,Hc-16);}
+  if(spec.kind==='bar'){
+    const bw=Math.max(2,pw/(xs.length*series.length)*0.75);
+    series.forEach((sr,si)=>{g.fillStyle=pal[si%pal.length];
+      sr.y.forEach((v,i)=>{if(v==null)return;const xx=L+(i+0.5)/xs.length*pw+(si-series.length/2)*bw;
+        g.fillRect(xx,Y(v),bw,T+ph-Y(v));});});
+  } else {
+    series.forEach((sr,si)=>{g.strokeStyle=pal[si%pal.length];g.lineWidth=1.6;g.beginPath();
+      let pen=false;
+      sr.y.forEach((v,i)=>{if(v==null||!isFinite(v)){pen=false;return;}
+        const xx=numeric?X(xs[i]):L+i/((xs.length-1)||1)*pw;
+        pen?g.lineTo(xx,Y(v)):g.moveTo(xx,Y(v)); pen=true;});
+      g.stroke();});
+  }
+  g.fillStyle=col('--ink');g.textAlign='left';
+  if(spec.title)g.fillText(spec.title,L,15);
+  let lx=L+(spec.title?g.measureText(spec.title).width+18:0);
+  if(series.length>1||series[0].name)series.forEach((sr,si)=>{
+    g.fillStyle=pal[si%pal.length];g.fillRect(lx,8,9,9);
+    g.fillStyle=col('--muted');g.fillText(sr.name||('s'+si),lx+13,16);
+    lx+=13+g.measureText(sr.name||('s'+si)).width+14;});
+  g.fillStyle=col('--muted');
+  if(spec.ylabel){g.save();g.translate(11,T+ph/2);g.rotate(-Math.PI/2);
+    g.textAlign='center';g.fillText(spec.ylabel,0,0);g.restore();}
+  if(spec.xlabel){g.textAlign='center';g.fillText(spec.xlabel,L+pw/2,Hc-3);}
+}
+
 /* ---------- ask the agent ---------- */
 let chatCursor=0, chatTimer=null;
 function chatEnable(on){ $('#q').disabled=!on; $('#ask').disabled=!on; }
@@ -628,14 +698,20 @@ async function chatTick(){
   chatCursor=d.cursor;
   (d.steps||[]).forEach(s=>{
     $('#chat').insertAdjacentHTML('beforeend',render(s));
+    if(s.kind==='plot') drawPlot(document.getElementById(s._pid),s.detail);
     $('#chat').lastElementChild.scrollIntoView({block:'nearest',behavior:'smooth'});
   });
   if(d.error){
     $('#chat').insertAdjacentHTML('beforeend',
       `<div class="note w"><p>${esc(d.error)}</p></div>`);
   }
-  if(d.busy){ chatTimer=setTimeout(chatTick,1000); }
-  else { chatTimer=null; chatEnable(true); $('#q').focus(); }
+  if(d.busy){
+    $('#cstat').innerHTML=`<span class="spin"></span>${esc(d.doing||'thinking')} — ${d.elapsed}s`;
+    chatTimer=setTimeout(chatTick,1000);
+  } else {
+    $('#cstat').textContent='';
+    chatTimer=null; chatEnable(true); $('#q').focus();
+  }
 }
 async function askAgent(){
   const q=$('#q').value.trim();
@@ -647,6 +723,7 @@ async function askAgent(){
     chatEnable(true); return;
   }
   $('#q').value='';
+  $('#cstat').innerHTML='<span class="spin"></span>thinking — 0s';
   if(!chatTimer) chatTick();
 }
 $('#ask').onclick=askAgent;

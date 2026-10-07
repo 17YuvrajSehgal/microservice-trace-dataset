@@ -596,6 +596,13 @@ class Sandbox:
         if res.get("error"):
             res["error"] = _explain(res["error"])
         out = res.get("stdout") or ""
+        # A "PLOT {json}" line is a chart spec for the operator's screen, not analysis
+        # output: keep it whole in its own field (OUT_CAP would cut a 600-point series)
+        # and spare the model from re-reading hundreds of numbers it just generated.
+        plots = [ln for ln in out.splitlines() if ln.startswith("PLOT ")]
+        if plots:
+            out = chr(10).join("[chart rendered to the operator]" if ln.startswith("PLOT ")
+                            else ln for ln in out.splitlines())
         d = {"stdout": out[:OUT_CAP], "wall_s": round(time.time() - t0, 1),
              "index_rows": self.rows, "limits_enforced": self.limits}
         if len(out) > OUT_CAP:
@@ -603,6 +610,8 @@ class Sandbox:
                                      % OUT_CAP)
         if res.get("error"):
             d["error"] = res["error"]
+        if plots:
+            d["plot"] = plots[0][5:]
         if not out.strip() and not res.get("error"):
             d["note"] = "the snippet printed nothing. Use print() to return values."
         return d

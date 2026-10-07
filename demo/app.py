@@ -716,6 +716,7 @@ def chat_ask(q: str):
         if CHAT["busy"]:
             return {"accepted": False, "reason": "still answering the previous question"}
         CHAT["busy"], CHAT["error"] = True, None
+        CHAT["t0"] = time.time()
 
     def work():
         try:
@@ -763,7 +764,40 @@ def chat_poll(since: int):
             steps.append({"kind": "answer", "title": "It answers", "body": e.get("text", "")})
         else:
             steps.extend(steps_from([e], {}, None, head=False))
-    return {"steps": steps, "cursor": len(ev), "busy": CHAT["busy"],
+        # steps_from leaves run_python to the end-of-run code_snippets event, which chat
+        # never emits - so show the code here, straight from the execution event.
+        if t == "tool_execution" and e.get("tool") == "run_python":
+            r = e.get("result") or {}
+            steps.append({"kind": "code", "title": "It writes and runs its own code",
+                          "body": (e.get("arguments") or {}).get("why") or "",
+                          "detail": {"code": (e.get("arguments") or {}).get("code") or "",
+                                     "stdout": r.get("stdout") or r.get("error") or ""}})
+        # A run_python snippet may carry a chart: codetool hoists a "PLOT {json}" stdout
+        # line into result.plot, whole - the capped stdout copy would cut a 600-point series.
+        if t == "tool_execution" and e.get("tool") == "run_python":
+            raw = (e.get("result") or {}).get("plot")
+            if raw:
+                try:
+                    spec = json.loads(raw)
+                    steps.append({"kind": "plot", "title": spec.get("title") or "Chart",
+                                  "detail": spec})
+                except ValueError:
+                    pass
+    doing = "thinking"
+    for e in reversed(ev):
+        t = e.get("type")
+        if t == "tool_execution":
+            doing = ("running its own code, thinking about the result"
+                     if e.get("tool") == "run_python"
+                     else "ran %s, thinking about the result" % e.get("tool"))
+            break
+        if t == "api_response":
+            doing = "acting on the model's reply"
+            break
+        if t == "chat_question":
+            break
+    return {"steps": steps, "cursor": len(ev), "busy": CHAT["busy"], "doing": doing,
+            "elapsed": round(time.time() - CHAT.get("t0", time.time()), 1),
             "error": CHAT["error"],
             "ready": bool(LIVE["done"] and LIVE.get("out") and not LIVE["running"])}
 
