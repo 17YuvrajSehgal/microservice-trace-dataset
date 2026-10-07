@@ -86,3 +86,14 @@
   follows the OS; it redraws the canvases (which read CSS vars) on switch.
 - Verified: all six tabs in both themes, zero console errors; chat charts still render and
   repaint after a theme toggle (sampled canvas pixels).
+
+## Product pass (demo -> product)
+- Removed the Results tab (nav + panel + loadResults/resultsTable/tone/sc/scw JS). It was a
+  paper/slide artifact; the /api/results endpoint is left in place (unused, harmless).
+- Removed the "55/60 found the right component" header stat and the explanatory demo
+  sub-headline; replaced with a product tagline. Agent intro rewritten to product tone
+  (dropped "the study calls" / agent_v2.diagnose framing).
+- Native folder picker: /api/code/browse opens the OS directory dialog via a tkinter
+  subprocess on the server (server == user's machine, so it returns a real absolute path).
+  UI now has Browse… / Connect / Disconnect(✕) with a green connected state, instead of
+  paste-only. Subprocess keeps Tk off the request thread.

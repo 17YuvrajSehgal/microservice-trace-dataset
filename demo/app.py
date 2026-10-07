@@ -20,7 +20,7 @@ The first start does one pass over 4.1 million index rows and caches the aggrega
 takes about half a minute. Every start after that is instant.
 """
 from __future__ import annotations
-import argparse, glob, gzip, json, os, re, sys, threading, time
+import argparse, glob, gzip, json, os, re, subprocess, sys, threading, time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse, parse_qs
 
@@ -771,6 +771,29 @@ def session_fork(sid):
     return session_open(nid)
 
 
+def code_browse():
+    """Open the OS folder picker on the machine running the server; return the chosen path."""
+    pick = chr(10).join([
+        "import tkinter as tk",
+        "from tkinter import filedialog",
+        "r = tk.Tk(); r.withdraw(); r.attributes('-topmost', True)",
+        "p = filedialog.askdirectory(title='Select the application source directory')",
+        "print(p or '')",
+    ])
+    try:
+        out = subprocess.run([sys.executable, "-c", pick], capture_output=True,
+                             text=True, timeout=180)
+    except (subprocess.TimeoutExpired, OSError) as e:
+        return {"error": "could not open a folder dialog: %s" % e}
+    path = (out.stdout or "").strip().splitlines()[-1:] or [""]
+    path = path[0].strip()
+    if not path:
+        return {"path": None}                      # user cancelled
+    if not os.path.isdir(path):
+        return {"error": "not a directory: %s" % path}
+    return {"path": path}
+
+
 def code_connect(path):
     """Attach a local source directory to the CURRENT session, read-only."""
     sid = CHAT.get("sid")
@@ -1062,6 +1085,8 @@ class H(BaseHTTPRequestHandler):
                 return self._json(live_stop())
             if p == "/api/sessions":
                 return self._json(sessions_list())
+            if p == "/api/code/browse":
+                return self._json(code_browse())
             if p == "/api/code/connect":
                 return self._json(code_connect((q.get("path") or [""])[0]))
             if p == "/api/session/fork":
