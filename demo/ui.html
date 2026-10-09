@@ -445,9 +445,23 @@ function draw(cv,series,sel,shade){
 }
 
 /* ---------- trace ---------- */
+function renderEmpty(){
+  RUN=null; SERIES=null; SEL=null;
+  $('#runid').textContent='no trace loaded';
+  const msg='<div class="note"><p><strong>No trace is loaded.</strong> Build an index into '
+    +'<code>demo/data/</code> and refresh to explore a recording here. The <strong>Agent</strong> '
+    +'tab still works — connect a code repository and review past sessions.</p></div>';
+  $('#runnote').innerHTML=msg;
+  $('#stats').innerHTML=''; $('#ctab').innerHTML=''; $('#evtot').textContent='';
+  $('#checkintro').textContent='No trace loaded.';
+  $('#sum').innerHTML=''; $('#dtab').innerHTML='';
+  $('#vans').innerHTML='<p class="hint">No trace loaded.</p>';
+  ['#c1','#c2'].forEach(id=>{const c=$(id); if(c){const g=c.getContext('2d'); g&&g.clearRect(0,0,c.width,c.height);}});
+}
 async function boot(){
   const rl=await api('/api/runs');
-  $('#runsel').innerHTML=rl.runs.map(r=>`<option value="${r.id}" ${r.id===rl.current?'selected':''}>${r.label}</option>`).join('');
+  $('#runsel').innerHTML=(rl.runs||[]).map(r=>`<option value="${r.id}" ${r.id===rl.current?'selected':''}>${r.label}</option>`).join('')
+    || '<option value="">no trace loaded</option>';
   $('#runsel').onchange=async e=>{ GEN++; playing=false;
     if(liveTimer){clearTimeout(liveTimer); liveTimer=null;}
     await api('/api/select?run='+encodeURIComponent(e.target.value));
@@ -455,6 +469,7 @@ async function boot(){
     $('#dtab').innerHTML=''; $('#sum').innerHTML=''; $('#vans').innerHTML='<p class="hint">Run the agent first.</p>';
     $('#vtruth').innerHTML=''; $('#bbody').textContent='Select a blueprint.'; boot(); };
   RUN=await api('/api/run');
+  if(RUN.empty){ renderEmpty(); loadBlueprints(); return; }
   $('#runid').textContent=RUN.run_id;
   const m=RUN.meta||{};
   $('#stats').innerHTML=[
@@ -471,9 +486,9 @@ async function boot(){
   $('#checkintro').innerHTML = INTRO[m.signal] ||
     "The blueprint's deciding check, run on a window you choose.";
   $('#runnote').innerHTML = m.note
-    ? `<div class="note ${m.confidence==='high'?'g':'w'}"><p><strong>${esc(m.label)}.</strong>
-       ${esc(m.note)}</p><p class="hint">Published result: ${esc(m.published)}. The blueprint
-       for this fault is <code>${esc(m.blueprint)}</code>.</p></div>` : '';
+    ? `<div class="note"><p><strong>${esc(m.label)}.</strong>
+       ${esc(m.note)}</p><p class="hint">Blueprint for this fault:
+       <code>${esc(m.blueprint)}</code>.</p></div>` : '';
   $('#ev').innerHTML=RUN.events.map(e=>`<option value="${e.event}">${e.event}</option>`).join('');
   $('#ctab').innerHTML='<thead><tr><th>pid_ns</th><th>top processes</th>'+
     '<th class="n">events</th><th class="n">CPU s</th></tr></thead><tbody>'+

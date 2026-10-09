@@ -27,43 +27,35 @@ from urllib.parse import urlparse, parse_qs
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 DATA = os.path.join(HERE, "data")
-# Two traces, chosen for opposite reasons.
-#
-# anomaly_cpu is what we are most confident about - 55 of 60 on WHERE in the published study -
-# so a LIVE run on it is very likely to succeed and is the safe one to show people.
-#
-# svc_net is our hardest: 0 of 60 published, 10 of 30 after this week's fixes. A live run on it
-# is roughly a one-in-three. It is here because it is the more interesting conversation, not
-# because it performs - and the interface says so rather than letting someone assume otherwise.
+# The run catalog. A run appears in the app only once its index (<run_id>.tsv.gz) is present
+# in demo/data/ - see available_runs(). The app starts and serves an empty state with none,
+# so it never depends on data files existing. Add a run by building its index and adding an
+# entry here (blueprint, ground-truth file, the signal/event the fault moves).
 RUNS = {
-    "anomaly_cpu_aggressive_steady_r1": {
-        "label": "Host CPU saturation",
-        "blueprint": "host-cpu-saturation",
-        "gt": "gt-anomaly_cpu.json",
-        "published": "55/60 found the right component",
-        "confidence": "high",
-        # what the interface opens on: the signal this fault actually moves. Opening the CPU
-        # trace on a network chart makes the fault look invisible.
+    "svc_cpu_cap_aggressive_steady_r1": {
+        "label": "One service's CPU cap",
+        "blueprint": "service-cpu-throttle",
+        "gt": "gt-svc_cpu_cap.json",
         "event": "sched_switch",
         "signal": "cpu",
-        "note": "A co-tenant workload saturates the host's CPU for two minutes.",
-    },
-    "svc_net_aggressive_steady_r3": {
-        "label": "One service's network path",
-        "blueprint": "network-path-degradation",
-        "gt": "gt-svc_net.json",
-        "published": "0/60 published, 10/30 after this week's fixes",
-        "confidence": "low",
-        "event": "net_if_receive_skb",
-        "signal": "network",
-        "note": "150 ms delay, 40 ms jitter and 4% packet loss on one container's "
-                "network interface for two minutes.",
+        "note": "A 0.2-core CPU quota is imposed on one service (carts) for two minutes.",
     },
 }
-RUN_ID = os.environ.get("DEMO_RUN", "anomaly_cpu_aggressive_steady_r1")
-if RUN_ID not in RUNS:
-    RUN_ID = "anomaly_cpu_aggressive_steady_r1"
-CACHE = os.path.join(DATA, "aggregate-%s.json" % RUN_ID)
+
+
+def available_runs():
+    """Run ids whose index file is actually present. The app never assumes data exists -
+    a run is offered only once its <run_id>.tsv.gz is in demo/data/."""
+    return [rid for rid in RUNS
+            if os.path.exists(os.path.join(DATA, rid + ".tsv.gz"))]
+
+
+_env = os.environ.get("DEMO_RUN")
+_av = available_runs()
+RUN_ID = (_env if (_env in RUNS and _env in _av) else (_av[0] if _av else None))
+CACHE = os.path.join(DATA, "aggregate-%s.json" % RUN_ID) if RUN_ID else None
+RUN_DIR = os.path.join(DATA, "run", RUN_ID) if RUN_ID else None
+
 TAB = chr(9)
 HOST_NS = "4026531836"
 
@@ -141,10 +133,11 @@ def load_state(rebuild=False, run_id=None):
         RUN_ID = run_id
         CACHE = os.path.join(DATA, "aggregate-%s.json" % RUN_ID)
         RUN_DIR = os.path.join(DATA, "run", RUN_ID)
-    idx = os.path.join(DATA, RUN_ID + ".tsv.gz")
-    if not os.path.exists(idx):
-        print("MISSING %s\n  run demo/fetch_data.sh first" % idx)
-        sys.exit(1)
+    idx = os.path.join(DATA, RUN_ID + ".tsv.gz") if RUN_ID else None
+    if not idx or not os.path.exists(idx):
+        # No trace present. Serve an empty state rather than refusing to start.
+        STATE.pop("agg", None); STATE.pop("lines", None); STATE.pop("run", None)
+        return False
     if os.path.exists(CACHE) and not rebuild:
         print("loading cached aggregate ...", end=" ", flush=True)
         agg = json.load(open(CACHE, encoding="utf-8"))
@@ -170,6 +163,7 @@ def load_state(rebuild=False, run_id=None):
         tp = os.path.join(HERE, "demo-transcript.jsonl")
     STATE["transcript"] = json.load(open(tp, encoding="utf-8", errors="replace")) \
         if os.path.exists(tp) else {}
+    return True
 
 
 def hms(s):
@@ -306,7 +300,7 @@ def blueprint_list():
             "summary": (sig.group(1).strip().replace("\n", " ")[:190] if sig else ""),
             # which blueprint the SELECTED trace uses, not a hardcoded one - the tag
             # was sitting on the network blueprint while the CPU trace was loaded
-            "active": name == RUNS[RUN_ID]["blueprint"],
+            "active": bool(RUN_ID) and name == RUNS[RUN_ID]["blueprint"],
         })
     return out
 
@@ -536,7 +530,6 @@ def score_block():
 LIVE = {"running": False, "error": None, "started": 0.0, "done": False,
         "out": None, "tr": None, "seen": 0, "head": False, "stopped": False}
 LIVE_LOCK = threading.Lock()
-RUN_DIR = os.path.join(DATA, "run", RUN_ID)
 
 
 def live_ready():
@@ -547,8 +540,8 @@ def live_ready():
             __import__(m)
         except Exception:                                               # noqa: BLE001
             why.append("missing package: " + m)
-    if not os.path.isdir(RUN_DIR):
-        why.append("no run directory at " + RUN_DIR)
+    if not RUN_DIR or not os.path.isdir(RUN_DIR):
+        why.append("no trace loaded — add an index to demo/data/ to run an investigation")
     try:
         from dotenv import load_dotenv
         load_dotenv(os.path.join(ROOT, ".env"))
@@ -1021,6 +1014,8 @@ class H(BaseHTTPRequestHandler):
                 f = os.path.join(HERE, "ui.html")
                 return self._send(open(f, "rb").read(), "text/html; charset=utf-8")
             if p == "/api/run":
+                if not STATE.get("agg"):
+                    return self._json({"empty": True, "runs": available_runs()})
                 a = STATE["agg"]
                 cs = []
                 for ns, r in sorted(a["containers"].items(), key=lambda kv: -kv[1]["count"]):
@@ -1039,6 +1034,8 @@ class H(BaseHTTPRequestHandler):
                     "containers": cs, "groups": a["groups"],
                 })
             if p == "/api/timeline":
+                if not STATE.get("agg"):
+                    return self._json({"empty": True})
                 ev = (q.get("event") or ["sched_switch"])[0]
                 a = STATE["agg"]
                 d = a["ev_sec"].get(ev) or {}
@@ -1048,6 +1045,8 @@ class H(BaseHTTPRequestHandler):
                 return self._json({"event": ev, "series": series,
                                    "total": a["events"].get(ev, 0)})
             if p == "/api/discriminate":
+                if not STATE.get("agg"):
+                    return self._json({"empty": True})
                 g = (q.get("group") or ["network"])[0]
                 a = STATE["agg"]
                 t0, t1 = a["t0"], a["t1"]
@@ -1057,6 +1056,8 @@ class H(BaseHTTPRequestHandler):
                 i1 = float((q.get("i1") or [t0 + 180])[0])
                 return self._json(discriminate(g, b0, b1, i0, i1))
             if p == "/api/lines":
+                if not STATE.get("agg"):
+                    return self._json({"empty": True, "lines": []})
                 ev = (q.get("event") or ["net_if_receive_skb"])[0]
                 a = STATE["agg"]
                 t0 = float((q.get("t0") or [a["t0"] + 100])[0])
@@ -1069,11 +1070,12 @@ class H(BaseHTTPRequestHandler):
             if p == "/api/analyze":
                 return self._json({"steps": analysis_steps()})
             if p == "/api/runs":
+                av = set(available_runs())
                 return self._json({"current": RUN_ID,
-                                   "runs": [dict(v, id=k) for k, v in RUNS.items()]})
+                                   "runs": [dict(RUNS[k], id=k) for k in RUNS if k in av]})
             if p == "/api/select":
                 rid = (q.get("run") or [""])[0]
-                if rid in RUNS and rid != RUN_ID:
+                if rid in RUNS and rid in available_runs() and rid != RUN_ID:
                     with LOCK:
                         load_state(False, rid)
                 return self._json({"current": RUN_ID})
@@ -1126,13 +1128,17 @@ def main() -> int:
     ap.add_argument("--port", type=int, default=8765)
     ap.add_argument("--rebuild", action="store_true", help="discard the cached aggregate")
     a = ap.parse_args()
-    load_state(a.rebuild)
+    loaded = load_state(a.rebuild)
     srv = ThreadingHTTPServer(("127.0.0.1", a.port), H)
     print()
-    print("  StrataTrace demo   ->   http://127.0.0.1:%d" % a.port)
-    print("  run %s   %s events over %.0f s   %d containers"
-          % (RUN_ID, "{:,}".format(STATE["agg"]["rows"]),
-             STATE["agg"]["t1"] - STATE["agg"]["t0"], len(STATE["agg"]["containers"])))
+    print("  StrataTrace   ->   http://127.0.0.1:%d" % a.port)
+    if loaded:
+        print("  run %s   %s events over %.0f s   %d containers"
+              % (RUN_ID, "{:,}".format(STATE["agg"]["rows"]),
+                 STATE["agg"]["t1"] - STATE["agg"]["t0"], len(STATE["agg"]["containers"])))
+    else:
+        print("  no trace loaded - add an index to demo/data/ and refresh, or just")
+        print("  connect a code repo and review past sessions on the Agent tab")
     print("  ctrl-c to stop")
     print()
     try:

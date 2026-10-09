@@ -60,3 +60,4 @@ results-download/
 # demo trace index - 37 MB, fetched by demo/fetch_data.sh
 demo/data/*.gz
 demo/data/sessions/
+demo/data/run/

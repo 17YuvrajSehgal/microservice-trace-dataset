@@ -97,3 +97,19 @@
   subprocess on the server (server == user's machine, so it returns a real absolute path).
   UI now has Browse… / Connect / Disconnect(✕) with a green connected state, instead of
   paste-only. Subprocess keeps Tk off the request thread.
+
+## svc_cpu_cap added; app no longer depends on data files
+- Added svc_cpu_cap_aggressive_steady_r1 as a demo run: built its index locally from the
+  downloaded 15 GB trace via WSL babeltrace2 2.1.2 (211M events -> 3.08M rows, 21 containers,
+  368k raw lines). gt-svc_cpu_cap.json copied to demo/answer (NOT into the run dir - agent must
+  not see ground truth). run dir has meta/ (cgroup ticks for container scoring) + a zero-copy
+  junction to the CTF. blueprint service-cpu-throttle. carts -> pid_ns 4026532538 resolves.
+- NOTE for future: the demo indexes are NOT on Trillium. Searched all of /scratch/yuvraj17 -
+  no .tsv.gz/.lines.gz anywhere, no dataset/index dir. They only ever lived in demo/data/.
+  Building one needs a full babeltrace decode of the raw CTF.
+- Removed anomaly_cpu and svc_net from the app (user deleted their data) incl. stale aggregates
+  and gt files.
+- App now starts from scratch with NO trace: available_runs() lists only runs whose .tsv.gz
+  exists; load_state returns False instead of sys.exit; data endpoints return {empty:true};
+  live_ready and blueprint_list guard RUN_ID=None; the UI shows an empty state and the Agent
+  tab (code-connect, sessions) stays usable. Verified both states headless, no console errors.

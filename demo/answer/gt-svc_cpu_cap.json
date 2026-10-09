@@ -1,0 +1,17 @@
+{
+  "fault": {
+    "family": "B_service_resource",
+    "name": "svc_cpu_cap_carts",
+    "scope": "service",
+    "intensity": "aggressive",
+    "parameters": {"cpus": 0.2, "container": "docker-compose_carts_1", "orig_nanocpus_quota": "0 0"},
+    "target_service": "carts",
+    "expected_blast_radius": ["carts", "front-end"],
+    "expected_winning_modality": "kernel",
+    "target_trace_visibility": "covered",
+    "injection_start_utc": "2026-09-05T15:19:46Z",
+    "injection_end_utc": "2026-09-05T15:21:46Z"
+  },
+  "remediation": { "action": "restore original cpu quota via docker update" },
+  "recipe": { "script": "svc_cpu_cap.sh" }
+}
