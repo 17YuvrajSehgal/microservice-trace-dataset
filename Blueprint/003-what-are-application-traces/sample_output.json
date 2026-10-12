@@ -1,0 +1,86 @@
+{
+    "name": "load_user",
+    "context": {
+        "trace_id": "0xf25be51ed1d14984d602b3e5eaf9824b",
+        "span_id": "0x19637dd2250ddc7f",
+        "trace_state": "[]"
+    },
+    "kind": "SpanKind.INTERNAL",
+    "parent_id": "0xdc223e6e46aaddcf",
+    "start_time": "2026-10-06T04:27:08.010464Z",
+    "end_time": "2026-10-06T04:27:08.810876Z",
+    "status": {
+        "status_code": "UNSET"
+    },
+    "attributes": {},
+    "events": [],
+    "links": [],
+    "resource": {
+        "attributes": {
+            "telemetry.sdk.language": "python",
+            "telemetry.sdk.name": "opentelemetry",
+            "telemetry.sdk.version": "1.45.0",
+            "service.instance.id": "deb3ad5a-9faa-4c02-b178-3ade281621da",
+            "service.name": "unknown_service:python.exe"
+        },
+        "schema_url": ""
+    }
+}
+{
+    "name": "charge_card",
+    "context": {
+        "trace_id": "0xf25be51ed1d14984d602b3e5eaf9824b",
+        "span_id": "0x7d18c5a8be433048",
+        "trace_state": "[]"
+    },
+    "kind": "SpanKind.INTERNAL",
+    "parent_id": "0xdc223e6e46aaddcf",
+    "start_time": "2026-10-06T04:27:08.811195Z",
+    "end_time": "2026-10-06T04:27:09.011407Z",
+    "status": {
+        "status_code": "UNSET"
+    },
+    "attributes": {},
+    "events": [],
+    "links": [],
+    "resource": {
+        "attributes": {
+            "telemetry.sdk.language": "python",
+            "telemetry.sdk.name": "opentelemetry",
+            "telemetry.sdk.version": "1.45.0",
+            "service.instance.id": "deb3ad5a-9faa-4c02-b178-3ade281621da",
+            "service.name": "unknown_service:python.exe"
+        },
+        "schema_url": ""
+    }
+}
+{
+    "name": "buy_request",
+    "context": {
+        "trace_id": "0xf25be51ed1d14984d602b3e5eaf9824b",
+        "span_id": "0xdc223e6e46aaddcf",
+        "trace_state": "[]"
+    },
+    "kind": "SpanKind.INTERNAL",
+    "parent_id": null,
+    "start_time": "2026-10-06T04:27:08.010423Z",
+    "end_time": "2026-10-06T04:27:09.011619Z",
+    "status": {
+        "status_code": "UNSET"
+    },
+    "attributes": {
+        "user.id": 42
+    },
+    "events": [],
+    "links": [],
+    "resource": {
+        "attributes": {
+            "telemetry.sdk.language": "python",
+            "telemetry.sdk.name": "opentelemetry",
+            "telemetry.sdk.version": "1.45.0",
+            "service.instance.id": "deb3ad5a-9faa-4c02-b178-3ade281621da",
+            "service.name": "unknown_service:python.exe"
+        },
+        "schema_url": ""
+    }
+}
