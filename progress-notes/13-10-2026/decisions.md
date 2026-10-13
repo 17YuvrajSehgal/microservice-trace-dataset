@@ -107,3 +107,33 @@
   scatter), fig_io (measured vs ideal 1/rbps vs disk floor). Added multirow/
   amstext, graphicspath, all figures \ref'd. Env balance 17/17, 5 tables,
   4 figures. Can't compile here (no TeX engine); builds on TeXLive/Overleaf.
+- Naser feedback on the paper + new asks (from his message):
+  WRITING (Yuvraj does himself): fit 4 pages incl refs; fewer bold
+  headings/subsections; merge threats-to-validity into discussion; shorten
+  contributions; ADD discussion on (a) what we learn beyond "small machines
+  are slow" and (b) WHY tracing - what it shows that plain timing counters
+  miss. EXPERIMENTS (mine): (1) a 2nd agent (Codex) to show cross-harness
+  consistency; (2) a headline number ">=80% goes to the model".
+  INFRA: OpenRouter raised to $300; use Codex (openai/gpt-6-luna,
+  wire_api=responses - wiring already validated earlier, was only budget-
+  blocked). Plan: Phase 1 = LLM-wait share from EXISTING traces (attribute
+  wait to the API socket fd via connect() dest + request->response gaps;
+  gives the 80% number AND fixes the event-loop-wait-vs-idle caveat).
+  Prelim from on_cpu/wall: uncapped Claude ~72-81% of wall is non-compute.
+  Phase 2 = Codex consistency on a ~40-50 run subset (collector takes agent
+  cmd param; analyzer main-thread detect generalized beyond "claude").
+  Phase 3 = supply LLM-share + consistency data/figures for Yuvraj's write.
+- PHASE 1 DONE (llm_wait.py, from existing Claude traces, no VM). Method:
+  find API sockets (connect dport 443 -> one Anthropic IP), pair syscall
+  entry(fd)/exit(ret) per thread for req writes + response reads, measure
+  wall time with a request in flight (first write -> last streamed read;
+  responses STREAM, so count the full span not just TTFB). Union across
+  sockets = model-wait. RESULT: uncapped median 84% of wall is model-wait
+  (range 80-91% over 10 runs, both tasks), local compute only ~4.7 CPU-s ->
+  answers Naser's ">=80% to the model" AND fixes the event-loop-wait caveat.
+  Regime shift: model% drops as cap tightens (t3 81->80->69->53%; t2 88->92
+  ->79->71%) = OS eats the wall the model used to own. Figure
+  figures/fig_llmshare, writeup LLM-SHARE-RESULT.md (incl. the "why tracing"
+  point: counters say that/how-much; trace says what/where). Validation:
+  model-wait < wall always; 80-91% tight across runs; drops under cap (not a
+  pinned artifact). Next: Phase 2 (Codex consistency).
