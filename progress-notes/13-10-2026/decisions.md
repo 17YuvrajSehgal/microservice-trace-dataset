@@ -137,3 +137,19 @@
   point: counters say that/how-much; trace says what/where). Validation:
   model-wait < wall always; 80-91% tight across runs; drops under cap (not a
   pinned artifact). Next: Phase 2 (Codex consistency).
+- PHASE 2 DONE (Codex consistency). Recreated Codex OpenRouter config/key on
+  VM (had been lost); $300 budget confirmed working. Generalized collector:
+  AGENT=claude|codex (codex via `codex exec --dangerously-bypass-approvals-
+  and-sandbox`, key from ~/.codex-env). Analyzer agent-agnostic (subtree
+  from fork; on-CPU validates 91% for Codex). Ran implement x 4 caps x 3
+  reps = 12 Codex runs, all solved. RESULT: findings consistent across
+  agents. Throttle ladder near-overlaps (Claude 0/0.45/6.3/19.8; Codex
+  0/0.2/3.6/19.4). Model-share both ~80-89% uncapped, both drop to ~52% at
+  0.25 core (measured per-agent via its own API socket - Codex talks to
+  OpenRouter). Codex uses less local CPU (~3.5 vs ~5 CPU-s, Rust vs node),
+  slower per turn, but same trends. Key point: problems #2-#4 are
+  agent-INDEPENDENT by construction (fixed worker scripts), so only CPU cap
+  + LLM-share needed re-running. Figure fig_consistency, writeup
+  CONSISTENCY-RESULT.md. Codex runs in runs_codex/ (CTF+dumps gitignored).
+- BOTH NASER ASKS NOW DONE: (1) 2nd-agent consistency (Codex), (2) ">=80%
+  to the model" (84% median). Ready for Yuvraj to write. VM stopped.

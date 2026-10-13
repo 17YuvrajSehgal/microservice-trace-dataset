@@ -22,7 +22,14 @@ MEM_LIMIT=${5:-}  # optional "high:<N>" or "max:<N>" for problem #3
 IO_LIMIT=${6:-}   # optional "rbps:<N>" (bytes/s) for problem #4
 BASE=${RUNS_DIR:-$HOME/runs}
 OUT=$BASE/$RUN
-CLAUDE=${CLAUDE_BIN:-$HOME/.local/bin/claude}
+AGENT=${AGENT:-claude}            # claude | codex (cross-harness consistency)
+if [ "$AGENT" = codex ]; then
+    AGENT_BIN=$(command -v codex)
+    AGENT_VER=$(codex --version 2>/dev/null | head -1)
+else
+    AGENT_BIN=${CLAUDE_BIN:-$HOME/.local/bin/claude}
+    AGENT_VER=$("$AGENT_BIN" --version 2>/dev/null | head -1)
+fi
 CG=/sys/fs/cgroup/agent
 
 sudo rm -rf "$OUT"; mkdir -p "$OUT/meta"
@@ -110,8 +117,15 @@ set +e
     echo "$mypid" | sudo tee $CG/cgroup.procs >/dev/null
     echo "$mypid" > "$OUT/meta/root.pid"
     cd "$HOME/task"
-    exec timeout "${AGENT_TIMEOUT:-900}" "$CLAUDE" -p "$PROMPT" \
-        --dangerously-skip-permissions
+    if [ "$AGENT" = codex ]; then
+        source "$HOME/.codex-env"           # OPENROUTER_API_KEY
+        exec timeout "${AGENT_TIMEOUT:-900}" "$AGENT_BIN" exec \
+            --skip-git-repo-check --dangerously-bypass-approvals-and-sandbox \
+            "$PROMPT"
+    else
+        exec timeout "${AGENT_TIMEOUT:-900}" "$AGENT_BIN" -p "$PROMPT" \
+            --dangerously-skip-permissions
+    fi
 ) > "$OUT/agent.log" 2>&1
 AGENT_EXIT=$?
 set -e
@@ -138,11 +152,11 @@ set -e
 
 cat > "$OUT/meta/ground_truth.json" <<EOF
 { "run": "$RUN", "task": "$TASK", "cpu_max": "$CAP", "task_arg": "$TASK_ARG",
-  "mem_limit": "$MEM_LIMIT", "io_limit": "$IO_LIMIT",
+  "mem_limit": "$MEM_LIMIT", "io_limit": "$IO_LIMIT", "agent": "$AGENT",
   "agent_exit": $AGENT_EXIT, "task_check_exit": $CHECK_EXIT,
   "test_file_tampered": $TAMPER,
   "kernel": "$(uname -r)", "nproc": $(nproc), "host": "$(hostname)",
-  "claude_version": "$("$CLAUDE" --version 2>/dev/null | head -1)" }
+  "agent_version": "$AGENT_VER" }
 EOF
 
 sudo chown -R "$(id -u):$(id -g)" "$OUT"

@@ -1,0 +1,13 @@
+run,task,cap_name,cpu_max,rep,finished_at
+t3_implement_cap100_r3,t3_implement.sh,cap100,100000 100000,3,2026-10-13T18:58:01+00:00
+t3_implement_cap100_r2,t3_implement.sh,cap100,100000 100000,2,2026-10-13T18:58:39+00:00
+t3_implement_cap100_r1,t3_implement.sh,cap100,100000 100000,1,2026-10-13T18:59:27+00:00
+t3_implement_nocap_r1,t3_implement.sh,nocap,max,1,2026-10-13T19:00:04+00:00
+t3_implement_cap25_r3,t3_implement.sh,cap25,25000 100000,3,2026-10-13T19:01:02+00:00
+t3_implement_cap50_r2,t3_implement.sh,cap50,50000 100000,2,2026-10-13T19:01:53+00:00
+t3_implement_cap25_r2,t3_implement.sh,cap25,25000 100000,2,2026-10-13T19:02:55+00:00
+t3_implement_cap25_r1,t3_implement.sh,cap25,25000 100000,1,2026-10-13T19:03:47+00:00
+t3_implement_cap50_r1,t3_implement.sh,cap50,50000 100000,1,2026-10-13T19:04:27+00:00
+t3_implement_nocap_r2,t3_implement.sh,nocap,max,2,2026-10-13T19:05:11+00:00
+t3_implement_cap50_r3,t3_implement.sh,cap50,50000 100000,3,2026-10-13T19:05:56+00:00
+t3_implement_nocap_r3,t3_implement.sh,nocap,max,3,2026-10-13T19:06:40+00:00
