@@ -85,3 +85,25 @@
   auto-updated 7.0.0-1011 -> -1014-gcp across stop/starts; per-run
   ground_truth.json records each run's own kernel, so it's traceable.
   VM stopped. Safe to delete the VM whenever (nothing unique remains).
+- Committed + pushed the catalogue to origin/blueprints (commit edc53dd),
+  lean: raw CTF (4.2GB) AND decoded dumps (962MB) gitignored -> Trillium;
+  git keeps scripts/results/PLANs/meta+agent.log/provenance/docs (~800KB).
+  Scoped commit to session work only; left pre-existing index oddities
+  (rythm.py, extract_slice->07-10.txt rename) untracked for user.
+- Wrote the draft paper: `Blueprint/research-paper/paper.tex` (+README).
+  Self-contained twocolumn article, plain-pdflatex, standard packages only;
+  env/structure balance verified (no TeX engine on the box to compile).
+  Sections: method, 4 problems w/ result tables, discussion (5 takeaways),
+  threats, conclusion. Numbers from the RESULTS files; 130 campaign runs.
+  Pending: real citations + align to Naser's OS-noise papers.
+- Upgraded the paper's tables + added figures. make_data.py recomputes
+  every cell (median + min-max across reps) from the run data; make_figures.py
+  renders 4 matplotlib figures (Okabe-Ito colorblind-safe) to PDF (paper) +
+  PNG (preview), verified by eye. Rewrote all 4 result tables richer: P1
+  both tasks w/ throttle-%-of-wall, P2 measured-vs-(W-C)/W wait, P3 split
+  into memory.high dose-response + a dedicated OOM-cliff table, P4 effective
+  MB/s. Figures: fig_cpu (wall + throttle, 2 tasks), fig_threads (phase +
+  the (W-C)/W overlay - dots land on the line), fig_memory (bars + OOM-cliff
+  scatter), fig_io (measured vs ideal 1/rbps vs disk floor). Added multirow/
+  amstext, graphicspath, all figures \ref'd. Env balance 17/17, 5 tables,
+  4 figures. Can't compile here (no TeX engine); builds on TeXLive/Overleaf.
