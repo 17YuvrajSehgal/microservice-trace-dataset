@@ -1,0 +1,13 @@
+run,task,mem_limit,anon_mb,rep,finished_at
+t7_max1024_r1,t7_memhog.sh,max:1024M,512,1,2026-10-13T20:33:06+00:00
+t7_max1024_r2,t7_memhog.sh,max:1024M,512,2,2026-10-13T20:33:17+00:00
+t7_max1024_r3,t7_memhog.sh,max:1024M,512,3,2026-10-13T20:33:29+00:00
+t7_max896_r1,t7_memhog.sh,max:896M,512,1,2026-10-13T20:33:38+00:00
+t7_max896_r2,t7_memhog.sh,max:896M,512,2,2026-10-13T20:33:48+00:00
+t7_max896_r3,t7_memhog.sh,max:896M,512,3,2026-10-13T20:34:07+00:00
+t7_max768_r1,t7_memhog.sh,max:768M,512,1,2026-10-13T20:34:24+00:00
+t7_max768_r2,t7_memhog.sh,max:768M,512,2,2026-10-13T20:34:39+00:00
+t7_max768_r3,t7_memhog.sh,max:768M,512,3,2026-10-13T20:34:55+00:00
+t7_max640_r1,t7_memhog.sh,max:640M,512,1,2026-10-13T20:35:07+00:00
+t7_max640_r2,t7_memhog.sh,max:640M,512,2,2026-10-13T20:35:20+00:00
+t7_max640_r3,t7_memhog.sh,max:640M,512,3,2026-10-13T20:35:31+00:00

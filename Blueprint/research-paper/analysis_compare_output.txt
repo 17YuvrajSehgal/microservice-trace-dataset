@@ -1,0 +1,64 @@
+================================================================
+PROBLEM 1 — CPU cap (throttle s / wall s / model%wall), task t3
+================================================================
+cap     agent   throttle  wall    model%
+nocap   claude  0.0       18.7    81.0
+nocap   codex   0.0       30.3    88.7
+cap100  claude  0.5       18.7    80.4
+cap100  codex   0.2       29.6    88.1
+cap50   claude  6.3       23.7    68.8
+cap50   codex   3.6       31.8    79.4
+cap25   claude  19.8      32.7    52.6
+cap25   codex   18.7      48.4    62.3
+
+================================================================
+PROBLEM 2A — threads vs cores (phase s / runnable/wkr s)
+================================================================
+W   agent   phase    runnable/wkr
+2   claude  0.4      0.0
+2   codex   0.4      0.0
+4   claude  1.0      0.1
+4   codex   0.9      0.1
+8   claude  1.9      0.9
+8   codex   1.9      0.9
+16  claude  3.9      2.8
+16  codex   3.8      2.8
+
+================================================================
+PROBLEM 3A — memory.high (phase s / refault M)
+================================================================
+mem.high    agent   phase    refault(M)
+high:max    claude  6.5      0.0
+high:max    codex   6.5      0.0
+high:1536M  claude  6.5      0.0
+high:1536M  codex   6.5      0.0
+high:1152M  claude  30.4     1.0
+high:1152M  codex   30.4     1.0
+high:768M   claude  30.4     1.0
+high:768M   codex   30.4     1.0
+
+================================================================
+PROBLEM 3 cliff — memory.max+anon (OOM / task-fail counts)
+================================================================
+mem.max   agent   n   oom  fail
+max:1024M claude  3   0    0
+max:1024M codex   3   0    0
+max:896M  claude  3   0    0
+max:896M  codex   3   0    0
+max:768M  claude  3   0    0
+max:768M  codex   3   0    0
+max:640M  claude  3   3    3
+max:640M  codex   3   0    0
+
+================================================================
+PROBLEM 4 — io.max rbps (phase s)
+================================================================
+rbps        agent   phase
+unlimited   claude  6.0
+unlimited   codex   6.0
+200MB/s     claude  6.0
+200MB/s     codex   6.0
+100MB/s     claude  10.1
+100MB/s     codex   10.2
+50MB/s      claude  20.4
+50MB/s      codex   20.4

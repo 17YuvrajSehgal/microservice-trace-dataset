@@ -19,8 +19,9 @@ plt.rcParams.update({
 })
 caps = ["uncapped", "1 core", "0.5 core", "0.25 core"]
 x = range(len(caps))
-thr_cl, thr_cx = [0.0, 0.45, 6.3, 19.8], [0.0, 0.2, 3.6, 19.4]
-mod_cl, mod_cx = [81, 80, 69, 53], [89, 88, 79, 52]
+# medians, Claude n=5 / Codex n=5 (full-parity campaign), implement task
+thr_cl, thr_cx = [0.0, 0.5, 6.3, 19.8], [0.0, 0.2, 3.6, 18.7]
+mod_cl, mod_cx = [81, 80, 69, 53], [89, 88, 79, 62]
 
 fig, (axt, axm) = plt.subplots(1, 2, figsize=(7.0, 2.8))
 axt.plot(x, thr_cl, "-o", color=BLUE, label="Claude")

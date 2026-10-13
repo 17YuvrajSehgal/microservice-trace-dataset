@@ -1,0 +1,6 @@
+{ "run": "t4_w2_r2", "task": "t4_parallel.sh", "cpu_max": "max", "task_arg": "2",
+  "mem_limit": "", "io_limit": "", "agent": "codex",
+  "agent_exit": 0, "task_check_exit": 0,
+  "test_file_tampered": false,
+  "kernel": "7.0.0-1014-gcp", "nproc": 4, "host": "agentic-noise.us-east1-d.c.teleeporter.internal",
+  "agent_version": "codex-cli 0.162.1" }

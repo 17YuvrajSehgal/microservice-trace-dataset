@@ -153,3 +153,19 @@
   CONSISTENCY-RESULT.md. Codex runs in runs_codex/ (CTF+dumps gitignored).
 - BOTH NASER ASKS NOW DONE: (1) 2nd-agent consistency (Codex), (2) ">=80%
   to the model" (84% median). Ready for Yuvraj to write. VM stopped.
+- FULL CODEX PARITY (user asked for all 4 problems, 5 reps). Ran 130 Codex
+  runs matching Claude's design (codex_all.sh master script, survived a
+  session interruption via nohup). All agent_exit=0. Downloaded dumps+meta
+  (1.1GB) to runs_codex* under agentic-os-noise/; raw CTF on VM disk. VM
+  stopped. compare_agents.py does the full Claude-vs-Codex comparison
+  (analysis_compare_output.txt). RESULTS: #2 threads, #3A memory.high, #4 io
+  are IDENTICAL across agents (medians match - agent-independence now PROVEN
+  empirically, not argued). #1 CPU cap + LLM-share: same trends (throttle
+  ladder matches; model% both 80-89% uncapped). ONE honest difference: the
+  OOM cliff SHIFTS with agent footprint - Claude (node ~250MB RSS) OOMs at
+  640M (3/3), Codex (lean Rust) survives 640M (0/3) because its RSS+512MB
+  workload fits. Same mechanism, threshold = agent RSS + workload. Did NOT
+  push Codex below 640M (its cliff is lower). Updated CONSISTENCY-RESULT.md
+  to cover all 4 problems + the cliff nuance (strengthens paper: cliff is a
+  predictable function of total footprint). Next: commit; optionally pin
+  Codex cliff (restart VM, memory.max 512/384M x3).

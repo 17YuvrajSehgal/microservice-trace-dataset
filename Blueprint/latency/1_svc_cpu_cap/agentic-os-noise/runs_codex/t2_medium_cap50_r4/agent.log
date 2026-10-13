@@ -1,0 +1,498 @@
+Reading additional input from stdin...
+OpenAI Codex v0.162.1
+--------
+workdir: /home/aylabsltd/task
+model: openai/gpt-6-luna
+provider: openrouter
+approval: never
+sandbox: danger-full-access
+reasoning effort: none
+reasoning summaries: none
+session id: 01a136c6-4bbf-7ae3-a05c-88ec77fb9358
+--------
+user
+This small Python project has a failing test suite (test_all.py). There
+are bugs spread across stats.py, textproc.py, and seq.py. Do NOT edit
+test_all.py. Find and fix the bugs in the source files, re-running
+`python3 test_all.py` after each change, until it prints ALL PASS.
+codex
+I’ll inspect the source and test failures, then fix one issue at a time and rerun `python3 test_all.py` after each change. I’ll leave `test_all.py` untouched.
+exec
+/bin/bash -lc "sed -n '1,240p' stats.py && sed -n '1,260p' textproc.py && sed -n '1,300p' seq.py && sed -n '1,320p' test_all.py" in /home/aylabsltd/task
+ succeeded in 0ms:
+def mean(xs):
+    return sum(xs) / (len(xs) - 1)              # bug: wrong denominator
+
+def variance(xs):
+    m = mean(xs)
+    return sum((x - m) ** 2 for x in xs) / len(xs)
+
+def median(xs):
+    s = sorted(xs)
+    n = len(s)
+    if n % 2 == 1:
+        return s[n // 2]
+    return s[n // 2]                              # bug: even case drops the pair average
+def word_freq(text):
+    freq = {}
+    for w in text.split():
+        w = w.lower().strip('.,!?;:')
+        if w:
+            freq[w] = freq.get(w, 0) + 1
+    return freq
+
+def top_words(text, k):
+    freq = word_freq(text)
+    ranked = sorted(freq.items(), key=lambda kv: kv[0])   # bug: by word, not count
+    return [w for w, _ in ranked[:k]]
+def dedup(xs):
+    # preserve first-seen order, drop later duplicates
+    seen = set()
+    out = []
+    for x in xs:
+        if x in seen:
+            out.append(x)                        # bug: appends the duplicate instead of skipping
+        else:
+            seen.add(x)
+    return out
+
+def chunk(xs, n):
+    return [xs[i:i + n] for i in range(0, len(xs), n)]
+import time
+from stats import mean, variance, median
+from textproc import top_words, word_freq
+from seq import dedup, chunk
+
+# correctness
+assert mean([2, 4, 6]) == 4
+assert abs(variance([2, 4, 6]) - 8 / 3) < 1e-9
+assert median([1, 3, 2]) == 2
+assert median([1, 2, 3, 4]) == 2.5
+assert word_freq("A a, b! a.")["a"] == 3
+assert top_words("x x x y y z", 2) == ["x", "y"]
+assert dedup([1, 2, 1, 3, 2]) == [1, 2, 3]
+assert chunk([1, 2, 3, 4, 5], 2) == [[1, 2], [3, 4], [5]]
+
+# stress: bounded CPU, charged on every invocation (throttleable)
+t0 = time.time()
+data = [(i * 7919) % 1000 for i in range(4000)]
+for _ in range(1200):
+    mean(data); variance(data); median(data); dedup(data)
+text = " ".join(str((i * 31) % 97) for i in range(15000))
+for _ in range(120):
+    top_words(text, 10)
+print(f"stress {time.time() - t0:.1f}s")
+print("ALL PASS")
+
+apply patch
+patch: completed
+/home/aylabsltd/task/stats.py
+diff --git a/stats.py b/stats.py
+index b19d32181e817c4d600334f99b0ecec0e420202d..28ac95129c356f5d9a0b2f135b085c4a0b66b1f5
+--- a/stats.py
++++ b/stats.py
+@@ -1,5 +1,5 @@
+ def mean(xs):
+-    return sum(xs) / (len(xs) - 1)              # bug: wrong denominator
++    return sum(xs) / len(xs)
+ 
+ def variance(xs):
+     m = mean(xs)
+
+exec
+/bin/bash -lc 'python3 test_all.py' in /home/aylabsltd/task
+ exited 1 in 13ms:
+Traceback (most recent call last):
+  File "/home/aylabsltd/task/test_all.py", line 10, in <module>
+    assert median([1, 2, 3, 4]) == 2.5
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError
+
+diff --git a/stats.py b/stats.py
+index b19d32181e817c4d600334f99b0ecec0e420202d..28ac95129c356f5d9a0b2f135b085c4a0b66b1f5
+--- a/stats.py
++++ b/stats.py
+@@ -1,5 +1,5 @@
+ def mean(xs):
+-    return sum(xs) / (len(xs) - 1)              # bug: wrong denominator
++    return sum(xs) / len(xs)
+ 
+ def variance(xs):
+     m = mean(xs)
+
+apply patch
+patch: completed
+/home/aylabsltd/task/stats.py
+diff --git a/stats.py b/stats.py
+index b19d32181e817c4d600334f99b0ecec0e420202d..7a656756c926f84beca74912515b5344751d4276
+--- a/stats.py
++++ b/stats.py
+@@ -1,5 +1,5 @@
+ def mean(xs):
+-    return sum(xs) / (len(xs) - 1)              # bug: wrong denominator
++    return sum(xs) / len(xs)
+ 
+ def variance(xs):
+     m = mean(xs)
+@@ -10,4 +10,4 @@
+     n = len(s)
+     if n % 2 == 1:
+         return s[n // 2]
+-    return s[n // 2]                              # bug: even case drops the pair average
++    return (s[n // 2 - 1] + s[n // 2]) / 2
+
+exec
+/bin/bash -lc 'python3 test_all.py' in /home/aylabsltd/task
+ exited 1 in 10ms:
+Traceback (most recent call last):
+  File "/home/aylabsltd/task/test_all.py", line 13, in <module>
+    assert dedup([1, 2, 1, 3, 2]) == [1, 2, 3]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError
+
+diff --git a/stats.py b/stats.py
+index b19d32181e817c4d600334f99b0ecec0e420202d..7a656756c926f84beca74912515b5344751d4276
+--- a/stats.py
++++ b/stats.py
+@@ -1,5 +1,5 @@
+ def mean(xs):
+-    return sum(xs) / (len(xs) - 1)              # bug: wrong denominator
++    return sum(xs) / len(xs)
+ 
+ def variance(xs):
+     m = mean(xs)
+@@ -10,4 +10,4 @@
+     n = len(s)
+     if n % 2 == 1:
+         return s[n // 2]
+-    return s[n // 2]                              # bug: even case drops the pair average
++    return (s[n // 2 - 1] + s[n // 2]) / 2
+
+codex
+The first two runs exposed independent failures in the mean and even-length median. Those are fixed; the next run now reaches the duplicate-removal assertion, so I’m correcting that behavior next.
+apply patch
+patch: completed
+/home/aylabsltd/task/seq.py
+diff --git a/seq.py b/seq.py
+index 45d6a0846e1c4bdf07f0a303f3c96d11b03bdc79..0e759ad74f56e8a2c981a0006ff78718b341b687
+--- a/seq.py
++++ b/seq.py
+@@ -3,10 +3,9 @@
+     seen = set()
+     out = []
+     for x in xs:
+-        if x in seen:
+-            out.append(x)                        # bug: appends the duplicate instead of skipping
+-        else:
++        if x not in seen:
+             seen.add(x)
++            out.append(x)
+     return out
+ 
+ def chunk(xs, n):
+diff --git a/stats.py b/stats.py
+index b19d32181e817c4d600334f99b0ecec0e420202d..7a656756c926f84beca74912515b5344751d4276
+--- a/stats.py
++++ b/stats.py
+@@ -1,5 +1,5 @@
+ def mean(xs):
+-    return sum(xs) / (len(xs) - 1)              # bug: wrong denominator
++    return sum(xs) / len(xs)
+ 
+ def variance(xs):
+     m = mean(xs)
+@@ -10,4 +10,4 @@
+     n = len(s)
+     if n % 2 == 1:
+         return s[n // 2]
+-    return s[n // 2]                              # bug: even case drops the pair average
++    return (s[n // 2 - 1] + s[n // 2]) / 2
+
+exec
+/bin/bash -lc 'python3 test_all.py' in /home/aylabsltd/task
+ succeeded in 2134ms:
+stress 2.3s
+ALL PASS
+
+diff --git a/seq.py b/seq.py
+index 45d6a0846e1c4bdf07f0a303f3c96d11b03bdc79..0e759ad74f56e8a2c981a0006ff78718b341b687
+--- a/seq.py
++++ b/seq.py
+@@ -3,10 +3,9 @@
+     seen = set()
+     out = []
+     for x in xs:
+-        if x in seen:
+-            out.append(x)                        # bug: appends the duplicate instead of skipping
+-        else:
++        if x not in seen:
+             seen.add(x)
++            out.append(x)
+     return out
+ 
+ def chunk(xs, n):
+diff --git a/stats.py b/stats.py
+index b19d32181e817c4d600334f99b0ecec0e420202d..7a656756c926f84beca74912515b5344751d4276
+--- a/stats.py
++++ b/stats.py
+@@ -1,5 +1,5 @@
+ def mean(xs):
+-    return sum(xs) / (len(xs) - 1)              # bug: wrong denominator
++    return sum(xs) / len(xs)
+ 
+ def variance(xs):
+     m = mean(xs)
+@@ -10,4 +10,4 @@
+     n = len(s)
+     if n % 2 == 1:
+         return s[n // 2]
+-    return s[n // 2]                              # bug: even case drops the pair average
++    return (s[n // 2 - 1] + s[n // 2]) / 2
+
+apply patch
+patch: completed
+/home/aylabsltd/task/textproc.py
+diff --git a/seq.py b/seq.py
+index 45d6a0846e1c4bdf07f0a303f3c96d11b03bdc79..0e759ad74f56e8a2c981a0006ff78718b341b687
+--- a/seq.py
++++ b/seq.py
+@@ -3,10 +3,9 @@
+     seen = set()
+     out = []
+     for x in xs:
+-        if x in seen:
+-            out.append(x)                        # bug: appends the duplicate instead of skipping
+-        else:
++        if x not in seen:
+             seen.add(x)
++            out.append(x)
+     return out
+ 
+ def chunk(xs, n):
+diff --git a/stats.py b/stats.py
+index b19d32181e817c4d600334f99b0ecec0e420202d..7a656756c926f84beca74912515b5344751d4276
+--- a/stats.py
++++ b/stats.py
+@@ -1,5 +1,5 @@
+ def mean(xs):
+-    return sum(xs) / (len(xs) - 1)              # bug: wrong denominator
++    return sum(xs) / len(xs)
+ 
+ def variance(xs):
+     m = mean(xs)
+@@ -10,4 +10,4 @@
+     n = len(s)
+     if n % 2 == 1:
+         return s[n // 2]
+-    return s[n // 2]                              # bug: even case drops the pair average
++    return (s[n // 2 - 1] + s[n // 2]) / 2
+diff --git a/textproc.py b/textproc.py
+index 845cb2931e52272b25d4ccfba432c1110d81c5d3..457e1113615d4c02fc7c93a7cb376c1203d320a9
+--- a/textproc.py
++++ b/textproc.py
+@@ -8,5 +8,5 @@
+ 
+ def top_words(text, k):
+     freq = word_freq(text)
+-    ranked = sorted(freq.items(), key=lambda kv: kv[0])   # bug: by word, not count
++    ranked = sorted(freq.items(), key=lambda kv: (-kv[1], kv[0]))
+     return [w for w, _ in ranked[:k]]
+
+exec
+/bin/bash -lc 'python3 test_all.py' in /home/aylabsltd/task
+ succeeded in 2146ms:
+stress 2.3s
+ALL PASS
+
+diff --git a/seq.py b/seq.py
+index 45d6a0846e1c4bdf07f0a303f3c96d11b03bdc79..0e759ad74f56e8a2c981a0006ff78718b341b687
+--- a/seq.py
++++ b/seq.py
+@@ -3,10 +3,9 @@
+     seen = set()
+     out = []
+     for x in xs:
+-        if x in seen:
+-            out.append(x)                        # bug: appends the duplicate instead of skipping
+-        else:
++        if x not in seen:
+             seen.add(x)
++            out.append(x)
+     return out
+ 
+ def chunk(xs, n):
+diff --git a/stats.py b/stats.py
+index b19d32181e817c4d600334f99b0ecec0e420202d..7a656756c926f84beca74912515b5344751d4276
+--- a/stats.py
++++ b/stats.py
+@@ -1,5 +1,5 @@
+ def mean(xs):
+-    return sum(xs) / (len(xs) - 1)              # bug: wrong denominator
++    return sum(xs) / len(xs)
+ 
+ def variance(xs):
+     m = mean(xs)
+@@ -10,4 +10,4 @@
+     n = len(s)
+     if n % 2 == 1:
+         return s[n // 2]
+-    return s[n // 2]                              # bug: even case drops the pair average
++    return (s[n // 2 - 1] + s[n // 2]) / 2
+diff --git a/textproc.py b/textproc.py
+index 845cb2931e52272b25d4ccfba432c1110d81c5d3..457e1113615d4c02fc7c93a7cb376c1203d320a9
+--- a/textproc.py
++++ b/textproc.py
+@@ -8,5 +8,5 @@
+ 
+ def top_words(text, k):
+     freq = word_freq(text)
+-    ranked = sorted(freq.items(), key=lambda kv: kv[0])   # bug: by word, not count
++    ranked = sorted(freq.items(), key=lambda kv: (-kv[1], kv[0]))
+     return [w for w, _ in ranked[:k]]
+
+exec
+/bin/bash -lc 'git diff -- stats.py textproc.py seq.py test_all.py' in /home/aylabsltd/task
+ succeeded in 0ms:
+diff --git a/seq.py b/seq.py
+index 45d6a08..0e759ad 100644
+--- a/seq.py
++++ b/seq.py
+@@ -3,10 +3,9 @@ def dedup(xs):
+     seen = set()
+     out = []
+     for x in xs:
+-        if x in seen:
+-            out.append(x)                        # bug: appends the duplicate instead of skipping
+-        else:
++        if x not in seen:
+             seen.add(x)
++            out.append(x)
+     return out
+ 
+ def chunk(xs, n):
+diff --git a/stats.py b/stats.py
+index b19d321..7a65675 100644
+--- a/stats.py
++++ b/stats.py
+@@ -1,5 +1,5 @@
+ def mean(xs):
+-    return sum(xs) / (len(xs) - 1)              # bug: wrong denominator
++    return sum(xs) / len(xs)
+ 
+ def variance(xs):
+     m = mean(xs)
+@@ -10,4 +10,4 @@ def median(xs):
+     n = len(s)
+     if n % 2 == 1:
+         return s[n // 2]
+-    return s[n // 2]                              # bug: even case drops the pair average
++    return (s[n // 2 - 1] + s[n // 2]) / 2
+diff --git a/textproc.py b/textproc.py
+index 845cb29..457e111 100644
+--- a/textproc.py
++++ b/textproc.py
+@@ -8,5 +8,5 @@ def word_freq(text):
+ 
+ def top_words(text, k):
+     freq = word_freq(text)
+-    ranked = sorted(freq.items(), key=lambda kv: kv[0])   # bug: by word, not count
++    ranked = sorted(freq.items(), key=lambda kv: (-kv[1], kv[0]))
+     return [w for w, _ in ranked[:k]]
+
+diff --git a/seq.py b/seq.py
+index 45d6a0846e1c4bdf07f0a303f3c96d11b03bdc79..0e759ad74f56e8a2c981a0006ff78718b341b687
+--- a/seq.py
++++ b/seq.py
+@@ -3,10 +3,9 @@
+     seen = set()
+     out = []
+     for x in xs:
+-        if x in seen:
+-            out.append(x)                        # bug: appends the duplicate instead of skipping
+-        else:
++        if x not in seen:
+             seen.add(x)
++            out.append(x)
+     return out
+ 
+ def chunk(xs, n):
+diff --git a/stats.py b/stats.py
+index b19d32181e817c4d600334f99b0ecec0e420202d..7a656756c926f84beca74912515b5344751d4276
+--- a/stats.py
++++ b/stats.py
+@@ -1,5 +1,5 @@
+ def mean(xs):
+-    return sum(xs) / (len(xs) - 1)              # bug: wrong denominator
++    return sum(xs) / len(xs)
+ 
+ def variance(xs):
+     m = mean(xs)
+@@ -10,4 +10,4 @@
+     n = len(s)
+     if n % 2 == 1:
+         return s[n // 2]
+-    return s[n // 2]                              # bug: even case drops the pair average
++    return (s[n // 2 - 1] + s[n // 2]) / 2
+diff --git a/textproc.py b/textproc.py
+index 845cb2931e52272b25d4ccfba432c1110d81c5d3..457e1113615d4c02fc7c93a7cb376c1203d320a9
+--- a/textproc.py
++++ b/textproc.py
+@@ -8,5 +8,5 @@
+ 
+ def top_words(text, k):
+     freq = word_freq(text)
+-    ranked = sorted(freq.items(), key=lambda kv: kv[0])   # bug: by word, not count
++    ranked = sorted(freq.items(), key=lambda kv: (-kv[1], kv[0]))
+     return [w for w, _ in ranked[:k]]
+
+codex
+Fixed the bugs in [stats.py](/home/aylabsltd/task/stats.py), [textproc.py](/home/aylabsltd/task/textproc.py), and [seq.py](/home/aylabsltd/task/seq.py). I reran `python3 test_all.py` after each change; the final run printed `ALL PASS`. `test_all.py` was not edited.
+diff --git a/seq.py b/seq.py
+index 45d6a0846e1c4bdf07f0a303f3c96d11b03bdc79..0e759ad74f56e8a2c981a0006ff78718b341b687
+--- a/seq.py
++++ b/seq.py
+@@ -3,10 +3,9 @@
+     seen = set()
+     out = []
+     for x in xs:
+-        if x in seen:
+-            out.append(x)                        # bug: appends the duplicate instead of skipping
+-        else:
++        if x not in seen:
+             seen.add(x)
++            out.append(x)
+     return out
+ 
+ def chunk(xs, n):
+diff --git a/stats.py b/stats.py
+index b19d32181e817c4d600334f99b0ecec0e420202d..7a656756c926f84beca74912515b5344751d4276
+--- a/stats.py
++++ b/stats.py
+@@ -1,5 +1,5 @@
+ def mean(xs):
+-    return sum(xs) / (len(xs) - 1)              # bug: wrong denominator
++    return sum(xs) / len(xs)
+ 
+ def variance(xs):
+     m = mean(xs)
+@@ -10,4 +10,4 @@
+     n = len(s)
+     if n % 2 == 1:
+         return s[n // 2]
+-    return s[n // 2]                              # bug: even case drops the pair average
++    return (s[n // 2 - 1] + s[n // 2]) / 2
+diff --git a/textproc.py b/textproc.py
+index 845cb2931e52272b25d4ccfba432c1110d81c5d3..457e1113615d4c02fc7c93a7cb376c1203d320a9
+--- a/textproc.py
++++ b/textproc.py
+@@ -8,5 +8,5 @@
+ 
+ def top_words(text, k):
+     freq = word_freq(text)
+-    ranked = sorted(freq.items(), key=lambda kv: kv[0])   # bug: by word, not count
++    ranked = sorted(freq.items(), key=lambda kv: (-kv[1], kv[0]))
+     return [w for w, _ in ranked[:k]]
+
+tokens used
+14,143
+Fixed the bugs in [stats.py](/home/aylabsltd/task/stats.py), [textproc.py](/home/aylabsltd/task/textproc.py), and [seq.py](/home/aylabsltd/task/seq.py). I reran `python3 test_all.py` after each change; the final run printed `ALL PASS`. `test_all.py` was not edited.

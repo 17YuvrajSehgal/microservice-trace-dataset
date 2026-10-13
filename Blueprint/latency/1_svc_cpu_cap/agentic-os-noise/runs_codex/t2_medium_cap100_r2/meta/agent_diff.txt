@@ -1,0 +1,4 @@
+ seq.py      | 3 ++-
+ stats.py    | 4 ++--
+ textproc.py | 2 +-
+ 3 files changed, 5 insertions(+), 4 deletions(-)
