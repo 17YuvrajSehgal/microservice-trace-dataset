@@ -1,0 +1,3 @@
+All 4 sub-agents were launched in parallel in a single message, and each ran its `./work.py K` command once with exit code 0.
+
+There are **4** `results/*.csv` files: `s1.csv`, `s2.csv`, `s3.csv` and `s4.csv`.

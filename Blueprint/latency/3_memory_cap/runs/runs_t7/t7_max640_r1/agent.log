@@ -1,0 +1,6 @@
+`./run_hog.sh` was killed, and `results/done.txt` was not created.
+
+- **What happened:** the script's only step, `./hog.py`, was terminated with SIGKILL (`line 3: 11197 Killed`, exit code 137).
+- **Results:** the `results/` directory doesn't exist at all, so there is nothing to read.
+
+I did not confirm the cause of the kill; a SIGKILL like this is typically the kernel's out-of-memory killer, but I haven't checked the kernel log or `hog.py` itself.

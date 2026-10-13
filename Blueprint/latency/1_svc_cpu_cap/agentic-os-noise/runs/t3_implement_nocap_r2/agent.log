@@ -1,0 +1,9 @@
+All three functions are implemented and `python3 test_impl.py` now prints `ALL PASS` (stress loop took 2.9s). I ran the suite after each function; the first two runs failed only on the next function not yet being implemented.
+
+- **`encode`** in `rle.py`: emits each character followed by its run length, always with a count.
+- **`decode`** in `rle.py`: reads each non-digit character followed by one or more digits and expands it.
+- **`merge`** in `intervals.py`: sorts by start and merges intervals that overlap or touch, returning new lists.
+
+The encoding is ambiguous if the input string itself contains digits (e.g. `"11"` encodes to `"12"`, which won't decode back). The docstrings and tests don't cover that case, so I left it.
+
+`test_impl.py` is untouched. Nothing is committed, and the test run left an untracked `__pycache__/` directory.

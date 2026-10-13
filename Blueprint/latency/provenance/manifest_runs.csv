@@ -1,0 +1,41 @@
+run,task,cap_name,cpu_max,rep,finished_at
+t2_medium_cap100_r3,t2_medium.sh,cap100,100000 100000,3,2026-10-12T03:16:36+00:00
+t2_medium_cap100_r2,t2_medium.sh,cap100,100000 100000,2,2026-10-12T03:17:15+00:00
+t3_implement_cap25_r1,t3_implement.sh,cap25,25000 100000,1,2026-10-12T03:18:02+00:00
+t2_medium_cap50_r2,t2_medium.sh,cap50,50000 100000,2,2026-10-12T03:18:37+00:00
+t2_medium_nocap_r2,t2_medium.sh,nocap,max,2,2026-10-12T03:19:13+00:00
+t2_medium_cap100_r1,t2_medium.sh,cap100,100000 100000,1,2026-10-12T03:19:48+00:00
+t3_implement_cap50_r1,t3_implement.sh,cap50,50000 100000,1,2026-10-12T03:20:25+00:00
+t3_implement_nocap_r3,t3_implement.sh,nocap,max,3,2026-10-12T03:20:57+00:00
+t2_medium_cap50_r3,t2_medium.sh,cap50,50000 100000,3,2026-10-12T03:21:38+00:00
+t3_implement_nocap_r1,t3_implement.sh,nocap,max,1,2026-10-12T03:22:09+00:00
+t3_implement_cap50_r3,t3_implement.sh,cap50,50000 100000,3,2026-10-12T03:22:47+00:00
+t3_implement_cap100_r2,t3_implement.sh,cap100,100000 100000,2,2026-10-12T03:23:19+00:00
+t2_medium_nocap_r3,t2_medium.sh,nocap,max,3,2026-10-12T03:23:57+00:00
+t3_implement_nocap_r2,t3_implement.sh,nocap,max,2,2026-10-12T03:24:29+00:00
+t3_implement_cap50_r2,t3_implement.sh,cap50,50000 100000,2,2026-10-12T03:25:10+00:00
+t2_medium_cap25_r1,t2_medium.sh,cap25,25000 100000,1,2026-10-12T03:25:57+00:00
+t3_implement_cap100_r1,t3_implement.sh,cap100,100000 100000,1,2026-10-12T03:26:30+00:00
+t3_implement_cap25_r2,t3_implement.sh,cap25,25000 100000,2,2026-10-12T03:27:19+00:00
+t3_implement_cap25_r3,t3_implement.sh,cap25,25000 100000,3,2026-10-12T03:28:05+00:00
+t2_medium_cap25_r3,t2_medium.sh,cap25,25000 100000,3,2026-10-12T03:28:49+00:00
+t2_medium_cap50_r1,t2_medium.sh,cap50,50000 100000,1,2026-10-12T03:29:22+00:00
+t3_implement_cap100_r3,t3_implement.sh,cap100,100000 100000,3,2026-10-12T03:29:54+00:00
+t2_medium_cap25_r2,t2_medium.sh,cap25,25000 100000,2,2026-10-12T03:30:32+00:00
+t2_medium_nocap_r1,t2_medium.sh,nocap,max,1,2026-10-12T03:31:02+00:00
+t2_medium_cap25_r5,t2_medium.sh,cap25,25000 100000,5,2026-10-12T18:52:09+00:00
+t3_implement_cap100_r5,t3_implement.sh,cap100,100000 100000,5,2026-10-12T18:52:42+00:00
+t2_medium_cap50_r5,t2_medium.sh,cap50,50000 100000,5,2026-10-12T18:53:26+00:00
+t2_medium_cap100_r5,t2_medium.sh,cap100,100000 100000,5,2026-10-12T18:54:02+00:00
+t3_implement_cap50_r4,t3_implement.sh,cap50,50000 100000,4,2026-10-12T18:54:39+00:00
+t2_medium_nocap_r4,t2_medium.sh,nocap,max,4,2026-10-12T18:55:07+00:00
+t2_medium_nocap_r5,t2_medium.sh,nocap,max,5,2026-10-12T18:55:47+00:00
+t3_implement_cap25_r5,t3_implement.sh,cap25,25000 100000,5,2026-10-12T18:56:33+00:00
+t2_medium_cap25_r4,t2_medium.sh,cap25,25000 100000,4,2026-10-12T18:57:14+00:00
+t3_implement_nocap_r4,t3_implement.sh,nocap,max,4,2026-10-12T18:57:49+00:00
+t2_medium_cap50_r4,t2_medium.sh,cap50,50000 100000,4,2026-10-12T18:58:21+00:00
+t3_implement_nocap_r5,t3_implement.sh,nocap,max,5,2026-10-12T18:58:55+00:00
+t2_medium_cap100_r4,t2_medium.sh,cap100,100000 100000,4,2026-10-13T01:57:47+00:00
+t3_implement_cap25_r4,t3_implement.sh,cap25,25000 100000,4,2026-10-13T01:58:34+00:00
+t3_implement_cap100_r4,t3_implement.sh,cap100,100000 100000,4,2026-10-13T01:59:11+00:00
+t3_implement_cap50_r5,t3_implement.sh,cap50,50000 100000,5,2026-10-13T01:59:50+00:00

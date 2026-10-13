@@ -1,0 +1,3 @@
+All 8 sub-agents ran in parallel and each `./work.py K` exited with code 0.
+
+There are **8** `results/*.csv` files: `s1.csv` through `s8.csv`.

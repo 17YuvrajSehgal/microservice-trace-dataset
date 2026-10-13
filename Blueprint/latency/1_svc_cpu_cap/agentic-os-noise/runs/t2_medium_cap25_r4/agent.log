@@ -1,0 +1,10 @@
+`python3 test_all.py` now prints `ALL PASS` (stress section took 4.6s); `test_all.py` is untouched.
+
+There were four bugs across the three files:
+
+- **`stats.py` `mean`**: divided by `len(xs) - 1` instead of `len(xs)`.
+- **`stats.py` `median`**: the even-length case returned the upper middle element instead of the average of the two middle ones.
+- **`textproc.py` `top_words`**: ranked words alphabetically instead of by count; it now sorts by descending count, with ties keeping first-seen order.
+- **`seq.py` `dedup`**: appended the duplicates and dropped the first occurrences; it now keeps the first occurrence of each item and skips repeats.
+
+The changes are uncommitted, and the run left an untracked `__pycache__/` directory behind.

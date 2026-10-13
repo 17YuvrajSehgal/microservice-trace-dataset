@@ -1,0 +1,9 @@
+All three functions are implemented and `python3 test_impl.py` prints `ALL PASS` (stress loop 2.9s); `test_impl.py` is untouched.
+
+- **`encode`** (`rle.py`): groups consecutive characters and writes each as character plus count.
+- **`decode`** (`rle.py`): reads each non-digit character followed by its digits and expands it.
+- **`merge`** (`intervals.py`): sorts by start and merges any interval that overlaps or touches the previous one.
+
+I ran the suite after each function as asked: the first two runs stopped at the next unimplemented function, and the third passed.
+
+One limitation: strings that themselves contain digits don't round-trip (`encode("11")` gives `"12"`, which `decode` can't read back). That ambiguity is in the format the docstrings specify, and the tests don't exercise it.

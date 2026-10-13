@@ -1,0 +1,10 @@
+`python3 test_all.py` now prints `ALL PASS`. I fixed four bugs across the three source files and left `test_all.py` untouched.
+
+- **`stats.py` `mean`**: it divided by `len(xs) - 1`; it now divides by `len(xs)`.
+- **`stats.py` `median`**: for even-length input it returned the upper middle value; it now averages the two middle values.
+- **`seq.py` `dedup`**: it kept the duplicates and dropped the first occurrences; it now keeps each first-seen item in order.
+- **`textproc.py` `top_words`**: it sorted alphabetically by word instead of by count; it now sorts by count descending, with ties broken alphabetically.
+
+The suite went green after the first three fixes, before I touched `top_words`. Its only test uses `"x x x y y z"`, where alphabetical order and count order happen to agree, so the test cannot catch that bug. I fixed it anyway and spot-checked it: `top_words('a b b c c c', 2)` returns `['c', 'b']`. The alphabetical tie-break is my choice, since the tests don't specify one.
+
+Nothing is committed.

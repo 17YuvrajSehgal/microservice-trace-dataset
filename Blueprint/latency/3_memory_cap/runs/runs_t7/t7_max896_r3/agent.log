@@ -1,0 +1,6 @@
+`./run_hog.sh` ran to completion and was not killed — it exited with code 0.
+
+- **`results/done.txt` was created** (26 bytes).
+- **It says:** `allocated 536870912 bytes`
+
+The script's own output was `allocated and touched 536870912 bytes`, i.e. 512 MiB.

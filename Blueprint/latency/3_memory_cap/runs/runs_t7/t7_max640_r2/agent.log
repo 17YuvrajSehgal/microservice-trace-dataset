@@ -1,0 +1,7 @@
+The command was killed, so `results/done.txt` was not created.
+
+- **What happened:** `./run_hog.sh` ran `./hog.py`, which received SIGKILL (`line 3: 11402 Killed`, exit code 137).
+- **Result file:** the `results/` directory does not exist, because the script only writes `done.txt` after its allocation succeeds.
+- **Likely cause:** `hog.py` allocates and touches 512 MB of memory, and the kill looks like a memory limit on the process. The host itself shows about 14.8 GB free with no swap, so the limit is probably a cgroup or sandbox cap rather than the machine running out. I could not confirm this from the kernel log, which returned nothing.
+
+I ran it once and did not retry or modify the script.

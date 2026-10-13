@@ -1,0 +1,9 @@
+`./run_hog.sh` ran to completion and was not killed: it exited with code 0 after printing `allocated and touched 536870912 bytes`.
+
+`results/done.txt` was created (26 bytes) and says:
+
+```
+allocated 536870912 bytes
+```
+
+That is 512 MiB allocated by `hog.py`, which is the only thing the script runs.

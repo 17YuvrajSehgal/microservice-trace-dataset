@@ -1,0 +1,10 @@
+`./run_all.sh` finished cleanly (exit 0, all 4 workers done). The slowest was **worker 3 at 1.064 s**.
+
+| Worker | Prime count | Elapsed (s) |
+|---|---|---|
+| 3 | 11301 | 1.064 |
+| 1 | 11301 | 1.015 |
+| 2 | 11301 | 0.951 |
+| 4 | 11301 | 0.903 |
+
+The spread is only about 0.16 s across workers running in parallel, so the ordering could easily change on another run.

@@ -1,0 +1,12 @@
+`python3 test_all.py` now prints `ALL PASS` (stress section 1.1s), and `test_all.py` is untouched.
+
+Four bugs fixed:
+
+- **`stats.py` `mean`**: divided by `len(xs) - 1`; now divides by `len(xs)`.
+- **`stats.py` `median`**: the even-length case returned only the upper middle element; it now averages the two middle elements.
+- **`textproc.py` `top_words`**: ranked words alphabetically instead of by count; it now sorts by count descending, with ties broken alphabetically.
+- **`seq.py` `dedup`**: appended the duplicates and dropped the first occurrences; it now keeps the first occurrence of each item in order.
+
+The `top_words` bug was not caught by the suite: the test input `"x x x y y z"` happens to give the same answer under alphabetical order. I fixed it anyway since the code was clearly wrong, but a test with counts that disagree with alphabetical order would be worth adding.
+
+Nothing is committed.

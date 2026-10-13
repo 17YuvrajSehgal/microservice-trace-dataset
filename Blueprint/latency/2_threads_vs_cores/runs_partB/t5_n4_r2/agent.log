@@ -1,0 +1,1 @@
+All 4 sub-agents ran in parallel and each `./work.py K` exited 0. There are **4** `results/*.csv` files: `s1.csv`, `s2.csv`, `s3.csv` and `s4.csv`.

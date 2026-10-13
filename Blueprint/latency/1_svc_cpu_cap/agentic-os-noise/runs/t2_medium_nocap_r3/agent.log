@@ -1,0 +1,10 @@
+`python3 test_all.py` now prints `ALL PASS`. I fixed four bugs across the three source files and left `test_all.py` untouched.
+
+- **`mean`** (`stats.py`): divided by `len(xs) - 1`; it now divides by `len(xs)`. This also fixed `variance`, which depends on it.
+- **`median`** (`stats.py`): for even-length input it returned the upper middle element; it now averages the two middle elements.
+- **`dedup`** (`seq.py`): the logic was inverted, keeping only the duplicates; it now keeps the first occurrence of each item in order.
+- **`top_words`** (`textproc.py`): ranked words alphabetically instead of by count; it now ranks by count descending, with ties in first-seen order.
+
+The suite never caught the `top_words` bug, because its one test input gives the same answer either way. I fixed it anyway and spot-checked it: `top_words('a b b c c c', 2)` returns `['c', 'b']`.
+
+Nothing is committed; the run also left an untracked `__pycache__/` directory.

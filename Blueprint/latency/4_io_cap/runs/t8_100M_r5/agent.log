@@ -1,0 +1,6 @@
+`./read_once.sh` finished successfully (exit 0), and `results/read.csv` contains `1073741824,10.106`:
+
+- **Total bytes read:** 1,073,741,824 (exactly 1 GiB)
+- **Elapsed time:** 10.106 seconds
+
+That works out to roughly 106 MB/s.

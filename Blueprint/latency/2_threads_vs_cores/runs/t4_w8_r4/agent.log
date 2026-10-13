@@ -1,0 +1,16 @@
+`./run_all.sh` finished cleanly (exit 0, all 8 workers done).
+
+**Slowest worker: worker 6, at 1.851 seconds.**
+
+| Worker | Prime count | Elapsed (s) |
+|---|---|---|
+| 1 | 11301 | 1.756 |
+| 2 | 11301 | 1.810 |
+| 3 | 11301 | 1.833 |
+| 4 | 11301 | 1.832 |
+| 5 | 11301 | 1.849 |
+| 6 | 11301 | **1.851** |
+| 7 | 11301 | 1.757 |
+| 8 | 11301 | 1.824 |
+
+The margin is thin: worker 5 was only 0.002s behind, and the whole spread is under 0.1s, so which worker comes out slowest is likely to change from run to run.

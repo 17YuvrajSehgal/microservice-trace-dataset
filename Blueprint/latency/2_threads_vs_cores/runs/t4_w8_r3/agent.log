@@ -1,0 +1,16 @@
+`./run_all.sh` finished cleanly (exit 0, all 8 workers done).
+
+**Slowest worker: worker 3, at 2.030 seconds.**
+
+| Worker | Prime count | Elapsed (s) |
+|---|---|---|
+| 3 | 11301 | 2.030 |
+| 6 | 11301 | 1.995 |
+| 5 | 11301 | 1.981 |
+| 8 | 11301 | 1.939 |
+| 1 | 11301 | 1.934 |
+| 2 | 11301 | 1.924 |
+| 7 | 11301 | 1.897 |
+| 4 | 11301 | 1.824 |
+
+The spread is small (about 0.2s between fastest and slowest) and every worker found the same prime count, so worker 3 being slowest looks like ordinary run-to-run variation from 8 processes running in parallel; the ranking could differ on another run.

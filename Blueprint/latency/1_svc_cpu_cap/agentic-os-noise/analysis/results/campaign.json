@@ -1,0 +1,1186 @@
+{
+  "per_run": [
+    {
+      "run": "t2_medium_cap100_r3",
+      "wall_s": 27.7,
+      "cpu_stat": {
+        "usage_s": 4.99,
+        "throttled_s": 0.3,
+        "nr_throttled": 29
+      },
+      "subtree_pids": 68,
+      "subtree_cpu_seconds": {
+        "on_cpu": 4.75,
+        "runnable_wait": 0.25
+      },
+      "main_thread_wall_s": {
+        "wait_eventloop": 25.93,
+        "RUN": 1.52,
+        "wait_other": 0.19,
+        "wait_lock": 0.05,
+        "RDY": 0.01
+      },
+      "main_thread_sum_s": 27.7,
+      "validation": {
+        "on_cpu_vs_cpustat_usage": "4.75 vs 4.99",
+        "runnable_vs_cpustat_throttled": "0.25 vs 0.30"
+      },
+      "task": "t2_medium.sh",
+      "cap_name": "cap100"
+    },
+    {
+      "run": "t2_medium_cap100_r2",
+      "wall_s": 26.46,
+      "cpu_stat": {
+        "usage_s": 3.93,
+        "throttled_s": 0.4,
+        "nr_throttled": 12
+      },
+      "subtree_pids": 67,
+      "subtree_cpu_seconds": {
+        "on_cpu": 3.61,
+        "runnable_wait": 0.34
+      },
+      "main_thread_wall_s": {
+        "wait_eventloop": 24.65,
+        "RUN": 1.49,
+        "wait_other": 0.27,
+        "RDY": 0.04,
+        "wait_lock": 0.01
+      },
+      "main_thread_sum_s": 26.46,
+      "validation": {
+        "on_cpu_vs_cpustat_usage": "3.61 vs 3.93",
+        "runnable_vs_cpustat_throttled": "0.34 vs 0.40"
+      },
+      "task": "t2_medium.sh",
+      "cap_name": "cap100"
+    },
+    {
+      "run": "t3_implement_cap25_r1",
+      "wall_s": 32.69,
+      "cpu_stat": {
+        "usage_s": 5.45,
+        "throttled_s": 20.12,
+        "nr_throttled": 208
+      },
+      "subtree_pids": 67,
+      "subtree_cpu_seconds": {
+        "on_cpu": 5.33,
+        "runnable_wait": 0.12
+      },
+      "main_thread_wall_s": {
+        "wait_eventloop": 25.19,
+        "wait_other": 5.58,
+        "RUN": 1.47,
+        "wait_lock": 0.41,
+        "RDY": 0.03,
+        "wait_io": 0.0
+      },
+      "main_thread_sum_s": 32.68,
+      "validation": {
+        "on_cpu_vs_cpustat_usage": "5.33 vs 5.45",
+        "runnable_vs_cpustat_throttled": "0.12 vs 20.12"
+      },
+      "task": "t3_implement.sh",
+      "cap_name": "cap25"
+    },
+    {
+      "run": "t2_medium_cap50_r2",
+      "wall_s": 22.44,
+      "cpu_stat": {
+        "usage_s": 3.76,
+        "throttled_s": 3.72,
+        "nr_throttled": 57
+      },
+      "subtree_pids": 67,
+      "subtree_cpu_seconds": {
+        "on_cpu": 3.73,
+        "runnable_wait": 0.04
+      },
+      "main_thread_wall_s": {
+        "wait_eventloop": 19.4,
+        "wait_other": 1.58,
+        "RUN": 1.42,
+        "wait_lock": 0.02,
+        "RDY": 0.02
+      },
+      "main_thread_sum_s": 22.44,
+      "validation": {
+        "on_cpu_vs_cpustat_usage": "3.73 vs 3.76",
+        "runnable_vs_cpustat_throttled": "0.04 vs 3.72"
+      },
+      "task": "t2_medium.sh",
+      "cap_name": "cap50"
+    },
+    {
+      "run": "t2_medium_nocap_r2",
+      "wall_s": 23.39,
+      "cpu_stat": {
+        "usage_s": 5.01,
+        "throttled_s": 0.0,
+        "nr_throttled": 0
+      },
+      "subtree_pids": 67,
+      "subtree_cpu_seconds": {
+        "on_cpu": 4.6,
+        "runnable_wait": 0.46
+      },
+      "main_thread_wall_s": {
+        "wait_eventloop": 21.98,
+        "RUN": 1.33,
+        "wait_other": 0.05,
+        "wait_lock": 0.01,
+        "RDY": 0.01
+      },
+      "main_thread_sum_s": 23.38,
+      "validation": {
+        "on_cpu_vs_cpustat_usage": "4.60 vs 5.01",
+        "runnable_vs_cpustat_throttled": "0.46 vs 0.00"
+      },
+      "task": "t2_medium.sh",
+      "cap_name": "nocap"
+    },
+    {
+      "run": "t2_medium_cap100_r1",
+      "wall_s": 23.11,
+      "cpu_stat": {
+        "usage_s": 3.74,
+        "throttled_s": 0.46,
+        "nr_throttled": 18
+      },
+      "subtree_pids": 64,
+      "subtree_cpu_seconds": {
+        "on_cpu": 3.53,
+        "runnable_wait": 0.22
+      },
+      "main_thread_wall_s": {
+        "wait_eventloop": 21.35,
+        "RUN": 1.47,
+        "wait_other": 0.27,
+        "wait_lock": 0.01,
+        "RDY": 0.01
+      },
+      "main_thread_sum_s": 23.11,
+      "validation": {
+        "on_cpu_vs_cpustat_usage": "3.53 vs 3.74",
+        "runnable_vs_cpustat_throttled": "0.22 vs 0.46"
+      },
+      "task": "t2_medium.sh",
+      "cap_name": "cap100"
+    },
+    {
+      "run": "t3_implement_cap50_r1",
+      "wall_s": 22.53,
+      "cpu_stat": {
+        "usage_s": 5.15,
+        "throttled_s": 6.06,
+        "nr_throttled": 93
+      },
+      "subtree_pids": 67,
+      "subtree_cpu_seconds": {
+        "on_cpu": 5.04,
+        "runnable_wait": 0.12
+      },
+      "main_thread_wall_s": {
+        "wait_eventloop": 19.64,
+        "wait_other": 1.52,
+        "RUN": 1.31,
+        "wait_lock": 0.04,
+        "RDY": 0.01
+      },
+      "main_thread_sum_s": 22.52,
+      "validation": {
+        "on_cpu_vs_cpustat_usage": "5.04 vs 5.15",
+        "runnable_vs_cpustat_throttled": "0.12 vs 6.06"
+      },
+      "task": "t3_implement.sh",
+      "cap_name": "cap50"
+    },
+    {
+      "run": "t3_implement_nocap_r3",
+      "wall_s": 17.87,
+      "cpu_stat": {
+        "usage_s": 5.29,
+        "throttled_s": 0.0,
+        "nr_throttled": 0
+      },
+      "subtree_pids": 66,
+      "subtree_cpu_seconds": {
+        "on_cpu": 5.24,
+        "runnable_wait": 0.11
+      },
+      "main_thread_wall_s": {
+        "wait_eventloop": 16.63,
+        "RUN": 1.17,
+        "wait_other": 0.05,
+        "RDY": 0.01,
+        "wait_lock": 0.01
+      },
+      "main_thread_sum_s": 17.87,
+      "validation": {
+        "on_cpu_vs_cpustat_usage": "5.24 vs 5.29",
+        "runnable_vs_cpustat_throttled": "0.11 vs 0.00"
+      },
+      "task": "t3_implement.sh",
+      "cap_name": "nocap"
+    },
+    {
+      "run": "t2_medium_cap50_r3",
+      "wall_s": 28.51,
+      "cpu_stat": {
+        "usage_s": 3.79,
+        "throttled_s": 4.25,
+        "nr_throttled": 61
+      },
+      "subtree_pids": 64,
+      "subtree_cpu_seconds": {
+        "on_cpu": 3.72,
+        "runnable_wait": 0.08
+      },
+      "main_thread_wall_s": {
+        "wait_eventloop": 25.09,
+        "wait_other": 1.79,
+        "RUN": 1.52,
+        "wait_lock": 0.07,
+        "RDY": 0.03
+      },
+      "main_thread_sum_s": 28.5,
+      "validation": {
+        "on_cpu_vs_cpustat_usage": "3.72 vs 3.79",
+        "runnable_vs_cpustat_throttled": "0.08 vs 4.25"
+      },
+      "task": "t2_medium.sh",
+      "cap_name": "cap50"
+    },
+    {
+      "run": "t3_implement_nocap_r1",
+      "wall_s": 17.23,
+      "cpu_stat": {
+        "usage_s": 5.36,
+        "throttled_s": 0.0,
+        "nr_throttled": 0
+      },
+      "subtree_pids": 66,
+      "subtree_cpu_seconds": {
+        "on_cpu": 4.71,
+        "runnable_wait": 0.68
+      },
+      "main_thread_wall_s": {
+        "wait_eventloop": 15.97,
+        "RUN": 1.17,
+        "wait_other": 0.05,
+        "RDY": 0.03,
+        "wait_lock": 0.01
+      },
+      "main_thread_sum_s": 17.23,
+      "validation": {
+        "on_cpu_vs_cpustat_usage": "4.71 vs 5.36",
+        "runnable_vs_cpustat_throttled": "0.68 vs 0.00"
+      },
+      "task": "t3_implement.sh",
+      "cap_name": "nocap"
+    },
+    {
+      "run": "t3_implement_cap50_r3",
+      "wall_s": 23.66,
+      "cpu_stat": {
+        "usage_s": 5.16,
+        "throttled_s": 6.3,
+        "nr_throttled": 95
+      },
+      "subtree_pids": 64,
+      "subtree_cpu_seconds": {
+        "on_cpu": 5.15,
+        "runnable_wait": 0.03
+      },
+      "main_thread_wall_s": {
+        "wait_eventloop": 20.42,
+        "wait_other": 1.92,
+        "RUN": 1.31,
+        "wait_lock": 0.01,
+        "RDY": 0.01
+      },
+      "main_thread_sum_s": 23.67,
+      "validation": {
+        "on_cpu_vs_cpustat_usage": "5.15 vs 5.16",
+        "runnable_vs_cpustat_throttled": "0.03 vs 6.30"
+      },
+      "task": "t3_implement.sh",
+      "cap_name": "cap50"
+    },
+    {
+      "run": "t3_implement_cap100_r2",
+      "wall_s": 17.79,
+      "cpu_stat": {
+        "usage_s": 5.15,
+        "throttled_s": 0.46,
+        "nr_throttled": 29
+      },
+      "subtree_pids": 66,
+      "subtree_cpu_seconds": {
+        "on_cpu": 5.12,
+        "runnable_wait": 0.04
+      },
+      "main_thread_wall_s": {
+        "wait_eventloop": 16.24,
+        "RUN": 1.27,
+        "wait_other": 0.25,
+        "wait_lock": 0.02,
+        "RDY": 0.0
+      },
+      "main_thread_sum_s": 17.78,
+      "validation": {
+        "on_cpu_vs_cpustat_usage": "5.12 vs 5.15",
+        "runnable_vs_cpustat_throttled": "0.04 vs 0.46"
+      },
+      "task": "t3_implement.sh",
+      "cap_name": "cap100"
+    },
+    {
+      "run": "t2_medium_nocap_r3",
+      "wall_s": 25.27,
+      "cpu_stat": {
+        "usage_s": 5.19,
+        "throttled_s": 0.0,
+        "nr_throttled": 0
+      },
+      "subtree_pids": 68,
+      "subtree_cpu_seconds": {
+        "on_cpu": 4.84,
+        "runnable_wait": 0.42
+      },
+      "main_thread_wall_s": {
+        "wait_eventloop": 23.77,
+        "RUN": 1.41,
+        "wait_other": 0.05,
+        "wait_lock": 0.03,
+        "RDY": 0.01
+      },
+      "main_thread_sum_s": 25.27,
+      "validation": {
+        "on_cpu_vs_cpustat_usage": "4.84 vs 5.19",
+        "runnable_vs_cpustat_throttled": "0.42 vs 0.00"
+      },
+      "task": "t2_medium.sh",
+      "cap_name": "nocap"
+    },
+    {
+      "run": "t3_implement_nocap_r2",
+      "wall_s": 18.66,
+      "cpu_stat": {
+        "usage_s": 5.33,
+        "throttled_s": 0.0,
+        "nr_throttled": 0
+      },
+      "subtree_pids": 67,
+      "subtree_cpu_seconds": {
+        "on_cpu": 4.39,
+        "runnable_wait": 1.01
+      },
+      "main_thread_wall_s": {
+        "wait_eventloop": 17.39,
+        "RUN": 1.19,
+        "wait_other": 0.05,
+        "RDY": 0.02,
+        "wait_lock": 0.01
+      },
+      "main_thread_sum_s": 18.66,
+      "validation": {
+        "on_cpu_vs_cpustat_usage": "4.39 vs 5.33",
+        "runnable_vs_cpustat_throttled": "1.01 vs 0.00"
+      },
+      "task": "t3_implement.sh",
+      "cap_name": "nocap"
+    },
+    {
+      "run": "t3_implement_cap50_r2",
+      "wall_s": 25.64,
+      "cpu_stat": {
+        "usage_s": 5.86,
+        "throttled_s": 7.23,
+        "nr_throttled": 106
+      },
+      "subtree_pids": 64,
+      "subtree_cpu_seconds": {
+        "on_cpu": 5.77,
+        "runnable_wait": 0.1
+      },
+      "main_thread_wall_s": {
+        "wait_eventloop": 22.42,
+        "wait_other": 1.79,
+        "RUN": 1.41,
+        "RDY": 0.01,
+        "wait_lock": 0.0
+      },
+      "main_thread_sum_s": 25.63,
+      "validation": {
+        "on_cpu_vs_cpustat_usage": "5.77 vs 5.86",
+        "runnable_vs_cpustat_throttled": "0.10 vs 7.23"
+      },
+      "task": "t3_implement.sh",
+      "cap_name": "cap50"
+    },
+    {
+      "run": "t2_medium_cap25_r1",
+      "wall_s": 34.6,
+      "cpu_stat": {
+        "usage_s": 4.11,
+        "throttled_s": 14.93,
+        "nr_throttled": 145
+      },
+      "subtree_pids": 67,
+      "subtree_cpu_seconds": {
+        "on_cpu": 3.97,
+        "runnable_wait": 0.16
+      },
+      "main_thread_wall_s": {
+        "wait_eventloop": 26.87,
+        "wait_other": 5.83,
+        "RUN": 1.71,
+        "wait_lock": 0.16,
+        "RDY": 0.02
+      },
+      "main_thread_sum_s": 34.59,
+      "validation": {
+        "on_cpu_vs_cpustat_usage": "3.97 vs 4.11",
+        "runnable_vs_cpustat_throttled": "0.16 vs 14.93"
+      },
+      "task": "t2_medium.sh",
+      "cap_name": "cap25"
+    },
+    {
+      "run": "t3_implement_cap100_r1",
+      "wall_s": 19.07,
+      "cpu_stat": {
+        "usage_s": 5.11,
+        "throttled_s": 0.27,
+        "nr_throttled": 18
+      },
+      "subtree_pids": 67,
+      "subtree_cpu_seconds": {
+        "on_cpu": 4.44,
+        "runnable_wait": 0.68
+      },
+      "main_thread_wall_s": {
+        "wait_eventloop": 17.5,
+        "RUN": 1.31,
+        "wait_other": 0.24,
+        "wait_lock": 0.01,
+        "RDY": 0.01
+      },
+      "main_thread_sum_s": 19.07,
+      "validation": {
+        "on_cpu_vs_cpustat_usage": "4.44 vs 5.11",
+        "runnable_vs_cpustat_throttled": "0.68 vs 0.27"
+      },
+      "task": "t3_implement.sh",
+      "cap_name": "cap100"
+    },
+    {
+      "run": "t3_implement_cap25_r2",
+      "wall_s": 34.97,
+      "cpu_stat": {
+        "usage_s": 5.78,
+        "throttled_s": 20.66,
+        "nr_throttled": 219
+      },
+      "subtree_pids": 66,
+      "subtree_cpu_seconds": {
+        "on_cpu": 5.7,
+        "runnable_wait": 0.09
+      },
+      "main_thread_wall_s": {
+        "wait_eventloop": 27.68,
+        "wait_other": 5.56,
+        "RUN": 1.52,
+        "wait_lock": 0.2,
+        "RDY": 0.01
+      },
+      "main_thread_sum_s": 34.97,
+      "validation": {
+        "on_cpu_vs_cpustat_usage": "5.70 vs 5.78",
+        "runnable_vs_cpustat_throttled": "0.09 vs 20.66"
+      },
+      "task": "t3_implement.sh",
+      "cap_name": "cap25"
+    },
+    {
+      "run": "t3_implement_cap25_r3",
+      "wall_s": 31.79,
+      "cpu_stat": {
+        "usage_s": 5.38,
+        "throttled_s": 19.58,
+        "nr_throttled": 203
+      },
+      "subtree_pids": 67,
+      "subtree_cpu_seconds": {
+        "on_cpu": 5.29,
+        "runnable_wait": 0.1
+      },
+      "main_thread_wall_s": {
+        "wait_eventloop": 24.76,
+        "wait_other": 5.27,
+        "RUN": 1.46,
+        "wait_lock": 0.26,
+        "RDY": 0.03
+      },
+      "main_thread_sum_s": 31.78,
+      "validation": {
+        "on_cpu_vs_cpustat_usage": "5.29 vs 5.38",
+        "runnable_vs_cpustat_throttled": "0.10 vs 19.58"
+      },
+      "task": "t3_implement.sh",
+      "cap_name": "cap25"
+    },
+    {
+      "run": "t2_medium_cap25_r3",
+      "wall_s": 31.17,
+      "cpu_stat": {
+        "usage_s": 3.96,
+        "throttled_s": 13.69,
+        "nr_throttled": 141
+      },
+      "subtree_pids": 67,
+      "subtree_cpu_seconds": {
+        "on_cpu": 3.94,
+        "runnable_wait": 0.04
+      },
+      "main_thread_wall_s": {
+        "wait_eventloop": 24.05,
+        "wait_other": 5.52,
+        "RUN": 1.59,
+        "wait_lock": 0.0,
+        "RDY": 0.0
+      },
+      "main_thread_sum_s": 31.16,
+      "validation": {
+        "on_cpu_vs_cpustat_usage": "3.94 vs 3.96",
+        "runnable_vs_cpustat_throttled": "0.04 vs 13.69"
+      },
+      "task": "t2_medium.sh",
+      "cap_name": "cap25"
+    },
+    {
+      "run": "t2_medium_cap50_r1",
+      "wall_s": 21.17,
+      "cpu_stat": {
+        "usage_s": 3.54,
+        "throttled_s": 4.64,
+        "nr_throttled": 64
+      },
+      "subtree_pids": 68,
+      "subtree_cpu_seconds": {
+        "on_cpu": 3.51,
+        "runnable_wait": 0.04
+      },
+      "main_thread_wall_s": {
+        "wait_eventloop": 18.17,
+        "wait_other": 1.66,
+        "RUN": 1.26,
+        "wait_lock": 0.07,
+        "RDY": 0.0
+      },
+      "main_thread_sum_s": 21.16,
+      "validation": {
+        "on_cpu_vs_cpustat_usage": "3.51 vs 3.54",
+        "runnable_vs_cpustat_throttled": "0.04 vs 4.64"
+      },
+      "task": "t2_medium.sh",
+      "cap_name": "cap50"
+    },
+    {
+      "run": "t3_implement_cap100_r3",
+      "wall_s": 17.63,
+      "cpu_stat": {
+        "usage_s": 5.14,
+        "throttled_s": 0.45,
+        "nr_throttled": 27
+      },
+      "subtree_pids": 67,
+      "subtree_cpu_seconds": {
+        "on_cpu": 4.59,
+        "runnable_wait": 0.49
+      },
+      "main_thread_wall_s": {
+        "wait_eventloop": 16.07,
+        "RUN": 1.23,
+        "wait_other": 0.27,
+        "wait_lock": 0.05,
+        "RDY": 0.01
+      },
+      "main_thread_sum_s": 17.63,
+      "validation": {
+        "on_cpu_vs_cpustat_usage": "4.59 vs 5.14",
+        "runnable_vs_cpustat_throttled": "0.49 vs 0.45"
+      },
+      "task": "t3_implement.sh",
+      "cap_name": "cap100"
+    },
+    {
+      "run": "t2_medium_cap25_r2",
+      "wall_s": 25.66,
+      "cpu_stat": {
+        "usage_s": 3.59,
+        "throttled_s": 12.85,
+        "nr_throttled": 134
+      },
+      "subtree_pids": 68,
+      "subtree_cpu_seconds": {
+        "on_cpu": 3.55,
+        "runnable_wait": 0.06
+      },
+      "main_thread_wall_s": {
+        "wait_eventloop": 18.72,
+        "wait_other": 5.49,
+        "RUN": 1.38,
+        "wait_lock": 0.06,
+        "RDY": 0.01
+      },
+      "main_thread_sum_s": 25.66,
+      "validation": {
+        "on_cpu_vs_cpustat_usage": "3.55 vs 3.59",
+        "runnable_vs_cpustat_throttled": "0.06 vs 12.85"
+      },
+      "task": "t2_medium.sh",
+      "cap_name": "cap25"
+    },
+    {
+      "run": "t2_medium_nocap_r1",
+      "wall_s": 17.14,
+      "cpu_stat": {
+        "usage_s": 3.58,
+        "throttled_s": 0.0,
+        "nr_throttled": 0
+      },
+      "subtree_pids": 68,
+      "subtree_cpu_seconds": {
+        "on_cpu": 3.52,
+        "runnable_wait": 0.1
+      },
+      "main_thread_wall_s": {
+        "wait_eventloop": 15.95,
+        "RUN": 1.12,
+        "wait_other": 0.05,
+        "wait_lock": 0.01,
+        "RDY": 0.01,
+        "wait_sleep": 0.0
+      },
+      "main_thread_sum_s": 17.14,
+      "validation": {
+        "on_cpu_vs_cpustat_usage": "3.52 vs 3.58",
+        "runnable_vs_cpustat_throttled": "0.10 vs 0.00"
+      },
+      "task": "t2_medium.sh",
+      "cap_name": "nocap"
+    },
+    {
+      "run": "t2_medium_cap25_r5",
+      "wall_s": 28.94,
+      "cpu_stat": {
+        "usage_s": 4.0,
+        "throttled_s": 15.39,
+        "nr_throttled": 145
+      },
+      "subtree_pids": 66,
+      "subtree_cpu_seconds": {
+        "on_cpu": 3.98,
+        "runnable_wait": 0.04
+      },
+      "main_thread_wall_s": {
+        "wait_eventloop": 21.62,
+        "wait_other": 5.51,
+        "RUN": 1.57,
+        "wait_lock": 0.22,
+        "RDY": 0.01
+      },
+      "main_thread_sum_s": 28.93,
+      "validation": {
+        "on_cpu_vs_cpustat_usage": "3.98 vs 4.00",
+        "runnable_vs_cpustat_throttled": "0.04 vs 15.39"
+      },
+      "task": "t2_medium.sh",
+      "cap_name": "cap25"
+    },
+    {
+      "run": "t3_implement_cap100_r5",
+      "wall_s": 18.66,
+      "cpu_stat": {
+        "usage_s": 5.27,
+        "throttled_s": 0.43,
+        "nr_throttled": 27
+      },
+      "subtree_pids": 67,
+      "subtree_cpu_seconds": {
+        "on_cpu": 5.04,
+        "runnable_wait": 0.24
+      },
+      "main_thread_wall_s": {
+        "wait_eventloop": 17.06,
+        "RUN": 1.27,
+        "wait_other": 0.25,
+        "RDY": 0.07,
+        "wait_lock": 0.0
+      },
+      "main_thread_sum_s": 18.65,
+      "validation": {
+        "on_cpu_vs_cpustat_usage": "5.04 vs 5.27",
+        "runnable_vs_cpustat_throttled": "0.24 vs 0.43"
+      },
+      "task": "t3_implement.sh",
+      "cap_name": "cap100"
+    },
+    {
+      "run": "t2_medium_cap50_r5",
+      "wall_s": 31.94,
+      "cpu_stat": {
+        "usage_s": 5.04,
+        "throttled_s": 5.8,
+        "nr_throttled": 83
+      },
+      "subtree_pids": 68,
+      "subtree_cpu_seconds": {
+        "on_cpu": 4.88,
+        "runnable_wait": 0.18
+      },
+      "main_thread_wall_s": {
+        "wait_eventloop": 28.61,
+        "wait_other": 1.72,
+        "RUN": 1.55,
+        "RDY": 0.05,
+        "wait_lock": 0.0
+      },
+      "main_thread_sum_s": 31.93,
+      "validation": {
+        "on_cpu_vs_cpustat_usage": "4.88 vs 5.04",
+        "runnable_vs_cpustat_throttled": "0.18 vs 5.80"
+      },
+      "task": "t2_medium.sh",
+      "cap_name": "cap50"
+    },
+    {
+      "run": "t2_medium_cap100_r5",
+      "wall_s": 23.25,
+      "cpu_stat": {
+        "usage_s": 3.8,
+        "throttled_s": 0.32,
+        "nr_throttled": 16
+      },
+      "subtree_pids": 66,
+      "subtree_cpu_seconds": {
+        "on_cpu": 3.73,
+        "runnable_wait": 0.08
+      },
+      "main_thread_wall_s": {
+        "wait_eventloop": 21.47,
+        "RUN": 1.47,
+        "wait_other": 0.24,
+        "wait_lock": 0.06,
+        "RDY": 0.01
+      },
+      "main_thread_sum_s": 23.25,
+      "validation": {
+        "on_cpu_vs_cpustat_usage": "3.73 vs 3.80",
+        "runnable_vs_cpustat_throttled": "0.08 vs 0.32"
+      },
+      "task": "t2_medium.sh",
+      "cap_name": "cap100"
+    },
+    {
+      "run": "t3_implement_cap50_r4",
+      "wall_s": 22.75,
+      "cpu_stat": {
+        "usage_s": 5.11,
+        "throttled_s": 6.08,
+        "nr_throttled": 91
+      },
+      "subtree_pids": 63,
+      "subtree_cpu_seconds": {
+        "on_cpu": 5.03,
+        "runnable_wait": 0.08
+      },
+      "main_thread_wall_s": {
+        "wait_eventloop": 19.86,
+        "wait_other": 1.43,
+        "RUN": 1.31,
+        "wait_lock": 0.14,
+        "RDY": 0.01
+      },
+      "main_thread_sum_s": 22.75,
+      "validation": {
+        "on_cpu_vs_cpustat_usage": "5.03 vs 5.11",
+        "runnable_vs_cpustat_throttled": "0.08 vs 6.08"
+      },
+      "task": "t3_implement.sh",
+      "cap_name": "cap50"
+    },
+    {
+      "run": "t2_medium_nocap_r4",
+      "wall_s": 16.27,
+      "cpu_stat": {
+        "usage_s": 3.77,
+        "throttled_s": 0.0,
+        "nr_throttled": 0
+      },
+      "subtree_pids": 69,
+      "subtree_cpu_seconds": {
+        "on_cpu": 3.76,
+        "runnable_wait": 0.06
+      },
+      "main_thread_wall_s": {
+        "wait_eventloop": 15.0,
+        "RUN": 1.19,
+        "wait_other": 0.05,
+        "wait_lock": 0.01,
+        "RDY": 0.01
+      },
+      "main_thread_sum_s": 16.26,
+      "validation": {
+        "on_cpu_vs_cpustat_usage": "3.76 vs 3.77",
+        "runnable_vs_cpustat_throttled": "0.06 vs 0.00"
+      },
+      "task": "t2_medium.sh",
+      "cap_name": "nocap"
+    },
+    {
+      "run": "t2_medium_nocap_r5",
+      "wall_s": 27.08,
+      "cpu_stat": {
+        "usage_s": 5.27,
+        "throttled_s": 0.0,
+        "nr_throttled": 0
+      },
+      "subtree_pids": 68,
+      "subtree_cpu_seconds": {
+        "on_cpu": 4.42,
+        "runnable_wait": 0.94
+      },
+      "main_thread_wall_s": {
+        "wait_eventloop": 25.53,
+        "RUN": 1.47,
+        "wait_other": 0.06,
+        "RDY": 0.02,
+        "wait_lock": 0.01
+      },
+      "main_thread_sum_s": 27.09,
+      "validation": {
+        "on_cpu_vs_cpustat_usage": "4.42 vs 5.27",
+        "runnable_vs_cpustat_throttled": "0.94 vs 0.00"
+      },
+      "task": "t2_medium.sh",
+      "cap_name": "nocap"
+    },
+    {
+      "run": "t3_implement_cap25_r5",
+      "wall_s": 32.22,
+      "cpu_stat": {
+        "usage_s": 5.49,
+        "throttled_s": 19.79,
+        "nr_throttled": 207
+      },
+      "subtree_pids": 67,
+      "subtree_cpu_seconds": {
+        "on_cpu": 5.47,
+        "runnable_wait": 0.04
+      },
+      "main_thread_wall_s": {
+        "wait_eventloop": 24.95,
+        "wait_other": 5.51,
+        "RUN": 1.56,
+        "wait_lock": 0.2,
+        "RDY": 0.01
+      },
+      "main_thread_sum_s": 32.23,
+      "validation": {
+        "on_cpu_vs_cpustat_usage": "5.47 vs 5.49",
+        "runnable_vs_cpustat_throttled": "0.04 vs 19.79"
+      },
+      "task": "t3_implement.sh",
+      "cap_name": "cap25"
+    },
+    {
+      "run": "t2_medium_cap25_r4",
+      "wall_s": 28.18,
+      "cpu_stat": {
+        "usage_s": 4.01,
+        "throttled_s": 13.55,
+        "nr_throttled": 144
+      },
+      "subtree_pids": 67,
+      "subtree_cpu_seconds": {
+        "on_cpu": 3.91,
+        "runnable_wait": 0.06
+      },
+      "main_thread_wall_s": {
+        "wait_eventloop": 21.06,
+        "wait_other": 5.37,
+        "RUN": 1.56,
+        "wait_lock": 0.16,
+        "RDY": 0.03
+      },
+      "main_thread_sum_s": 28.18,
+      "validation": {
+        "on_cpu_vs_cpustat_usage": "3.91 vs 4.01",
+        "runnable_vs_cpustat_throttled": "0.06 vs 13.55"
+      },
+      "task": "t2_medium.sh",
+      "cap_name": "cap25"
+    },
+    {
+      "run": "t3_implement_nocap_r4",
+      "wall_s": 20.44,
+      "cpu_stat": {
+        "usage_s": 6.13,
+        "throttled_s": 0.0,
+        "nr_throttled": 0
+      },
+      "subtree_pids": 67,
+      "subtree_cpu_seconds": {
+        "on_cpu": 5.66,
+        "runnable_wait": 0.53
+      },
+      "main_thread_wall_s": {
+        "wait_eventloop": 19.08,
+        "RUN": 1.23,
+        "RDY": 0.06,
+        "wait_other": 0.06,
+        "wait_lock": 0.01
+      },
+      "main_thread_sum_s": 20.44,
+      "validation": {
+        "on_cpu_vs_cpustat_usage": "5.66 vs 6.13",
+        "runnable_vs_cpustat_throttled": "0.53 vs 0.00"
+      },
+      "task": "t3_implement.sh",
+      "cap_name": "nocap"
+    },
+    {
+      "run": "t2_medium_cap50_r4",
+      "wall_s": 19.84,
+      "cpu_stat": {
+        "usage_s": 3.55,
+        "throttled_s": 4.39,
+        "nr_throttled": 62
+      },
+      "subtree_pids": 61,
+      "subtree_cpu_seconds": {
+        "on_cpu": 3.54,
+        "runnable_wait": 0.03
+      },
+      "main_thread_wall_s": {
+        "wait_eventloop": 16.78,
+        "wait_other": 1.69,
+        "RUN": 1.29,
+        "wait_lock": 0.07,
+        "RDY": 0.0
+      },
+      "main_thread_sum_s": 19.83,
+      "validation": {
+        "on_cpu_vs_cpustat_usage": "3.54 vs 3.55",
+        "runnable_vs_cpustat_throttled": "0.03 vs 4.39"
+      },
+      "task": "t2_medium.sh",
+      "cap_name": "cap50"
+    },
+    {
+      "run": "t3_implement_nocap_r5",
+      "wall_s": 19.05,
+      "cpu_stat": {
+        "usage_s": 6.0,
+        "throttled_s": 0.0,
+        "nr_throttled": 0
+      },
+      "subtree_pids": 63,
+      "subtree_cpu_seconds": {
+        "on_cpu": 5.65,
+        "runnable_wait": 0.51
+      },
+      "main_thread_wall_s": {
+        "wait_eventloop": 17.59,
+        "RUN": 1.37,
+        "wait_other": 0.06,
+        "RDY": 0.02,
+        "wait_lock": 0.01
+      },
+      "main_thread_sum_s": 19.05,
+      "validation": {
+        "on_cpu_vs_cpustat_usage": "5.65 vs 6.00",
+        "runnable_vs_cpustat_throttled": "0.51 vs 0.00"
+      },
+      "task": "t3_implement.sh",
+      "cap_name": "nocap"
+    },
+    {
+      "run": "t2_medium_cap100_r4",
+      "wall_s": 24.39,
+      "cpu_stat": {
+        "usage_s": 4.04,
+        "throttled_s": 0.3,
+        "nr_throttled": 24
+      },
+      "subtree_pids": 69,
+      "subtree_cpu_seconds": {
+        "on_cpu": 3.84,
+        "runnable_wait": 0.22
+      },
+      "main_thread_wall_s": {
+        "wait_eventloop": 22.47,
+        "RUN": 1.6,
+        "wait_other": 0.28,
+        "RDY": 0.03,
+        "wait_lock": 0.0,
+        "wait_io": 0.0
+      },
+      "main_thread_sum_s": 24.38,
+      "validation": {
+        "on_cpu_vs_cpustat_usage": "3.84 vs 4.04",
+        "runnable_vs_cpustat_throttled": "0.22 vs 0.30"
+      },
+      "task": "t2_medium.sh",
+      "cap_name": "cap100"
+    },
+    {
+      "run": "t3_implement_cap25_r4",
+      "wall_s": 32.93,
+      "cpu_stat": {
+        "usage_s": 5.33,
+        "throttled_s": 18.92,
+        "nr_throttled": 203
+      },
+      "subtree_pids": 63,
+      "subtree_cpu_seconds": {
+        "on_cpu": 5.29,
+        "runnable_wait": 0.06
+      },
+      "main_thread_wall_s": {
+        "wait_eventloop": 25.79,
+        "wait_other": 5.5,
+        "RUN": 1.53,
+        "wait_lock": 0.08,
+        "RDY": 0.01,
+        "wait_io": 0.0
+      },
+      "main_thread_sum_s": 32.91,
+      "validation": {
+        "on_cpu_vs_cpustat_usage": "5.29 vs 5.33",
+        "runnable_vs_cpustat_throttled": "0.06 vs 18.92"
+      },
+      "task": "t3_implement.sh",
+      "cap_name": "cap25"
+    },
+    {
+      "run": "t3_implement_cap100_r4",
+      "wall_s": 23.08,
+      "cpu_stat": {
+        "usage_s": 5.54,
+        "throttled_s": 0.49,
+        "nr_throttled": 24
+      },
+      "subtree_pids": 62,
+      "subtree_cpu_seconds": {
+        "on_cpu": 5.3,
+        "runnable_wait": 0.25
+      },
+      "main_thread_wall_s": {
+        "wait_eventloop": 21.21,
+        "RUN": 1.5,
+        "wait_other": 0.35,
+        "wait_lock": 0.01,
+        "RDY": 0.01
+      },
+      "main_thread_sum_s": 23.08,
+      "validation": {
+        "on_cpu_vs_cpustat_usage": "5.30 vs 5.54",
+        "runnable_vs_cpustat_throttled": "0.25 vs 0.49"
+      },
+      "task": "t3_implement.sh",
+      "cap_name": "cap100"
+    },
+    {
+      "run": "t3_implement_cap50_r5",
+      "wall_s": 24.82,
+      "cpu_stat": {
+        "usage_s": 6.48,
+        "throttled_s": 8.36,
+        "nr_throttled": 122
+      },
+      "subtree_pids": 65,
+      "subtree_cpu_seconds": {
+        "on_cpu": 6.32,
+        "runnable_wait": 0.17
+      },
+      "main_thread_wall_s": {
+        "wait_eventloop": 19.42,
+        "wait_other": 3.03,
+        "RUN": 2.07,
+        "wait_lock": 0.22,
+        "RDY": 0.07
+      },
+      "main_thread_sum_s": 24.81,
+      "validation": {
+        "on_cpu_vs_cpustat_usage": "6.32 vs 6.48",
+        "runnable_vs_cpustat_throttled": "0.17 vs 8.36"
+      },
+      "task": "t3_implement.sh",
+      "cap_name": "cap50"
+    }
+  ],
+  "summary": {
+    "t2_medium.sh:nocap": {
+      "n": 5,
+      "wall_s": 23.39,
+      "on_cpu_s": 4.42,
+      "throttled_s": 0.0,
+      "eventloop_wait_s": 21.98
+    },
+    "t2_medium.sh:cap100": {
+      "n": 5,
+      "wall_s": 24.39,
+      "on_cpu_s": 3.73,
+      "throttled_s": 0.32,
+      "eventloop_wait_s": 22.47
+    },
+    "t2_medium.sh:cap50": {
+      "n": 5,
+      "wall_s": 22.44,
+      "on_cpu_s": 3.72,
+      "throttled_s": 4.39,
+      "eventloop_wait_s": 19.4
+    },
+    "t2_medium.sh:cap25": {
+      "n": 5,
+      "wall_s": 28.94,
+      "on_cpu_s": 3.94,
+      "throttled_s": 13.69,
+      "eventloop_wait_s": 21.62
+    },
+    "t3_implement.sh:nocap": {
+      "n": 5,
+      "wall_s": 18.66,
+      "on_cpu_s": 5.24,
+      "throttled_s": 0.0,
+      "eventloop_wait_s": 17.39
+    },
+    "t3_implement.sh:cap100": {
+      "n": 5,
+      "wall_s": 18.66,
+      "on_cpu_s": 5.04,
+      "throttled_s": 0.45,
+      "eventloop_wait_s": 17.06
+    },
+    "t3_implement.sh:cap50": {
+      "n": 5,
+      "wall_s": 23.66,
+      "on_cpu_s": 5.15,
+      "throttled_s": 6.3,
+      "eventloop_wait_s": 19.86
+    },
+    "t3_implement.sh:cap25": {
+      "n": 5,
+      "wall_s": 32.69,
+      "on_cpu_s": 5.33,
+      "throttled_s": 19.79,
+      "eventloop_wait_s": 25.19
+    }
+  }
+}

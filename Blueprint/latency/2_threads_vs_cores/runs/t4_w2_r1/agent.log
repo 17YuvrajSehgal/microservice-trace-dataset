@@ -1,0 +1,10 @@
+`./run_all.sh` finished cleanly (exit 0, both workers done).
+
+**Slowest worker: worker 2, at 0.429 seconds.**
+
+| worker_id | prime_count | elapsed_seconds |
+|---|---|---|
+| 1 | 11301 | 0.409 |
+| 2 | 11301 | 0.429 |
+
+The gap is only 0.020s, so the two are effectively tied and the order could flip on another run.

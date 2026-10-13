@@ -1,0 +1,52 @@
+{
+  "run": "t2_nocap_r1",
+  "wall_s": 16.23,
+  "cpu_stat": {
+    "usage_s": 3.83,
+    "throttled_s": 0.0,
+    "nr_throttled": 0
+  },
+  "subtree_pids": 71,
+  "subtree_cpu_seconds": {
+    "on_cpu": 3.72,
+    "runnable_wait": 0.15
+  },
+  "main_thread_wall_s": {
+    "wait_eventloop": 14.94,
+    "RUN": 1.21,
+    "wait_other": 0.05,
+    "wait_lock": 0.01,
+    "RDY": 0.01
+  },
+  "main_thread_sum_s": 16.22,
+  "validation": {
+    "on_cpu_vs_cpustat_usage": "3.72 vs 3.83",
+    "runnable_vs_cpustat_throttled": "0.15 vs 0.00"
+  }
+}
+{
+  "run": "t2_cap100_r1",
+  "wall_s": 17.99,
+  "cpu_stat": {
+    "usage_s": 3.27,
+    "throttled_s": 0.45,
+    "nr_throttled": 15
+  },
+  "subtree_pids": 57,
+  "subtree_cpu_seconds": {
+    "on_cpu": 3.26,
+    "runnable_wait": 0.03
+  },
+  "main_thread_wall_s": {
+    "wait_eventloop": 16.35,
+    "RUN": 1.33,
+    "wait_other": 0.28,
+    "wait_lock": 0.02,
+    "RDY": 0.0
+  },
+  "main_thread_sum_s": 17.98,
+  "validation": {
+    "on_cpu_vs_cpustat_usage": "3.26 vs 3.27",
+    "runnable_vs_cpustat_throttled": "0.03 vs 0.45"
+  }
+}

@@ -1,0 +1,8 @@
+`./run_all.sh` finished cleanly (exit 0, both workers done).
+
+**Slowest worker: worker 2, at 0.516 seconds.**
+
+| worker_id | prime_count | elapsed_seconds |
+|---|---|---|
+| 1 | 11301 | 0.379 |
+| 2 | 11301 | 0.516 |

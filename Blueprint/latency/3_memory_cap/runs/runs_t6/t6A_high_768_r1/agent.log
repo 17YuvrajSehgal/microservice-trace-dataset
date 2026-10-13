@@ -1,0 +1,4 @@
+`./touch_all.sh` finished successfully. From `results/read.csv`:
+
+- **Total bytes read:** 5,368,709,120 (5 GiB — the 1 GiB `big.dat` read over 5 passes)
+- **Elapsed time:** 30.375 seconds

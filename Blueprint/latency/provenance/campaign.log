@@ -1,0 +1,818 @@
+campaign: 24 runs planned
+[1/24] === t2_medium_cap100_r3 (cpu.max='100000 100000') ===
+Session t2_medium_cap100_r3 created.
+Traces will be output to /home/aylabsltd/runs/t2_medium_cap100_r3/trace
+Enabled kernel event rule matching all events and attached to channel `channel0`
+Enabled kernel event rule with pattern `sched_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `block_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `net_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `netif_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `napi_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `skb_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `sock_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `tcp_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `udp_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `irq_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `softirq_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `power_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `vmscan_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `writeback_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `compaction_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `migrate_*` and attached to channel `channel0`
+kernel context pid added to all channels
+kernel context tid added to all channels
+kernel context procname added to all channels
+kernel context cgroup_ns added to all channels
+kernel context pid_ns added to all channels
+kernel context net_ns added to all channels
+kernel context ipc_ns added to all channels
+kernel context user_ns added to all channels
+Tracing started for session `t2_medium_cap100_r3`
+Waiting for data availability.
+Tracing stopped for session `t2_medium_cap100_r3`
+Destroying session `t2_medium_cap100_r3`..
+Session `t2_medium_cap100_r3` destroyed
+[t2_medium_cap100_r3] agent_exit=0 task_check=0 trace=18M
+[2/24] === t2_medium_cap100_r2 (cpu.max='100000 100000') ===
+Session t2_medium_cap100_r2 created.
+Traces will be output to /home/aylabsltd/runs/t2_medium_cap100_r2/trace
+Enabled kernel event rule matching all events and attached to channel `channel0`
+Enabled kernel event rule with pattern `sched_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `block_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `net_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `netif_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `napi_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `skb_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `sock_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `tcp_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `udp_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `irq_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `softirq_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `power_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `vmscan_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `writeback_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `compaction_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `migrate_*` and attached to channel `channel0`
+kernel context pid added to all channels
+kernel context tid added to all channels
+kernel context procname added to all channels
+kernel context cgroup_ns added to all channels
+kernel context pid_ns added to all channels
+kernel context net_ns added to all channels
+kernel context ipc_ns added to all channels
+kernel context user_ns added to all channels
+Tracing started for session `t2_medium_cap100_r2`
+Waiting for data availability.
+Tracing stopped for session `t2_medium_cap100_r2`
+Destroying session `t2_medium_cap100_r2`..
+Session `t2_medium_cap100_r2` destroyed
+[t2_medium_cap100_r2] agent_exit=0 task_check=0 trace=22M
+[3/24] === t3_implement_cap25_r1 (cpu.max='25000 100000') ===
+Session t3_implement_cap25_r1 created.
+Traces will be output to /home/aylabsltd/runs/t3_implement_cap25_r1/trace
+Enabled kernel event rule matching all events and attached to channel `channel0`
+Enabled kernel event rule with pattern `sched_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `block_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `net_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `netif_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `napi_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `skb_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `sock_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `tcp_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `udp_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `irq_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `softirq_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `power_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `vmscan_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `writeback_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `compaction_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `migrate_*` and attached to channel `channel0`
+kernel context pid added to all channels
+kernel context tid added to all channels
+kernel context procname added to all channels
+kernel context cgroup_ns added to all channels
+kernel context pid_ns added to all channels
+kernel context net_ns added to all channels
+kernel context ipc_ns added to all channels
+kernel context user_ns added to all channels
+Tracing started for session `t3_implement_cap25_r1`
+Waiting for data availability.
+Tracing stopped for session `t3_implement_cap25_r1`
+Destroying session `t3_implement_cap25_r1`..
+Session `t3_implement_cap25_r1` destroyed
+[t3_implement_cap25_r1] agent_exit=0 task_check=0 trace=17M
+[4/24] === t2_medium_cap50_r2 (cpu.max='50000 100000') ===
+Session t2_medium_cap50_r2 created.
+Traces will be output to /home/aylabsltd/runs/t2_medium_cap50_r2/trace
+Enabled kernel event rule matching all events and attached to channel `channel0`
+Enabled kernel event rule with pattern `sched_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `block_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `net_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `netif_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `napi_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `skb_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `sock_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `tcp_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `udp_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `irq_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `softirq_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `power_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `vmscan_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `writeback_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `compaction_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `migrate_*` and attached to channel `channel0`
+kernel context pid added to all channels
+kernel context tid added to all channels
+kernel context procname added to all channels
+kernel context cgroup_ns added to all channels
+kernel context pid_ns added to all channels
+kernel context net_ns added to all channels
+kernel context ipc_ns added to all channels
+kernel context user_ns added to all channels
+Tracing started for session `t2_medium_cap50_r2`
+Waiting for data availability.
+Tracing stopped for session `t2_medium_cap50_r2`
+Destroying session `t2_medium_cap50_r2`..
+Session `t2_medium_cap50_r2` destroyed
+[t2_medium_cap50_r2] agent_exit=0 task_check=0 trace=17M
+[5/24] === t2_medium_nocap_r2 (cpu.max='max') ===
+Session t2_medium_nocap_r2 created.
+Traces will be output to /home/aylabsltd/runs/t2_medium_nocap_r2/trace
+Enabled kernel event rule matching all events and attached to channel `channel0`
+Enabled kernel event rule with pattern `sched_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `block_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `net_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `netif_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `napi_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `skb_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `sock_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `tcp_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `udp_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `irq_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `softirq_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `power_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `vmscan_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `writeback_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `compaction_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `migrate_*` and attached to channel `channel0`
+kernel context pid added to all channels
+kernel context tid added to all channels
+kernel context procname added to all channels
+kernel context cgroup_ns added to all channels
+kernel context pid_ns added to all channels
+kernel context net_ns added to all channels
+kernel context ipc_ns added to all channels
+kernel context user_ns added to all channels
+Tracing started for session `t2_medium_nocap_r2`
+Waiting for data availability.
+Tracing stopped for session `t2_medium_nocap_r2`
+Destroying session `t2_medium_nocap_r2`..
+Session `t2_medium_nocap_r2` destroyed
+[t2_medium_nocap_r2] agent_exit=0 task_check=0 trace=19M
+[6/24] === t2_medium_cap100_r1 (cpu.max='100000 100000') ===
+Session t2_medium_cap100_r1 created.
+Traces will be output to /home/aylabsltd/runs/t2_medium_cap100_r1/trace
+Enabled kernel event rule matching all events and attached to channel `channel0`
+Enabled kernel event rule with pattern `sched_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `block_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `net_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `netif_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `napi_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `skb_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `sock_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `tcp_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `udp_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `irq_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `softirq_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `power_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `vmscan_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `writeback_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `compaction_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `migrate_*` and attached to channel `channel0`
+kernel context pid added to all channels
+kernel context tid added to all channels
+kernel context procname added to all channels
+kernel context cgroup_ns added to all channels
+kernel context pid_ns added to all channels
+kernel context net_ns added to all channels
+kernel context ipc_ns added to all channels
+kernel context user_ns added to all channels
+Tracing started for session `t2_medium_cap100_r1`
+Waiting for data availability.
+Tracing stopped for session `t2_medium_cap100_r1`
+Destroying session `t2_medium_cap100_r1`..
+Session `t2_medium_cap100_r1` destroyed
+[t2_medium_cap100_r1] agent_exit=0 task_check=0 trace=17M
+[7/24] === t3_implement_cap50_r1 (cpu.max='50000 100000') ===
+Session t3_implement_cap50_r1 created.
+Traces will be output to /home/aylabsltd/runs/t3_implement_cap50_r1/trace
+Enabled kernel event rule matching all events and attached to channel `channel0`
+Enabled kernel event rule with pattern `sched_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `block_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `net_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `netif_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `napi_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `skb_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `sock_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `tcp_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `udp_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `irq_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `softirq_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `power_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `vmscan_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `writeback_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `compaction_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `migrate_*` and attached to channel `channel0`
+kernel context pid added to all channels
+kernel context tid added to all channels
+kernel context procname added to all channels
+kernel context cgroup_ns added to all channels
+kernel context pid_ns added to all channels
+kernel context net_ns added to all channels
+kernel context ipc_ns added to all channels
+kernel context user_ns added to all channels
+Tracing started for session `t3_implement_cap50_r1`
+Waiting for data availability.
+Tracing stopped for session `t3_implement_cap50_r1`
+Destroying session `t3_implement_cap50_r1`..
+Session `t3_implement_cap50_r1` destroyed
+[t3_implement_cap50_r1] agent_exit=0 task_check=0 trace=16M
+[8/24] === t3_implement_nocap_r3 (cpu.max='max') ===
+Session t3_implement_nocap_r3 created.
+Traces will be output to /home/aylabsltd/runs/t3_implement_nocap_r3/trace
+Enabled kernel event rule matching all events and attached to channel `channel0`
+Enabled kernel event rule with pattern `sched_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `block_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `net_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `netif_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `napi_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `skb_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `sock_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `tcp_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `udp_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `irq_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `softirq_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `power_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `vmscan_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `writeback_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `compaction_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `migrate_*` and attached to channel `channel0`
+kernel context pid added to all channels
+kernel context tid added to all channels
+kernel context procname added to all channels
+kernel context cgroup_ns added to all channels
+kernel context pid_ns added to all channels
+kernel context net_ns added to all channels
+kernel context ipc_ns added to all channels
+kernel context user_ns added to all channels
+Tracing started for session `t3_implement_nocap_r3`
+Waiting for data availability.
+Tracing stopped for session `t3_implement_nocap_r3`
+Destroying session `t3_implement_nocap_r3`..
+Session `t3_implement_nocap_r3` destroyed
+[t3_implement_nocap_r3] agent_exit=0 task_check=0 trace=17M
+[9/24] === t2_medium_cap50_r3 (cpu.max='50000 100000') ===
+Session t2_medium_cap50_r3 created.
+Traces will be output to /home/aylabsltd/runs/t2_medium_cap50_r3/trace
+Enabled kernel event rule matching all events and attached to channel `channel0`
+Enabled kernel event rule with pattern `sched_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `block_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `net_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `netif_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `napi_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `skb_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `sock_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `tcp_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `udp_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `irq_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `softirq_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `power_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `vmscan_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `writeback_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `compaction_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `migrate_*` and attached to channel `channel0`
+kernel context pid added to all channels
+kernel context tid added to all channels
+kernel context procname added to all channels
+kernel context cgroup_ns added to all channels
+kernel context pid_ns added to all channels
+kernel context net_ns added to all channels
+kernel context ipc_ns added to all channels
+kernel context user_ns added to all channels
+Tracing started for session `t2_medium_cap50_r3`
+Waiting for data availability.
+Tracing stopped for session `t2_medium_cap50_r3`
+Destroying session `t2_medium_cap50_r3`..
+Session `t2_medium_cap50_r3` destroyed
+[t2_medium_cap50_r3] agent_exit=0 task_check=0 trace=18M
+[10/24] === t3_implement_nocap_r1 (cpu.max='max') ===
+Session t3_implement_nocap_r1 created.
+Traces will be output to /home/aylabsltd/runs/t3_implement_nocap_r1/trace
+Enabled kernel event rule matching all events and attached to channel `channel0`
+Enabled kernel event rule with pattern `sched_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `block_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `net_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `netif_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `napi_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `skb_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `sock_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `tcp_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `udp_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `irq_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `softirq_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `power_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `vmscan_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `writeback_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `compaction_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `migrate_*` and attached to channel `channel0`
+kernel context pid added to all channels
+kernel context tid added to all channels
+kernel context procname added to all channels
+kernel context cgroup_ns added to all channels
+kernel context pid_ns added to all channels
+kernel context net_ns added to all channels
+kernel context ipc_ns added to all channels
+kernel context user_ns added to all channels
+Tracing started for session `t3_implement_nocap_r1`
+Waiting for data availability
+Tracing stopped for session `t3_implement_nocap_r1`
+Destroying session `t3_implement_nocap_r1`..
+Session `t3_implement_nocap_r1` destroyed
+[t3_implement_nocap_r1] agent_exit=0 task_check=0 trace=16M
+[11/24] === t3_implement_cap50_r3 (cpu.max='50000 100000') ===
+Session t3_implement_cap50_r3 created.
+Traces will be output to /home/aylabsltd/runs/t3_implement_cap50_r3/trace
+Enabled kernel event rule matching all events and attached to channel `channel0`
+Enabled kernel event rule with pattern `sched_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `block_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `net_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `netif_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `napi_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `skb_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `sock_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `tcp_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `udp_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `irq_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `softirq_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `power_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `vmscan_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `writeback_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `compaction_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `migrate_*` and attached to channel `channel0`
+kernel context pid added to all channels
+kernel context tid added to all channels
+kernel context procname added to all channels
+kernel context cgroup_ns added to all channels
+kernel context pid_ns added to all channels
+kernel context net_ns added to all channels
+kernel context ipc_ns added to all channels
+kernel context user_ns added to all channels
+Tracing started for session `t3_implement_cap50_r3`
+Waiting for data availability.
+Tracing stopped for session `t3_implement_cap50_r3`
+Destroying session `t3_implement_cap50_r3`..
+Session `t3_implement_cap50_r3` destroyed
+[t3_implement_cap50_r3] agent_exit=0 task_check=0 trace=16M
+[12/24] === t3_implement_cap100_r2 (cpu.max='100000 100000') ===
+Session t3_implement_cap100_r2 created.
+Traces will be output to /home/aylabsltd/runs/t3_implement_cap100_r2/trace
+Enabled kernel event rule matching all events and attached to channel `channel0`
+Enabled kernel event rule with pattern `sched_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `block_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `net_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `netif_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `napi_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `skb_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `sock_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `tcp_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `udp_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `irq_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `softirq_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `power_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `vmscan_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `writeback_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `compaction_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `migrate_*` and attached to channel `channel0`
+kernel context pid added to all channels
+kernel context tid added to all channels
+kernel context procname added to all channels
+kernel context cgroup_ns added to all channels
+kernel context pid_ns added to all channels
+kernel context net_ns added to all channels
+kernel context ipc_ns added to all channels
+kernel context user_ns added to all channels
+Tracing started for session `t3_implement_cap100_r2`
+Waiting for data availability.
+Tracing stopped for session `t3_implement_cap100_r2`
+Destroying session `t3_implement_cap100_r2`..
+Session `t3_implement_cap100_r2` destroyed
+[t3_implement_cap100_r2] agent_exit=0 task_check=0 trace=15M
+[13/24] === t2_medium_nocap_r3 (cpu.max='max') ===
+Session t2_medium_nocap_r3 created.
+Traces will be output to /home/aylabsltd/runs/t2_medium_nocap_r3/trace
+Enabled kernel event rule matching all events and attached to channel `channel0`
+Enabled kernel event rule with pattern `sched_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `block_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `net_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `netif_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `napi_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `skb_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `sock_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `tcp_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `udp_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `irq_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `softirq_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `power_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `vmscan_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `writeback_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `compaction_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `migrate_*` and attached to channel `channel0`
+kernel context pid added to all channels
+kernel context tid added to all channels
+kernel context procname added to all channels
+kernel context cgroup_ns added to all channels
+kernel context pid_ns added to all channels
+kernel context net_ns added to all channels
+kernel context ipc_ns added to all channels
+kernel context user_ns added to all channels
+Tracing started for session `t2_medium_nocap_r3`
+Waiting for data availability.
+Tracing stopped for session `t2_medium_nocap_r3`
+Destroying session `t2_medium_nocap_r3`..
+Session `t2_medium_nocap_r3` destroyed
+[t2_medium_nocap_r3] agent_exit=0 task_check=0 trace=20M
+[14/24] === t3_implement_nocap_r2 (cpu.max='max') ===
+Session t3_implement_nocap_r2 created.
+Traces will be output to /home/aylabsltd/runs/t3_implement_nocap_r2/trace
+Enabled kernel event rule matching all events and attached to channel `channel0`
+Enabled kernel event rule with pattern `sched_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `block_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `net_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `netif_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `napi_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `skb_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `sock_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `tcp_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `udp_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `irq_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `softirq_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `power_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `vmscan_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `writeback_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `compaction_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `migrate_*` and attached to channel `channel0`
+kernel context pid added to all channels
+kernel context tid added to all channels
+kernel context procname added to all channels
+kernel context cgroup_ns added to all channels
+kernel context pid_ns added to all channels
+kernel context net_ns added to all channels
+kernel context ipc_ns added to all channels
+kernel context user_ns added to all channels
+Tracing started for session `t3_implement_nocap_r2`
+Waiting for data availability.
+Tracing stopped for session `t3_implement_nocap_r2`
+Destroying session `t3_implement_nocap_r2`..
+Session `t3_implement_nocap_r2` destroyed
+[t3_implement_nocap_r2] agent_exit=0 task_check=0 trace=17M
+[15/24] === t3_implement_cap50_r2 (cpu.max='50000 100000') ===
+Session t3_implement_cap50_r2 created.
+Traces will be output to /home/aylabsltd/runs/t3_implement_cap50_r2/trace
+Enabled kernel event rule matching all events and attached to channel `channel0`
+Enabled kernel event rule with pattern `sched_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `block_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `net_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `netif_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `napi_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `skb_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `sock_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `tcp_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `udp_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `irq_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `softirq_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `power_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `vmscan_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `writeback_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `compaction_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `migrate_*` and attached to channel `channel0`
+kernel context pid added to all channels
+kernel context tid added to all channels
+kernel context procname added to all channels
+kernel context cgroup_ns added to all channels
+kernel context pid_ns added to all channels
+kernel context net_ns added to all channels
+kernel context ipc_ns added to all channels
+kernel context user_ns added to all channels
+Tracing started for session `t3_implement_cap50_r2`
+Waiting for data availability.
+Tracing stopped for session `t3_implement_cap50_r2`
+Destroying session `t3_implement_cap50_r2`..
+Session `t3_implement_cap50_r2` destroyed
+[t3_implement_cap50_r2] agent_exit=0 task_check=0 trace=17M
+[16/24] === t2_medium_cap25_r1 (cpu.max='25000 100000') ===
+Session t2_medium_cap25_r1 created.
+Traces will be output to /home/aylabsltd/runs/t2_medium_cap25_r1/trace
+Enabled kernel event rule matching all events and attached to channel `channel0`
+Enabled kernel event rule with pattern `sched_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `block_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `net_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `netif_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `napi_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `skb_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `sock_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `tcp_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `udp_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `irq_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `softirq_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `power_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `vmscan_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `writeback_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `compaction_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `migrate_*` and attached to channel `channel0`
+kernel context pid added to all channels
+kernel context tid added to all channels
+kernel context procname added to all channels
+kernel context cgroup_ns added to all channels
+kernel context pid_ns added to all channels
+kernel context net_ns added to all channels
+kernel context ipc_ns added to all channels
+kernel context user_ns added to all channels
+Tracing started for session `t2_medium_cap25_r1`
+Waiting for data availability.
+Tracing stopped for session `t2_medium_cap25_r1`
+Destroying session `t2_medium_cap25_r1`..
+Session `t2_medium_cap25_r1` destroyed
+[t2_medium_cap25_r1] agent_exit=0 task_check=0 trace=19M
+[17/24] === t3_implement_cap100_r1 (cpu.max='100000 100000') ===
+Session t3_implement_cap100_r1 created.
+Traces will be output to /home/aylabsltd/runs/t3_implement_cap100_r1/trace
+Enabled kernel event rule matching all events and attached to channel `channel0`
+Enabled kernel event rule with pattern `sched_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `block_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `net_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `netif_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `napi_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `skb_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `sock_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `tcp_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `udp_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `irq_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `softirq_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `power_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `vmscan_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `writeback_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `compaction_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `migrate_*` and attached to channel `channel0`
+kernel context pid added to all channels
+kernel context tid added to all channels
+kernel context procname added to all channels
+kernel context cgroup_ns added to all channels
+kernel context pid_ns added to all channels
+kernel context net_ns added to all channels
+kernel context ipc_ns added to all channels
+kernel context user_ns added to all channels
+Tracing started for session `t3_implement_cap100_r1`
+Waiting for data availability.
+Tracing stopped for session `t3_implement_cap100_r1`
+Destroying session `t3_implement_cap100_r1`..
+Session `t3_implement_cap100_r1` destroyed
+[t3_implement_cap100_r1] agent_exit=0 task_check=0 trace=16M
+[18/24] === t3_implement_cap25_r2 (cpu.max='25000 100000') ===
+Session t3_implement_cap25_r2 created.
+Traces will be output to /home/aylabsltd/runs/t3_implement_cap25_r2/trace
+Enabled kernel event rule matching all events and attached to channel `channel0`
+Enabled kernel event rule with pattern `sched_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `block_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `net_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `netif_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `napi_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `skb_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `sock_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `tcp_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `udp_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `irq_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `softirq_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `power_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `vmscan_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `writeback_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `compaction_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `migrate_*` and attached to channel `channel0`
+kernel context pid added to all channels
+kernel context tid added to all channels
+kernel context procname added to all channels
+kernel context cgroup_ns added to all channels
+kernel context pid_ns added to all channels
+kernel context net_ns added to all channels
+kernel context ipc_ns added to all channels
+kernel context user_ns added to all channels
+Tracing started for session `t3_implement_cap25_r2`
+Waiting for data availability.
+Tracing stopped for session `t3_implement_cap25_r2`
+Destroying session `t3_implement_cap25_r2`..
+Session `t3_implement_cap25_r2` destroyed
+[t3_implement_cap25_r2] agent_exit=0 task_check=0 trace=17M
+[19/24] === t3_implement_cap25_r3 (cpu.max='25000 100000') ===
+Session t3_implement_cap25_r3 created.
+Traces will be output to /home/aylabsltd/runs/t3_implement_cap25_r3/trace
+Enabled kernel event rule matching all events and attached to channel `channel0`
+Enabled kernel event rule with pattern `sched_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `block_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `net_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `netif_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `napi_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `skb_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `sock_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `tcp_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `udp_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `irq_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `softirq_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `power_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `vmscan_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `writeback_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `compaction_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `migrate_*` and attached to channel `channel0`
+kernel context pid added to all channels
+kernel context tid added to all channels
+kernel context procname added to all channels
+kernel context cgroup_ns added to all channels
+kernel context pid_ns added to all channels
+kernel context net_ns added to all channels
+kernel context ipc_ns added to all channels
+kernel context user_ns added to all channels
+Tracing started for session `t3_implement_cap25_r3`
+Waiting for data availability
+Tracing stopped for session `t3_implement_cap25_r3`
+Destroying session `t3_implement_cap25_r3`..
+Session `t3_implement_cap25_r3` destroyed
+[t3_implement_cap25_r3] agent_exit=0 task_check=0 trace=17M
+[20/24] === t2_medium_cap25_r3 (cpu.max='25000 100000') ===
+Session t2_medium_cap25_r3 created.
+Traces will be output to /home/aylabsltd/runs/t2_medium_cap25_r3/trace
+Enabled kernel event rule matching all events and attached to channel `channel0`
+Enabled kernel event rule with pattern `sched_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `block_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `net_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `netif_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `napi_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `skb_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `sock_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `tcp_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `udp_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `irq_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `softirq_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `power_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `vmscan_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `writeback_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `compaction_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `migrate_*` and attached to channel `channel0`
+kernel context pid added to all channels
+kernel context tid added to all channels
+kernel context procname added to all channels
+kernel context cgroup_ns added to all channels
+kernel context pid_ns added to all channels
+kernel context net_ns added to all channels
+kernel context ipc_ns added to all channels
+kernel context user_ns added to all channels
+Tracing started for session `t2_medium_cap25_r3`
+Waiting for data availability.
+Tracing stopped for session `t2_medium_cap25_r3`
+Destroying session `t2_medium_cap25_r3`..
+Session `t2_medium_cap25_r3` destroyed
+[t2_medium_cap25_r3] agent_exit=0 task_check=0 trace=18M
+[21/24] === t2_medium_cap50_r1 (cpu.max='50000 100000') ===
+Session t2_medium_cap50_r1 created.
+Traces will be output to /home/aylabsltd/runs/t2_medium_cap50_r1/trace
+Enabled kernel event rule matching all events and attached to channel `channel0`
+Enabled kernel event rule with pattern `sched_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `block_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `net_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `netif_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `napi_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `skb_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `sock_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `tcp_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `udp_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `irq_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `softirq_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `power_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `vmscan_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `writeback_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `compaction_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `migrate_*` and attached to channel `channel0`
+kernel context pid added to all channels
+kernel context tid added to all channels
+kernel context procname added to all channels
+kernel context cgroup_ns added to all channels
+kernel context pid_ns added to all channels
+kernel context net_ns added to all channels
+kernel context ipc_ns added to all channels
+kernel context user_ns added to all channels
+Tracing started for session `t2_medium_cap50_r1`
+Waiting for data availability.
+Tracing stopped for session `t2_medium_cap50_r1`
+Destroying session `t2_medium_cap50_r1`..
+Session `t2_medium_cap50_r1` destroyed
+[t2_medium_cap50_r1] agent_exit=0 task_check=0 trace=16M
+[22/24] === t3_implement_cap100_r3 (cpu.max='100000 100000') ===
+Session t3_implement_cap100_r3 created.
+Traces will be output to /home/aylabsltd/runs/t3_implement_cap100_r3/trace
+Enabled kernel event rule matching all events and attached to channel `channel0`
+Enabled kernel event rule with pattern `sched_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `block_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `net_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `netif_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `napi_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `skb_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `sock_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `tcp_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `udp_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `irq_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `softirq_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `power_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `vmscan_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `writeback_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `compaction_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `migrate_*` and attached to channel `channel0`
+kernel context pid added to all channels
+kernel context tid added to all channels
+kernel context procname added to all channels
+kernel context cgroup_ns added to all channels
+kernel context pid_ns added to all channels
+kernel context net_ns added to all channels
+kernel context ipc_ns added to all channels
+kernel context user_ns added to all channels
+Tracing started for session `t3_implement_cap100_r3`
+Waiting for data availability.
+Tracing stopped for session `t3_implement_cap100_r3`
+Destroying session `t3_implement_cap100_r3`..
+Session `t3_implement_cap100_r3` destroyed
+[t3_implement_cap100_r3] agent_exit=0 task_check=0 trace=15M
+[23/24] === t2_medium_cap25_r2 (cpu.max='25000 100000') ===
+Session t2_medium_cap25_r2 created.
+Traces will be output to /home/aylabsltd/runs/t2_medium_cap25_r2/trace
+Enabled kernel event rule matching all events and attached to channel `channel0`
+Enabled kernel event rule with pattern `sched_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `block_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `net_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `netif_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `napi_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `skb_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `sock_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `tcp_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `udp_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `irq_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `softirq_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `power_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `vmscan_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `writeback_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `compaction_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `migrate_*` and attached to channel `channel0`
+kernel context pid added to all channels
+kernel context tid added to all channels
+kernel context procname added to all channels
+kernel context cgroup_ns added to all channels
+kernel context pid_ns added to all channels
+kernel context net_ns added to all channels
+kernel context ipc_ns added to all channels
+kernel context user_ns added to all channels
+Tracing started for session `t2_medium_cap25_r2`
+Waiting for data availability.
+Tracing stopped for session `t2_medium_cap25_r2`
+Destroying session `t2_medium_cap25_r2`..
+Session `t2_medium_cap25_r2` destroyed
+[t2_medium_cap25_r2] agent_exit=0 task_check=0 trace=16M
+[24/24] === t2_medium_nocap_r1 (cpu.max='max') ===
+Session t2_medium_nocap_r1 created.
+Traces will be output to /home/aylabsltd/runs/t2_medium_nocap_r1/trace
+Enabled kernel event rule matching all events and attached to channel `channel0`
+Enabled kernel event rule with pattern `sched_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `block_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `net_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `netif_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `napi_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `skb_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `sock_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `tcp_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `udp_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `irq_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `softirq_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `power_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `vmscan_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `writeback_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `compaction_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `migrate_*` and attached to channel `channel0`
+kernel context pid added to all channels
+kernel context tid added to all channels
+kernel context procname added to all channels
+kernel context cgroup_ns added to all channels
+kernel context pid_ns added to all channels
+kernel context net_ns added to all channels
+kernel context ipc_ns added to all channels
+kernel context user_ns added to all channels
+Tracing started for session `t2_medium_nocap_r1`
+Waiting for data availability.
+Tracing stopped for session `t2_medium_nocap_r1`
+Destroying session `t2_medium_nocap_r1`..
+Session `t2_medium_nocap_r1` destroyed
+[t2_medium_nocap_r1] agent_exit=0 task_check=0 trace=17M
+campaign complete: 24 run dirs, manifest: /home/aylabsltd/runs/manifest.csv

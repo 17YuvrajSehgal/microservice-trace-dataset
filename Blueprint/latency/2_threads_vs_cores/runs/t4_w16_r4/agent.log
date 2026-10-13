@@ -1,0 +1,3 @@
+`./run_all.sh` finished cleanly with all 16 workers done, and the slowest was **worker 14 at 3.732 seconds**.
+
+The spread was narrow: the fastest was worker 5 at 3.389s, and worker 8 was a close second-slowest at 3.722s. Every worker reported the same prime count (11301), so they all did identical work and the differences are just scheduling noise from running 16 in parallel.

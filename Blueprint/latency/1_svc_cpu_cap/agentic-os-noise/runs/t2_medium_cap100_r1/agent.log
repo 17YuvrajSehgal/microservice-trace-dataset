@@ -1,0 +1,12 @@
+`python3 test_all.py` now prints `ALL PASS` (stress 1.1s); `test_all.py` is untouched.
+
+Four bugs fixed across the three files:
+
+- **`stats.py` `mean`**: divided by `len(xs) - 1` instead of `len(xs)`.
+- **`stats.py` `median`**: the even-length case returned the upper middle element instead of averaging the middle pair.
+- **`seq.py` `dedup`**: appended the duplicates and dropped the first occurrences; it now keeps first-seen items only.
+- **`textproc.py` `top_words`**: sorted alphabetically by word instead of by count. It now sorts by count descending, with ties broken alphabetically (the tie-break is my choice).
+
+The existing `top_words` test passed even with the bug, because its input happens to be in alphabetical order by frequency, so that fix is not really covered by the suite.
+
+Nothing is committed; the changes are in the working tree, along with an untracked `__pycache__/`.

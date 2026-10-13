@@ -1,0 +1,7 @@
+All three functions are implemented and `python3 test_impl.py` prints `ALL PASS` (stress loop took 2.9s); I ran it after each function, and `test_impl.py` is untouched.
+
+- **`encode`** in `rle.py`: groups consecutive characters and emits each character followed by its run length.
+- **`decode`** in `rle.py`: reads each non-digit character followed by its 1+ digit count and expands it.
+- **`merge`** in `intervals.py`: sorts by start and folds each interval into the previous one when it overlaps or touches. It returns new lists and does not mutate the input.
+
+Strings that themselves contain digits can't round-trip through this format (`encode("111")` gives `"13"`, which is ambiguous to decode). That is inherent to the format the docstrings specify, and the tests don't exercise it.

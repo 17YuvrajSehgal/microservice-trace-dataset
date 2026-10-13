@@ -1,0 +1,10 @@
+`./run_all.sh` finished cleanly (exit 0, both workers done).
+
+**Slowest: worker 2, at 0.414 s.**
+
+| worker_id | prime_count | elapsed_seconds |
+|---|---|---|
+| 1 | 11301 | 0.383 |
+| 2 | 11301 | 0.414 |
+
+Both workers do identical work and got the same prime count, so the 0.031 s gap is just scheduling noise.

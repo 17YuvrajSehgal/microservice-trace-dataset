@@ -1,0 +1,39 @@
+◼ Recording session `t8_100M_r1` ❬Created: 2026-10-13 @ 05:14:47❭
+  🞂 Output:       `/home/aylabsltd/runs_t8/t8_100M_r1/trace`
+  🞂 Trace format: CTF 2
+
+  🞂 Domain Linux kernel ❬1 channel❭
+    🞂 Process filter: Allow all
+
+    ✗ Channel `channel0` ❬17 event rules❭
+      🞂 Loss mode:                 Discard newest event record
+      🞂 Output type:               splice()
+      🞂 Preallocation policy:      Preallocate
+      🞂 Ring buffer configuration: 4 sub-buffers of 1.00 MiB per CPU
+
+      🞂 Timer periods:
+        🞂 Monitor timer: 1.00 s
+        🞂 Read timer:    200.00 ms
+        🞂 Switch timer:  Inactive
+
+      🞂 Statistics:
+        🞂 Discarded event records: 0
+        🞂 Memory usage:            Not available
+
+      ✔ Event rule `block_*` ❬Tracepoint❭
+      ✔ Event rule `irq_*` ❬Tracepoint❭
+      ✔ Event rule `mm_compaction_*` ❬Tracepoint❭
+      ✔ Event rule `mm_migrate_*` ❬Tracepoint❭
+      ✔ Event rule `mm_vmscan_*` ❬Tracepoint❭
+      ✔ Event rule `napi_*` ❬Tracepoint❭
+      ✔ Event rule `net_*` ❬Tracepoint❭
+      ✔ Event rule `netif_*` ❬Tracepoint❭
+      ✔ Event rule `power_*` ❬Tracepoint❭
+      ✔ Event rule `sched_*` ❬Tracepoint❭
+      ✔ Event rule `skb_*` ❬Tracepoint❭
+      ✔ Event rule `sock_*` ❬Tracepoint❭
+      ✔ Event rule `softirq_*` ❬Tracepoint❭
+      ✔ Event rule `tcp_*` ❬Tracepoint❭
+      ✔ Event rule `udp_*` ❬Tracepoint❭
+      ✔ Event rule `writeback_*` ❬Tracepoint❭
+      ✔ Event rule `*` ❬Linux system call❭

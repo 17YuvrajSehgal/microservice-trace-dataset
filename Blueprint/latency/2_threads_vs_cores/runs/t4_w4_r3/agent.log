@@ -1,0 +1,10 @@
+`./run_all.sh` finished cleanly (exit 0, all 4 workers done). The slowest was **worker 2, at 0.975 seconds**.
+
+| Worker | Prime count | Elapsed (s) |
+|---|---|---|
+| 1 | 11301 | 0.885 |
+| 2 | 11301 | 0.975 |
+| 3 | 11301 | 0.882 |
+| 4 | 11301 | 0.893 |
+
+All four found the same prime count, and the other three were within about 0.01s of each other, so worker 2's margin (~0.09s) is small.

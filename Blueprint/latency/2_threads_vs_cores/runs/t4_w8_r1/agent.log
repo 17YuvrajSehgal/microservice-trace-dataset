@@ -1,0 +1,14 @@
+`./run_all.sh` finished cleanly ("all 8 workers done"). The slowest was **worker 4, at 1.861 seconds**.
+
+| worker_id | prime_count | elapsed_seconds |
+|---|---|---|
+| 1 | 11301 | 1.831 |
+| 2 | 11301 | 1.822 |
+| 3 | 11301 | 1.775 |
+| **4** | **11301** | **1.861** |
+| 5 | 11301 | 1.821 |
+| 6 | 11301 | 1.846 |
+| 7 | 11301 | 1.776 |
+| 8 | 11301 | 1.798 |
+
+All eight workers found the same prime count, and the spread is small: only 0.086s separates the fastest (worker 3, 1.775s) from the slowest. Worker 4 being last is likely run-to-run noise rather than a real difference.

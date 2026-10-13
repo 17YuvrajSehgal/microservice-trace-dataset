@@ -1,0 +1,8 @@
+`python3 test_all.py` now prints `ALL PASS` (stress 1.1s). There were four bugs across the three files; `test_all.py` is untouched, and I re-ran the suite after each fix.
+
+- **`stats.py` `mean`**: divided by `len(xs) - 1`; now divides by `len(xs)`. This also corrects `variance`, which depends on it.
+- **`stats.py` `median`**: the even-length case returned only the upper middle element; now it averages the two middle values.
+- **`textproc.py` `top_words`**: ranked alphabetically by word; now ranks by count descending. Ties are broken alphabetically — my choice, since the test doesn't pin tie order.
+- **`seq.py` `dedup`**: appended the duplicates and dropped the first occurrences; now keeps each first-seen item and skips later repeats.
+
+Nothing is committed; the changes are in the working tree.

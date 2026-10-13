@@ -1,0 +1,5 @@
+`./run_all.sh` finished cleanly (exit 0, all 16 workers done).
+
+**Slowest worker: worker 7, at 4.069 seconds.**
+
+The next slowest were worker 14 (3.818s) and worker 13 (3.798s); the fastest was worker 6 (3.479s). All 16 workers reported the same prime count (11301), so the spread is just timing variation from running 16 in parallel, not a difference in work.

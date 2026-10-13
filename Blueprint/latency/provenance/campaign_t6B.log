@@ -1,0 +1,410 @@
+t6 Part B: 12 runs planned (F=1024MB)
+[1/12] === t6B_max_1280_r2 (mem=max:1280M) ===
+Session t6B_max_1280_r2 created.
+Traces will be output to /home/aylabsltd/runs_t6/t6B_max_1280_r2/trace
+Enabled kernel event rule matching all events and attached to channel `channel0`
+Enabled kernel event rule with pattern `sched_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `block_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `net_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `netif_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `napi_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `skb_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `sock_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `tcp_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `udp_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `irq_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `softirq_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `power_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `mm_vmscan_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `writeback_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `mm_compaction_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `mm_migrate_*` and attached to channel `channel0`
+kernel context pid added to all channels
+kernel context tid added to all channels
+kernel context procname added to all channels
+kernel context cgroup_ns added to all channels
+kernel context pid_ns added to all channels
+kernel context net_ns added to all channels
+kernel context ipc_ns added to all channels
+kernel context user_ns added to all channels
+Tracing started for session `t6B_max_1280_r2`
+Waiting for data availability.
+Tracing stopped for session `t6B_max_1280_r2`
+Destroying session `t6B_max_1280_r2`..
+Session `t6B_max_1280_r2` destroyed
+[t6B_max_1280_r2] agent_exit=0 task_check=0 trace=81M
+[2/12] === t6B_max_768_r3 (mem=max:768M) ===
+Session t6B_max_768_r3 created.
+Traces will be output to /home/aylabsltd/runs_t6/t6B_max_768_r3/trace
+Enabled kernel event rule matching all events and attached to channel `channel0`
+Enabled kernel event rule with pattern `sched_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `block_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `net_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `netif_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `napi_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `skb_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `sock_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `tcp_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `udp_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `irq_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `softirq_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `power_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `mm_vmscan_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `writeback_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `mm_compaction_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `mm_migrate_*` and attached to channel `channel0`
+kernel context pid added to all channels
+kernel context tid added to all channels
+kernel context procname added to all channels
+kernel context cgroup_ns added to all channels
+kernel context pid_ns added to all channels
+kernel context net_ns added to all channels
+kernel context ipc_ns added to all channels
+kernel context user_ns added to all channels
+Tracing started for session `t6B_max_768_r3`
+Waiting for data availability.
+Tracing stopped for session `t6B_max_768_r3`
+Destroying session `t6B_max_768_r3`..
+Session `t6B_max_768_r3` destroyed
+[t6B_max_768_r3] agent_exit=0 task_check=0 trace=91M
+[3/12] === t6B_max_1280_r3 (mem=max:1280M) ===
+Session t6B_max_1280_r3 created.
+Traces will be output to /home/aylabsltd/runs_t6/t6B_max_1280_r3/trace
+Enabled kernel event rule matching all events and attached to channel `channel0`
+Enabled kernel event rule with pattern `sched_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `block_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `net_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `netif_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `napi_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `skb_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `sock_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `tcp_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `udp_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `irq_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `softirq_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `power_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `mm_vmscan_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `writeback_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `mm_compaction_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `mm_migrate_*` and attached to channel `channel0`
+kernel context pid added to all channels
+kernel context tid added to all channels
+kernel context procname added to all channels
+kernel context cgroup_ns added to all channels
+kernel context pid_ns added to all channels
+kernel context net_ns added to all channels
+kernel context ipc_ns added to all channels
+kernel context user_ns added to all channels
+Tracing started for session `t6B_max_1280_r3`
+Waiting for data availability.
+Tracing stopped for session `t6B_max_1280_r3`
+Destroying session `t6B_max_1280_r3`..
+Session `t6B_max_1280_r3` destroyed
+[t6B_max_1280_r3] agent_exit=0 task_check=0 trace=79M
+[4/12] === t6B_max_2_r1 (mem=max:2G) ===
+Session t6B_max_2_r1 created.
+Traces will be output to /home/aylabsltd/runs_t6/t6B_max_2_r1/trace
+Enabled kernel event rule matching all events and attached to channel `channel0`
+Enabled kernel event rule with pattern `sched_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `block_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `net_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `netif_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `napi_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `skb_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `sock_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `tcp_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `udp_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `irq_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `softirq_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `power_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `mm_vmscan_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `writeback_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `mm_compaction_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `mm_migrate_*` and attached to channel `channel0`
+kernel context pid added to all channels
+kernel context tid added to all channels
+kernel context procname added to all channels
+kernel context cgroup_ns added to all channels
+kernel context pid_ns added to all channels
+kernel context net_ns added to all channels
+kernel context ipc_ns added to all channels
+kernel context user_ns added to all channels
+Tracing started for session `t6B_max_2_r1`
+Waiting for data availability.
+Tracing stopped for session `t6B_max_2_r1`
+Destroying session `t6B_max_2_r1`..
+Session `t6B_max_2_r1` destroyed
+[t6B_max_2_r1] agent_exit=0 task_check=0 trace=32M
+[5/12] === t6B_max_2_r2 (mem=max:2G) ===
+Session t6B_max_2_r2 created.
+Traces will be output to /home/aylabsltd/runs_t6/t6B_max_2_r2/trace
+Enabled kernel event rule matching all events and attached to channel `channel0`
+Enabled kernel event rule with pattern `sched_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `block_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `net_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `netif_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `napi_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `skb_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `sock_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `tcp_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `udp_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `irq_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `softirq_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `power_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `mm_vmscan_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `writeback_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `mm_compaction_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `mm_migrate_*` and attached to channel `channel0`
+kernel context pid added to all channels
+kernel context tid added to all channels
+kernel context procname added to all channels
+kernel context cgroup_ns added to all channels
+kernel context pid_ns added to all channels
+kernel context net_ns added to all channels
+kernel context ipc_ns added to all channels
+kernel context user_ns added to all channels
+Tracing started for session `t6B_max_2_r2`
+Waiting for data availability.
+Tracing stopped for session `t6B_max_2_r2`
+Destroying session `t6B_max_2_r2`..
+Session `t6B_max_2_r2` destroyed
+[t6B_max_2_r2] agent_exit=0 task_check=0 trace=31M
+[6/12] === t6B_max_1024_r3 (mem=max:1024M) ===
+Session t6B_max_1024_r3 created.
+Traces will be output to /home/aylabsltd/runs_t6/t6B_max_1024_r3/trace
+Enabled kernel event rule matching all events and attached to channel `channel0`
+Enabled kernel event rule with pattern `sched_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `block_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `net_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `netif_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `napi_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `skb_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `sock_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `tcp_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `udp_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `irq_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `softirq_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `power_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `mm_vmscan_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `writeback_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `mm_compaction_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `mm_migrate_*` and attached to channel `channel0`
+kernel context pid added to all channels
+kernel context tid added to all channels
+kernel context procname added to all channels
+kernel context cgroup_ns added to all channels
+kernel context pid_ns added to all channels
+kernel context net_ns added to all channels
+kernel context ipc_ns added to all channels
+kernel context user_ns added to all channels
+Tracing started for session `t6B_max_1024_r3`
+Waiting for data availability.
+Tracing stopped for session `t6B_max_1024_r3`
+Destroying session `t6B_max_1024_r3`..
+Session `t6B_max_1024_r3` destroyed
+[t6B_max_1024_r3] agent_exit=0 task_check=0 trace=89M
+[7/12] === t6B_max_768_r2 (mem=max:768M) ===
+Session t6B_max_768_r2 created.
+Traces will be output to /home/aylabsltd/runs_t6/t6B_max_768_r2/trace
+Enabled kernel event rule matching all events and attached to channel `channel0`
+Enabled kernel event rule with pattern `sched_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `block_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `net_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `netif_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `napi_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `skb_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `sock_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `tcp_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `udp_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `irq_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `softirq_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `power_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `mm_vmscan_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `writeback_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `mm_compaction_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `mm_migrate_*` and attached to channel `channel0`
+kernel context pid added to all channels
+kernel context tid added to all channels
+kernel context procname added to all channels
+kernel context cgroup_ns added to all channels
+kernel context pid_ns added to all channels
+kernel context net_ns added to all channels
+kernel context ipc_ns added to all channels
+kernel context user_ns added to all channels
+Tracing started for session `t6B_max_768_r2`
+Waiting for data availability.
+Tracing stopped for session `t6B_max_768_r2`
+Destroying session `t6B_max_768_r2`..
+Session `t6B_max_768_r2` destroyed
+[t6B_max_768_r2] agent_exit=0 task_check=0 trace=91M
+[8/12] === t6B_max_768_r1 (mem=max:768M) ===
+Session t6B_max_768_r1 created.
+Traces will be output to /home/aylabsltd/runs_t6/t6B_max_768_r1/trace
+Enabled kernel event rule matching all events and attached to channel `channel0`
+Enabled kernel event rule with pattern `sched_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `block_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `net_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `netif_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `napi_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `skb_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `sock_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `tcp_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `udp_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `irq_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `softirq_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `power_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `mm_vmscan_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `writeback_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `mm_compaction_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `mm_migrate_*` and attached to channel `channel0`
+kernel context pid added to all channels
+kernel context tid added to all channels
+kernel context procname added to all channels
+kernel context cgroup_ns added to all channels
+kernel context pid_ns added to all channels
+kernel context net_ns added to all channels
+kernel context ipc_ns added to all channels
+kernel context user_ns added to all channels
+Tracing started for session `t6B_max_768_r1`
+Waiting for data availability.
+Tracing stopped for session `t6B_max_768_r1`
+Destroying session `t6B_max_768_r1`..
+Session `t6B_max_768_r1` destroyed
+[t6B_max_768_r1] agent_exit=0 task_check=0 trace=90M
+[9/12] === t6B_max_2_r3 (mem=max:2G) ===
+Session t6B_max_2_r3 created.
+Traces will be output to /home/aylabsltd/runs_t6/t6B_max_2_r3/trace
+Enabled kernel event rule matching all events and attached to channel `channel0`
+Enabled kernel event rule with pattern `sched_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `block_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `net_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `netif_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `napi_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `skb_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `sock_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `tcp_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `udp_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `irq_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `softirq_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `power_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `mm_vmscan_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `writeback_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `mm_compaction_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `mm_migrate_*` and attached to channel `channel0`
+kernel context pid added to all channels
+kernel context tid added to all channels
+kernel context procname added to all channels
+kernel context cgroup_ns added to all channels
+kernel context pid_ns added to all channels
+kernel context net_ns added to all channels
+kernel context ipc_ns added to all channels
+kernel context user_ns added to all channels
+Tracing started for session `t6B_max_2_r3`
+Waiting for data availability.
+Tracing stopped for session `t6B_max_2_r3`
+Destroying session `t6B_max_2_r3`..
+Session `t6B_max_2_r3` destroyed
+[t6B_max_2_r3] agent_exit=0 task_check=0 trace=31M
+[10/12] === t6B_max_1024_r2 (mem=max:1024M) ===
+Session t6B_max_1024_r2 created.
+Traces will be output to /home/aylabsltd/runs_t6/t6B_max_1024_r2/trace
+Enabled kernel event rule matching all events and attached to channel `channel0`
+Enabled kernel event rule with pattern `sched_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `block_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `net_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `netif_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `napi_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `skb_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `sock_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `tcp_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `udp_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `irq_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `softirq_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `power_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `mm_vmscan_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `writeback_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `mm_compaction_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `mm_migrate_*` and attached to channel `channel0`
+kernel context pid added to all channels
+kernel context tid added to all channels
+kernel context procname added to all channels
+kernel context cgroup_ns added to all channels
+kernel context pid_ns added to all channels
+kernel context net_ns added to all channels
+kernel context ipc_ns added to all channels
+kernel context user_ns added to all channels
+Tracing started for session `t6B_max_1024_r2`
+Waiting for data availability.
+Tracing stopped for session `t6B_max_1024_r2`
+Destroying session `t6B_max_1024_r2`..
+Session `t6B_max_1024_r2` destroyed
+[t6B_max_1024_r2] agent_exit=0 task_check=0 trace=90M
+[11/12] === t6B_max_1024_r1 (mem=max:1024M) ===
+Session t6B_max_1024_r1 created.
+Traces will be output to /home/aylabsltd/runs_t6/t6B_max_1024_r1/trace
+Enabled kernel event rule matching all events and attached to channel `channel0`
+Enabled kernel event rule with pattern `sched_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `block_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `net_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `netif_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `napi_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `skb_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `sock_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `tcp_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `udp_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `irq_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `softirq_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `power_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `mm_vmscan_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `writeback_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `mm_compaction_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `mm_migrate_*` and attached to channel `channel0`
+kernel context pid added to all channels
+kernel context tid added to all channels
+kernel context procname added to all channels
+kernel context cgroup_ns added to all channels
+kernel context pid_ns added to all channels
+kernel context net_ns added to all channels
+kernel context ipc_ns added to all channels
+kernel context user_ns added to all channels
+Tracing started for session `t6B_max_1024_r1`
+Waiting for data availability.
+Tracing stopped for session `t6B_max_1024_r1`
+Destroying session `t6B_max_1024_r1`..
+Session `t6B_max_1024_r1` destroyed
+[t6B_max_1024_r1] agent_exit=0 task_check=0 trace=89M
+[12/12] === t6B_max_1280_r1 (mem=max:1280M) ===
+Session t6B_max_1280_r1 created.
+Traces will be output to /home/aylabsltd/runs_t6/t6B_max_1280_r1/trace
+Enabled kernel event rule matching all events and attached to channel `channel0`
+Enabled kernel event rule with pattern `sched_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `block_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `net_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `netif_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `napi_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `skb_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `sock_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `tcp_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `udp_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `irq_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `softirq_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `power_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `mm_vmscan_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `writeback_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `mm_compaction_*` and attached to channel `channel0`
+Enabled kernel event rule with pattern `mm_migrate_*` and attached to channel `channel0`
+kernel context pid added to all channels
+kernel context tid added to all channels
+kernel context procname added to all channels
+kernel context cgroup_ns added to all channels
+kernel context pid_ns added to all channels
+kernel context net_ns added to all channels
+kernel context ipc_ns added to all channels
+kernel context user_ns added to all channels
+Tracing started for session `t6B_max_1280_r1`
+Waiting for data availability.
+Tracing stopped for session `t6B_max_1280_r1`
+Destroying session `t6B_max_1280_r1`..
+Session `t6B_max_1280_r1` destroyed
+[t6B_max_1280_r1] agent_exit=0 task_check=0 trace=80M
+t6 Part B complete

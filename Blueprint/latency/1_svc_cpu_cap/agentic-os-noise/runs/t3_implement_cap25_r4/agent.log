@@ -1,0 +1,11 @@
+All three functions are implemented and `python3 test_impl.py` now prints `ALL PASS` (stress loop took 11.7s); `test_impl.py` is untouched.
+
+- **`encode`** in `rle.py`: emits each character followed by its run length, always including the count.
+- **`decode`** in `rle.py`: reads one character, then all the digits that follow as its count.
+- **`merge`** in `intervals.py`: sorts by start and merges intervals that overlap or touch, returning new lists rather than mutating the input.
+
+I ran the suite after each function as asked; the first two runs stopped at the next unimplemented function, as expected.
+
+Run-length encoding in this format is ambiguous for strings that contain digits: `encode("111")` gives `"13"`, which decodes as thirteen `1`s. The docstrings don't address this and the tests don't cover it, so I left it.
+
+Nothing is committed; the run also left an untracked `__pycache__/` directory.

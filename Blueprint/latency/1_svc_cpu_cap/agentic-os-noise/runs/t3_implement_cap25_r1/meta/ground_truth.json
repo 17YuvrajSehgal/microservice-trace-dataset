@@ -1,0 +1,5 @@
+{ "run": "t3_implement_cap25_r1", "task": "t3_implement.sh", "cpu_max": "25000 100000",
+  "agent_exit": 0, "task_check_exit": 0,
+  "test_file_tampered": false,
+  "kernel": "7.0.0-1011-gcp", "nproc": 4, "host": "agentic-noise.us-east1-d.c.teleeporter.internal",
+  "claude_version": "2.1.296 (Claude Code)" }

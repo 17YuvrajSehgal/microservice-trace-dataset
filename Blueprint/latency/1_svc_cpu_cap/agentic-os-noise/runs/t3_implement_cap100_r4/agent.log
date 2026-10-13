@@ -1,0 +1,7 @@
+All three functions are implemented and `python3 test_impl.py` prints `ALL PASS` (stress loop took 3.0s). I ran the suite after each function, and `test_impl.py` is untouched.
+
+- **`encode`** (`rle.py`): groups consecutive characters and emits each character followed by its run length.
+- **`decode`** (`rle.py`): reads character-plus-digits pairs and expands them.
+- **`merge`** (`intervals.py`): sorts by start and folds each interval into the previous one when it overlaps or touches; it returns new lists and leaves the input unmodified.
+
+The encoding format itself is ambiguous for strings containing digits: `encode("1111")` gives `"14"`, which is fine, but `encode("a11")` gives `"a112"`, which decodes as 112 `a`s. The docstrings and tests don't cover this, so I left it.

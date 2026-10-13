@@ -1,0 +1,10 @@
+`./run_all.sh` finished cleanly (exit 0, all 4 workers done). The slowest was **worker 4 at 0.942 s**.
+
+| Worker | Prime count | Elapsed (s) |
+|---|---|---|
+| 4 | 11301 | 0.942 |
+| 2 | 11301 | 0.936 |
+| 1 | 11301 | 0.887 |
+| 3 | 11301 | 0.884 |
+
+The spread is only about 0.06 s across all four, so worker 4's lead over worker 2 (0.006 s) is likely within run-to-run noise.

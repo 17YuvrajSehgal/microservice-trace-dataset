@@ -1,0 +1,10 @@
+All 4 sub-agents ran in parallel and finished successfully, and there are now **4** `results/*.csv` files: `s1.csv`, `s2.csv`, `s3.csv` and `s4.csv`.
+
+Each sub-agent ran its `./work.py K` command once:
+
+| Sub-agent | Command | Output |
+|---|---|---|
+| 1 | `./work.py 1` | `subagent 1: 0.399s` |
+| 2 | `./work.py 2` | `subagent 2: 0.455s` |
+| 3 | `./work.py 3` | `subagent 3: 0.415s` |
+| 4 | `./work.py 4` | `subagent 4: 0.461s` |

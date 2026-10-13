@@ -1,0 +1,6 @@
+{ "run": "t6A_high_768_r3", "task": "t6_memtouch.sh", "cpu_max": "max", "task_arg": "1024",
+  "mem_limit": "high:768M",
+  "agent_exit": 0, "task_check_exit": 0,
+  "test_file_tampered": false,
+  "kernel": "7.0.0-1014-gcp", "nproc": 4, "host": "agentic-noise.us-east1-d.c.teleeporter.internal",
+  "claude_version": "2.1.296 (Claude Code)" }

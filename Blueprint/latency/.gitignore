@@ -1,0 +1,8 @@
+# Trace data is archived to Trillium, not committed (keeps the repo lean):
+#   - raw CTF kernel traces (~4.2 GB across 132 runs)
+#   - decoded babeltrace dumps (~962 MB) that the analyzers read
+# What IS kept in git per run: meta/ (ground_truth, cpu/mem/io stats,
+# clock anchors, enabled events, agent_diff) + agent.log. Dumps regenerate
+# from CTF via babeltrace; CTF is reproducible from the collection scripts.
+**/trace/kernel/
+**/trace.txt.gz

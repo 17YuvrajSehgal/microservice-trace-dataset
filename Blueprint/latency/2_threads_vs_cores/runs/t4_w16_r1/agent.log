@@ -1,0 +1,5 @@
+`./run_all.sh` finished cleanly (exit 0, all 16 workers done).
+
+**Slowest worker: worker 2, at 3.821 seconds.**
+
+All 16 workers reported the same prime count (11301) and their times were tightly grouped, from 3.521s (worker 15, fastest) to 3.821s. Next slowest after worker 2 were worker 3 (3.782s) and worker 13 (3.756s).

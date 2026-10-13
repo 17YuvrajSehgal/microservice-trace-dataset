@@ -1,0 +1,9 @@
+`python3 test_impl.py` now prints `ALL PASS` (stress loop took 12.5s). I ran it after each function: it failed at `decode` after `encode` was written, at `merge` after `decode`, and passed once `merge` was in.
+
+- **`encode`** (`rle.py`): groups consecutive characters and emits each character followed by its run length.
+- **`decode`** (`rle.py`): reads each non-digit character with the digits after it and repeats the character that many times.
+- **`merge`** (`intervals.py`): sorts by start and extends the last interval whenever the next one starts at or before its end, so touching intervals merge.
+
+Strings that themselves contain digits won't round-trip (`encode("11")` gives `"12"`, which `decode` reads as one character and a count). The `a3b2c1` format is inherently ambiguous there, and the tests don't cover it.
+
+`test_impl.py` is untouched, and nothing is committed.

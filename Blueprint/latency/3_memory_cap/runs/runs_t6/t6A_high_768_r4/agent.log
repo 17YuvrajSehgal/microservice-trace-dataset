@@ -1,0 +1,4 @@
+`./touch_all.sh` finished with exit code 0, and `results/read.csv` contains `5368709120,5,30.377`:
+
+- **Total bytes read:** 5,368,709,120 (5 GiB), over 5 passes
+- **Elapsed time:** 30.377 seconds

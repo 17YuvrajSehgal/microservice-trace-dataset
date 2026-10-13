@@ -1,0 +1,6 @@
+{ "run": "t8_unltd_r1", "task": "t8_ioread.sh", "cpu_max": "max", "task_arg": "1024",
+  "mem_limit": "high:max", "io_limit": "",
+  "agent_exit": 0, "task_check_exit": 0,
+  "test_file_tampered": false,
+  "kernel": "7.0.0-1014-gcp", "nproc": 4, "host": "agentic-noise.us-east1-d.c.teleeporter.internal",
+  "claude_version": "2.1.296 (Claude Code)" }
