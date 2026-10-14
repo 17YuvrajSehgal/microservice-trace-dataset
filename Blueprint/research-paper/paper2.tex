@@ -1,7 +1,7 @@
 \documentclass[10pt,twocolumn]{article}
 
 % Builds with plain pdflatex (no conference style files needed).
-\usepackage[margin=0.85in]{geometry}
+\usepackage[margin=0.75in]{geometry}
 \usepackage{booktabs}
 \usepackage{amsmath}
 \usepackage{amssymb}
@@ -10,11 +10,11 @@
 \graphicspath{{figures/}}
 \usepackage[hidelinks]{hyperref}
 \usepackage{caption}
-\captionsetup{font=small,skip=4pt}
+\captionsetup{font=footnotesize,skip=3pt}
 \usepackage{titlesec}
-\titlespacing*{\section}{0pt}{8pt plus 2pt minus 2pt}{4pt}
-\setlength{\textfloatsep}{8pt plus 2pt minus 2pt}
-\setlength{\floatsep}{6pt plus 2pt minus 2pt}
+\titlespacing*{\section}{0pt}{7pt plus 2pt minus 2pt}{3pt}
+\setlength{\textfloatsep}{7pt plus 2pt minus 2pt}
+\setlength{\floatsep}{5pt plus 2pt minus 2pt}
 
 \newcommand{\uu}[1]{\,\textsf{#1}}
 
@@ -37,20 +37,17 @@ runs them. We ask how much of an agent's wall-clock time these limits
 silently take. We answer with kernel tracing (LTTng) on two production
 agents, \emph{Claude Code} and \emph{Codex CLI}, across 260 controlled runs.
 
-On a well-provisioned machine the agent is ${\approx}84\%$ LLM-bound, waiting
-on the model and computing only a few CPU-seconds locally. This is a regime,
-not a law: as resources tighten, execution time climbs and the model's share
-of the wall clock falls toward half. A scarce resource does not make the
-agent do less work; it makes the agent wait---up to $4.7\times$ longer in the
-stressed tool phase---or OOM-kills a process mid-task. Over-subscribing cores
-inflates a parallel phase by nearly $300\%$ along a textbook queueing law,
-and a hard memory limit below a process's footprint is a sharp, reproducible
-cliff. Every effect reproduces across both agents and agrees with the
-cgroup's own counters to within a few percent. Which limit actually bites
-depends on what the workload stresses: a lightweight coding task is slowed
-only by the CPU cap and killed only when the cap falls below the agent's own
-footprint, while memory- and disk-heavy work trips the others. When an agent
-feels slow, look at the resources it was given, not only the model.
+On a well-provisioned machine the agent is ${\approx}84\%$ LLM-bound. This
+is a regime, not a law. As resources tighten, the agent does not do less
+work; it waits (up to $4.7\times$ longer in the stressed phase) or a process
+is OOM-killed mid-task. Over-subscribing cores inflates a parallel phase by
+nearly $300\%$ along a textbook queueing law, and a hard memory limit below
+a process's footprint is a sharp, reproducible cliff. Every effect
+reproduces across both agents and agrees with the cgroup's own counters.
+Which limit bites depends on the workload: a lightweight coding task is
+slowed only by the CPU cap and killed only when memory falls below the
+agent's own footprint. When an agent feels slow, look at the
+resources it was given, not only the model.
 \end{abstract}
 
 \section{Introduction}
@@ -66,15 +63,15 @@ a limit, add on top of the LLM?}
 
 On a well-provisioned machine an agent is overwhelmingly LLM-bound. It
 spends most of its wall time blocked on the network, waiting for the model.
-But each resource limit has a threshold past which that limit, not the model,
-drives how long the agent takes---or whether it finishes at all. We make this
-precise with kernel traces, which see the mechanism (scheduler, memory
+But each resource limit has a threshold. Past it, that limit, not the model,
+decides how long the agent takes, or whether it finishes at all. We make
+this precise with kernel traces, which see the mechanism (scheduler, memory
 reclaim, block layer) that application-level metrics cannot. Our
 contributions are:
 \begin{itemize}\itemsep0pt
-  \item A reproducible, kernel-only method for measuring agentic workloads:
-  a fixed task, a cgroup, an LTTng trace, and the cgroup's own counters as
-  ground truth, with a trace-based finding that the agent is
+  \item A reproducible, kernel-only method for measuring agentic workloads
+  (a fixed task, a cgroup, an LTTng trace, and the cgroup's own counters as
+  ground truth), with a trace-based finding that the agent is
   ${\approx}84\%$ LLM-bound by default.
   \item A catalogue of four \emph{configuration-level} mechanisms of OS
   noise (CPU cap, core over-subscription, memory cap, disk-I/O cap), each
@@ -82,19 +79,18 @@ contributions are:
   its threshold falls.
   \item An end-to-end test on a realistic coding task showing \emph{which}
   mechanisms a lightweight agent actually trips, and validation of every
-  effect on two unrelated agents (Claude Code and Codex CLI).
+  effect on two unrelated agents.
 \end{itemize}
 
 \section{Related Work}
 
 Operating-system noise (``OS jitter'') is a long-studied source of
 performance variability in HPC and benchmarking, where background kernel
-activity perturbs an otherwise CPU-bound job. Recent work has carried the
-idea to user-facing settings, such as OS-noise mitigation for benchmarking
-web-browser execution environments. We transfer the lens to a new workload,
-LLM-driven coding agents, and study noise that is \emph{imposed by
-configuration} (cgroup limits) rather than ambient. To our knowledge this is
-the first kernel-trace characterization of how container resource limits
+activity perturbs an otherwise CPU-bound job; recent work has carried the
+idea to user-facing settings such as web-browser benchmarking. We transfer
+the lens to LLM-driven coding agents and study noise that is \emph{imposed
+by configuration} (cgroup limits) rather than ambient. To our knowledge this
+is the first kernel-trace characterization of how container resource limits
 affect agentic AI latency and reliability.
 
 \section{Methodology}
@@ -139,14 +135,16 @@ with docstring specifications and a test suite; the agent must write the
 code that satisfies them. For Problems~2--4 the agent simply launches a
 fixed, instrumented workload (parallel CPU workers, or a large file read),
 so the measured work is identical from run to run. In every case the
-repository is regenerated byte-for-byte, the prompt is fixed, and the
-session is fresh. An integrity check confirms the agent never edited the
-protected test file; none did.
+repository is regenerated byte-for-byte, the prompt is fixed, the session is
+fresh, and an integrity check confirms the agent never edited the protected
+test file.
 
 \emph{Resource limits and protocol.} The agent and all of its tool
 subprocesses run inside a dedicated cgroup~v2 group, recreated for each run
-so its counters start at zero. Each run imposes exactly one limit, swept
-from generous to tight (Table~\ref{tab:limits}). Core over-subscription
+so its counters start at zero. Each run imposes exactly one limit, a CPU-bandwidth cap
+(\texttt{cpu.max}), a memory cap (\texttt{memory.high} or
+\texttt{memory.max}), or a disk-I/O cap (\texttt{io.max}), swept from
+generous to tight. Core over-subscription
 (Problem~2) is the one exception: it uses no cgroup limit and simply places
 more runnable threads in the group than the machine has cores. Every
 condition is run five times (three for purely observational cells) in
@@ -154,38 +152,19 @@ random order, and we report medians, so LLM nondeterminism and time-of-day
 effects cannot line up with any one condition. All hypotheses were
 pre-registered before the campaign began.
 
-\begin{table}[t]
-  \centering
-  \footnotesize
-  \setlength{\tabcolsep}{4pt}
-  \begin{tabular}{@{}llll@{}}
-    \toprule
-    \textbf{Problem} & \textbf{Resource} & \textbf{Knob} & \textbf{Kernel signal} \\
-    \midrule
-    1 & CPU bandwidth   & \texttt{cpu.max}      & \texttt{sched\_*} \\
-    2 & Cores           & threads $>$ cores     & \texttt{sched\_*} \\
-    3 & Memory          & \texttt{memory.high}/\texttt{max} & \texttt{mm\_vmscan\_*} \\
-    4 & Disk I/O        & \texttt{io.max}       & \texttt{block\_*} \\
-    \bottomrule
-  \end{tabular}
-  \caption{The four resource limits under test. One limit is active per run.}
-  \label{tab:limits}
-\end{table}
-
 \emph{Tracing and analysis.} Without modifying the agent, we record a
 curated kernel LTTng profile: all system calls plus the scheduler,
 block-layer, networking, interrupt, power, and memory-reclaim
 (\texttt{mm\_vmscan}) tracepoints, each event tagged with its process and
-thread. We rebuild the agent's process tree from \texttt{root.pid} by
-following \texttt{sched\_process\_fork}, which captures the agent and every
-tool it spawns. A per-thread state machine then walks the scheduler events
-and labels every slice of a thread's time as \emph{on-CPU},
-\emph{runnable-but-waiting} (CPU ``noise''), or \emph{blocked} on a named
-system call. We never trust the trace alone: for each run we also snapshot
-the cgroup's own accounting (\texttt{cpu.stat}, the \texttt{memory.*}
-counters, \texttt{io.stat}) as an independent ground truth. Trace-measured
-on-CPU time matches \texttt{cpu.stat} to within 0.1--3\% (e.g.\ 3.26 vs.\
-3.27\,s on a one-core run), so any parsing error would surface at once.
+thread. We rebuild the agent's process tree from \texttt{root.pid} via
+\texttt{sched\_process\_fork}, so every spawned tool is captured, and a
+per-thread state machine labels every slice of a thread's time as
+\emph{on-CPU}, \emph{runnable-but-waiting} (CPU ``noise''), or
+\emph{blocked} on a named system call. We never trust the trace alone: we
+also snapshot the cgroup's own accounting (\texttt{cpu.stat},
+\texttt{memory.*}, \texttt{io.stat}) as an independent ground truth.
+Trace-measured on-CPU time matches \texttt{cpu.stat} to within 0.1--3\%
+(e.g.\ 3.26 vs.\ 3.27\,s), so any parsing error would surface at once.
 
 \emph{Baseline: how much of a run is the model?} From the trace we identify
 the API sockets (the file descriptors the agent \texttt{connect}s to on port
@@ -194,21 +173,20 @@ last streamed response read. The union of these intervals is the time a
 model request is outstanding. On an unthrottled machine the agent spends a
 median of \textbf{84\%} of wall-clock time with a request in flight
 (80--91\% across ten runs, two tasks) and only ${\approx}4.7$ CPU-seconds
-computing locally. It is almost entirely LLM-bound. Tightening the CPU cap
-does not change how long the model takes; it adds throttle wait, so the
-model's share of wall time falls to ${\approx}53\%$ at a quarter core
-(Figure~\ref{fig:llm}). No timing counter can produce this split; it needs
-per-descriptor system-call attribution, which only the trace provides.
+computing locally. Tightening the CPU cap does not change how long the
+model takes; it adds throttle wait, so the model's share falls to
+${\approx}53\%$ at a quarter core (Figure~\ref{fig:llm}). No timing counter
+can produce this split; only the trace can attribute time per descriptor.
 
 \begin{figure}[t]\centering
-\includegraphics[width=0.8\linewidth]{fig_llmshare}
+\includegraphics[width=0.7\linewidth]{fig_llmshare}
 \caption{Share of wall-clock time the agent spends waiting on the model.
 ${\ge}80\%$ uncapped; it falls as \texttt{cpu.max} tightens and throttle
 fills the wall. Medians, $n{=}5$ per cap.}
 \label{fig:llm}
 \end{figure}
 
-\section{Problem 1: CPU Bandwidth Cap}
+\section{Problem 1: CPU Cap}
 \label{sec:cpu}
 
 We cap the agent's cgroup with \texttt{cpu.max} at unlimited, 1, 0.5, and
@@ -218,12 +196,10 @@ cap. The cap does not reduce the work; it turns compute into \emph{throttle
 wait}. Table~\ref{tab:cpu} shows both tasks: on-CPU time is flat while
 throttled time and wall time climb as the cap tightens. At 1 core the agent
 is still LLM-bound. At 0.5 core and below the cap substantially increases
-execution time: at 0.25 core throttle reaches 61\% of the implement run,
+execution time. At 0.25 core throttle reaches 61\% of the implement run,
 though the model still accounts for roughly half of the wall clock
 (Figure~\ref{fig:llm}), so the limit is a major component rather than the
-sole bottleneck. The deterministic throttle is reproducible across reps
-(e.g.\ $18.9$--$20.7$\uu{s} at 0.25 core); total wall varies more
-($31.8$--$35.0$\uu{s}) from LLM nondeterminism. (Confirms H1--H2.)
+sole bottleneck. (Confirms H1--H2.)
 
 \begin{table}[t]\centering\footnotesize
 \setlength{\tabcolsep}{4pt}
@@ -263,13 +239,11 @@ from run-queue waiting. The measured wait fraction matches the $(W{-}C)/W$
 law almost exactly: at $W{=}8$, $0.93/1.87=0.497$ vs.\ a predicted $0.500$;
 at $W{=}16$, $2.81/3.76=0.747$ vs.\ $0.750$. Scheduling stalls of
 $\ge 1$\uu{ms} jump from tens to thousands once $W>C$; a $\ge 10$\uu{ms}
-tail is present even at $W{\le}C$ (1--3 stalls) but stays in single digits
-until heavy over-subscription, reaching 138 at $4\times$. These multipliers
-are for the \emph{tool phase}: against the saturated ($W{=}C$) baseline it
-inflates by $+91\%$ at $2\times$ and $+295\%$ at $4\times$. Because the
-agent's own turns dominate the run, the total completion time rises more
-modestly, from a median ${\approx}8$\uu{s} at $W{=}4$ to ${\approx}11$\uu{s}
-at $W{=}16$.
+tail stays in single digits until heavy over-subscription, reaching 138 at
+$4\times$. These multipliers are for the \emph{tool phase}: against the
+saturated ($W{=}C$) baseline it inflates by $+91\%$ at $2\times$ and
+$+295\%$ at $4\times$. Since the agent's own turns dominate the run, total
+completion time rises less, from ${\approx}8$ to ${\approx}11$\uu{s}.
 
 \begin{table}[t]\centering\footnotesize
 \setlength{\tabcolsep}{4pt}
@@ -292,16 +266,15 @@ $W$ & load & phase (s) & wait & pred. & $\ge$1\,ms & $\ge$10\,ms\\
 
 \emph{Does the harness do this to itself?} We separately asked Claude Code
 to launch $N{=}4,8$ sub-agents in parallel, each running the same worker (6
-observational runs). We observed \emph{little CPU contention} in these runs:
-the sub-agents' CPU bursts are uncontended ($\approx\!0.4$\uu{s} each,
-runnable-wait ${\approx}0$, ${\sim}20$ stalls vs.\ 2550 for raw
-over-subscription) and staggered across the phase, each sub-agent blocked on
-its own LLM turn rather than fighting for a core. We also saw the harness
-query the machine (18 \texttt{sched\_getaffinity}/\texttt{sysinfo} calls per
-run, independent of $N$). The contention above is thus real but, at least in
-these runs, needs \emph{explicit} over-parallelism (e.g.\ \texttt{xargs -P},
-a forced concurrency setting, or an under-provisioned shared box) rather than
-the default sub-agent path. (Confirms H2--H3; H1 observed.)
+observational runs). We observed little CPU contention: the sub-agents' CPU
+bursts are uncontended ($\approx\!0.4$\uu{s} each, runnable-wait
+${\approx}0$, ${\sim}20$ stalls vs.\ 2550 for raw over-subscription) and
+staggered across the phase, each blocked on its own LLM turn rather than
+fighting for a core. The harness also queries the machine (18
+\texttt{sched\_getaffinity}/\texttt{sysinfo} calls per run). The contention
+above is thus real but needs \emph{explicit} over-parallelism (e.g.\
+\texttt{xargs -P} or an under-provisioned shared box) rather than the
+default sub-agent path. (Confirms H2--H3; H1 observed.)
 
 \section{Problem 3: Memory Cap}
 \label{sec:mem}
@@ -317,11 +290,11 @@ runs).
 \emph{Part A: recoverable slowdown.} With a soft cap above the working set,
 the file stays cached (zero refaults, ${\approx}6.5$\uu{s}). Below it, every
 pass re-reads from disk: ${\approx}1.05$ million page refaults and a
-$4.7\times$ slower read \emph{phase} (${\approx}30$\uu{s}), see
-Table~\ref{tab:mem}. The transition falls between the 1536 and 1152\,MB caps
-we test. The reclaim CPU stall is tiny (${\approx}0.16$\uu{s}); the cost is
-the refault I/O. The soft cap throttles the group (8--9k \texttt{memory.high} events)
-but never kills it.
+$4.7\times$ slower read phase (${\approx}30$\uu{s}), see
+Table~\ref{tab:mem}. The transition falls between the 1536 and 1152\,MB
+caps we test. The reclaim CPU stall is tiny (${\approx}0.16$\uu{s}); the
+cost is the refault I/O. The soft cap throttles the group (8--9k
+\texttt{memory.high} events) but never kills it.
 
 \begin{table}[t]\centering\footnotesize
 \setlength{\tabcolsep}{4pt}
@@ -366,12 +339,11 @@ refault cost) instead of killing. The cliff requires \emph{unreclaimable}
 ${\approx}762$\,MB), the outcome is a sharp, reproducible step
 (Table~\ref{tab:cliff}): a \texttt{memory.max} of 1024, 896, or 768\,MB
 succeeds every time (3/3), while 640\,MB fails every time (3/3) with an OOM
-kill and a failed task---the cliff lies between 640 and 768\,MB. Notably, the
+kill and a failed task. The cliff lies between 640 and 768\,MB. Notably, the
 OOM killer takes the \emph{worker} (the largest anonymous consumer), not the
-node process, so the agent survives, detects the \texttt{SIGKILL}, and
-reports the correct reason (``typically the kernel's out-of-memory killer'')
-without retrying. A sandbox memory limit can thus silently kill the agent's
-tools mid-task while the agent itself keeps running. (Confirms H1--H4.)
+node process. The agent survives, detects the \texttt{SIGKILL}, and reports
+the correct reason without retrying. A sandbox memory limit can thus
+silently kill the agent's tools mid-task while the agent keeps running. (Confirms H1--H4.)
 
 \section{Problem 4: Disk-I/O Cap}
 \label{sec:io}
@@ -383,20 +355,17 @@ native disk speed, the read phase scales inversely with the cap
 (Table~\ref{tab:io}). \texttt{io.stat} shows the same ${\approx}1.23$\,GB
 moved in every cell (the 1\,GB file plus read-ahead), while the phase grows
 from 5.98\uu{s} uncapped to 10.1\uu{s} at 100\uu{MB/s} and 20.4\uu{s} at
-50\uu{MB/s}. The resulting device throughput (io.stat bytes divided by the
-phase) tracks the cap---${\approx}60$ and ${\approx}122$\uu{MB/s} at the 50
-and 100\uu{MB/s} caps, a little above because read-ahead is issued before
-throttling engages. The 200\uu{MB/s} cap has no effect: the disk's own
-sequential rate is only ${\approx}205$\uu{MB/s}, so a cap at or above it
-cannot throttle; on faster storage the same caps would bite over a wider
-range. (Confirms H2--H3.)
+50\uu{MB/s}. Device throughput (bytes divided by phase) tracks the cap,
+sitting a little above it because read-ahead is issued before throttling
+engages. The 200\uu{MB/s} cap has no effect: the disk's own sequential rate
+is only ${\approx}205$\uu{MB/s}, so a cap at or above it cannot throttle.
+(Confirms H2--H3.)
 
 \begin{table}[t]\centering\footnotesize
 \setlength{\tabcolsep}{4pt}
 \caption{Problem~4 (\texttt{io.max rbps}), medians, $n{=}5$. The same
 ${\approx}1.23$\,GB is read in every cell (\texttt{io.stat}); ``device''
-is that figure divided by the phase. A cap at or above the
-${\approx}205$\uu{MB/s} native speed cannot bite.}
+is that figure divided by the phase.}
 \label{tab:io}
 \begin{tabular}{@{}lrrr@{}}
 \toprule
@@ -410,41 +379,34 @@ unlimited    & 5.98 & $1.0$ & ${\approx}205$ \\
 \end{tabular}
 \end{table}
 
-\section{A Realistic Task: Which Limit Bites?}
+\section{A Realistic Task: What Bites?}
 \label{sec:e2e}
 
 Problems~1--4 isolate each mechanism with a workload built to stress it. To
 see which a lightweight agent actually trips, we ran the \emph{implement}
-coding task (edit code, run tests) end-to-end under each resource limit and
-recorded total completion time and task success (Table~\ref{tab:e2e}; three
-reps per cell, CPU and unlimited reused from Problem~1).
-
-Only the CPU cap meaningfully slows the task. A disk cap down to 20\uu{MB/s}
-has no effect---the task reads a handful of small files and is not I/O-bound.
-A memory cap has no effect either until it drops below the agent's own
-footprint (${\approx}340$\,MiB peak, mostly reclaimable page cache): Claude
-survives down to 192\,MiB by reclaiming cache, but at 128\,MiB the node
-process itself enters the kill path and \emph{thrashes}---it spawns
+task end-to-end under each limit and recorded completion time and success
+(Table~\ref{tab:e2e}; three reps per cell). Only the CPU cap meaningfully slows the task. A disk cap down to 20\uu{MB/s}
+has no effect, because the task reads a handful of small files and is not
+I/O-bound. A memory cap has no effect either until it drops below the
+agent's own footprint (${\approx}340$\,MiB peak, mostly reclaimable page
+cache). Claude survives down to 192\,MiB by reclaiming cache. At 128\,MiB
+the node process itself enters the kill path and \emph{thrashes}: it spawns
 processes that are OOM-killed repeatedly (six kills across three runs), runs
-$7\times$ longer, and mostly fails; at 96\,MiB it is $30\times$ slower and
-fails every time. This is a second behavior regime: unlike the tool-OOM case
-of Problem~3, where the agent survives and reports cleanly, here the agent is
-killed mid-run and produces no report---there is no graceful degradation.
-
-The failure point tracks the agent's footprint, consistent with
-Section~\ref{sec:consistency}: the leaner Codex (Rust) survived every cell,
-including 96\,MiB. Its wall times are dominated by API latency and not
-comparable, so we report it by outcome. In short, the mechanisms of
-Problems~1--4 are real, but a lightweight coding task hits only the CPU cap
-and the below-footprint memory cliff; memory- and disk-heavy agent work
-(builds, data pipelines) would trip the rest.
+$7\times$ longer, and mostly fails. At 96\,MiB it is $30\times$ slower and
+fails every time. This is a second failure regime. Unlike the tool-OOM case
+of Problem~3, where the agent survives and reports cleanly, here the agent
+is killed mid-run and produces no report; there is no graceful degradation.
+The failure point tracks the agent's footprint: the leaner Codex (Rust)
+survived every cell, including 96\,MiB (its wall times are dominated by API
+latency, so we report it by outcome). In short, a lightweight coding task
+hits only the CPU cap and the below-footprint memory cliff; memory- and
+disk-heavy agent work (builds, data pipelines) would trip the rest.
 
 \begin{table}[t]\centering\footnotesize
 \setlength{\tabcolsep}{4pt}
-\caption{Implement task end-to-end (Claude), total completion time and
-success, medians, $n{=}3$ (CPU and unlimited from Problem~1). Only CPU
-slows it; memory kills it only below the agent's ${\approx}190$\,MiB
-footprint; disk does not bite.}
+\caption{Implement task end-to-end (Claude), medians, $n{=}3$ (CPU and
+unlimited from Problem~1). Only CPU slows it; memory kills it only below the
+agent's own footprint; disk does not bite.}
 \label{tab:e2e}
 \begin{tabular}{@{}llrc@{}}
 \toprule
@@ -464,22 +426,19 @@ disk   & 20--50\uu{MB/s}  & 23--25 & 3/3 \\
 \label{sec:consistency}
 
 \emph{The effects are not tied to one harness.} We repeated all four
-problems with Codex CLI, a Rust/tokio binary driving a different model
-through a different API (130 runs, at parity with the Claude campaign). The
+problems with Codex CLI (130 runs, at parity with the Claude campaign). The
 scheduling, memory-reclaim and I/O results are identical to within noise
 (Table~\ref{tab:consistency}), because those workloads are fixed worker
 processes the agent merely launches. The CPU-cap and LLM-share results show
 the same trends: both agents are ${\ge}80\%$ LLM-bound uncapped and both
-shed that share under tighter caps. The one difference is instructive. The
-OOM cliff sits at \emph{agent RSS $+$ workload}, so the leaner Rust harness
-survives a 640\,MB cap that kills the Node harness (${\approx}250$\,MB RSS).
-The cliff is real for both; its location tracks the agent's own footprint.
+shed that share under tighter caps. The one difference: the OOM cliff sits
+at \emph{agent RSS $+$ workload}, so the leaner Rust harness survives a
+640\,MB cap that kills the Node harness (${\approx}250$\,MB RSS).
 
 \begin{table}[t]\centering\footnotesize
 \setlength{\tabcolsep}{4pt}
 \caption{Claude vs.\ Codex, medians. Scheduling/memory/I/O match to within
-noise; the CPU cap shows the same trend (Codex is leaner on CPU and slower
-per turn, so its walls are larger).}
+noise; the CPU cap shows the same trend.}
 \label{tab:consistency}
 \begin{tabular}{@{}llrr@{}}
 \toprule
@@ -495,54 +454,47 @@ CPU 0.25 core    & model-\% wall    & 53 & 62 \\
 \end{tabular}
 \end{table}
 
-\emph{It is not just the LLM, and the exposure is in the configuration.} The
+\emph{It is not just the LLM; the exposure is in the configuration.} The
 agent is ${\approx}84\%$ LLM-bound on a well-provisioned machine, so blaming
 the model is understandable. But a tight container limit on a resource the
 workload uses adds $1.7$--$4.7\times$ to the affected phase or kills a
 process outright, at sandbox sizes common in practice (fractional-CPU CI
-runners, tight memory pods). In our runs the harness checked cores and did
-not over-subscribe the CPU itself (Section~\ref{sec:threads}), so the
-exposure comes from the limits the environment grants rather than the
-agent's own choices---exactly the parameter nobody profiles when an agent
-``feels slow.'' The harms come in two shapes: bandwidth limits (CPU, disk,
-soft memory) cause \emph{recoverable slowdown}, while a hard limit on an
-unreclaimable resource (anonymous memory, no swap) causes \emph{failure}, and
-the two call for different remedies (right-size the cap vs.\ add swap or
-headroom).
+runners, tight memory pods). The harness did not over-subscribe the CPU itself
+(Section~\ref{sec:threads}), so the exposure comes from the limits the
+environment grants, exactly the parameter nobody profiles when an agent
+``feels slow.'' The harms come in two shapes: bandwidth limits (CPU,
+disk, soft memory) cause \emph{recoverable slowdown}, while a hard limit on
+an unreclaimable resource (anonymous memory, no swap) causes \emph{failure}.
+The two call for different remedies: right-size the cap vs.\ add swap or
+headroom.
 
-\emph{Counters say what, the trace says where.} The cgroup counters flag
-that something happened---on a capped memory run \texttt{memory.events}
-reports 8505 \texttt{high} events and \texttt{memory.stat} 1.05\,M
-refaults---but only the trace shows those refaults are the \emph{file-read
-tool} blocking on block I/O while the agent process is untouched, and only
-the trace attributes 84\% of an uncapped run to the model's socket. Where the
-two overlap they always agree, which makes the method a reusable recipe for a
-larger fault catalogue.
+\emph{Counters say what, the trace says where.} On a capped memory run the
+cgroup counters report 8505 \texttt{high} events and 1.05\,M refaults, but
+only the trace shows those refaults are the file-read tool blocking on block
+I/O while the agent process is untouched, and only the trace attributes 84\%
+of an uncapped run to the model's socket. Where the two overlap they always
+agree.
 
 \emph{Limitations.} The main uncontrolled input is LLM nondeterminism,
 mitigated by fixed prompts, byte-identical repos, randomized order, and
-medians. The deterministic metrics---tool-phase time, throttle, refaults,
-OOM outcomes---are reproducible to within a few percent across reps; total
-wall time varies more (up to ${\approx}15\%$) because it includes the model's
-round-trips, which is why we separate it from the tool phase. Every median is
-cross-validated against an independent kernel counter. The findings are tied
-to one machine shape: no swap (so anonymous pressure OOMs rather than swaps),
-an SMT topology, and one disk speed (which sets where the I/O knee falls),
-and to small tasks---Section~\ref{sec:e2e} shows a lightweight coding task
-hits only the CPU cap, while heavier agent work would trip the rest.
+medians. The deterministic metrics (tool-phase time, throttle, refaults, OOM
+outcomes) are reproducible to within a few percent across reps; total wall
+time varies more (up to ${\approx}15\%$) because it includes the model's
+round-trips, so we report the tool phase separately. The findings
+are tied to one machine shape: no swap (so anonymous pressure OOMs rather
+than swaps), an SMT topology, and one disk speed (which sets where the I/O
+knee falls), and to small tasks (Section~\ref{sec:e2e}).
 
 \section{Conclusion}
 
 An AI coding agent is ${\approx}84\%$ LLM-bound on a well-provisioned
 machine, but a tight container limit on CPU, cores, memory, or disk I/O can
-add up to $4.7\times$ to the affected phase or kill a process mid-task,
-turning the operating system into a first-order cost rather than a
-negligible one. We characterized four such configuration-level mechanisms
-with kernel traces, bounded the threshold for each, validated every
-measurement against the kernel's own accounting, reproduced the effects on a
-second, unrelated agent, and showed on a realistic coding task which ones a
-lightweight agent actually hits. The practical message is blunt: when an
-agent feels slow, profile the sandbox, not only the model.
+add up to $4.7\times$ to the affected phase or kill a process mid-task. We
+characterized four such mechanisms with kernel traces, bounded each
+threshold, validated every measurement against the kernel's own accounting,
+reproduced the effects on a second, unrelated agent, and showed which ones a
+realistic coding task actually hits. When an agent feels slow, profile the
+sandbox, not only the model.
 
 \emph{Artifacts.} Collection and analysis scripts, per-run metadata and
 provenance, and the full results are available in the project repository
