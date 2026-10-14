@@ -1,0 +1,10 @@
+I implemented the functions in `rle.py` and `intervals.py`, and `python3 test_impl.py` now prints **ALL PASS**. I didn't touch `test_impl.py`.
+
+- **`rle.py`**
+  - `encode` groups each run of the same character and writes the character followed by how many times it repeats, so `'aaabbc'` becomes `'a3b2c1'`.
+  - `decode` reads each character-and-count pair back with a regex, so counts with several digits (like `x10`) work.
+- **`intervals.py`**: `merge` sorts the intervals by start, then joins any interval that starts at or before the end of the previous one. That means intervals that only touch, like `[1,2]` and `[2,3]`, also merge.
+
+The test's stress loop takes about 3.5 seconds of the run.
+
+One limit: `decode` can't tell a digit in the original text from a count, because run-length encoding has no way to mark the difference. Text containing digits, like `"a1"`, won't decode back to the original. The docstrings and tests don't cover that case.

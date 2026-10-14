@@ -1,0 +1,6 @@
+I implemented both files and `python3 test_impl.py` now prints **ALL PASS**. The stress loop took 3.4s.
+
+- **`rle.py`**: `encode` groups each run of the same character and writes it as the character followed by its count, so `'aaabbc'` becomes `'a3b2c1'` and an empty string stays empty. `decode` splits the string into character-plus-count pairs and repeats each character that many times. Counts can have more than one digit.
+- **`intervals.py`**: `merge` sorts the intervals by start, then joins any interval whose start is at or before the end of the previous one. That means intervals that only touch, like `[1,2]` and `[2,3]`, merge into `[1,3]`.
+
+**Limitation:** if the original string contains digits, decoding won't always give it back. For example, `'1'` encodes to `'11'`, which reads back as one `'1'`, but `'11'` encodes to `'12'`, which reads back as two `'1'`s (`'11'`). That's built into the format the docstrings describe, and the tests don't use digits, so I didn't change it.

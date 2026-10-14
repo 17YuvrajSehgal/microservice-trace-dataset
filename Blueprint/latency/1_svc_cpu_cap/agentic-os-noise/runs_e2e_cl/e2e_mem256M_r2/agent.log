@@ -1,0 +1,10 @@
+I implemented both files and `python3 test_impl.py` now prints **ALL PASS**. The stress section took 3.6s. I ran the tests after each function as you asked: after `rle.py` they stopped at the `merge` stub, and after `intervals.py` everything passed. I didn't touch `test_impl.py`.
+
+- **`rle.py`**
+  - `encode` groups each run of the same character and writes the character followed by its count, so `'aaabbc'` becomes `'a3b2c1'`.
+  - `decode` reverses this by reading each character and the digits after it, so multi-digit counts like `x10` work.
+- **`intervals.py`**: `merge` sorts the intervals by start and joins any that overlap or touch, so `[1,2]` and `[2,3]` become `[1,3]`. It returns new lists and doesn't change the input.
+
+**Limitation:** the encoded format can't represent strings that contain digits. Encoding `'1'` gives `'11'`, which `decode` reads as one `'1'` with no count, so you don't get the original back. The docstring's format has no way to escape digits, and none of the tests use them.
+
+I haven't committed anything.

@@ -1,0 +1,8 @@
+`python3 test_impl.py` now prints **ALL PASS**. The stress section took 3.4s, and I didn't edit `test_impl.py`.
+
+- **`rle.py`**
+  - `encode` writes each run of repeated characters as the character followed by its count, including runs of one (`'aaabbc'` → `'a3b2c1'`, `''` → `''`).
+  - `decode` reverses this by reading each character followed by its count.
+- **`intervals.py`**: `merge` sorts the intervals by start, then joins any interval whose start is at or before the previous one's end. That means touching intervals like `[1,2],[2,3]` become `[1,3]`.
+
+One limitation: if the input string contains digits, the encoded text is ambiguous. For example, `encode("11")` gives `"12"`, which `decode` reads back as `"1"` twice. The docstrings don't cover this case and none of the tests use digits, so I left it as is.

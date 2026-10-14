@@ -1,0 +1,12 @@
+I implemented both files and the suite now prints **ALL PASS**. The stress section took 2.9s.
+
+- **`rle.py`**
+  - `encode` groups runs of the same character and writes each one as the character plus its count, so `'aaabbc'` becomes `'a3b2c1'`.
+  - `decode` reads each character followed by one or more digits and repeats the character that many times.
+- **`intervals.py`**: `merge` sorts the intervals by start, then joins each one into the previous interval when it overlaps or just touches it (`[1,2],[2,3]` → `[1,3]`).
+
+After writing `rle.py`, I ran the tests. They got past the RLE checks and stopped at the first `merge` assert, which hadn't been written yet. Implementing `merge` fixed that.
+
+One limitation: this RLE format can't handle input that contains digit characters, because `encode("a1")` gives `"a111"`, which reads back as `"a"` repeated 111 times. The docstrings and tests don't use digits, so I didn't add escaping.
+
+I didn't touch `test_impl.py` and haven't committed anything.

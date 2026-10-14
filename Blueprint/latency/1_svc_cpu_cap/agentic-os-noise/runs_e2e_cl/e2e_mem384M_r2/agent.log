@@ -1,0 +1,7 @@
+`python3 test_impl.py` now prints **ALL PASS**, and the stress loop took 3.5s. I didn't touch `test_impl.py`. I ran the tests after each function: the first two runs stopped at the next unwritten function, as expected, and the third run passed.
+
+- **`rle.encode`** (`rle.py`) groups repeated characters and writes each character followed by its count, so `'aaabbc'` becomes `'a3b2c1'`. An empty string gives `''`.
+- **`rle.decode`** (`rle.py`) reads each character followed by its count and repeats the character that many times. Counts can be more than one digit, so `x10` works.
+- **`intervals.merge`** (`intervals.py`) sorts the intervals by start, then joins each one into the previous result when it overlaps or just touches it. `[1,2],[2,3]` becomes `[1,3]`.
+
+One limit, which comes from the format in the docstring rather than the code: if the input string contains digits, the encoding is ambiguous. For example, `"1"` encodes to `"11"`, which decodes back to `"1"`, but there's no clean way to read longer runs of digits back. None of the tests use digits.

@@ -1,0 +1,6 @@
+`python3 test_impl.py` now prints **ALL PASS**, with the stress section taking 2.9s. I ran it after each function as you asked, and didn't touch `test_impl.py`.
+
+- **`rle.py`**: `encode` writes each run as the character followed by its count, so `'aaabbc'` becomes `'a3b2c1'`. `decode` reverses that: it reads a character, then all the digits after it as the count.
+- **`intervals.py`**: `merge` sorts the intervals by start, then joins any interval whose start is at or before the previous end. That means intervals that only touch, like `[1,2]` and `[2,3]`, get merged too.
+
+**One limitation:** the encoding breaks on strings that contain digits. For example, `encode("11")` gives `"12"`, which then decodes to `"1"` repeated twice... except it's read as the character `1` with count `2` only by luck; in general a digit in the input gets mistaken for part of a count. The tests only use letters and spaces, and the docstring format has no way to mark a digit as a character, so I didn't add any escaping.

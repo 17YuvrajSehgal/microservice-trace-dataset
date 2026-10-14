@@ -1,0 +1,6 @@
+{ "run": "e2e_io20M_r1", "task": "t3_implement.sh", "cpu_max": "max", "task_arg": "",
+  "mem_limit": "", "io_limit": "rbps:20971520", "agent": "claude",
+  "agent_exit": 0, "task_check_exit": 0,
+  "test_file_tampered": false,
+  "kernel": "7.0.0-1014-gcp", "nproc": 4, "host": "agentic-noise.us-east1-d.c.teleeporter.internal",
+  "agent_version": "2.1.296 (Claude Code)" }

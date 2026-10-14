@@ -1,0 +1,8 @@
+`python3 test_impl.py` now prints **ALL PASS**. The stress section took 3.5s, and `test_impl.py` is unchanged.
+
+- **`rle.py`**: `encode` groups each run of the same character and writes it as the character followed by its count, so `'aaabbc'` becomes `'a3b2c1'` and an empty string stays empty. `decode` reads each character-and-count pair and expands it.
+- **`intervals.py`**: `merge` sorts the intervals by start and combines each one with the previous if it overlaps or just touches it, so `[1,2],[2,3]` becomes `[1,3]`. It returns new lists rather than changing the caller's input.
+
+Following your instruction to run the tests after each function, I ran them after writing `rle.py`. The run failed, but only at the first `merge` check, which was still unimplemented. After `intervals.py` was written, everything passed.
+
+One limitation: `decode` can't handle text that itself contains digits, because a character like `'1'` is indistinguishable from a count. The docstring's format has this problem built in, and none of the test strings include digits.

@@ -1,0 +1,7 @@
+`python3 test_impl.py` now prints **ALL PASS**, and the stress test took 2.4s. I ran it after each function as you asked. I didn't edit `test_impl.py`.
+
+- **`rle.encode`** walks the string and writes each character followed by how many times it repeats in a row, even when that's once: `'aaabbc'` → `'a3b2c1'`, and `''` → `''`.
+- **`rle.decode`** reads each character followed by its count and repeats the character that many times. Counts can be more than one digit, so `'x10'` works.
+- **`intervals.merge`** sorts the intervals by start, then joins any that overlap or share an endpoint. It builds new lists, so the input isn't changed.
+
+**Limitation:** encoding a string that contains digits can't be reliably decoded. For example, `encode("11")` gives `"12"`, which can't be told apart from other inputs. That's a flaw in the format the docstrings describe, not in the code, and none of the tests use digits.

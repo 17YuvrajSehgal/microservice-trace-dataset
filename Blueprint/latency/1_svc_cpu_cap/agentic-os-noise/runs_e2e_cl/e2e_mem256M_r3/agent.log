@@ -1,0 +1,10 @@
+I implemented both files and `python3 test_impl.py` now prints **ALL PASS**. The stress section took 2.8s, and I didn't touch `test_impl.py`.
+
+- **`rle.py`**:
+  - `encode` groups each run of the same character and writes it as character + count, so `'aaabbc'` becomes `'a3b2c1'`.
+  - `decode` reads each character and the number after it (one or more digits) and repeats the character that many times.
+- **`intervals.py`**: `merge` sorts the intervals by start, then goes through them in order. If an interval starts at or before the end of the previous one, they are combined. So touching intervals like `[1,2],[2,3]` merge into `[1,3]`.
+
+I ran the tests after each file as you asked. The first run passed all the RLE checks and then stopped at `merge`, which wasn't written yet. The second run passed everything.
+
+One limitation: this encoding format can't handle strings that contain digits. For example, `encode("a1")` gives `"a111"`, which decodes as a run of 111 `a`s. Nothing in the docstrings or tests calls for digits. If you need them, the format itself would have to change, for example by escaping digits or using a separator.

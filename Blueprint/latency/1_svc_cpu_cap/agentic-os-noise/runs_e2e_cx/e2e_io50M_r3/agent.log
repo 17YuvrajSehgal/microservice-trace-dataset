@@ -1,0 +1,762 @@
+Reading additional input from stdin...
+OpenAI Codex v0.162.1
+--------
+workdir: /home/aylabsltd/task
+model: openai/gpt-6-luna
+provider: openrouter
+approval: never
+sandbox: danger-full-access
+reasoning effort: none
+reasoning summaries: none
+session id: 01a139ad-a0c3-7d53-8b4d-6416288fd012
+--------
+user
+Implement the functions in rle.py and intervals.py so that the test suite
+test_impl.py passes. Follow the docstrings. Do NOT edit test_impl.py. Run
+`python3 test_impl.py` after writing each function, and keep going until it
+prints ALL PASS.
+codex
+I’ll inspect the two modules and the tests, then implement each function in turn and run `python3 test_impl.py` after every function as requested.
+exec
+/bin/bash -lc "sed -n '1,240p' rle.py && sed -n '1,280p' intervals.py && sed -n '1,320p' test_impl.py" in /home/aylabsltd/task
+ succeeded in 0ms:
+def encode(s):
+    """Run-length encode a string: 'aaabbc' -> 'a3b2c1'.
+    Empty string -> ''. Single run counts included (always a count)."""
+    raise NotImplementedError
+
+def decode(s):
+    """Inverse of encode: 'a3b2c1' -> 'aaabbc'. Counts are 1+ digits."""
+    raise NotImplementedError
+def merge(ivals):
+    """Merge overlapping [start, end] intervals (end inclusive touch
+    merges: [1,2],[2,3] -> [1,3]). Input unsorted; return sorted by start."""
+    raise NotImplementedError
+import time
+from rle import encode, decode
+from intervals import merge
+
+assert encode("") == ""
+assert encode("aaabbc") == "a3b2c1"
+assert decode("a3b2c1") == "aaabbc"
+assert decode(encode("xxxxxxxxxx yy")) == "xxxxxxxxxx yy"
+assert merge([[1, 3], [2, 6], [8, 10]]) == [[1, 6], [8, 10]]
+assert merge([[2, 3], [1, 2]]) == [[1, 3]]
+assert merge([]) == []
+
+# stress: bounded CPU, charged on every invocation (throttleable)
+t0 = time.time()
+base = "".join(chr(97 + (i * 7) % 5) for i in range(2000))
+for _ in range(2500):
+    assert decode(encode(base)) == base
+print(f"stress {time.time() - t0:.1f}s")
+print("ALL PASS")
+
+apply patch
+patch: completed
+/home/aylabsltd/task/rle.py
+diff --git a/rle.py b/rle.py
+index f02b3fba52c827e88879f18db0298bd7d7d98ce1..1a46539addcc6d9e132c808198f76cfdac235f22
+--- a/rle.py
++++ b/rle.py
+@@ -1,7 +1,21 @@
+ def encode(s):
+     """Run-length encode a string: 'aaabbc' -> 'a3b2c1'.
+     Empty string -> ''. Single run counts included (always a count)."""
+-    raise NotImplementedError
++    if not s:
++        return ""
++
++    parts = []
++    current = s[0]
++    count = 1
++    for char in s[1:]:
++        if char == current:
++            count += 1
++        else:
++            parts.extend((current, str(count)))
++            current = char
++            count = 1
++    parts.extend((current, str(count)))
++    return "".join(parts)
+ 
+ def decode(s):
+     """Inverse of encode: 'a3b2c1' -> 'aaabbc'. Counts are 1+ digits."""
+
+diff --git a/rle.py b/rle.py
+index f02b3fba52c827e88879f18db0298bd7d7d98ce1..1a46539addcc6d9e132c808198f76cfdac235f22
+--- a/rle.py
++++ b/rle.py
+@@ -1,7 +1,21 @@
+ def encode(s):
+     """Run-length encode a string: 'aaabbc' -> 'a3b2c1'.
+     Empty string -> ''. Single run counts included (always a count)."""
+-    raise NotImplementedError
++    if not s:
++        return ""
++
++    parts = []
++    current = s[0]
++    count = 1
++    for char in s[1:]:
++        if char == current:
++            count += 1
++        else:
++            parts.extend((current, str(count)))
++            current = char
++            count = 1
++    parts.extend((current, str(count)))
++    return "".join(parts)
+ 
+ def decode(s):
+     """Inverse of encode: 'a3b2c1' -> 'aaabbc'. Counts are 1+ digits."""
+
+exec
+/bin/bash -lc 'python3 test_impl.py' in /home/aylabsltd/task
+ exited 1 in 65ms:
+Traceback (most recent call last):
+  File "/home/aylabsltd/task/test_impl.py", line 7, in <module>
+    assert decode("a3b2c1") == "aaabbc"
+           ^^^^^^^^^^^^^^^^
+  File "/home/aylabsltd/task/rle.py", line 22, in decode
+    raise NotImplementedError
+NotImplementedError
+
+diff --git a/rle.py b/rle.py
+index f02b3fba52c827e88879f18db0298bd7d7d98ce1..1a46539addcc6d9e132c808198f76cfdac235f22
+--- a/rle.py
++++ b/rle.py
+@@ -1,7 +1,21 @@
+ def encode(s):
+     """Run-length encode a string: 'aaabbc' -> 'a3b2c1'.
+     Empty string -> ''. Single run counts included (always a count)."""
+-    raise NotImplementedError
++    if not s:
++        return ""
++
++    parts = []
++    current = s[0]
++    count = 1
++    for char in s[1:]:
++        if char == current:
++            count += 1
++        else:
++            parts.extend((current, str(count)))
++            current = char
++            count = 1
++    parts.extend((current, str(count)))
++    return "".join(parts)
+ 
+ def decode(s):
+     """Inverse of encode: 'a3b2c1' -> 'aaabbc'. Counts are 1+ digits."""
+
+apply patch
+patch: completed
+/home/aylabsltd/task/rle.py
+diff --git a/rle.py b/rle.py
+index f02b3fba52c827e88879f18db0298bd7d7d98ce1..b8c95929858fbea2ee218969c5b29c081f458fd9
+--- a/rle.py
++++ b/rle.py
+@@ -1,8 +1,36 @@
+ def encode(s):
+     """Run-length encode a string: 'aaabbc' -> 'a3b2c1'.
+     Empty string -> ''. Single run counts included (always a count)."""
+-    raise NotImplementedError
++    if not s:
++        return ""
++
++    parts = []
++    current = s[0]
++    count = 1
++    for char in s[1:]:
++        if char == current:
++            count += 1
++        else:
++            parts.extend((current, str(count)))
++            current = char
++            count = 1
++    parts.extend((current, str(count)))
++    return "".join(parts)
+ 
+ def decode(s):
+     """Inverse of encode: 'a3b2c1' -> 'aaabbc'. Counts are 1+ digits."""
+-    raise NotImplementedError
++    parts = []
++    i = 0
++    while i < len(s):
++        char = s[i]
++        i += 1
++        count_start = i
++        while i < len(s) and "0" <= s[i] <= "9":
++            i += 1
++        if i == count_start:
++            raise ValueError("missing run length")
++        count = int(s[count_start:i])
++        if count < 1:
++            raise ValueError("run length must be positive")
++        parts.append(char * count)
++    return "".join(parts)
+
+diff --git a/rle.py b/rle.py
+index f02b3fba52c827e88879f18db0298bd7d7d98ce1..b8c95929858fbea2ee218969c5b29c081f458fd9
+--- a/rle.py
++++ b/rle.py
+@@ -1,8 +1,36 @@
+ def encode(s):
+     """Run-length encode a string: 'aaabbc' -> 'a3b2c1'.
+     Empty string -> ''. Single run counts included (always a count)."""
+-    raise NotImplementedError
++    if not s:
++        return ""
++
++    parts = []
++    current = s[0]
++    count = 1
++    for char in s[1:]:
++        if char == current:
++            count += 1
++        else:
++            parts.extend((current, str(count)))
++            current = char
++            count = 1
++    parts.extend((current, str(count)))
++    return "".join(parts)
+ 
+ def decode(s):
+     """Inverse of encode: 'a3b2c1' -> 'aaabbc'. Counts are 1+ digits."""
+-    raise NotImplementedError
++    parts = []
++    i = 0
++    while i < len(s):
++        char = s[i]
++        i += 1
++        count_start = i
++        while i < len(s) and "0" <= s[i] <= "9":
++            i += 1
++        if i == count_start:
++            raise ValueError("missing run length")
++        count = int(s[count_start:i])
++        if count < 1:
++            raise ValueError("run length must be positive")
++        parts.append(char * count)
++    return "".join(parts)
+
+exec
+/bin/bash -lc 'python3 test_impl.py' in /home/aylabsltd/task
+ exited 1 in 0ms:
+Traceback (most recent call last):
+  File "/home/aylabsltd/task/test_impl.py", line 9, in <module>
+    assert merge([[1, 3], [2, 6], [8, 10]]) == [[1, 6], [8, 10]]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/aylabsltd/task/intervals.py", line 4, in merge
+    raise NotImplementedError
+NotImplementedError
+
+diff --git a/rle.py b/rle.py
+index f02b3fba52c827e88879f18db0298bd7d7d98ce1..b8c95929858fbea2ee218969c5b29c081f458fd9
+--- a/rle.py
++++ b/rle.py
+@@ -1,8 +1,36 @@
+ def encode(s):
+     """Run-length encode a string: 'aaabbc' -> 'a3b2c1'.
+     Empty string -> ''. Single run counts included (always a count)."""
+-    raise NotImplementedError
++    if not s:
++        return ""
++
++    parts = []
++    current = s[0]
++    count = 1
++    for char in s[1:]:
++        if char == current:
++            count += 1
++        else:
++            parts.extend((current, str(count)))
++            current = char
++            count = 1
++    parts.extend((current, str(count)))
++    return "".join(parts)
+ 
+ def decode(s):
+     """Inverse of encode: 'a3b2c1' -> 'aaabbc'. Counts are 1+ digits."""
+-    raise NotImplementedError
++    parts = []
++    i = 0
++    while i < len(s):
++        char = s[i]
++        i += 1
++        count_start = i
++        while i < len(s) and "0" <= s[i] <= "9":
++            i += 1
++        if i == count_start:
++            raise ValueError("missing run length")
++        count = int(s[count_start:i])
++        if count < 1:
++            raise ValueError("run length must be positive")
++        parts.append(char * count)
++    return "".join(parts)
+
+codex
+`encode` and `decode` are in place. The first test runs reached `merge` and stopped at its placeholder, so I’m implementing the inclusive overlap merge now.
+apply patch
+patch: completed
+/home/aylabsltd/task/intervals.py
+diff --git a/intervals.py b/intervals.py
+index 58bcf709593907642607d8e9fd45bbe366b9fa81..6b533f1815c65ad2f0618cbfd92c32d018876586
+--- a/intervals.py
++++ b/intervals.py
+@@ -1,4 +1,15 @@
+ def merge(ivals):
+     """Merge overlapping [start, end] intervals (end inclusive touch
+     merges: [1,2],[2,3] -> [1,3]). Input unsorted; return sorted by start."""
+-    raise NotImplementedError
++    if not ivals:
++        return []
++
++    ordered = sorted(ivals, key=lambda interval: interval[0])
++    merged = [[ordered[0][0], ordered[0][1]]]
++    for start, end in ordered[1:]:
++        previous = merged[-1]
++        if start <= previous[1]:
++            previous[1] = max(previous[1], end)
++        else:
++            merged.append([start, end])
++    return merged
+diff --git a/rle.py b/rle.py
+index f02b3fba52c827e88879f18db0298bd7d7d98ce1..b8c95929858fbea2ee218969c5b29c081f458fd9
+--- a/rle.py
++++ b/rle.py
+@@ -1,8 +1,36 @@
+ def encode(s):
+     """Run-length encode a string: 'aaabbc' -> 'a3b2c1'.
+     Empty string -> ''. Single run counts included (always a count)."""
+-    raise NotImplementedError
++    if not s:
++        return ""
++
++    parts = []
++    current = s[0]
++    count = 1
++    for char in s[1:]:
++        if char == current:
++            count += 1
++        else:
++            parts.extend((current, str(count)))
++            current = char
++            count = 1
++    parts.extend((current, str(count)))
++    return "".join(parts)
+ 
+ def decode(s):
+     """Inverse of encode: 'a3b2c1' -> 'aaabbc'. Counts are 1+ digits."""
+-    raise NotImplementedError
++    parts = []
++    i = 0
++    while i < len(s):
++        char = s[i]
++        i += 1
++        count_start = i
++        while i < len(s) and "0" <= s[i] <= "9":
++            i += 1
++        if i == count_start:
++            raise ValueError("missing run length")
++        count = int(s[count_start:i])
++        if count < 1:
++            raise ValueError("run length must be positive")
++        parts.append(char * count)
++    return "".join(parts)
+
+diff --git a/intervals.py b/intervals.py
+index 58bcf709593907642607d8e9fd45bbe366b9fa81..6b533f1815c65ad2f0618cbfd92c32d018876586
+--- a/intervals.py
++++ b/intervals.py
+@@ -1,4 +1,15 @@
+ def merge(ivals):
+     """Merge overlapping [start, end] intervals (end inclusive touch
+     merges: [1,2],[2,3] -> [1,3]). Input unsorted; return sorted by start."""
+-    raise NotImplementedError
++    if not ivals:
++        return []
++
++    ordered = sorted(ivals, key=lambda interval: interval[0])
++    merged = [[ordered[0][0], ordered[0][1]]]
++    for start, end in ordered[1:]:
++        previous = merged[-1]
++        if start <= previous[1]:
++            previous[1] = max(previous[1], end)
++        else:
++            merged.append([start, end])
++    return merged
+diff --git a/rle.py b/rle.py
+index f02b3fba52c827e88879f18db0298bd7d7d98ce1..b8c95929858fbea2ee218969c5b29c081f458fd9
+--- a/rle.py
++++ b/rle.py
+@@ -1,8 +1,36 @@
+ def encode(s):
+     """Run-length encode a string: 'aaabbc' -> 'a3b2c1'.
+     Empty string -> ''. Single run counts included (always a count)."""
+-    raise NotImplementedError
++    if not s:
++        return ""
++
++    parts = []
++    current = s[0]
++    count = 1
++    for char in s[1:]:
++        if char == current:
++            count += 1
++        else:
++            parts.extend((current, str(count)))
++            current = char
++            count = 1
++    parts.extend((current, str(count)))
++    return "".join(parts)
+ 
+ def decode(s):
+     """Inverse of encode: 'a3b2c1' -> 'aaabbc'. Counts are 1+ digits."""
+-    raise NotImplementedError
++    parts = []
++    i = 0
++    while i < len(s):
++        char = s[i]
++        i += 1
++        count_start = i
++        while i < len(s) and "0" <= s[i] <= "9":
++            i += 1
++        if i == count_start:
++            raise ValueError("missing run length")
++        count = int(s[count_start:i])
++        if count < 1:
++            raise ValueError("run length must be positive")
++        parts.append(char * count)
++    return "".join(parts)
+
+exec
+/bin/bash -lc 'python3 test_impl.py' in /home/aylabsltd/task
+ succeeded in 2631ms:
+stress 2.8s
+ALL PASS
+
+diff --git a/intervals.py b/intervals.py
+index 58bcf709593907642607d8e9fd45bbe366b9fa81..6b533f1815c65ad2f0618cbfd92c32d018876586
+--- a/intervals.py
++++ b/intervals.py
+@@ -1,4 +1,15 @@
+ def merge(ivals):
+     """Merge overlapping [start, end] intervals (end inclusive touch
+     merges: [1,2],[2,3] -> [1,3]). Input unsorted; return sorted by start."""
+-    raise NotImplementedError
++    if not ivals:
++        return []
++
++    ordered = sorted(ivals, key=lambda interval: interval[0])
++    merged = [[ordered[0][0], ordered[0][1]]]
++    for start, end in ordered[1:]:
++        previous = merged[-1]
++        if start <= previous[1]:
++            previous[1] = max(previous[1], end)
++        else:
++            merged.append([start, end])
++    return merged
+diff --git a/rle.py b/rle.py
+index f02b3fba52c827e88879f18db0298bd7d7d98ce1..b8c95929858fbea2ee218969c5b29c081f458fd9
+--- a/rle.py
++++ b/rle.py
+@@ -1,8 +1,36 @@
+ def encode(s):
+     """Run-length encode a string: 'aaabbc' -> 'a3b2c1'.
+     Empty string -> ''. Single run counts included (always a count)."""
+-    raise NotImplementedError
++    if not s:
++        return ""
++
++    parts = []
++    current = s[0]
++    count = 1
++    for char in s[1:]:
++        if char == current:
++            count += 1
++        else:
++            parts.extend((current, str(count)))
++            current = char
++            count = 1
++    parts.extend((current, str(count)))
++    return "".join(parts)
+ 
+ def decode(s):
+     """Inverse of encode: 'a3b2c1' -> 'aaabbc'. Counts are 1+ digits."""
+-    raise NotImplementedError
++    parts = []
++    i = 0
++    while i < len(s):
++        char = s[i]
++        i += 1
++        count_start = i
++        while i < len(s) and "0" <= s[i] <= "9":
++            i += 1
++        if i == count_start:
++            raise ValueError("missing run length")
++        count = int(s[count_start:i])
++        if count < 1:
++            raise ValueError("run length must be positive")
++        parts.append(char * count)
++    return "".join(parts)
+
+exec
+/bin/bash -lc 'git diff -- rle.py intervals.py test_impl.py && nl -ba rle.py && nl -ba intervals.py' in /home/aylabsltd/task
+ succeeded in 0ms:
+diff --git a/intervals.py b/intervals.py
+index 58bcf70..6b533f1 100644
+--- a/intervals.py
++++ b/intervals.py
+@@ -1,4 +1,15 @@
+ def merge(ivals):
+     """Merge overlapping [start, end] intervals (end inclusive touch
+     merges: [1,2],[2,3] -> [1,3]). Input unsorted; return sorted by start."""
+-    raise NotImplementedError
++    if not ivals:
++        return []
++
++    ordered = sorted(ivals, key=lambda interval: interval[0])
++    merged = [[ordered[0][0], ordered[0][1]]]
++    for start, end in ordered[1:]:
++        previous = merged[-1]
++        if start <= previous[1]:
++            previous[1] = max(previous[1], end)
++        else:
++            merged.append([start, end])
++    return merged
+diff --git a/rle.py b/rle.py
+index f02b3fb..b8c9592 100644
+--- a/rle.py
++++ b/rle.py
+@@ -1,8 +1,36 @@
+ def encode(s):
+     """Run-length encode a string: 'aaabbc' -> 'a3b2c1'.
+     Empty string -> ''. Single run counts included (always a count)."""
+-    raise NotImplementedError
++    if not s:
++        return ""
++
++    parts = []
++    current = s[0]
++    count = 1
++    for char in s[1:]:
++        if char == current:
++            count += 1
++        else:
++            parts.extend((current, str(count)))
++            current = char
++            count = 1
++    parts.extend((current, str(count)))
++    return "".join(parts)
+ 
+ def decode(s):
+     """Inverse of encode: 'a3b2c1' -> 'aaabbc'. Counts are 1+ digits."""
+-    raise NotImplementedError
++    parts = []
++    i = 0
++    while i < len(s):
++        char = s[i]
++        i += 1
++        count_start = i
++        while i < len(s) and "0" <= s[i] <= "9":
++            i += 1
++        if i == count_start:
++            raise ValueError("missing run length")
++        count = int(s[count_start:i])
++        if count < 1:
++            raise ValueError("run length must be positive")
++        parts.append(char * count)
++    return "".join(parts)
+     1	def encode(s):
+     2	    """Run-length encode a string: 'aaabbc' -> 'a3b2c1'.
+     3	    Empty string -> ''. Single run counts included (always a count)."""
+     4	    if not s:
+     5	        return ""
+     6	
+     7	    parts = []
+     8	    current = s[0]
+     9	    count = 1
+    10	    for char in s[1:]:
+    11	        if char == current:
+    12	            count += 1
+    13	        else:
+    14	            parts.extend((current, str(count)))
+    15	            current = char
+    16	            count = 1
+    17	    parts.extend((current, str(count)))
+    18	    return "".join(parts)
+    19	
+    20	def decode(s):
+    21	    """Inverse of encode: 'a3b2c1' -> 'aaabbc'. Counts are 1+ digits."""
+    22	    parts = []
+    23	    i = 0
+    24	    while i < len(s):
+    25	        char = s[i]
+    26	        i += 1
+    27	        count_start = i
+    28	        while i < len(s) and "0" <= s[i] <= "9":
+    29	            i += 1
+    30	        if i == count_start:
+    31	            raise ValueError("missing run length")
+    32	        count = int(s[count_start:i])
+    33	        if count < 1:
+    34	            raise ValueError("run length must be positive")
+    35	        parts.append(char * count)
+    36	    return "".join(parts)
+     1	def merge(ivals):
+     2	    """Merge overlapping [start, end] intervals (end inclusive touch
+     3	    merges: [1,2],[2,3] -> [1,3]). Input unsorted; return sorted by start."""
+     4	    if not ivals:
+     5	        return []
+     6	
+     7	    ordered = sorted(ivals, key=lambda interval: interval[0])
+     8	    merged = [[ordered[0][0], ordered[0][1]]]
+     9	    for start, end in ordered[1:]:
+    10	        previous = merged[-1]
+    11	        if start <= previous[1]:
+    12	            previous[1] = max(previous[1], end)
+    13	        else:
+    14	            merged.append([start, end])
+    15	    return merged
+
+diff --git a/intervals.py b/intervals.py
+index 58bcf709593907642607d8e9fd45bbe366b9fa81..6b533f1815c65ad2f0618cbfd92c32d018876586
+--- a/intervals.py
++++ b/intervals.py
+@@ -1,4 +1,15 @@
+ def merge(ivals):
+     """Merge overlapping [start, end] intervals (end inclusive touch
+     merges: [1,2],[2,3] -> [1,3]). Input unsorted; return sorted by start."""
+-    raise NotImplementedError
++    if not ivals:
++        return []
++
++    ordered = sorted(ivals, key=lambda interval: interval[0])
++    merged = [[ordered[0][0], ordered[0][1]]]
++    for start, end in ordered[1:]:
++        previous = merged[-1]
++        if start <= previous[1]:
++            previous[1] = max(previous[1], end)
++        else:
++            merged.append([start, end])
++    return merged
+diff --git a/rle.py b/rle.py
+index f02b3fba52c827e88879f18db0298bd7d7d98ce1..b8c95929858fbea2ee218969c5b29c081f458fd9
+--- a/rle.py
++++ b/rle.py
+@@ -1,8 +1,36 @@
+ def encode(s):
+     """Run-length encode a string: 'aaabbc' -> 'a3b2c1'.
+     Empty string -> ''. Single run counts included (always a count)."""
+-    raise NotImplementedError
++    if not s:
++        return ""
++
++    parts = []
++    current = s[0]
++    count = 1
++    for char in s[1:]:
++        if char == current:
++            count += 1
++        else:
++            parts.extend((current, str(count)))
++            current = char
++            count = 1
++    parts.extend((current, str(count)))
++    return "".join(parts)
+ 
+ def decode(s):
+     """Inverse of encode: 'a3b2c1' -> 'aaabbc'. Counts are 1+ digits."""
+-    raise NotImplementedError
++    parts = []
++    i = 0
++    while i < len(s):
++        char = s[i]
++        i += 1
++        count_start = i
++        while i < len(s) and "0" <= s[i] <= "9":
++            i += 1
++        if i == count_start:
++            raise ValueError("missing run length")
++        count = int(s[count_start:i])
++        if count < 1:
++            raise ValueError("run length must be positive")
++        parts.append(char * count)
++    return "".join(parts)
+
+codex
+Implemented `encode` and `decode` in [rle.py](/home/aylabsltd/task/rle.py) and inclusive interval merging in [intervals.py](/home/aylabsltd/task/intervals.py). Left `test_impl.py` unchanged.
+
+Ran `python3 test_impl.py` after each function; the final run printed `ALL PASS`.
+diff --git a/intervals.py b/intervals.py
+index 58bcf709593907642607d8e9fd45bbe366b9fa81..6b533f1815c65ad2f0618cbfd92c32d018876586
+--- a/intervals.py
++++ b/intervals.py
+@@ -1,4 +1,15 @@
+ def merge(ivals):
+     """Merge overlapping [start, end] intervals (end inclusive touch
+     merges: [1,2],[2,3] -> [1,3]). Input unsorted; return sorted by start."""
+-    raise NotImplementedError
++    if not ivals:
++        return []
++
++    ordered = sorted(ivals, key=lambda interval: interval[0])
++    merged = [[ordered[0][0], ordered[0][1]]]
++    for start, end in ordered[1:]:
++        previous = merged[-1]
++        if start <= previous[1]:
++            previous[1] = max(previous[1], end)
++        else:
++            merged.append([start, end])
++    return merged
+diff --git a/rle.py b/rle.py
+index f02b3fba52c827e88879f18db0298bd7d7d98ce1..b8c95929858fbea2ee218969c5b29c081f458fd9
+--- a/rle.py
++++ b/rle.py
+@@ -1,8 +1,36 @@
+ def encode(s):
+     """Run-length encode a string: 'aaabbc' -> 'a3b2c1'.
+     Empty string -> ''. Single run counts included (always a count)."""
+-    raise NotImplementedError
++    if not s:
++        return ""
++
++    parts = []
++    current = s[0]
++    count = 1
++    for char in s[1:]:
++        if char == current:
++            count += 1
++        else:
++            parts.extend((current, str(count)))
++            current = char
++            count = 1
++    parts.extend((current, str(count)))
++    return "".join(parts)
+ 
+ def decode(s):
+     """Inverse of encode: 'a3b2c1' -> 'aaabbc'. Counts are 1+ digits."""
+-    raise NotImplementedError
++    parts = []
++    i = 0
++    while i < len(s):
++        char = s[i]
++        i += 1
++        count_start = i
++        while i < len(s) and "0" <= s[i] <= "9":
++            i += 1
++        if i == count_start:
++            raise ValueError("missing run length")
++        count = int(s[count_start:i])
++        if count < 1:
++            raise ValueError("run length must be positive")
++        parts.append(char * count)
++    return "".join(parts)
+
+tokens used
+15,914
+Implemented `encode` and `decode` in [rle.py](/home/aylabsltd/task/rle.py) and inclusive interval merging in [intervals.py](/home/aylabsltd/task/intervals.py). Left `test_impl.py` unchanged.
+
+Ran `python3 test_impl.py` after each function; the final run printed `ALL PASS`.

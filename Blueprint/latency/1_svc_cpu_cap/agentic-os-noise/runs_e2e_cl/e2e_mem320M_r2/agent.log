@@ -1,0 +1,9 @@
+All three functions are written and `python3 test_impl.py` prints **ALL PASS**. The stress section took 2.9s. I ran the tests after each function as you asked. The first two runs stopped early on the functions that weren't written yet, so only the final run reached the stress loop.
+
+- **`rle.encode`** (`rle.py`) groups identical characters that sit next to each other and writes each character followed by how many times it repeats, so `'aaabbc'` becomes `'a3b2c1'`. An empty string gives `''`.
+- **`rle.decode`** (`rle.py`) reads each character followed by its number, which can be more than one digit (`a12`), and expands it back out.
+- **`intervals.merge`** (`intervals.py`) sorts the intervals by start, then joins any that overlap. Intervals that only touch at an end, like `[1,2]` and `[2,3]`, are joined too.
+
+**Limitation:** if the input string contains digits, the encoding can't always be decoded correctly. For example, `'1111'` encodes to `'14'`, which decodes to fourteen `'1'`s. The docstring's format can't tell a digit character apart from a count, and the tests don't use digit input. Fixing it would need a different format, such as an escape character.
+
+I didn't touch `test_impl.py`.

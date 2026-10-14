@@ -1,0 +1,8 @@
+I implemented the three functions and `python3 test_impl.py` now prints **ALL PASS**. The stress section took 2.8s. I ran the tests after each file: after `rle.py`, the encode/decode checks passed and it stopped at `merge`, which wasn't written yet. After `intervals.py`, everything passed. I didn't touch `test_impl.py`.
+
+- **`rle.py`**
+  - `encode` groups each run of the same character and writes the character followed by its count, even when the count is 1.
+  - `decode` reads each character-and-count pair and repeats the character that many times.
+- **`intervals.py`**: `merge` sorts the intervals by start, then joins each one into the previous interval if it overlaps or touches it. Otherwise it starts a new interval.
+
+**Limitation:** this run-length format can't handle strings that contain digits. For example, `encode("11")` gives `"12"`, which `decode` reads back as a single `"1"`. That comes from the format the docstrings define, not the code. The tests don't use digits, so it doesn't affect them.

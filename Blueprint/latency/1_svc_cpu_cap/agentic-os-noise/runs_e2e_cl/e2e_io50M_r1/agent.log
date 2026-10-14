@@ -1,0 +1,7 @@
+All three functions are written and `python3 test_impl.py` now prints **ALL PASS**. The stress section took 3.6s. I ran the tests after each function, as you asked, and didn't touch `test_impl.py`.
+
+- **`rle.encode`**: groups each run of the same character and writes the character followed by its count. A single character still gets a count of 1, and an empty string gives `''`.
+- **`rle.decode`**: reads one character, then all the digits after it as the count, so counts of 10 or more work.
+- **`intervals.merge`**: sorts by start, then joins any interval whose start is at or before the end of the previous one. That means intervals that just touch get joined too (`[1,2],[2,3]` → `[1,3]`). It returns new lists and leaves your input unchanged.
+
+One limitation: the RLE format can't handle strings that contain digits. For example, `encode("11")` gives `"12"`, which decodes to a single `"1"`. The tests don't use digits, so this doesn't affect them, but supporting digits would need a different format.

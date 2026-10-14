@@ -1,0 +1,8 @@
+`python3 test_impl.py` now prints **ALL PASS**. The stress section took 3.8s. I didn't touch `test_impl.py`.
+
+- **`rle.py`**
+  - `encode` writes each run as the character followed by its count, so `'aaabbc'` becomes `'a3b2c1'`. An empty string gives `''`.
+  - `decode` reads one character, then all the digits after it as the count, and repeats the character that many times.
+- **`intervals.py`**: `merge` sorts the intervals by start and joins any interval that overlaps or touches the previous one, so `[1,2],[2,3]` becomes `[1,3]`.
+
+**Limitation:** this encoding can't round-trip strings that contain digits. `encode("11")` gives `"12"`, which then decodes as one `'1'` repeated twice, and a mix like `"a1"` breaks completely. That's a flaw in the format the docstring specifies, not in the code, and no test uses digits. Fixing it would need a different format, such as an escape character or putting the count before the character.

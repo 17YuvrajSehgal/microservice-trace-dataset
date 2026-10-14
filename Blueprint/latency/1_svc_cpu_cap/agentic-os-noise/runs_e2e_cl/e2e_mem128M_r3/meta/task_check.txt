@@ -1,0 +1,7 @@
+Traceback (most recent call last):
+  File "/home/aylabsltd/task/test_impl.py", line 7, in <module>
+    assert decode("a3b2c1") == "aaabbc"
+           ^^^^^^^^^^^^^^^^
+  File "/home/aylabsltd/task/rle.py", line 11, in decode
+    raise NotImplementedError
+NotImplementedError

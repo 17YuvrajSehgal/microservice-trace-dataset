@@ -1,0 +1,10 @@
+I implemented both files, and `python3 test_impl.py` now prints **ALL PASS**. The stress section took 2.9s. I didn't touch `test_impl.py`.
+
+- **`rle.py`**
+  - `encode` writes each character followed by how many times it repeats in a row, so `'aaabbc'` becomes `'a3b2c1'`.
+  - `decode` reads each character and its number back with a regular expression and expands them.
+- **`intervals.py`**: `merge` sorts the intervals by start, then combines any interval whose start is less than or equal to the end of the previous one. That means intervals that only touch, like `[1,2]` and `[2,3]`, also merge.
+
+After writing `rle.py`, the run got through all the encode/decode checks and stopped at the first `merge` check, which was still unimplemented. The run after `intervals.py` passed everything.
+
+One limitation: if the input string contains digits, `encode`'s output can't be decoded correctly. For example, `'11'` encodes to `'12'`, which can't be told apart from a single `'1'` repeated twice. That's a limit of the format the docstrings ask for, and none of the tests use digits.

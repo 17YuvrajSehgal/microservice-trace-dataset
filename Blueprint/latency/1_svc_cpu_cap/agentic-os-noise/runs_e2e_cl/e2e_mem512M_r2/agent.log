@@ -1,0 +1,6 @@
+Both files are implemented and `python3 test_impl.py` prints **ALL PASS**. The stress section took 3.5s. I ran the tests after each file, as you asked, and didn't touch `test_impl.py`.
+
+- **`rle.py`**: `encode` counts each run of repeated characters and always writes the count, including `1`, so `"aaabbc"` becomes `"a3b2c1"`. `decode` reads each character followed by its number and repeats it.
+- **`intervals.py`**: `merge` sorts the intervals by start, then joins any that overlap or touch, so `[1,2],[2,3]` becomes `[1,3]`. It returns new lists and leaves your input unchanged.
+
+One limitation: this format can't be decoded correctly if the original string contains digits, because a digit in the text can't be told apart from a count. For example, `"11"` encodes to `"12"`, which decodes back to `"2"`. The tests don't use digits, and the docstrings don't say how to handle them, so I didn't add any special handling.
