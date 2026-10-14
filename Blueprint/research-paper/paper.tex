@@ -187,23 +187,30 @@ trace-measured on-CPU time matches \texttt{cpu.stat} to within 0.1--3\%
 (e.g.\ 3.26 vs.\ 3.27\,s on a one-core run), so any parsing error would
 surface at once.
 
-\section{How Much of an Agent Run Is the Model?}
-\label{sec:llm}
-
+\paragraph{Baseline: How Much of a Run Is the Model?}
 Before capping anything, we establish the baseline split. From the trace we
-identify the API sockets---the file descriptors the agent \texttt{connect}s
-to on port 443---and measure, per request, the wall-clock interval from the
-request write to the last streamed response read; their union is the time a
-model request is outstanding. On an unthrottled machine the agent spends a
-median of \textbf{84\%} of wall-clock time with a request in flight
-(80--91\% across ten runs, two tasks) and only ${\approx}4.7$ CPU-seconds
-computing locally: it is almost entirely LLM-bound. Tightening the CPU cap
-does not change how long the model takes; it adds throttle wait, so the
-model's share of wall falls to ${\approx}53\%$ at a quarter core
-(Figure~\ref{fig:llm}). This is the regime in one picture---LLM-bound by
-default, OS-bound once a resource is scarce---and no timing counter can
-produce it: attributing wall time to the model's socket needs
-per-descriptor system-call attribution from the trace.
+identify the API sockets (the file descriptors the agent \texttt{connect}s
+to on port 443) and measure, per request, the wall-clock interval from the
+request write to the last streamed response read. The union of these
+intervals is the time a model request is outstanding. On an unthrottled
+machine the agent spends a median of \textbf{84\%} of wall-clock time with a
+request in flight (80--91\% across ten runs, two tasks) and only
+${\approx}4.7$ CPU-seconds computing locally. It is almost entirely
+LLM-bound. Tightening the CPU cap does not change how long the model takes.
+It adds throttle wait, so the model's share of wall time falls to
+${\approx}53\%$ at a quarter core (Figure~\ref{fig:llm}). This is the regime
+in one picture: LLM-bound by default, OS-bound once a resource is scarce.
+No timing counter can produce this split. Attributing wall time to the
+model's socket needs per-descriptor system-call attribution, which only the
+trace provides.
+
+
+
+
+
+
+
+
 
 \begin{figure}[t]\centering
 \includegraphics[width=0.85\linewidth]{fig_llmshare}
@@ -220,107 +227,104 @@ fills the wall. Medians, $n{=}5$ per cap.}
 unlimited, 1, 0.5, and 0.25 core, for two tasks (bug-fix, implement),
 5 reps each (40 runs).
 
-\paragraph{Result.} The agent's compute demand is fixed---roughly
-4--5 CPU-seconds regardless of the cap. The cap does not reduce the work; it
-converts compute into \emph{throttle wait}. Table~\ref{tab:cpu} and
-Figure~\ref{fig:cpu} show both tasks: on-CPU time is flat while throttled
-time and wall time climb as the cap tightens.
+\paragraph{Result.} The agent's compute demand is fixed at roughly 4--5
+CPU-seconds, whatever the cap. The cap does not reduce the work; it turns
+compute into \emph{throttle wait}. Table~\ref{tab:cpu} shows both tasks:
+on-CPU time is flat while throttled time and wall time climb as the cap
+tightens.
 
-\begin{table}[t]\centering\small
-\caption{Problem~1, both tasks, medians over $n{=}5$. On-CPU demand is flat
-across caps; the cap converts it into throttle wait. ``thr.\ \%'' is
-throttled time as a fraction of wall.}
+\begin{table}[t]\centering\footnotesize
+\setlength{\tabcolsep}{4pt}
+\caption{Problem~1, medians over $n{=}5$. On-CPU demand is flat across
+caps; the cap converts it into throttle wait. ``thr.'' is throttled time in
+seconds and as a fraction of wall.}
 \label{tab:cpu}
-\begin{tabular}{llrrrr}
+\begin{tabular}{@{}lrrrrr@{}}
 \toprule
-task & \texttt{cpu.max} & wall & $\Delta$wall & on-CPU & thr.\ (s) / \%\\
+\texttt{cpu.max} & wall (s) & $\Delta$wall & on-CPU (s) & thr.\ (s) & thr.\ \% \\
 \midrule
-\multirow{4}{*}{bug-fix}
- & unlimited & 23.4 & ---      & 4.4 & 0.0 / 0\% \\
- & 1 core    & 24.4 & $+4\%$   & 3.7 & 0.3 / 1\% \\
- & 0.5 core  & 22.4 & $-4\%$   & 3.7 & 4.4 / 20\% \\
- & 0.25 core & 28.9 & $+24\%$  & 3.9 & 13.7 / 47\% \\
+\multicolumn{6}{@{}l}{\textit{bug-fix}} \\
+unlimited & 23.4 & --     & 4.4 & 0.0  & 0 \\
+1 core    & 24.4 & $+4$\%  & 3.7 & 0.3  & 1 \\
+0.5 core  & 22.4 & $-4$\%  & 3.7 & 4.4  & 20 \\
+0.25 core & 28.9 & $+24$\% & 3.9 & 13.7 & 47 \\
 \addlinespace
-\multirow{4}{*}{implement}
- & unlimited & 18.7 & ---      & 5.2 & 0.0 / 0\% \\
- & 1 core    & 18.7 & $+0\%$   & 5.0 & 0.5 / 2\% \\
- & 0.5 core  & 23.7 & $+27\%$  & 5.2 & 6.3 / 27\% \\
- & 0.25 core & 32.7 & $+75\%$  & 5.3 & 19.8 / 61\% \\
+\multicolumn{6}{@{}l}{\textit{implement}} \\
+unlimited & 18.7 & --     & 5.2 & 0.0  & 0 \\
+1 core    & 18.7 & $+0$\%  & 5.0 & 0.5  & 2 \\
+0.5 core  & 23.7 & $+27$\% & 5.2 & 6.3  & 27 \\
+0.25 core & 32.7 & $+75$\% & 5.3 & 19.8 & 61 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-\begin{figure}[t]\centering
-\includegraphics[width=\linewidth]{fig_cpu}
-\caption{Problem~1. On-CPU demand (not shown) is flat ${\approx}4$--$5$\,s;
-tightening \texttt{cpu.max} leaves (a) wall time roughly flat until
-$0.5$ core and (b) CFS throttle rising monotonically---the kernel's own
-\texttt{cpu.stat} ground truth. Medians, $n{=}5$.}
-\label{fig:cpu}
-\end{figure}
-
-\paragraph{Interpretation.} At 1 core the agent is still LLM-bound; at
-0.5 core and below the CPU cap becomes first-order. This establishes the
+\paragraph{Interpretation.} At 1 core the agent is still LLM-bound. At
+0.5 core and below, the CPU cap becomes first-order. This establishes the
 regime framing used throughout: an agent is LLM-bound until a per-resource
 threshold, after which the OS dominates. (Confirms hypotheses H1--H2.)
+
+
+
+
+
+
+
+
+
+
+
 
 \section{Problem 2: Threads vs.\ Cores}
 \label{sec:threads}
 
 \paragraph{Setup.} The agent launches $W \in \{2,4,8,16\}$ identical
-CPU-bound workers on the 4-vCPU machine (no cgroup limit), 5 reps each
+CPU-bound workers on the 4-vCPU machine with no cgroup limit, 5 reps each
 (20 runs). With $W$ runnable threads on $C$ cores, queueing theory predicts
-each thread spends a fraction $(W-C)/W$ of its time runnable-but-waiting.
+that each thread spends a fraction $(W-C)/W$ of its time
+runnable-but-waiting.
 
-\paragraph{Result.} Table~\ref{tab:threads} and Figure~\ref{fig:threads}
-show a clean dose--response. Per-worker on-CPU time is flat (identical work);
-the parallel phase inflates purely from run-queue waiting. The measured wait fraction matches the
-$(W{-}C)/W$ law almost exactly: at $W{=}8$, $0.93/1.87=0.497$ vs.\ a
-predicted $0.500$; at $W{=}16$, $2.81/3.76=0.747$ vs.\ $0.750$. Scheduling
-stalls $\ge 1$\uu{ms} explode once $W>C$ (from tens to thousands), and a
-$\ge 10$\uu{ms} tail appears only in the over-subscribed regime.
+\paragraph{Result.} Table~\ref{tab:threads} shows a clean dose-response.
+Per-worker on-CPU time is flat, since the work is identical. The parallel
+phase inflates purely from run-queue waiting. The measured wait fraction
+matches the $(W{-}C)/W$ law almost exactly: at $W{=}8$, $0.93/1.87=0.497$
+vs.\ a predicted $0.500$; at $W{=}16$, $2.81/3.76=0.747$ vs.\ $0.750$.
+Scheduling stalls of $\ge 1$\uu{ms} jump from tens to thousands once $W>C$,
+and a $\ge 10$\uu{ms} tail appears only in the over-subscribed regime.
+Against the saturated ($W{=}C$) baseline, phase wall inflates by $+91\%$ at
+$2\times$ and $+295\%$ at $4\times$ over-subscription.
 
-\begin{table}[t]\centering\small
-\caption{Problem~2A, medians, $n{=}5$ ($C{=}4$ cores). Per-worker on-CPU
+\begin{table}[t]\centering\footnotesize
+\setlength{\tabcolsep}{4pt}
+\caption{Problem~2A, medians, $n{=}5$, $C{=}4$ cores. Per-worker on-CPU
 time is flat; beyond $W{=}C$ the phase inflates purely from run-queue
-waiting, matching $(W{-}C)/W$. ``wait'' is measured vs.\ that prediction.}
+waiting, matching $(W{-}C)/W$. Stall columns count scheduling stalls of at
+least that length.}
 \label{tab:threads}
-\begin{tabular}{rrrcrr}
+\begin{tabular}{@{}rrrrrrr@{}}
 \toprule
-$W$ & load & phase (s) & wait meas./pred. & $\ge$1ms & $\ge$10ms\\
+$W$ & load & phase (s) & wait & pred. & $\ge$1\,ms & $\ge$10\,ms\\
 \midrule
-2  & 0.5$\times$ & 0.42 & 0.00 / 0.00 & 8    & 1 \\
-4  & 1$\times$   & 0.98 & 0.05 / 0.00 & 21   & 3 \\
-8  & 2$\times$   & 1.87 & 0.50 / 0.50 & 2550 & 2 \\
-16 & 4$\times$   & 3.87 & 0.75 / 0.75 & 5228 & 138 \\
+2  & 0.5$\times$ & 0.42 & 0.00 & 0.00 & 8    & 1 \\
+4  & 1$\times$   & 0.98 & 0.05 & 0.00 & 21   & 3 \\
+8  & 2$\times$   & 1.87 & 0.50 & 0.50 & 2550 & 2 \\
+16 & 4$\times$   & 3.87 & 0.75 & 0.75 & 5228 & 138 \\
 \bottomrule
 \end{tabular}
 \end{table}
-
-\begin{figure}[t]\centering
-\includegraphics[width=\linewidth]{fig_threads}
-\caption{Problem~2A. (a) The parallel-phase wall grows sharply once
-$W$ exceeds the 4 cores. (b) The fraction of each worker's time spent
-runnable-but-waiting (dots) lands on the queueing-theory prediction
-$(W{-}C)/W$ (line)---the contention law is exact. Medians, $n{=}5$.}
-\label{fig:threads}
-\end{figure}
-
-Phase-wall inflation versus the saturated ($W{=}C$) baseline is $+91\%$ at
-$2\times$ and $+295\%$ at $4\times$ over-subscription.
 
 \paragraph{Does the harness do this to itself?} We separately asked Claude
 Code to launch $N{=}4,8$ \emph{sub-agents} in parallel, each running the
 same worker (6 observational runs). The harness \emph{probes the machine}
 (exactly 18 \texttt{sched\_getaffinity}/\texttt{sysinfo} calls per run,
-$N$-independent) and does \emph{not} over-subscribe the CPU: the sub-agents'
-CPU bursts are uncontended ($\approx\!0.4$\uu{s} each, runnable-wait
-${\approx}0$, ${\sim}20$ stalls vs.\ 2550 for raw over-subscription) and
-staggered across the phase, each sub-agent blocked on its own LLM turn
-rather than fighting for a core. The contention of Problem~2A is therefore
-real but requires \emph{explicit} over-parallelism (e.g.\ \texttt{xargs -P},
-a forced concurrency setting, or an under-provisioned shared box)---not the
-default sub-agent path. (Confirms H2--H3; H1 observed.)
+independent of $N$) and does \emph{not} over-subscribe the CPU. The
+sub-agents' CPU bursts are uncontended ($\approx\!0.4$\uu{s} each,
+runnable-wait ${\approx}0$, ${\sim}20$ stalls vs.\ 2550 for raw
+over-subscription) and staggered across the phase. Each sub-agent is
+blocked on its own LLM turn rather than fighting for a core. The contention
+of Problem~2A is therefore real, but it requires \emph{explicit}
+over-parallelism (e.g.\ \texttt{xargs -P}, a forced concurrency setting, or
+an under-provisioned shared box). It does not come from the default
+sub-agent path. (Confirms H2--H3; H1 observed.)
 
 \section{Problem 3: Memory Cap}
 \label{sec:mem}
@@ -329,24 +333,25 @@ default sub-agent path. (Confirms H2--H3; H1 observed.)
 the kernel's response depends on whether the pressured memory is
 \emph{reclaimable}. The agent plus a 1\,GB file working set is
 ${\approx}1.38$\,GB. Part~A varies the soft limit \texttt{memory.high} on a
-file-reading workload (20 runs); Part~B varies the hard limit
+file-reading workload (20 runs). Part~B varies the hard limit
 \texttt{memory.max}, first on the same file workload (12 runs) and then on a
 512\,MB anonymous-allocation workload (12 runs).
 
-\paragraph{Part A --- recoverable slowdown.} With a soft cap above the
-working set the file stays cached (zero refaults, ${\approx}6.5$\uu{s});
-below it, every pass re-reads from disk---${\approx}1.05$ million page
-refaults and a $4.7\times$ slower phase (${\approx}30$\uu{s}), see
-Table~\ref{tab:mem} and Figure~\ref{fig:memory}(a). The reclaim \emph{CPU} stall is tiny
-(${\approx}0.16$\uu{s}); the cost is the refault \emph{I/O}. The soft cap
-throttles the group (8--9k \texttt{memory.high} events) but never kills it.
+\paragraph{Part A: recoverable slowdown.} With a soft cap above the working
+set, the file stays cached (zero refaults, ${\approx}6.5$\uu{s}). Below it,
+every pass re-reads from disk: ${\approx}1.05$ million page refaults and a
+$4.7\times$ slower phase (${\approx}30$\uu{s}), see Table~\ref{tab:mem}.
+The reclaim \emph{CPU} stall is tiny (${\approx}0.16$\uu{s}); the cost is
+the refault \emph{I/O}. The soft cap throttles the group (8--9k
+\texttt{memory.high} events) but never kills it.
 
-\begin{table}[t]\centering\small
+\begin{table}[t]\centering\footnotesize
+\setlength{\tabcolsep}{4pt}
 \caption{Problem~3A (\texttt{memory.high}), medians, $n{=}5$. Agent + file
 working set ${\approx}1.38$\,GB. Below it, every pass refaults from disk;
 ``$\times$'' is slowdown vs.\ unlimited.}
 \label{tab:mem}
-\begin{tabular}{lrrrr}
+\begin{tabular}{@{}lrrrr@{}}
 \toprule
 \texttt{memory.high} & phase (s) & $\times$ & refaults & \texttt{high} ev.\\
 \midrule
@@ -358,11 +363,12 @@ unlimited & 6.5  & $1.0$ & 0            & 0 \\
 \end{tabular}
 \end{table}
 
-\begin{table}[t]\centering\small
+\begin{table}[t]\centering\footnotesize
+\setlength{\tabcolsep}{4pt}
 \caption{Problem~3B, the OOM cliff (\texttt{memory.max} + 512\,MB anon),
 $n{=}3$. Agent + workload ${\approx}762$\,MB; sharp binary threshold.}
 \label{tab:cliff}
-\begin{tabular}{lccc}
+\begin{tabular}{@{}lccc@{}}
 \toprule
 \texttt{memory.max} & OOM-killed & task fails & verdict\\
 \midrule
@@ -374,31 +380,21 @@ $n{=}3$. Agent + workload ${\approx}762$\,MB; sharp binary threshold.}
 \end{tabular}
 \end{table}
 
-\begin{figure}[t]\centering
-\includegraphics[width=\linewidth]{fig_memory}
-\caption{Problem~3. (a) \texttt{memory.high}: once the cap drops below the
-working set, reads refault from disk and the phase jumps $4.7\times$ (color
-marks the regime). (b) \texttt{memory.max} on anonymous memory: a sharp,
-reproducible OOM cliff between 640 and 768\,MB---below it the worker is
-killed and the task fails.}
-\label{fig:memory}
-\end{figure}
-
-\paragraph{Part B --- a hard cap does not always kill.} On the
+\paragraph{Part B, file workload: a hard cap does not always kill.} On the
 \emph{file} workload, even a tight \texttt{memory.max} (down to 768\,MB)
-causes \emph{no} OOM kill: clean page cache is always reclaimable, so the
-kernel reclaims (paying the same refault cost) instead of killing. The OOM
-cliff requires \emph{unreclaimable} (anonymous) memory.
+causes \emph{no} OOM kill. Clean page cache is always reclaimable, so the
+kernel reclaims it (paying the same refault cost) instead of killing. The
+OOM cliff requires \emph{unreclaimable} (anonymous) memory.
 
-\paragraph{Part B --- the OOM cliff.} On the 512\,MB anonymous workload
-(agent + workload ${\approx}762$\,MB), the outcome is a sharp, reproducible
-step (Table~\ref{tab:cliff}, Figure~\ref{fig:memory}(b)):
-\texttt{memory.max} of 1024/896/768\,MB all succeed (3/3), while
-640\,MB fails (3/3) with an OOM kill and a failed task. Notably the OOM
-killer takes the \emph{worker} (the largest anonymous consumer), not the
-node process, so the agent \emph{survives and reports the failed task}
-rather than crashing---``your sandbox memory limit silently kills your tools
-mid-task.'' (Confirms H1--H4.)
+\paragraph{Part B, anonymous workload: the OOM cliff.} On the 512\,MB
+anonymous workload (agent + workload ${\approx}762$\,MB), the outcome is a
+sharp, reproducible step (Table~\ref{tab:cliff}). A \texttt{memory.max} of
+1024, 896, or 768\,MB succeeds every time (3/3), while 640\,MB fails every
+time (3/3) with an OOM kill and a failed task. Notably, the OOM killer takes
+the \emph{worker} (the largest anonymous consumer), not the node process.
+The agent \emph{survives and reports the failed task} rather than crashing.
+In short: your sandbox memory limit silently kills your tools mid-task.
+(Confirms H1--H4.)
 
 \section{Problem 4: Disk-I/O Bandwidth Cap}
 \label{sec:io}
@@ -407,19 +403,19 @@ mid-task.'' (Confirms H1--H4.)
 \texttt{rbps} at unlimited, 200, 100, and 50\uu{MB/s} on a cold 1\,GB
 single-read workload (caches dropped first), 5 reps each (20 runs).
 
-\paragraph{Result.} Phase wall scales as $\text{bytes}/\text{rbps}$ once the
-cap drops below native disk speed (Table~\ref{tab:io},
-Figure~\ref{fig:io}): the worker reads
-1\,GB in 20.4\uu{s} at a 50\uu{MB/s} cap (an exact 50\uu{MB/s}) and
-10.1\uu{s} at 100\uu{MB/s}. \texttt{io.stat} confirms the same bytes
-moved in every cell, so the growth is pure throttling.
+\paragraph{Result.} Once the cap drops below native disk speed, phase wall
+scales as $\text{bytes}/\text{rbps}$ (Table~\ref{tab:io}). The worker reads
+1\,GB in 20.4\uu{s} at a 50\uu{MB/s} cap (an exact 50\uu{MB/s}) and in
+10.1\uu{s} at 100\uu{MB/s}. \texttt{io.stat} confirms the same bytes moved
+in every cell, so the growth is pure throttling.
 
-\begin{table}[t]\centering\small
+\begin{table}[t]\centering\footnotesize
+\setlength{\tabcolsep}{4pt}
 \caption{Problem~4 (\texttt{io.max rbps}), medians, $n{=}5$. Same bytes read
 in every cell (\texttt{io.stat}); a cap above the ${\approx}205$\uu{MB/s}
 native speed cannot bite.}
 \label{tab:io}
-\begin{tabular}{lrrr}
+\begin{tabular}{@{}lrrr@{}}
 \toprule
 \texttt{io.max rbps} & phase (s) & $\times$ & effective\\
 \midrule
@@ -431,19 +427,10 @@ unlimited    & 5.98 & $1.0$ & ${\approx}205$\uu{MB/s} \\
 \end{tabular}
 \end{table}
 
-\begin{figure}[t]\centering
-\includegraphics[width=0.85\linewidth]{fig_io}
-\caption{Problem~4. Measured read-phase wall (solid) tracks the ideal
-$1\,\text{GB}/\text{rbps}$ curve (dashed) until it meets the disk's native
-bandwidth floor (dotted), where a higher cap can no longer throttle.
-Medians, $n{=}5$.}
-\label{fig:io}
-\end{figure}
-
-\paragraph{Honest caveat.} The 200\uu{MB/s} cap has no effect because the
-VM's disk only reaches ${\approx}205$\uu{MB/s}: a cap above the device's
-real bandwidth cannot throttle. On faster storage a lower cap is needed to
-see the effect. (Confirms H2--H3.)
+\paragraph{Caveat.} The 200\uu{MB/s} cap has no effect because the VM's
+disk only reaches ${\approx}205$\uu{MB/s}. A cap above the device's real
+bandwidth cannot throttle. On faster storage, a lower cap is needed to see
+the effect. (Confirms H2--H3.)
 
 \section{Cross-Agent Consistency}
 \label{sec:consistency}
@@ -457,7 +444,7 @@ results are \emph{identical} to within noise
 (Table~\ref{tab:consistency}), because those workloads are fixed worker
 processes the agent merely launches. The CPU-cap and LLM-share results show
 the same trends on both agents: both are ${\ge}80\%$ LLM-bound uncapped and
-both shed that share under tighter caps (Figure~\ref{fig:consistency}).
+both shed that share under tighter caps.
 
 The one difference is instructive. The OOM cliff sits at \emph{agent
 RSS $+$ workload}, so the leaner Rust harness (Codex, small RSS) survives a
@@ -483,14 +470,6 @@ CPU 0.25 core    & model-\% wall    & 53 & 62 \\
 \bottomrule
 \end{tabular}
 \end{table}
-
-\begin{figure}[t]\centering
-\includegraphics[width=\linewidth]{fig_consistency}
-\caption{Cross-agent consistency (CPU cap, implement task). Both agents
-share the same throttle ladder (a) and both shed their ${\sim}80\%$ model
-share as the cap tightens (b).}
-\label{fig:consistency}
-\end{figure}
 
 \section{Discussion}
 
