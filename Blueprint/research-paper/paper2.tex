@@ -75,8 +75,8 @@ contributions are:
   ${\approx}84\%$ LLM-bound by default.
   \item A catalogue of four \emph{configuration-level} mechanisms of OS
   noise (CPU cap, core over-subscription, memory cap, disk-I/O cap), each
-  with a pre-registered hypothesis the data confirms and the range in which
-  its threshold falls.
+  with a predicted effect the data confirms and the range in which its
+  threshold falls.
   \item An end-to-end test on a realistic coding task showing \emph{which}
   mechanisms a lightweight agent actually trips, and validation of every
   effect on two unrelated agents.
@@ -149,8 +149,9 @@ generous to tight. Core over-subscription
 more runnable threads in the group than the machine has cores. Every
 condition is run five times (three for purely observational cells) in
 random order, and we report medians, so LLM nondeterminism and time-of-day
-effects cannot line up with any one condition. All hypotheses were
-pre-registered before the campaign began.
+effects cannot line up with any one condition. For the three stress
+experiments (cores, memory, disk) we pre-registered the predicted direction
+of each effect before collecting data.
 
 \begin{figure}[t]\centering
 \includegraphics[width=\columnwidth]{fig_method}
@@ -200,7 +201,7 @@ throttled time and wall time climb as the cap tightens. At 1 core the agent
 is still LLM-bound. At 0.5 core and below the cap substantially increases
 execution time. At 0.25 core throttle reaches 61\% of the implement run,
 though the model still accounts for roughly half of the wall clock, so the limit is a major component rather than the
-sole bottleneck. (Confirms H1--H2.)
+sole bottleneck.
 
 \begin{table}[t]\centering\footnotesize
 \setlength{\tabcolsep}{4pt}
@@ -275,7 +276,7 @@ fighting for a core. The harness also queries the machine (18
 \texttt{sched\_getaffinity}/\texttt{sysinfo} calls per run). The contention
 above is thus real but needs \emph{explicit} over-parallelism (e.g.\
 \texttt{xargs -P} or an under-provisioned shared box) rather than the
-default sub-agent path. (Confirms H2--H3; H1 observed.)
+default sub-agent path.
 
 \section{Problem 3: Memory Cap}
 \label{sec:mem}
@@ -344,7 +345,7 @@ kill and a failed task. The cliff lies between 640 and 768\,MB. Notably, the
 OOM killer takes the \emph{worker} (the largest anonymous consumer), not the
 node process. The agent survives, detects the \texttt{SIGKILL}, and reports
 the correct reason without retrying. A sandbox memory limit can thus
-silently kill the agent's tools mid-task while the agent keeps running. (Confirms H1--H4.)
+silently kill the agent's tools mid-task while the agent keeps running.
 
 \section{Problem 4: Disk-I/O Cap}
 \label{sec:io}
@@ -360,7 +361,6 @@ from 5.98\uu{s} uncapped to 10.1\uu{s} at 100\uu{MB/s} and 20.4\uu{s} at
 sitting a little above it because read-ahead is issued before throttling
 engages. The 200\uu{MB/s} cap has no effect: the disk's own sequential rate
 is only ${\approx}205$\uu{MB/s}, so a cap at or above it cannot throttle.
-(Confirms H2--H3.)
 
 \begin{table}[t]\centering\footnotesize
 \setlength{\tabcolsep}{4pt}
