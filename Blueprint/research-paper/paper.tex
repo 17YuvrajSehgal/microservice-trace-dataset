@@ -27,65 +27,57 @@ Slow Down and Break AI Coding Agents}
 \maketitle
 
 \begin{abstract}
-AI coding agents feel slow, and the blame almost always falls on the large
-language model (LLM). We ask a different question: how much of an agent's
-wall-clock time is spent not on the model but on the \emph{operating system
-underneath it}, when the agent runs in a resource-limited container?
-Using kernel tracing (LTTng) on a single controlled virtual machine, we
-profile a production agent (Claude Code) under four classes of
-configuration-level resource limit: a CPU-bandwidth cap, CPU
-over-subscription (more parallel workers than cores), a memory cap, and a
-disk-I/O bandwidth cap. Across 130 traced runs we find that an agent's own
-compute demand is small and fixed; a mis-configured limit does not make the
-agent do less work, it makes the agent \emph{wait} (1.7--4.7$\times$ slower)
-or \emph{die} (its tools are OOM-killed mid-task). The effects are a
-\emph{regime}: agents are LLM-bound on an adequate machine and become
-OS-bound only past a per-resource threshold, which we locate for each
-resource. Every effect is visible in both the kernel trace and the
-control group's own counters, and is cross-validated between them
-(trace-measured on-CPU time matches \texttt{cpu.stat} to 97--99.7\%). On an
-unthrottled machine the agent is ${\approx}84\%$ LLM-bound, so this waiting
-is normally the model; a tight cap flips it, and we confirm every result on
-a second, unrelated agent (Codex, 130 runs at parity). We also show that a
-well-behaved harness checks the core count and does \emph{not} over-subscribe
-the CPU on its own---so the danger lies in the configuration a platform
-imposes, which is exactly what no one profiles.
+When a coding agent is slow, the usual diagnosis is the language model. But
+agents run inside containers, and containers come with resource limits (a
+fractional CPU, a memory ceiling, an I/O budget) set by whatever platform
+runs them. We ask how much of an agent's wall-clock time these limits
+silently take. We answer with kernel tracing (LTTng) on two production
+agents, \emph{Claude Code} and \emph{Codex CLI}, across 260 controlled runs.
+
+On a well-provisioned machine the agent is ${\approx}84\%$ LLM-bound, waiting
+on the model and computing only a few CPU-seconds locally. This is a
+regime, not a law. As resources tighten, the balance flips. The agent does
+not do less work; it waits ($1.7$--$4.7\times$ slower) or its tools are
+OOM-killed mid-task. The model's share of wall time falls to barely half, an
+over-subscribed parallel phase slows by nearly $300\%$ following a textbook
+queueing law, and the memory failure is a sharp, reproducible cliff. Every
+effect reproduces across both agents and agrees with the cgroup's own
+counters to within a few percent. The bottleneck is the resources the
+environment grants the agent, not the agent itself. When an agent feels
+slow, look at the machine it was given, not only the model.
 \end{abstract}
 
 \section{Introduction}
 
 When an agentic workflow is slow, practitioners reach for the model: a
-bigger context, a faster endpoint, fewer tokens. This paper measures a
-cost that is invisible to that view. Agent harnesses (Codex CLI, Claude
-Code, and similar) run their tool calls inside containers and sandboxes,
-and those containers are routinely given resource limits---a fractional
-CPU, a memory ceiling, an I/O budget---by the platform that hosts them
-(CI runners, Kubernetes pods, shared build machines). We ask: \emph{how
-much latency does the operating system, under such a limit, add on top of
-the LLM?}
+bigger context, a faster endpoint, fewer tokens. This paper measures a cost
+that view cannot see. Agent harnesses such as Codex CLI and Claude Code run
+their tool calls inside containers and sandboxes. The platform that hosts
+them (CI runners, Kubernetes pods, shared build machines) routinely gives
+those containers resource limits: a fractional CPU, a memory ceiling, an I/O
+budget. We ask: \emph{how much latency does the operating system, under such
+a limit, add on top of the LLM?}
 
-Our thesis is a regime statement rather than a blanket one. On an adequate
-machine an agent is overwhelmingly LLM-bound: it spends most of its wall
-time blocked on the network, waiting for the model. But each container
-resource limit has a threshold past which the \emph{configuration}, not the
-model, dominates. We make this precise with kernel traces, which see the
-mechanism (scheduler, reclaim, block layer) that application-level metrics
-cannot.
+On a well-provisioned machine an agent is overwhelmingly LLM-bound. It spends most of its wall
+time blocked on the network, waiting for the model. But each resource limit
+has a threshold. Past it, the \emph{configuration}, not the model, dominates.
+We make this precise with kernel traces, which see the mechanism (scheduler,
+memory reclaim, block layer) that application-level metrics cannot.
 
 \paragraph{Contributions.}
 \begin{itemize}\itemsep1pt
-  \item A reproducible, kernel-only measurement method for agentic
-  workloads: a fixed task, a control group, an LTTng trace, and the
-  cgroup's own counters as ground truth, with trace/counter
-  cross-validation.
-  \item A four-problem catalogue of \emph{configuration-level} OS noise for
-  a real agent---CPU cap, thread/core over-subscription, memory cap, and
-  disk-I/O cap---each with a pre-registered hypothesis that the data
-  confirms.
-  \item Quantified thresholds and two qualitatively distinct harms
-  (recoverable slowdown vs.\ catastrophic failure); a trace-based
-  measurement that the agent is ${\approx}84\%$ LLM-bound by default; and
-  validation of every effect on two unrelated agents (Claude and Codex).
+  \item A reproducible, kernel-only method for measuring agentic workloads:
+  a fixed task, a control group, an LTTng trace, and the cgroup's own
+  counters as ground truth, with the trace and counters cross-validated
+  against each other.
+  \item A catalogue of four \emph{configuration-level} sources of OS noise
+  for a real agent: a CPU cap, thread/core over-subscription, a memory cap,
+  and a disk-I/O cap. Each comes with a pre-registered hypothesis that the
+  data confirms.
+  \item Quantified thresholds and two distinct kinds of harm (recoverable
+  slowdown vs.\ catastrophic failure); a trace-based measurement that the
+  agent is ${\approx}84\%$ LLM-bound by default; and validation of every
+  effect on two unrelated agents (Claude Code and Codex CLI).
 \end{itemize}
 
 \section{Related Work}
@@ -104,57 +96,96 @@ affect agentic AI latency and reliability.
 \section{Methodology}
 \label{sec:method}
 
-\paragraph{Platform.} All runs execute on one Google Cloud VM
-(\texttt{n2-standard-4}): Intel Xeon @ 2.80\,GHz, 4 vCPUs (2 physical cores
-$\times$ 2 SMT threads), 15\,GiB RAM, no swap, a \texttt{pd-balanced} boot
-disk (${\approx}205$\uu{MB/s} native sequential read), Ubuntu 24.04.5,
-kernel \texttt{7.0.0-gcp}, LTTng 2.15.3, Babeltrace2. All performance
-numbers come from this VM only. We deliberately use one machine so that
-condition is the only thing that varies.
+\paragraph{Platform and agents.} Every run executes on one fixed Google
+Cloud VM (Table~\ref{tab:setup}), so the resource limit under test is the
+only thing that varies. On it we study two independent production agents.
+They share no code: one is a Node process, the other a Rust/tokio binary,
+and they reach different models over different APIs. Running both lets us
+separate properties of agentic workloads from artifacts of a single harness
+(Section~\ref{sec:consistency}).
 
-\paragraph{Agent and tasks.} The agent is Claude Code run headless
-(\texttt{claude -p}) on small, fixed coding tasks (fix seeded bugs across a
-few Python modules; implement functions from a specification; run a
-controlled parallel or I/O workload). Each run regenerates a
-\emph{byte-identical} task repository, uses a fixed prompt, and is a fresh
-agent session. An integrity check records whether the agent modified the
-protected test file; no accepted run did.
+\begin{table}[t]
+  \centering
+  \footnotesize
+  \setlength{\tabcolsep}{3pt}
+  \begin{tabular}{@{}l p{0.78\columnwidth}@{}}
+    \toprule
+    \multicolumn{2}{@{}l}{\textbf{Machine} (Google Cloud \texttt{n2-standard-4})} \\
+    \midrule
+    CPU     & Intel Xeon 2.80\,GHz, 4 vCPUs (2 cores, 2 SMT each) \\
+    Memory  & 15\,GiB, no swap \\
+    Disk    & \texttt{pd-balanced}, ${\approx}205$\uu{MB/s} seq.\ read \\
+    OS      & Ubuntu 24.04.5, kernel \texttt{7.0.0-gcp} \\
+    Tracing & LTTng 2.15.3, Babeltrace2 \\
+    \midrule
+    \multicolumn{2}{@{}l}{\textbf{Agents} (headless)} \\
+    \midrule
+    Claude Code & v2.1.296, Claude Opus 5.5, \texttt{claude -p} \\
+    Codex CLI   & v0.162.1, \texttt{gpt-6-luna} (OpenRouter), \texttt{codex exec} \\
+    \bottomrule
+  \end{tabular}
+  \caption{Experimental setup. All numbers come from this one VM.}
+  \label{tab:setup}
+\end{table}
 
-\paragraph{Isolation and limits.} The agent (and its tool subprocesses) run
-inside a cgroup~v2 group. We set exactly one limit per run---\texttt{cpu.max},
-\texttt{memory.high}/\texttt{memory.max}, or \texttt{io.max}---and recreate
-the group each run so its counters start at zero. CPU over-subscription
-(Problem~2) uses no limit at all: it is purely a workload with more runnable
-threads than cores.
+\paragraph{Tasks.} Each run hands the agent one small, self-contained coding
+task in a throwaway Git repository. A \emph{bug-fix} task provides a few
+short Python modules with seeded bugs and a test suite; the agent must find
+and fix the bugs until the tests pass. An \emph{implementation} task provides
+function stubs with docstring specifications and a test suite; the agent
+must write the code that satisfies them. For Problems~2--4 the agent simply
+launches a fixed, instrumented workload (parallel CPU workers, or a large
+file read), so the measured work is identical from run to run. In every case
+the repository is regenerated \emph{byte-for-byte}, the prompt is fixed, and
+the session is fresh. An integrity check confirms the agent never edited the
+protected test file; none did.
 
-\paragraph{Tracing and ground truth.} We record a curated kernel LTTng
-profile (all system calls; the \texttt{sched\_*}, \texttt{block\_*},
-\texttt{net/skb/sock/tcp}, \texttt{irq/softirq}, \texttt{power\_*}, and
-\texttt{mm\_vmscan\_*} tracepoint families) with per-event pid/tid/procname
-and namespace context. No user-space instrumentation is used; the agent is
-not modified. Alongside the trace we snapshot the cgroup's own counters
-(\texttt{cpu.stat}, \texttt{memory.stat}/\texttt{memory.events}/
-\texttt{memory.peak}, \texttt{io.stat}) before and after, plus
-\texttt{CLOCK\_REALTIME}/\texttt{MONOTONIC}/\texttt{BOOTTIME} anchors.
+\paragraph{Resource limits and protocol.} The agent and all of its tool
+subprocesses run inside a dedicated cgroup~v2 group, recreated for each run
+so its counters start at zero. Each run imposes exactly one limit, swept
+from generous to tight (Table~\ref{tab:limits}). Core over-subscription
+(Problem~2) is the one exception: it uses no cgroup limit and simply places
+more runnable threads in the group than the machine has cores. Every
+condition is run five times (three for purely observational cells) in
+random order, and we report medians, so LLM nondeterminism and time-of-day
+effects cannot line up with any one condition. All hypotheses were
+pre-registered before the campaign began.
 
-\paragraph{Analysis.} From \texttt{root.pid} we reconstruct the agent's
-process subtree via \texttt{sched\_process\_fork}, then run a per-thread
-state machine over \texttt{sched\_switch}/\texttt{sched\_wakeup} to attribute
-every slice of time to \emph{on-CPU}, \emph{runnable-but-waiting} (the CPU
-``noise''), or \emph{blocked} (off-CPU, bucketed by the blocking system
-call). Reclaim stalls are bracketed from \texttt{mm\_vmscan} reclaim
-begin/end events. Each metric is validated against the matching cgroup
-counter.
+\begin{table}[t]
+  \centering
+  \footnotesize
+  \setlength{\tabcolsep}{4pt}
+  \begin{tabular}{@{}llll@{}}
+    \toprule
+    \textbf{Problem} & \textbf{Resource} & \textbf{Knob} & \textbf{Kernel signal} \\
+    \midrule
+    1 & CPU bandwidth   & \texttt{cpu.max}      & \texttt{sched\_*} \\
+    2 & Cores           & threads $>$ cores     & \texttt{sched\_*} \\
+    3 & Memory          & \texttt{memory.high}/\texttt{max} & \texttt{mm\_vmscan\_*} \\
+    4 & Disk I/O        & \texttt{io.max}       & \texttt{block\_*} \\
+    \bottomrule
+  \end{tabular}
+  \caption{The four resource limits under test. One limit is active per run.}
+  \label{tab:limits}
+\end{table}
 
-\paragraph{Statistics.} We run 5 repetitions per condition (3 for purely
-observational cells), randomize run order, and report medians, so that LLM
-nondeterminism and time-of-day effects do not align with any one condition.
-Hypotheses are pre-registered per problem before the campaign.
+\paragraph{Tracing and analysis.} Without modifying the agent, we record a
+curated kernel LTTng profile: all system calls plus the scheduler,
+block-layer, networking, interrupt, power, and memory-reclaim
+(\texttt{mm\_vmscan}) tracepoints, each event tagged with its process and
+thread. To turn this into time accounting we rebuild the agent's process
+tree from \texttt{root.pid} by following \texttt{sched\_process\_fork},
+which captures the agent and every tool it spawns; a per-thread state
+machine then walks the scheduler events and labels every slice of a
+thread's time as \emph{on-CPU}, \emph{runnable-but-waiting} (CPU ``noise''),
+or \emph{blocked} on a named system call.
 
-\paragraph{Validation.} As a correctness check on the trace pipeline,
-trace-measured subtree on-CPU time matches the kernel's own
-\texttt{cpu.stat} accounting to within 0.1--3\% on every run
-(e.g.\ 3.26\,s vs.\ 3.27\,s on a 1-core run).
+We never trust the trace alone. For each run we also snapshot the cgroup's
+own accounting---\texttt{cpu.stat}, the \texttt{memory.*} counters, and
+\texttt{io.stat}---as an independent ground truth. The two agree closely:
+trace-measured on-CPU time matches \texttt{cpu.stat} to within 0.1--3\%
+(e.g.\ 3.26 vs.\ 3.27\,s on a one-core run), so any parsing error would
+surface at once.
 
 \section{How Much of an Agent Run Is the Model?}
 \label{sec:llm}
