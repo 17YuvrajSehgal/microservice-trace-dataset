@@ -169,3 +169,14 @@
   to cover all 4 problems + the cliff nuance (strengthens paper: cliff is a
   predictable function of total footprint). Next: commit; optionally pin
   Codex cliff (restart VM, memory.max 512/384M x3).
+- Updated paper.tex with both results. Added 2 sections: "How Much of an
+  Agent Run Is the Model?" (LLM-share, 84%, fig_llmshare, after Methodology)
+  and "Cross-Agent Consistency" (Codex, tab:consistency + fig_consistency,
+  after Problem 4). Updated abstract (84% + 2-agent), contributions (folded
+  both in, no new bullet), discussion lead (84% framing). Applied Naser's
+  formatting asks partially: merged Threats-to-Validity INTO Discussion as a
+  shorter "Limitations" paragraph (the 2 caveats it raised - event-loop-wait
+  conflation and single-agent - are now RESOLVED by the new results).
+  Structure: 11 sections, 6 tables, 6 figures, all balanced + all fig PDFs
+  present. CAVEAT: paper now likely >4 pages (Naser wants 4 incl refs) -
+  fitting/trimming is Yuvraj's editorial job; content is all in.

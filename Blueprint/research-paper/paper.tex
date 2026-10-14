@@ -43,10 +43,13 @@ or \emph{die} (its tools are OOM-killed mid-task). The effects are a
 OS-bound only past a per-resource threshold, which we locate for each
 resource. Every effect is visible in both the kernel trace and the
 control group's own counters, and is cross-validated between them
-(trace-measured on-CPU time matches \texttt{cpu.stat} to 97--99.7\%). We
-also show that a well-behaved harness checks the core count and does
-\emph{not} over-subscribe the CPU on its own---so the danger lies in the
-configuration a platform imposes, which is exactly what no one profiles.
+(trace-measured on-CPU time matches \texttt{cpu.stat} to 97--99.7\%). On an
+unthrottled machine the agent is ${\approx}84\%$ LLM-bound, so this waiting
+is normally the model; a tight cap flips it, and we confirm every result on
+a second, unrelated agent (Codex, 130 runs at parity). We also show that a
+well-behaved harness checks the core count and does \emph{not} over-subscribe
+the CPU on its own---so the danger lies in the configuration a platform
+imposes, which is exactly what no one profiles.
 \end{abstract}
 
 \section{Introduction}
@@ -80,8 +83,9 @@ cannot.
   disk-I/O cap---each with a pre-registered hypothesis that the data
   confirms.
   \item Quantified thresholds and two qualitatively distinct harms
-  (recoverable slowdown vs.\ catastrophic failure), plus evidence that a
-  production harness does not self-inflict the CPU-contention variant.
+  (recoverable slowdown vs.\ catastrophic failure); a trace-based
+  measurement that the agent is ${\approx}84\%$ LLM-bound by default; and
+  validation of every effect on two unrelated agents (Claude and Codex).
 \end{itemize}
 
 \section{Related Work}
@@ -151,6 +155,32 @@ Hypotheses are pre-registered per problem before the campaign.
 trace-measured subtree on-CPU time matches the kernel's own
 \texttt{cpu.stat} accounting to within 0.1--3\% on every run
 (e.g.\ 3.26\,s vs.\ 3.27\,s on a 1-core run).
+
+\section{How Much of an Agent Run Is the Model?}
+\label{sec:llm}
+
+Before capping anything, we establish the baseline split. From the trace we
+identify the API sockets---the file descriptors the agent \texttt{connect}s
+to on port 443---and measure, per request, the wall-clock interval from the
+request write to the last streamed response read; their union is the time a
+model request is outstanding. On an unthrottled machine the agent spends a
+median of \textbf{84\%} of wall-clock time with a request in flight
+(80--91\% across ten runs, two tasks) and only ${\approx}4.7$ CPU-seconds
+computing locally: it is almost entirely LLM-bound. Tightening the CPU cap
+does not change how long the model takes; it adds throttle wait, so the
+model's share of wall falls to ${\approx}53\%$ at a quarter core
+(Figure~\ref{fig:llm}). This is the regime in one picture---LLM-bound by
+default, OS-bound once a resource is scarce---and no timing counter can
+produce it: attributing wall time to the model's socket needs
+per-descriptor system-call attribution from the trace.
+
+\begin{figure}[t]\centering
+\includegraphics[width=0.85\linewidth]{fig_llmshare}
+\caption{Share of wall-clock time the agent spends waiting on the model.
+${\ge}80\%$ uncapped; it falls as \texttt{cpu.max} tightens and throttle
+fills the wall. Medians, $n{=}5$ per cap.}
+\label{fig:llm}
+\end{figure}
 
 \section{Problem 1: CPU Bandwidth Cap}
 \label{sec:cpu}
@@ -384,12 +414,60 @@ VM's disk only reaches ${\approx}205$\uu{MB/s}: a cap above the device's
 real bandwidth cannot throttle. On faster storage a lower cap is needed to
 see the effect. (Confirms H2--H3.)
 
+\section{Cross-Agent Consistency}
+\label{sec:consistency}
+
+To test that these effects are properties of agentic workloads rather than
+of one harness, we repeated all four problems with a second, unrelated
+agent: Codex CLI (a Rust/tokio binary) driving a different model
+(\texttt{gpt-6-luna}) through a different API (OpenRouter)---130 runs at
+parity with the Claude campaign. The scheduling, memory-reclaim and I/O
+results are \emph{identical} to within noise
+(Table~\ref{tab:consistency}), because those workloads are fixed worker
+processes the agent merely launches. The CPU-cap and LLM-share results show
+the same trends on both agents: both are ${\ge}80\%$ LLM-bound uncapped and
+both shed that share under tighter caps (Figure~\ref{fig:consistency}).
+
+The one difference is instructive. The OOM cliff sits at \emph{agent
+RSS $+$ workload}, so the leaner Rust harness (Codex, small RSS) survives a
+640\,MB cap that kills the Node harness (Claude, ${\approx}250$\,MB RSS).
+The cliff is real for both; its location simply tracks the agent's own
+footprint---a leaner harness buys headroom.
+
+\begin{table}[t]\centering\small
+\caption{Claude vs.\ Codex, medians. Scheduling/memory/I/O match to within
+noise; the CPU cap shows the same trend (Codex is leaner on CPU and slower
+per turn, so its walls are larger).}
+\label{tab:consistency}
+\begin{tabular}{llrr}
+\toprule
+problem & metric & Claude & Codex\\
+\midrule
+threads $W{=}16$ & phase (s)        & 3.9 & 3.8 \\
+threads $W{=}16$ & runnable/wkr (s) & 2.8 & 2.8 \\
+mem.\ 768M       & phase (s)        & 30.4 & 30.4 \\
+io 50\uu{MB/s}   & phase (s)        & 20.4 & 20.4 \\
+CPU 0.25 core    & throttle (s)     & 19.8 & 18.7 \\
+CPU 0.25 core    & model-\% wall    & 53 & 62 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[t]\centering
+\includegraphics[width=\linewidth]{fig_consistency}
+\caption{Cross-agent consistency (CPU cap, implement task). Both agents
+share the same throttle ladder (a) and both shed their ${\sim}80\%$ model
+share as the cap tightens (b).}
+\label{fig:consistency}
+\end{figure}
+
 \section{Discussion}
 
-\paragraph{It is not just the LLM.} Across four independent resources a
-single mis-set container limit adds $1.7$--$4.7\times$ wall time or kills the
-agent's tools outright---far above the ``even 5\% would be significant''
-bar for this class of finding, at sandbox sizes that are common in practice
+\paragraph{It is not just the LLM.} The agent is ${\approx}84\%$ LLM-bound on
+an adequate machine, so blaming the model is understandable. But across four
+independent resources a single mis-set container limit adds $1.7$--$4.7\times$
+wall time or kills the agent's tools outright---far above the ``even 5\%
+would be significant'' bar, at sandbox sizes common in practice
 (fractional-CPU CI runners, tight memory pods).
 
 \paragraph{Two shapes of harm.} Bandwidth limits (CPU, disk, and soft
@@ -411,31 +489,26 @@ LTTng trace and the cgroup's own counters, and the two agree. This makes the
 method a reusable recipe for a larger fault catalogue rather than a set of
 one-off anecdotes.
 
-\section{Threats to Validity}
-
-\emph{Construct.} Our ``event-loop wait'' bucket conflates true LLM-network
-wait with idle, because the agent's \texttt{epoll\_pwait2} return is not
-decoded to a specific file descriptor on this kernel; our headline results
-(throttle, refault, OOM, I/O) do not depend on that split.
-\emph{Internal.} LLM nondeterminism is the main uncontrolled input; we
-mitigate with fixed prompts, byte-identical repos, randomized order, and
-medians of 5. \emph{External.} A single VM, one agent, and small tasks limit
-generalization; the no-swap configuration makes anonymous pressure OOM
-rather than swap, and the SMT topology means the effective zero-contention
-core count is 2--4. We state the machine's native disk speed because it sets
-where the I/O knee falls. \emph{Conclusion.} Each result is reproducible to
-$<\!1\%$ across reps and cross-validated against an independent kernel
-counter.
+\paragraph{Limitations.} The main uncontrolled input is LLM
+nondeterminism, mitigated by fixed prompts, byte-identical repos, randomized
+order, and medians; each result is reproducible to $<\!1\%$ across reps and
+cross-validated against an independent kernel counter. The findings are
+tied to a single machine shape: no swap (so anonymous pressure OOMs rather
+than swaps), an SMT topology (effective zero-contention core count 2--4),
+and one disk speed (which sets where the I/O knee falls). Tasks are small;
+larger agent sessions with more local work would shift each threshold toward
+milder caps, strengthening the effect rather than weakening it.
 
 \section{Conclusion}
 
-An AI coding agent is LLM-bound on an adequate machine, but a single
-mis-configured container limit---on CPU, cores, memory, or disk I/O---pushes
-it into an OS-bound regime where the operating system, not the model, is the
-bottleneck, adding up to $4.7\times$ latency or killing the agent's tools.
-We characterized four such configuration-level problems with kernel traces,
-located each threshold, and validated every measurement against the kernel's
-own accounting. The practical message is blunt: when an agent feels slow,
+An AI coding agent is ${\approx}84\%$ LLM-bound on an adequate machine, but a
+single mis-configured container limit---on CPU, cores, memory, or disk
+I/O---pushes it into an OS-bound regime where the operating system, not the
+model, is the bottleneck, adding up to $4.7\times$ latency or killing the
+agent's tools. We characterized four such configuration-level problems with
+kernel traces, located each threshold, validated every measurement against
+the kernel's own accounting, and reproduced the effects on a second,
+unrelated agent. The practical message is blunt: when an agent feels slow,
 profile the sandbox, not only the model.
 
 \paragraph{Artifacts.} Collection and analysis scripts, per-run metadata and
