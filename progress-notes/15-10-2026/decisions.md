@@ -101,6 +101,31 @@ section adds ~51 more real runs (e2e_cl 21 + e2e_cx 30), so 260 undercounts
 the full study (~311). Either bump to "over 300" or scope it as "260 across
 the four-problem campaign."
 
+## Carved out a standalone artifact repo for the paper
+
+New repo `C:/workplace/os-noise-for-agentic-ai` (name chosen by user from the
+paper title). Local git only (commit 07905f0, 4709 files, ~11MB); NOT pushed.
+Source left in place in the main repo.
+
+Decisions and why:
+- **Preserve the `latency/` + `research-paper/` layout** rather than
+  restructure, because the analysis scripts hard-code relative paths
+  (`parents[1]/latency`, `1_svc_cpu_cap/agentic-os-noise/runs`, etc.) - a
+  flat/clean layout would mean rewriting + retesting every path. Copying the
+  structure makes every script run unchanged.
+- **Ship code + all per-run `meta/` + agent.log, exclude the ~6GB traces**
+  (user's choice: "code + all run metadata"). meta holds the cgroup
+  ground-truth counters, so every headline number is inspectable offline;
+  only re-parsing the traces needs the Zenodo download. .gitignore blocks
+  `**/trace/` and `**/*.txt.gz` so a Zenodo unpack can't be committed.
+- Wrote README / REPRODUCE / DATA / CITATION.cff / LICENSE(MIT). DATA.md
+  carries a Zenodo-DOI placeholder (release pending, user will do later).
+- Dropped the stale `paper.tex` (kept paper2.tex) and the scratch
+  `analysis_compare_output.txt`; fixed the one repo-escaping link (PLAN.md ->
+  meeting-notes) and the research-paper README's `paper.tex` references.
+- Left out the StrataTrace blueprint + EVALUATION (separate work) to keep the
+  artifact focused on the OS-noise study.
+
 **One non-number accuracy item:** `paper2.tex` fig:method caption (line ~160)
 says "`prev_state`=0 means preempted" — that's the old, incomplete
 description (misses 256 = preempt-throttle). Flagged, not yet edited (paper
