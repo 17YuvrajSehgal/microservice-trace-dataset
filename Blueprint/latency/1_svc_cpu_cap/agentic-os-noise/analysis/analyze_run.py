@@ -192,9 +192,14 @@ def analyze(run_dir):
             if not s:
                 continue
             prev_tid, prev_state, next_tid = int(s.group(1)), int(s.group(2)), int(s.group(3))
-            # prev_state 0 == TASK_RUNNING -> preempted, still runnable (RDY);
-            # any nonzero sleep/dead bit -> went off-cpu blocked (BLK).
-            set_state(prev_tid, 'RDY' if prev_state == 0 else 'BLK', t)
+            # prev_state: 0 (TASK_RUNNING) or the 0x100 flag (TASK_REPORT_MAX,
+            # "preempted while runnable", seen as 256 on kernel 7.0.0-gcp) both
+            # mean the thread still wants a core -> RDY. Any other nonzero bit is
+            # a real off-cpu sleep/dead state -> BLK. Before the 0x100 case was
+            # added, CFS-throttle preemptions (256) were misfiled as BLK and the
+            # runnable-wait / scheduling-latency tail was under-counted.
+            runnable = prev_state == 0 or (prev_state & 0x100)
+            set_state(prev_tid, 'RDY' if runnable else 'BLK', t)
             set_state(next_tid, 'RUN', t)
             continue
 

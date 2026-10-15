@@ -51,7 +51,14 @@ with open(path) as f:
                     close(prev_tid, t)
                 code = int(ps)
                 codes[code] += 1
-                kind = 'rqP' if code == 0 else 'S' if code == 1 else 'D' if code == 2 else 'O'
+                # prev_state low bits are the base sleep state; 0x100 (256) is
+                # the kernel's "preempted while runnable" flag (TASK_REPORT_MAX)
+                # on newer kernels (e.g. 7.0.0-gcp). Both code 0 and the 0x100
+                # flag mean "still wants CPU" -> runnable wait. Mask the flag off
+                # to read the base state (S/D). Before this, 256 fell through to
+                # 'O' and all CFS-throttle wait was silently dropped.
+                base = code & 0xFF
+                kind = 'rqP' if (code & 0x100) or base == 0 else 'S' if base == 1 else 'D' if base == 2 else 'O'
                 state[prev_tid] = (kind, t)
             if next_tid != '0':
                 if state.get(next_tid, ('',))[0] != 'run':
