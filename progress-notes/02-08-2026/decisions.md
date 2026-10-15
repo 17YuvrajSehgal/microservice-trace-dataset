@@ -50,7 +50,7 @@ Kicked off Phase-3 representation work (msr-research.md §4). New `stratatrace/`
   .kernel_l1()` DataFrames + `.ground_truth`/`.verification`/`.clock_anchors`; `list_runs()`
   iterates a traces root. Defensive about layout (missing modality → empty frame).
 - Packaging: `pyproject.toml` (`pip install -e .`, console script `stratatrace-derive-l1`),
-  `__init__.py`, `README.md` with the L0–L3 ladder status.
+  `__init__.py`, `README_v1.md` with the L0–L3 ladder status.
 - **Tested offline** (no bt2/VM): deriver helpers (percentiles, family map) + loader against a
   synthetic run dir — all pass.
 - **Design choices / refinements tracked in the README:** service attribution keys on

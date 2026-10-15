@@ -1,0 +1,1023 @@
+
+Naser Ezzati-Jivan
+16 minutes 9 seconds16:09
+Naser Ezzati-Jivan 16 minutes 9 seconds
+Good. Alright, so now.
+Naser Ezzati-Jivan 16 minutes 14 seconds
+Let's now move on to the governance part. Who goes first? Any update?
+Naser Ezzati-Jivan 16 minutes 21 seconds
+No.
+Naser Ezzati-Jivan 16 minutes 22 seconds
+Yuvraj, you want to start this?
+
+Yuvraj Sehgal
+16 minutes 23 seconds16:23
+Yuvraj Sehgal 16 minutes 23 seconds
+Yeah, sure, sure. So basically I was working on the way you suggested. I downloaded one kernel. I'm doing my analysis myself, writing it down one by one. I can share the screen. I can show you.
+
+Naser Ezzati-Jivan
+16 minutes 42 seconds16:42
+Naser Ezzati-Jivan 16 minutes 42 seconds
+Associated.
+Naser Ezzati-Jivan 16 minutes 45 seconds
+In Jan 2007, yes, definitely. When is the deadline, Asah?
+
+Yuvraj Sehgal
+16 minutes 50 seconds16:50
+Yuvraj Sehgal 16 minutes 50 seconds
+Nah.
+
+Naser Ezzati-Jivan
+16 minutes 50 seconds16:50
+Naser Ezzati-Jivan 16 minutes 50 seconds
+November 13th. Okay, let me add this to the list as well.
+MP
+Mahsa Panahandeh
+16 minutes 53 seconds16:53
+Mahsa Panahandeh 16 minutes 53 seconds
+Yeah.
+
+Naser Ezzati-Jivan
+16 minutes 55 seconds16:55
+Naser Ezzati-Jivan 16 minutes 55 seconds
+And this is a good one.
+Naser Ezzati-Jivan 16 minutes 57 seconds
+David Lou.
+Naser Ezzati-Jivan 17 minutes
+They would lose hand in their top people.
+Naser Ezzati-Jivan 17 minutes 4 seconds
+Agent, he doesn't listen.
+Naser Ezzati-Jivan 17 minutes 21 seconds
+Go ahead, Yuvraj.
+
+Yuvraj Sehgal
+17 minutes 23 seconds17:23
+Yuvraj Sehgal 17 minutes 23 seconds
+Yeah, yeah. So basically, I've been working on the idea you said, like how to trace this lab had that. So I'm basically trying to understand the kernel traces, how to collect each and everything from basics. And then I started looking into only one latency problem.
+Yuvraj Sehgal 17 minutes 41 seconds
+which was this one, like a throttling problem. So how I work is I read the documentation and everything. I try to implement it myself, run the logs and everything, then note down my progress here.
+Yuvraj Sehgal 18 minutes 2 seconds
+in the blueprint. It is a little slow right now because I'm doing it manually for the first time. I hopefully the second one would be much faster because now I know most of the basics. So I note down important points that like Python or scripts that Python files or scripts that I'm using to do the analysis.
+
+Naser Ezzati-Jivan
+18 minutes 22 seconds18:22
+Naser Ezzati-Jivan 18 minutes 22 seconds
+Because.
+
+Yuvraj Sehgal
+18 minutes 24 seconds18:24
+Yuvraj Sehgal 18 minutes 24 seconds
+each and everything I note down and it will be easy to make the blueprint out of it because once I have it, it would be much easier later on. Other than this, I was also preparing for Sienna's presentation.
+
+Naser Ezzati-Jivan
+18 minutes 46 seconds18:46
+Naser Ezzati-Jivan 18 minutes 46 seconds
+Yes.
+
+Yuvraj Sehgal
+18 minutes 47 seconds18:47
+Yuvraj Sehgal 18 minutes 47 seconds
+I think they wanted like a demo kind of thing. So I have created like a small product kind of thing out of this agentic solution. So yeah, so we can select like the kernel that like the trace run that we want to analyze.
+
+Naser Ezzati-Jivan
+18 minutes 58 seconds18:58
+Naser Ezzati-Jivan 18 minutes 58 seconds
+Nice.
+
+Yuvraj Sehgal
+19 minutes 6 seconds19:06
+Yuvraj Sehgal 19 minutes 6 seconds
+and then the agent can do the analysis using blueprint. So this is like a run that I had. So basically what it does is it uses all the tools, Python sandbox, it can write scripts and analyse the trace. So this is like when we start it, it has like tools, it makes calls to them.
+
+Naser Ezzati-Jivan
+19 minutes 6 seconds19:06
+Naser Ezzati-Jivan 19 minutes 6 seconds
+And then.
+
+Yuvraj Sehgal
+19 minutes 28 seconds19:28
+Yuvraj Sehgal 19 minutes 28 seconds
+And if I show you at the end, it does the analysis for a long time. And then at the end, so far it has been successful in finding the culprit because this data was collected with stress NG CPU in it. So it was able to detect the problem what was causing it.
+
+Naser Ezzati-Jivan
+19 minutes 39 seconds19:39
+Naser Ezzati-Jivan 19 minutes 39 seconds
+Sneh.
+Naser Ezzati-Jivan 19 minutes 40 seconds
+Because.
+Naser Ezzati-Jivan 20 minutes 3 seconds
+Ke.
+
+Yuvraj Sehgal
+20 minutes 4 seconds20:04
+Yuvraj Sehgal 20 minutes 4 seconds
+Yeah, so this is basically for just for the demo that Francois was looking forward to.
+Yuvraj Sehgal 20 minutes 11 seconds
+Yeah.
+
+Naser Ezzati-Jivan
+20 minutes 11 seconds20:11
+Naser Ezzati-Jivan 20 minutes 11 seconds
+Yeah, good. Go back to the.
+MP
+Mahsa Panahandeh
+20 minutes 12 seconds20:12
+Mahsa Panahandeh 20 minutes 12 seconds
+So, you right now, you picked the CPU problem? Sorry.
+
+Yuvraj Sehgal
+20 minutes 15 seconds20:15
+Yuvraj Sehgal 20 minutes 15 seconds
+Sorry.
+
+Naser Ezzati-Jivan
+20 minutes 15 seconds20:15
+Naser Ezzati-Jivan 20 minutes 15 seconds
+No, no, go ahead, go ahead.
+MP
+Mahsa Panahandeh
+20 minutes 18 seconds20:18
+Mahsa Panahandeh 20 minutes 18 seconds
+And you, you were supposed to pick one of those kind of, you know, injected faults. Is it right now CPU? CPU?
+
+Yuvraj Sehgal
+20 minutes 25 seconds20:25
+Yuvraj Sehgal 20 minutes 25 seconds
+Yes, yes, yeah, yeah.
+MP
+Mahsa Panahandeh
+20 minutes 27 seconds20:27
+Mahsa Panahandeh 20 minutes 27 seconds
+OK, OK, and how the design of this blueprint has changed from, you know, since the previous time?
+
+Yuvraj Sehgal 20 minutes 35 seconds
+No, this one hasn't done on the new blueprint that I am creating. This was from the old one only. Yeah. Yeah, because right now this is just my for like how professor asked me to work, like do manual calculations, noted down everything. So this is something I'll need to create a blueprint out of it.
+MP
+Mahsa Panahandeh
+20 minutes 37 seconds20:37
+Mahsa Panahandeh 20 minutes 37 seconds
+Is this it?
+Mahsa Panahandeh 20 minutes 40 seconds
+I see, OK.
+Mahsa Panahandeh 20 minutes 42 seconds
+Okay, okay.
+Mahsa Panahandeh 20 minutes 53 seconds
+Okay.
+
+Yuvraj Sehgal
+20 minutes 55 seconds20:55
+Yuvraj Sehgal 20 minutes 55 seconds
+But for the demo purposes, I used my previous blueprint only.
+MP
+Mahsa Panahandeh
+21 minutes 1 second21:01
+Mahsa Panahandeh 21 minutes 1 second
+Okay, I see.
+
+Yuvraj Sehgal
+21 minutes 2 seconds21:02
+Yuvraj Sehgal 21 minutes 2 seconds
+Yes.
+MP
+Mahsa Panahandeh
+21 minutes 3 seconds21:03
+Mahsa Panahandeh 21 minutes 3 seconds
+OK, and do we have any, or I don't know, did you get any interesting idea when you were manually investigating the data? I mean, something that changed the design of the blue.
+
+Yuvraj Sehgal
+21 minutes 14 seconds21:14
+Yuvraj Sehgal 21 minutes 14 seconds
+Uh, so far.
+
+Naser Ezzati-Jivan
+21 minutes 15 seconds21:15
+Naser Ezzati-Jivan 21 minutes 15 seconds
+The.
+
+Yuvraj Sehgal
+21 minutes 18 seconds21:18
+Yuvraj Sehgal 21 minutes 18 seconds
+First of all, I got some good suggestions, like, but it was using metrics as well, like metrics and logs traces, but I was using metrics and kernel traces. It makes the process of finding the culprit much faster. But since Professor has asked me to work only with kernel traces.
+MP
+Mahsa Panahandeh
+21 minutes 21 seconds21:21
+Mahsa Panahandeh 21 minutes 21 seconds
+Hui.
+Mahsa Panahandeh 21 minutes 23 seconds
+Okay.
+
+Naser Ezzati-Jivan
+21 minutes 32 seconds21:32
+Naser Ezzati-Jivan 21 minutes 32 seconds
+Yeah.
+MP
+Mahsa Panahandeh
+21 minutes 34 seconds21:34
+Mahsa Panahandeh 21 minutes 34 seconds
+Yes.
+Mahsa Panahandeh 21 minutes 37 seconds
+Yeah.
+
+Yuvraj Sehgal
+21 minutes 38 seconds21:38
+Yuvraj Sehgal 21 minutes 38 seconds
+So I have removed that part and I'm trying to basically focus 100% on the kernel traces and writing my blueprint by using that only.
+MP
+Mahsa Panahandeh
+21 minutes 42 seconds21:42
+Mahsa Panahandeh 21 minutes 42 seconds
+Mhm.
+
+Yuvraj Sehgal
+21 minutes 51 seconds21:51
+Yuvraj Sehgal 21 minutes 51 seconds
+But nothing like very new that came to my like attention, but I think when I'll do on more more analysis then it might come something might come forward.
+MP
+Mahsa Panahandeh
+21 minutes 51 seconds21:51
+Mahsa Panahandeh 21 minutes 51 seconds
+Okay.
+Mahsa Panahandeh 22 minutes 3 seconds
+What?
+Mahsa Panahandeh 22 minutes 4 seconds
+Yeah, of course.
+
+Yuvraj Sehgal
+22 minutes 6 seconds22:06
+Yuvraj Sehgal 22 minutes 6 seconds
+Yeah.
+MP
+Mahsa Panahandeh
+22 minutes 8 seconds22:08
+Mahsa Panahandeh 22 minutes 8 seconds
+Okay.
+Mahsa Panahandeh 22 minutes 10 seconds
+Yeah.
+
+Naser Ezzati-Jivan
+22 minutes 11 seconds22:11
+Naser Ezzati-Jivan 22 minutes 11 seconds
+Go back to the first part.
+
+Yuvraj Sehgal
+22 minutes 13 seconds22:13
+Yuvraj Sehgal 22 minutes 13 seconds
+This one only.
+
+Naser Ezzati-Jivan
+22 minutes 14 seconds22:14
+Naser Ezzati-Jivan 22 minutes 14 seconds
+First example that you talk, no, the first part of your report.
+
+Yuvraj Sehgal
+22 minutes 16 seconds22:16
+Yuvraj Sehgal 22 minutes 16 seconds
+Yeah.
+Yuvraj Sehgal 22 minutes 18 seconds
+Oh, okay.
+Yuvraj Sehgal 22 minutes 19 seconds
+Yeah.
+
+Naser Ezzati-Jivan
+22 minutes 22 seconds22:22
+Naser Ezzati-Jivan 22 minutes 22 seconds
+So you said that you are working in one problem. What's that problem?
+
+Yuvraj Sehgal
+22 minutes 25 seconds22:25
+Yuvraj Sehgal 22 minutes 25 seconds
+Yeah, so I'm working with like throttling problem where one of the application consume like does not let yeah.
+
+Naser Ezzati-Jivan
+22 minutes 32 seconds22:32
+Naser Ezzati-Jivan 22 minutes 32 seconds
+Yeah, yeah, I know. So what did you create the problem? Did you generate the problem or try to code for, yeah, you traced it then?
+
+Yuvraj Sehgal
+22 minutes 37 seconds22:37
+Yuvraj Sehgal 22 minutes 37 seconds
+Yes.
+Yuvraj Sehgal 22 minutes 38 seconds
+Yes.
+Yuvraj Sehgal 22 minutes 41 seconds
+Yeah, that data set has already been collected earlier, so I'm using that only instead of creating new one. We have a lot of data, like 170 samples that we can use for different problems, like different problems I meant by samples. So yes, yeah.
+
+Naser Ezzati-Jivan
+22 minutes 47 seconds22:47
+Naser Ezzati-Jivan 22 minutes 47 seconds
+Mm.
+Naser Ezzati-Jivan 22 minutes 51 seconds
+Samples, samples of...
+Naser Ezzati-Jivan 22 minutes 55 seconds
+A different problem. So for this problem, we have only one trace.
+
+Yuvraj Sehgal
+22 minutes 58 seconds22:58
+Yuvraj Sehgal 22 minutes 58 seconds
+Fife.
+
+Naser Ezzati-Jivan
+22 minutes 59 seconds22:59
+Naser Ezzati-Jivan 22 minutes 59 seconds
+Five trace for different programmes with this problem.
+
+Yuvraj Sehgal 23 minutes 3 seconds
+Yes, yes.
+
+Naser Ezzati-Jivan
+23 minutes 4 seconds23:04
+Naser Ezzati-Jivan 23 minutes 4 seconds
+Okay, nice.
+
+Yuvraj Sehgal
+23 minutes 6 seconds23:06
+Yuvraj Sehgal 23 minutes 6 seconds
+I'm focusing just on LTTNG, but if you say that we should use per friends other other one.
+
+Naser Ezzati-Jivan
+23 minutes 11 seconds23:11
+Naser Ezzati-Jivan 23 minutes 11 seconds
+But where did you get these traces first, these five samples?
+
+Yuvraj Sehgal
+23 minutes 15 seconds23:15
+Yuvraj Sehgal 23 minutes 15 seconds
+I collected it. I told you last time as well that.
+
+Naser Ezzati-Jivan
+23 minutes 17 seconds23:17
+Naser Ezzati-Jivan 23 minutes 17 seconds
+So, you trace yourself?
+
+Yuvraj Sehgal
+23 minutes 19 seconds23:19
+Yuvraj Sehgal 23 minutes 19 seconds
+Yes, yes, I have two applications that I have traced, Train Ticket and Sock Shop. Yeah.
+
+Naser Ezzati-Jivan
+23 minutes 20 seconds23:20
+Naser Ezzati-Jivan 23 minutes 20 seconds
+Okay, good.
+Naser Ezzati-Jivan 23 minutes 24 seconds
+Yeah, and then you have a paper references here or a GitHub report references. So, what you what do you have in this page now? So, this explains the problem.
+
+Yuvraj Sehgal
+23 minutes 28 seconds23:28
+Yuvraj Sehgal 23 minutes 28 seconds
+Sneh.
+Yuvraj Sehgal 23 minutes 31 seconds
+Get.
+Yuvraj Sehgal 23 minutes 34 seconds
+This is...
+Yuvraj Sehgal 23 minutes 36 seconds
+Yeah, so it explains the problem, how, what it is, what are the symptoms, and how I am doing analysis. So I run like how an agent should do it. And like, for example, it should first cheque this file, what events we have collected, then it should go and go ahead and.
+
+Naser Ezzati-Jivan
+23 minutes 54 seconds23:54
+Naser Ezzati-Jivan 23 minutes 54 seconds
+Speak to Dhali.
+Naser Ezzati-Jivan 23 minutes 56 seconds
+Right.
+
+Yuvraj Sehgal
+23 minutes 57 seconds23:57
+Yuvraj Sehgal 23 minutes 57 seconds
+do some analysis on what is available, then make directory run these commands. So like what this file do is it divides the trace into small slices of 10 seconds. It sees like what is getting suffered in it, if everything is normal, if something is getting blocked due to.
+
+Naser Ezzati-Jivan
+23 minutes 57 seconds23:57
+Naser Ezzati-Jivan 23 minutes 57 seconds
+News.
+
+Yuvraj Sehgal
+24 minutes 18 seconds24:18
+Yuvraj Sehgal 24 minutes 18 seconds
+latency if like the response time for that specific system call or scheduler event has increased A lot. So these kind of things are extracted using some scripts and then we analyse it step by step. So that's what I am doing. So like for example, if we see on the left.
+Yuvraj Sehgal 24 minutes 40 seconds
+Like first I then this was using metrics. I was trying to see how the like how the latency is showing up in the application. So we can see the front end was lagging A lot. And then I started analysing the.
+
+Naser Ezzati-Jivan
+24 minutes 54 seconds24:54
+Naser Ezzati-Jivan 24 minutes 54 seconds
+Asah.
+
+Yuvraj Sehgal
+24 minutes 59 seconds24:59
+Yuvraj Sehgal 24 minutes 59 seconds
+But.
+Yuvraj Sehgal 25 minutes 1 second
+analysing the kernel traces, see what is collected, and then run scripts out of it. So like, it's a step-by-step process that I'm noting down. Regarding your GitHub references, I haven't, like, I'm not at that point, I think, but.
+
+Naser Ezzati-Jivan
+25 minutes 20 seconds25:20
+Naser Ezzati-Jivan 25 minutes 20 seconds
+But is it, is this like a programme problem or general problem?
+
+Yuvraj Sehgal
+25 minutes 28 seconds25:28
+Yuvraj Sehgal 25 minutes 28 seconds
+kernel problem I think. I don't inject like.
+
+Naser Ezzati-Jivan
+25 minutes 30 seconds25:30
+Naser Ezzati-Jivan 25 minutes 30 seconds
+This is about is about CPU scheduling, right?
+
+Yuvraj Sehgal
+25 minutes 34 seconds25:34
+Yuvraj Sehgal 25 minutes 34 seconds
+Yes, yes, I don't inject.
+
+Naser Ezzati-Jivan
+25 minutes 35 seconds25:35
+Naser Ezzati-Jivan 25 minutes 35 seconds
+This is, this is important to understand: this, you know, are we like this is what we also master suggested last time: if it's like programme architecture or design or coding problem, that's a category for itself. If it's chair-level operating system level or scheduler problem.
+Naser Ezzati-Jivan 25 minutes 54 seconds
+That is something else. So we need to understand this. Are we trying to fix the operating system? Well, also it can be configuration problem. So kernel configuration or the code. So configuration is something in between the code and system. Sometimes the code has no problem, but if you
+
+Yuvraj Sehgal
+25 minutes 56 seconds25:56
+Yuvraj Sehgal 25 minutes 56 seconds
+Yeah.
+
+Naser Ezzati-Jivan
+26 minutes 15 seconds26:15
+Naser Ezzati-Jivan 26 minutes 15 seconds
+configured in a bad way, then it can be a problem. It can make problem. OK. So now this is too important to understand. If this is like, why this problem happens? That's my first question. Do you know why it happens? Why it may happen?
+
+Yuvraj Sehgal
+26 minutes 20 seconds26:20
+Yuvraj Sehgal 26 minutes 20 seconds
+Mhm.
+Yuvraj Sehgal 26 minutes 32 seconds
+because we introduced that oblique using stress NG, but we do not change any code or anything that would cause a problem. So for example, I note down here what usually happens. So for example, in Linux, we have this value that we can control how much.
+Yuvraj Sehgal 26 minutes 52 seconds
+code as a container will get or not. So we introduce this anomaly at a kernel level instead of application code or configuration level.
+Yuvraj Sehgal 27 minutes 2 seconds
+This.
+
+Naser Ezzati-Jivan
+27 minutes 3 seconds27:03
+Naser Ezzati-Jivan 27 minutes 3 seconds
+So, this is, you know, this is to the problem is, you know, an application does a lot on on CPU, CPU is enough, you cannot get any more, or you have to wait longer time to get the CPU again. So, this is the problem. OK So, again, it can be the kind of problem, or it can be, as you said, as you just said, it can be configuration problem. So, you define a container.
+
+Yuvraj Sehgal
+27 minutes 18 seconds27:18
+Yuvraj Sehgal 27 minutes 18 seconds
+Yes.
+
+Naser Ezzati-Jivan
+27 minutes 25 seconds27:25
+Naser Ezzati-Jivan 27 minutes 25 seconds
+In that container, you define some C groups and you limit the process in this process. Although I have a lot of resources, you cannot get more than this, right? Like 7 days, I'm working like five days a week, but each of my students can only get 10 minutes of my time, something like that, right? This is configuration, okay? So...
+
+Yuvraj Sehgal
+27 minutes 27 seconds27:27
+Yuvraj Sehgal 27 minutes 27 seconds
+Mhm.
+Yuvraj Sehgal 27 minutes 40 seconds
+Mhm, mhm.
+
+Naser Ezzati-Jivan
+27 minutes 44 seconds27:44
+Naser Ezzati-Jivan 27 minutes 44 seconds
+Then, how this can be useful in like containers, as you said, or C groups. C groups are for containers, basically. So C groups are the, I think, the policies that you define for containers. OK, and this makes sense for agentic workload as well, because most of the time they...
+
+Yuvraj Sehgal
+27 minutes 51 seconds27:51
+Yuvraj Sehgal 27 minutes 51 seconds
+Mhm.
+Yuvraj Sehgal 27 minutes 57 seconds
+Yeah.
+
+Naser Ezzati-Jivan
+28 minutes 4 seconds28:04
+Naser Ezzati-Jivan 28 minutes 4 seconds
+Agent tools, the agent hardness, they usually define some container level.
+Naser Ezzati-Jivan 28 minutes 14 seconds
+Uh, sandboxing things.
+
+Yuvraj Sehgal
+28 minutes 18 seconds28:18
+Yuvraj Sehgal 28 minutes 18 seconds
+Ke.
+
+Naser Ezzati-Jivan
+28 minutes 18 seconds28:18
+Naser Ezzati-Jivan 28 minutes 18 seconds
+and the usual limit, they might limit the resources for those things. So if you want to create a good use case of this, you might want to look at that part, see if the agentic things, you can find any link between agentic and this one.
+
+Yuvraj Sehgal
+28 minutes 35 seconds28:35
+Yuvraj Sehgal 28 minutes 35 seconds
+Okay, okay, so like you mean how agents are accessing different parts of the, like if it is trying to access a file and if it is getting limited due to some reason, do you want me to analyse that at a kernel level?
+
+Naser Ezzati-Jivan
+28 minutes 49 seconds28:49
+Naser Ezzati-Jivan 28 minutes 49 seconds
+We can generate that problem. I mean, this problem with the agentic workflow too. That's what I'm saying. I'm not sure how easy it would be like generating that, but I think it's very possible. But then if you want to do that, then we need to see, okay, what's the point of doing that? Should we, are we like trying to find a...
+Naser Ezzati-Jivan 29 minutes 9 seconds
+agent system or analysing how they work or if they have anything to do with this CPU problem.
+
+Yuvraj Sehgal
+29 minutes 14 seconds29:14
+Yuvraj Sehgal 29 minutes 14 seconds
+OK.
+
+Naser Ezzati-Jivan
+29 minutes 18 seconds29:18
+Naser Ezzati-Jivan 29 minutes 18 seconds
+Then, if you can link it to, then it makes sense. It can be a paper for itself, or you can couple it with two other similar problems, and you have a paper.
+
+Yuvraj Sehgal
+29 minutes 28 seconds29:28
+Yuvraj Sehgal 29 minutes 28 seconds
+Okay.
+
+Naser Ezzati-Jivan
+29 minutes 29 seconds29:29
+Naser Ezzati-Jivan 29 minutes 29 seconds
+And it's a great analysis, like kernel level analysis, you know, the type of the things that these kernel level understanding and analysis.
+Naser Ezzati-Jivan 29 minutes 37 seconds
+Po.
+
+Yuvraj Sehgal
+29 minutes 38 seconds29:38
+Yuvraj Sehgal 29 minutes 38 seconds
+Okay, okay, okay.
+
+Naser Ezzati-Jivan
+29 minutes 39 seconds29:39
+Naser Ezzati-Jivan 29 minutes 39 seconds
+For example, you know, you know, the timing in the agentic workload is very important, right? This task take, and most of the time we blame the LLM models. For example, the cloud is very slow or Kwan is slow, but is this just a model or it can be other things like the sandboxing, the container, the CPU?
+
+Yuvraj Sehgal
+29 minutes 43 seconds29:43
+Yuvraj Sehgal 29 minutes 43 seconds
+Mhm.
+Yuvraj Sehgal 29 minutes 51 seconds
+Mhm.
+
+Naser Ezzati-Jivan
+30 minutes30:00
+Naser Ezzati-Jivan 30 minutes
+Run memory, something like that.
+
+Yuvraj Sehgal
+30 minutes 2 seconds30:02
+Yuvraj Sehgal 30 minutes 2 seconds
+Okay, okay, okay.
+
+Naser Ezzati-Jivan
+30 minutes 3 seconds30:03
+Naser Ezzati-Jivan 30 minutes 3 seconds
+If you can show that even, let's say, this problem accounts for, I don't know, 5%, it's a big finding.
+
+Yuvraj Sehgal
+30 minutes 11 seconds30:11
+Yuvraj Sehgal 30 minutes 11 seconds
+Okay, and like, how can we test this agentic system? Like, do we need to deploy our own agent and then test off?
+
+Naser Ezzati-Jivan
+30 minutes 20 seconds30:20
+Naser Ezzati-Jivan 30 minutes 20 seconds
+Yeah, very easy. Yeah, you can try, you know, Codex CLI is open source. But we don't need the source code of that, actually. But why I'm saying open source, because we might be able to configure it or run it in a container or something.
+
+Yuvraj Sehgal
+30 minutes 25 seconds30:25
+Yuvraj Sehgal 30 minutes 25 seconds
+Okay.
+Naser Ezzati-Jivan
+30 minutes 39 seconds30:39
+Naser Ezzati-Jivan 30 minutes 39 seconds
+You need to, first of all, you need to create this problem, you know, by limiting the CPU for that agent, or see if the agent tools do something like that themselves or not, because I'm sure they do that, because you know, every time now many like agent systems, they create many different agents, sub-agents.
+Naser Ezzati-Jivan 30 minutes 59 seconds
+So, if those sub-agents are different threads.
+
+Yuvraj Sehgal
+30 minutes 59 seconds30:59
+Yuvraj Sehgal 30 minutes 59 seconds
+Yes.
+
+Naser Ezzati-Jivan
+31 minutes 4 seconds31:04
+Naser Ezzati-Jivan 31 minutes 4 seconds
+I think they have some checkings about how many threads they can generate, they can create or they should create. There's a maximum number of thread they should create. For example, if you're creating, they cannot create like 200 agents at once because it's going to slow down the system, all system. It's not a good idea. But I'm sure they're checking the number of existing cores.
+
+Yuvraj Sehgal
+31 minutes 19 seconds31:19
+Yuvraj Sehgal 31 minutes 19 seconds
+Yes.
+
+Naser Ezzati-Jivan
+31 minutes 24 seconds31:24
+Naser Ezzati-Jivan 31 minutes 24 seconds
+And, based on that, they they should be something like that in in Codex or other agent.
+
+Yuvraj Sehgal
+31 minutes 30 seconds31:30
+Yuvraj Sehgal 31 minutes 30 seconds
+Okay, okay, okay.
+
+Naser Ezzati-Jivan
+31 minutes 30 seconds31:30
+Naser Ezzati-Jivan 31 minutes 30 seconds
+For example, if you run cloud, you can see the running threads right on the side side menu. So there you can see that I'm sure it maximum number of threads it creates like a four or five. It doesn't go beyond that. It doesn't go more than that. Because it can slow down the whole system.
+
+Yuvraj Sehgal
+31 minutes 45 seconds31:45
+Yuvraj Sehgal 31 minutes 45 seconds
+Mhm.
+
+Naser Ezzati-Jivan
+31 minutes 46 seconds31:46
+Naser Ezzati-Jivan 31 minutes 46 seconds
+But then, if we go more than like the existing course, then they will, there can be a lot of contention between threat between agents.
+
+Yuvraj Sehgal
+31 minutes 55 seconds31:55
+Yuvraj Sehgal 31 minutes 55 seconds
+Yes.
+
+Naser Ezzati-Jivan
+31 minutes 55 seconds31:55
+Naser Ezzati-Jivan 31 minutes 55 seconds
+So they're checking this, right? Then see if you can play with this, how you can generate this specific problem with agentic system. Do they care? Do they think about this or they just have it? And then you can say that, you know, normally when you run agent, there's no problem. But if you force them to run in a specific thing or you configure it in a way that they have limited CPU.
+Naser Ezzati-Jivan 32 minutes 17 seconds
+Then, uh, that problem can be more than the element speed, more important than the element speed, something like that.
+
+Yuvraj Sehgal
+32 minutes 25 seconds32:25
+Yuvraj Sehgal 32 minutes 25 seconds
+Okay.
+Yuvraj Sehgal 32 minutes 27 seconds
+And, like, uh, in that says...
+
+Naser Ezzati-Jivan
+32 minutes 28 seconds32:28
+Naser Ezzati-Jivan 32 minutes 28 seconds
+Because nobody, when people using agent like agent, they nobody cares about the underlying system. They said they think that is unlimited resources. They all we think is about the LLM speed now.
+
+Yuvraj Sehgal
+32 minutes 34 seconds32:34
+Yuvraj Sehgal 32 minutes 34 seconds
+Mhm.
+Yuvraj Sehgal 32 minutes 39 seconds
+Yes.
+
+Naser Ezzati-Jivan
+32 minutes 40 seconds32:40
+Naser Ezzati-Jivan 32 minutes 40 seconds
+You can see that, look, there's another thing that matters, also matters, is important. This one, configuration, also make sure you don't get this, otherwise you're going to get a lot of things.
+
+Yuvraj Sehgal
+32 minutes 51 seconds32:51
+Yuvraj Sehgal 32 minutes 51 seconds
+Okay.
+
+Naser Ezzati-Jivan
+32 minutes 52 seconds32:52
+Naser Ezzati-Jivan 32 minutes 52 seconds
+Maybe we can define it as like something like OS operating system noise.
+Naser Ezzati-Jivan 33 minutes 2 seconds
+For agent AI.
+Naser Ezzati-Jivan 33 minutes 4 seconds
+So this 30 can be one problem, but there might be three, four other problems.
+
+Yuvraj Sehgal
+33 minutes 9 seconds33:09
+Yuvraj Sehgal 33 minutes 9 seconds
+Okay.
+
+Naser Ezzati-Jivan
+33 minutes 9 seconds33:09
+Naser Ezzati-Jivan 33 minutes 9 seconds
+But there's already come some great papers about it. We even published on that of this is a noise. I can cheque with you.
+
+Yuvraj Sehgal
+33 minutes 16 seconds33:16
+Yuvraj Sehgal 33 minutes 16 seconds
+Should.
+
+Naser Ezzati-Jivan
+33 minutes 17 seconds33:17
+Naser Ezzati-Jivan 33 minutes 17 seconds
+No, this can help. No, I'm not creating a new problem, new research for you, right? I am trying to find the context or a story for the things that you are doing.
+
+Yuvraj Sehgal
+33 minutes 28 seconds33:28
+Yuvraj Sehgal 33 minutes 28 seconds
+Okay.
+
+Naser Ezzati-Jivan
+33 minutes 28 seconds33:28
+Naser Ezzati-Jivan 33 minutes 28 seconds
+Because eventually, let's say next time you have three other problems, you have four problems, we want to put it in a package in the paper, right? So how we can package it? First of all, make sure most of the time try to do like find, like create this problem with agentic AI, with agentic tools. Then we can put all of the stories around the agentic tools.
+
+Yuvraj Sehgal
+33 minutes 35 seconds33:35
+Yuvraj Sehgal 33 minutes 35 seconds
+Mhm.
+
+Naser Ezzati-Jivan
+33 minutes 50 seconds33:50
+Naser Ezzati-Jivan 33 minutes 50 seconds
+But also the traditional tools, you are, you're doing with traditional tools, they train ticket their traditional tools, but if you can also do like show this, like because people care about a lot of agent, consider that the current, the normal, the regular agentic system, they also have this problem, or they can make this problem, then this story can be more interesting. OK, so I'm going to share this paper with you.
+
+Yuvraj Sehgal
+34 minutes 8 seconds34:08
+Yuvraj Sehgal 34 minutes 8 seconds
+Ke.
+
+Naser Ezzati-Jivan
+34 minutes 10 seconds34:10
+Naser Ezzati-Jivan 34 minutes 10 seconds
+Don't always know is the Italian team. I met the guy in ICP, I believe ICP this year. It was ICP, yeah, ICP, yeah, ICP, and we talked about the work.
+Naser Ezzati-Jivan 34 minutes 30 seconds
+And because I have the paper and when we were writing the paper, we used that original OS noise paper log.
+Naser Ezzati-Jivan 34 minutes 39 seconds
+And then, um, I met the guy there, which was interesting, as we talked a lot about general things, and yeah, so you know, it's called Operating System Noise.
+Naser Ezzati-Jivan 34 minutes 48 seconds
+For example, this one is a good paper.
+Naser Ezzati-Jivan 34 minutes 54 seconds
+is not that one that I'm talking about, but that is a good one. They say OS noise mitigation for benchmarking, web browser execution environment performance. They do it for web browser, but you can do this for agentic system.
+Naser Ezzati-Jivan 35 minutes 10 seconds
+Okay, I'm gonna put the title here.
+Naser Ezzati-Jivan 35 minutes 15 seconds
+Sehgal.
+Naser Ezzati-Jivan 35 minutes 21 seconds
+Yeah, this is the fun paper.
+Naser Ezzati-Jivan 35 minutes 24 seconds
+So, you can do the exact same thing, but for agentic workload, not web browser.
+
+Yuvraj Sehgal
+35 minutes 30 seconds35:30
+Yuvraj Sehgal 35 minutes 30 seconds
+True.
+
+Yuvraj Sehgal
+40 minutes 20 seconds40:20
+Yuvraj Sehgal 40 minutes 20 seconds
+Mhm.
+MP
+Mahsa Panahandeh
+40 minutes 21 seconds40:21
+Mahsa Panahandeh 40 minutes 21 seconds
+But mostly it's about how the controller should provide a better cache scheduling or something like that. The solution is different.
+
+Yuvraj Sehgal
+40 minutes 27 seconds40:27
+Yuvraj Sehgal 40 minutes 27 seconds
+Yeah.
+Yuvraj Sehgal 40 minutes 31 seconds
+Okay, okay, makes sense.
+
+Naser Ezzati-Jivan
+40 minutes 31 seconds40:31
+Naser Ezzati-Jivan 40 minutes 31 seconds
+Prof.
+Naser Ezzati-Jivan 40 minutes 33 seconds
+I send the papers to you, you guys, 3 papers. So start with the first one, I think it has actually computers, then second our paper, and the third one, your paper should look like, should be something similar to this one.
+
+Yuvraj Sehgal
+40 minutes 36 seconds40:36
+Yuvraj Sehgal 40 minutes 36 seconds
+Oh.
+
+Naser Ezzati-Jivan
+40 minutes 47 seconds40:47
+Naser Ezzati-Jivan 40 minutes 47 seconds
+Now looking at the papers, the third paper, it's just graphed. There's nothing there. It's not a paper even. It's more like a technical document.
+
+Yuvraj Sehgal
+40 minutes 47 seconds40:47
+Yuvraj Sehgal 40 minutes 47 seconds
+Yeah.
+Yuvraj Sehgal 40 minutes 52 seconds
+Yeah.
+MP
+Mahsa Panahandeh
+40 minutes 55 seconds40:55
+Mahsa Panahandeh 40 minutes 55 seconds
+Ke.
+
+Naser Ezzati-Jivan
+40 minutes 58 seconds40:58
+Naser Ezzati-Jivan 40 minutes 58 seconds
+But it is a published work, but you might get some ideas about what they're doing, but the main, main, main resource would be the first one, because they mainly talk about, mostly talk about this like CPU level noises.
+
+Yuvraj Sehgal
+41 minutes 15 seconds41:15
+Yuvraj Sehgal 41 minutes 15 seconds
+Mhm.
+
+Naser Ezzati-Jivan
+41 minutes 17 seconds41:17
+Naser Ezzati-Jivan 41 minutes 17 seconds
+Sneh.
+Naser Ezzati-Jivan 41 minutes 18 seconds
+And you can even get ideas about, like, what kind of problems for...
+
+Yuvraj Sehgal
+41 minutes 21 seconds41:21
+Yuvraj Sehgal 41 minutes 21 seconds
+Done.
+
+Naser Ezzati-Jivan
+41 minutes 24 seconds41:24
+Naser Ezzati-Jivan 41 minutes 24 seconds
+Because, you know, the categorization is important. You know, if you want to like put the catalogue at the end of the day, we should decide about if that problem is because of the kernel, because of the configuration, or because of the source code or the design of the application.
+MP
+Mahsa Panahandeh
+41 minutes 29 seconds41:29
+Mahsa Panahandeh 41 minutes 29 seconds
+Yeah.
+Mahsa Panahandeh 41 minutes 36 seconds
+I.
+
+Naser Ezzati-Jivan
+41 minutes 39 seconds41:39
+Naser Ezzati-Jivan 41 minutes 39 seconds
+Okay, so if this first problem that you have mentioned, it's more like general configuration level problem. So if we can find two, three other similar problems, then we can package it and...
+Naser Ezzati-Jivan 41 minutes 54 seconds
+and put it in a paper.
+
+Yuvraj Sehgal
+41 minutes 57 seconds41:57
+Yuvraj Sehgal 41 minutes 57 seconds
+Sure.
+
+Naser Ezzati-Jivan
+41 minutes 58 seconds41:58
+Naser Ezzati-Jivan 41 minutes 58 seconds
+Alright, yeah, good. Thank you.
+
+Yuvraj Sehgal
+41 minutes 59 seconds41:59
+Yuvraj Sehgal 41 minutes 59 seconds
+Yeah.
+Yuvraj Sehgal 42 minutes 1 second
+No.
+
+Naser Ezzati-Jivan
+42 minutes 2 seconds42:02
+Naser Ezzati-Jivan 42 minutes 2 seconds
+So I believe you will, so what we discussed today, you will continue this, still the first problem that you have created. I will dig more into that. I'll try to find examples and you will see if you can find some similar other problems from the kernel. And if you find any,
+
+Yuvraj Sehgal
+42 minutes 17 seconds42:17
+Yuvraj Sehgal 42 minutes 17 seconds
+Yeah, I'll try to do this. Yeah, I'll try to do the analysis on agentic system instead of train ticket or soft shop or something like that.
+
+Naser Ezzati-Jivan
+42 minutes 26 seconds42:26
+Naser Ezzati-Jivan 42 minutes 26 seconds
+But see if it's possible, I don't know, but should be possible from what I said. I think it should be possible, but see. All right? Thank you.
+
+Yuvraj Sehgal
+42 minutes 28 seconds42:28
+Yuvraj Sehgal 42 minutes 28 seconds
+Yes, yes.
+Yuvraj Sehgal 42 minutes 32 seconds
+Yeah, I'll try to see if there is like some apicular behaviour when it is interacting with kernel, yeah.
+
+Naser Ezzati-Jivan
+42 minutes 38 seconds42:38
+Naser Ezzati-Jivan 42 minutes 38 seconds
+Yeah, and yeah, how big is that also, right? This is also important. If you can do this well, this, this only this part can be a good ICP page, because it's purely like it's about the performance, kernel, and so on. All right, thank you. Anything else Yuvraj?
+
+Yuvraj Sehgal
+42 minutes 42 seconds42:42
+Yuvraj Sehgal 42 minutes 42 seconds
+Picture.
+Yuvraj Sehgal 42 minutes 48 seconds
+Okay.
+Yuvraj Sehgal 42 minutes 53 seconds
+Yeah, take it. No, I think that's all.
+
+Naser Ezzati-Jivan
+42 minutes 56 seconds42:56
+Naser Ezzati-Jivan 42 minutes 56 seconds
+Good, thank you. Mahsa, any comments for Yuvraj?
+
+Yuvraj Sehgal
+42 minutes 58 seconds42:58
+Yuvraj Sehgal 42 minutes 58 seconds
+Thank you.
+Mahsa Panahandeh
+43 minutes 1 second43:01
+Mahsa Panahandeh 43 minutes 1 second
+No, just I was thinking now that, you know, since I think you've read you're familiar with transformers, yeah, since you've used in one of your papers as a human. Simulation of that problem is based on just, you know, interfering the key value vector that that transformer is generating. And since
+Mahsa Panahandeh 43 minutes 22 seconds
+Those agents, they are LLMs and they transformer too. What I've seen that people, they do to interpret how they provide the skills or how they are suspended by resource limitation is that they change that key value vector. I believe that in the shared, that the one that I've shared with you, it's been also discussed too. I think I read it there.
+Mahsa Panahandeh 43 minutes 45 seconds
+So yeah, just it's maybe, you know, give you some hints. It's not easy at the beginning, I think, since you still, you know, are working with injecting falls at the system level, service level, container level, but it shouldn't be hard to. I think we should simulate the behaviour of the agents to make sure that
+
+Naser Ezzati-Jivan
+43 minutes 49 seconds43:49
+Naser Ezzati-Jivan 43 minutes 49 seconds
+But.
+MP
+Mahsa Panahandeh
+44 minutes 7 seconds44:07
+Mahsa Panahandeh 44 minutes 7 seconds
+it behave the way that you want them.
+
+Yuvraj Sehgal
+44 minutes 9 seconds44:09
+Yuvraj Sehgal 44 minutes 9 seconds
+Just to understand this, if we, the one that you just mentioned, for that, the agent would have to be running on our hardware, right? For example, if I am hosting an agent in LM Studio, then I would be able to see all of those. Otherwise, it is on the server side.
+MP
+Mahsa Panahandeh
+44 minutes 11 seconds44:11
+Mahsa Panahandeh 44 minutes 11 seconds
+Yeah.
+Mahsa Panahandeh 44 minutes 13 seconds
+Yeah.
+Mahsa Panahandeh 44 minutes 19 seconds
+You.
+Mahsa Panahandeh 44 minutes 23 seconds
+Yeah.
+
+Yuvraj Sehgal
+44 minutes 30 seconds44:30
+Yuvraj Sehgal 44 minutes 30 seconds
+Usually.
+MP
+Mahsa Panahandeh
+44 minutes 32 seconds44:32
+Mahsa Panahandeh 44 minutes 32 seconds
+Yeah, if you want, if you want to have that, you know, authority to change the behavior, yeah, you have it on, you should have it on your own.
+
+Naser Ezzati-Jivan
+44 minutes 33 seconds44:33
+Naser Ezzati-Jivan 44 minutes 33 seconds
+I.
+
+Yuvraj Sehgal
+44 minutes 40 seconds44:40
+Yuvraj Sehgal 44 minutes 40 seconds
+Yes.
+Yuvraj Sehgal 44 minutes 42 seconds
+Okay, sure. I have LM Studio. I'll try to do some like run it locally, record some kernel traces on my system and see if I can find something. Otherwise, I'll stick with the what professor has suggested, the codex thing.
+
+Naser Ezzati-Jivan
+44 minutes 42 seconds44:42
+Naser Ezzati-Jivan 44 minutes 42 seconds
+Yeah.
+Naser Ezzati-Jivan 44 minutes 45 seconds
+Okay.
+Naser Ezzati-Jivan 44 minutes 56 seconds
+Yeah, but the thing I said, it doesn't need to have local LLL and you can run it through the other LLs.
+MP
+Mahsa Panahandeh
+44 minutes 58 seconds44:58
+Mahsa Panahandeh 44 minutes 58 seconds
+Yeah.
+
+Yuvraj Sehgal
+45 minutes45:00
+Yuvraj Sehgal 45 minutes
+Yes, yes, yeah.
+MP
+Mahsa Panahandeh
+45 minutes 2 seconds45:02
+Mahsa Panahandeh 45 minutes 2 seconds
+Yeah.
+
+Yuvraj Sehgal
+45 minutes 2 seconds45:02
+Yuvraj Sehgal 45 minutes 2 seconds
+Yeah, that's why I'm saying like these are two different things. I'll try both and see.
+
+Naser Ezzati-Jivan
+45 minutes 6 seconds45:06
+Naser Ezzati-Jivan 45 minutes 6 seconds
+Yeah, the the local and like versus API LMs, good to compare if you want to see how like local and non-local LMs behave.
+
+Yuvraj Sehgal
+45 minutes 15 seconds45:15
+Yuvraj Sehgal 45 minutes 15 seconds
+Mhm.
+
+Naser Ezzati-Jivan
+45 minutes 16 seconds45:16
+Naser Ezzati-Jivan 45 minutes 16 seconds
+But the things that I'm saying is beyond LLM model itself. We don't want the, we don't need the LLM to analyse this.
+
+Yuvraj Sehgal
+45 minutes 20 seconds45:20
+Yuvraj Sehgal 45 minutes 20 seconds
+Yes.
+Yuvraj Sehgal 45 minutes 23 seconds
+Yeah, yeah.
+
+Naser Ezzati-Jivan
+45 minutes 24 seconds45:24
+Naser Ezzati-Jivan 45 minutes 24 seconds
+OK, good. Thank you. Let's move on to Prof. Sneh Sneh. How are you doing?
+
+Yuvraj Sehgal
+45 minutes 26 seconds45:26
+Yuvraj Sehgal 45 minutes 26 seconds
+Yeah, thank you.

@@ -571,7 +571,7 @@ It was in three places that did not look related, with two more sitting beside t
 Nothing said which was current. That is exactly the confusion that lost ten Sock Shop families
 for two days in September, while queries quietly answered "0 runs".
 
-Now `dataset/{runs,archives,index}` plus a generated `README.md` and `INVENTORY.csv`, and
+Now `dataset/{runs,archives,index}` plus a generated `README_v1.md` and `INVENTORY.csv`, and
 `attic/` for what is kept but not part of the dataset.
 
 **Nothing was deleted.** Every move was a rename inside /scratch - instant, no bytes copied -

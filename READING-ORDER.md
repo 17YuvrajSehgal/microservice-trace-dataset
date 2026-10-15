@@ -110,7 +110,7 @@ Read the root copy. The `stratatrace-v1/` copies exist because v1 was packaged a
 |---|---|
 | `stratatrace-v1/DATASET_GUIDE.md`, `stratatrace-v1/fault_catalog.md`, `stratatrace-v1/provenance/FREEZE-v1.md` | Byte-identical to the root copies |
 | `DOCS/` | JSS-era. `CLAUDE.md` records that its paths point at the old `adaptive_tracer` workspace |
-| `README.md` | Describes the v1 Sock Shop dataset. Predates the four-modality work |
+| `README_v1.md` | Describes the v1 Sock Shop dataset. Predates the four-modality work |
 | `archive/` | The LMAT/JSS modeling stack, archived 2026-08-08. Nothing current imports it |
 | `todolist.md`, `meeting-notes/update-09-09-2026.md`, `new_design.md` | Point-in-time snapshots. `progress-notes/` is the live log |
 | `archive/progress-snapshots/` | Superseded dated progress files, same reason |
