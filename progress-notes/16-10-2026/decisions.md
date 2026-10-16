@@ -108,3 +108,28 @@ ceiling and warns that whole-slice run averages dilute for bursty victims;
 Part 5 limits updated (rhythm thresholds one-case, ceiling three-run
 validated); counts 8->9 everywhere. agent blueprint_tool picks the new
 script up automatically (dynamic dir listing - verified).
+
+## Re-run with blueprint v2: the bp-only arm now gets it RIGHT
+
+Three arms, same run (t3_implement_cap25_r1), same model:
+
+| | full toolkit | bp-only, blueprint v1 | bp-only, blueprint v2 |
+|---|---|---|---|
+| verdict | cpu_throttling, python3 pid_ns, 0.20-0.24 cores | cpu_saturation "host" | **cpu_throttling, python3 PID 8192 in pid_ns, 0.25 cores** |
+| correct | yes | NO | **yes** |
+| confidence | 0.68 | 0.57 | 0.58 |
+| tool calls | 69 | 31 | 38 (1 error) |
+| tokens in/out | 1.41M / 25.5k | 0.50M / 16.7k | **0.49M / 13.0k** |
+| wall | 560 s | 569 s | **375 s** |
+
+The agent ran cpu_ceiling.py 4x and quoted it verbatim in the verdict
+("25.0 ms per 100 ms, 79% flat -> ~0.25-core cap"); the grouping rule kept
+PID 8126's parallel waits from flipping it to "host". Honest hedging
+remains ("suggestive, not confirmed: no cgroup throttle counters in a
+kernel trace") - correct epistemics for kernel-only evidence.
+
+HEADLINE: the blueprint + its own nine scripts now matches the full
+index-toolkit verdict at ~1/3 the input tokens and 2/3 the wall time. And
+the loop that got here is itself the result: blueprint -> agent run ->
+failure analysis -> two targeted fixes -> correct verdict. Transcripts:
+.json (full), .bponly.json (v1, wrong), .bponly2.json (v2, right).
