@@ -43,3 +43,43 @@ from there.)
   model): full-toolkit transcript vs `.bponly.json` transcript.
 
 Launched on the same run -> `transcripts/v2/t3_implement_cap25_r1.bponly.*`.
+
+## A/B result: blueprint tools WORK, blueprint-only is NOT sufficient
+
+Same run, same model, side by side:
+
+| | full toolkit | blueprint-only |
+|---|---|---|
+| verdict | cpu_throttling, python3 in pid_ns, 0.20-0.24 cores | cpu_saturation, "host", cap "unconfirmed" |
+| correct? | YES (true: 0.25-core cgroup cap) | NO (right evidence, wrong attribution) |
+| confidence | 0.68 | 0.57 |
+| tool calls | 69 (0 blueprint) | 31 (ALL blueprint: budget 9, slice 7, rhythm 5, idx 5, wake 4, victim 1; 0 errors) |
+| tokens | 1.41M in / 25.5k out | 0.50M in / 16.7k out |
+| wall | 560 s | 569 s |
+
+The toolkit itself executed flawlessly (31/31 calls clean, incl. the NTFS
+colon fix). The miss is in the BLUEPRINT'S DECISION RULES on this workload:
+
+1. **Two victims = "host overload" misfire.** The cap covers the agent's
+   whole cgroup, so TWO processes (8192 python3 + 8126) showed long waits;
+   the blueprint's Step-4 rule "many processes suffer -> whole machine short
+   of CPU" pushed the agent to `host`. The blueprint assumes a cap hits ONE
+   process; a cgroup cap hits a process TREE.
+2. **Bursty victim breaks the rhythm check.** rhythm.py scores 0.29-0.40
+   (threshold 0.5): the agent workload idles between LLM calls, so the
+   quota beat is weak in wall-clock buckets — exactly the whole-run-
+   averaging gap flagged in EVALUATION-on-agentic-runs.md.
+3. **No baseline window** (the cap spans the whole trace) — Step 4 wants a
+   normal stretch; the agent correctly noted it had none and lost
+   confidence.
+
+What the full-toolkit run had that decided it: run_python over
+sched_stat_runtime (the index value_sum) computed the 25 ms/100 ms runtime
+CEILING — the quantitative quota signature the blueprint only
+approximates via `run` + rhythm.
+
+DECISION: keep the index tools (the ceiling computation is the decisive
+discriminator). Blueprint v2 should gain (a) a group-the-victims rule
+(same cgroup/parent -> one capped group, not host overload) and (b) a
+per-period on-CPU ceiling script (the blueprint's own Step-6 "Proposed"
+item — this A/B is the evidence it is needed).
