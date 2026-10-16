@@ -143,12 +143,25 @@ class Runner:
 
     def _expand(self, a: str) -> str:
         a = a.replace("$TRACE", self.trace_dir or "$TRACE")
-        a = a.replace("$WORK", self.workdir)
+        if "$WORK" in a:
+            a = a.replace("$WORK", self.workdir)
+            # The blueprint names slices after times ($WORK/s_03:17:26.txt). Colons are
+            # illegal in NTFS filenames, so sanitize the part under the workdir. Applied
+            # identically on write and read, so later calls find the same file.
+            head, tail = a[:len(self.workdir)], a[len(self.workdir):]
+            a = head + tail.replace(":", "-")
         if "$DUMP" in a:
             a = a.replace("$DUMP", self.dump_path() or "$DUMP")
         return a
 
     def run(self, script: str, args: list) -> dict:
+        # A tool failure must reach the model as data, never kill the investigation.
+        try:
+            return self._run(script, args)
+        except Exception as e:                                          # noqa: BLE001
+            return {"cmd": [script, *(args or [])], "error": repr(e)[:400]}
+
+    def _run(self, script: str, args: list) -> dict:
         if script not in list_scripts(self.tools_dir):
             return {"error": f"unknown script {script!r}",
                     "available": list_scripts(self.tools_dir)}
