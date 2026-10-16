@@ -11,22 +11,31 @@ The agent needs **only a run directory** (the folder holding the LTTng trace).
 There is no data-layer dependency:
 
 ```bash
-python agent_v2.py /path/to/run_dir
+python agent_v2.py /path/to/run_dir                                  # first-principles
+python agent_v2.py /path/to/run_dir ../latency/1_svc_cpu_cap/README_v1.md   # with a blueprint
 ```
 
-So far there is **one blueprint**: `../latency/1_svc_cpu_cap/README_v1.md`
-(CPU cap from a kernel trace) with its eight tools in
-`../latency/1_svc_cpu_cap/tools/`. The next step is wiring those tools into
-this agent as its investigation toolkit. `skillreg.py` (the blueprint
-loader/selector mechanism) is the mount point; it loads nothing until
-blueprint-backed skills exist.
+**Giving a blueprint does two things at once** (`blueprints.py`):
+
+1. The blueprint markdown is injected into the prompts as the given method.
+2. Its sibling `tools/` scripts become callable through a `blueprint_tool`,
+   so the agent runs the blueprint's steps with the blueprint's own commands
+   (`extract_slice.sh`, `sched_budget.py`, `rhythm.py`, ...). `$TRACE`,
+   `$WORK` and `$DUMP` in the arguments are expanded to this run's trace
+   folder, a scratch dir, and the decoded dump.
+
+On a machine without babeltrace2 (this Windows box), `extract_slice.sh`
+transparently falls back to a pure-Python cut of the run's decoded
+`trace.txt.gz` — same output contract, so the downstream scripts run
+unchanged. So far there is one blueprint: svc_cpu_cap.
 
 ## Files
 
 | File | Role |
 |---|---|
-| `agent_v2.py` | ★ the agent: a LangGraph plan / work / review / synthesise loop. `diagnose(run_dir)` for one investigation; `Chat(run_dir)` for grounded follow-up questions |
+| `agent_v2.py` | ★ the agent: a LangGraph plan / work / review / synthesise loop. `diagnose(run_dir, blueprint=...)` for one investigation; `Chat(run_dir, blueprint=...)` for grounded follow-up questions |
 | `utils.py` | the agent's support module: the kernel-only system prompt + fault vocabulary, the 7 tool schemas, result fitting (row-trimming, never broken JSON), the retrying API call, the ctf tool dispatch, diagnosis unmasking |
+| `blueprints.py` | blueprint loading (markdown → injected skill) + the `blueprint_tool` runner for the blueprint's own `tools/` scripts, with the no-babeltrace slice fallback |
 | `ctf_tool.py` | the six kernel-trace tools (timespan, timeline, query, lines, procdiff, proclife), babeltrace2-backed |
 | `codetool.py` | `run_python`: a sandboxed interpreter with the trace pre-loaded as a DataFrame |
 | `coderepo.py` | read-only code-repo tools (`code_tree`/`code_grep`/`code_read`) for Chat |

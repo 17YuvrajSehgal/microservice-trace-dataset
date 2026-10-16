@@ -206,6 +206,40 @@ Now 12 files. Verified: tool_defs == the 7 kernel-only schemas, fit_result
 trims to valid JSON, agent_v2 imports with wording asserts passing, graph
 builds, new signatures diagnose(run_dir,...) / Chat(run_dir,...).
 
+## (16-10) Blueprint tools wired into agent_v2 (blueprints.py)
+
+`python agent_v2.py <run_dir> <blueprint.md>` now does both halves
+automatically: inject the blueprint text as the given skill AND expose its
+sibling tools/ as a `blueprint_tool` the model can call with the exact CLIs
+the blueprint's steps show ($TRACE/$WORK/$DUMP placeholders expanded).
+
+Design decisions:
+- One generic `blueprint_tool(script, args)` rather than one schema per
+  script: the blueprint text IS the usage documentation and is already in
+  the prompt, so per-script schemas would duplicate it and drift.
+- `blueprints.load()` wraps ANY blueprint markdown into a skillreg.Skill
+  (name from the folder, e.g. 1_svc_cpu_cap -> svc_cpu_cap; signature from
+  the "What it looks like" section) - no reformatting of README_v1 into
+  skill frontmatter, no second copy to drift.
+- extract_slice.sh needs bash+babeltrace2; on machines without them
+  (Windows dev box) the runner falls back to a pure-Python cut of the run's
+  decoded trace.txt.gz with the same output contract (sched events in
+  window), so sched_budget/rhythm/victim_info/wake_graph run unchanged -
+  the whole blueprint is executable locally TODAY.
+- Chat gets the same blueprint= param; fixed its tool list being built from
+  the module-global CTX (now appends its own ctx's blueprint def).
+
+Verified end-to-end at the tool layer on t3_implement_cap25_r1 (no API):
+load -> 8 scripts enumerated -> trace dir auto-found -> idx_summary (DAY
+2026-10-12, start 03:17:25) -> fallback slice cut -> sched_budget shows the
+victim (python3 pid 8192, 34 waits >=50ms, max 88ms ~ the quota period) ->
+rhythm + victim_info run -> worker toolset includes blueprint_tool.
+
+Also confirmed OpenRouter works despite $0.00 credits reading: the account
+is BYOK (Naser's Azure/Google upstreams - hence the hard provider pinning),
+so billing is upstream and invisible to our API key; a real gpt-6-luna
+request through config.py succeeded. Budget visibility = Naser's dashboard.
+
 **One non-number accuracy item:** `paper2.tex` fig:method caption (line ~160)
 says "`prev_state`=0 means preempted" — that's the old, incomplete
 description (misses 256 = preempt-throttle). Flagged, not yet edited (paper

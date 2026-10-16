@@ -36,6 +36,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import config
 import codetool
+import blueprints
 import leakguard
 import transcript as T
 from utils import (KERNEL_ONLY_TOOLS, SENT_CAP, SENT_CAP_BY_TOOL,
@@ -43,7 +44,9 @@ from utils import (KERNEL_ONLY_TOOLS, SENT_CAP, SENT_CAP_BY_TOOL,
                    KO_HEAD, FAULT_VOCAB, KO_RULES)
 
 # the chat-only code tools return file text; give them the room ctf_lines gets
-SENT_CAP_BY_TOOL.update({"code_read": 18000, "code_grep": 14000, "code_tree": 14000})
+SENT_CAP_BY_TOOL.update({"code_read": 18000, "code_grep": 14000, "code_tree": 14000,
+                         # a blueprint script's stdout (a budget table, a rhythm chart)
+                         "blueprint_tool": 30000})
 
 from langgraph.graph import END, START, StateGraph
 from langgraph.types import Send
@@ -258,6 +261,8 @@ class Ctx:
     def __init__(self, run_dir, guard, tr, run_id, index_root=None):
         self.run_dir, self.guard, self.tr, self.run_id = run_dir, guard, tr, run_id
         self.repo = None                      # set by Chat when a code repo is connected
+        self.bp = None                        # blueprints.Runner when a blueprint is given
+        self.bp_def = None                    # the blueprint_tool schema for this run
         self.sb = codetool.Sandbox(run_id, index_root=index_root)
         self.sb_lock = threading.Lock()
         self.tr_lock = threading.Lock()
@@ -322,6 +327,9 @@ def _exec_tool(name, args, node, step):
                 "truncated": len(out) > COMPUTED_OUT_CAP,
                 "error": (res.get("error") or "")[:160] or None,
             })
+        b = len(json.dumps(res, default=str))
+    elif name == "blueprint_tool" and CTX.bp is not None:
+        res = CTX.bp.run(args.get("script") or "", args.get("args") or [])
         b = len(json.dumps(res, default=str))
     elif name.startswith("code_") and CTX.repo is not None:
         res = CTX.repo.call(name, args)
@@ -410,7 +418,10 @@ def _trim_thread(msgs, node=None, step=None):
 def _worker_tools():
     defs = [t for t in tool_defs()
             if t["name"] in KERNEL_ONLY_TOOLS and t["name"] != "submit_diagnosis"]
-    return defs + [codetool.TOOL_DEF, _NOTE_DEF]
+    defs = defs + [codetool.TOOL_DEF, _NOTE_DEF]
+    if CTX is not None and CTX.bp_def is not None:
+        defs.append(CTX.bp_def)       # the blueprint's own scripts, when a blueprint is given
+    return defs
 
 
 # --------------------------------------------------------------------------------------
@@ -660,10 +671,15 @@ def build_graph():
 
 
 # --------------------------------------------------------------------------------------
-def diagnose(run_dir, transcript_path=None, condition=None, meta=None,
+def diagnose(run_dir, blueprint=None, transcript_path=None, condition=None, meta=None,
              skills=None, skill_given=False, problem_hint=None, index_root=None,
              **_ignored) -> dict:
-    """Investigate the kernel trace in run_dir and return the diagnosis + usage stats."""
+    """Investigate the kernel trace in run_dir and return the diagnosis + usage stats.
+
+    blueprint: path to a blueprint markdown (e.g. latency/1_svc_cpu_cap/README_v1.md).
+    Giving one does two things at once: the blueprint text is injected as the given skill,
+    AND its sibling tools/ scripts become callable through the blueprint_tool - so the agent
+    can follow the blueprint's method with the blueprint's own commands."""
     global CTX
     t0 = time.time()
     run_id = os.path.basename(run_dir.rstrip("/"))
@@ -679,6 +695,18 @@ def diagnose(run_dir, transcript_path=None, condition=None, meta=None,
     CANCEL.clear()
     CTX = Ctx(run_dir, guard, tr, run_id, index_root=index_root)
 
+    if blueprint:
+        sk, bp_tools = blueprints.load(blueprint)
+        skills, skill_given = [sk], True
+        if bp_tools:
+            CTX.bp = blueprints.Runner(bp_tools, run_dir,
+                                       workdir=os.path.join(os.getcwd(), "bp_work", run_id))
+            CTX.bp_def = blueprints.make_tool_def(bp_tools)
+            tr.event("blueprint_tools", dir=bp_tools,
+                     scripts=blueprints.list_scripts(bp_tools),
+                     trace_dir=CTX.bp.trace_dir, dump=bool(CTX.bp.dump_path()))
+        tr.meta["blueprint"] = os.path.abspath(blueprint)
+
     global _WORKER, _SYNTH
     worker_sys, synth_sys = _WORKER, _SYNTH
     if skills and skill_given:
@@ -691,6 +719,12 @@ def diagnose(run_dir, transcript_path=None, condition=None, meta=None,
                  "than forcing the blueprint's conclusion onto contradicting evidence. If a "
                  "check needs a quantity the fixed tools cannot compute, compute it with "
                  "run_python rather than abstaining.\n%s" % (sk.name, sk.body))
+        if CTX.bp_def is not None:
+            extra += ("\n\nTHE BLUEPRINT'S OWN SCRIPTS are available through blueprint_tool: "
+                      "run the exact commands the blueprint's steps show, passing $TRACE, "
+                      "$WORK and $DUMP where the blueprint writes its path variables - they "
+                      "are expanded for you. Prefer blueprint_tool for the blueprint's steps; "
+                      "the six fixed tools and run_python stay available for anything else.")
         _WORKER = worker_sys + extra
         _SYNTH = synth_sys + extra
         tr.event("skill_injected", skill_name=sk.name, body=sk.body, given=True)
@@ -748,11 +782,13 @@ def diagnose(run_dir, transcript_path=None, condition=None, meta=None,
 
 
 if __name__ == "__main__":
+    # usage: python agent_v2.py <run_dir> [<blueprint.md>]
     rd = sys.argv[1]
+    bp = sys.argv[2] if len(sys.argv) > 2 else None
     tp = os.environ.get("RCA_TRANSCRIPT",
                         os.path.join("transcripts", "v2",
                                      os.path.basename(rd.rstrip("/")) + ".json"))
-    o = diagnose(rd, transcript_path=tp)
+    o = diagnose(rd, blueprint=bp, transcript_path=tp)
     print(json.dumps(o, indent=2, default=str))
 
 
@@ -793,7 +829,7 @@ _CHAT_SYS = (
 class Chat:
     """A follow-up conversation grounded in a finished run. One instance per run."""
 
-    def __init__(self, run_dir, skill=None, diagnosis=None, findings=None,
+    def __init__(self, run_dir, skill=None, blueprint=None, diagnosis=None, findings=None,
                  computed=None, index_root=None, restore=None, code_root=None):
         run_id = os.path.basename(run_dir.rstrip("/"))
         # enabled=False: the run's verdict was already unmasked for the human, so chat must
@@ -801,6 +837,14 @@ class Chat:
         guard = leakguard.Guard(enabled=False)
         tr = T.Transcript(run_id, method="agent_v2-chat", condition="chat")
         self.ctx = Ctx(run_dir, guard, tr, run_id, index_root=index_root)
+        if blueprint:
+            bp_skill, bp_tools = blueprints.load(blueprint)
+            skill = skill or bp_skill
+            if bp_tools:
+                self.ctx.bp = blueprints.Runner(bp_tools, run_dir,
+                                                workdir=os.path.join(os.getcwd(),
+                                                                     "bp_work", run_id))
+                self.ctx.bp_def = blueprints.make_tool_def(bp_tools)
         sysp = _CHAT_SYS
         if skill is not None:
             sysp += "\n\nBLUEPRINT USED IN THE INVESTIGATION:\n" + skill.body
@@ -820,7 +864,12 @@ class Chat:
                 for c in computed)[:COMPUTED_TOTAL_CAP])
         if seed:
             sysp += ("\n\nCONTEXT FROM THE RUN YOU JUST FINISHED:\n\n" + "\n\n".join(seed))
-        self.tools = [t for t in _worker_tools() if t["name"] != "note_finding"]
+        # _worker_tools() reads the module-global CTX, which is not this chat's ctx yet -
+        # build the base list, then add this ctx's own blueprint tool explicitly.
+        self.tools = [t for t in _worker_tools()
+                      if t["name"] not in ("note_finding", "blueprint_tool")]
+        if self.ctx.bp_def is not None:
+            self.tools.append(self.ctx.bp_def)
         code_note = ""
         if code_root:
             import coderepo
