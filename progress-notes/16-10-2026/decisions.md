@@ -171,3 +171,27 @@ Proposed next fixes (not yet applied): (a) victim_info.py prints
 run cpu_ceiling.py on the FIRST suspect rather than after exhaustive
 sampling. Scorecard so far (bp-only v2): cap25 PASS, cap50 MISS(honest),
 nocap PASS.
+
+## Fixes applied; cap50 re-run -> CORRECT. Scorecard now 3/3
+
+- victim_info.py: ns=0 means "tracer could not resolve", never a real
+  namespace -> zeros dropped, values merged across events, verdict names
+  the fields compared. Verified on the failed run's own slices: python3
+  8969 now identical to the host on all five fields (was 3 zeros ->
+  "separate container").
+- README_v1: Step 3 discipline (6-8 slices, stop at first clear victim) +
+  Step 6b "run the ceiling as soon as you have a victim; one call,
+  decisive, do not postpone".
+
+cap50 re-run (bponly3): **cpu_throttling, python3 PID 8969, "~50 ms per
+100 ms = 0.5 CPU"** (true 0.5), conf 0.69, window 03:20:05-20:20. The
+discipline change is visible in the numbers: extract_slice 26->8,
+sched_budget 26->10, cpu_ceiling 0->4 (50.1 ms, 90% flat, quoted in the
+verdict), 431->270 s, 633k->512k tokens. Honest hedge retained (no cgroup
+counters in a kernel trace; 8903 also waits).
+
+**Blueprint-only scorecard, blueprint v2.1: cap25 PASS, cap50 PASS,
+nocap PASS (clean rejection).** Three agent-run iterations turned the
+blueprint from 0/1 (v1: confident wrong "host") into 3/3 with a toolkit
+that needs no index and ~1/3 the tokens of the full agent. The transcript
+chain (.bponly -> .bponly2 -> .bponly3) is the audit record of the loop.
