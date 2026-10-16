@@ -246,6 +246,8 @@ Read it:
 - In a slice inside the window, look for one process that jumps to the top with many waits of 10 ms and 50 ms or more. That process is the **victim**. Write down its `pid`.
 - The first slice where the victim jumps to the top marks the start of the fault. The first normal slice after it marks the end. The fault may have started before the trace, or ended after it.
 
+**Discipline: six to eight slices are enough.** The moment one slice shows a clear victim, stop slicing and move on — one `cpu_ceiling.py` call on that slice (Step 6b) says more about a cap than ten more slices will. Cut more slices only if Step 4 cannot be answered with what you have.
+
 ```bash
 VICTIM=<pid>             # the pid that jumped to the top
 BASE_START=<HH:MM:SS>    # a slice time before the window, where everything was normal
@@ -342,7 +344,7 @@ Read it:
 PERIOD_MS=<period from the repeat line, or 100 if none was found>
 ```
 
-**6b. Measure the per-period ceiling.** A quota refills every period, so a capped victim's on-CPU time **per period** sits at a flat ceiling near the quota, period after period — even when the rhythm is weak.
+**6b. Measure the per-period ceiling.** A quota refills every period, so a capped victim's on-CPU time **per period** sits at a flat ceiling near the quota, period after period — even when the rhythm is weak. Run this as soon as you have a victim and a period (use 100 if Step 6 found none): it is one call, and it is the decisive check — do not postpone it for more slicing.
 
 ```bash
 python3 $TOOLS/cpu_ceiling.py $WORK/fault_slice.txt    $VICTIM $PERIOD_MS

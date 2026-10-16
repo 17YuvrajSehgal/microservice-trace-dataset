@@ -68,7 +68,11 @@ def main():
             h, mi, s, fr = m.groups()
             t = ((int(h) * 60 + int(mi)) * 60 + int(s)) * 10**9 + int(fr.ljust(9, '0'))
             pid, tid, pname, rest = c.groups()
-            ns = dict(re_ns.findall(rest))
+            # A namespace number of 0 is never a real namespace: it means the tracer could
+            # not resolve that field for this event. Keeping it would make the process look
+            # like a different container than it is - drop it, and merge the real values
+            # across events instead of letting the last event win.
+            ns = {k: v for k, v in re_ns.findall(rest) if v != '0'}
             if pid == '0':
                 if ns:
                     host_ns[tuple(sorted(ns.items()))] += 1
@@ -77,7 +81,7 @@ def main():
                 tid_names[tid][pname] += 1
                 pid_names[pid][pname] += 1
                 if ns:
-                    pid_ns[pid] = ns
+                    pid_ns.setdefault(pid, {}).update(ns)
             if ' sched_switch:' in line:
                 sw = re_sw.search(line)
                 if not sw:
@@ -129,11 +133,15 @@ def main():
         if host_ns:
             hns = dict(host_ns.most_common(1)[0][0])
             print("  host namespaces   : " + ", ".join(f"{k}={v}" for k, v in sorted(hns.items())))
-            differ = [k for k in vns if k in hns and vns[k] != hns[k]]
+            shared = [k for k in vns if k in hns]
+            differ = [k for k in shared if vns[k] != hns[k]]
             if differ:
                 print(f"  runs in a container: yes ({', '.join(differ)} differ from the host)")
+            elif shared:
+                print(f"  runs in a container: no sign of it "
+                      f"(same as the host on {', '.join(sorted(shared))})")
             else:
-                print("  runs in a container: no sign of it (same namespaces as the host)")
+                print("  runs in a container: cannot be compared (no shared fields read)")
         else:
             print("  host namespaces   : not seen in this slice, so this cannot be compared")
         key = 'pid_ns' if 'pid_ns' in vns else sorted(vns)[0]
