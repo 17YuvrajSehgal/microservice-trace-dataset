@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "stratatrace"
+version = "0.1.0"
+description = "Loader SDK + kernel representation ladder for the StrataTrace four-modality incident dataset"
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "pandas>=1.3",
+    "pyarrow>=8.0",
+]
+# bt2 (babeltrace2 python bindings) is a system package (VM-only), not pip-installable here;
+# required only for deriving/reading L0 (raw CTF). L1-L3 Parquet consumers do not need it.
+
+[project.optional-dependencies]
+dev = ["pytest"]
+
+[project.scripts]
+stratatrace-derive-l1 = "stratatrace.derive_kernel_l1:main"
+
+[tool.setuptools]
+packages = ["stratatrace"]
+package-dir = {stratatrace = "."}

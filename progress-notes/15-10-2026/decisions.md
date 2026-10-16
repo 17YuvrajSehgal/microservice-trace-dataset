@@ -126,6 +126,34 @@ Decisions and why:
 - Left out the StrataTrace blueprint + EVALUATION (separate work) to keep the
   artifact focused on the OS-noise study.
 
+## (16-10) Blueprint/ becomes the active workspace; agent copied in
+
+User direction: the repo is getting big; `Blueprint/` is the latest line of
+work, `blueprints/` (root) is the previous generation and stays as reference.
+Next focus: new blueprints in `Blueprint/`, and making the agent use the new
+blueprint tools (`Blueprint/latency/*/tools/`). When 100% ready, `Blueprint/`
+graduates to its own repo for the paper.
+
+Did (copy, not move — originals untouched):
+- `agentic-rca/` -> `Blueprint/agent/` (28 py files + 12 skills + docs;
+  excluded old campaign `results/`, git-ignored `dev-runs/`, `__pycache__`.
+  734K).
+- **Vendored `stratatrace/` INSIDE `Blueprint/agent/`** — this is the
+  portability fix. Every agent entry point already does
+  `sys.path.insert(0, HERE)`, so the vendored copy resolves with ZERO code
+  changes; the `from stratatrace import load_run` imports no longer reach the
+  repo root. All data paths were already env vars (RUNS_ROOT, CTF_INDEX_ROOT,
+  BT2, RCA_SOURCE_ROOT; defaults = Trillium).
+- Smoke-tested from the new location: config.py OK, skillreg loads 12 skills,
+  vendored stratatrace imports, core + kernel-tool modules import.
+- Verified no `../` escapes in any copied script (only absolute cluster
+  paths, which are environment config, not repo coupling).
+- Added `Blueprint/README.md` (workspace map + direction) and a provenance/
+  portability header in `Blueprint/agent/README.md`.
+
+Not done yet (next): wiring the agent's toolset to the eight blueprint tools —
+that is the design task this copy sets up.
+
 **One non-number accuracy item:** `paper2.tex` fig:method caption (line ~160)
 says "`prev_state`=0 means preempted" — that's the old, incomplete
 description (misses 256 = preempt-throttle). Flagged, not yet edited (paper
