@@ -83,3 +83,28 @@ discriminator). Blueprint v2 should gain (a) a group-the-victims rule
 (same cgroup/parent -> one capped group, not host overload) and (b) a
 per-period on-CPU ceiling script (the blueprint's own Step-6 "Proposed"
 item — this A/B is the evidence it is needed).
+
+## Both blueprint fixes implemented (evidence-first)
+
+(b) **cpu_ceiling.py** — ninth blueprint tool: the victim's on-CPU ms per
+period from sched_switch; a flat ceiling below the period = the quota.
+VALIDATED before writing the text, on runs with known limits:
+- cap25: median/p90 25.0 ms, max 25.1, 82% flat -> 0.25 cores (true 0.25)
+- cap50: 50.1 ms, 87% flat -> 0.50 cores (true 0.5)
+- nocap: pegs at the full 100 ms -> correctly reads "no cap" (and the tool
+  says a full-period ceiling on one thread cannot be told from a 1-core
+  cap — honest ambiguity, stated in its output and in the blueprint).
+
+(a) **Group-the-victims rule** in the text: §1.3 cap row ("one container =
+possibly SEVERAL processes; a cgroup limit covers the tree"), overload row
+(requires sufferers in DIFFERENT containers + no idle CPUs), and Step 4's
+"many processes suffer" bullet now routes through victim_info namespaces +
+wake_graph parentage: same container -> ONE victim group, continue.
+
+Blueprint text integration: Step 6 retitled "...then measure the ceiling";
+"no beat" no longer stops (bursty victims show weak beats — exactly what
+sank the bp-only run) but falls through to 6b; Step 8 estimates from the
+ceiling and warns that whole-slice run averages dilute for bursty victims;
+Part 5 limits updated (rhythm thresholds one-case, ceiling three-run
+validated); counts 8->9 everywhere. agent blueprint_tool picks the new
+script up automatically (dynamic dir listing - verified).

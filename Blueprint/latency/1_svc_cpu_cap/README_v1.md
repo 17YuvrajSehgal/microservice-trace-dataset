@@ -58,8 +58,8 @@ Several causes make a process slow. This blueprint must tell them apart. You wil
 
 | Cause | What the kernel trace shows | How it differs from a cap |
 |---|---|---|
-| **CPU cap (this fault)** | Victim waits long for the CPU, `run` is low and flat, burst-and-freeze rhythm, other processes fine | The rhythm, and only one process is hit |
-| Whole machine overloaded | Many processes wait for the CPU at the same time, no regular rhythm | A cap hits one container only |
+| **CPU cap (this fault)** | Victim waits long for the CPU, `run` is low and flat, burst-and-freeze rhythm, other processes fine | The rhythm and the per-period ceiling. One container is hit — which can be SEVERAL processes, because a cgroup limit covers the whole process tree |
+| Whole machine overloaded | Processes in DIFFERENT containers wait for the CPU at the same time, no regular rhythm, no idle CPUs | A cap hits one container only. Several waiters in the SAME container are still one cap |
 | Noisy neighbor | The victim waits while one busy process takes the CPU; waits are irregular | A cap needs no busy neighbor |
 | Too much work, or garbage collection | Victim `run` goes **up**, its waits stay low | In a cap, `run` goes down or stays flat |
 | Slow disk | Disk-type sleep (`D`) goes up | In a cap, `D` stays near 0 |
@@ -77,7 +77,7 @@ Several causes make a process slow. This blueprint must tell them apart. You wil
 | `sched_switch` and `sched_waking` (or `sched_wakeup`) events in the trace | To measure running, waiting, and sleeping time |
 | A normal period to compare with: a normal stretch in the same trace, or a fault-free trace of the same system | Numbers only mean something when you compare them |
 | `babeltrace2`, `python3`, GNU `date` | To read the trace and run the scripts |
-| The eight scripts below, all in one folder | To read the index, cut slices, and measure |
+| The nine scripts below, all in one folder | To read the index, cut slices, and measure |
 
 The scripts:
 
@@ -89,10 +89,11 @@ The scripts:
 | `extract_slice.sh` | Cuts one time slice (using `idx_slice.py`) and keeps only the scheduling events |
 | `sched_budget.py` | Time budget per process: running, waiting, sleeping, long waits |
 | `rhythm.py` | How often a process gets the CPU, in 10 ms buckets, and whether it repeats |
+| `cpu_ceiling.py` | The victim's on-CPU time per period: a flat ceiling below the period is the direct signature of a quota |
 | `victim_info.py` | Who the victim is: PID, names, threads, container |
 | `wake_graph.py` | Which processes wake the victim, and which ones it wakes |
 
-`idx_summary.py` and `idx_dump.py` import `idx_slice.py`, and `extract_slice.sh` calls it. Keep all eight in the same folder.
+`idx_summary.py` and `idx_dump.py` import `idx_slice.py`, and `extract_slice.sh` calls it. Keep all nine in the same folder.
 
 ---
 
@@ -102,12 +103,12 @@ Run this block first, in every new terminal. Put your own paths in the first thr
 
 ```bash
 TRACE=/path/to/trace       # the folder that holds `metadata`, `index/` and the channel files
-TOOLS=/path/to/scripts     # the folder that holds the eight scripts
+TOOLS=/path/to/scripts     # the folder that holds the nine scripts
 WORK=/path/to/scratch      # an empty folder for slices and notes
 
 mkdir -p "$WORK"
 ls "$TRACE/metadata" "$TRACE/index" > /dev/null && echo "trace folder OK"
-ls $TOOLS/{idx_summary.py,idx_dump.py,idx_slice.py,extract_slice.sh,sched_budget.py,rhythm.py,victim_info.py,wake_graph.py} > /dev/null && echo "all eight scripts found"
+ls $TOOLS/{idx_summary.py,idx_dump.py,idx_slice.py,extract_slice.sh,sched_budget.py,rhythm.py,cpu_ceiling.py,victim_info.py,wake_graph.py} > /dev/null && echo "all nine scripts found"
 ```
 
 Both lines must print OK.
@@ -266,7 +267,7 @@ Decide:
 - **All three are yes:** there is a CPU-related fault. Go to Step 5.
 - **The rate changed, but no process suffered:** this is probably a change in the workload, for example the load starting or stopping. In that case the machine just becomes busier or quieter, and nothing waits. Report "no CPU starvation found" and **stop**.
 - **Nothing changed, and no slice shows long waits:** report "no CPU starvation found" and **stop**. Do not write "no fault". This blueprint does not look for other kinds of faults, such as network or lock problems.
-- **Many processes suffer at once:** the whole machine is short of CPU. This is not a cap on one service. Report that and **stop**.
+- **Several processes suffer at once:** do NOT conclude host overload yet. A cgroup limit covers a whole process tree, so a cap on one container makes ALL of that container's processes wait together — several victims is the normal look of a cap, not evidence against one. Run `victim_info.py` on each suffering pid and compare their namespaces (`pid_ns` and the other `*_ns` numbers), and check `wake_graph.py` for a parent/child relationship. **Same container (or same process tree): treat them as ONE victim group** — pick the busiest member as `VICTIM` and continue to Step 5. **Different containers, and no idle CPUs: the whole machine is short of CPU.** That is not a cap on one service; report it and **stop**.
 
 How big must the change be? There is no fixed threshold. A useful rule of thumb: waits of 50 ms or more that are absent in normal slices and appear hundreds of times per 10 s in the window are a clear sign. A smaller change is harder to call. To learn what "normal" looks like for your system, run Steps 1 to 3 on a trace taken when everything was healthy.
 
@@ -318,7 +319,7 @@ Decide, by comparing the victim's two rows:
 - **`D` goes up a lot:** the victim waits on the disk. This is not a cap. Report it and **stop**.
 - **`S` goes up a lot, while `wait` stays low:** the victim waits on locks, the network, or another service. This is not a cap. Report it and **stop**.
 
-### Step 6. Look for the rhythm
+### Step 6. Look for the rhythm, then measure the ceiling
 
 **Goal:** tell a CPU cap apart from other kinds of CPU starvation. A cap makes the victim run in short bursts at a fixed period.
 
@@ -335,11 +336,28 @@ Each run prints 100 lines, one per 10 ms bucket. The bar shows how many times a 
 Read it:
 
 - **Cap:** bursts, then quiet buckets, repeating at a fixed period. Rule of thumb: quiet buckets above 50% and a repeat score above 0.5 in the fault slice, while the baseline has few quiet buckets and a low score. The repeat period is the quota period. Write it down. Do not assume 100 ms.
-- **No beat:** activity is irregular. The victim is starved, but not by a quota. Report "the victim is starved of CPU, but there is no quota rhythm", then use the table in 1.3 (noisy neighbor, overload, pinning) to suggest a cause, and **stop**.
+- **No beat:** do not stop yet. A victim that idles between spells of work (an interactive tool, an AI agent waiting on a network reply) shows little beat in wall-clock buckets even when it is capped. The ceiling check below decides.
 
 ```bash
-PERIOD_MS=<period from the repeat line>
+PERIOD_MS=<period from the repeat line, or 100 if none was found>
 ```
+
+**6b. Measure the per-period ceiling.** A quota refills every period, so a capped victim's on-CPU time **per period** sits at a flat ceiling near the quota, period after period — even when the rhythm is weak.
+
+```bash
+python3 $TOOLS/cpu_ceiling.py $WORK/fault_slice.txt    $VICTIM $PERIOD_MS
+python3 $TOOLS/cpu_ceiling.py $WORK/baseline_slice.txt $VICTIM $PERIOD_MS
+```
+
+It prints the victim's on-CPU milliseconds for each period in its active window, then the ceiling (median/p90/max of the busy periods) and how flat it is.
+
+Read it:
+
+- **Cap:** the busy periods pile up at a flat ceiling clearly **below** the period (high flatness, max about equal to the ceiling). The quota is about the ceiling; the cap in cores is ceiling ÷ period. In the baseline the same process runs free of it.
+- **Ceiling at the full period:** the victim simply saturates one core. A single thread at 100 of 100 ms cannot be told apart from a cap of one full core; say so rather than claiming a cap.
+- **No flat ceiling and no beat:** the victim is starved, but not by a quota. Report "the victim is starved of CPU, but there is no quota signature", then use the table in 1.3 (noisy neighbor, overload, pinning) to suggest a cause, and **stop**.
+
+Validated on three agentic runs with known limits: a 0.25-core cap read 25.0 ms per 100 ms (max 25.1, 82% flat), a 0.5-core cap read 50.1 ms (87% flat), and the uncapped baseline pegged at the full 100 ms — correctly no cap.
 
 **Next:** Step 7.
 
@@ -367,9 +385,9 @@ Two more checks would make the case stronger, but these scripts do not do them y
 
 **Goal:** estimate how big the cap is. The trace does not hold the quota, so this is always an estimate.
 
-- The victim's `run` in the fault slice (Step 5) is about the cap, in CPU cores. For example, `run` = 0.2 means about 0.2 cores.
-- The quota per period is about `run` × `PERIOD_MS`. For example, 0.2 × 100 ms = 20 ms of CPU every 100 ms.
-- Check that it is a ceiling: the victim's `run` in the baseline should be higher than in the fault slice. The victim wanted more CPU than it got.
+- The best estimate is Step 6b's ceiling: the quota is about **ceiling ms per `PERIOD_MS`**, and the cap in cores is ceiling ÷ period. On runs with known limits this read 25.0 ms for a real 25 ms quota and 50.1 ms for a real 50 ms quota.
+- Cross-check with the victim's `run` in the fault slice (Step 5): averaged over its busy stretch it should sit near the same number of cores. For a bursty victim the whole-slice average is diluted by idle time — trust the per-period ceiling over the average.
+- Check that it is a ceiling: in the baseline the same workload runs past it. The victim wanted more CPU than it got.
 
 Write this in your report as **Inferred**, not measured.
 
@@ -414,7 +432,7 @@ Template:
 Rules:
 
 - Name the victim, the time window, and the mechanism.
-- Give at least two independent pieces of evidence. For a cap: the long waits for the CPU (Step 5), the rhythm (Step 6), and the flat ceiling (Step 7).
+- Give at least two independent pieces of evidence. For a cap: the long waits for the CPU (Step 5), the rhythm (Step 6), and the flat per-period ceiling (Step 6b).
 - Mark each claim **Measured** (seen in the trace) or **Inferred** (reasoned from what you saw).
 - The size of the cap is always **Inferred** (Step 8).
 - Say what you did not test.
@@ -432,7 +450,8 @@ You are done.
 - It needs a normal stretch to compare with: in the same trace, or a healthy trace of the same system.
 - It samples 10-second slices, so a fault shorter than a few seconds can be missed.
 - If tracing was limited to some processes, you cannot rule out a busy machine.
-- The rules of thumb (waits of 50 ms or more, quiet buckets above 50%, repeat score above 0.5) come from one solved case. They are not tested limits.
+- The rhythm rules of thumb (quiet buckets above 50%, repeat score above 0.5) come from one solved case and are weak for bursty victims that idle between spells of work - that is why Step 6b exists. The ceiling check was validated on three runs with known limits (0.25, 0.5, and no cap) and read each one correctly.
+- A cgroup cap covers a process tree, so several suffering processes in one container are one victim group (Step 4), not host overload.
 
 ---
 
