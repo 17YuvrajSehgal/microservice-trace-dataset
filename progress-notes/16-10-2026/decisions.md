@@ -225,3 +225,38 @@ agentic-os-noise inside):
 neighbor-bp on {t4_w16, cap25, nocap} + cap-bp on t4_w16. Expected:
 competition-from-ttworker / hand-to-cap / no-competition / starved-but-
 no-quota. Transcripts tagged .nn1 / .cap1.
+
+## Matrix round 1: 3/4. The miss discovered FAIR-SHARE MIMICRY
+
+- NN-bp on cap25: PASS — "CPUs idle during waits -> throttling, not a
+  neighbor" conf 0.92. The hand-over works.
+- NN-bp on nocap: PASS — normal, conf 0.96.
+- CAP-bp on t4_w16: PASS — rejected (no 50 ms freezes).
+- NN-bp on t4_w16 (its own fault): MISS — called it a cap: "92% flatness
+  at 27 ms/100 ms for PID 4500".
+
+The miss is a real discrimination discovery: **N equal busy threads on C
+cores each settle at a flat ~C/N of a core — fair sharing mimics a quota
+ceiling.** Compounded by: the agent picked a ttworker as victim (the
+aggressor group tops the wait table because it competes with itself), and
+its baseline slice overlapped the 3.8 s worker phase. The separator is
+the IDLE SHARE: cap -> 96% idle during waits; fair share -> 1%.
+
+Fixes (both blueprints, commit "fair-share mimicry..."): NN Step 3
+self-contention rule + Step 5 baseline check + Step 7 caveat; CAP gets
+cpu_hogs.py as tenth tool (its Step-7 "proposed" checks now real),
+Step 6b busy-CPUs caveat, Step 5 routing to the NN blueprint. The pair
+now routes to each other in both directions.
+
+## Matrix round 2 (fixed blueprints): ALL CELLS PASS
+
+| cell | verdict |
+|---|---|
+| NN-bp on t4_w16 | **noisy_neighbor, ttworker (PIDs 4498-4513)**, conf 0.62; victim claude; "78% to the group, 10% idle"; honest hedge that onset is not shown (the phase nearly fills the trace) |
+| CAP-bp on t4_w16 | other/unknown, conf 0.98 — refuses the cap |
+
+Full scorecard over both blueprints, blueprint-only agent: cap-bp 3/3
+(cap25, cap50, nocap) + reject-contention; nn-bp 3/3 (t4_w16, cap25,
+nocap). SIX distinct verdict cells, all correct, each wrong-fault cell
+refused with the right reason. Next validation stage: unseen data — the
+8+8 StrataTrace noisy_neighbor and svc_cpu_cap runs on Trillium.
