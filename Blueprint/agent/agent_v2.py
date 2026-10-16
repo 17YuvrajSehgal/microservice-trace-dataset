@@ -135,6 +135,37 @@ _V2_CODE = (
     "check and do not report a figure you did not measure.\n"
     "\n")
 
+# --------------------------------------------------------------------------------------
+# Blueprint-only mode: the agent gets NOTHING but the blueprint's own scripts (via
+# blueprint_tool) and note_finding. No index tools, no run_python. This tests whether the
+# blueprint's toolkit is sufficient on its own. The prompt head must describe exactly that
+# toolset - the first v2 smoke run proved the model believes the prompt over the schema.
+# A blueprint is a SEQUENTIAL procedure, so this mode skips the planner fan-out and hands
+# ONE worker the steps in order.
+_BP_HEAD = (
+    "You are a senior SRE handed ONE raw kernel trace from a microservice host. Nobody has "
+    "told you whether anything went wrong, when, or where. There is no alert, no known "
+    "incident window, and no pre-computed baseline. Finding all of that is the job.\n"
+    "\n"
+    "YOUR ONLY EVIDENCE is the LTTng kernel trace, and YOUR ONLY INSTRUMENT is "
+    "blueprint_tool, which runs the investigation blueprint's own scripts with the exact "
+    "command lines the blueprint shows. $TRACE, $WORK and $DUMP in the arguments are "
+    "expanded to this run's trace folder, a scratch folder, and the decoded trace text. "
+    "You may call several scripts in one turn when the blueprint's step runs a loop (for "
+    "example several slices at once). There are deliberately no metrics, logs, spans or "
+    "other query tools: never treat a missing modality as evidence that nothing happened.\n"
+    "\n"
+    "WHAT A PROCESS NAME DOES AND DOES NOT TELL YOU. A runtime name - java, node, python3 "
+    "- is almost never one thing: the same name under two pid_ns values is two different "
+    "containers. When you name a culprit, give its pid (and pid_ns when the scripts show "
+    "one); a bare runtime name does not locate anything.\n"
+    "\n"
+    "FOLLOW THE BLUEPRINT'S STEPS IN ORDER. Each step says what to run and how to read "
+    "the output, and some steps end the investigation early - obey those stop rules and "
+    "report what you found. Record every step's reading with note_finding as you go: the "
+    "numbers, not impressions.\n"
+    "\n")
+
 _PLANNER = (
     _V2_HEAD + _V2_CODE +
     "YOU ARE THE PLANNER. You do not investigate. You split the work into %d or fewer "
@@ -176,6 +207,26 @@ _WORKER = (
     "When your part is done, stop calling tools and reply with one short paragraph. Do not "
     "call submit_diagnosis - that is the synthesiser's job, not yours.\n"
 )
+
+_BP_WORKER = (
+    _BP_HEAD + FAULT_VOCAB +
+    "YOU ARE THE INVESTIGATOR. Work the blueprint start to finish. Record what you find "
+    "with note_finding as you find it - a finding is a specific claim with the numbers "
+    "behind it: which process, which time range, what changed and by how much. Record what "
+    "you RULED OUT too. When the blueprint's steps are done (or a stop rule fires), stop "
+    "calling tools and reply with one short paragraph. Do not call submit_diagnosis - that "
+    "is the synthesiser's job, not yours.\n")
+
+_BP_SYNTH = (
+    _BP_HEAD + FAULT_VOCAB + KO_RULES + "\n\n"
+    "YOU ARE THE SYNTHESISER. The investigation is finished. Below is everything the "
+    "investigator recorded. Weigh it, resolve disagreements by which claim carries the "
+    "stronger numbers, and commit with submit_diagnosis.\n"
+    "\n"
+    "You did not run the tools yourself, so do not invent evidence that is not in the "
+    "notes. If the notes do not support a time range, say 'unknown' for the window rather "
+    "than guessing one. An honest low-confidence answer counts; a confident invented one "
+    "does not.\n")
 
 _REVIEWER = (
     "You are reviewing an incident investigation of a kernel trace. Several workers each "
@@ -263,6 +314,7 @@ class Ctx:
         self.repo = None                      # set by Chat when a code repo is connected
         self.bp = None                        # blueprints.Runner when a blueprint is given
         self.bp_def = None                    # the blueprint_tool schema for this run
+        self.bp_only = False                  # blueprint-only mode: no index tools/run_python
         self.sb = codetool.Sandbox(run_id, index_root=index_root)
         self.sb_lock = threading.Lock()
         self.tr_lock = threading.Lock()
@@ -416,6 +468,9 @@ def _trim_thread(msgs, node=None, step=None):
 
 
 def _worker_tools():
+    if CTX is not None and CTX.bp_only:
+        # blueprint-only: the blueprint's scripts and the scratchpad, nothing else
+        return [CTX.bp_def, _NOTE_DEF]
     defs = [t for t in tool_defs()
             if t["name"] in KERNEL_ONLY_TOOLS and t["name"] != "submit_diagnosis"]
     defs = defs + [codetool.TOOL_DEF, _NOTE_DEF]
@@ -428,6 +483,15 @@ def _worker_tools():
 # Nodes
 # --------------------------------------------------------------------------------------
 def n_plan(state: S) -> dict:
+    if CTX is not None and CTX.bp_only:
+        # A blueprint is a sequential procedure: parallel subtasks would each need the
+        # previous step's output. One investigator walks the steps in order; no planner call.
+        subs = [{"title": "follow the blueprint",
+                 "instruction": ("Work the blueprint's steps in order, start to finish, "
+                                 "using blueprint_tool for every command it shows. Obey its "
+                                 "stop rules. Record each step's reading with note_finding.")}]
+        CTX.event("plan", round=1, subtasks=subs, planner="skipped (blueprint-only)")
+        return {"plan": subs, "round": 1}
     msgs = [{"role": "system", "content": _PLANNER},
             {"role": "user", "content":
              "Kernel trace '%s' from one host, one recording. Nobody has told you whether "
@@ -671,15 +735,19 @@ def build_graph():
 
 
 # --------------------------------------------------------------------------------------
-def diagnose(run_dir, blueprint=None, transcript_path=None, condition=None, meta=None,
-             skills=None, skill_given=False, problem_hint=None, index_root=None,
-             **_ignored) -> dict:
+def diagnose(run_dir, blueprint=None, blueprint_only=False, transcript_path=None,
+             condition=None, meta=None, skills=None, skill_given=False, problem_hint=None,
+             index_root=None, **_ignored) -> dict:
     """Investigate the kernel trace in run_dir and return the diagnosis + usage stats.
 
     blueprint: path to a blueprint markdown (e.g. latency/1_svc_cpu_cap/README_v1.md).
     Giving one does two things at once: the blueprint text is injected as the given skill,
     AND its sibling tools/ scripts become callable through the blueprint_tool - so the agent
-    can follow the blueprint's method with the blueprint's own commands."""
+    can follow the blueprint's method with the blueprint's own commands.
+
+    blueprint_only: strip the toolset to blueprint_tool + note_finding (no index tools, no
+    run_python), skip the planner fan-out, and run one investigator through the blueprint's
+    steps in order. Tests whether the blueprint's own toolkit is sufficient."""
     global CTX
     t0 = time.time()
     run_id = os.path.basename(run_dir.rstrip("/"))
@@ -707,26 +775,41 @@ def diagnose(run_dir, blueprint=None, transcript_path=None, condition=None, meta
                      trace_dir=CTX.bp.trace_dir, dump=bool(CTX.bp.dump_path()))
         tr.meta["blueprint"] = os.path.abspath(blueprint)
 
+    if blueprint_only:
+        if CTX.bp_def is None:
+            raise ValueError("blueprint_only needs a blueprint with a tools/ dir next to it")
+        CTX.bp_only = True
+    tr.meta["tools_mode"] = "blueprint_only" if CTX.bp_only else "full"
+
     global _WORKER, _SYNTH
     worker_sys, synth_sys = _WORKER, _SYNTH
     if skills and skill_given:
         if len(skills) != 1:
             raise ValueError("skill_given expects exactly one blueprint, got %d" % len(skills))
         sk = skills[0]
-        extra = ("\n\nBLUEPRINT FOR THIS PROBLEM (given to you; it was not inferred from the "
-                 "evidence): %s\nFollow its method. Still VERIFY its problem signature with "
-                 "your own queries - if a discriminating check FAILS, say so explicitly rather "
-                 "than forcing the blueprint's conclusion onto contradicting evidence. If a "
-                 "check needs a quantity the fixed tools cannot compute, compute it with "
-                 "run_python rather than abstaining.\n%s" % (sk.name, sk.body))
-        if CTX.bp_def is not None:
-            extra += ("\n\nTHE BLUEPRINT'S OWN SCRIPTS are available through blueprint_tool: "
-                      "run the exact commands the blueprint's steps show, passing $TRACE, "
-                      "$WORK and $DUMP where the blueprint writes its path variables - they "
-                      "are expanded for you. Prefer blueprint_tool for the blueprint's steps; "
-                      "the six fixed tools and run_python stay available for anything else.")
-        _WORKER = worker_sys + extra
-        _SYNTH = synth_sys + extra
+        if CTX.bp_only:
+            extra = ("\n\nTHE BLUEPRINT (given to you; it was not inferred from the "
+                     "evidence): %s\nFollow its steps in order with blueprint_tool. Still "
+                     "read each output critically - if a discriminating check FAILS, say so "
+                     "explicitly rather than forcing the blueprint's conclusion onto "
+                     "contradicting evidence.\n%s" % (sk.name, sk.body))
+        else:
+            extra = ("\n\nBLUEPRINT FOR THIS PROBLEM (given to you; it was not inferred from "
+                     "the evidence): %s\nFollow its method. Still VERIFY its problem "
+                     "signature with your own queries - if a discriminating check FAILS, say "
+                     "so explicitly rather than forcing the blueprint's conclusion onto "
+                     "contradicting evidence. If a check needs a quantity the fixed tools "
+                     "cannot compute, compute it with run_python rather than abstaining."
+                     "\n%s" % (sk.name, sk.body))
+            if CTX.bp_def is not None:
+                extra += ("\n\nTHE BLUEPRINT'S OWN SCRIPTS are available through "
+                          "blueprint_tool: run the exact commands the blueprint's steps "
+                          "show, passing $TRACE, $WORK and $DUMP where the blueprint writes "
+                          "its path variables - they are expanded for you. Prefer "
+                          "blueprint_tool for the blueprint's steps; the six fixed tools "
+                          "and run_python stay available for anything else.")
+        _WORKER = (_BP_WORKER if CTX.bp_only else worker_sys) + extra
+        _SYNTH = (_BP_SYNTH if CTX.bp_only else synth_sys) + extra
         tr.event("skill_injected", skill_name=sk.name, body=sk.body, given=True)
         tr.meta["skill_given"] = sk.name
     if problem_hint:
@@ -782,13 +865,15 @@ def diagnose(run_dir, blueprint=None, transcript_path=None, condition=None, meta
 
 
 if __name__ == "__main__":
-    # usage: python agent_v2.py <run_dir> [<blueprint.md>]
-    rd = sys.argv[1]
-    bp = sys.argv[2] if len(sys.argv) > 2 else None
+    # usage: python agent_v2.py <run_dir> [<blueprint.md>] [--blueprint-only]
+    argv = [a for a in sys.argv[1:] if a != "--blueprint-only"]
+    bp_only = "--blueprint-only" in sys.argv
+    rd = argv[0]
+    bp = argv[1] if len(argv) > 1 else None
     tp = os.environ.get("RCA_TRANSCRIPT",
                         os.path.join("transcripts", "v2",
                                      os.path.basename(rd.rstrip("/")) + ".json"))
-    o = diagnose(rd, blueprint=bp, transcript_path=tp)
+    o = diagnose(rd, blueprint=bp, blueprint_only=bp_only, transcript_path=tp)
     print(json.dumps(o, indent=2, default=str))
 
 

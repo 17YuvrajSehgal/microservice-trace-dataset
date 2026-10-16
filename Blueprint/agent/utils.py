@@ -12,6 +12,7 @@ choice here was set from measured campaigns, and the numbers say why.
 """
 from __future__ import annotations
 import json
+import os
 import time
 
 import ctf_tool
@@ -377,7 +378,14 @@ def run_tool(run_dir: str, name: str, args: dict):
     aliases services; the trace records the process names the kernel saw.
     """
     if name == "ctf_timespan":
-        return ctf_tool.ctf_timespan(run_dir), 0
+        # LTTng layouts differ per collector (kernel/kernel vs trace/kernel) - find the
+        # folder that holds `metadata` instead of assuming the StrataTrace layout.
+        sub = "kernel/kernel"
+        for root, dirs, files in os.walk(run_dir):
+            if "metadata" in files:
+                sub = os.path.relpath(root, run_dir)
+                break
+        return ctf_tool.ctf_timespan(run_dir, ctf_subdir=sub), 0
     if name == "ctf_timeline":
         return ctf_tool.ctf_timeline(
             run_dir, event=args.get("event") or "",
