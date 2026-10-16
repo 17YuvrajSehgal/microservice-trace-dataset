@@ -133,3 +133,41 @@ index-toolkit verdict at ~1/3 the input tokens and 2/3 the wall time. And
 the loop that got here is itself the result: blueprint -> agent run ->
 failure analysis -> two targeted fixes -> correct verdict. Transcripts:
 .json (full), .bponly.json (v1, wrong), .bponly2.json (v2, right).
+
+## bp-only v2 on cap50 + nocap: 1 clean pass, 1 honest miss (tool bug found)
+
+| run | truth | verdict | calls / tokens / wall |
+|---|---|---|---|
+| nocap | no fault | **normal, conf 0.91 — clean rejection** | 6 / 139k / 70 s |
+| cap50 | 0.5-core cap | "other / unknown", conf 0.63 — found both waiters, refused to commit | 67 / 633k / 431 s |
+
+**nocap is the blueprint working exactly as written**: Step-3 budgets found
+no waits >=10 ms, the Step-4 stop rule fired, 6 tool calls total, honest
+scope note ("this blueprint does not test other fault classes"). The
+false-positive check passes.
+
+**cap50 missed for two diagnosable reasons** (from the transcript):
+1. **victim_info.py bug poisoned the grouping rule.** For python3
+   (8969/8965) it printed `cgroup_ns=0, ipc_ns=0, net_ns=0` (fields it
+   could not read from that slice) vs real host values for claude (8903).
+   The model read "victim namespaces differ from host" -> "a separate
+   container" -> grouping blocked -> "cannot establish a single capped
+   service". In truth all these processes share every namespace (the cap
+   is pure cgroup; no containers in these runs) — and pid_ns actually
+   MATCHED in the output. A 0 that means "unknown" must not look like a
+   namespace value.
+2. **cpu_ceiling.py was never run** (0 of 67 calls). The worker burned its
+   budget on 26 extract_slice + 26 sched_budget sweeps and never reached
+   Step 6b, despite the blueprint sampling guidance (~6 slices). The
+   decisive quota measurement (50.1 ms/100 ms, validated by hand on this
+   exact run) was one call away.
+
+Note the failure MODE is good: not a confident wrong answer (v1's "host")
+but an honest "unconfirmed" — the fixed blueprint degrades gracefully.
+
+Proposed next fixes (not yet applied): (a) victim_info.py prints
+"unknown" instead of 0 and compares only fields it actually read;
+(b) blueprint Step 3 caps the slice sweep and tells the investigator to
+run cpu_ceiling.py on the FIRST suspect rather than after exhaustive
+sampling. Scorecard so far (bp-only v2): cap25 PASS, cap50 MISS(honest),
+nocap PASS.
