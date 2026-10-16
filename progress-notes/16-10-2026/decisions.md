@@ -195,3 +195,33 @@ nocap PASS (clean rejection).** Three agent-run iterations turned the
 blueprint from 0/1 (v1: confident wrong "host") into 3/3 with a toolkit
 that needs no index and ~1/3 the tokens of the full agent. The transcript
 chain (.bponly -> .bponly2 -> .bponly3) is the audit record of the loop.
+
+## Blueprint 2 chosen and built: noisy_neighbor
+
+WHY noisy_neighbor (over svc_mem_cap, slow_db, svc_net): it is blueprint
+1's nearest look-alike and that table row was marked "not tested"; the two
+blueprints form a DISCRIMINATION PAIR; max tool reuse (one new script);
+and local evaluation data exists now (t4_parallel runs = controlled
+contention with exact ground truth). svc_mem_cap is the planned third.
+
+Built evidence-first, same folder shape (README_v1 + tools/, no
+agentic-os-noise inside):
+- NEW TOOL cpu_hogs.py: who used the CPU in the slice, and who held it
+  WHILE the victim waited. One pass, three-way verdict: neighbor
+  (aggressor dominates, idle small) / cap (idle dominates) / overload
+  (many names, idle small). Measured before writing:
+  t4 W=16 -> ttworker 96% + idle 1% while claude waited; cap25 -> idle
+  96%; nocap -> negligible waiting.
+- Supporting worked-case numbers: workers run 0.17-0.18 / wait 0.49
+  ((W-C)/W = 0.75 check), 320+ waits >=1ms each, max 14 ms (no 50 ms
+  freezes - the wait-SHAPE separates neighbor from cap); rhythm 0.28 no
+  beat; ceiling 14% flatness (vs 82-90% on real caps).
+- README_v1 mirrors blueprint 1's structure; Step 6 (cpu_hogs on the
+  victim) is the decisive check; Step 7 rules the cap OUT with rhythm +
+  ceiling; look-alike tables of the two blueprints now point at each
+  other in both directions.
+
+2x2 DISCRIMINATION MATRIX launched (blueprint-only agent, gpt-6-luna):
+neighbor-bp on {t4_w16, cap25, nocap} + cap-bp on t4_w16. Expected:
+competition-from-ttworker / hand-to-cap / no-competition / starved-but-
+no-quota. Transcripts tagged .nn1 / .cap1.
