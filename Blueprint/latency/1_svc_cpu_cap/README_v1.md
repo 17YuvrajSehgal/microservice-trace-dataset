@@ -77,7 +77,7 @@ Several causes make a process slow. This blueprint must tell them apart. You wil
 | `sched_switch` and `sched_waking` (or `sched_wakeup`) events in the trace | To measure running, waiting, and sleeping time |
 | A normal period to compare with: a normal stretch in the same trace, or a fault-free trace of the same system | Numbers only mean something when you compare them |
 | `babeltrace2`, `python3`, GNU `date` | To read the trace and run the scripts |
-| The nine scripts below, all in one folder | To read the index, cut slices, and measure |
+| The ten scripts below, all in one folder | To read the index, cut slices, and measure |
 
 The scripts:
 
@@ -90,10 +90,11 @@ The scripts:
 | `sched_budget.py` | Time budget per process: running, waiting, sleeping, long waits |
 | `rhythm.py` | How often a process gets the CPU, in 10 ms buckets, and whether it repeats |
 | `cpu_ceiling.py` | The victim's on-CPU time per period: a flat ceiling below the period is the direct signature of a quota |
+| `cpu_hogs.py` | Who used the CPU, and who held it WHILE the victim waited. A cap leaves the CPUs idle during the waits; this proves it |
 | `victim_info.py` | Who the victim is: PID, names, threads, container |
 | `wake_graph.py` | Which processes wake the victim, and which ones it wakes |
 
-`idx_summary.py` and `idx_dump.py` import `idx_slice.py`, and `extract_slice.sh` calls it. Keep all nine in the same folder.
+`idx_summary.py` and `idx_dump.py` import `idx_slice.py`, and `extract_slice.sh` calls it. Keep all ten in the same folder.
 
 ---
 
@@ -103,12 +104,12 @@ Run this block first, in every new terminal. Put your own paths in the first thr
 
 ```bash
 TRACE=/path/to/trace       # the folder that holds `metadata`, `index/` and the channel files
-TOOLS=/path/to/scripts     # the folder that holds the nine scripts
+TOOLS=/path/to/scripts     # the folder that holds the ten scripts
 WORK=/path/to/scratch      # an empty folder for slices and notes
 
 mkdir -p "$WORK"
 ls "$TRACE/metadata" "$TRACE/index" > /dev/null && echo "trace folder OK"
-ls $TOOLS/{idx_summary.py,idx_dump.py,idx_slice.py,extract_slice.sh,sched_budget.py,rhythm.py,cpu_ceiling.py,victim_info.py,wake_graph.py} > /dev/null && echo "all nine scripts found"
+ls $TOOLS/{idx_summary.py,idx_dump.py,idx_slice.py,extract_slice.sh,sched_budget.py,rhythm.py,cpu_ceiling.py,cpu_hogs.py,victim_info.py,wake_graph.py} > /dev/null && echo "all ten scripts found"
 ```
 
 Both lines must print OK.
@@ -320,6 +321,7 @@ Decide, by comparing the victim's two rows:
 - **`run` goes up a lot and `wait` stays small:** the victim is doing more work. This is not a cap. Report "the victim is busy, not starved" and **stop**.
 - **`D` goes up a lot:** the victim waits on the disk. This is not a cap. Report it and **stop**.
 - **`S` goes up a lot, while `wait` stays low:** the victim waits on locks, the network, or another service. This is not a cap. Report it and **stop**.
+- **The waits are many but SHORT (a few ms each, hundreds of them, no 50 ms freezes) while the machine is busy:** that is CPU competition — processes sharing a full machine — not a cap. Report "slowed by CPU competition, not a quota" and hand the case to the noisy-neighbor blueprint. **Stop**.
 
 ### Step 6. Look for the rhythm, then measure the ceiling
 
@@ -357,6 +359,7 @@ Read it:
 
 - **Cap:** the busy periods pile up at a flat ceiling clearly **below** the period (high flatness, max about equal to the ceiling). The quota is about the ceiling; the cap in cores is ceiling ÷ period. In the baseline the same process runs free of it.
 - **Ceiling at the full period:** the victim simply saturates one core. A single thread at 100 of 100 ms cannot be told apart from a cap of one full core; say so rather than claiming a cap.
+- **A flat ceiling with BUSY CPUs is not a cap.** N equal busy threads sharing C cores each settle at a flat ~C/N of a core — fair sharing mimics a quota ceiling. A real cap leaves the CPUs IDLE while the victim waits. Decide with `cpu_hogs.py` (Step 7): if the CPU went to other processes rather than idle, this is competition, not a quota.
 - **No flat ceiling and no beat:** the victim is starved, but not by a quota. Report "the victim is starved of CPU, but there is no quota signature", then use the table in 1.3 (noisy neighbor, overload, pinning) to suggest a cause, and **stop**.
 
 Validated on three agentic runs with known limits: a 0.25-core cap read 25.0 ms per 100 ms (max 25.1, 82% flat), a 0.5-core cap read 50.1 ms (87% flat), and the uncapped baseline pegged at the full 100 ms — correctly no cap.
@@ -376,10 +379,16 @@ Validated on three agentic runs with known limits: a 0.25-core cap read 25.0 ms 
 
 If all four look like a cap, go on. If one does not, say which one in your report. Treat the cap as unconfirmed.
 
-Two more checks would make the case stronger, but these scripts do not do them yet:
+One more check settles it, and `cpu_hogs.py` does it:
 
-- Were some CPUs idle while the victim waited? (With a cap, yes.)
-- Which process took the CPU when the victim was switched out? (With a cap, often nobody: the CPU went idle.)
+```bash
+python3 $TOOLS/cpu_hogs.py $WORK/fault_slice.txt 10 $VICTIM
+```
+
+It says where every CPU-second went while the victim had a thread ready and waiting.
+
+- **Cap: idle is a large share.** Nobody took the CPU; the kernel refused the victim. Measured on a real capped run: idle was 96% while the victim waited.
+- **One name (or one group) takes most of it and idle is small: that is a noisy neighbor, not a cap.** Hand the case to the noisy-neighbor blueprint and **stop**. Measured on a real contended run: the aggressor group took 96% and idle was 1%.
 
 **Next:** Step 8.
 

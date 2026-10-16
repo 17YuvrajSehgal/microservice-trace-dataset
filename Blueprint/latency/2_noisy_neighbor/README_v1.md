@@ -181,6 +181,7 @@ Read it:
 - In a normal slice, nobody waits much and the longest wait is a few milliseconds.
 - In a slice inside the window, look at `wait`, `>=1ms`, `>=10ms` and `max_ms`. A neighbor's victims have **many** waits — hundreds of `>=1ms` per 10 s — but the single waits stay short-to-medium (often 1–20 ms). Long 50 ms+ freezes point at a cap instead; keep that in mind for Step 7.
 - **Several processes waiting at once is normal here.** A busy aggressor slows everyone. You do not have to pick the one true victim yet — pick the process you care about, or the one that waits most. Write down its `pid`.
+- **If the biggest waiters are many processes under ONE name, stop and think.** A CPU-hungry group large enough to fill the machine also competes with itself, so its own members top the wait table. They are the AGGRESSOR, not your victim. Pick as victim a process OUTSIDE that group — any other waiter, or the service you care about — and carry the group's name forward as the aggressor candidate for Step 5.
 - The aggressor itself often shows up in this same table: high `run`, and (if it over-fills the machine) its own waits too.
 
 ```bash
@@ -225,6 +226,7 @@ Read it:
 
 - **A neighbor looks like this:** a name that was small (or absent) in the baseline holds a large share in the fault slice. Many processes under one name count as one group — 16 workers called `worker` are one aggressor.
 - Write down the aggressor candidate's name and share.
+- **Check that your baseline really is a baseline.** If the aggressor's name is busy in the baseline slice too, your baseline sits inside the fault window — the shares will look "identical" and prove nothing. Move the baseline earlier, or use a healthy trace of the same system.
 - If the busy share itself did not rise, and no name stands out, there is no aggressor to find — look at the Step 7 table for what else fits.
 
 **Next:** Step 6.
@@ -257,7 +259,7 @@ AGGRESSOR=<pid or name>   # from the output; a group can be a name, e.g. "worker
 
 | Check | Where to look | A neighbor looks like this |
 |---|---|---|
-| Is it really not a cap? | `rhythm.py` and `cpu_ceiling.py` on the victim's fault slice (commands below) | No repeating beat (score stays low), and no flat on-CPU ceiling below the period — the victim's busy periods vary |
+| Is it really not a cap? | `rhythm.py` and `cpu_ceiling.py` on the victim's fault slice (commands below), read together with Step 6's idle share | No repeating beat, and the CPUs were BUSY during the waits. Careful: N equal busy threads on C cores each settle at a FLAT ~C/N of a core — fair sharing mimics a quota ceiling. A real cap also leaves the CPUs idle (Step 6); fair sharing does not |
 | Is the victim just doing more work? | Step 5, the victim's `run` in `sched_budget.py` | Lower in the fault slice than the baseline, or flat — not higher |
 | Is it the disk? | `sched_budget.py`, the victim's `D` | Near 0 in both slices |
 | Is it locks or the network? | `sched_budget.py`, the victim's `S` against `wait` | The waits are for the CPU (`wait`), not sleeps (`S`) |
