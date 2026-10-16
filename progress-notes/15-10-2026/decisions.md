@@ -154,6 +154,32 @@ Did (copy, not move — originals untouched):
 Not done yet (next): wiring the agent's toolset to the eight blueprint tools —
 that is the design task this copy sets up.
 
+## (16-10) Trimmed Blueprint/agent to the agent's actual dependency closure
+
+User: keep only what the agent uses; the 12 skills are old-generation (we
+have exactly one blueprint now, svc_cpu_cap README_v1).
+
+Method, not guesswork: computed the import graph over all 28 modules.
+closure(agent_v2) = 13 modules (agent, agent_v2, coderepo, codetool, config,
+context_builder, ctf_tool, leakguard, shared_context, skillreg, source_tool,
+tools, transcript) + vendored stratatrace/.
+
+Removed (still in agentic-rca/ at the repo root — nothing is lost):
+- skills/ (12 old-blueprint skills). skillreg.py STAYS: agent.py imports it
+  top-level, and it degrades cleanly to 0 skills (verified). It becomes the
+  mount point for blueprint-backed skills.
+- 15 out-of-closure modules: evaluate, degrade, runs, baseline_stat,
+  rcaeval_adapter, analyze, audit_leakage, bundle_artifact,
+  component_census, cost_report, inspect_run, peek_run, run_digest, and the
+  2 test files (they test kept modules but drive the old campaign setup).
+- 13 RESULTS-*.md + TRANSCRIPTS.md (old campaign records), campaign_driver /
+  review_driver / 3 sweep sbatch (old campaign machinery).
+- agent_v2 needs no runs.py: it takes the run dir as argv[1].
+
+654K, 17 entries. Smoke-verified after the cut: all 13 modules import
+(incl. the full agent_v2 LangGraph chain), skill registry loads 0 skills
+without error. README rewritten to match the clean folder.
+
 **One non-number accuracy item:** `paper2.tex` fig:method caption (line ~160)
 says "`prev_state`=0 means preempted" — that's the old, incomplete
 description (misses 256 = preempt-throttle). Flagged, not yet edited (paper
