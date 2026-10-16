@@ -180,6 +180,32 @@ Removed (still in agentic-rca/ at the repo root — nothing is lost):
 (incl. the full agent_v2 LangGraph chain), skill registry loads 0 skills
 without error. README rewritten to match the clean folder.
 
+## (16-10) Second trim: agent.py consolidated into utils.py; stratatrace out
+
+User: v2 shouldn't need stratatrace; fold agent.py's pieces into v2 or a
+utils module. Verified first, then cut:
+
+- **stratatrace was only used for `load_run(rd).run_dir`** — the real imports
+  were in three `__main__` blocks, and v2's kernel-only path touches nothing
+  but the run-directory string. So `diagnose(run_dir)` / `Chat(run_dir)` now
+  take the path directly; vendored stratatrace/ deleted.
+- **agent.py (v1) retired.** What v2 imported from it moved to a new
+  `utils.py` with public names (prompts KO_HEAD/FAULT_VOCAB/KO_RULES byte-
+  identical — v2 asserts on the wording; fit_result; api_call/checked/
+  ProviderError; tool_defs now kernel-only-only with the "other" fault enum
+  baked in; run_tool now takes run_dir). v1-only machinery (four-modality
+  prompts+tools, loops, oneshot baseline, ranked mode, nudges) NOT copied.
+- Also deleted as v1-only: tools.py (RunTools, the pandas modality layer),
+  source_tool.py, context_builder.py, shared_context.py.
+- Fixed a latent bug while there: Ctx never initialized `self.repo`, so a
+  hallucinated code_* call in the graph path would AttributeError; now None.
+- requirements.txt rewritten (adds langgraph/pandas/numpy, drops the stale
+  stratatrace/mcp lines).
+
+Now 12 files. Verified: tool_defs == the 7 kernel-only schemas, fit_result
+trims to valid JSON, agent_v2 imports with wording asserts passing, graph
+builds, new signatures diagnose(run_dir,...) / Chat(run_dir,...).
+
 **One non-number accuracy item:** `paper2.tex` fig:method caption (line ~160)
 says "`prev_state`=0 means preempted" — that's the old, incomplete
 description (misses 256 = preempt-throttle). Flagged, not yet edited (paper

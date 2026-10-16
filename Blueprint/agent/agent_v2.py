@@ -15,8 +15,8 @@ WHAT CHANGED FROM v1 (agent.py), and why each one is here rather than being a ni
 
 WHAT DELIBERATELY DID NOT CHANGE, because the study depends on it:
 
-  - the prompt body, the fault vocabulary and the submit_diagnosis contract are imported from
-    agent.py rather than rewritten, so v1 and v2 answer the same question in the same words.
+  - the prompt body, the fault vocabulary and the submit_diagnosis contract live in utils.py
+    (extracted verbatim from v1), so v2 answers the same question in the same words.
   - leakguard masks every tool result, including anything run_python prints.
   - transcript.py records every prompt, every raw API response, every tool result and every
     code snippet. LangGraph orchestrates; it never owns the prompt. That is the whole reason
@@ -24,23 +24,23 @@ WHAT DELIBERATELY DID NOT CHANGE, because the study depends on it:
     the audit record is the paper's evidence and must not depend on a library's message
     translation.
   - NOTHING HERE READS ground_truth.json.
+
+The agent needs only a RUN DIRECTORY (the folder that holds the kernel trace); there is no
+data-layer dependency. diagnose(run_dir) / Chat(run_dir) take the path directly.
 """
 from __future__ import annotations
 import json, operator, os, sys, threading, time
 from typing import Annotated, Any, TypedDict
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import config
 import codetool
 import leakguard
 import transcript as T
-from tools import RunTools
-from agent import (FAULT_TYPES, KERNEL_ONLY_TOOLS, SENT_CAP, SENT_CAP_BY_TOOL,
-                   checked,
-                   _api_call, _fit_result, _run_tool, _tool_defs, _unmask_diagnosis,
-                   _KO_HEAD, _FAULT_VOCAB, _KO_RULES)
+from utils import (KERNEL_ONLY_TOOLS, SENT_CAP, SENT_CAP_BY_TOOL,
+                   api_call, checked, fit_result, run_tool, tool_defs, unmask_diagnosis,
+                   KO_HEAD, FAULT_VOCAB, KO_RULES)
 
 # the chat-only code tools return file text; give them the room ctf_lines gets
 SENT_CAP_BY_TOOL.update({"code_read": 18000, "code_grep": 14000, "code_tree": 14000})
@@ -109,9 +109,9 @@ class S(TypedDict, total=False):
 _OLD_COUNT = "through six tools."
 _OLD_LAST = ("One shows the raw record: ctf_lines "
              "(real event lines with all their fields, over a narrow range).")
-assert _OLD_COUNT in _KO_HEAD and _OLD_LAST in _KO_HEAD, "v1 prompt wording changed"
+assert _OLD_COUNT in KO_HEAD and _OLD_LAST in KO_HEAD, "v1 prompt wording changed"
 
-_V2_HEAD = _KO_HEAD.replace(
+_V2_HEAD = KO_HEAD.replace(
     _OLD_COUNT, "through seven tools.").replace(
     _OLD_LAST, _OLD_LAST + " And one computes whatever the other six cannot express: "
     "run_python, which runs Python you write over the WHOLE recording, already loaded as a "
@@ -157,7 +157,7 @@ _PLANNER = (
 )
 
 _WORKER = (
-    _V2_HEAD + _FAULT_VOCAB + _V2_CODE +
+    _V2_HEAD + FAULT_VOCAB + _V2_CODE +
     "YOU ARE ONE WORKER of several, each given a different part of the same investigation. "
     "Do YOUR part properly rather than rushing to a verdict - another worker is covering the "
     "angle you were not given, and a reviewer will put the pieces together.\n"
@@ -187,7 +187,7 @@ _REVIEWER = (
 )
 
 _SYNTH = (
-    _V2_HEAD + _FAULT_VOCAB + _KO_RULES + "\n\n"
+    _V2_HEAD + FAULT_VOCAB + KO_RULES + "\n\n"
     "YOU ARE THE SYNTHESISER. The investigation is finished. Below is everything the workers "
     "recorded. Weigh it, resolve disagreements by which claim carries the stronger numbers, "
     "and commit with submit_diagnosis.\n"
@@ -255,8 +255,9 @@ _REVIEW_DEF = {
 # request/response over a pipe, so serialising the calls is both necessary and cheap.
 # --------------------------------------------------------------------------------------
 class Ctx:
-    def __init__(self, tools, guard, tr, run_id, index_root=None):
-        self.tools, self.guard, self.tr, self.run_id = tools, guard, tr, run_id
+    def __init__(self, run_dir, guard, tr, run_id, index_root=None):
+        self.run_dir, self.guard, self.tr, self.run_id = run_dir, guard, tr, run_id
+        self.repo = None                      # set by Chat when a code repo is connected
         self.sb = codetool.Sandbox(run_id, index_root=index_root)
         self.sb_lock = threading.Lock()
         self.tr_lock = threading.Lock()
@@ -295,7 +296,7 @@ def _call(messages, tools, node, step, force=None):
     # checked() raises when the provider returns 200 with an error body - OpenRouter does that
     # for rate limits - so _api_call's retry can see it. Without it the SDK hands back an object
     # whose .choices is None and the next line dies with a TypeError that says nothing.
-    r = _api_call(lambda: checked(client.chat.completions.create(
+    r = api_call(lambda: checked(client.chat.completions.create(
         model=config.model_id(), messages=messages, **kw)), CTX.tr, step)
     CTX.event("api_response", node=node, step=step,
               latency_ms=int((time.time() - t0) * 1000), response=T.to_jsonable(r))
@@ -326,11 +327,11 @@ def _exec_tool(name, args, node, step):
         res = CTX.repo.call(name, args)
         b = len(json.dumps(res, default=str))
     else:
-        res, b = _run_tool(CTX.tools, name, args, CTX.guard)
+        res, b = run_tool(CTX.run_dir, name, args)
     CTX.bytes += b
     masked = CTX.guard.mask_obj(res)
     cap = SENT_CAP_BY_TOOL.get(name, SENT_CAP)
-    sent, cut, dropped = _fit_result(masked, cap)
+    sent, cut, dropped = fit_result(masked, cap)
     CTX.event("tool_execution", node=node, step=step, tool=name, arguments=args,
               result=res, result_bytes=b, sent=sent, truncated=cut, dropped=dropped,
               sent_cap=cap)
@@ -407,7 +408,7 @@ def _trim_thread(msgs, node=None, step=None):
 
 
 def _worker_tools():
-    defs = [t for t in _tool_defs(kernel_only=True)
+    defs = [t for t in tool_defs()
             if t["name"] in KERNEL_ONLY_TOOLS and t["name"] != "submit_diagnosis"]
     return defs + [codetool.TOOL_DEF, _NOTE_DEF]
 
@@ -620,7 +621,7 @@ def _computed_block() -> str:
 
 
 def n_synth(state: S) -> dict:
-    defs = [t for t in _tool_defs(kernel_only=True) if t["name"] == "submit_diagnosis"]
+    defs = [t for t in tool_defs() if t["name"] == "submit_diagnosis"]
     msgs = [{"role": "system", "content": _SYNTH},
             {"role": "user", "content":
              "Kernel trace '%s'.\n\nWHAT THE WORKERS RECORDED:\n\n%s\n\n"
@@ -659,14 +660,13 @@ def build_graph():
 
 
 # --------------------------------------------------------------------------------------
-def diagnose(run, app=None, transcript_path=None, condition=None, meta=None,
+def diagnose(run_dir, transcript_path=None, condition=None, meta=None,
              skills=None, skill_given=False, problem_hint=None, index_root=None,
-             kernel_only=True, **_ignored) -> dict:
-    """Same signature and same return shape as agent.diagnose, so the harness is unchanged."""
+             **_ignored) -> dict:
+    """Investigate the kernel trace in run_dir and return the diagnosis + usage stats."""
     global CTX
     t0 = time.time()
-    tools = RunTools(run, app=app)
-    run_id = os.path.basename(run.run_dir.rstrip("/"))
+    run_id = os.path.basename(run_dir.rstrip("/"))
     guard = leakguard.Guard(enabled=config.MASK_NAMES)
     shown = leakguard.alias_run(run_id) if config.MASK_NAMES else run_id
 
@@ -675,9 +675,9 @@ def diagnose(run, app=None, transcript_path=None, condition=None, meta=None,
                     "incident_alias": shown, "max_rounds": MAX_ROUNDS,
                     "max_worker_steps": MAX_WORKER_STEPS, "max_subtasks": MAX_SUBTASKS,
                     "sent_cap_chars": SENT_CAP, "sent_cap_by_tool": dict(SENT_CAP_BY_TOOL),
-                    "kernel_only": kernel_only})
+                    "kernel_only": True})
     CANCEL.clear()
-    CTX = Ctx(tools, guard, tr, run_id, index_root=index_root)
+    CTX = Ctx(run_dir, guard, tr, run_id, index_root=index_root)
 
     global _WORKER, _SYNTH
     worker_sys, synth_sys = _WORKER, _SYNTH
@@ -706,7 +706,7 @@ def diagnose(run, app=None, transcript_path=None, condition=None, meta=None,
         final = build_graph().invoke({"run_id": run_id, "shown_id": shown,
                                       "findings": [], "worker_stats": [], "round": 1},
                                      {"recursion_limit": 60})
-        dx = _unmask_diagnosis(final.get("diagnosis"), guard, tr)
+        dx = unmask_diagnosis(final.get("diagnosis"), guard, tr)
     except Exception as e:                                              # noqa: BLE001
         tr.event("error", error=repr(e))
         tr.finalize(None, "error", wall_s=round(time.time() - t0, 1))
@@ -748,12 +748,11 @@ def diagnose(run, app=None, transcript_path=None, condition=None, meta=None,
 
 
 if __name__ == "__main__":
-    from stratatrace import load_run
     rd = sys.argv[1]
     tp = os.environ.get("RCA_TRANSCRIPT",
                         os.path.join("transcripts", "v2",
                                      os.path.basename(rd.rstrip("/")) + ".json"))
-    o = diagnose(load_run(rd), app=os.environ.get("STRATATRACE_APP"), transcript_path=tp)
+    o = diagnose(rd, transcript_path=tp)
     print(json.dumps(o, indent=2, default=str))
 
 
@@ -794,14 +793,14 @@ _CHAT_SYS = (
 class Chat:
     """A follow-up conversation grounded in a finished run. One instance per run."""
 
-    def __init__(self, run, app=None, skill=None, diagnosis=None, findings=None,
+    def __init__(self, run_dir, skill=None, diagnosis=None, findings=None,
                  computed=None, index_root=None, restore=None, code_root=None):
-        run_id = os.path.basename(run.run_dir.rstrip("/"))
+        run_id = os.path.basename(run_dir.rstrip("/"))
         # enabled=False: the run's verdict was already unmasked for the human, so chat must
         # speak real names too - a masked alias would not match the question being asked.
         guard = leakguard.Guard(enabled=False)
         tr = T.Transcript(run_id, method="agent_v2-chat", condition="chat")
-        self.ctx = Ctx(RunTools(run, app=app), guard, tr, run_id, index_root=index_root)
+        self.ctx = Ctx(run_dir, guard, tr, run_id, index_root=index_root)
         sysp = _CHAT_SYS
         if skill is not None:
             sysp += "\n\nBLUEPRINT USED IN THE INVESTIGATION:\n" + skill.body

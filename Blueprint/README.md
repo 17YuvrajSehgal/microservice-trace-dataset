@@ -16,7 +16,7 @@ blueprints, new tools, and agent work all happen here.
 | `latency/1_svc_cpu_cap/` | The first blueprint: find a CPU cap from a kernel trace. `README_v1.md` is the blueprint; `tools/` are its eight scripts; `EVALUATION-on-agentic-runs.md` is its test against real agentic faults (40/40 detected, 0 false alarms) |
 | `latency/1_svc_cpu_cap/agentic-os-noise/` | The OS-noise study: collection + analysis + runs for the workshop paper |
 | `latency/2–4_*` | The other three mechanism studies (threads, memory, disk I/O) |
-| `agent/` | **The RCA agent** — a trimmed copy of `agentic-rca/`: only the modules the agent itself uses, with the `stratatrace` data layer vendored in. The old skills and campaign machinery stayed behind. See its README |
+| `agent/` | **The kernel-trace RCA agent** — `agent_v2.py` + its support module `utils.py` and tools. Takes a run directory; no data-layer dependency. Distilled from `agentic-rca/` (which keeps the v1 agent, campaign machinery, old skills). See its README |
 | `research-paper/` | The OS-noise paper (`paper2.tex`), figures, and the scripts that produce every number |
 
 ## Direction
