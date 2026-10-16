@@ -6,23 +6,24 @@ small new trace. Then babeltrace2 reads the small trace in seconds.
 Usage:
     python3 idx_slice.py <trace_dir> <start> <end> <out_dir> [--offset-ns N]
 
-    <trace_dir>  the folder that holds channel0_0, ..., metadata and index/
-                 (for the worked run: ~/run_A/kernel/kernel)
+    <trace_dir>  the folder that holds the trace: the metadata file, the
+                 channel data files, and index/
     <start>,<end> UTC, as "YYYY-MM-DD HH:MM:SS" (fractions allowed)
     <out_dir>    new folder, must not exist yet
 
 Then trim exactly and read:
     babeltrace2 --clock-gmt --begin "<start>" --end "<end>" <out_dir>
 
-The packets are whole 8 MiB blocks, so the small trace holds a bit more than
-your window (up to about 2 s extra on each side per CPU). The --begin and
+The script copies whole packets, so the small trace holds a bit more than
+your window: up to one packet's time on each side, per CPU. The --begin and
 --end flags of babeltrace2 trim the rest.
 
 How the time is converted:
     The idx file stores time as clock cycles of the trace clock. To get UTC,
     the script reads "offset-from-origin" from the clock-class record in the
     metadata file. If it cannot find it, give --offset-ns yourself:
-        offset = clock_realtime_ns - clock_monotonic_ns   (from runinfo_start.txt)
+        offset = (real-time clock in ns) - (monotonic clock in ns), both read
+        on the traced machine at about the same moment, if you have them
     The script prints the offset it used. Check it: the first event that
     babeltrace2 prints should fall inside the first packet's time range.
 
@@ -128,11 +129,12 @@ def main():
         data_path = os.path.join(trace, name)
         entries = read_idx(idx_path)
         picked = [e for e in entries if to_wall(e[3]) >= t0 and to_wall(e[2]) <= t1]
-        with open(data_path, "rb") as src, open(os.path.join(out, name), "wb") as dst:
-            for off, size, tb, te, disc in picked:
-                src.seek(off)
-                dst.write(src.read(size))
-                total_out += size
+        if picked:     # no packet in the window: write no file for this stream
+            with open(data_path, "rb") as src, open(os.path.join(out, name), "wb") as dst:
+                for off, size, tb, te, disc in picked:
+                    src.seek(off)
+                    dst.write(src.read(size))
+                    total_out += size
         total_in += sum(e[1] for e in entries)
         if entries:
             print(f"{name}: {len(picked):>3} of {len(entries):>3} packets  "

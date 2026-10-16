@@ -44,52 +44,39 @@ Three things, in this order of importance:
 
 ### 1. Title (0:00–0:30)
 - Title, name, supervisor, Brock.
-- One spoken line: "Software is now diagnosed by AI agents. My thesis is
-  about making that diagnosis something that accumulates instead of being
-  redone every time."
+- One spoken line: "Software is now diagnosed by AI agents. My thesis is about making that diagnosis something that accumulates instead of being redone every time."
 
-### 2. Background: how we diagnose software (0:30–2:00)
+### 2. Background: how we diagnose software
+- These slides must explain the main idea behind how the software diagnosis works?
+- What is telemetry, what are the different kinds of it, and how to collect it?
 - Four telemetry types: metrics, logs, distributed traces, kernel traces.
-- A small diagram: app layer (metrics/logs/traces) vs below-app layer
-  (kernel). Say most tooling stops at the line.
-- "Diagnosis is skilled work: which signal, which events, which thresholds."
+- A small diagram: app layer (metrics/logs/traces) vs below-app layer (kernel). Say most tooling stops at the line.
+- "Diagnosis is skilled work: which signals, which events, which thresholds."
 
-### 3. Problem 1: the expertise is thrown away (2:00–3:30)
+## Problems with current approaches:
+### 3. Problem 1: the expertise is thrown away
+- We need to explain with a real case scenario. If a company has experts in the field, they do diagnostics, and there practices are only present in their minds – not stored anywhere. 
 - An investigation runs once. The reasoning survives only as a closed ticket.
-- AI agents inherit this: they re-derive every investigation from scratch,
-  and an LLM has no idea what a CPU cap looks like in a scheduler trace.
+- AI agents or other engineers: re-derive every investigation from scratch, and an LLM has no idea what a CPU cap looks like in a scheduler trace.
 - Spoken hook: "We keep the fix. We throw away the method."
 
-### 4. Problem 2: datasets stop at the application boundary (3:30–4:30)
-- One table: RCAEval, LEMMA-RCA, OpenRCA, AIOps Challenge, Nezha, LO2 —
-  metrics ✓ logs ✓ traces ✓ kernel ✗ (all of them).
-- So faults below the app (co-tenant CPU theft, cgroup caps, saturated disk)
-  are outside both the analysis and its evaluation.
+### 4. Problem 2: datasets stop at the application boundary
+- One table: RCAEval, LEMMA-RCA, OpenRCA, AIOps Challenge, Nezha, LO2 —  metrics ✓ logs ✓ traces ✓ kernel ✗ (all of them).
+- So faults below the app (co-tenant CPU theft, cgroup caps, saturated disk) are outside both the analysis and its evaluation.
 - Source: `thesis/PROPOSAL.md` §3.1.
 
-### 5. The idea: the observability blueprint (4:30–6:30)
-- Definition: one solved investigation, written down so it can be
-  **re-executed** — what to collect, what to run, how to decide, when not to
-  trust it.
-- Show the anatomy as a short list (from the schema): applies-when,
-  reproduction, collection order (exact tracepoints), runnable steps,
-  decision rule with measured thresholds, rule-out conditions.
-- **Show one real discriminator** from `blueprints/problems/host-cpu-saturation/blueprint.json`:
-  host utilisation ≥0.99 — measured 0.991–0.998 for saturation vs 0.619–0.681
-  co-tenant vs 0.462–0.531 healthy (n=17). "Every claim carries the
-  measurement that proved it."
+### 5. The idea: the observability blueprint
+- Definition: one solved investigation, written down so it can be **re-executed** — what to collect, what to run, how to decide, when not to trust it, common patterns and antipatterns for RCA
+- Show the anatomy as a short list (from the schema): applies-when, reproduction, collection order (exact tracepoints), runnable steps, decision rule with measured thresholds, rule-out conditions.
+- **Show one real discriminator** from `Blueprint/latency/1_svc_cpu_cap/README_v1.md`:
 
-### 6. Two properties that make it more than a runbook (6:30–7:30)
-- **Executable.** Steps bind to real commands through a capability registry.
-  A blueprint never names a tool — swap babeltrace2 for Trace Compass and
+### 6. Two properties that make it more than a runbook
+- **Executable.** Steps bind to real commands through a capability registry. A blueprint never names a tool — swap babeltrace2 for Trace Compass and
   the blueprint does not change.
-- **Evidence-bound.** A validator rejects any claim without a measurement —
-  measured against *every* fault family, not just its own. Retracted claims
-  stay in the file as "do not claim", with the measurement that killed them.
+- **Evidence-bound.** A validator rejects any claim without a measurement — measured against *every* fault family, not just its own. Retracted claims stay in the file as "do not claim", with the measurement that killed them.
 
-### 7. The framework around the blueprint (7:30–8:30)
-- One diagram: incident → evidence-based **selection** → **hierarchy**
-  (issue class → cause) → blueprint **executes** → verdict → **feedback**
+### 7. The framework around the blueprint
+- One diagram: incident → evidence-based **selection** → **hierarchy** (issue class → cause) → blueprint **executes** → verdict → **feedback**
   into what to collect next time.
 - Say: the library is the contribution, not any single blueprint.
 
@@ -99,6 +86,7 @@ Three things, in this order of importance:
   0.001 ms; 779 GB compressed, 1.18 TB raw.
 - The kernel layer is the one no public incident corpus has.
 - Source: `blueprints/docs/DATASET-v2-INVENTORY.md`.
+also tell them that we have already published work related to kernel traces earlier.
 
 ### 9. What exists: blueprints + a leakage-controlled agent (9:30–10:30)
 - 16 blueprint folders, 11 wired into the experiment harness.
