@@ -1,12 +1,12 @@
 # Blueprint: finding a CPU cap on one service from a kernel trace
 
-| | |
-|---|---|
-| Problem class | Latency |
-| Root cause this blueprint confirms or rejects | One service (container) has a CPU limit that is too small for its work |
-| Evidence | An LTTng kernel trace only: the `metadata` file, the channel data files, and the `index/` folder |
-| Also allowed | The list of event types the trace holds (read from `metadata`), and the event rules you turned on when you recorded the trace, if you know them |
-| Not used | Logs, request traces (spans), metrics, container settings |
+|                                               |                                                                                                                                                 |
+|-----------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------|
+| Problem class                                 | Latency                                                                                                                                         |
+| Root cause this blueprint confirms or rejects | One service (container) has a CPU limit that is too small for its work                                                                          |
+| Evidence                                      | An LTTng kernel trace only: the `metadata` file, the channel data files, and the `index/` folder                                                |
+| Also allowed                                  | The list of event types the trace holds (read from `metadata`), and the event rules you turned on when you recorded the trace, if you know them |
+| Not used                                      | Logs, request traces (spans), metrics, container settings                                                                                       |
 
 **How to use this blueprint.** Read Part 1 once, to learn what the fault is and what it looks like. Then do the steps in Part 4 in order. Each step says what to run, how to read the output, and which step comes next. Some steps can end the investigation. If a step tells you to stop, write down what you found and stop.
 
@@ -56,45 +56,43 @@ For the rest of the machine:
 
 Several causes make a process slow. This blueprint must tell them apart. You will use this table in Step 7.
 
-| Cause | What the kernel trace shows | How it differs from a cap |
-|---|---|---|
-| **CPU cap (this fault)** | Victim waits long for the CPU, `run` is low and flat, burst-and-freeze rhythm, other processes fine | The rhythm and the per-period ceiling. One container is hit — which can be SEVERAL processes, because a cgroup limit covers the whole process tree |
-| Whole machine overloaded | Processes in DIFFERENT containers wait for the CPU at the same time, no regular rhythm, no idle CPUs | A cap hits one container only. Several waiters in the SAME container are still one cap |
-| Noisy neighbor | The victim waits while one busy process takes the CPU; waits are irregular | A cap needs no busy neighbor |
-| Too much work, or garbage collection | Victim `run` goes **up**, its waits stay low | In a cap, `run` goes down or stays flat |
-| Slow disk | Disk-type sleep (`D`) goes up | In a cap, `D` stays near 0 |
-| Lock waiting | Threads sleep (`S`), waits for the CPU stay low | In a cap, threads are ready, not sleeping |
-| Slow network or slow dependency | Threads sleep (`S`), waits for the CPU stay low | Same as above |
-| CPU pinning (cpuset) | Victim runs only on some CPUs while other CPUs are idle | A cap is not tied to particular CPUs |
+| Cause                                | What the kernel trace shows                                                                          | How it differs from a cap                                                                                                                          |
+|--------------------------------------|------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------|
+| **CPU cap (this fault)**             | Victim waits long for the CPU, `run` is low and flat, burst-and-freeze rhythm, other processes fine  | The rhythm and the per-period ceiling. One container is hit — which can be SEVERAL processes, because a cgroup limit covers the whole process tree |
+| Whole machine overloaded             | Processes in DIFFERENT containers wait for the CPU at the same time, no regular rhythm, no idle CPUs | A cap hits one container only. Several waiters in the SAME container are still one cap                                                             |
+| Noisy neighbor                       | The victim waits while one busy process takes the CPU; waits are irregular                           | A cap needs no busy neighbor                                                                                                                       |
+| Too much work, or garbage collection | Victim `run` goes **up**, its waits stay low                                                         | In a cap, `run` goes down or stays flat                                                                                                            |
+| Slow disk                            | Disk-type sleep (`D`) goes up                                                                        | In a cap, `D` stays near 0                                                                                                                         |
+| Lock waiting                         | Threads sleep (`S`), waits for the CPU stay low                                                      | In a cap, threads are ready, not sleeping                                                                                                          |
+| Slow network or slow dependency      | Threads sleep (`S`), waits for the CPU stay low                                                      | Same as above                                                                                                                                      |
+| CPU pinning (cpuset)                 | Victim runs only on some CPUs while other CPUs are idle                                              | A cap is not tied to particular CPUs                                                                                                               |
 
 ---
 
 ## Part 2. What you need
 
-| Input | Why |
-|---|---|
-| The trace folder: the `metadata` file, the channel data files (one per CPU), and `index/` | Everything comes from here. `metadata` holds the clock and the event types. `index/` makes cutting time slices fast |
-| `sched_switch` and `sched_waking` (or `sched_wakeup`) events in the trace | To measure running, waiting, and sleeping time |
-| A normal period to compare with: a normal stretch in the same trace, or a fault-free trace of the same system | Numbers only mean something when you compare them |
-| `babeltrace2`, `python3`, GNU `date` | To read the trace and run the scripts |
-| The ten scripts below, all in one folder | To read the index, cut slices, and measure |
+| Input                                                                                                         | Why                                                                                                                 |
+|---------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------|
+| The trace folder: the `metadata` file, the channel data files (one per CPU), and `index/`                     | Everything comes from here. `metadata` holds the clock and the event types. `index/` makes cutting time slices fast |
+| `sched_switch` and `sched_waking` (or `sched_wakeup`) events in the trace                                     | To measure running, waiting, and sleeping time                                                                      |
+| A normal period to compare with: a normal stretch in the same trace, or a fault-free trace of the same system | Numbers only mean something when you compare them                                                                   |
+| `babeltrace2`, `python3`, GNU `date`                                                                          | To read the trace and run the scripts                                                                               |
+| The ten scripts below, all in one folder                                                                      | To read the index, cut slices, and measure                                                                          |
 
 The scripts:
 
-| Script | What it does |
-|---|---|
-| `idx_summary.py` | Trace date, start, end, length, CPUs, health checks, and data written over time. Reads only the index, so it takes seconds |
-| `idx_dump.py` | Every field of one index file, one row per packet |
-| `idx_slice.py` | Copies only the packets that cover a time window into a small trace |
-| `extract_slice.sh` | Cuts one time slice (using `idx_slice.py`) and keeps only the scheduling events |
-| `sched_budget.py` | Time budget per process: running, waiting, sleeping, long waits |
-| `rhythm.py` | How often a process gets the CPU, in 10 ms buckets, and whether it repeats |
-| `cpu_ceiling.py` | The victim's on-CPU time per period: a flat ceiling below the period is the direct signature of a quota |
-| `cpu_hogs.py` | Who used the CPU, and who held it WHILE the victim waited. A cap leaves the CPUs idle during the waits; this proves it |
-| `victim_info.py` | Who the victim is: PID, names, threads, container |
-| `wake_graph.py` | Which processes wake the victim, and which ones it wakes |
-
-`idx_summary.py` and `idx_dump.py` import `idx_slice.py`, and `extract_slice.sh` calls it. Keep all ten in the same folder.
+| Script             | What it does                                                                                                               |
+|--------------------|----------------------------------------------------------------------------------------------------------------------------|
+| `idx_summary.py`   | Trace date, start, end, length, CPUs, health checks, and data written over time. Reads only the index, so it takes seconds |
+| `idx_dump.py`      | Every field of one index file, one row per packet                                                                          |
+| `idx_slice.py`     | Copies only the packets that cover a time window into a small trace                                                        |
+| `extract_slice.sh` | Cuts one time slice (using `idx_slice.py`) and keeps only the scheduling events                                            |
+| `sched_budget.py`  | Time budget per process: running, waiting, sleeping, long waits                                                            |
+| `rhythm.py`        | How often a process gets the CPU, in 10 ms buckets, and whether it repeats                                                 |
+| `cpu_ceiling.py`   | The victim's on-CPU time per period: a flat ceiling below the period is the direct signature of a quota                    |
+| `cpu_hogs.py`      | Who used the CPU, and who held it WHILE the victim waited. A cap leaves the CPUs idle during the waits; this proves it     |
+| `victim_info.py`   | Who the victim is: PID, names, threads, container                                                                          |
+| `wake_graph.py`    | Which processes wake the victim, and which ones it wakes                                                                   |
 
 ---
 
@@ -139,12 +137,12 @@ echo "DAY=$DAY TRACE_START=$TRACE_START TRACE_END=$TRACE_END"
 
 Read the four health checks:
 
-| Check | Good result | If it is not good |
-|---|---|---|
-| lost events | 0 in every row | Events are missing near those packets. Counts and waits there are too low. Avoid those times, or say so in your report |
-| time gaps | none, or only gaps under about 1 ms | Small gaps are harmless. A gap of many milliseconds means a stretch with no data on that CPU. Avoid it |
-| seq gaps | none | A packet is missing. Avoid that time |
-| file sizes | match | The index does not match the data. Do not trust the index. Read the trace without it |
+| Check       | Good result                         | If it is not good                                                                                                      |
+|-------------|-------------------------------------|------------------------------------------------------------------------------------------------------------------------|
+| lost events | 0 in every row                      | Events are missing near those packets. Counts and waits there are too low. Avoid those times, or say so in your report |
+| time gaps   | none, or only gaps under about 1 ms | Small gaps are harmless. A gap of many milliseconds means a stretch with no data on that CPU. Avoid it                 |
+| seq gaps    | none                                | A packet is missing. Avoid that time                                                                                   |
+| file sizes  | match                               | The index does not match the data. Do not trust the index. Read the trace without it                                   |
 
 Two things to know about the times:
 
@@ -292,28 +290,28 @@ The victim's row is always shown, even if it is not in the top 12.
 
 The columns:
 
-| Column | Meaning |
-|---|---|
-| `run` | Average number of CPU cores in use |
-| `wait` | Average number of threads that were ready but had no CPU |
-| `preempt` | The part of `wait` that came from being switched out while still runnable |
-| `S` | Average number of threads asleep (waiting for an event, a lock, a timer, or the network) |
-| `D` | Average number of threads in disk-type sleep |
-| `>=1ms`, `>=10ms`, `>=50ms` | How many single waits for a CPU lasted at least that long |
-| `max_ms` | The longest single wait for a CPU |
+| Column                      | Meaning                                                                                  |
+|-----------------------------|------------------------------------------------------------------------------------------|
+| `run`                       | Average number of CPU cores in use                                                       |
+| `wait`                      | Average number of threads that were ready but had no CPU                                 |
+| `preempt`                   | The part of `wait` that came from being switched out while still runnable                |
+| `S`                         | Average number of threads asleep (waiting for an event, a lock, a timer, or the network) |
+| `D`                         | Average number of threads in disk-type sleep                                             |
+| `>=1ms`, `>=10ms`, `>=50ms` | How many single waits for a CPU lasted at least that long                                |
+| `max_ms`                    | The longest single wait for a CPU                                                        |
 
 The script reads the `prev_state` code of each `sched_switch`. It prints every code it saw on the first line. Check that the codes are ones it knows:
 
-| Code | Meaning |
-|---|---|
-| 0 | Runnable: gave up the CPU but still wants it |
-| 1 | `S`: sleeping |
-| 2 | `D`: disk-type sleep |
-| 4, 8 | Stopped, traced |
-| 16, 32 | Exiting (dead, zombie) |
-| 64 | Parked |
-| 128 | `I`: idle sleep (kernel worker threads) |
-| 256 | Flag: preempted while runnable. Counted as waiting |
+| Code   | Meaning                                            |
+|--------|----------------------------------------------------|
+| 0      | Runnable: gave up the CPU but still wants it       |
+| 1      | `S`: sleeping                                      |
+| 2      | `D`: disk-type sleep                               |
+| 4, 8   | Stopped, traced                                    |
+| 16, 32 | Exiting (dead, zombie)                             |
+| 64     | Parked                                             |
+| 128    | `I`: idle sleep (kernel worker threads)            |
+| 256    | Flag: preempted while runnable. Counted as waiting |
 
 Decide, by comparing the victim's two rows:
 
@@ -360,7 +358,8 @@ Read it:
 - **Cap:** the busy periods pile up at a flat ceiling clearly **below** the period (high flatness, max about equal to the ceiling). The quota is about the ceiling; the cap in cores is ceiling ÷ period. In the baseline the same process runs free of it.
 - **Ceiling at the full period:** the victim simply saturates one core. A single thread at 100 of 100 ms cannot be told apart from a cap of one full core; say so rather than claiming a cap.
 - **A flat ceiling with BUSY CPUs is not a cap.** N equal busy threads sharing C cores each settle at a flat ~C/N of a core — fair sharing mimics a quota ceiling. A real cap leaves the CPUs IDLE while the victim waits. Decide with `cpu_hogs.py` (Step 7): if the CPU went to other processes rather than idle, this is competition, not a quota.
-- **No flat ceiling and no beat:** the victim is starved, but not by a quota. Report "the victim is starved of CPU, but there is no quota signature", then use the table in 1.3 (noisy neighbor, overload, pinning) to suggest a cause, and **stop**.
+- **Low flatness? Check your slice before concluding.** Under a load that comes in waves, periods where the victim had little to do mix into the window and drag the flatness down. Re-cut one slice on the victim's BUSIEST stretch (the slice where `sched_budget.py` showed it waiting most) and measure again. Measured on one real capped service: one slice read "not flat" while another slice of the same fault read a clean 20–26 ms per 100 ms — the fault had not changed, the slice had.
+- **No flat ceiling and no beat, even on the busy stretch:** the victim is starved, but not by a quota. Report "the victim is starved of CPU, but there is no quota signature", then use the table in 1.3 (noisy neighbor, overload, pinning) to suggest a cause, and **stop**.
 
 Validated on three agentic runs with known limits: a 0.25-core cap read 25.0 ms per 100 ms (max 25.1, 82% flat), a 0.5-core cap read 50.1 ms (87% flat), and the uncapped baseline pegged at the full 100 ms — correctly no cap.
 

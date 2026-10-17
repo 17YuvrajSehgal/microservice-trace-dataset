@@ -16,13 +16,13 @@
 
 ### 1.1 What the fault is
 
-A machine is shared. Another workload on it — a co-tenant container, a batch job, a backup, a runaway script — starts using a lot of CPU. Your service now has to compete for cores it used to get at once. It is ready to run, but the scheduler keeps picking the other workload too.
+A machine is shared. Another workload on it (a co-tenant container, a batch job, a backup, a runaway script) starts using a lot of CPU. Your service now has to compete for cores it used to get at once. It is ready to run, but the scheduler keeps picking the other workload too.
 
 The other workload is called the **aggressor** (or the noisy neighbor). Your service is the **victim**. Nobody set a limit, and nothing is broken in the victim itself. The machine is simply full, and the fullness has a name.
 
 Two things make this different from a CPU cap:
 
-1. **There is an aggressor.** Someone else is on the CPU during the victim's waits. Under a cap, nobody is — the kernel just refuses the victim, and the CPU often sits idle.
+1. **There is an aggressor.** Someone else is on the CPU during the victim's waits. Under a cap, nobody is - the kernel just refuses the victim, and the CPU often sits idle.
 2. **There is no rhythm.** A cap throttles on a fixed period. A neighbor takes the CPU whenever it runs, so the victim's waits are irregular.
 
 The kernel trace does not record who "should" get the CPU. You find the aggressor from who actually got it.
@@ -37,54 +37,50 @@ For the victim:
 For the machine:
 
 - **The CPUs are busy, not idle.** This is the opposite of a cap.
-- **One process, or one group of processes with the same name, holds a large share of all CPU time.** That is the aggressor.
+- **One process, or one group of processes with the same name, takes a clearly visible share of CPU time — and it is NEW.** That is the aggressor. In a heavy case it dominates the machine. In a subtle case its share is modest (15–25% on a big machine), and what gives it away is that it was absent before the waits began and arrived exactly when they did.
 - **The trace often writes MORE data per second** when the aggressor arrives, because the machine is doing more work. (Under a cap it writes less.)
-
-Measured on one contended machine (16 CPU-hungry workers on 4 cores; Appendix B): each worker waited 0.49 of its time, individual waits were 1–14 ms, and while the victim waited, 96% of all CPU time went to the worker group and only 1% was idle.
 
 ### 1.3 Problems that look similar
 
 Several causes make a process wait for the CPU. This blueprint must tell them apart. You will use this table in Step 7.
 
-| Cause | What the kernel trace shows | How it differs from a neighbor |
-|---|---|---|
-| **Noisy neighbor (this fault)** | Victim waits often and irregularly; one process or one named group holds a big share of CPU; idle is near zero during the waits | — |
-| CPU cap on the victim | Victim's single waits are long (50 ms+), repeat at a fixed period, and the CPU is largely IDLE during them; on-CPU per period sits at a flat ceiling | A neighbor needs a busy aggressor; a cap needs nobody |
-| Whole machine overloaded | Many unrelated processes wait AND no single group dominates the CPU | A neighbor is one nameable group; overload is everybody |
-| The victim is just doing more work | Victim `run` goes **up**, its waits stay low | With a neighbor, the victim's `run` goes down |
-| Slow disk | Disk-type sleep (`D`) goes up | With a neighbor, `D` stays near 0; the victim is ready, not sleeping |
-| Lock waiting | Threads sleep (`S`) in a lock call; waits for the CPU stay low | Same: a neighbor's victim is ready, not sleeping |
-| Slow network or dependency | Threads sleep (`S`); waits for the CPU stay low | Same as above |
-| CPU pinning (cpuset) | Victim runs only on some CPUs while others are idle | A neighbor's victim still runs on all CPUs, just less |
+| Cause                              | What the kernel trace shows                                                                                                                          | How it differs from a neighbor                                       |
+|------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------|
+| **Noisy neighbor (this fault)** | Victim waits often and irregularly; a NEW process or named group is on the CPU, arriving with the waits; idle does not dominate during the waits | — |
+| CPU cap on the victim              | Victim's single waits are long (50 ms+), repeat at a fixed period, and the CPU is largely IDLE during them; on-CPU per period sits at a flat ceiling | A neighbor needs a busy aggressor; a cap needs nobody                |
+| Whole machine overloaded           | Many unrelated processes wait AND no single group dominates the CPU                                                                                  | A neighbor is one nameable group; overload is everybody              |
+| The victim is just doing more work | Victim `run` goes **up**, its waits stay low                                                                                                         | With a neighbor, the victim's `run` goes down                        |
+| Slow disk                          | Disk-type sleep (`D`) goes up                                                                                                                        | With a neighbor, `D` stays near 0; the victim is ready, not sleeping |
+| Lock waiting                       | Threads sleep (`S`) in a lock call; waits for the CPU stay low                                                                                       | Same: a neighbor's victim is ready, not sleeping                     |
+| Slow network or dependency         | Threads sleep (`S`); waits for the CPU stay low                                                                                                      | Same: a neighbor's victim is ready, not sleeping                     |
+| CPU pinning (cpuset)               | Victim runs only on some CPUs while others are idle                                                                                                  | A neighbor's victim still runs on all CPUs, just less                |
 
 ---
 
 ## Part 2. What you need
 
-| Input | Why |
-|---|---|
-| The trace folder: the `metadata` file, the channel data files (one per CPU), and `index/` | Everything comes from here |
-| `sched_switch` and `sched_waking` (or `sched_wakeup`) events in the trace | To measure running, waiting, and who held the CPU |
+| Input                                                                                                         | Why                                               |
+|---------------------------------------------------------------------------------------------------------------|---------------------------------------------------|
+| The trace folder: the `metadata` file, the channel data files (one per CPU), and `index/`                     | Everything comes from here                        |
+| `sched_switch` and `sched_waking` (or `sched_wakeup`) events in the trace                                     | To measure running, waiting, and who held the CPU |
 | A normal period to compare with: a normal stretch in the same trace, or a fault-free trace of the same system | Numbers only mean something when you compare them |
-| `babeltrace2`, `python3`, GNU `date` | To read the trace and run the scripts |
-| The ten scripts below, all in one folder | To read the index, cut slices, and measure |
+| `babeltrace2`, `python3`, GNU `date`                                                                          | To read the trace and run the scripts             |
+| The ten scripts below, all in one folder                                                                      | To read the index, cut slices, and measure        |
 
 The scripts:
 
-| Script | What it does |
-|---|---|
-| `idx_summary.py` | Trace date, start, end, length, CPUs, health checks, and data written over time. Reads only the index, so it takes seconds |
-| `idx_dump.py` | Every field of one index file, one row per packet |
-| `idx_slice.py` | Copies only the packets that cover a time window into a small trace |
-| `extract_slice.sh` | Cuts one time slice (using `idx_slice.py`) and keeps only the scheduling events |
-| `sched_budget.py` | Time budget per process: running, waiting, sleeping, long waits |
-| `cpu_hogs.py` | Who used the CPU in the slice, and who held it WHILE the victim waited. The decisive check |
-| `rhythm.py` | How often a process gets the CPU, in 10 ms buckets, and whether it repeats. Used here to rule a cap OUT |
-| `cpu_ceiling.py` | The victim's on-CPU time per period. Used here to rule a cap OUT |
-| `victim_info.py` | Who a process is: PID, names, threads, container. Works on the aggressor too |
-| `wake_graph.py` | Which processes wake the victim, and which ones it wakes |
-
-`idx_summary.py` and `idx_dump.py` import `idx_slice.py`, and `extract_slice.sh` calls it. Keep all ten in the same folder.
+| Script             | What it does                                                                                                               |
+|--------------------|----------------------------------------------------------------------------------------------------------------------------|
+| `idx_summary.py`   | Trace date, start, end, length, CPUs, health checks, and data written over time. Reads only the index, so it takes seconds |
+| `idx_dump.py`      | Every field of one index file, one row per packet                                                                          |
+| `idx_slice.py`     | Copies only the packets that cover a time window into a small trace                                                        |
+| `extract_slice.sh` | Cuts one time slice (using `idx_slice.py`) and keeps only the scheduling events                                            |
+| `sched_budget.py`  | Time budget per process: running, waiting, sleeping, long waits                                                            |
+| `cpu_hogs.py`      | Who used the CPU in the slice, and who held it WHILE the victim waited. The decisive check                                 |
+| `rhythm.py`        | How often a process gets the CPU, in 10 ms buckets, and whether it repeats. Used here to rule a cap OUT                    |
+| `cpu_ceiling.py`   | The victim's on-CPU time per period. Used here to rule a cap OUT                                                           |
+| `victim_info.py`   | Who a process is: PID, names, threads, container. Works on the aggressor too                                               |
+| `wake_graph.py`    | Which processes wake the victim, and which ones it wakes                                                                   |
 
 ---
 
@@ -113,7 +109,8 @@ Both lines must print OK.
 
 ### Step 1. Check the trace
 
-Same as in the CPU-cap blueprint, and it matters just as much here.
+**Goal:** know when the trace starts and ends, whether it is healthy, and which events it holds.
+
 
 ```bash
 python3 $TOOLS/idx_summary.py $TRACE > $WORK/summary.txt
@@ -131,8 +128,6 @@ grep -x -E 'sched_(switch|waking|wakeup)' $WORK/event_names.txt
 
 - Read the health checks (lost events, time gaps, seq gaps, file sizes). Avoid stretches with loss, or say so in your report.
 - If `sched_switch` is missing, or both `sched_waking` and `sched_wakeup` are missing, **stop**. This blueprint cannot work on this trace.
-
-**Next:** Step 2.
 
 ### Step 2. Find when something changed
 
@@ -154,8 +149,6 @@ If there is no clear change, continue to Step 3 with slices spread evenly across
 WINDOW_START=<HH:MM:SS>   # first row where the rate changed (or TRACE_START)
 WINDOW_END=<HH:MM:SS>     # first row where it was back to normal (or TRACE_END)
 ```
-
-**Next:** Step 3.
 
 ### Step 3. Find the victim
 
@@ -190,14 +183,12 @@ BASE_START=<HH:MM:SS>    # a slice time before the window
 FAULT_START=<HH:MM:SS>   # a slice time inside the window
 ```
 
-**Next:** Step 4.
-
 ### Step 4. Decide whether there is a fault
 
 Answer three questions in order.
 
 1. **Did something change?** In Step 2, the rate moved to a new level for a long stretch.
-2. **Did processes wait during that stretch?** In Step 3, waits for the CPU appear inside the window and are rare outside it.
+2. **Did process wait during that stretch?** In Step 3, waits for the CPU appear inside the window and are rare outside it.
 3. **Does the waiting line up with the change?** It starts and stops with the window.
 
 Decide:
@@ -205,8 +196,6 @@ Decide:
 - **All three are yes:** there is CPU competition. Go to Step 5.
 - **The rate changed, but nothing waits:** the workload changed, nobody suffered. Report "no CPU competition found" and **stop**.
 - **Nothing changed and nothing waits:** report "no CPU competition found" and **stop**. Do not write "no fault" — this blueprint does not look for other kinds of faults.
-
-**Next:** Step 5.
 
 ### Step 5. Find who is eating the CPU
 
@@ -229,8 +218,6 @@ Read it:
 - **Check that your baseline really is a baseline.** If the aggressor's name is busy in the baseline slice too, your baseline sits inside the fault window — the shares will look "identical" and prove nothing. Move the baseline earlier, or use a healthy trace of the same system.
 - If the busy share itself did not rise, and no name stands out, there is no aggressor to find — look at the Step 7 table for what else fits.
 
-**Next:** Step 6.
-
 ### Step 6. The decisive check: who runs while the victim waits
 
 **Goal:** separate neighbor, cap, and overload with one measurement.
@@ -243,27 +230,26 @@ The second part of the output says where every CPU-second went **while the victi
 
 Read it:
 
-- **NEIGHBOR: one name (or one group) takes most of this time, and idle is small.** That group is the aggressor. Measured on a real contended machine: the worker group took 96% and idle was 1%.
+- **NEIGHBOR, heavy: one name (or one group) takes most of this time, and idle is small.** That group is the aggressor. Measured on a real contended machine: the worker group took 96% and idle was 1%.
+- **NEIGHBOR, subtle: a NEW group is here at a modest share.** A neighbor does not have to dominate. If the group was absent from the baseline slice (Step 5), its arrival lines up with the start of the victim's waits, and idle is not the biggest share, it is the aggressor even at 15–25%. Measured on a real subtle case: a 4-process stress group arrived, took 17% of the CPU (18% during the victim's waits), and the victim's waits rose five-fold exactly then — that IS the neighbor. Demanding dominance there misses a real fault.
 - **CAP: idle is a large share.** Nobody took the CPU from the victim; a quota held it back. Measured on a real capped run: idle was 96% while the victim waited. Hand the case to the CPU-cap blueprint and **stop**.
-- **OVERLOAD: many unrelated names share the time**, idle is small, and no single group dominates. That is the whole machine being full, not one neighbor. Report it and **stop**.
+- **OVERLOAD: many unrelated names share the time**, idle is small, no single group dominates, **and nothing new arrived with the window** — the same names were busy in the baseline, just more so. That is the whole machine being full, not one neighbor. Report it and **stop**.
 
 ```bash
 AGGRESSOR=<pid or name>   # from the output; a group can be a name, e.g. "worker x16"
 ```
 
-**Next:** Step 7.
-
 ### Step 7. Rule out the lookalikes
 
 **Goal:** check the other causes in the table in 1.3, using what you already have.
 
-| Check | Where to look | A neighbor looks like this |
-|---|---|---|
-| Is it really not a cap? | `rhythm.py` and `cpu_ceiling.py` on the victim's fault slice (commands below), read together with Step 6's idle share | No repeating beat, and the CPUs were BUSY during the waits. Careful: N equal busy threads on C cores each settle at a FLAT ~C/N of a core — fair sharing mimics a quota ceiling. A real cap also leaves the CPUs idle (Step 6); fair sharing does not |
-| Is the victim just doing more work? | Step 5, the victim's `run` in `sched_budget.py` | Lower in the fault slice than the baseline, or flat — not higher |
-| Is it the disk? | `sched_budget.py`, the victim's `D` | Near 0 in both slices |
-| Is it locks or the network? | `sched_budget.py`, the victim's `S` against `wait` | The waits are for the CPU (`wait`), not sleeps (`S`) |
-| Did the aggressor really arrive with the window? | Step 5: the aggressor's share in baseline against fault slice | Small or absent before, large inside |
+| Check                                            | Where to look                                                                                                         | A neighbor looks like this                                                                                                                                                                                                                            |
+|--------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| Is it really not a cap?                          | `rhythm.py` and `cpu_ceiling.py` on the victim's fault slice (commands below), read together with Step 6's idle share | No repeating beat, and the CPUs were BUSY during the waits. Careful: N equal busy threads on C cores each settle at a FLAT ~C/N of a core — fair sharing mimics a quota ceiling. A real cap also leaves the CPUs idle (Step 6); fair sharing does not |
+| Is the victim just doing more work?              | Step 5, the victim's `run` in `sched_budget.py`                                                                       | Lower in the fault slice than the baseline, or flat — not higher                                                                                                                                                                                      |
+| Is it the disk?                                  | `sched_budget.py`, the victim's `D`                                                                                   | Near 0 in both slices                                                                                                                                                                                                                                 |
+| Is it locks or the network?                      | `sched_budget.py`, the victim's `S` against `wait`                                                                    | The waits are for the CPU (`wait`), not sleeps (`S`)                                                                                                                                                                                                  |
+| Did the aggressor really arrive with the window? | Step 5: the aggressor's share in baseline against fault slice                                                         | Small or absent before, large inside                                                                                                                                                                                                                  |
 
 ```bash
 python3 $TOOLS/rhythm.py      $WORK/fault_slice.txt $VICTIM $FAULT_START 1.0
@@ -273,8 +259,6 @@ python3 $TOOLS/cpu_ceiling.py $WORK/fault_slice.txt $VICTIM 100
 Measured on the contended machine: rhythm score 0.28 (weak, no beat) and the ceiling check found busy periods varying from 5 to 48 ms with 14% flatness — no quota. On a genuinely capped run the same checks read 82–90% flatness at a fixed ceiling.
 
 If one check does not fit, say which one in your report, and treat the neighbor as unconfirmed.
-
-**Next:** Step 8.
 
 ### Step 8. Describe the aggressor
 
@@ -288,13 +272,11 @@ python3 $TOOLS/wake_graph.py  $WORK/fault_slice.txt <aggressor_pid>
 - `victim_info.py` works on any pid. It gives the aggressor's program name, threads, and its container namespaces — so you can say whether the aggressor lives in a different container than the victim. **Remember: a namespace number of 0 means "could not be read", not a real namespace.**
 - If the aggressor is a group (many pids, one name), run `victim_info.py` on two or three of them and check they share a container or a parent.
 - `wake_graph.py` hints at who feeds the aggressor work. A batch job woken by a timer looks different from a service woken by network traffic.
-- Also useful: the aggressor's own `run` total from Step 5 — "the group used 66% of all CPU on a 4-CPU machine" is a concrete, checkable claim.
+- Also, useful: the aggressor's own `run` total from Step 5 — "the group used 66% of all CPU on a 4-CPU machine" is a concrete, checkable claim.
 
 **Next:** Step 9.
 
 ### Step 9. Identify the victim
-
-Same as the CPU-cap blueprint's Step 9, and the same honesty rules.
 
 ```bash
 python3 $TOOLS/victim_info.py $WORK/fault_slice.txt 10 $VICTIM
@@ -330,7 +312,8 @@ You are done.
 - It needs scheduling events. A trace without `sched_switch` cannot be used.
 - It needs a normal stretch to compare with, in the same trace or a healthy one of the same system.
 - The shares printed by `cpu_hogs.py` depend on the slice you chose. Quote the slice with the number.
-- The measured numbers here (96% to the aggressor, idle 1%, waits of 1–14 ms) come from ONE contended machine with a 4x CPU over-subscription. Use them to get a feel for the size of the effects, not as thresholds.
+- The heavy-case numbers (96% to the aggressor, idle 1%, waits of 1–14 ms) come from one machine at 4x CPU over-subscription; the subtle-case numbers (17–18% share, five-fold wait rise) come from one 12-CPU microservice host. Use them to get a feel for the sizes, not as thresholds.
+- **Arrival beats share.** A subtle neighbor's share can be small. The decisive questions are: is the group NEW, did the waits rise when it arrived, and is idle NOT the biggest share. Share size alone neither confirms nor rejects.
 
 ---
 
