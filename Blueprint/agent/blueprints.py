@@ -246,10 +246,12 @@ class Runner:
         """extract_slice.sh without bash/babeltrace2: cut the window out of the decoded
         dump and keep only scheduling events - the same output contract, so the
         downstream scripts (sched_budget/rhythm/victim_info/wake_graph) run unchanged."""
-        if len(argv) != 5:
+        if len(argv) not in (5, 6):
             return {"error": "usage: extract_slice.sh <trace_dir> <YYYY-MM-DD> <HH:MM:SS> "
-                             "<seconds> <out_file>"}
-        _trace, day, start, secs, out = argv
+                             "<seconds> <out_file> [events_regex]"}
+        _trace, day, start, secs, out = argv[:5]
+        ev_re = re.compile(argv[5] if len(argv) == 6
+                           else "sched_switch|sched_waking|sched_wakeup")
         dump = self.dump_path()
         if not dump:
             return {"error": "no babeltrace2 on this machine and the run has no decoded "
@@ -266,8 +268,7 @@ class Runner:
         with open(dump, encoding="utf-8", errors="replace") as f, \
              open(out, "w", encoding="utf-8", newline="\n") as o:
             for line in f:
-                if "sched_switch" not in line and "sched_waking" not in line \
-                        and "sched_wakeup" not in line:
+                if not ev_re.search(line):
                     continue
                 mm = ts_re.match(line)
                 if not mm:

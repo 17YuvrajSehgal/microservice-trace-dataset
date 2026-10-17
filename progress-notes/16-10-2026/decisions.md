@@ -349,3 +349,33 @@ cap-bp on slow_db_r1 (cross). Tags .sdb1/.sdb1x/.capx.
 
 Trillium copies re-pushed and verified (grep for the new guidance). Ready
 to re-run the two near-miss cells / sweep the remaining unseen reps.
+
+## Blueprint 4_svc_mem_cap built (evidence-first, branch 3-svc-mem-cap)
+
+Folder named 4_ (user's name; avoids clashing with the 3_memory_cap
+experiment dir). Eleven tools: the ten + NEW mem_pressure.py, plus
+extract_slice.sh gains an optional events_regex arg (agent fallback in
+blueprints.py extended to match).
+
+Everything measured on local t6/t7 runs BEFORE writing the text:
+
+- **The memcg discriminator**: mm_vmscan_memcg_reclaim_* = the CONTAINER's
+  limit; direct reclaim/kswapd = HOST pressure. Soft-cap run: 9,224 memcg
+  reclaims by ttmem in 32 s; baseline: zero; host events: zero.
+- **Re-read ratio**: squeezed read 5,369 MB for a 1 GB working set (5+
+  passes); baseline 1,074 MB (one pass). Job 32.4 s vs 8.5 s.
+- **Kill-vs-finish gap** (the hard-limit detector): a killed process exits
+  INSIDE its final reclaim - gap 0.02-0.37 ms on 3 known kills; finished
+  processes exit 7.9-48.3 ms after (5 known finishes, two conditions).
+  1 ms threshold, 20x margin. Earlier candidate rules REJECTED by data:
+  "died near reclaim" false-fired on normal soft-cap completion;
+  parent-died-with-it failed because a killed child's wrapper also exits.
+- **Honest caveat measured**: victim D-share 0.87 (squeezed) vs 0.66 (cold
+  baseline) - a memory-cap victim LOOKS like a slow-disk victim; D
+  supports, reclaim+ratio prove.
+- Tool bugs fixed during validation: sched_process_exit fires PER THREAD
+  (now tid==pid only); rwbs is numeric (read=bit 4, write=bit 0,
+  determined empirically).
+
+Next: 5-cell agent matrix (soft/hard/healthy positives + both cross-
+rejections vs the CPU blueprint).
