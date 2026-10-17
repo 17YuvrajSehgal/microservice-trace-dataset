@@ -358,10 +358,10 @@ Read it:
 - **Cap:** the busy periods pile up at a flat ceiling clearly **below** the period (high flatness, max about equal to the ceiling). The quota is about the ceiling; the cap in cores is ceiling ÷ period. In the baseline the same process runs free of it.
 - **Ceiling at the full period:** the victim simply saturates one core. A single thread at 100 of 100 ms cannot be told apart from a cap of one full core; say so rather than claiming a cap.
 - **A flat ceiling with BUSY CPUs is not a cap.** N equal busy threads sharing C cores each settle at a flat ~C/N of a core — fair sharing mimics a quota ceiling. A real cap leaves the CPUs IDLE while the victim waits. Decide with `cpu_hogs.py` (Step 7): if the CPU went to other processes rather than idle, this is competition, not a quota.
-- **Low flatness? Check your slice before concluding.** Under a load that comes in waves, periods where the victim had little to do mix into the window and drag the flatness down. Re-cut one slice on the victim's BUSIEST stretch (the slice where `sched_budget.py` showed it waiting most) and measure again. Measured on one real capped service: one slice read "not flat" while another slice of the same fault read a clean 20–26 ms per 100 ms — the fault had not changed, the slice had.
+- **Low flatness? Check your slice before concluding.** Under a load that comes in waves, periods where the victim had little to do mix into the window and drag the flatness down. Re-cut one slice on the victim's BUSIEST stretch (the slice where `sched_budget.py` showed it waiting most) and measure again. Measured on one real capped service: one slice read "not flat" while another slice of the same fault read a clean flat ceiling — the fault had not changed, the slice had.
 - **No flat ceiling and no beat, even on the busy stretch:** the victim is starved, but not by a quota. Report "the victim is starved of CPU, but there is no quota signature", then use the table in 1.3 (noisy neighbor, overload, pinning) to suggest a cause, and **stop**.
 
-Validated on three agentic runs with known limits: a 0.25-core cap read 25.0 ms per 100 ms (max 25.1, 82% flat), a 0.5-core cap read 50.1 ms (87% flat), and the uncapped baseline pegged at the full 100 ms — correctly no cap.
+Validated on runs with known limits: the measured ceiling matched the real quota each time, and an uncapped baseline pegged at the full period — correctly no cap.
 
 **Next:** Step 7.
 
@@ -386,8 +386,8 @@ python3 $TOOLS/cpu_hogs.py $WORK/fault_slice.txt 10 $VICTIM
 
 It says where every CPU-second went while the victim had a thread ready and waiting.
 
-- **Cap: idle is a large share.** Nobody took the CPU; the kernel refused the victim. Measured on a real capped run: idle was 96% while the victim waited.
-- **One name (or one group) takes most of it and idle is small: that is a noisy neighbor, not a cap.** Hand the case to the noisy-neighbor blueprint and **stop**. Measured on a real contended run: the aggressor group took 96% and idle was 1%.
+- **Cap: idle is a large share.** Nobody took the CPU; the kernel refused the victim. On a real capped run, idle took almost all of this time.
+- **One name (or one group) takes most of it and idle is small: that is a noisy neighbor, not a cap.** Hand the case to the noisy-neighbor blueprint and **stop**.
 
 **Next:** Step 8.
 
@@ -395,7 +395,7 @@ It says where every CPU-second went while the victim had a thread ready and wait
 
 **Goal:** estimate how big the cap is. The trace does not hold the quota, so this is always an estimate.
 
-- The best estimate is Step 6b's ceiling: the quota is about **ceiling ms per `PERIOD_MS`**, and the cap in cores is ceiling ÷ period. On runs with known limits this read 25.0 ms for a real 25 ms quota and 50.1 ms for a real 50 ms quota.
+- The best estimate is Step 6b's ceiling: the quota is about **ceiling ms per `PERIOD_MS`**, and the cap in cores is ceiling ÷ period. On runs with known limits the measured ceiling matched the real quota.
 - Cross-check with the victim's `run` in the fault slice (Step 5): averaged over its busy stretch it should sit near the same number of cores. For a bursty victim the whole-slice average is diluted by idle time — trust the per-period ceiling over the average.
 - Check that it is a ceiling: in the baseline the same workload runs past it. The victim wanted more CPU than it got.
 
@@ -460,7 +460,7 @@ You are done.
 - It needs a normal stretch to compare with: in the same trace, or a healthy trace of the same system.
 - It samples 10-second slices, so a fault shorter than a few seconds can be missed.
 - If tracing was limited to some processes, you cannot rule out a busy machine.
-- The rhythm rules of thumb (quiet buckets above 50%, repeat score above 0.5) come from one solved case and are weak for bursty victims that idle between spells of work - that is why Step 6b exists. The ceiling check was validated on three runs with known limits (0.25, 0.5, and no cap) and read each one correctly.
+- The rhythm rules of thumb (quiet buckets above 50%, repeat score above 0.5) come from one solved case and are weak for bursty victims that idle between spells of work - that is why Step 6b exists. The ceiling check was validated on runs with known limits and read each one correctly.
 - A cgroup cap covers a process tree, so several suffering processes in one container are one victim group (Step 4), not host overload.
 
 ---
@@ -523,13 +523,13 @@ python3 $TOOLS/idx_dump.py $TRACE <channel file name> 1000 | less -S
 
 ## Appendix B. One solved case
 
-This is how the numbers looked in one investigation. Use it to get a feel for the size of the effects. Do not reuse the numbers as thresholds. PIDs, times and sizes will differ in your trace.
+This is how one investigation went. The numbers are deliberately described in rough terms: read your own slices by comparison with your own baseline, not against this story. PIDs, times and sizes will differ in your trace.
 
-- **Trace:** 12 CPUs, about 4 minutes, no lost events.
-- **Step 2:** the data rate fell from about 100 MB/s to about 25 MB/s for about 2 minutes, then came back.
-- **Step 3:** in all three slices inside the window, one `java` process was at the top. It had over 700 waits of 50 ms or more per 10 s, and waits of up to about 290 ms. In the slices before and after, no process had any wait of 50 ms or more.
-- **Step 5:** the victim's `run` fell from 0.54 to 0.19 cores. `wait` rose from 0.13 to 7.71 threads. `D` stayed at 0.00 to 0.01.
-- **Step 6:** fault slice: 80% quiet buckets, repeat every 100 ms, score 0.79. Baseline: 2% quiet buckets, score 0.24.
-- **Step 7:** other processes' longest waits stayed under 8 ms. The victim's `run` stayed at 0.19 to 0.20 in every slice inside the window.
-- **Step 8:** about 0.2 cores, so about 20 ms of CPU every 100 ms (Inferred).
-- **Check afterwards:** the real limit was 0.2 cores with a 100 ms period.
+- **Trace:** many CPUs, a few minutes, no lost events.
+- **Step 2:** the data rate fell to a fraction of its level for a long stretch, then came back.
+- **Step 3:** in every slice inside the window, one service process was at the top, with hundreds of waits of 50 ms or more per 10 s and single waits several times longer still. In the slices before and after, no process had any wait of 50 ms or more.
+- **Step 5:** the victim's `run` fell to a small fraction of a core and its `wait` rose to many threads. `D` stayed at zero.
+- **Step 6:** fault slice: mostly quiet buckets, a strong repeat at one fixed period. Baseline: few quiet buckets, no repeat.
+- **Step 7:** other processes' longest waits stayed in the low milliseconds. The victim's `run` sat at the same small value in every slice inside the window: a flat ceiling.
+- **Step 8:** the ceiling divided by the period gave the cap in cores (Inferred).
+- **Check afterwards:** the estimate matched the real limit that had been set.

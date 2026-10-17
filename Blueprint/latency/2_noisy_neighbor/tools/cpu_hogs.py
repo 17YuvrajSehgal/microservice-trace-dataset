@@ -167,7 +167,7 @@ if victim is not None:
     print("  group is the aggressor - name it.")
     print("- NEIGHBOR, subtle: a group that is NEW (absent in the baseline slice)")
     print("  and arrived when the waits began is the aggressor even at a modest")
-    print("  share (15-25%), as long as idle is not the biggest share.")
+    print("  share, as long as idle is not the biggest share.")
     print("- CAP: idle is a large share. Nobody took the CPU; a quota held the")
     print("  victim back. Check with cpu_ceiling.py.")
     print("- OVERLOAD: many unrelated names share the time, idle is small, other")
