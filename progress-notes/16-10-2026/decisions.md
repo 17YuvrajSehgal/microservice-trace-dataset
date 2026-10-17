@@ -412,3 +412,30 @@ honest hedges, decisive-check-first) carried over. Soft vs hard face
 distinguished correctly in both positives. Transcripts *.mem1/.memx/
 .capx.json. Catalogue state: 3 blueprints, 16 agent-verdict cells all
 correct on local data. Next: unseen Trillium svc_mem_cap (8 SS + 8 TT).
+
+## Blueprint 5_svc_net built (branch 5-svc-net; evidence from Trillium runs)
+
+No local run holds a network fault, so the evidence pass used SS svc_net
+r1 on Trillium (develop on r1, keep r2-r5 unseen). Eleven tools: the
+shared ten + NEW net_loss.py (TCP retransmission per flow from
+net_dev_queue's dissected headers; pure ACKs excluded via payload length;
+skb_kfree drops as support).
+
+Measured before writing:
+- Trace has NO tcp_* tracepoints; net_dev_queue carries full IP+TCP
+  headers (seq!) - retransmit = repeated seq on data segments.
+- **The 50% artifact**: a packet crossing veth->bridge fires
+  net_dev_queue once PER DEVICE (same task context, ~7 us apart), so
+  naive counting reads ~50% "retransmission" on every healthy flow
+  (3 hops -> 33%: docker-proxy/traefik). Fix: count each flow at ONE
+  observation point (device+netns); two broken candidate regexes found
+  on the way (first name= field grabbed the wrong name).
+- After the fix: baseline 4/90,107 = 0.0%; fault: every retransmitting
+  flow touches carts (1.4-3.2% per flow, both directions), all other
+  containers 0%; throughput collapse 90k->31k segs/10s, carts-db flow
+  1,173->~60 (the 150ms delay, not the 4% loss, does the damage).
+- Honest limits in the text: pure delay leaves no retransmission; UDP
+  invisible; measured rate is a floor not the configured %.
+
+Next: agent matrix (remote bp-only): net-bp on {svc_net r2 unseen,
+normal r1, svc_cpu_cap r3 cross} + cap-bp on svc_net r2 reverse.
