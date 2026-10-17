@@ -439,3 +439,17 @@ Measured before writing:
 
 Next: agent matrix (remote bp-only): net-bp on {svc_net r2 unseen,
 normal r1, svc_cpu_cap r3 cross} + cap-bp on svc_net r2 reverse.
+
+## Blueprint 5 matrix: 4/4 - including the unseen positive at conf 0.94
+
+| cell | verdict |
+|---|---|
+| net-bp on svc_net_r2 (UNSEEN) | **service_network, java container, conf 0.94**: "degraded path to/from MongoDB at 172.18.0.10:27017, retransmit both directions 1.4-1.9% vs 3/107,201 baseline, traffic fell 30-55x, delay inferred from collapse" - replicated the whole evidence methodology on a run it never saw, incl. the honest delay-is-Inferred framing |
+| net-bp on normal_r1 | normal 0.95 - clean rejection via baseline comparison |
+| net-bp on svc_cpu_cap_r3 (cross) | **cpu_throttling, java 52884, 0.87** - did not just reject; it ROUTED to the correct other fault (better than the cap blueprint's own earlier "other" 0.82 on this run) |
+| cap-bp on svc_net_r2 (reverse) | normal 0.98 - refuses the cap, flags the rate drop honestly |
+
+svc_net is the first blueprint whose agent test ran on UNSEEN data from
+day one (no local net faults exist). Catalogue now: 5 blueprints
+(cpu_cap, noisy_neighbor, slow_db, svc_mem_cap, svc_net), every decision
+rule measured before writing, 24 agent-verdict cells across the matrices.
