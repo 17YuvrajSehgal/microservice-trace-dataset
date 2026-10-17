@@ -114,15 +114,60 @@ def find_trace_dir(run_dir: str):
 
 
 class Runner:
-    """Executes blueprint scripts for one run. One instance per diagnose()/Chat."""
+    """Executes blueprint scripts for one run. One instance per diagnose()/Chat.
+
+    Remote mode: a run_dir of the form "<host>:/path/to/run" executes every script on
+    that host over ssh (via WSL). The blueprint markdown and the script ENUM stay local;
+    the remote host needs a copy of the tools at $BP_REMOTE_ROOT/<blueprint_folder_name>/
+    and real babeltrace2 on PATH ($BP_REMOTE_PREAMBLE is prepended to every command -
+    default puts the bt21 shim first). Slices and scratch live under
+    $BP_REMOTE_ROOT/work/<run_id>/ on the host.
+    """
 
     def __init__(self, tools_dir: str, run_dir: str, workdir: str):
         self.tools_dir = tools_dir
+        self.host = None
+        # "<host>:/path" = remote (a Windows drive letter is a single char, a host is not)
+        if ":" in run_dir and len(run_dir.split(":", 1)[0]) > 1 \
+                and not run_dir.split(":", 1)[0].startswith("\\"):
+            self.host, run_dir = run_dir.split(":", 1)
         self.run_dir = run_dir
+        if self.host:
+            root = os.environ.get("BP_REMOTE_ROOT", "/scratch/yuvraj17/stratatrace/bp_eval")
+            self.preamble = os.environ.get(
+                "BP_REMOTE_PREAMBLE", "export PATH=%s/shim:$PATH" % root)
+            self.remote_tools = root + "/" + os.path.basename(
+                os.path.dirname(tools_dir.rstrip("\\/")))
+            run_id = os.path.basename(run_dir.rstrip("/"))
+            self.workdir = root + "/work/" + run_id
+            self._ssh("mkdir -p %s" % self.workdir)
+            # bundle layout first, then a search, so any LTTng nesting works
+            probe = self._ssh(
+                "test -f %s/kernel/kernel/metadata && echo %s/kernel/kernel || "
+                "find %s -name metadata -not -path '*/ust/*' 2>/dev/null "
+                "| head -1 | xargs -r dirname" % (run_dir, run_dir, run_dir))
+            self.trace_dir = (probe.get("stdout") or "").strip() or None
+            self._dump = ""          # no decoded dump remotely; babeltrace is real there
+            return
         self.workdir = workdir
         os.makedirs(workdir, exist_ok=True)
         self.trace_dir = find_trace_dir(run_dir)
         self._dump = None            # decoded trace text, materialized on first use
+
+    def _ssh(self, cmd: str, timeout: int = TIMEOUT_S) -> dict:
+        full = self.preamble + "; " + cmd if getattr(self, "preamble", None) else cmd
+        try:
+            # "wsl -e" runs ssh directly, with no WSL-side shell: otherwise WSL's bash
+            # expands $PATH locally (with a Windows PATH full of parentheses) and the
+            # remote command arrives mangled.
+            p = subprocess.run(["wsl", "-e", "ssh", "-o", "BatchMode=yes", self.host, full],
+                               capture_output=True, text=True, errors="replace",
+                               timeout=timeout)
+        except subprocess.TimeoutExpired:
+            return {"error": f"remote command timed out after {timeout}s"}
+        return {"exit": p.returncode, "stdout": p.stdout[:RAW_STDOUT_CAP],
+                "stdout_truncated": len(p.stdout) > RAW_STDOUT_CAP,
+                "stderr": p.stderr[-4000:]}
 
     def dump_path(self):
         if self._dump is None:
@@ -169,6 +214,15 @@ class Runner:
         if "$TRACE" in " ".join(argv):
             return {"error": "this run has no CTF trace folder (no `metadata` found), "
                              "so $TRACE cannot be expanded. Work from $DUMP instead."}
+        if self.host:
+            import shlex
+            rpath = self.remote_tools + "/" + script
+            interp = "bash" if script.endswith(".sh") else "python3"
+            cmd = "cd %s && %s %s %s" % (self.workdir, interp, shlex.quote(rpath),
+                                         " ".join(shlex.quote(a) for a in argv))
+            res = self._ssh(cmd)
+            res["cmd"] = [script, *argv]
+            return res
         path = os.path.join(self.tools_dir, script)
 
         if script == "extract_slice.sh" and not (shutil.which("bash")
