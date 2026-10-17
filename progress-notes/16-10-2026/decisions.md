@@ -395,3 +395,20 @@ method parameters (50 ms long-wait marker, quiet>50%, repeat>0.5, the
 15%-of-ceiling flatness window inside cpu_ceiling.py) - procedure, not
 benchmark answers. Verified with a token scan: no process names, no
 measured percentages remain in either README. Trillium copies re-pushed.
+
+## Blueprint 4 matrix: ALL FIVE CELLS PASS, first try - no iteration needed
+
+| cell | verdict |
+|---|---|
+| mem-bp on t6A_768 (soft+) | memory_limit, ttmem, "reclaim/refault slowdown, NOT a hard-limit kill" - both the fault and the FACE right, conf 0.72 |
+| mem-bp on t7_640 (OOM+) | memory_limit, ttmem in pid_ns, "777 memcg reclaims, exited 0.02 ms after its own last reclaim -> hard-limit kill" - quoted the kill-gap rule with the exact number, conf 0.78 |
+| mem-bp on healthy | normal 0.88 - "all three slices: no reclaim" = the decisive check; correctly noted reads-without-reclaim is not a memory fault |
+| mem-bp on cap25 (cross) | other 0.96 - stop condition honored |
+| cap-bp on t6A_768 (reverse) | normal 0.98 - refuses CPU starvation, honest scope |
+
+First blueprint to pass with ZERO iterations - the evidence-first
+discipline plus the lessons baked in from blueprints 1-2 (stop rules,
+honest hedges, decisive-check-first) carried over. Soft vs hard face
+distinguished correctly in both positives. Transcripts *.mem1/.memx/
+.capx.json. Catalogue state: 3 blueprints, 16 agent-verdict cells all
+correct on local data. Next: unseen Trillium svc_mem_cap (8 SS + 8 TT).
