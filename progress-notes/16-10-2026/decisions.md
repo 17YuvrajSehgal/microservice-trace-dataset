@@ -293,3 +293,44 @@ Gaps for the next iteration (not yet applied):
    clean 20-26 ms cadence — slice choice sensitivity on wavy load; the
    ceiling should be read on the victim's BUSY stretch (the blueprint
    says this for run-average but 6b needs the same note).
+
+## Blueprint 3 chosen and built: slow_db (branch 3-slow-db)
+
+WHY slow_db as #3 (user's pick, branch name): biggest family (11+11), TT
+side is no_metric_signature so the kernel trace is the differentiator, and
+it opens the SLEEPING-victim class (deps/locks) after two CPU blueprints.
+
+Built evidence-first on slow_db_aggressive_steady_r1 (dev run; r2-r5,
+burst, subtle, and all TT held out as unseen). Ground truth: toxiproxy
++500ms +-100 jitter downstream on catalogue-db, 14:38:01-14:40:01.
+
+THE DESIGN DISCOVERY (changed the tool mid-build): blocking-read durations
+measure NOTHING on async runtimes. Go/Node use non-blocking sockets +
+epoll: read() returns instantly; measured the victim's reads at 0.0 ms
+while every request took 500 ms. So sock_lag.py measures the
+REQUEST-TO-ANSWER GAP instead: completed write -> next completed read
+with data (ret>0), per fd. Works for both threaded and async runtimes.
+
+Three new tools (13 total in 3_slow_db/tools):
+- dep_slice.sh: slice keeping sched + blocking syscalls (fd + ret fields).
+- sleep_where.py: S-time split by enclosing syscall (sock_read/event_loop/
+  locks/send/timer/D). Honest finding: totals mislead (idle connection
+  handlers park in reads; mongo conn threads dominate) - kept as the
+  locks-vs-dependency discriminator, not the victim finder.
+- sock_lag.py: the decisive tool. Census mode (all pids) finds the victim;
+  per-fd mode pins the connection pool and the delay.
+
+Validated numbers (all in README Appendix B): catalogue pool (6 fds) p50
+0.9ms -> 503-543ms, p90 580-620 (injected 500+-100); chain inflation
+load-gen 50->591ms, traefik 114->367ms; mysqld HEALTHY in fault (run 0.06,
+0 waits, D 0, 99.9 threads parked) -> "delay in the PATH" - matches the
+toxiproxy ground truth. Monitoring long-pollers (~5s gaps in BOTH slices)
+documented as the ignore-against-baseline rule.
+
+StrataTrace v2 profile check that enabled all this: the `*` syscall rule
+IS in the traces (1,490 syscall event classes) - blueprint Step 1 makes
+syscall presence a hard requirement with a stop rule.
+
+4-cell rigorous matrix launched (bp-only, remote tools on Trillium):
+sdb-bp on slow_db_r1 / normal_none_steady_r1 / svc_cpu_cap_r3 (cross) +
+cap-bp on slow_db_r1 (cross). Tags .sdb1/.sdb1x/.capx.
