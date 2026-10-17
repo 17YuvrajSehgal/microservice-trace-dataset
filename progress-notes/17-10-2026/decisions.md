@@ -23,3 +23,25 @@ Three fixes applied (commit aee3198):
    "other" is for evidence that did not hold.
 
 Re-run of cells 1+3 launched against the fixed blueprint (.sdb2/.sdb2x).
+
+## Re-run with fixed blueprint: positive flips to a textbook pass
+
+| cell | round 1 | round 2 (fixed) |
+|---|---|---|
+| sdb-bp on slow_db_r1 | "other" 0.68 | **db_latency 0.92: "app-to-mysqld connection path (peer observed as mysqld pid 19881)"; quotes 0.9ms->418.7ms and the mysqld mirror 0.3->501.6ms; "no CPU/disk strain on mysqld -> path, not a struggling database"** |
+| sdb-bp on svc_cpu_cap_r3 | service_network 0.78 (false call) | "other" 0.78 — correctly REFUSES the dependency diagnosis ("not established; gap jump based on one answer; other gaps fell"), saw java's waits. Did not route to the cap blueprint (its slices both sat inside the 2-min fault window, so the waits looked "already present" vs its baseline) |
+
+All three fixes visible in behavior: sock_lag 18 calls with the census-first
+flow; the mirror rule named mysqld as the peer; the label committed.
+
+FINAL blueprint-3 matrix: positive PASS (0.92, matches ground truth
+exactly), normal PASS, cap-cross PASS-as-rejection (no false dependency
+call; routing to cap-bp still imperfect when the fault spans most of the
+trace), cap-bp-on-slowdb PASS. Zero confident wrong answers across all 6
+runs of the matrix.
+
+Catalogue state: THREE blueprints (svc_cpu_cap, noisy_neighbor, slow_db),
+each agent-tested on its own fault + negatives + cross-fault cells, each
+improved through measured failure analysis. Held-out unseen pool for
+later: slow_db r2-r5 + burst + subtle + 11 TT runs (no_metric_signature -
+the kernel blueprint is the only evidence there).
