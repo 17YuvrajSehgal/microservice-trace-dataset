@@ -334,3 +334,18 @@ syscall presence a hard requirement with a stop rule.
 4-cell rigorous matrix launched (bp-only, remote tools on Trillium):
 sdb-bp on slow_db_r1 / normal_none_steady_r1 / svc_cpu_cap_r3 (cross) +
 cap-bp on slow_db_r1 (cross). Tags .sdb1/.sdb1x/.capx.
+
+## Both unseen-data fixes applied (commit a224c59)
+
+1. Neighbor criterion is now two-form: HEAVY (dominates while-wait time,
+   idle small) or SUBTLE (the group is NEW - absent in baseline - its
+   arrival coincides with the wait rise, idle not the biggest share; even
+   at 15-25%). Overload additionally requires nothing new arrived.
+   "Arrival beats share" added to Part 5. cpu_hogs.py printed guidance
+   updated in BOTH blueprints' copies.
+2. Cap Step 6b: "low flatness? check your slice" - re-cut on the victim's
+   busiest stretch before concluding (measured: same fault read "not
+   flat" in one slice, clean 20-26 ms/100 ms in another).
+
+Trillium copies re-pushed and verified (grep for the new guidance). Ready
+to re-run the two near-miss cells / sweep the remaining unseen reps.
