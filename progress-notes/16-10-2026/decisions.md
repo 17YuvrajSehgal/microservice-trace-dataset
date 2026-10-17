@@ -379,3 +379,19 @@ Everything measured on local t6/t7 runs BEFORE writing the text:
 
 Next: 5-cell agent matrix (soft/hard/healthy positives + both cross-
 rejections vs the CPU blueprint).
+
+## Anti-leak pass on both blueprints (user rule, now standing)
+
+RULE: blueprints must carry NO evaluation-derived names or numbers -
+the agent reads the blueprint during evaluation, so "stress-ng took 17%"
+or "idle was 96%" is an answer key, not a lesson. Same principle as
+skillreg's forbidden-token lint (stress-ng is literally on that list).
+
+Applied (commit ef6d0c8): every "Measured: X%" in the steps is now
+qualitative; the subtle-neighbor share band removed from text + cpu_hogs
+guidance; both Appendix B worked cases anonymized and rough-termed, each
+telling the reader to judge against their OWN baseline. KEPT: generic
+method parameters (50 ms long-wait marker, quiet>50%, repeat>0.5, the
+15%-of-ceiling flatness window inside cpu_ceiling.py) - procedure, not
+benchmark answers. Verified with a token scan: no process names, no
+measured percentages remain in either README. Trillium copies re-pushed.
