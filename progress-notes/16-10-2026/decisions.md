@@ -260,3 +260,36 @@ Full scorecard over both blueprints, blueprint-only agent: cap-bp 3/3
 nocap). SIX distinct verdict cells, all correct, each wrong-fault cell
 refused with the right reason. Next validation stage: unseen data — the
 8+8 StrataTrace noisy_neighbor and svc_cpu_cap runs on Trillium.
+
+## UNSEEN-DATA 2x2 on Trillium (StrataTrace v2 Sock Shop)
+
+Setup: agent local, blueprint_tool runs ON TRILLIUM over ssh (blueprints
+Runner remote mode, commit b02ac31: run_dir "trillium:/path", tools at
+/scratch/.../bp_eval/<blueprint>/, babeltrace2->bt21.sh shim; wsl -e to
+stop WSL's shell expanding $PATH locally). Runs chosen to be truly unseen:
+svc_cpu_cap_aggressive_steady_r3 (r1 is the blueprint's original worked
+case) and noisy_neighbor_aggressive_steady_r2. 12 CPUs, ~245 s traces,
+java/stress-ng — different app, scale, and injection from the agentic
+runs the blueprints were iterated on.
+
+| cell | verdict | vs truth |
+|---|---|---|
+| cap-bp on cap r3 | "other", java in pid_ns, conf 0.82 — starvation measured exactly (run 0.63->0.19, 747-824 waits>=50ms, CPUs idle) but "ceiling not flat" withheld the label | near-miss, honest |
+| nn-bp on cap r3 | **cpu_throttling, java in pid_ns, conf 0.90** — "100 ms cadence, 20-26 ms per 100 ms while CPUs idle" (true cap 0.2 cores) | CORRECT via routing |
+| nn-bp on neighbor r2 | "host/cpu_saturation" 0.76 — FOUND stress-ng-cpu (new, 4 procs, 17%) but the dominance rule (calibrated at 96% local) refused it at 18%-while-waiting | near-miss, honest |
+| cap-bp on neighbor r2 | **noisy_neighbor, stress-ng-cpu in pid_ns 4026533601, conf 0.76** — named the injected aggressor container | CORRECT via routing |
+
+Both unseen runs were diagnosed correctly by the PAIR: each blueprint's
+routing-out rules solved the other's fault, while each was over-cautious
+confirming its own. 2/4 exact + 2/4 honest hedges, ZERO confident-wrong.
+
+Gaps for the next iteration (not yet applied):
+1. nn-bp neighbor criterion: dominance (96%, from 4x local oversub) is too
+   strict for subtle real neighbors (thief_share sized so KPIs barely
+   move). Use ARRIVAL+CORRELATION: a NEW named group whose appearance
+   coincides with the wait rise is the aggressor even at modest share;
+   dominance only separates neighbor from overload when nothing new came.
+2. cap-bp ceiling flatness: cell 1 read "not flat" where cell 4 read a
+   clean 20-26 ms cadence — slice choice sensitivity on wavy load; the
+   ceiling should be read on the victim's BUSY stretch (the blueprint
+   says this for run-average but 6b needs the same note).
