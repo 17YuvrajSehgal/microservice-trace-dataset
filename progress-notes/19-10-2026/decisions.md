@@ -265,3 +265,51 @@ This matters because it explains the field number mechanically — busy hosts ha
 well over 40 short-lived processes, which is why the late key reached the model
 in only 4.7% of 742 real calls. It also means the paper has a guaranteed
 mechanism figure even if the LLM campaign misbehaves.
+
+## Framework vision document
+
+`thesis/msc-thesis-abstract-presentation/framework-vision.html` — four
+hand-authored SVG figures plus a worked walk of "the front-end is very slow"
+from complaint to verdict.
+
+**The organising decision: a build-status encoding carried through every
+figure.** Filled + solid = built and measured; hollow + dashed = designed, no
+code; dotted rust = measured and proven unreachable. One literal hue (the teal)
+is spent on exactly one element — the SELECT stage — because that is the
+measured bottleneck, so the diagram's colour points at the research question
+rather than decorating it.
+
+Why that encoding and not a clean architecture drawing: a framework diagram
+with every box drawn the same way reads as a claim that all of it exists. Half
+of it does. Running a blueprint and deciding from it are built; understanding a
+vague complaint and choosing from the library are not. Drawing that difference
+makes the diagram honest *and* makes the proposal legible — the undrawn half is
+the thesis.
+
+Four figures, one claim each (rather than one combined diagram):
+
+1. **the run-time path** — the library sits *above* the pipeline, not inside it,
+   because it supplies two different things at two different moments: candidates
+   while deciding what this might be, and instructions once decided. Also shows
+   the two returns: `rule_out` sends control back to selection instead of
+   forcing a verdict, and the dashed frame is the collection feedback loop.
+2. **inside selection** — a funnel, 21 → 4 → shortlist → 1. The claim is the
+   anti-brute-force one: a reviewer will ask why not run all 21, and the answer
+   is the cheap prechecks. Caption names the gap honestly — those prechecks are
+   currently prose, so a program cannot run them.
+3. **the hierarchy** — latency parent routing to 12 causes, with the two proven
+   unreachable ones *left on the diagram* in rust. A library that knows its own
+   boundary is worth more than one that answers everything.
+4. **how a blueprint is born** — the measure-first chain with the agent-failure
+   return arc. Caption points at stage 02 as the one that costs something.
+
+**Labelled the worked example as an illustration, in a callout, before the
+walk.** The stages are the designed ones and the numbers are real measured
+discriminators from our blueprints, but no single run produced that exact
+sequence. Without the label it would read as a recorded result, which is the
+exact failure mode the CONTEXT.md number discipline exists to prevent.
+
+Included a branch-that-did-not-fire stage in the walk (what happens if the CPU
+gate finds waits, or the pool check finds one slow socket). Why: the framework's
+distinguishing behaviour is refusal, and a walk that only shows the happy path
+would not show it.
