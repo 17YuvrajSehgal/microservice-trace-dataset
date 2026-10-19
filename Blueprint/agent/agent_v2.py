@@ -72,8 +72,10 @@ MAX_ROUNDS = 2          # planner rounds; a second one only if the reviewer asks
 #
 # Affordable because the context window is nowhere near full - the worst single call in
 # 120 runs used 63k of 400k tokens, 15.7%.
-MAX_WORKER_STEPS = 18   # tool-calling turns inside one worker
+MAX_WORKER_STEPS = int(os.environ.get("ABL_WORKER_STEPS", "18"))   # tool-calling turns inside one worker; 12 was the measured wall
 MAX_SUBTASKS = 4
+# S4 ablation: drop the automatic computed-evidence channel to the synthesiser.
+ABL_NO_COMPUTED = os.environ.get("ABL_NO_COMPUTED", "0") == "1"
 
 
 # --------------------------------------------------------------------------------------
@@ -409,7 +411,7 @@ def _exec_tool(name, args, node, step):
 # steps, so this changes almost nothing for a typical worker and stops the longest ones
 # losing what they gathered. With more steps allowed, threads get longer, so the two
 # changes belong together.
-THREAD_BUDGET = 150000
+THREAD_BUDGET = int(os.environ.get("ABL_THREAD_BUDGET", "150000"))
 # How much of each run_python output travels to the synthesiser. Enough for a ranking table -
 # the thing that was lost was a 3-row table - without carrying whole dumps.
 # Measured: the 1,600 cap cut 25 of 47 computations, and the 24,000 total dropped more than
@@ -677,6 +679,11 @@ def _computed_block() -> str:
     a result even when the worker that produced it drew no conclusion from it - and can notice
     when one worker's claim contradicts another worker's table.
     """
+    if ABL_NO_COMPUTED:
+        # v1 defect, reintroduced: the automatic transfer channel does not exist, so the
+        # synthesiser sees only what a worker chose to write down. Same string it would see
+        # if no code had run at all.
+        return "(no code was run)"
     if not CTX or not CTX.computed:
         return "(no code was run)"
     out, used = [], 0

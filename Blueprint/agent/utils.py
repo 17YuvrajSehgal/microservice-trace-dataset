@@ -43,6 +43,15 @@ import config
 # by DROPPING WHOLE ROWS, with a note saying so. Each cap is the observed maximum with at
 # least 50% headroom; the largest prompt any model call saw was 23k tokens against a 400k
 # window, so the headroom is affordable.
+# ---- ABLATION SWITCH (nier-2027 pipeline ablation) -----------------------------------
+# Defaults reproduce the shipped, repaired behaviour exactly: with ABL_FLAT_CAP unset,
+# nothing below changes. Set it only to reintroduce the v1 delivery defect on purpose.
+#
+# ABL_FLAT_CAP=<n>  one flat cap for EVERY tool, applied as a prefix slice of the JSON
+#                   STRING - so late keys vanish entirely and the payload reaching the
+#                   model can be invalid JSON. v1 shipped 6000.
+ABL_FLAT_CAP = int(os.environ.get("ABL_FLAT_CAP", "0"))
+
 SENT_CAP = 30000
 SENT_CAP_BY_TOOL = {
     "ctf_proclife": 60000,   # enumerates every container; coverage IS the answer. max 36,709
@@ -69,6 +78,13 @@ def fit_result(obj, cap: int):
     subset from a complete answer. Returns (text, truncated, dropped_or_None).
     """
     full = json.dumps(obj, default=str)
+    if ABL_FLAT_CAP:
+        # v1 defect, reintroduced for the ablation: ignore the per-tool budget and the row
+        # structure, and slice the serialized string. Key order means late keys are deleted,
+        # not sampled, and the result is usually not parseable.
+        if len(full) <= ABL_FLAT_CAP:
+            return full, False, None
+        return full[:ABL_FLAT_CAP], True, {"_v1_prefix_slice": True}
     if len(full) <= cap:
         return full, False, None
 

@@ -1,0 +1,10 @@
+n_spawned,result_chars,defect_late_rows,defect_early_rows,defect_valid_json,defect_truncated,repair_late_rows,repair_early_rows,repair_valid_json,repair_truncated
+5,2314,25,5,True,False,25,5,True,False
+10,2844,25,10,True,False,25,10,True,False
+20,3904,25,20,True,False,25,20,True,False
+30,4964,25,30,True,False,25,30,True,False
+40,6024,0,0,False,True,25,40,True,False
+60,8144,0,0,False,True,25,60,True,False
+80,10265,0,0,False,True,25,80,True,False
+120,14505,0,0,False,True,25,120,True,False
+160,18745,0,0,False,True,25,160,True,False

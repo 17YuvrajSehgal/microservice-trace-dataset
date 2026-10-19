@@ -184,3 +184,84 @@ at 17:30.
   improvised.
 - **Kept the agentic OS-noise work to a single proof point** on the scope
   slide, per the 15-10 decision. It is a separate paper.
+
+## New paper: ICSE 2027 NIER on agent context/memory structure
+
+Deadline **confirmed from the CFP site: Fri 23 Oct 2026, 23:59:59 AoE** — four
+days. 4 pages main + 1 page refs, IEEEtran 10pt conference, **double-anonymous**,
+mandatory section titled **"Future Plans"**. The call explicitly rejects
+"scaled-down research papers lacking evaluation" and "op-eds recycling published
+work". So the paper needs a real experiment, not a retrospective.
+
+Work lives in `nier-2027/`.
+
+### The topic is a departure from the recorded plan, deliberately
+
+`meeting-notes/todo-points-09-09-2026.md` records NIER as the venue for **the
+blueprint work**. We are instead writing the **context/memory** paper. Why this
+is the better call, and worth putting to Naser:
+
+- The blueprint work is the **thesis**. It wants 10+ pages (dataset, library,
+  method, four experiments). Cutting it to 4 pages loses exactly the evidence
+  that makes it credible, and NIER's own call warns against scaled-down full
+  papers.
+- The context finding is **one sharp idea with a surprising result** — which is
+  what NIER is for. It is also self-contained, so it does not spend the
+  thesis's novelty a year early.
+- G4 (Naser's "write the NIER story in one page") is now done either way:
+  `nier-2027/STORY.md`.
+
+### The idea
+
+Everyone treats agent context as a **capacity** problem. We instrumented a real
+tool-using agent against verifiable ground truth and found the window used to
+**6.6%** while **a third of all tool results were being destroyed in transit**.
+
+Context is not a window, it is the output of a **pipeline** — serialize,
+truncate, retain, transfer, persist — and every stage is a lossy transform an
+engineer wrote. The failure modes are engineering defects that masquerade as
+model or data limits.
+
+The central artifact: our 6000-char cap sliced the JSON **string**, and because
+key order is preserved that **deletes late keys** rather than sampling. Whether
+a culprit process lands in an early or late key is decided by **whether it
+spawned during the trace** — so the defect partitioned the benchmark into a
+solvable and an unsolvable half along an axis with no scientific meaning.
+Measured: spawn faults 40–55/60, already-running 0–24/60. We had read that as a
+finding about kernel traces.
+
+### What was decided about evidence
+
+The existing evidence is **correlational**, and a reviewer would be right to say
+so: the repair shipped alongside two new tools, so the Q2 re-run that moved
+scores is confounded by a capability change. So the one new experiment is a
+**controlled ablation of the memory pipeline** — reintroduce each defect alone,
+agent/data/task/model fixed. Design and **pre-registered predictions** (written
+before any run, so results cannot be fitted) are in `nier-2027/DESIGN.md`.
+
+### Feasibility established today, and it is all local
+
+- **322 local runs** with cgroup ground truth; raw CTF **and** decoded dumps.
+- Local `babeltrace2` is **2.1.2** — the version our traces need. No cluster.
+- Trillium is **not** reachable non-interactively (MFA), so the design
+  deliberately avoids it.
+- Four ablation knobs made env-overridable in `Blueprint/agent/`
+  (`ABL_FLAT_CAP`, `ABL_WORKER_STEPS`, `ABL_THREAD_BUDGET`, `ABL_NO_COMPUTED`).
+  **25 additive lines, defaults verified unchanged**, full import chain OK. S5
+  (cross-run memory) is held constant, never varied — carrying memory between
+  runs would break the independence the scores assume.
+- Campaign estimate: ~100 runs, **~$8 and 4–6 h** at 3 parallel.
+
+### E1 is already done, and it cost nothing
+
+`nier-2027/mechanism_delivery.py` + `E1-delivery-cliff.csv`. A deterministic
+sweep, no model calls, no data: as the number of short-lived processes in a
+trace rises, the late key goes from fully delivered to **completely unusable**
+the moment the result crosses the cap (at 40 spawned processes here), and the
+payload becomes invalid JSON. Under the repair all 25 rows survive at every
+size.
+
+This matters because it explains the field number mechanically — busy hosts have
+well over 40 short-lived processes, which is why the late key reached the model
+in only 4.7% of 742 real calls. It also means the paper has a guaranteed
+mechanism figure even if the LLM campaign misbehaves.
