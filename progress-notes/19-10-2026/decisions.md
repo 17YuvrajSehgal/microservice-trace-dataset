@@ -130,3 +130,57 @@ reason the headline is a tie. It belongs next to RQ1, not buried in RQ3.
 
 All three are listed in the context pack's stale-docs table so the deck is not
 built off them.
+
+## Built the deck
+
+`thesis/msc-thesis-abstract-presentation/slides.html` (22 slides) +
+`SPEAKER-NOTES.md`.
+
+**Format: self-contained HTML, not PowerPoint or Beamer.** Three reasons, in
+order: the repo already presents from exactly this format
+(`blueprints/docs/presentations/presentation1/`), so the visual system and the
+tooling are both proven; there is no TeX engine on this box, so a Beamer deck
+could not be compiled or checked here; and HTML renders anywhere without an
+install, including from a phone if the projector fails. Reused that deck's
+token palette rather than inventing one — teal for confirmed results, rust for
+retractions and negatives — so the two decks read as one body of work. Type
+scale pushed up, since this is projected rather than read at a desk.
+
+Added for presenting: arrow-key and space navigation, a progress bar, and a
+**target clock time in each slide's footer** so the dry run can be checked
+against the plan's timings without a separate script. 19 content slides ending
+at 17:30.
+
+### Deck decisions that depart from the 14-10 plan
+
+- **Split the idea slide in two.** The anatomy is one slide; the real
+  discriminator gets its own. Why: the runqueue-delay row — measured at 7.12×
+  and then *demoted to corroboration* — is the single thing that shows what
+  "evidence-bound" buys, and it was competing with six anatomy bullets for
+  attention. It now sits alone with the 52× / 15.7× / 7.1× / 3.7× table
+  underneath, which shows the signal is strongest on the faults it is supposed
+  to rule *out*.
+- **Lead the tie slide with 56% vs 56% on the 36 covered runs**, not the pooled
+  56/51. Why: that is the source doc's own recommended number, it is verified
+  against the raw JSON, and it does not invite the argument about the buggy
+  `n_no_pick` field. The pooled figure adds nothing the covered split does not
+  already say.
+- **Put the two caveats for the 30/30 result on the slide itself** (one
+  incident per matrix; blueprint handed over, not chosen). Why: volunteering
+  them is worth more than surviving being asked, and the result is strong
+  enough to carry them.
+- **New slide for the agent-feedback loop** (five blueprints, 24 verdict cells,
+  zero confident wrong answers). The plan predates it. Framed around the
+  *failure mode* rather than the pass rates — negatives clean, positives
+  under-commit, cross-cells expose one missing rule — because that is what
+  shows the method working rather than a score improving.
+- **Said "selection is manual today" out loud on the framework slide**, three
+  slides before the tie slide proves it is the bottleneck. Why: admitting it
+  first makes the later null result read as diagnosis rather than as excuse.
+- **Three backup slides instead of a Q&A script**: the
+  threshold-vs-whole-rule table, the portability/abstention finding, and the
+  scoring axes with the harness-health story. These are the three questions the
+  context pack predicts are most likely, and each needs a table that cannot be
+  improvised.
+- **Kept the agentic OS-noise work to a single proof point** on the scope
+  slide, per the 15-10 decision. It is a separate paper.
