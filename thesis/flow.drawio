@@ -49,7 +49,7 @@
         <mxCell id="a3k" parent="1" style="sketch=0;outlineConnect=0;fontColor=#232F3E;fillColor=#7AA116;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.iot_events;fontSize=19;spacingTop=4;" value="&lt;b&gt;KERNEL EVENTS&lt;/b&gt;&lt;br&gt;LTTng" vertex="1">
           <mxGeometry height="150" width="150" x="1805" y="250" as="geometry" />
         </mxCell>
-        <mxCell id="a4" parent="1" style="rounded=1;arcSize=6;whiteSpace=wrap;html=1;fillColor=#bac8d3;strokeColor=#23445d;strokeWidth=5;fontSize=22;verticalAlign=middle;" value="&lt;span style=&quot;color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;&lt;b&gt;THE DATASET&lt;/b&gt;&lt;br&gt;&lt;br&gt;&lt;font style=&quot;font-size: 28px;&quot;&gt;304 labelled runs · 27 fault families,&lt;br&gt;rolling up into &lt;b style=&quot;&quot;&gt;~10 operational issue classes&lt;/b&gt;&lt;br&gt;all four modalities in every run&lt;/font&gt;&lt;/span&gt;" vertex="1">
+        <mxCell id="a4" parent="1" style="rounded=1;arcSize=6;whiteSpace=wrap;html=1;fillColor=#bac8d3;strokeColor=#23445d;strokeWidth=5;fontSize=22;verticalAlign=middle;" value="&lt;span style=&quot;color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255))&quot;&gt;&lt;b&gt;THE DATASET&lt;/b&gt;&lt;br&gt;&lt;br&gt;&lt;font style=&quot;font-size: 28px&quot;&gt;304 labelled runs · 27 fault families,&lt;br&gt;rolling up into &lt;b &gt;~10 operational issue classes&lt;/b&gt;&lt;br&gt;all four modalities in every run&lt;/font&gt;&lt;/span&gt;" vertex="1">
           <mxGeometry height="240" width="620" x="2320" y="197.5" as="geometry" />
         </mxCell>
         <mxCell id="eA1" edge="1" parent="1" source="a1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeWidth=5;strokeColor=#2A5A96;endArrow=blockThin;endFill=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="a2" value="">
@@ -58,19 +58,19 @@
         <mxCell id="eA3" edge="1" parent="1" source="a3box" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeWidth=5;strokeColor=#2A5A96;endArrow=blockThin;endFill=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;fontSize=20;fontStyle=1;labelBackgroundColor=#EBF2FA;" target="a4" value="">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="b1" parent="1" style="verticalLabelPosition=bottom;sketch=0;html=1;fillColor=#3D7A3D;strokeColor=none;verticalAlign=top;pointerEvents=1;align=center;shape=mxgraph.cisco_safe.people_places_things_icons.icon9;fontSize=19;spacingTop=6;" value="&lt;font style=&quot;font-size: 25px;&quot;&gt;&lt;b style=&quot;&quot;&gt;1. SOLVED BY HAND&lt;/b&gt;&lt;br&gt;an engineer works out&lt;br&gt;why, once&lt;/font&gt;" vertex="1">
+        <mxCell id="b1" parent="1" style="verticalLabelPosition=bottom;sketch=0;html=1;fillColor=#3D7A3D;strokeColor=none;verticalAlign=top;pointerEvents=1;align=center;shape=mxgraph.cisco_safe.people_places_things_icons.icon9;fontSize=19;spacingTop=6;" value="&lt;font style=&quot;font-size: 25px&quot;&gt;&lt;b &gt;1. SOLVED BY HAND&lt;/b&gt;&lt;br&gt;an engineer works out&lt;br&gt;why, once&lt;/font&gt;" vertex="1">
           <mxGeometry height="200" width="200" x="190" y="745" as="geometry" />
         </mxCell>
         <mxCell id="b2" parent="1" style="image;aspect=fixed;html=1;align=center;verticalLabelPosition=bottom;verticalAlign=top;image=img/lib/azure2/analytics/Analysis_Services.svg;fontSize=19;spacingTop=6;" value="" vertex="1">
           <mxGeometry height="182" width="240" x="730" y="755" as="geometry" />
         </mxCell>
-        <mxCell id="b3" parent="1" style="image;sketch=0;aspect=fixed;html=1;align=center;verticalLabelPosition=bottom;verticalAlign=top;image=img/lib/mscae/Blueprints.svg;fontSize=19;spacingTop=6;" value="&lt;b&gt;&lt;font style=&quot;font-size: 29px; background-color: light-dark(rgb(255, 255, 255), rgb(84, 169, 206));&quot;&gt;3. THE BLUEPRINT&lt;/font&gt;&lt;/b&gt;" vertex="1">
+        <mxCell id="b3" parent="1" style="image;sketch=0;aspect=fixed;html=1;align=center;verticalLabelPosition=bottom;verticalAlign=top;image=img/lib/mscae/Blueprints.svg;fontSize=19;spacingTop=6;" value="&lt;b&gt;&lt;font style=&quot;font-size: 29px&quot;&gt;3. THE BLUEPRINT&lt;/font&gt;&lt;/b&gt;" vertex="1">
           <mxGeometry height="192" width="200" x="1300" y="745" as="geometry" />
         </mxCell>
-        <mxCell id="b4" parent="1" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;fillColor=#b1ddf0;strokeColor=#10739e;strokeWidth=5;fontSize=22;" value="&lt;font style=&quot;font-size: 25px;&quot;&gt;&lt;b style=&quot;&quot;&gt;4. VALIDATOR&lt;/b&gt;&lt;br&gt;&lt;br&gt;rejects any claim with no&lt;br&gt;measurement behind it&lt;/font&gt;" vertex="1">
+        <mxCell id="b4" parent="1" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;fillColor=#b1ddf0;strokeColor=#10739e;strokeWidth=5;fontSize=22;" value="&lt;font style=&quot;font-size: 25px&quot;&gt;&lt;b &gt;4. VALIDATOR&lt;/b&gt;&lt;br&gt;&lt;br&gt;rejects any claim with no&lt;br&gt;measurement behind it&lt;/font&gt;" vertex="1">
           <mxGeometry height="190" width="420" x="1800" y="750" as="geometry" />
         </mxCell>
-        <mxCell id="b5" parent="1" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;fillColor=#b1ddf0;strokeColor=#10739e;strokeWidth=5;fontSize=22;" value="&lt;font style=&quot;font-size: 25px;&quot;&gt;&lt;b style=&quot;&quot;&gt;5. GENERATE THE SKILL&lt;/b&gt;&lt;br&gt;&lt;br&gt;the agent-facing text is derived&lt;br&gt;from the blueprint, so the two&lt;br&gt;can never drift apart&lt;/font&gt;" vertex="1">
+        <mxCell id="b5" parent="1" style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;fillColor=#b1ddf0;strokeColor=#10739e;strokeWidth=5;fontSize=22;" value="&lt;font style=&quot;font-size: 25px&quot;&gt;&lt;b &gt;5. GENERATE THE SKILL&lt;/b&gt;&lt;br&gt;&lt;br&gt;the agent-facing text is derived&lt;br&gt;from the blueprint, so the two&lt;br&gt;can never drift apart&lt;/font&gt;" vertex="1">
           <mxGeometry height="190" width="460" x="2420" y="750" as="geometry" />
         </mxCell>
         <mxCell id="eB1" edge="1" parent="1" source="b1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeWidth=5;strokeColor=#3D7A3D;endArrow=blockThin;endFill=1;exitX=1;exitY=0.45;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="b2" value="">
@@ -257,7 +257,7 @@
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="fb2Label" parent="1" style="text;html=1;whiteSpace=wrap;align=center;verticalAlign=middle;fontSize=22;fontColor=#B85450;fillColor=#EBF2FA;strokeColor=none;" value="&lt;font style=&quot;font-size: 27px;&quot;&gt;&lt;b style=&quot;&quot;&gt;FEEDBACK (b)&lt;/b&gt; — and decides what telemetry is worth collecting next time&lt;/font&gt;" vertex="1">
+        <mxCell id="fb2Label" parent="1" style="text;html=1;whiteSpace=wrap;align=center;verticalAlign=middle;fontSize=22;fontColor=#B85450;fillColor=#EBF2FA;strokeColor=none;" value="&lt;font style=&quot;font-size: 27px&quot;&gt;&lt;b &gt;FEEDBACK (b)&lt;/b&gt; — and decides what telemetry is worth collecting next time&lt;/font&gt;" vertex="1">
           <mxGeometry height="64" width="1080" x="1900" y="86" as="geometry" />
         </mxCell>
         <mxCell id="titleD" parent="1" style="text;html=1;align=left;verticalAlign=middle;fontSize=30;fontColor=#444444;" value="&lt;b&gt;4  EVALUATE&lt;/b&gt;  — does captured expertise actually help?" vertex="1">
@@ -305,7 +305,7 @@
             <mxPoint x="1080" y="330" as="targetPoint" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="n9qx3_NE4995qqgr_qFW-9" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;" value="&lt;b style=&quot;font-size: 25px; white-space: nowrap; background-color: rgb(84, 169, 206);&quot;&gt;2. MEASURE IT&lt;/b&gt;&lt;br style=&quot;font-size: 25px; white-space: nowrap; background-color: rgb(84, 169, 206);&quot;&gt;&lt;span style=&quot;font-size: 25px; white-space: nowrap; background-color: rgb(84, 169, 206);&quot;&gt;against &lt;/span&gt;&lt;b style=&quot;font-size: 25px; white-space: nowrap; background-color: rgb(84, 169, 206);&quot;&gt;every&lt;/b&gt;&lt;span style=&quot;font-size: 25px; white-space: nowrap; background-color: rgb(84, 169, 206);&quot;&gt; fault family,&lt;/span&gt;&lt;br style=&quot;font-size: 25px; white-space: nowrap; background-color: rgb(84, 169, 206);&quot;&gt;&lt;span style=&quot;font-size: 25px; white-space: nowrap; background-color: rgb(84, 169, 206);&quot;&gt;not only its own&lt;/span&gt;" vertex="1">
+        <mxCell id="n9qx3_NE4995qqgr_qFW-9" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;" value="&lt;b style=&quot;font-size: 25px; white-space: nowrap&quot;&gt;2. MEASURE IT&lt;/b&gt;&lt;br style=&quot;font-size: 25px; white-space: nowrap&quot;&gt;&lt;span style=&quot;font-size: 25px; white-space: nowrap&quot;&gt;against &lt;/span&gt;&lt;b style=&quot;font-size: 25px; white-space: nowrap&quot;&gt;every&lt;/b&gt;&lt;span style=&quot;font-size: 25px; white-space: nowrap&quot;&gt; fault family,&lt;/span&gt;&lt;br style=&quot;font-size: 25px; white-space: nowrap&quot;&gt;&lt;span style=&quot;font-size: 25px; white-space: nowrap&quot;&gt;not only its own&lt;/span&gt;" vertex="1">
           <mxGeometry height="113" width="100" x="780" y="937" as="geometry" />
         </mxCell>
       </root>
