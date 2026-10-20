@@ -1,0 +1,72 @@
+{
+  "config": "s1_deliver",
+  "klass": "resident",
+  "run": "t3_implement_cap25_r4",
+  "run_dir": "C:\\workplace\\microservice-trace-dataset\\Blueprint\\latency\\1_svc_cpu_cap\\agentic-os-noise\\runs\\t3_implement_cap25_r4",
+  "rep": 2,
+  "cell": "s1_deliver__resident__t3_implement_cap25_r4__r2",
+  "status": "ok",
+  "returncode": 0,
+  "wall_s": 177.3,
+  "env_ablation": {
+    "ABL_FLAT_CAP": "2000"
+  },
+  "result": {
+    "run_id": "t3_implement_cap25_r4",
+    "diagnosis": {
+      "what_is_wrong": "The trace shows a real, brief drop in overall kernel activity, but it does not establish that the host or a service was degraded or that this caused the coding task to run longer. The shift tracks changing workload (early claude activity, then python3, plus a brief shell-command pipeline); the available scheduler samples do not show the drop interval to be worse than the comparison periods, so the reported slowdown is not confirmed by this trace.",
+      "root_cause_service": "unknown",
+      "culprit_kind": "unknown",
+      "fault_type": "normal",
+      "evidence": "Compared the full 01:57:57.900\u201301:58:30.800 span using ctf_timespan/proclife and indexed event counts computed with run_python (ctf_timeline returned zero matches despite those events being present). In 01:57:58\u201301:58:03 versus 01:58:03\u201301:58:08, sched_switch fell 4,753\u21921,685, sched_wakeup 2,316\u2192801, and sched_stat_runtime payload 1.224\u21920.359 CPU-s; however, CPU activity remained modest overall (5.50 CPU-s for pid_ns 4026531836 across the trace, with a 258.5 ms/s one-second maximum), and the work composition changed, with python3 becoming the dominant CPU consumer later. ctf_procdiff showed shell and utility commands in the candidate interval; grep/sleep persist from 01:58:04.600 to 01:58:24.600, consistent with a command pipeline rather than a new service. Disk issue/complete counts were balanced (48/48 in the drop interval), with no corresponding evidence of network, writeback, or reclaim pressure. The sampled wakeup-to-switch matches were inadequate for reliable latency measurement and did not show more >1 ms waits in the drop than in the pre-period (5 versus 9; post 8); ctf_lines could not be used for comprehensive raw inspection. A finding of increased runnable delay or issue-to-complete latency from complete raw records could falsify this assessment, but that check was not possible with the available sampled view.",
+      "confidence": 0.73,
+      "incident_window": "01:58:03 - 01:58:10",
+      "window_evidence": "This is the bounded activity trough, not a confirmed service incident: the per-second scheduler/runtime and other event rates fall sharply starting at 01:58:03, reach their lowest levels around 01:58:06\u201301:58:09, and rise somewhat at 01:58:10. The later rise is only partial, so the trace does not support treating it as a clean recovery or assigning the trough to a fault."
+    },
+    "ranked_services": null,
+    "ranked_candidates": null,
+    "trajectory": [
+      {
+        "step": 0,
+        "tool": "worker1.0",
+        "service": null
+      },
+      {
+        "step": 1,
+        "tool": "worker1.1",
+        "service": null
+      },
+      {
+        "step": 2,
+        "tool": "worker1.2",
+        "service": null
+      },
+      {
+        "step": 3,
+        "tool": "worker1.3",
+        "service": null
+      },
+      {
+        "step": 4,
+        "tool": "worker2.100",
+        "service": null
+      }
+    ],
+    "n_tool_calls": 70,
+    "n_code_snippets": 35,
+    "n_findings": 13,
+    "n_computed": 35,
+    "bytes_touched": 144011,
+    "tokens": {
+      "in": 598627,
+      "out": 18456
+    },
+    "model": "openai/gpt-6-luna",
+    "wall_s": 176.3,
+    "transcript_file": "C:\\workplace\\microservice-trace-dataset\\nier-2027\\transcripts\\s1_deliver__resident__t3_implement_cap25_r4__r2.json",
+    "skill_selected": null,
+    "skill_confidence": null,
+    "brief_injected": false,
+    "n_claims": null
+  }
+}

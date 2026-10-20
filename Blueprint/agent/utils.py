@@ -51,6 +51,11 @@ import config
 #                   STRING - so late keys vanish entirely and the payload reaching the
 #                   model can be invalid JSON. v1 shipped 6000.
 ABL_FLAT_CAP = int(os.environ.get("ABL_FLAT_CAP", "0"))
+# ABL_REVERSE_KEYS=1  serialize a result's keys in reverse order. Changes NOTHING
+#                   about the content - only which fields a positional bound
+#                   reaches first. Lets position be manipulated directly while
+#                   data, task, agent and model are held fixed.
+ABL_REVERSE_KEYS = os.environ.get("ABL_REVERSE_KEYS", "0") == "1"
 
 SENT_CAP = 30000
 SENT_CAP_BY_TOOL = {
@@ -77,6 +82,8 @@ def fit_result(obj, cap: int):
     budget allows, and records what was dropped under `_truncated` so the model can tell a
     subset from a complete answer. Returns (text, truncated, dropped_or_None).
     """
+    if ABL_REVERSE_KEYS and isinstance(obj, dict):
+        obj = {k: obj[k] for k in reversed(list(obj))}
     full = json.dumps(obj, default=str)
     if ABL_FLAT_CAP:
         # v1 defect, reintroduced for the ablation: ignore the per-tool budget and the row

@@ -1,0 +1,67 @@
+{
+  "config": "s1_deliver",
+  "klass": "resident",
+  "run": "t3_implement_cap25_r1",
+  "run_dir": "C:\\workplace\\microservice-trace-dataset\\Blueprint\\latency\\1_svc_cpu_cap\\agentic-os-noise\\runs\\t3_implement_cap25_r1",
+  "rep": 3,
+  "cell": "s1_deliver__resident__t3_implement_cap25_r1__r3",
+  "status": "ok",
+  "returncode": 0,
+  "wall_s": 128.3,
+  "env_ablation": {
+    "ABL_FLAT_CAP": "2000"
+  },
+  "result": {
+    "run_id": "t3_implement_cap25_r1",
+    "diagnosis": {
+      "what_is_wrong": "No kernel evidence establishes a host or service fault causing the coding task to run longer than usual. The trace shows changing workloads, including python3 using about 0.24\u20130.25 CPU-seconds per second in the late active phase, but this is not host-wide CPU saturation on a machine with at least four CPUs, and the trace provides no latency baseline or demonstrated scheduling delay.",
+      "root_cause_service": "unknown",
+      "culprit_kind": "unknown",
+      "fault_type": "normal",
+      "evidence": "Compared the full 03:17:26.200\u201303:17:59.000 trace using the workers\u2019 full-span event counts and per-second scheduler/CPU summaries. Scheduler and several other event rates declined around 03:17:31, with only a brief pulse at 03:17:33, while measured CPU fell from about 253 ms/s in 03:17:26.2\u201331.2 to 83 ms/s in 03:17:31.2\u201341.2, then returned to about 254 ms/s in 03:17:41.2\u201354.2 as the workload shifted from claude/JITWorker to python3. In the late phase python3 accounted for about 2.956 CPU-seconds over 13 seconds; raw sched_switch records show it selected on CPU 3, while other CPUs show idle activity. Checked competing mechanisms: 556 block requests issued and 558 completed, sampled network transmissions returned rc=0, no coherent container restart was found, and inspected wakeups do not demonstrate a long wake-to-run delay. These checks do not prove the task met its expected duration, but they do not support a kernel-level fault diagnosis.",
+      "confidence": 0.77,
+      "incident_window": "unknown",
+      "window_evidence": "The 32.8-second trace begins at 03:17:26.200 and ends at 03:17:59.000. The major measured changes are a workload/rate decline around 03:17:31 and a CPU/workload recovery around 03:17:41, but there is no evidence these delimit a fault rather than ordinary task/workload transitions. The trace starts during the initially high activity and has no pre-trace baseline, so no incident start or duration is defensible."
+    },
+    "ranked_services": null,
+    "ranked_candidates": null,
+    "trajectory": [
+      {
+        "step": 0,
+        "tool": "worker1.0",
+        "service": null
+      },
+      {
+        "step": 1,
+        "tool": "worker1.1",
+        "service": null
+      },
+      {
+        "step": 2,
+        "tool": "worker1.2",
+        "service": null
+      },
+      {
+        "step": 3,
+        "tool": "worker1.3",
+        "service": null
+      }
+    ],
+    "n_tool_calls": 54,
+    "n_code_snippets": 27,
+    "n_findings": 9,
+    "n_computed": 27,
+    "bytes_touched": 110045,
+    "tokens": {
+      "in": 429169,
+      "out": 14078
+    },
+    "model": "openai/gpt-6-luna",
+    "wall_s": 127.3,
+    "transcript_file": "C:\\workplace\\microservice-trace-dataset\\nier-2027\\transcripts\\s1_deliver__resident__t3_implement_cap25_r1__r3.json",
+    "skill_selected": null,
+    "skill_confidence": null,
+    "brief_injected": false,
+    "n_claims": null
+  }
+}

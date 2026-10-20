@@ -1,0 +1,72 @@
+{
+  "config": "s1_deliver",
+  "klass": "resident",
+  "run": "t3_implement_cap25_r2",
+  "run_dir": "C:\\workplace\\microservice-trace-dataset\\Blueprint\\latency\\1_svc_cpu_cap\\agentic-os-noise\\runs\\t3_implement_cap25_r2",
+  "rep": 1,
+  "cell": "s1_deliver__resident__t3_implement_cap25_r2__r1",
+  "status": "ok",
+  "returncode": 0,
+  "wall_s": 212.4,
+  "env_ablation": {
+    "ABL_FLAT_CAP": "2000"
+  },
+  "result": {
+    "run_id": "t3_implement_cap25_r2",
+    "diagnosis": {
+      "what_is_wrong": "The trace does not substantiate a kernel/resource fault causing the coding task to run long. Activity drops sharply around 03:26:45.8, but CPU use is low overall, sampled wakeups run promptly afterward, and the checked disk and network signals do not show impairment; the data is more consistent with changing workload activity than a demonstrated incident.",
+      "root_cause_service": "unknown",
+      "culprit_kind": "unknown",
+      "fault_type": "normal",
+      "evidence": "Compared the full 03:26:40.800\u201303:27:15.800 trace: 5-second event totals show sched_switch 5,673\u21921,523, sched_wakeup 2,767\u2192721, net_dev_xmit 221\u219261, and net_if_receive_skb 205\u219263 from the first to second bucket, with a later rise near the end. sched_stat_runtime totals 5.937 CPU-seconds across 35 seconds (0.170 average cores); the busiest 8-second interval averaged 0.254 cores, not evidence of CPU saturation. Raw scheduler samples after the change showed 10/11 wakeups followed by switch-in within 10\u201327 \u03bcs. In 03:26:41\u201303:26:46, six matched block requests had median latency 0.719 ms and maximum 1.582 ms; sampled network transmissions succeeded (rc=0), including loopback. Process-lifetime checks found no high-volume service arrival or exit. These checks weaken CPU starvation, disk wait, network impairment, and a restart explanation; the short trace has no quiet baseline and cannot prove the reported duration was normal.",
+      "confidence": 0.78,
+      "incident_window": "unknown",
+      "window_evidence": "The measurable boundary is the synchronized activity decline near 03:26:45.8; the aligned late increase is near 03:27:10.8. But raw evidence around the decline shows ongoing trace events and idle CPUs, with prompt sampled scheduling, not a demonstrated fault. The trace offers no confirmed onset or end of an incident, so I am not assigning those workload-change boundaries as an incident window."
+    },
+    "ranked_services": null,
+    "ranked_candidates": null,
+    "trajectory": [
+      {
+        "step": 0,
+        "tool": "worker1.0",
+        "service": null
+      },
+      {
+        "step": 1,
+        "tool": "worker1.1",
+        "service": null
+      },
+      {
+        "step": 2,
+        "tool": "worker1.2",
+        "service": null
+      },
+      {
+        "step": 3,
+        "tool": "worker1.3",
+        "service": null
+      },
+      {
+        "step": 4,
+        "tool": "worker2.100",
+        "service": null
+      }
+    ],
+    "n_tool_calls": 88,
+    "n_code_snippets": 35,
+    "n_findings": 12,
+    "n_computed": 35,
+    "bytes_touched": 143555,
+    "tokens": {
+      "in": 664894,
+      "out": 20189
+    },
+    "model": "openai/gpt-6-luna",
+    "wall_s": 211.4,
+    "transcript_file": "C:\\workplace\\microservice-trace-dataset\\nier-2027\\transcripts\\s1_deliver__resident__t3_implement_cap25_r2__r1.json",
+    "skill_selected": null,
+    "skill_confidence": null,
+    "brief_injected": false,
+    "n_claims": null
+  }
+}

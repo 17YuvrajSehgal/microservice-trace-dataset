@@ -1,0 +1,67 @@
+{
+  "config": "s1_deliver",
+  "klass": "resident",
+  "run": "t3_implement_cap25_r3",
+  "run_dir": "C:\\workplace\\microservice-trace-dataset\\Blueprint\\latency\\1_svc_cpu_cap\\agentic-os-noise\\runs\\t3_implement_cap25_r3",
+  "rep": 3,
+  "cell": "s1_deliver__resident__t3_implement_cap25_r3__r3",
+  "status": "ok",
+  "returncode": 0,
+  "wall_s": 118.0,
+  "env_ablation": {
+    "ABL_FLAT_CAP": "2000"
+  },
+  "result": {
+    "run_id": "t3_implement_cap25_r3",
+    "diagnosis": {
+      "what_is_wrong": "The trace does not substantiate an abnormal slowdown or identify a kernel-level fault behind the coding-task symptom. It shows a workload phase change\u2014early activity declines, then python3 accounts for about 0.224 CPU-seconds/second during 03:27:48\u201303:27:58\u2014but not evidence that this load saturated the host or delayed the task.",
+      "root_cause_service": "unknown (no culprit identified)",
+      "culprit_kind": "unknown",
+      "fault_type": "normal",
+      "evidence": "Compared whole-trace process lifetimes and namespace totals, then the reported 4\u20135 second and 100 ms event-rate summaries across the 03:27:30.200\u201303:28:02.100 trace. Main processes persist in pid_ns 4026531836; partial process starts/ends are staggered rather than a concentrated restart. The opening sched_switch rate falls from about 1,230/s (03:27:30.200\u201303:27:34.200) to 288.5/s in 03:27:38.200\u201303:27:42.200, but block and network rates also fall with workload activity, not with evidence of growing wait; later python3 runtime is about 0.224 core while aggregate measured runtime is about 0.251 core. Raw lines show routine wake/switch activity, successful network transmit rc=0, and a sampled block request completing about 0.8 ms after issue. No direct throttling, OOM, or reclaim-pressure evidence is reported. The timeline/query endpoint name mismatch was noted, so event rates came from run_python's indexed rows. A falsifying check for this conclusion would be sustained CPU run-queue delay or resource wait aligned with the coding phase; no such delay calculation or raw-lines check is recorded, so the short trace cannot rule out every source of task latency.",
+      "confidence": 0.73,
+      "incident_window": "unknown",
+      "window_evidence": "No interval is supported as a fault window: the visible changes are workload activity transitions, with the subsequent python3-heavy interval not showing broad event-rate growth or measured resource saturation. The trace covers 03:27:30.200\u201303:28:02.100, but its boundaries do not mark a demonstrated incident onset or recovery."
+    },
+    "ranked_services": null,
+    "ranked_candidates": null,
+    "trajectory": [
+      {
+        "step": 0,
+        "tool": "worker1.0",
+        "service": null
+      },
+      {
+        "step": 1,
+        "tool": "worker1.1",
+        "service": null
+      },
+      {
+        "step": 2,
+        "tool": "worker1.2",
+        "service": null
+      },
+      {
+        "step": 3,
+        "tool": "worker1.3",
+        "service": null
+      }
+    ],
+    "n_tool_calls": 76,
+    "n_code_snippets": 30,
+    "n_findings": 8,
+    "n_computed": 29,
+    "bytes_touched": 131244,
+    "tokens": {
+      "in": 553446,
+      "out": 16608
+    },
+    "model": "openai/gpt-6-luna",
+    "wall_s": 117.0,
+    "transcript_file": "C:\\workplace\\microservice-trace-dataset\\nier-2027\\transcripts\\s1_deliver__resident__t3_implement_cap25_r3__r3.json",
+    "skill_selected": null,
+    "skill_confidence": null,
+    "brief_injected": false,
+    "n_claims": null
+  }
+}

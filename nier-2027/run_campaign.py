@@ -40,6 +40,13 @@ CONFIGS = {
     "s2_steps":   {"ABL_WORKER_STEPS": "12"},      # the measured wall
     "s3_thread":  {"ABL_THREAD_BUDGET": "80000"},  # the old within-phase budget
     "s4_transfer": {"ABL_NO_COMPUTED": "1"},       # voluntary note_finding only
+    # The position manipulation. Same data, same culprit, same bound; only the
+    # ORDER of keys in the serialized result changes, which moves the spawned
+    # list from the surviving prefix into the deleted tail (8/8 -> 0/8).
+    "s1_reversed": {"ABL_FLAT_CAP": "2000", "ABL_REVERSE_KEYS": "1"},
+    # Inertness control: reorder WITHOUT a binding bound. Must show no effect,
+    # or the reversal itself is doing something and the manipulation is unsound.
+    "order_only": {"ABL_REVERSE_KEYS": "1"},
     "all_defect": {"ABL_FLAT_CAP": "2000", "ABL_WORKER_STEPS": "12",
                    "ABL_THREAD_BUDGET": "80000", "ABL_NO_COMPUTED": "1"},
 }
@@ -53,6 +60,8 @@ PLAN = [
     ("all_defect",  "resident", 3),
     ("s2_steps",    "resident", 2), ("s3_thread",  "resident", 2),
     ("repair",      "healthy",  1), ("all_defect", "healthy",  1),
+    # added 20 Oct after the partial-data audit (DESIGN.md amendment A6)
+    ("s1_reversed", "spawned",  3), ("order_only", "spawned",  2),
 ]
 
 

@@ -1,0 +1,65 @@
+{
+  "config": "repair",
+  "klass": "spawned",
+  "run": "t4_w16_r4",
+  "run_dir": "C:\\workplace\\microservice-trace-dataset\\agentic-runs\\2_threads_vs_cores\\runs\\t4_w16_r4",
+  "rep": 2,
+  "cell": "repair__spawned__t4_w16_r4__r2",
+  "status": "ok",
+  "returncode": 0,
+  "wall_s": 120.9,
+  "env_ablation": {},
+  "result": {
+    "run_id": "t4_w16_r4",
+    "diagnosis": {
+      "what_is_wrong": "A `ttworker` workload started in the same container as the coding process and consumed nearly all four CPUs, plausibly slowing the coding task through CPU contention. Its CPU use rose to about 3.81 core-equivalents (95.7% of recorded CPU) and stopped by about 02:46:14.8; the trace supports this diagnosis, though it does not directly measure the coding task's latency.",
+      "root_cause_service": "ttworker in pid_ns 4026531836",
+      "culprit_kind": "container",
+      "fault_type": "cpu_saturation",
+      "evidence": "The trace spans 02:46:06.400\u201302:46:17.100. Whole-trace process-lifecycle data shows `ttworker` first appearing at 02:46:11.000 and last observed at 02:46:14.800 in pid_ns 4026531836. Whole-recording `sched_stat_runtime` analysis found it used 11,423.7 CPU-ms over 02:46:11\u201314, or 3,807.9 CPU-ms/s; total recorded CPU was 3,978 CPU-ms/s in that interval, versus 375 CPU-ms/s across the preceding 4.6 seconds. Per-second totals were about 4,000 CPU-ms/s during the burst, consistent with four CPUs at capacity. Raw scheduler lines show repeated `ttworker` thread handoffs; the available disk and network samples show no corresponding saturation or failure signal, and writeback activity was sparse. The requested `ctf_timeline` and `ctf_lines` backends did not return usable results, so workers used whole-trace Python/indexed-data analysis and raw lines obtained through that path. Wake-to-run delay measurement was not available, so CPU contention is strongly supported but not directly tied to a measured coding-task latency.",
+      "confidence": 0.91,
+      "incident_window": "02:46:11.000 - 02:46:14.900",
+      "window_evidence": "The leading edge is the `ttworker` first-seen time at 02:46:11.000, coinciding with its CPU rate jumping from zero to 3,457 CPU-ms/s in that second and nearly 4,000 CPU-ms/s in the next two seconds. At the trailing edge, its recorded CPU use falls to zero in the 02:46:15 second; lifecycle/raw exit records show worker-thread exits through 02:46:14.837, with aggregate runtime falling sharply by 02:46:14.900. The later interval is not a quiet comparison baseline because `ttworker` remains active through its final seconds."
+    },
+    "ranked_services": null,
+    "ranked_candidates": null,
+    "trajectory": [
+      {
+        "step": 0,
+        "tool": "worker1.0",
+        "service": null
+      },
+      {
+        "step": 1,
+        "tool": "worker1.1",
+        "service": null
+      },
+      {
+        "step": 2,
+        "tool": "worker1.2",
+        "service": null
+      },
+      {
+        "step": 3,
+        "tool": "worker1.3",
+        "service": null
+      }
+    ],
+    "n_tool_calls": 50,
+    "n_code_snippets": 22,
+    "n_findings": 9,
+    "n_computed": 22,
+    "bytes_touched": 72346,
+    "tokens": {
+      "in": 549712,
+      "out": 12920
+    },
+    "model": "openai/gpt-6-luna",
+    "wall_s": 120.0,
+    "transcript_file": "C:\\workplace\\microservice-trace-dataset\\nier-2027\\transcripts\\repair__spawned__t4_w16_r4__r2.json",
+    "skill_selected": null,
+    "skill_confidence": null,
+    "brief_injected": false,
+    "n_claims": null
+  }
+}

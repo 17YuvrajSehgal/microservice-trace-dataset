@@ -1,0 +1,72 @@
+{
+  "config": "s1_deliver",
+  "klass": "spawned",
+  "run": "t4_w16_r1",
+  "run_dir": "C:\\workplace\\microservice-trace-dataset\\agentic-runs\\2_threads_vs_cores\\runs\\t4_w16_r1",
+  "rep": 1,
+  "cell": "s1_deliver__spawned__t4_w16_r1__r1",
+  "status": "ok",
+  "returncode": 0,
+  "wall_s": 278.9,
+  "env_ablation": {
+    "ABL_FLAT_CAP": "2000"
+  },
+  "result": {
+    "run_id": "t4_w16_r1",
+    "diagnosis": {
+      "what_is_wrong": "A short-lived `ttworker` workload nearly fully occupied the host's four CPUs, plausibly slowing the reported coding task. The trace supports CPU saturation, though it does not quantify task latency or prove how much delay the workload caused.",
+      "root_cause_service": "ttworker in pid_ns 4026531836",
+      "culprit_kind": "container",
+      "fault_type": "cpu_saturation",
+      "evidence": "Used the reported ctf_timespan (02:49:09.900\u201302:49:20.800 UTC) and full-span ctf_proclife/process summaries to identify `ttworker` appearing at 02:49:14.700 and ending at 02:49:18.500; no other container identity was reported. Compared sched_stat_runtime in the preceding 1 s (476 ms total CPU, no ttworker runtime), the 3.8 s burst (15,192.9 ms total, including 14,804 ms for ttworker = 3.90 cores), and the following 1 s (564 ms total; ttworker 212.7 ms). Half-second buckets during the burst show approximately 1,986\u20131,997 ms of ttworker CPU per 500 ms, consistent with four-core occupancy. Reconstructed event counts from the Python index because ctf_timeline returned no matches for known events. Raw scheduler lines were inspected; a small wakeup-to-next-switch sample around 02:49:14 showed low delays (8 pairs, median 0.015 ms, max 0.022 ms), so direct victim runnable delay is not established. No cgroup throttling event was available. This weakens proof of impact on a specific task but does not negate the observed CPU saturation. The pre-burst interval was used as a relative comparison, not a validated healthy baseline.",
+      "confidence": 0.83,
+      "incident_window": "02:49:14.700 - 02:49:18.500",
+      "window_evidence": "The start is the observed first appearance of `ttworker` and the onset of sustained near-4-core runtime at 02:49:14.700; its recorded lifetime ends at 02:49:18.500, where the near-4-core runtime ends and overall CPU falls sharply. This brackets the sustained burst rather than the earlier unrelated high-activity second."
+    },
+    "ranked_services": null,
+    "ranked_candidates": null,
+    "trajectory": [
+      {
+        "step": 0,
+        "tool": "worker1.0",
+        "service": null
+      },
+      {
+        "step": 1,
+        "tool": "worker1.1",
+        "service": null
+      },
+      {
+        "step": 2,
+        "tool": "worker1.2",
+        "service": null
+      },
+      {
+        "step": 3,
+        "tool": "worker1.3",
+        "service": null
+      },
+      {
+        "step": 4,
+        "tool": "worker2.100",
+        "service": null
+      }
+    ],
+    "n_tool_calls": 88,
+    "n_code_snippets": 53,
+    "n_findings": 12,
+    "n_computed": 53,
+    "bytes_touched": 250255,
+    "tokens": {
+      "in": 800015,
+      "out": 20405
+    },
+    "model": "openai/gpt-6-luna",
+    "wall_s": 277.9,
+    "transcript_file": "C:\\workplace\\microservice-trace-dataset\\nier-2027\\transcripts\\s1_deliver__spawned__t4_w16_r1__r1.json",
+    "skill_selected": null,
+    "skill_confidence": null,
+    "brief_injected": false,
+    "n_claims": null
+  }
+}

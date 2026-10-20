@@ -1,0 +1,70 @@
+{
+  "config": "repair",
+  "klass": "spawned",
+  "run": "t4_w16_r2",
+  "run_dir": "C:\\workplace\\microservice-trace-dataset\\agentic-runs\\2_threads_vs_cores\\runs\\t4_w16_r2",
+  "rep": 1,
+  "cell": "repair__spawned__t4_w16_r2__r1",
+  "status": "ok",
+  "returncode": 0,
+  "wall_s": 237.8,
+  "env_ablation": {},
+  "result": {
+    "run_id": "t4_w16_r2",
+    "diagnosis": {
+      "what_is_wrong": "The trace shows a brief, near-four-core CPU burst dominated by `ttworker`, which used about 14.96 CPU-seconds in 3.9 seconds and kept all four observed CPUs busy in nearly every 100-ms bucket. This is a plausible cause of the reported slowdown through CPU contention, though the sparse scheduler samples do not establish a reliable wakeup-delay distribution or prove how much the coding task was delayed.",
+      "root_cause_service": "ttworker in pid_ns 4026531836",
+      "culprit_kind": "container",
+      "fault_type": "cpu_saturation",
+      "evidence": "Compared the pre-burst quiet range 02:48:30\u201302:48:32 with 02:48:33\u201302:48:36.9 using the workers\u2019 run_python CPU-runtime aggregation and scheduler/event counts. Average CPU use rose from about 0.16 cores in the quiet sample to 3.98 cores during the burst; `ttworker` accounted for 14.96 of 15.52 CPU-seconds (about 96%), with roughly 399 ms CPU in each 100-ms bucket across the four-CPU host. Proclife places its appearance at 02:48:33.1 and departure by 02:48:36.9. Block-bio and dirty-buffer rates were essentially unchanged across the comparison, and sampled scheduler lines show ~1-ms worker runs on CPUs 0\u20133. Wakeup-to-run attribution during the burst was not reliable because the raw line sample was sparse; its multi-second apparent pairs were sampling artifacts, so I do not treat them as measured delays.",
+      "confidence": 0.89,
+      "incident_window": "02:48:33 - 02:48:36.900",
+      "window_evidence": "The onset is the sharp change at 02:48:33: the new `ttworker` first appears at 02:48:33.1 and CPU runtime jumps to 3.98 average cores for the interval beginning 02:48:33. The end is marked by `ttworker` disappearing by 02:48:36.9 and the post-burst CPU rate falling to about 0.05\u20130.15 cores. This brackets the active workload; the earlier higher event activity around 02:48:28\u201329 is a separate phase, not the start of this burst."
+    },
+    "ranked_services": null,
+    "ranked_candidates": null,
+    "trajectory": [
+      {
+        "step": 0,
+        "tool": "worker1.0",
+        "service": null
+      },
+      {
+        "step": 1,
+        "tool": "worker1.1",
+        "service": null
+      },
+      {
+        "step": 2,
+        "tool": "worker1.2",
+        "service": null
+      },
+      {
+        "step": 3,
+        "tool": "worker1.3",
+        "service": null
+      },
+      {
+        "step": 4,
+        "tool": "worker2.100",
+        "service": null
+      }
+    ],
+    "n_tool_calls": 59,
+    "n_code_snippets": 21,
+    "n_findings": 10,
+    "n_computed": 21,
+    "bytes_touched": 109168,
+    "tokens": {
+      "in": 745127,
+      "out": 19661
+    },
+    "model": "openai/gpt-6-luna",
+    "wall_s": 236.8,
+    "transcript_file": "C:\\workplace\\microservice-trace-dataset\\nier-2027\\transcripts\\repair__spawned__t4_w16_r2__r1.json",
+    "skill_selected": null,
+    "skill_confidence": null,
+    "brief_injected": false,
+    "n_claims": null
+  }
+}

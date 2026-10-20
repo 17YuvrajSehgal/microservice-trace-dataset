@@ -1,0 +1,72 @@
+{
+  "config": "s1_deliver",
+  "klass": "resident",
+  "run": "t3_implement_cap25_r5",
+  "run_dir": "C:\\workplace\\microservice-trace-dataset\\Blueprint\\latency\\1_svc_cpu_cap\\agentic-os-noise\\runs\\t3_implement_cap25_r5",
+  "rep": 3,
+  "cell": "s1_deliver__resident__t3_implement_cap25_r5__r3",
+  "status": "ok",
+  "returncode": 0,
+  "wall_s": 414.5,
+  "env_ablation": {
+    "ABL_FLAT_CAP": "2000"
+  },
+  "result": {
+    "run_id": "t3_implement_cap25_r5",
+    "diagnosis": {
+      "what_is_wrong": "The trace does not show a kernel-level fault explaining the reported slower coding task. Activity drops sharply around 18:56:02.8, but the coding/runtime processes remain present and continue running; the evidence fits workload activity tapering rather than host resource contention or a service failure.",
+      "root_cause_service": "unknown",
+      "culprit_kind": "unknown",
+      "fault_type": "normal",
+      "evidence": "Compared equal 5-second windows from 18:55:57.8\u201318:56:02.8 and 18:56:02.8\u201318:56:07.8: sched_switch fell 5,485\u21921,886, sched_wakeup 2,676\u2192895, and sched_stat_runtime 4,646\u21921,644, while the active claude, JITWorker, Bun Pool and mi-scavenger tasks remained present. CPU runtime was only 5.7539 CPU-seconds across the 32.4-second trace, with no evidence here of host-wide saturation. Raw scheduler examples show prompt wake-to-switch dispatch; sampled block requests had median 0.739 ms and maximum 1.130 ms. Lifecycle review found one namespace and no relevant container restart. These checks argue against CPU saturation, a process exit/restart, or severe disk delay; they do not establish a quiet baseline or directly measure the coding task's duration.",
+      "confidence": 0.78,
+      "incident_window": "unknown",
+      "window_evidence": "The obvious rate boundary is near 18:56:02.8, identified by the synchronized decline across scheduler, block, and network event counts, but it is not supported as an incident boundary: key workload processes persist, rates trend lower without a synchronized recovery, and there is no evidence of resource starvation. Therefore I do not treat that workload transition as a fault window."
+    },
+    "ranked_services": null,
+    "ranked_candidates": null,
+    "trajectory": [
+      {
+        "step": 0,
+        "tool": "worker1.0",
+        "service": null
+      },
+      {
+        "step": 1,
+        "tool": "worker1.1",
+        "service": null
+      },
+      {
+        "step": 2,
+        "tool": "worker1.2",
+        "service": null
+      },
+      {
+        "step": 3,
+        "tool": "worker1.3",
+        "service": null
+      },
+      {
+        "step": 4,
+        "tool": "worker2.100",
+        "service": null
+      }
+    ],
+    "n_tool_calls": 91,
+    "n_code_snippets": 35,
+    "n_findings": 10,
+    "n_computed": 35,
+    "bytes_touched": 183367,
+    "tokens": {
+      "in": 652230,
+      "out": 20253
+    },
+    "model": "openai/gpt-6-luna",
+    "wall_s": 413.5,
+    "transcript_file": "C:\\workplace\\microservice-trace-dataset\\nier-2027\\transcripts\\s1_deliver__resident__t3_implement_cap25_r5__r3.json",
+    "skill_selected": null,
+    "skill_confidence": null,
+    "brief_injected": false,
+    "n_claims": null
+  }
+}

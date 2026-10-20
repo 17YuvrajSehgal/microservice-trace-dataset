@@ -1,0 +1,70 @@
+{
+  "config": "repair",
+  "klass": "resident",
+  "run": "t3_implement_cap25_r5",
+  "run_dir": "C:\\workplace\\microservice-trace-dataset\\Blueprint\\latency\\1_svc_cpu_cap\\agentic-os-noise\\runs\\t3_implement_cap25_r5",
+  "rep": 3,
+  "cell": "repair__resident__t3_implement_cap25_r5__r3",
+  "status": "ok",
+  "returncode": 0,
+  "wall_s": 211.0,
+  "env_ablation": {},
+  "result": {
+    "run_id": "t3_implement_cap25_r5",
+    "diagnosis": {
+      "what_is_wrong": "The trace does not establish a kernel-level fault or confirm that resource contention caused the coding task to run longer. It shows a workload phase change: python3 in the only observed container (pid_ns 4026531836) used about 231 ms of CPU per second during 18:56:13\u201318:56:25, but this is not evidence of host CPU saturation, and the sampled scheduler-delay estimates are incomplete and unreliable.",
+      "root_cause_service": "unknown",
+      "culprit_kind": "unknown",
+      "fault_type": "normal",
+      "evidence": "Used the reported ctf_timespan (18:55:57.800\u201318:56:30.100), lifecycle, full-span event-rate calculations, runtime-by-process results, and narrow raw event records. Compared the busy early interval (18:55:58\u201318:56:03) with later activity: sched_switch fell 932 to 211/s and sched_wakeup 453 to 97/s by 18:56:18\u201318:56:24, while runtime shifted from claude/JITWorker to python3. But the container\u2019s measured aggregate CPU was only about 260 ms per wall-second during 18:56:13\u201318:56:25; this does not demonstrate host-wide CPU saturation. Disk issue/completion counts were nearly balanced in the sampled early interval, and sampled network transmissions returned rc=0; neither proves those paths healthy throughout, but there is no dominant I/O/network signal in the notes. Wakeup-to-switch matching was explicitly judged invalid because raw scheduler lines are bucket-sampled and omit many events, so the apparent long waits cannot establish starvation. The trace contains only one substantial pid_ns, and there is no reliable process attribution for an external co-tenant or other culprit.",
+      "confidence": 0.78,
+      "incident_window": "unknown",
+      "window_evidence": "The 18:56:13\u201318:56:25 python3-heavy phase is a workload transition, not a demonstrated fault interval. Event totals had already declined sharply after roughly 18:56:03, then remained low before partial recovery late in the trace; neither those changes nor process lifecycle boundaries establish incident onset or recovery. Because no change is tied reliably to the reported slowdown, an incident window is unsupported."
+    },
+    "ranked_services": null,
+    "ranked_candidates": null,
+    "trajectory": [
+      {
+        "step": 0,
+        "tool": "worker1.0",
+        "service": null
+      },
+      {
+        "step": 1,
+        "tool": "worker1.1",
+        "service": null
+      },
+      {
+        "step": 2,
+        "tool": "worker1.2",
+        "service": null
+      },
+      {
+        "step": 3,
+        "tool": "worker1.3",
+        "service": null
+      },
+      {
+        "step": 4,
+        "tool": "worker2.100",
+        "service": null
+      }
+    ],
+    "n_tool_calls": 60,
+    "n_code_snippets": 28,
+    "n_findings": 14,
+    "n_computed": 28,
+    "bytes_touched": 101581,
+    "tokens": {
+      "in": 723183,
+      "out": 21655
+    },
+    "model": "openai/gpt-6-luna",
+    "wall_s": 210.0,
+    "transcript_file": "C:\\workplace\\microservice-trace-dataset\\nier-2027\\transcripts\\repair__resident__t3_implement_cap25_r5__r3.json",
+    "skill_selected": null,
+    "skill_confidence": null,
+    "brief_injected": false,
+    "n_claims": null
+  }
+}

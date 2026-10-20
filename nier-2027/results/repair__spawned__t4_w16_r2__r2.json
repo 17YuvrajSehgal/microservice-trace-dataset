@@ -1,0 +1,65 @@
+{
+  "config": "repair",
+  "klass": "spawned",
+  "run": "t4_w16_r2",
+  "run_dir": "C:\\workplace\\microservice-trace-dataset\\agentic-runs\\2_threads_vs_cores\\runs\\t4_w16_r2",
+  "rep": 2,
+  "cell": "repair__spawned__t4_w16_r2__r2",
+  "status": "ok",
+  "returncode": 0,
+  "wall_s": 288.2,
+  "env_ablation": {},
+  "result": {
+    "run_id": "t4_w16_r2",
+    "diagnosis": {
+      "what_is_wrong": "A bounded `ttworker` job drove CPU runtime to roughly four CPU-seconds per second, effectively keeping the four observed CPUs busy while the coding task was running. This strongly supports CPU saturation as the cause of the slowdown, though the trace shows the workload and resource pressure rather than measuring task latency directly.",
+      "root_cause_service": "ttworker in pid_ns 4026531836",
+      "culprit_kind": "container",
+      "fault_type": "cpu_saturation",
+      "evidence": "Compared the quiet 02:48:30\u201302:48:33 interval with the workload interval using whole-trace `run_python` CPU-runtime summaries: total runtime rose from 340.9 ms across 3 s (0.114 average cores) to 15,518.4 ms over 3.9 s (3.979 average cores). `ttworker` alone used 14,960 ms (96.4% of interval CPU runtime), with about 400 ms in nearly every 100-ms bucket; `ctf_proclife` places its appearance and departure at 02:48:33.1 and 02:48:36.9. Raw `ctf_lines` scheduler records show `ttworker` threads running on CPUs 1 and 3. Scheduling/wakeup and futex rates decline during the burst, while sampled disk, futex, and network records do not indicate a competing I/O, lock, or network fault. The timeline tool did not match these events, so the rate and CPU comparisons came from the workers\u2019 whole-trace DataFrame calculations.",
+      "confidence": 0.97,
+      "incident_window": "02:48:33.1 - 02:48:36.9",
+      "window_evidence": "The onset is the first populated `ttworker` runtime bucket at 02:48:33.1, following the quiet 02:48:30\u201302:48:33 comparison interval; its runtime stays near 400 CPU-ms per 100-ms bucket through the burst and falls off at the final partial bucket at 02:48:36.9. `ctf_proclife` independently reports the same first/last timestamps. CPU use is low again after the burst (107.4 ms total across 02:48:37\u201302:48:39). A falsifier would be evidence that another workload or disk/network wait\u2014not `ttworker` CPU consumption\u2014accounts for the slowdown; the per-process CPU attribution and raw mechanism spot checks argue against that, although the trace has no direct latency measurement."
+    },
+    "ranked_services": null,
+    "ranked_candidates": null,
+    "trajectory": [
+      {
+        "step": 0,
+        "tool": "worker1.0",
+        "service": null
+      },
+      {
+        "step": 1,
+        "tool": "worker1.1",
+        "service": null
+      },
+      {
+        "step": 2,
+        "tool": "worker1.2",
+        "service": null
+      },
+      {
+        "step": 3,
+        "tool": "worker1.3",
+        "service": null
+      }
+    ],
+    "n_tool_calls": 42,
+    "n_code_snippets": 12,
+    "n_findings": 8,
+    "n_computed": 12,
+    "bytes_touched": 43671,
+    "tokens": {
+      "in": 315058,
+      "out": 10545
+    },
+    "model": "openai/gpt-6-luna",
+    "wall_s": 287.1,
+    "transcript_file": "C:\\workplace\\microservice-trace-dataset\\nier-2027\\transcripts\\repair__spawned__t4_w16_r2__r2.json",
+    "skill_selected": null,
+    "skill_confidence": null,
+    "brief_injected": false,
+    "n_claims": null
+  }
+}

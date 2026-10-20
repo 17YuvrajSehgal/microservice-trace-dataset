@@ -1,0 +1,67 @@
+{
+  "config": "s1_deliver",
+  "klass": "resident",
+  "run": "t3_implement_cap25_r3",
+  "run_dir": "C:\\workplace\\microservice-trace-dataset\\Blueprint\\latency\\1_svc_cpu_cap\\agentic-os-noise\\runs\\t3_implement_cap25_r3",
+  "rep": 1,
+  "cell": "s1_deliver__resident__t3_implement_cap25_r3__r1",
+  "status": "ok",
+  "returncode": 0,
+  "wall_s": 105.0,
+  "env_ablation": {
+    "ABL_FLAT_CAP": "2000"
+  },
+  "result": {
+    "run_id": "t3_implement_cap25_r3",
+    "diagnosis": {
+      "what_is_wrong": "The trace does not establish a kernel-level fault that explains the reported longer coding task. It does show a workload shift: python3 becomes the dominant recorded CPU user around 03:27:45, but accounts for only about 1.13 CPU-seconds per 5-second interval on a four-CPU host, while scheduling activity falls rather than showing broad contention; this is insufficient to attribute the slowdown to CPU saturation or another fault.",
+      "root_cause_service": "unknown",
+      "culprit_kind": "unknown",
+      "fault_type": "normal",
+      "evidence": "Compared full-span rates and per-process CPU runtime, then compared 03:27:35\u201303:27:40 with 03:27:45\u201303:27:50 and 03:27:50\u201303:27:55. In the latter windows python3 (pid_ns 4026531836) used 1.132s and 1.129s CPU per 5s, but aggregate runtime was only 1.259s and 1.262s; sched_switch counts fell from 1,744 to 1,010 and 921, and wakeups from 829 to 455 and 413. Raw sched_switch samples at 03:27:46 show python3 dispatched from swapper/2, not a demonstrated wait; no wakeup-to-run delay was established. There is no evidence of host CPU saturation, and the available notes do not show decisive disk, network, memory, or dependency failure evidence. The reported task-duration symptom cannot be confirmed from this trace alone.",
+      "confidence": 0.78,
+      "incident_window": "unknown",
+      "window_evidence": "The observable workload transition is around 03:27:45\u201303:27:47: python3's measured CPU rises sharply, while scheduler event rates are already declining. That marks a change in workload, not a supported fault boundary; python3 CPU later falls by 03:27:58, but the trace does not establish either point as incident start or recovery."
+    },
+    "ranked_services": null,
+    "ranked_candidates": null,
+    "trajectory": [
+      {
+        "step": 0,
+        "tool": "worker1.0",
+        "service": null
+      },
+      {
+        "step": 1,
+        "tool": "worker1.1",
+        "service": null
+      },
+      {
+        "step": 2,
+        "tool": "worker1.2",
+        "service": null
+      },
+      {
+        "step": 3,
+        "tool": "worker1.3",
+        "service": null
+      }
+    ],
+    "n_tool_calls": 68,
+    "n_code_snippets": 30,
+    "n_findings": 8,
+    "n_computed": 30,
+    "bytes_touched": 86204,
+    "tokens": {
+      "in": 471134,
+      "out": 14980
+    },
+    "model": "openai/gpt-6-luna",
+    "wall_s": 104.0,
+    "transcript_file": "C:\\workplace\\microservice-trace-dataset\\nier-2027\\transcripts\\s1_deliver__resident__t3_implement_cap25_r3__r1.json",
+    "skill_selected": null,
+    "skill_confidence": null,
+    "brief_injected": false,
+    "n_claims": null
+  }
+}

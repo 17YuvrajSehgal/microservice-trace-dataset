@@ -29,21 +29,43 @@ def dx_text(dx: dict) -> str:
                     ("root_cause_service", "culprit_kind", "what_is_wrong", "evidence")).lower()
 
 
+# NB: no empty string here - `rcs.startswith("")` is always True and silently
+# scores every answer as an abstention.
+NON_ANSWERS = ("unknown", "none", "n/a", "null", "unclear", "not established",
+               "no fault", "not identified")
+
+
 def score(rec: dict) -> dict:
+    """Score the COMMITMENT, never a mention.
+
+    An earlier version of this scorer searched the whole diagnosis prose for a
+    culprit name. That credited sentences like "the later python3 workload is
+    actively consuming cpu" as a successful localisation, on runs whose
+    root_cause_service read "unknown". It inflated the resident arm from 3/15 to
+    14/15 and would have manufactured an effect. The agent commits through
+    root_cause_service; prose that merely names a process is not an answer.
+    """
     dx = ((rec.get("result") or {}).get("diagnosis") or {})
     klass = rec["klass"]
-    txt = dx_text(dx)
-    ft = str(dx.get("fault_type", "")).lower()
-    named = [c for c in CULPRIT[klass] if c in txt]
+    rcs = str(dx.get("root_cause_service", "")).strip().lower()
+    kind = str(dx.get("culprit_kind", "")).strip().lower()
+    committed = bool(rcs) and not any(rcs == n or rcs.startswith(n)
+                                      for n in NON_ANSWERS)
+    answer = f"{rcs} {kind}"
+    named = [c for c in CULPRIT[klass] if c in answer] if committed else []
+    prose = [c for c in CULPRIT[klass] if c in dx_text(dx)]
     out = {
+        "committed": committed,
         "named_culprit": bool(named),
         "matched": ",".join(named),
-        "fault_label": ft,
-        "abstained": ft in ABSTAIN or "unknown" in str(dx.get("root_cause_service", "")).lower(),
+        "mentioned_not_committed": bool(prose) and not committed,
+        "root_cause_service": str(dx.get("root_cause_service", ""))[:60],
+        "fault_label": str(dx.get("fault_type", "")).lower(),
+        "abstained": not committed,
         "confidence": dx.get("confidence"),
     }
-    if klass == "healthy":          # correct = did NOT invent a fault
-        out["correct"] = ft in ABSTAIN
+    if klass == "healthy":          # correct = did NOT invent a culprit
+        out["correct"] = not committed
     else:
         out["correct"] = out["named_culprit"]
     return out
@@ -108,15 +130,17 @@ def main() -> int:
 
     # ---- H2: the interaction ----
     print("=== accuracy: named the correct culprit process (WHERE) ===")
-    print(f"{'config':<13}{'class':<10}{'n':>4}{'correct':>9}{'rate':>8}{'abstain':>9}")
+    print(f"{'config':<13}{'class':<10}{'n':>4}{'commit':>8}{'correct':>9}{'rate':>7}"
+          f"{'mention-only':>14}")
     grid = collections.defaultdict(list)
     for r in ok:
         grid[(r["config"], r["klass"])].append(r)
     for (cfg, kl) in sorted(grid):
         g = grid[(cfg, kl)]
         c = sum(1 for x in g if x["correct"])
-        ab = sum(1 for x in g if x.get("abstained"))
-        print(f"{cfg:<13}{kl:<10}{len(g):>4}{c:>9}{100*c/len(g):>7.0f}%{ab:>9}")
+        cm = sum(1 for x in g if x.get("committed"))
+        mo = sum(1 for x in g if x.get("mentioned_not_committed"))
+        print(f"{cfg:<13}{kl:<10}{len(g):>4}{cm:>8}{c:>9}{100*c/len(g):>6.0f}%{mo:>14}")
 
     def rate(cfg, kl):
         g = grid.get((cfg, kl)) or []

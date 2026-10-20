@@ -239,3 +239,77 @@ operator hint — *"the coding task on this machine took noticeably longer than
 usual to finish"*. It names a symptom, never a mechanism, and it is identical
 across classes so it cannot leak the answer differentially. On healthy runs it
 is a **hard negative**: an operator reports a symptom and nothing is wrong.
+
+## A6. A scoring bug and a design flaw, both caught on partial data (20 Oct)
+
+Audited at 46 of 120 cells rather than waiting for the campaign to finish.
+Two problems, the second more serious than the first.
+
+### The scoring bug
+
+The first scorer searched the whole diagnosis prose for a culprit name. That
+credited sentences like *"the later python3 workload is actively consuming
+cpu"* as a successful localisation on runs whose `root_cause_service` read
+**unknown**. It scored the repaired resident arm at **14/15** when the true
+commitment rate was **2/15**.
+
+This is the same failure the harness's own scorer hit once before, where an
+earlier branch credited *any* namespace as correct and was caught one commit
+before it produced a fake improvement. Scoring now requires a **commitment** in
+`root_cause_service`; a mention in prose is reported separately as
+`mentioned_not_committed`, which is informative in its own right. The
+commitment predicate is unit-tested against real recorded values, after a
+second bug (`"".startswith` matching everything) briefly scored every run as an
+abstention.
+
+### The design flaw
+
+With correct scoring, the headline interaction **cannot be measured as
+designed**:
+
+| arm | commit rate |
+|---|---|
+| repair / **spawned** culprit | **14/15 (93%)** |
+| repair / **resident** culprit | **2/15 (13%)** |
+
+The resident class — the one the delivery defect is predicted to destroy — is
+already at the floor **when repaired**, for the reason recorded in A4 (a cgroup
+limit in a single namespace manifests as absence). The spawned class has ample
+headroom, but it is precisely the class the mechanism predicts the defect
+**spares**, because its culprit sits in the early, surviving key.
+
+So the only cell with room to fall is the one that should not fall. H2 as
+written is untestable here, and no number of additional runs would fix it.
+
+### The replacement: manipulate position directly
+
+The thesis is that a positional bound makes delivery depend on a field's
+**position**, and that nothing makes late fields less important. The clean test
+is therefore to vary position and nothing else.
+
+`ABL_REVERSE_KEYS=1` serializes a result's keys in reverse order. Content,
+data, task, agent, model and bound are all unchanged; only which field the
+prefix reaches first moves. Measured on the spawned runs:
+
+| condition | spawned list (holds the culprit) | resident list |
+|---|---|---|
+| repair | 8/8 | 17/17 |
+| defect, normal key order | **8/8** | 4/17 |
+| defect, **reversed key order** | **0/8** | 16/17 |
+
+**H2' (registered now, before these cells run):** accuracy on the spawned class
+falls sharply under `s1_reversed` relative to `s1_deliver`, even though the two
+differ only in the order of two keys in a JSON object.
+
+**Inertness control `order_only`:** reversal with no binding bound must show no
+effect. If it does show one, the reversal is not inert and the manipulation is
+unsound — so this control can falsify the whole design, and is run for that
+reason.
+
+### What the original cells are still worth
+
+`s1_deliver` x spawned is now a **confirmatory** test rather than a null:
+the defect destroys roughly 27 tool results per run, and the mechanism predicts
+accuracy nonetheless holds near 93% because the answer was never in the deleted
+field. Catastrophic data loss with no accuracy loss, decided purely by
+position, is the other half of the argument.

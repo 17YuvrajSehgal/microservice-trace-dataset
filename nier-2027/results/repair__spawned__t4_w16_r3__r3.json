@@ -1,0 +1,65 @@
+{
+  "config": "repair",
+  "klass": "spawned",
+  "run": "t4_w16_r3",
+  "run_dir": "C:\\workplace\\microservice-trace-dataset\\agentic-runs\\2_threads_vs_cores\\runs\\t4_w16_r3",
+  "rep": 3,
+  "cell": "repair__spawned__t4_w16_r3__r3",
+  "status": "ok",
+  "returncode": 0,
+  "wall_s": 94.9,
+  "env_ablation": {},
+  "result": {
+    "run_id": "t4_w16_r3",
+    "diagnosis": {
+      "what_is_wrong": "The coding/task worker `ttworker` in container pid_ns 4026531836 occupied essentially all four CPUs while it ran, accumulating about 15.04 CPU-seconds in 3.9 seconds of wall time; this is consistent with CPU saturation explaining the task\u2019s slow completion. The trace does not establish CPU throttling or a separate host-wide disk/network fault, and the unavailable raw-line inspection limits mechanism detail.",
+      "root_cause_service": "ttworker in pid_ns 4026531836",
+      "culprit_kind": "container",
+      "fault_type": "cpu_saturation",
+      "evidence": "Compared the quiet pre-task range 02:50:11\u201302:50:14.5 with 02:50:14.6\u201302:50:18.5 and the post-task range 02:50:18.6\u201302:50:20.4. ctf_proclife placed ttworker's appearance/departure at 02:50:14.600/02:50:18.500. Whole-trace runtime aggregation showed 15,043.79 ms CPU attributed to ttworker in that 3.9-second interval, versus 700.18 ms of total container CPU over the 3.5-second pre-task interval and 153.33 ms post-task. The 100-ms series stays near 400 ms CPU per 100 ms wall time throughout most of 02:50:14.7\u201302:50:18.4, indicating roughly four CPUs continuously busy; ttworker also accounts for 5,239 of 6,569 sched_switch events in the task interval. Network and block activity do not show a corresponding task-window surge. The check that could falsify CPU saturation would be evidence that CPU time was not consuming the available cores or that the apparent runtime was blocked/waiting; the reported CPU-runtime attribution and four-core rate support saturation, though ctf_lines/raw latency inspection could not be run because the CTF path was unavailable. No throttle-specific evidence was recorded.",
+      "confidence": 0.9,
+      "incident_window": "02:50:14.600 - 02:50:18.500",
+      "window_evidence": "The boundary comes from ctf_proclife: ttworker first appears at 02:50:14.600 and last appears at 02:50:18.500. Runtime rises sharply at onset and drops to low levels just after departure, corroborated by the per-100-ms CPU series transitioning from about 50.85 ms at 02:50:14.5 to 359.82 ms at 02:50:14.6, then falling to 139.05 ms at 02:50:18.5 and under 1 ms in subsequent buckets."
+    },
+    "ranked_services": null,
+    "ranked_candidates": null,
+    "trajectory": [
+      {
+        "step": 0,
+        "tool": "worker1.0",
+        "service": null
+      },
+      {
+        "step": 1,
+        "tool": "worker1.1",
+        "service": null
+      },
+      {
+        "step": 2,
+        "tool": "worker1.2",
+        "service": null
+      },
+      {
+        "step": 3,
+        "tool": "worker1.3",
+        "service": null
+      }
+    ],
+    "n_tool_calls": 48,
+    "n_code_snippets": 12,
+    "n_findings": 9,
+    "n_computed": 12,
+    "bytes_touched": 43800,
+    "tokens": {
+      "in": 418056,
+      "out": 12000
+    },
+    "model": "openai/gpt-6-luna",
+    "wall_s": 94.0,
+    "transcript_file": "C:\\workplace\\microservice-trace-dataset\\nier-2027\\transcripts\\repair__spawned__t4_w16_r3__r3.json",
+    "skill_selected": null,
+    "skill_confidence": null,
+    "brief_injected": false,
+    "n_claims": null
+  }
+}

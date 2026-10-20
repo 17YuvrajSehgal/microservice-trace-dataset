@@ -1,0 +1,65 @@
+{
+  "config": "repair",
+  "klass": "spawned",
+  "run": "t4_w16_r1",
+  "run_dir": "C:\\workplace\\microservice-trace-dataset\\agentic-runs\\2_threads_vs_cores\\runs\\t4_w16_r1",
+  "rep": 1,
+  "cell": "repair__spawned__t4_w16_r1__r1",
+  "status": "ok",
+  "returncode": 0,
+  "wall_s": 194.6,
+  "env_ablation": {},
+  "result": {
+    "run_id": "t4_w16_r1",
+    "diagnosis": {
+      "what_is_wrong": "The coding-task slowdown is consistent with a transient CPU-saturation episode: newly launched `ttworker` threads consumed nearly all four cores, leaving little CPU time for the existing workload. The task cohort then exited and `ttworker` runtime collapsed, so the earlier shared event-rate drop is not the best-supported window for this slowdown.",
+      "root_cause_service": "ttworker in pid_ns 4026531836",
+      "culprit_kind": "container",
+      "fault_type": "cpu_saturation",
+      "evidence": "The recorded span is 02:49:09.900\u201302:49:20.700. Worker lifecycle analysis found a coordinated task launch at 02:49:14.600 (33 execs, 22 forks), with `ttworker` present from 02:49:14.700 to 02:49:18.500. Grouped sched_stat_runtime totals show 15.017 CPU-seconds for ttworker during the task interval, versus 0 in the preceding 02:49:10.6\u201314.6 comparison; across 02:49:14.7\u201318.5 it used 14.804 of 15.193 recorded CPU-seconds, and from 02:49:15\u201317 used 7.957 CPU-seconds while `claude` used 0.030. Per-100-ms runtime records show ttworker threads repeatedly using about 1 CPU-second per second across CPUs 0\u20133. After the cohort exits at 02:49:18.3\u201318.5, total container CPU falls to 108 ms over 02:49:18.9\u201320.7. Raw scheduler/runtime records corroborate the attribution. The alternative disk/network/lock explanations were checked: no block issue/complete events in sampled heavy-workload seconds, successful network transmissions, and sampled futex entry/exit pairs separated by microseconds; no reclaim/OOM families were found. The apparent synchronized event-rate collapse at 02:49:10.8\u201314.7 precedes the ttworker launch, so it does not explain this CPU-heavy task interval.",
+      "confidence": 0.98,
+      "incident_window": "02:49:14.700 - 02:49:18.500",
+      "window_evidence": "The lower boundary is the first reported appearance of ttworker at 02:49:14.700, immediately after the 02:49:14.600 fork/exec cohort and before its sustained multi-core runtime. The upper boundary is its last reported presence at 02:49:18.500, coincident with the clustered task-cohort exits at 18.3\u201318.5 and followed by CPU runtime dropping to near-idle levels. The earlier quietish CPU comparison and post-task bucket support these boundaries; the full-span event-rate change at 10.8 is earlier and is not used as the incident start."
+    },
+    "ranked_services": null,
+    "ranked_candidates": null,
+    "trajectory": [
+      {
+        "step": 0,
+        "tool": "worker1.0",
+        "service": null
+      },
+      {
+        "step": 1,
+        "tool": "worker1.1",
+        "service": null
+      },
+      {
+        "step": 2,
+        "tool": "worker1.2",
+        "service": null
+      },
+      {
+        "step": 3,
+        "tool": "worker1.3",
+        "service": null
+      }
+    ],
+    "n_tool_calls": 65,
+    "n_code_snippets": 20,
+    "n_findings": 8,
+    "n_computed": 20,
+    "bytes_touched": 74267,
+    "tokens": {
+      "in": 469024,
+      "out": 13826
+    },
+    "model": "openai/gpt-6-luna",
+    "wall_s": 193.6,
+    "transcript_file": "C:\\workplace\\microservice-trace-dataset\\nier-2027\\transcripts\\repair__spawned__t4_w16_r1__r1.json",
+    "skill_selected": null,
+    "skill_confidence": null,
+    "brief_injected": false,
+    "n_claims": null
+  }
+}
