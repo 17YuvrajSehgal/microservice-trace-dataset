@@ -313,3 +313,37 @@ Included a branch-that-did-not-fire stage in the walk (what happens if the CPU
 gate finds waits, or the pool check finds one slow socket). Why: the framework's
 distinguishing behaviour is refusal, and a walk that only shows the happy path
 would not show it.
+
+## Laid out thesis/flow.drawio
+
+The scratch file had the right icons but no layout and no edges. Rebuilt it as
+three numbered bands — **1 COLLECT · 2 AUTHOR · 3 USE** — with a feedback loop
+closing from VERDICT back to the blueprint.
+
+Decisions worth keeping:
+
+- **Three bands, not one flow.** The three are different *kinds* of activity on
+  different timescales: collection happens once per campaign, authoring once per
+  problem, use once per incident. Drawing them as a single chain would imply
+  they run in sequence every time, which is the misreading to avoid.
+- **The library sits between bands 2 and 3**, fed by AUTHOR and feeding SELECT.
+  That placement is the whole argument for why this accumulates: the output of
+  band 2 is the input to band 3, and band 3 feeds back into band 2.
+- **SELECT is the only box with a different fill and a heavier stroke** (teal,
+  8px). It is the measured bottleneck, so it is the one element the eye should
+  land on. Everything else is uniform on purpose.
+- **Kept every icon from the scratch file** so nothing fails to resolve in
+  draw.io; dropped only `pc_man` and `sagemaker_model`, which had no job once
+  Analysis_Services carried "measure" and the robot carried "the agent".
+- **Labelled only the six edges that carry information** (`one run bundle`,
+  `every claim is measured on this data`, `candidates`, `a rule-out fired`,
+  `+1 in the library`, `FEEDBACK`). The eleven within-band chain arrows are left
+  bare — the sequence is already obvious and labelling them would be noise.
+- **`&nbsp;` replaced with `&#160;`.** draw.io tolerates the named entity but it
+  is not valid XML, so anything that parses the file strictly chokes on it.
+
+Validated programmatically rather than by eye: XML parses, 43 vertices and 17
+edges with no dangling endpoints, nothing outside the page, no unintended
+overlaps, and every band child actually inside its band.
+
+Original kept at `thesis/flow.drawio.bak`.

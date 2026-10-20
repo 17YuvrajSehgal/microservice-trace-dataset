@@ -1,105 +1,298 @@
 <mxfile host="Electron">
-  <diagram name="Page-1" id="f6WSqcoHfKhiylMf_3a2">
-    <mxGraphModel dx="4682" dy="4336" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+  <diagram name="Framework" id="f6WSqcoHfKhiylMf_3a2">
+    <mxGraphModel dx="2400" dy="1600" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="3100" pageHeight="2250" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
-        <mxCell id="_-_Do2CLBHKIIKJqPkjz-3" edge="1" parent="1" source="_-_Do2CLBHKIIKJqPkjz-1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=6;fontSize=20;align=center;fontStyle=1" target="_-_Do2CLBHKIIKJqPkjz-2" value="">
-          <mxGeometry relative="1" as="geometry" />
+
+        <!-- ══════════ BAND BACKGROUNDS (first = drawn behind everything) ══════════ -->
+        <mxCell id="bandA" parent="1" vertex="1" value=""
+          style="rounded=1;arcSize=2;whiteSpace=wrap;html=1;fillColor=#EBF2FA;strokeColor=#7EA6E0;strokeWidth=3;dashed=1;dashPattern=12 8;">
+          <mxGeometry x="40" y="40" width="2960" height="470" as="geometry" />
         </mxCell>
-        <mxCell id="_-_Do2CLBHKIIKJqPkjz-1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;roundedPerimeter=1;strokeWidth=6;fontSize=21;align=center;fontStyle=1" value="UNDERSTAND&lt;div&gt;(is there anything wrong in the system?)&lt;/div&gt;" vertex="1">
-          <mxGeometry height="200" width="200" x="-440" y="-640" as="geometry" />
+        <mxCell id="bandB" parent="1" vertex="1" value=""
+          style="rounded=1;arcSize=2;whiteSpace=wrap;html=1;fillColor=#E9F5E9;strokeColor=#82B366;strokeWidth=3;dashed=1;dashPattern=12 8;">
+          <mxGeometry x="40" y="570" width="2960" height="560" as="geometry" />
         </mxCell>
-        <mxCell id="_-_Do2CLBHKIIKJqPkjz-5" edge="1" parent="1" source="_-_Do2CLBHKIIKJqPkjz-2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=6;fontSize=20;align=center;fontStyle=1" target="_-_Do2CLBHKIIKJqPkjz-4" value="">
-          <mxGeometry relative="1" as="geometry" />
+        <mxCell id="bandC" parent="1" vertex="1" value=""
+          style="rounded=1;arcSize=2;whiteSpace=wrap;html=1;fillColor=#FFF6E0;strokeColor=#D6B656;strokeWidth=3;dashed=1;dashPattern=12 8;">
+          <mxGeometry x="40" y="1190" width="2960" height="800" as="geometry" />
         </mxCell>
-        <mxCell id="_-_Do2CLBHKIIKJqPkjz-2" parent="1" style="whiteSpace=wrap;html=1;rounded=1;roundedPerimeter=1;strokeWidth=6;fontSize=21;align=center;fontStyle=1" value="SELECT&lt;div&gt;(the collect blueprint/skill to do the RCA)&lt;/div&gt;" vertex="1">
-          <mxGeometry height="200" width="200" x="-60" y="-640" as="geometry" />
+
+        <mxCell id="titleA" parent="1" vertex="1"
+          value="&lt;b&gt;1 &#160;COLLECT&lt;/b&gt; &#160;— run the system, break it on purpose, record everything"
+          style="text;html=1;align=left;verticalAlign=middle;fontSize=30;fontColor=#2A5A96;">
+          <mxGeometry x="80" y="58" width="1700" height="48" as="geometry" />
         </mxCell>
-        <mxCell id="_-_Do2CLBHKIIKJqPkjz-7" edge="1" parent="1" source="_-_Do2CLBHKIIKJqPkjz-4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=6;fontSize=20;align=center;fontStyle=1" target="_-_Do2CLBHKIIKJqPkjz-6" value="">
-          <mxGeometry relative="1" as="geometry" />
+        <mxCell id="titleB" parent="1" vertex="1"
+          value="&lt;b&gt;2 &#160;AUTHOR&lt;/b&gt; &#160;— turn one solved investigation into a reusable blueprint"
+          style="text;html=1;align=left;verticalAlign=middle;fontSize=30;fontColor=#3D7A3D;">
+          <mxGeometry x="80" y="588" width="1700" height="48" as="geometry" />
         </mxCell>
-        <mxCell id="_-_Do2CLBHKIIKJqPkjz-4" parent="1" style="whiteSpace=wrap;html=1;rounded=1;roundedPerimeter=1;strokeWidth=6;fontSize=21;align=center;fontStyle=1" value="RUN&lt;div&gt;(agent runs -- collects the required analysis data)&lt;/div&gt;" vertex="1">
-          <mxGeometry height="200" width="200" x="270" y="-640" as="geometry" />
+        <mxCell id="titleC" parent="1" vertex="1"
+          value="&lt;b&gt;3 &#160;USE&lt;/b&gt; &#160;— the agent picks one blueprint from the library and runs it, unaided"
+          style="text;html=1;align=left;verticalAlign=middle;fontSize=30;fontColor=#9A7B15;">
+          <mxGeometry x="80" y="1208" width="1800" height="48" as="geometry" />
         </mxCell>
-        <mxCell id="_-_Do2CLBHKIIKJqPkjz-9" edge="1" parent="1" source="_-_Do2CLBHKIIKJqPkjz-6" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=6;fontSize=20;align=center;fontStyle=1" target="_-_Do2CLBHKIIKJqPkjz-8" value="">
-          <mxGeometry relative="1" as="geometry" />
+
+        <!-- ══════════ BAND 1 — COLLECT ══════════ -->
+        <mxCell id="a1" parent="1" vertex="1"
+          value="&lt;b&gt;THE APPLICATION&lt;/b&gt;&lt;br&gt;on a cloud VM&lt;br&gt;16–47 services, under load"
+          style="shadow=0;dashed=0;html=1;strokeColor=none;fillColor=#4495D1;labelPosition=center;verticalLabelPosition=bottom;verticalAlign=top;align=center;outlineConnect=0;shape=mxgraph.veeam.vm_kernel;fontSize=19;spacingTop=6;">
+          <mxGeometry x="150" y="195" width="200" height="200" as="geometry" />
         </mxCell>
-        <mxCell id="_-_Do2CLBHKIIKJqPkjz-6" parent="1" style="whiteSpace=wrap;html=1;rounded=1;roundedPerimeter=1;strokeWidth=6;fontSize=21;align=center;fontStyle=1" value="DECIDE&lt;div&gt;(do all)&lt;/div&gt;" vertex="1">
-          <mxGeometry height="200" width="200" x="640" y="-640" as="geometry" />
+
+        <mxCell id="a2" parent="1" vertex="1"
+          value="&lt;b&gt;INJECT ONE FAULT&lt;/b&gt;&lt;br&gt;from a recipe, with the&lt;br&gt;ground truth written down&lt;br&gt;27 families"
+          style="shape=mxgraph.atlassian2.icon;html=1;aspect=fixed;strokeColor=none;labelBackgroundColor=none;verticalLabelPosition=bottom;verticalAlign=top;align=center;atlassian2Icon=mxgraph.atlassian2.object_bug;tileColor=#F87168;fillColor=#292A2E;fontSize=19;spacingTop=6;">
+          <mxGeometry x="580" y="195" width="200" height="200" as="geometry" />
         </mxCell>
-        <mxCell id="_-_Do2CLBHKIIKJqPkjz-8" parent="1" style="whiteSpace=wrap;html=1;rounded=1;roundedPerimeter=1;strokeWidth=6;fontSize=21;align=center;fontStyle=1" value="VERDICT" vertex="1">
-          <mxGeometry height="200" width="200" x="940" y="-640" as="geometry" />
+
+        <mxCell id="a3box" parent="1" vertex="1" value=""
+          style="rounded=1;arcSize=4;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#7EA6E0;strokeWidth=4;">
+          <mxGeometry x="1000" y="150" width="1100" height="330" as="geometry" />
         </mxCell>
-        <mxCell id="_-_Do2CLBHKIIKJqPkjz-10" parent="1" style="rounded=1;whiteSpace=wrap;html=1;roundedPerimeter=1;strokeWidth=6;fontSize=20;align=center;fontStyle=1" value="CREATE SKILL&lt;div&gt;(OUT OF BLUEPRINTS&lt;/div&gt;" vertex="1">
-          <mxGeometry height="118.8" width="240" x="820" y="661.8" as="geometry" />
+        <mxCell id="a3t" parent="1" vertex="1"
+          value="&lt;b&gt;RECORD FOUR MODALITIES AT ONCE&lt;/b&gt; &#160;· clocks aligned to 0.001 ms"
+          style="text;html=1;align=center;verticalAlign=middle;fontSize=21;fontColor=#2A5A96;">
+          <mxGeometry x="1020" y="170" width="1060" height="36" as="geometry" />
         </mxCell>
-        <mxCell id="_-_Do2CLBHKIIKJqPkjz-11" parent="1" style="sketch=0;points=[[0,0,0],[0.25,0,0],[0.5,0,0],[0.75,0,0],[1,0,0],[0,1,0],[0.25,1,0],[0.5,1,0],[0.75,1,0],[1,1,0],[0,0.25,0],[0,0.5,0],[0,0.75,0],[1,0.25,0],[1,0.5,0],[1,0.75,0]];outlineConnect=0;fontColor=#232F3E;fillColor=#DD344C;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=20;fontStyle=1;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.robotics;strokeWidth=6;" value="" vertex="1">
-          <mxGeometry height="200" width="200" x="1110" y="418.25" as="geometry" />
+        <mxCell id="a3m" parent="1" vertex="1" value="&lt;b&gt;METRICS&lt;/b&gt;&lt;br&gt;Prometheus"
+          style="image;aspect=fixed;html=1;align=center;verticalLabelPosition=bottom;verticalAlign=top;image=img/lib/azure2/other/Prometheus.svg;fontSize=19;spacingTop=4;">
+          <mxGeometry x="1055" y="245" width="150" height="150" as="geometry" />
         </mxCell>
-        <mxCell id="_-_Do2CLBHKIIKJqPkjz-15" parent="1" style="verticalLabelPosition=bottom;sketch=0;html=1;fillColor=#282828;strokeColor=none;verticalAlign=top;pointerEvents=1;align=center;shape=mxgraph.cisco_safe.people_places_things_icons.icon9;strokeWidth=6;fontSize=20;fontStyle=1" value="" vertex="1">
-          <mxGeometry height="200" width="200" x="-590" y="-20" as="geometry" />
+        <mxCell id="a3l" parent="1" vertex="1" value="&lt;b&gt;LOGS&lt;/b&gt;&lt;br&gt;per container"
+          style="sketch=0;outlineConnect=0;fontColor=#232F3E;gradientColor=none;fillColor=#8C4FFF;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;aspect=fixed;pointerEvents=1;shape=mxgraph.aws4.flow_logs;fontSize=19;spacingTop=4;">
+          <mxGeometry x="1305" y="245" width="150" height="150" as="geometry" />
         </mxCell>
-        <mxCell id="_-_Do2CLBHKIIKJqPkjz-16" parent="1" style="image;html=1;image=img/lib/atlassian/Jira_Logo.svg;strokeWidth=6;fontSize=20;align=center;fontStyle=1" value="" vertex="1">
-          <mxGeometry height="72" width="72" x="710" y="1290" as="geometry" />
+        <mxCell id="a3t2" parent="1" vertex="1" value="&lt;b&gt;TRACES&lt;/b&gt;&lt;br&gt;OpenTelemetry"
+          style="sketch=0;outlineConnect=0;fontColor=#232F3E;fillColor=#E7157B;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.distro_for_opentelemetry;fontSize=19;spacingTop=4;">
+          <mxGeometry x="1555" y="245" width="150" height="150" as="geometry" />
         </mxCell>
-        <mxCell id="_-_Do2CLBHKIIKJqPkjz-17" parent="1" style="dashed=0;outlineConnect=0;html=1;align=center;labelPosition=center;verticalLabelPosition=bottom;verticalAlign=top;shape=mxgraph.weblogos.github;strokeWidth=6;fontSize=20;fontStyle=1" value="" vertex="1">
-          <mxGeometry height="160" width="170" x="870" y="1210" as="geometry" />
+        <mxCell id="a3k" parent="1" vertex="1" value="&lt;b&gt;KERNEL TRACES&lt;/b&gt;&lt;br&gt;LTTng — the layer no&lt;br&gt;public dataset has"
+          style="sketch=0;outlineConnect=0;fontColor=#232F3E;fillColor=#7AA116;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.iot_events;fontSize=19;spacingTop=4;">
+          <mxGeometry x="1805" y="245" width="150" height="150" as="geometry" />
         </mxCell>
-        <mxCell id="_-_Do2CLBHKIIKJqPkjz-18" parent="1" style="sketch=0;outlineConnect=0;fontColor=#232F3E;gradientColor=none;fillColor=#01A88D;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=20;fontStyle=1;aspect=fixed;pointerEvents=1;shape=mxgraph.aws4.sagemaker_model;strokeWidth=6;" value="" vertex="1">
-          <mxGeometry height="160" width="160" x="330" y="1210" as="geometry" />
+
+        <mxCell id="a4" parent="1" vertex="1"
+          value="&lt;b&gt;THE DATASET&lt;/b&gt;&lt;br&gt;&lt;br&gt;304 labelled runs · 27 fault families&lt;br&gt;2 applications · all 4 modalities in every run&lt;br&gt;every run carries its own ground truth"
+          style="rounded=1;arcSize=6;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#2A5A96;strokeWidth=5;fontSize=22;verticalAlign=middle;">
+          <mxGeometry x="2320" y="200" width="620" height="230" as="geometry" />
         </mxCell>
-        <mxCell id="_-_Do2CLBHKIIKJqPkjz-20" parent="1" style="image;aspect=fixed;html=1;align=center;fontSize=20;image=img/lib/azure2/other/Prometheus.svg;points=[[0.5,0,0],[0.499,1,0],[0,0.496,0],[1,0.504,0],[0.85,0.14,0],[0.862,0.847,0],[0.128,0.837,0],[0.148,0.143,0]];strokeWidth=6;fontStyle=1" value="" vertex="1">
-          <mxGeometry height="200" width="200" x="-610" y="714" as="geometry" />
+
+        <mxCell id="eA1" parent="1" edge="1" source="a1" target="a2" value=""
+          style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeWidth=5;strokeColor=#2A5A96;endArrow=blockThin;endFill=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;">
+          <mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="eA2" parent="1" edge="1" source="a2" target="a3box" value=""
+          style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeWidth=5;strokeColor=#2A5A96;endArrow=blockThin;endFill=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;">
+          <mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="eA3" parent="1" edge="1" source="a3box" target="a4" value="one run bundle"
+          style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeWidth=5;strokeColor=#2A5A96;endArrow=blockThin;endFill=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;fontSize=20;fontStyle=1;labelBackgroundColor=#EBF2FA;">
+          <mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <!-- ══════════ BAND 2 — AUTHOR ══════════ -->
+        <mxCell id="b1" parent="1" vertex="1"
+          value="&lt;b&gt;1. SOLVED BY HAND&lt;/b&gt;&lt;br&gt;an engineer works out&lt;br&gt;why, once"
+          style="verticalLabelPosition=bottom;sketch=0;html=1;fillColor=#3D7A3D;strokeColor=none;verticalAlign=top;pointerEvents=1;align=center;shape=mxgraph.cisco_safe.people_places_things_icons.icon9;fontSize=19;spacingTop=6;">
+          <mxGeometry x="190" y="720" width="200" height="200" as="geometry" />
         </mxCell>
-        <mxCell id="_-_Do2CLBHKIIKJqPkjz-26" parent="1" style="strokeColor=#ffffff;sketch=0;html=1;pointerEvents=1;dashed=0;fillColor=#036897;strokeWidth=6;verticalLabelPosition=bottom;verticalAlign=top;align=center;outlineConnect=0;shape=mxgraph.cisco.people.pc_man;fontSize=20;fontStyle=1" value="" vertex="1">
-          <mxGeometry height="220" width="200" x="110" y="370.75" as="geometry" />
+
+        <mxCell id="b2" parent="1" vertex="1"
+          value="&lt;b&gt;2. MEASURE IT&lt;/b&gt;&lt;br&gt;against &lt;b&gt;every&lt;/b&gt; fault family,&lt;br&gt;not only its own"
+          style="image;aspect=fixed;html=1;align=center;verticalLabelPosition=bottom;verticalAlign=top;image=img/lib/azure2/analytics/Analysis_Services.svg;fontSize=19;spacingTop=6;">
+          <mxGeometry x="730" y="730" width="240" height="182" as="geometry" />
         </mxCell>
-        <mxCell id="_-_Do2CLBHKIIKJqPkjz-27" parent="1" style="sketch=0;outlineConnect=0;fontColor=#232F3E;gradientColor=none;fillColor=#8C4FFF;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=20;fontStyle=1;aspect=fixed;pointerEvents=1;shape=mxgraph.aws4.flow_logs;strokeWidth=6;" value="" vertex="1">
-          <mxGeometry height="200" width="200" x="-296" y="714" as="geometry" />
+
+        <mxCell id="b3" parent="1" vertex="1"
+          value="&lt;b&gt;3. THE BLUEPRINT&lt;/b&gt;&lt;br&gt;when it applies · what to collect&lt;br&gt;runnable steps · decision rule&lt;br&gt;&lt;b&gt;and when NOT to conclude it&lt;/b&gt;"
+          style="image;sketch=0;aspect=fixed;html=1;align=center;verticalLabelPosition=bottom;verticalAlign=top;image=img/lib/mscae/Blueprints.svg;fontSize=19;spacingTop=6;">
+          <mxGeometry x="1300" y="725" width="200" height="192" as="geometry" />
         </mxCell>
-        <mxCell id="_-_Do2CLBHKIIKJqPkjz-28" parent="1" style="sketch=0;points=[[0,0,0],[0.25,0,0],[0.5,0,0],[0.75,0,0],[1,0,0],[0,1,0],[0.25,1,0],[0.5,1,0],[0.75,1,0],[1,1,0],[0,0.25,0],[0,0.5,0],[0,0.75,0],[1,0.25,0],[1,0.5,0],[1,0.75,0]];outlineConnect=0;fontColor=#232F3E;fillColor=#7AA116;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=20;fontStyle=1;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.iot_events;strokeWidth=6;" value="" vertex="1">
-          <mxGeometry height="200" width="200" y="714" as="geometry" />
+
+        <mxCell id="b4" parent="1" vertex="1"
+          value="&lt;b&gt;4. VALIDATOR&lt;/b&gt;&lt;br&gt;&lt;br&gt;rejects any claim with no&lt;br&gt;measurement behind it"
+          style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#3D7A3D;strokeWidth=5;fontSize=22;">
+          <mxGeometry x="1800" y="730" width="420" height="190" as="geometry" />
         </mxCell>
-        <mxCell id="_-_Do2CLBHKIIKJqPkjz-34" parent="1" style="sketch=0;points=[[0,0,0],[0.25,0,0],[0.5,0,0],[0.75,0,0],[1,0,0],[0,1,0],[0.25,1,0],[0.5,1,0],[0.75,1,0],[1,1,0],[0,0.25,0],[0,0.5,0],[0,0.75,0],[1,0.25,0],[1,0.5,0],[1,0.75,0]];points=[[0,0,0],[0.25,0,0],[0.5,0,0],[0.75,0,0],[1,0,0],[0,1,0],[0.25,1,0],[0.5,1,0],[0.75,1,0],[1,1,0],[0,0.25,0],[0,0.5,0],[0,0.75,0],[1,0.25,0],[1,0.5,0],[1,0.75,0]];outlineConnect=0;fontColor=#232F3E;fillColor=#E7157B;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=20;fontStyle=1;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.distro_for_opentelemetry;strokeWidth=6;" value="" vertex="1">
-          <mxGeometry height="200" width="200" x="-302.5" y="420" as="geometry" />
+
+        <mxCell id="b5" parent="1" vertex="1"
+          value="&lt;b&gt;5. GENERATE THE SKILL&lt;/b&gt;&lt;br&gt;&lt;br&gt;the agent-facing text is derived&lt;br&gt;from the blueprint, so the two&lt;br&gt;can never drift apart"
+          style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#3D7A3D;strokeWidth=5;fontSize=22;">
+          <mxGeometry x="2420" y="730" width="460" height="190" as="geometry" />
         </mxCell>
-        <mxCell id="_-_Do2CLBHKIIKJqPkjz-35" parent="1" style="shadow=0;dashed=0;html=1;strokeColor=none;fillColor=#4495D1;labelPosition=center;verticalLabelPosition=bottom;verticalAlign=top;align=center;outlineConnect=0;shape=mxgraph.veeam.vm_kernel;strokeWidth=6;fontSize=20;fontStyle=1" value="" vertex="1">
-          <mxGeometry height="200" width="200" x="-310" y="138" as="geometry" />
+
+        <mxCell id="eB1" parent="1" edge="1" source="b1" target="b2" value=""
+          style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeWidth=5;strokeColor=#3D7A3D;endArrow=blockThin;endFill=1;exitX=1;exitY=0.45;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;">
+          <mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="eB2" parent="1" edge="1" source="b2" target="b3" value=""
+          style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeWidth=5;strokeColor=#3D7A3D;endArrow=blockThin;endFill=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;">
+          <mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="eB3" parent="1" edge="1" source="b3" target="b4" value=""
+          style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeWidth=5;strokeColor=#3D7A3D;endArrow=blockThin;endFill=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;">
+          <mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="eB4" parent="1" edge="1" source="b4" target="b5" value=""
+          style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeWidth=5;strokeColor=#3D7A3D;endArrow=blockThin;endFill=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;">
+          <mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <mxCell id="eAB" parent="1" edge="1" source="a4" target="b2"
+          value="&lt;b&gt;every claim is measured on this data — nothing enters a blueprint unmeasured&lt;/b&gt;"
+          style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeWidth=5;strokeColor=#2A5A96;endArrow=blockThin;endFill=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;fontSize=21;fontColor=#2A5A96;labelBackgroundColor=#FFFFFF;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="2630" y="540" />
+              <mxPoint x="850" y="540" />
+            </Array>
+          </mxGeometry>
         </mxCell>
-        <mxCell id="_-_Do2CLBHKIIKJqPkjz-40" parent="1" style="image;aspect=fixed;html=1;align=center;fontSize=20;image=img/lib/azure2/analytics/Analysis_Services.svg;points=[[0.204,0,0],[0.281,1,0],[0,0.205,0],[1,0.441,0],[0.995,0.24,0],[0.995,0.642,0],[0.085,0.993,0],[0.005,0.004,0]];strokeWidth=6;fontStyle=1" value="" vertex="1">
-          <mxGeometry height="200" width="263" x="1470" y="430" as="geometry" />
+
+        <!-- ══════════ BAND 3 — USE ══════════ -->
+        <mxCell id="libbox" parent="1" vertex="1" value=""
+          style="rounded=1;arcSize=4;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#D6B656;strokeWidth=4;">
+          <mxGeometry x="440" y="1260" width="2500" height="290" as="geometry" />
         </mxCell>
-        <mxCell id="_-_Do2CLBHKIIKJqPkjz-41" parent="1" style="image;sketch=0;aspect=fixed;html=1;align=center;fontSize=20;image=img/lib/mscae/Blueprints.svg;points=[[0.5,0.107,0],[0.5,0.891,0],[0,0.436,0],[1,0.579,0],[0.962,0.154,0],[0.965,0.966,0],[0.033,0.862,0],[0.028,0.032,0]];strokeWidth=6;fontStyle=1" value="" vertex="1">
-          <mxGeometry height="182.4" width="190" x="445" y="-11" as="geometry" />
+        <mxCell id="libt" parent="1" vertex="1"
+          value="&lt;b&gt;THE BLUEPRINT LIBRARY&lt;/b&gt; &#160;— one entry per solved problem. &lt;i&gt;The library is the contribution, not any single blueprint.&lt;/i&gt;"
+          style="text;html=1;align=center;verticalAlign=middle;fontSize=21;fontColor=#9A7B15;">
+          <mxGeometry x="460" y="1278" width="2460" height="36" as="geometry" />
         </mxCell>
-        <mxCell id="_-_Do2CLBHKIIKJqPkjz-46" parent="1" style="image;sketch=0;aspect=fixed;html=1;align=center;fontSize=20;image=img/lib/mscae/Blueprints.svg;points=[[0.5,0.107,0],[0.5,0.891,0],[0,0.436,0],[1,0.579,0],[0.962,0.154,0],[0.965,0.966,0],[0.033,0.862,0],[0.028,0.032,0]];strokeWidth=6;fontStyle=1" value="" vertex="1">
-          <mxGeometry height="182.4" width="190" x="445" y="171.4" as="geometry" />
+
+        <mxCell id="bp1" parent="1" vertex="1" value=""
+          style="image;sketch=0;aspect=fixed;html=1;align=center;image=img/lib/mscae/Blueprints.svg;">
+          <mxGeometry x="470" y="1335" width="120" height="115" as="geometry" /></mxCell>
+        <mxCell id="sk1" parent="1" vertex="1" value="&lt;b&gt;CPU cap&lt;/b&gt;&lt;br&gt;blueprint + skill"
+          style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#FFF6E0;strokeColor=#D6B656;strokeWidth=3;fontSize=19;">
+          <mxGeometry x="605" y="1340" width="295" height="105" as="geometry" /></mxCell>
+
+        <mxCell id="bp2" parent="1" vertex="1" value=""
+          style="image;sketch=0;aspect=fixed;html=1;align=center;image=img/lib/mscae/Blueprints.svg;">
+          <mxGeometry x="960" y="1335" width="120" height="115" as="geometry" /></mxCell>
+        <mxCell id="sk2" parent="1" vertex="1" value="&lt;b&gt;co-tenant CPU&lt;/b&gt;&lt;br&gt;blueprint + skill"
+          style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#FFF6E0;strokeColor=#D6B656;strokeWidth=3;fontSize=19;">
+          <mxGeometry x="1095" y="1340" width="295" height="105" as="geometry" /></mxCell>
+
+        <mxCell id="bp3" parent="1" vertex="1" value=""
+          style="image;sketch=0;aspect=fixed;html=1;align=center;image=img/lib/mscae/Blueprints.svg;">
+          <mxGeometry x="1450" y="1335" width="120" height="115" as="geometry" /></mxCell>
+        <mxCell id="sk3" parent="1" vertex="1" value="&lt;b&gt;slow dependency&lt;/b&gt;&lt;br&gt;blueprint + skill"
+          style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#FFF6E0;strokeColor=#D6B656;strokeWidth=3;fontSize=19;">
+          <mxGeometry x="1585" y="1340" width="295" height="105" as="geometry" /></mxCell>
+
+        <mxCell id="bp4" parent="1" vertex="1" value=""
+          style="image;sketch=0;aspect=fixed;html=1;align=center;image=img/lib/mscae/Blueprints.svg;">
+          <mxGeometry x="1940" y="1335" width="120" height="115" as="geometry" /></mxCell>
+        <mxCell id="sk4" parent="1" vertex="1" value="&lt;b&gt;network path&lt;/b&gt;&lt;br&gt;blueprint + skill"
+          style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#FFF6E0;strokeColor=#D6B656;strokeWidth=3;fontSize=19;">
+          <mxGeometry x="2075" y="1340" width="295" height="105" as="geometry" /></mxCell>
+
+        <mxCell id="libdots" parent="1" vertex="1" value=""
+          style="sketch=0;html=1;pointerEvents=1;dashed=0;fillColor=#9A7B15;strokeColor=none;verticalLabelPosition=bottom;verticalAlign=top;align=center;outlineConnect=0;shape=mxgraph.cisco.misc.dot-dot;">
+          <mxGeometry x="2420" y="1380" width="140" height="30" as="geometry" /></mxCell>
+        <mxCell id="libmore" parent="1" vertex="1"
+          value="&lt;b&gt;21 today&lt;/b&gt;&lt;br&gt;and one more every time&lt;br&gt;a problem gets solved"
+          style="rounded=1;arcSize=12;whiteSpace=wrap;html=1;fillColor=#FFF6E0;strokeColor=#D6B656;strokeWidth=3;dashed=1;fontSize=19;">
+          <mxGeometry x="2595" y="1333" width="285" height="118" as="geometry" /></mxCell>
+
+        <mxCell id="agent" parent="1" vertex="1"
+          value="&lt;b&gt;THE AGENT&lt;/b&gt;&lt;br&gt;never told a fault&lt;br&gt;happened, or when"
+          style="sketch=0;outlineConnect=0;fontColor=#232F3E;fillColor=#DD344C;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.robotics;fontSize=19;spacingTop=6;">
+          <mxGeometry x="140" y="1655" width="190" height="190" as="geometry" />
         </mxCell>
-        <mxCell id="_-_Do2CLBHKIIKJqPkjz-47" parent="1" style="image;sketch=0;aspect=fixed;html=1;align=center;fontSize=20;image=img/lib/mscae/Blueprints.svg;points=[[0.5,0.107,0],[0.5,0.891,0],[0,0.436,0],[1,0.579,0],[0.962,0.154,0],[0.965,0.966,0],[0.033,0.862,0],[0.028,0.032,0]];strokeWidth=6;fontStyle=1" value="" vertex="1">
-          <mxGeometry height="182.4" width="190" x="445" y="812.4000000000001" as="geometry" />
+
+        <mxCell id="p1" parent="1" vertex="1"
+          value="&lt;b&gt;UNDERSTAND&lt;/b&gt;&lt;br&gt;&lt;br&gt;is anything actually&lt;br&gt;wrong? which class of&lt;br&gt;problem is this?"
+          style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#9A7B15;strokeWidth=5;fontSize=23;">
+          <mxGeometry x="440" y="1625" width="440" height="250" as="geometry" /></mxCell>
+
+        <mxCell id="p2" parent="1" vertex="1"
+          value="&lt;b&gt;SELECT&lt;/b&gt;&lt;br&gt;&lt;br&gt;pick the right blueprint&lt;br&gt;for this evidence&lt;br&gt;&lt;i&gt;— the hard part —&lt;/i&gt;"
+          style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;fillColor=#D4EDEC;strokeColor=#0B6E6E;strokeWidth=8;fontSize=23;">
+          <mxGeometry x="950" y="1625" width="440" height="250" as="geometry" /></mxCell>
+
+        <mxCell id="p3" parent="1" vertex="1"
+          value="&lt;b&gt;RUN&lt;/b&gt;&lt;br&gt;&lt;br&gt;collect what the blueprint&lt;br&gt;asks for, then run its&lt;br&gt;steps in order"
+          style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#9A7B15;strokeWidth=5;fontSize=23;">
+          <mxGeometry x="1460" y="1625" width="440" height="250" as="geometry" /></mxCell>
+
+        <mxCell id="p4" parent="1" vertex="1"
+          value="&lt;b&gt;DECIDE&lt;/b&gt;&lt;br&gt;&lt;br&gt;does the decision rule&lt;br&gt;hold? or did a&lt;br&gt;rule-out fire?"
+          style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#9A7B15;strokeWidth=5;fontSize=23;">
+          <mxGeometry x="1970" y="1625" width="440" height="250" as="geometry" /></mxCell>
+
+        <mxCell id="p5" parent="1" vertex="1"
+          value="&lt;b&gt;VERDICT&lt;/b&gt;&lt;br&gt;&lt;br&gt;the fault, where and when&lt;br&gt;— or an honest&lt;br&gt;&quot;not applicable here&quot;"
+          style="rounded=1;arcSize=8;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#9A7B15;strokeWidth=6;fontSize=23;">
+          <mxGeometry x="2480" y="1625" width="440" height="250" as="geometry" /></mxCell>
+
+        <mxCell id="eC0" parent="1" edge="1" source="agent" target="p1" value=""
+          style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeWidth=5;strokeColor=#9A7B15;endArrow=blockThin;endFill=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;">
+          <mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="eC1" parent="1" edge="1" source="p1" target="p2" value=""
+          style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeWidth=5;strokeColor=#9A7B15;endArrow=blockThin;endFill=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;">
+          <mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="eC2" parent="1" edge="1" source="p2" target="p3" value=""
+          style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeWidth=5;strokeColor=#9A7B15;endArrow=blockThin;endFill=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;">
+          <mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="eC3" parent="1" edge="1" source="p3" target="p4" value=""
+          style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeWidth=5;strokeColor=#9A7B15;endArrow=blockThin;endFill=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;">
+          <mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="eC4" parent="1" edge="1" source="p4" target="p5" value=""
+          style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeWidth=5;strokeColor=#9A7B15;endArrow=blockThin;endFill=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;">
+          <mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <mxCell id="eLibSel" parent="1" edge="1" source="libbox" target="p2"
+          value="&lt;b&gt;candidates&lt;/b&gt;"
+          style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeWidth=8;strokeColor=#0B6E6E;endArrow=blockThin;endFill=1;exitX=0.292;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;fontSize=21;labelBackgroundColor=#FFF6E0;fontColor=#0B6E6E;">
+          <mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <mxCell id="eRuleOut" parent="1" edge="1" source="p4" target="p2"
+          value="&lt;b&gt;a rule-out fired&lt;/b&gt; — try the next blueprint rather than force an answer"
+          style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeWidth=4;strokeColor=#0B6E6E;dashed=1;dashPattern=10 7;endArrow=blockThin;endFill=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;fontSize=20;labelBackgroundColor=#FFF6E0;fontColor=#0B6E6E;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="2190" y="1935" />
+              <mxPoint x="1170" y="1935" />
+            </Array>
+          </mxGeometry>
         </mxCell>
-        <mxCell id="_-_Do2CLBHKIIKJqPkjz-48" parent="1" style="image;sketch=0;aspect=fixed;html=1;align=center;fontSize=20;image=img/lib/mscae/Blueprints.svg;points=[[0.5,0.107,0],[0.5,0.891,0],[0,0.436,0],[1,0.579,0],[0.962,0.154,0],[0.965,0.966,0],[0.033,0.862,0],[0.028,0.032,0]];strokeWidth=6;fontStyle=1" value="" vertex="1">
-          <mxGeometry height="182.4" width="190" x="445" y="630" as="geometry" />
+
+        <mxCell id="eBC" parent="1" edge="1" source="b5" target="libbox"
+          value="&lt;b&gt;+1 in the library&lt;/b&gt;"
+          style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeWidth=5;strokeColor=#3D7A3D;endArrow=blockThin;endFill=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.9;entryY=0;entryDx=0;entryDy=0;fontSize=21;labelBackgroundColor=#FFF6E0;fontColor=#3D7A3D;">
+          <mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <!-- ══════════ THE FEEDBACK LOOP — what makes this not a pipeline ══════════ -->
+        <mxCell id="eFeedback" parent="1" edge="1" source="p5" target="b3"
+          value="&lt;b&gt;FEEDBACK&lt;/b&gt; — a wrong or hedged answer revises the blueprint, and the verdict decides what is worth collecting next time"
+          style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeWidth=6;strokeColor=#B85450;dashed=1;dashPattern=12 8;endArrow=blockThin;endFill=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;fontSize=22;fontStyle=1;fontColor=#B85450;labelBackgroundColor=#E9F5E9;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="3050" y="1750" />
+              <mxPoint x="3050" y="665" />
+              <mxPoint x="1400" y="665" />
+            </Array>
+          </mxGeometry>
         </mxCell>
-        <mxCell id="_-_Do2CLBHKIIKJqPkjz-49" parent="1" style="sketch=0;html=1;pointerEvents=1;dashed=0;fillColor=#036897;strokeColor=#ffffff;strokeWidth=2;verticalLabelPosition=bottom;verticalAlign=top;align=center;outlineConnect=0;shape=mxgraph.cisco.misc.dot-dot;rotation=90;" value="" vertex="1">
-          <mxGeometry height="60" width="247.5" x="416.25" y="464.5" as="geometry" />
+
+        <!-- ══════════ PROVENANCE STRIP ══════════ -->
+        <mxCell id="provbox" parent="1" vertex="1" value=""
+          style="rounded=1;arcSize=4;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#9E9E9E;strokeWidth=3;dashed=1;dashPattern=10 8;">
+          <mxGeometry x="40" y="2040" width="2960" height="130" as="geometry" />
         </mxCell>
-        <mxCell id="_-_Do2CLBHKIIKJqPkjz-50" parent="1" style="rounded=1;whiteSpace=wrap;html=1;roundedPerimeter=1;strokeWidth=6;fontSize=20;align=center;fontStyle=1" value="CREATE SKILL&lt;div&gt;(OUT OF BLUEPRINTS&lt;/div&gt;" vertex="1">
-          <mxGeometry height="118.8" width="240" x="820" y="19.199999999999932" as="geometry" />
-        </mxCell>
-        <mxCell id="_-_Do2CLBHKIIKJqPkjz-51" parent="1" style="rounded=1;whiteSpace=wrap;html=1;roundedPerimeter=1;strokeWidth=6;fontSize=20;align=center;fontStyle=1" value="CREATE SKILL&lt;div&gt;(OUT OF BLUEPRINTS&lt;/div&gt;" vertex="1">
-          <mxGeometry height="118.8" width="240" x="820" y="190" as="geometry" />
-        </mxCell>
-        <mxCell id="_-_Do2CLBHKIIKJqPkjz-52" parent="1" style="rounded=1;whiteSpace=wrap;html=1;roundedPerimeter=1;strokeWidth=6;fontSize=20;align=center;fontStyle=1" value="CREATE SKILL&lt;div&gt;(OUT OF BLUEPRINTS&lt;/div&gt;" vertex="1">
-          <mxGeometry height="118.8" width="240" x="820" y="850" as="geometry" />
-        </mxCell>
-        <mxCell id="_-_Do2CLBHKIIKJqPkjz-53" parent="1" style="sketch=0;html=1;pointerEvents=1;dashed=0;fillColor=#036897;strokeColor=#ffffff;strokeWidth=2;verticalLabelPosition=bottom;verticalAlign=top;align=center;outlineConnect=0;shape=mxgraph.cisco.misc.dot-dot;rotation=90;" value="" vertex="1">
-          <mxGeometry height="60" width="247.5" x="816.25" y="472.35" as="geometry" />
-        </mxCell>
-        <mxCell id="_-_Do2CLBHKIIKJqPkjz-54" parent="1" style="shape=mxgraph.atlassian2.icon;html=1;aspect=fixed;strokeColor=none;labelBackgroundColor=none;verticalLabelPosition=bottom;verticalAlign=top;align=center;atlassian2Icon=mxgraph.atlassian2.object_bug;tileColor=#F87168;fillColor=#292A2E;" value="" vertex="1">
-          <mxGeometry height="220" width="220" x="-96" y="-180" as="geometry" />
-        </mxCell>
+        <mxCell id="gh" parent="1" vertex="1" value=""
+          style="dashed=0;outlineConnect=0;html=1;align=center;labelPosition=center;verticalLabelPosition=bottom;verticalAlign=top;shape=mxgraph.weblogos.github;">
+          <mxGeometry x="130" y="2063" width="90" height="85" as="geometry" /></mxCell>
+        <mxCell id="ghT" parent="1" vertex="1"
+          value="A blueprint is a &lt;b&gt;file in git&lt;/b&gt; — reviewable, diffable, versioned like code."
+          style="text;html=1;align=left;verticalAlign=middle;fontSize=22;">
+          <mxGeometry x="250" y="2075" width="1100" height="60" as="geometry" /></mxCell>
+        <mxCell id="jira" parent="1" vertex="1" value=""
+          style="image;html=1;image=img/lib/atlassian/Jira_Logo.svg;">
+          <mxGeometry x="1480" y="2058" width="100" height="95" as="geometry" /></mxCell>
+        <mxCell id="jiraT" parent="1" vertex="1"
+          value="&lt;b&gt;FUTURE WORK&lt;/b&gt; — mine blueprints from resolved tickets, instead of authoring every one by hand."
+          style="text;html=1;align=left;verticalAlign=middle;fontSize=22;">
+          <mxGeometry x="1610" y="2075" width="1330" height="60" as="geometry" /></mxCell>
+
       </root>
     </mxGraphModel>
   </diagram>
