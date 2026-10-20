@@ -1,0 +1,72 @@
+{
+  "config": "s1_deliver",
+  "klass": "spawned",
+  "run": "t4_w16_r4",
+  "run_dir": "C:\\workplace\\microservice-trace-dataset\\agentic-runs\\2_threads_vs_cores\\runs\\t4_w16_r4",
+  "rep": 3,
+  "cell": "s1_deliver__spawned__t4_w16_r4__r3",
+  "status": "ok",
+  "returncode": 0,
+  "wall_s": 203.6,
+  "env_ablation": {
+    "ABL_FLAT_CAP": "2000"
+  },
+  "result": {
+    "run_id": "t4_w16_r4",
+    "diagnosis": {
+      "what_is_wrong": "The trace supports a CPU-bound coding-task run: `ttworker` consumed nearly all four CPUs for about four seconds, making CPU saturation a plausible reason the task ran slowly. The trace cannot prove the task was slower than its normal baseline, and it does not measure scheduler wait delay, so the reported slowdown is supported as plausible rather than conclusively quantified.",
+      "root_cause_service": "ttworker in pid_ns 4026531836",
+      "culprit_kind": "container",
+      "fault_type": "cpu_saturation",
+      "evidence": "The recording spans 02:46:06.400\u201302:46:17.100. `ctf_proclife` and the process-grouped `run_python` results show a coordinated task cluster in pid_ns 4026531836 beginning at 02:46:11.000; `ttworker` is present through 02:46:14.800, with its worker threads exiting 02:46:14.514\u201314.837. Comparing `sched_stat_runtime` across 02:46:10\u201311 (quiet: the leading process, claude, used about 18 ms CPU) and 02:46:11\u201315 shows `ttworker` used 14.840 CPU-seconds, 85.9% of the trace's total CPU; its 100-ms buckets repeatedly approach 400 CPU-ms, consistent with all four CPUs busy. Raw scheduler lines show ttworker threads dispatched at normal priority on multiple CPUs. Disk issues and completions were balanced in the sampled task window and completions had error=0; network counts were not elevated, and no reclaim, OOM, or throttling event was available. The separate synchronized count collapse around 02:46:07.5 precedes this task cluster and has no identified resource trigger, so it is not used as the task incident onset. A per-process wakeup-to-switch delay analysis was not computed, leaving scheduler starvation and the task's excess duration versus baseline unproven.",
+      "confidence": 0.8,
+      "incident_window": "02:46:11.000 - 02:46:14.837",
+      "window_evidence": "The start is the first indexed appearance of the aligned task processes (`ttworker`, `worker.py`, `xargs`, and `run_all.sh`) at 02:46:11.000, when ttworker CPU runtime also rises sharply. The end is supported by the final ttworker lifecycle bucket at 02:46:14.800 and sampled thread exits through 02:46:14.837, after which its CPU consumption drops away."
+    },
+    "ranked_services": null,
+    "ranked_candidates": null,
+    "trajectory": [
+      {
+        "step": 0,
+        "tool": "worker1.0",
+        "service": null
+      },
+      {
+        "step": 1,
+        "tool": "worker1.1",
+        "service": null
+      },
+      {
+        "step": 2,
+        "tool": "worker1.2",
+        "service": null
+      },
+      {
+        "step": 3,
+        "tool": "worker1.3",
+        "service": null
+      },
+      {
+        "step": 4,
+        "tool": "worker2.100",
+        "service": null
+      }
+    ],
+    "n_tool_calls": 68,
+    "n_code_snippets": 34,
+    "n_findings": 13,
+    "n_computed": 34,
+    "bytes_touched": 173265,
+    "tokens": {
+      "in": 611697,
+      "out": 18650
+    },
+    "model": "openai/gpt-6-luna",
+    "wall_s": 202.6,
+    "transcript_file": "C:\\workplace\\microservice-trace-dataset\\nier-2027\\transcripts\\s1_deliver__spawned__t4_w16_r4__r3.json",
+    "skill_selected": null,
+    "skill_confidence": null,
+    "brief_injected": false,
+    "n_claims": null
+  }
+}

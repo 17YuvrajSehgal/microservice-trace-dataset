@@ -1,0 +1,70 @@
+{
+  "config": "repair",
+  "klass": "healthy",
+  "run": "t3_implement_nocap_r5",
+  "run_dir": "C:\\workplace\\microservice-trace-dataset\\Blueprint\\latency\\1_svc_cpu_cap\\agentic-os-noise\\runs\\t3_implement_nocap_r5",
+  "rep": 1,
+  "cell": "repair__healthy__t3_implement_nocap_r5__r1",
+  "status": "ok",
+  "returncode": 0,
+  "wall_s": 252.3,
+  "env_ablation": {},
+  "result": {
+    "run_id": "t3_implement_nocap_r5",
+    "diagnosis": {
+      "what_is_wrong": "No kernel-level impairment is established, so the report that the coding task ran long cannot be confirmed as a host fault from this trace. A distinct activity burst occurs when `python3` and `http` become active, but the four-CPU host retains substantial idle capacity and runnable tasks are dispatched promptly; the burst is better explained as a workload phase change than resource saturation.",
+      "root_cause_service": "unknown",
+      "culprit_kind": "unknown",
+      "fault_type": "normal",
+      "evidence": "The full trace spans 18:58:32.300\u201318:58:51.400. Whole-span event-rate comparisons show a synchronized rise around 18:58:43 and fall around 18:58:50, while process-lifetime/runtime evidence attributes much of the burst to `python3` and `http` in pid_ns 4026531836. Compared with the preceding 18:58:36\u201318:58:43 range, scheduler runtime during 18:58:43\u201318:58:50 used only 6.264 CPU-seconds over seven seconds on four CPUs (22.4% capacity; no 100-ms bucket above 41%, versus 25.1% in baseline). Raw scheduler pairing within 1 ms on any CPU gave 47 burst wake-to-dispatch matches with p95 16.9 \u00b5s and max 21.9 \u00b5s; the 40 matched `http` samples had p95 6.8 \u00b5s. Disk request issue rates were broadly similar (about 261/s before versus 291/s during); the limited matched request sample had p95 2.83 ms during the candidate burst. Sampled network transmissions succeeded (rc=0), and dirty memory was well below the recorded thresholds. The falsification check for CPU starvation/saturation was run using runtime accounting and raw wake/switch records and did not support it; disk and network mechanism checks also did not show a fault signature. `ctf_lines` access failed according to the notes, so raw fields were inspected through indexed `get_lines` instead. Kernel evidence cannot establish the coding task's end-to-end duration, and there are no application-level measurements in this dataset.",
+      "confidence": 0.89,
+      "incident_window": "unknown",
+      "window_evidence": "The activity change has measurable boundaries at about 18:58:43 (rates rise and `http` appears) and 18:58:50 (rates collapse), but checks of CPU capacity, dispatch delay, disk, and sampled network records do not establish an impairment during that interval. Therefore it is an observed workload-burst window, not a supported incident window."
+    },
+    "ranked_services": null,
+    "ranked_candidates": null,
+    "trajectory": [
+      {
+        "step": 0,
+        "tool": "worker1.0",
+        "service": null
+      },
+      {
+        "step": 1,
+        "tool": "worker1.1",
+        "service": null
+      },
+      {
+        "step": 2,
+        "tool": "worker1.2",
+        "service": null
+      },
+      {
+        "step": 3,
+        "tool": "worker1.3",
+        "service": null
+      },
+      {
+        "step": 4,
+        "tool": "worker2.100",
+        "service": null
+      }
+    ],
+    "n_tool_calls": 66,
+    "n_code_snippets": 25,
+    "n_findings": 15,
+    "n_computed": 25,
+    "bytes_touched": 128284,
+    "tokens": {
+      "in": 804232,
+      "out": 21796
+    },
+    "model": "openai/gpt-6-luna",
+    "wall_s": 251.3,
+    "transcript_file": "C:\\workplace\\microservice-trace-dataset\\nier-2027\\transcripts\\repair__healthy__t3_implement_nocap_r5__r1.json",
+    "skill_selected": null,
+    "skill_confidence": null,
+    "brief_injected": false,
+    "n_claims": null
+  }
+}

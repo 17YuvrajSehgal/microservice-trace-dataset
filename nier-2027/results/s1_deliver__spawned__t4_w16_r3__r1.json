@@ -1,0 +1,67 @@
+{
+  "config": "s1_deliver",
+  "klass": "spawned",
+  "run": "t4_w16_r3",
+  "run_dir": "C:\\workplace\\microservice-trace-dataset\\agentic-runs\\2_threads_vs_cores\\runs\\t4_w16_r3",
+  "rep": 1,
+  "cell": "s1_deliver__spawned__t4_w16_r3__r1",
+  "status": "ok",
+  "returncode": 0,
+  "wall_s": 123.2,
+  "env_ablation": {
+    "ABL_FLAT_CAP": "2000"
+  },
+  "result": {
+    "run_id": "t4_w16_r3",
+    "diagnosis": {
+      "what_is_wrong": "A short, intense CPU workload coincides with the reported slowdown: `ttworker` starts and consumes nearly four CPU cores, then stops after about 3.9 seconds. The trace supports CPU contention as the likely cause of the coding task taking longer, though it does not directly measure that task\u2019s latency.",
+      "root_cause_service": "ttworker in pid_ns 4026531836",
+      "culprit_kind": "container",
+      "fault_type": "cpu_saturation",
+      "evidence": "The trace spans 02:50:10.000\u201302:50:20.300. Process-lifetime results show `ttworker` appears at 02:50:14.600 and is last seen at 02:50:18.500 in pid_ns 4026531836. In indexed `sched_stat_runtime` comparisons, that container uses 15.559 CPU-seconds over the 3.9-second active range (3.99 core-equivalents), with `ttworker` alone accounting for 15.044 seconds (3.86 cores); the adjacent pre-range uses 1.743 CPU-seconds over 4.5 seconds and the post-range 0.102 seconds over 1.7 seconds. `sched_switch` rises from 660/s in the adjacent pre-range to 1,538/s during the task, with 5,997 switches attributed to `ttworker`. Raw `ctf_lines` show its threads repeatedly switching on CPU 0 with prev_state=0, consistent with active execution rather than demonstrated wakeup delay. Disk issue and completion counts match, writeback activity is similar to the pre-range, and there is no evidence here of a host disk or network fault. The timeline tool returned zero matches for several present events, so the workers used the full indexed event buckets instead; those show the strong, process-attributed change at 14.6 rather than treating the recording\u2019s unrelated early burst/fall as the incident.",
+      "confidence": 0.96,
+      "incident_window": "02:50:14.600 - 02:50:18.500",
+      "window_evidence": "The onset is anchored by `ttworker` and the task/job process cluster appearing at 02:50:14.600, when 100 ms `sched_switch` and `sched_stat_runtime` buckets rise sharply; the endpoint is the last observed `ttworker` activity at 02:50:18.500, followed by a sharp fall in scheduling activity and near-zero CPU runtime in the post-range. The before (02:50:10.000\u201302:50:14.500) and after (02:50:18.600\u201302:50:20.300) comparisons bound the active interval. The most direct falsifier would be evidence that `ttworker` was not consuming CPU or that comparable CPU demand and run scheduling continued in quiet periods; the workers checked both comparisons and raw scheduler records, which instead support the attribution."
+    },
+    "ranked_services": null,
+    "ranked_candidates": null,
+    "trajectory": [
+      {
+        "step": 0,
+        "tool": "worker1.0",
+        "service": null
+      },
+      {
+        "step": 1,
+        "tool": "worker1.1",
+        "service": null
+      },
+      {
+        "step": 2,
+        "tool": "worker1.2",
+        "service": null
+      },
+      {
+        "step": 3,
+        "tool": "worker1.3",
+        "service": null
+      }
+    ],
+    "n_tool_calls": 59,
+    "n_code_snippets": 29,
+    "n_findings": 8,
+    "n_computed": 29,
+    "bytes_touched": 100129,
+    "tokens": {
+      "in": 463791,
+      "out": 13997
+    },
+    "model": "openai/gpt-6-luna",
+    "wall_s": 122.3,
+    "transcript_file": "C:\\workplace\\microservice-trace-dataset\\nier-2027\\transcripts\\s1_deliver__spawned__t4_w16_r3__r1.json",
+    "skill_selected": null,
+    "skill_confidence": null,
+    "brief_injected": false,
+    "n_claims": null
+  }
+}

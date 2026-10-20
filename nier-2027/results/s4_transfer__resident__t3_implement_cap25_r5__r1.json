@@ -1,0 +1,67 @@
+{
+  "config": "s4_transfer",
+  "klass": "resident",
+  "run": "t3_implement_cap25_r5",
+  "run_dir": "C:\\workplace\\microservice-trace-dataset\\Blueprint\\latency\\1_svc_cpu_cap\\agentic-os-noise\\runs\\t3_implement_cap25_r5",
+  "rep": 1,
+  "cell": "s4_transfer__resident__t3_implement_cap25_r5__r1",
+  "status": "ok",
+  "returncode": 0,
+  "wall_s": 94.0,
+  "env_ablation": {
+    "ABL_NO_COMPUTED": "1"
+  },
+  "result": {
+    "run_id": "t3_implement_cap25_r5",
+    "diagnosis": {
+      "what_is_wrong": "No kernel evidence establishes a fault behind the reported slower coding task. The trace shows a substantial workload/activity transition, including lower scheduling, block-I/O, and transmit event rates, but accounted CPU remains low and the available counts do not demonstrate CPU, disk, or network delay; the symptom therefore cannot be confirmed or attributed from this trace.",
+      "root_cause_service": "unknown",
+      "culprit_kind": "unknown",
+      "fault_type": "normal",
+      "evidence": "Used the recorded full span (18:55:57.800\u201318:56:30.200), process-lifetime findings, and full-span timeline/run_python summaries. The synchronized reduction begins around 18:56:06: sched_switch averages fall 693 to 276/s, sched_wakeup 336 to 135/s, block_rq_issue 26.8 to 6.6/s, and net_dev_xmit 34 to 15.8/s, but this indicates reduced activity rather than a measured latency bottleneck. Accounted CPU in pid_ns 4026531836 peaks at only 2.117 CPU-seconds per 8 seconds (0.265 cores); python3 reaches 0.2275 cores in its busiest cited window, insufficient evidence of saturation. Block issue/completion counts match in the compared ranges (150/151 versus 2/2), and lttng-consumerd accounts for much of the block activity. ctf_lines failed with a CTF-path error, so wakeup-to-run and block latency could not be checked. These checks would have helped falsify a bottleneck conclusion; they were attempted via ctf_lines but unavailable. The trace supports a workload shift, not a diagnosed incident or a confirmed explanation for the task delay.",
+      "confidence": 0.76,
+      "incident_window": "unknown",
+      "window_evidence": "The 18:56:06 activity drop is a real boundary in aggregate event counts, and another lower-activity period follows, but neither boundary is tied to a demonstrated fault mechanism. Process CPU changes and partial-presence process entries likewise do not establish onset or recovery of a fault, so assigning an incident window would overstate the evidence."
+    },
+    "ranked_services": null,
+    "ranked_candidates": null,
+    "trajectory": [
+      {
+        "step": 0,
+        "tool": "worker1.0",
+        "service": null
+      },
+      {
+        "step": 1,
+        "tool": "worker1.1",
+        "service": null
+      },
+      {
+        "step": 2,
+        "tool": "worker1.2",
+        "service": null
+      },
+      {
+        "step": 3,
+        "tool": "worker1.3",
+        "service": null
+      }
+    ],
+    "n_tool_calls": 45,
+    "n_code_snippets": 15,
+    "n_findings": 9,
+    "n_computed": 15,
+    "bytes_touched": 56257,
+    "tokens": {
+      "in": 399424,
+      "out": 11594
+    },
+    "model": "openai/gpt-6-luna",
+    "wall_s": 93.0,
+    "transcript_file": "C:\\workplace\\microservice-trace-dataset\\nier-2027\\transcripts\\s4_transfer__resident__t3_implement_cap25_r5__r1.json",
+    "skill_selected": null,
+    "skill_confidence": null,
+    "brief_injected": false,
+    "n_claims": null
+  }
+}

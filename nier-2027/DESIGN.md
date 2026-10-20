@@ -313,3 +313,34 @@ the defect destroys roughly 27 tool results per run, and the mechanism predicts
 accuracy nonetheless holds near 93% because the answer was never in the deleted
 field. Catastrophic data loss with no accuracy loss, decided purely by
 position, is the other half of the argument.
+
+## A7. H2' refuted with mechanism, registered mid-wave (20 Oct, 2 of 15 reversed cells in)
+
+The first two `s1_reversed` cells name the culprit correctly. Checked the
+transcript before interpreting: the manipulation **worked** - proclife sent
+payloads are reversed (begin with `how_to_read`) and `ttworker` is absent from
+all three proclife results. The agent recovered it through **run_python, 12
+times**: it writes its own aggregations over the counts table, ttworker is the
+single loudest process in the trace (**14.0% of all kernel events**), so any
+sorted result carries it in the first rows, inside the surviving prefix.
+
+**Interpretation, registered before the remaining 23 cells finish:** the harm
+of a positional delivery defect is gated by **evidence-path redundancy**. A
+dominant culprit survives severing any single path, because every aggregation
+is a path. A quiet culprit carried by exactly one enumeration field dies with
+that field - which is the archival case: resident microservice containers,
+visible only in `present_throughout` (delivered 4.7%), split 0-24/60 against
+40-55/60 for spawn faults.
+
+Predictions for the cells still running:
+- remaining `s1_reversed` cells stay high (dominance rescues them);
+- `order_only` shows no effect (inertness holds).
+
+If `order_only` degrades, the manipulation is unsound and all reversal cells
+are void.
+
+This reframes the paper's claim, honestly stronger: positional truncation
+spares the easy cases (dominant signal, many paths) and kills exactly the hard
+ones (quiet signal, one path), while moving aggregate numbers barely at all -
+2.5% of calls in the replay corpus. That is why the defect class survives
+inspection.

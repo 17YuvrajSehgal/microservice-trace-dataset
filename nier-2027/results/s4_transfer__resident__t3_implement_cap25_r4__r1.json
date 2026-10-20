@@ -1,0 +1,67 @@
+{
+  "config": "s4_transfer",
+  "klass": "resident",
+  "run": "t3_implement_cap25_r4",
+  "run_dir": "C:\\workplace\\microservice-trace-dataset\\Blueprint\\latency\\1_svc_cpu_cap\\agentic-os-noise\\runs\\t3_implement_cap25_r4",
+  "rep": 1,
+  "cell": "s4_transfer__resident__t3_implement_cap25_r4__r1",
+  "status": "ok",
+  "returncode": 0,
+  "wall_s": 118.8,
+  "env_ablation": {
+    "ABL_NO_COMPUTED": "1"
+  },
+  "result": {
+    "run_id": "t3_implement_cap25_r4",
+    "diagnosis": {
+      "what_is_wrong": "The reported slow coding task is not corroborated as a kernel-level fault in this trace. Event rates change substantially, but the evidence points to a workload phase change rather than sustained CPU starvation or a demonstrated disk/network problem; no specific faulty process or service is established.",
+      "root_cause_service": "unknown",
+      "culprit_kind": "unknown",
+      "fault_type": "normal",
+      "evidence": "Compared the full 01:57:57.900\u201301:58:30.900 trace. The per-second event index shows a synchronized rate trough around 01:58:05\u201301:58:10 (sched_switch 1,187/s to 157/s; sched_wakeup 580/s to about 79/s), but process-level runtime data shows claude activity falling before/through the trough and python3 becoming active later, rather than a demonstrated host-wide queue of runnable tasks. In the tested seconds, wake-to-next-schedule matched medians were only 0.009 ms and 0.016 ms; block_bio_queue was zero in 01:58:02\u201301:58:03 and sampled network polling remained modest. Namespace CPU was about 76 ms/s in the lower-activity interval and later peaked around 233 ms/s, not evidence of saturation. Process lifetime and runtime comparisons found only pid_ns 4026531836, without a uniquely attributable faulting service. The check that would falsify this conclusion is evidence of sustained wake-to-run delay, resource wait, or a process/container-specific limit; the workers checked scheduling pairs and sampled block/network activity, and did not find that evidence. Memory reclaim could not be evaluated from the available event index, so this is not a claim that every possible cause is ruled out.",
+      "confidence": 0.78,
+      "incident_window": "unknown",
+      "window_evidence": "The principal count-rate change is a trough around 01:58:05\u201301:58:10, with a later partial recovery, but it is not corroborated as an incident boundary: workload composition changes and tested scheduling delays remain low. A separate end-of-trace trough is edge-adjacent and likewise uncorroborated. Since the evidence does not establish an actual fault interval, assigning either candidate as the incident window would overstate the findings."
+    },
+    "ranked_services": null,
+    "ranked_candidates": null,
+    "trajectory": [
+      {
+        "step": 0,
+        "tool": "worker1.0",
+        "service": null
+      },
+      {
+        "step": 1,
+        "tool": "worker1.1",
+        "service": null
+      },
+      {
+        "step": 2,
+        "tool": "worker1.2",
+        "service": null
+      },
+      {
+        "step": 3,
+        "tool": "worker1.3",
+        "service": null
+      }
+    ],
+    "n_tool_calls": 59,
+    "n_code_snippets": 19,
+    "n_findings": 12,
+    "n_computed": 19,
+    "bytes_touched": 87868,
+    "tokens": {
+      "in": 537443,
+      "out": 18222
+    },
+    "model": "openai/gpt-6-luna",
+    "wall_s": 117.8,
+    "transcript_file": "C:\\workplace\\microservice-trace-dataset\\nier-2027\\transcripts\\s4_transfer__resident__t3_implement_cap25_r4__r1.json",
+    "skill_selected": null,
+    "skill_confidence": null,
+    "brief_injected": false,
+    "n_claims": null
+  }
+}

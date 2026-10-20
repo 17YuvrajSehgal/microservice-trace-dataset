@@ -1,0 +1,67 @@
+{
+  "config": "s2_steps",
+  "klass": "resident",
+  "run": "t3_implement_cap25_r2",
+  "run_dir": "C:\\workplace\\microservice-trace-dataset\\Blueprint\\latency\\1_svc_cpu_cap\\agentic-os-noise\\runs\\t3_implement_cap25_r2",
+  "rep": 1,
+  "cell": "s2_steps__resident__t3_implement_cap25_r2__r1",
+  "status": "ok",
+  "returncode": 0,
+  "wall_s": 96.7,
+  "env_ablation": {
+    "ABL_WORKER_STEPS": "12"
+  },
+  "result": {
+    "run_id": "t3_implement_cap25_r2",
+    "diagnosis": {
+      "what_is_wrong": "The trace does not show a kernel-level fault that explains the coding task taking longer; the observed changes are consistent with workload phases rather than resource saturation or a failing dependency. The only container observed was pid_ns 4026531836, but no specific culprit is supported.",
+      "root_cause_service": "unknown",
+      "culprit_kind": "unknown",
+      "fault_type": "normal",
+      "evidence": "Compared the full 03:26:40.800\u201303:27:15.800 trace and phase rates computed from its indexed events. sched_stat_runtime averaged only about 0.168 CPU cores across the trace; even the active intervals were about 0.254 cores at 03:26:41\u201303:26:45 and 0.251 cores at 03:26:58\u201303:27:10. Scheduling, futex, block, and network counts fell during 03:26:46\u201303:26:53, but later CPU activity returned under python3 rather than showing sustained host pressure; lifecycle data showed no container or service replacement. Block/network event samples showed no affirmative failure (net_dev_xmit rc=0), though ctf_lines was unavailable and request-latency pairing was not computed, so those mechanisms cannot be conclusively excluded. A finding of high CPU use or a sustained request-latency increase aligned with the pause would have challenged this conclusion; the reported analysis found neither, and the short trace cannot verify application-level task duration.",
+      "confidence": 0.77,
+      "incident_window": "unknown",
+      "window_evidence": "No incident interval is established: the visible rate change starts around 03:26:46, but this coincides with a workload/activity reduction and is followed by different workload activity, not a demonstrated fault onset or recovery. The first trace bucket also has capture-alignment-sensitive peaks, so it is not a reliable boundary."
+    },
+    "ranked_services": null,
+    "ranked_candidates": null,
+    "trajectory": [
+      {
+        "step": 0,
+        "tool": "worker1.0",
+        "service": null
+      },
+      {
+        "step": 1,
+        "tool": "worker1.1",
+        "service": null
+      },
+      {
+        "step": 2,
+        "tool": "worker1.2",
+        "service": null
+      },
+      {
+        "step": 3,
+        "tool": "worker1.3",
+        "service": null
+      }
+    ],
+    "n_tool_calls": 52,
+    "n_code_snippets": 15,
+    "n_findings": 9,
+    "n_computed": 15,
+    "bytes_touched": 89503,
+    "tokens": {
+      "in": 457836,
+      "out": 11922
+    },
+    "model": "openai/gpt-6-luna",
+    "wall_s": 95.7,
+    "transcript_file": "C:\\workplace\\microservice-trace-dataset\\nier-2027\\transcripts\\s2_steps__resident__t3_implement_cap25_r2__r1.json",
+    "skill_selected": null,
+    "skill_confidence": null,
+    "brief_injected": false,
+    "n_claims": null
+  }
+}

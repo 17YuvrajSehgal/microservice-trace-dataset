@@ -1,0 +1,75 @@
+{
+  "config": "all_defect",
+  "klass": "resident",
+  "run": "t3_implement_cap25_r5",
+  "run_dir": "C:\\workplace\\microservice-trace-dataset\\Blueprint\\latency\\1_svc_cpu_cap\\agentic-os-noise\\runs\\t3_implement_cap25_r5",
+  "rep": 2,
+  "cell": "all_defect__resident__t3_implement_cap25_r5__r2",
+  "status": "ok",
+  "returncode": 0,
+  "wall_s": 173.3,
+  "env_ablation": {
+    "ABL_FLAT_CAP": "2000",
+    "ABL_WORKER_STEPS": "12",
+    "ABL_THREAD_BUDGET": "80000",
+    "ABL_NO_COMPUTED": "1"
+  },
+  "result": {
+    "run_id": "t3_implement_cap25_r5",
+    "diagnosis": {
+      "what_is_wrong": "The trace shows a sharp, sustained reduction in scheduler, disk-issue, and transmit activity, but it does not establish that this caused the coding task to run longer or identify a kernel-level mechanism. The coding-related python3 CPU use rose modestly while aggregate container CPU use was below the earlier period, so CPU saturation is not supported; classify this as an unexplained activity shift rather than a confirmed service fault.",
+      "root_cause_service": "unknown",
+      "culprit_kind": "unknown",
+      "fault_type": "other",
+      "evidence": "Using the reported full-span run_python summaries, compare 18:56:00\u201306 with 18:56:06\u201312: sched_switch fell 691.3/s to 324.2/s, sched_wakeup 333.5/s to 157.2/s, block_rq_issue 25.0/s to 11.2/s, and net_dev_xmit 29.8/s to 16.5/s; these remained lower through 18:56:30. Separately, sched_stat_runtime in pid_ns 4026531836 averaged 0.226 CPU-s/s before 18:56:04 and 0.194 CPU-s/s during 18:56:07\u201322; python3 used 2.346 CPU-s over those 15 seconds, while claude's use fell. This does not show CPU saturation or identify a culprit. ctf_timeline returned no matched events due to an index mismatch, and no raw ctf_lines, wakeup-to-switch delay, or block latency results were provided, so the mechanism and task impact cannot be confirmed. A useful falsification check would be to inspect raw scheduler/block events and compare wakeup-to-run and block request latency across the boundary; the notes do not show that this was run.",
+      "confidence": 0.52,
+      "incident_window": "18:56:06 - 18:56:30",
+      "window_evidence": "The boundary is supported by the reported per-second/range event summaries: scheduler, block issue, and transmit activity all dropped sharply around 18:56:06 and remained depressed through the trace end at 18:56:30. This is the window of the observed activity change, not a proven coding-task impairment interval."
+    },
+    "ranked_services": null,
+    "ranked_candidates": null,
+    "trajectory": [
+      {
+        "step": 0,
+        "tool": "worker1.0",
+        "service": null
+      },
+      {
+        "step": 1,
+        "tool": "worker1.1",
+        "service": null
+      },
+      {
+        "step": 2,
+        "tool": "worker1.2",
+        "service": null
+      },
+      {
+        "step": 3,
+        "tool": "worker1.3",
+        "service": null
+      },
+      {
+        "step": 4,
+        "tool": "worker2.100",
+        "service": null
+      }
+    ],
+    "n_tool_calls": 83,
+    "n_code_snippets": 31,
+    "n_findings": 8,
+    "n_computed": 31,
+    "bytes_touched": 153660,
+    "tokens": {
+      "in": 437656,
+      "out": 16042
+    },
+    "model": "openai/gpt-6-luna",
+    "wall_s": 172.3,
+    "transcript_file": "C:\\workplace\\microservice-trace-dataset\\nier-2027\\transcripts\\all_defect__resident__t3_implement_cap25_r5__r2.json",
+    "skill_selected": null,
+    "skill_confidence": null,
+    "brief_injected": false,
+    "n_claims": null
+  }
+}

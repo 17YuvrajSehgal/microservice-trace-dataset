@@ -65,7 +65,10 @@ The research conversation about agent context is largely about the first
 property of a window, its size, and about attention within it, as in work on
 positional degradation in long contexts~\cite{liu2024lost}. Harness papers
 describe their scaffolding as an engineering
-detail~\cite{yang2024sweagent,jimenez2024swebench}. Failure taxonomies built from large
+detail~\cite{yang2024sweagent,jimenez2024swebench}, and a recent source-code
+study of eleven production harnesses catalogues their architecture without
+measuring the empirical effect of any design choice~\cite{harness2026}.
+Failure taxonomies built from large
 collections of agent trajectories classify what went wrong across frameworks,
 including categories for system design~\cite{cemri2025mast}. That work and
 ours are complementary, and the gap between them is the point: a trajectory
@@ -148,7 +151,10 @@ chosen a default for it. This is why we treat these failures as a defect
 interacts with the shape of the data it truncates. If results are serialized
 with a stable key order and bounded by a prefix, the probability that a field
 survives is a function of its \emph{position}, and nothing in an agent's design
-makes late fields less important than early ones.
+makes late fields less important than early ones. The model layer is known to
+attend unevenly by position~\cite{liu2024lost}; the harness layer adds a harder
+version of the same axis, because a field past the cut is not attended to less
+--- it is gone before attention sees it.
 
 \subsection{The attrition profile}
 
@@ -269,10 +275,42 @@ variable is the established \emph{localisation} axis, whether the correct
 culprit process is named, scored independently of the fault label as that
 harness already treats those axes.
 
+\subsection{A design flaw, caught by the registered predictions}
+
+Auditing at $46$ of $120$ cells exposed two problems, both logged as amendments
+before the affected cells ran. First, our own scorer initially credited a
+culprit \emph{mentioned} in prose as a culprit \emph{named}, inflating one arm
+from $2/15$ to $14/15$ --- the same class of scoring generosity the deployed
+harness once caught in itself. Scoring now requires a commitment in the answer
+field. Second, with correct scoring the planned interaction is unmeasurable on
+this substrate: the resident class sits at $13\%$ \emph{when repaired}
+(the cgroup fault manifests as absence; Sec.~\ref{sec:ablation}), so the cell
+the defect should destroy has no headroom, while the spawned class has
+headroom but is the cell the mechanism predicts the defect spares. No number
+of additional runs would fix that. We therefore registered a sharper test,
+H2$'$: manipulate \emph{position directly}. A switch serializes each tool
+result's keys in reverse order --- content, task, agent, model and bound all
+unchanged; only which fields the prefix reaches first moves. An
+\emph{order-only} control applies the reversal with no binding bound, and must
+show no effect for the manipulation to be sound.
+
 \subsection{Results}
 
-\TODO{E2 results table and interaction to be inserted when the 120-cell
-campaign completes.}
+All $120$ first-wave cells completed without harness failure. Context
+utilisation stayed far below the window in every configuration (median input
+$567$k tokens, maximum $1.0$M against a $400$k-per-call budget spread over
+$\sim$$60$ calls), confirming H1: capacity was never the binding constraint.
+
+\textbf{Catastrophic loss, no accuracy loss --- when position protects the
+answer.} Under the delivery defect the agent suffered a mean of $26$
+destroyed, unparseable tool results per run (repair: $0$), and compensated
+visibly: $+24\%$ tool calls and $+64\%$ agent-written computations. Yet on
+spawned culprits it localised correctly in $15/15$ runs ($93\%$ repaired).
+The damage was severe and the answer survived, because the culprit sat in the
+early, surviving field. Healthy controls stayed clean under repair ($5/5$),
+with one false alarm under the full defect.
+
+\textbf{H2$'$.} \TODO{s1\_reversed and order\_only cells: insert outcome.}
 
 \section{Why This Goes Unnoticed}
 \label{sec:unnoticed}
@@ -326,7 +364,9 @@ into a direct replication.
 
 \textbf{A survey of harness bounding code.} Read how widely used open-source
 agent frameworks bound tool results, and classify each as positional (prefix or
-suffix slicing) or structural (row- or field-aware). The hypothesis that
+suffix slicing) or structural (row- or field-aware). The corpus exists: a
+recent anatomy of eleven production harnesses~\cite{harness2026} identifies
+the subsystems but measures no empirical effects. The hypothesis that
 follows from Sec.~\ref{sec:pipeline} is that positional bounding is common
 because it is the one-line option, and that its cost is invisible to those
 frameworks' own test suites.

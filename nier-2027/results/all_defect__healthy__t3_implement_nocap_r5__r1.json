@@ -1,0 +1,70 @@
+{
+  "config": "all_defect",
+  "klass": "healthy",
+  "run": "t3_implement_nocap_r5",
+  "run_dir": "C:\\workplace\\microservice-trace-dataset\\Blueprint\\latency\\1_svc_cpu_cap\\agentic-os-noise\\runs\\t3_implement_nocap_r5",
+  "rep": 1,
+  "cell": "all_defect__healthy__t3_implement_nocap_r5__r1",
+  "status": "ok",
+  "returncode": 0,
+  "wall_s": 106.3,
+  "env_ablation": {
+    "ABL_FLAT_CAP": "2000",
+    "ABL_WORKER_STEPS": "12",
+    "ABL_THREAD_BUDGET": "80000",
+    "ABL_NO_COMPUTED": "1"
+  },
+  "result": {
+    "run_id": "t3_implement_nocap_r5",
+    "diagnosis": {
+      "what_is_wrong": "The trace shows a large workload/activity burst, but it does not establish a kernel-level fault or explain the reported longer coding time. Scheduling and network event rates rise sharply while container CPU runtime stays nearly flat; disk counts remain roughly unchanged, so the best-supported verdict is that no fault is evident from this trace.",
+      "root_cause_service": "unknown",
+      "culprit_kind": "unknown",
+      "fault_type": "normal",
+      "evidence": "Compared the quiet 18:58:33\u201318:58:42 interval with the burst starting at 18:58:43: sched_switch rose from 909/s to 9,646/s and sched_wakeup from 472/s to 4,841/s; network tx/rx rose from about 18/s to over 5,500/s. The process-lifetime and runtime checks associate the change with activity in pid_ns 4026531836, including http appearing at 18:58:43 and python3/http becoming active. However, total CPU runtime in that namespace was nearly unchanged (about 1.20 versus 1.25 CPU-s/s), block_rq_issue changed only about 1.2\u00d7, and futex activity fell. ctf_lines could not provide raw-event corroboration. These observations support a workload change, not CPU saturation, disk contention, network latency, or another listed fault. The check that could have falsified the normal verdict is raw event/latency evidence showing delay or a specific wait mechanism during the burst; ctf_lines was attempted but failed, and the available counts do not show such a mechanism.",
+      "confidence": 0.78,
+      "incident_window": "18:58:43 - 18:58:50",
+      "window_evidence": "This is the interval of the observed activity change, not a confirmed fault interval: rates begin rising in the 18:58:43 buckets, remain high through 18:58:49, and drop sharply around 18:58:50. The trace spans 18:58:32.300\u201318:58:51.500; no stronger evidence ties the reported coding delay to this interval."
+    },
+    "ranked_services": null,
+    "ranked_candidates": null,
+    "trajectory": [
+      {
+        "step": 0,
+        "tool": "worker1.0",
+        "service": null
+      },
+      {
+        "step": 1,
+        "tool": "worker1.1",
+        "service": null
+      },
+      {
+        "step": 2,
+        "tool": "worker1.2",
+        "service": null
+      },
+      {
+        "step": 3,
+        "tool": "worker1.3",
+        "service": null
+      }
+    ],
+    "n_tool_calls": 60,
+    "n_code_snippets": 22,
+    "n_findings": 8,
+    "n_computed": 22,
+    "bytes_touched": 97864,
+    "tokens": {
+      "in": 359163,
+      "out": 15588
+    },
+    "model": "openai/gpt-6-luna",
+    "wall_s": 105.4,
+    "transcript_file": "C:\\workplace\\microservice-trace-dataset\\nier-2027\\transcripts\\all_defect__healthy__t3_implement_nocap_r5__r1.json",
+    "skill_selected": null,
+    "skill_confidence": null,
+    "brief_injected": false,
+    "n_claims": null
+  }
+}

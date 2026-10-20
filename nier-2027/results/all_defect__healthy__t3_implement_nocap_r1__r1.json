@@ -1,0 +1,70 @@
+{
+  "config": "all_defect",
+  "klass": "healthy",
+  "run": "t3_implement_nocap_r1",
+  "run_dir": "C:\\workplace\\microservice-trace-dataset\\Blueprint\\latency\\1_svc_cpu_cap\\agentic-os-noise\\runs\\t3_implement_nocap_r1",
+  "rep": 1,
+  "cell": "all_defect__healthy__t3_implement_nocap_r1__r1",
+  "status": "ok",
+  "returncode": 0,
+  "wall_s": 125.0,
+  "env_ablation": {
+    "ABL_FLAT_CAP": "2000",
+    "ABL_WORKER_STEPS": "12",
+    "ABL_THREAD_BUDGET": "80000",
+    "ABL_NO_COMPUTED": "1"
+  },
+  "result": {
+    "run_id": "t3_implement_nocap_r1",
+    "diagnosis": {
+      "what_is_wrong": "A short, localized CPU burst is visible: python3 in the only non-host namespace used about 2.52 CPU-seconds during a 3-second interval, after recording no CPU in the selected quiet interval. This is consistent with CPU-bound work associated with the coding task, but the trace does not establish that it caused the reported delay or show host-wide CPU pressure; it is not enough to diagnose a host saturation incident.",
+      "root_cause_service": "python3 in pid_ns 4026531836",
+      "culprit_kind": "container",
+      "fault_type": "other",
+      "evidence": "ctf_timespan places the recording at 03:21:49.000\u201303:22:06.400 UTC. Comparing equal 3-second intervals in the worker's run_python sched_stat_runtime aggregates: python3 used 0 ms in 03:21:53\u201303:21:56, 254.298 ms in 03:21:56\u201303:21:59, then 2,519.853 ms in 03:21:59\u201303:22:02, approximately 100 ms in nearly every 100-ms bucket. The worker also reports that scheduler and block event rates had dropped substantially after the opening burst, with no synchronized later recovery, so this does not support a host-wide collapse. The trace identifies only pid_ns 4026531836, not a service name. The notes contain no ctf_lines output, so raw event-field corroboration was not available here.",
+      "confidence": 0.79,
+      "incident_window": "03:21:59 - 03:22:02",
+      "window_evidence": "The selected window is the equal-duration 3-second interval where python3 runtime jumps from 254.298 ms in the immediately preceding interval to 2,519.853 ms, with nearly every 100-ms bucket reaching roughly 100 ms CPU. The earlier 03:21:53\u201303:21:56 interval had no python3 runtime and provides the worker's quiet comparison. The available aggregates do not justify extending the window beyond this measured burst."
+    },
+    "ranked_services": null,
+    "ranked_candidates": null,
+    "trajectory": [
+      {
+        "step": 0,
+        "tool": "worker1.0",
+        "service": null
+      },
+      {
+        "step": 1,
+        "tool": "worker1.1",
+        "service": null
+      },
+      {
+        "step": 2,
+        "tool": "worker1.2",
+        "service": null
+      },
+      {
+        "step": 3,
+        "tool": "worker1.3",
+        "service": null
+      }
+    ],
+    "n_tool_calls": 56,
+    "n_code_snippets": 23,
+    "n_findings": 9,
+    "n_computed": 23,
+    "bytes_touched": 139914,
+    "tokens": {
+      "in": 351341,
+      "out": 13803
+    },
+    "model": "openai/gpt-6-luna",
+    "wall_s": 124.1,
+    "transcript_file": "C:\\workplace\\microservice-trace-dataset\\nier-2027\\transcripts\\all_defect__healthy__t3_implement_nocap_r1__r1.json",
+    "skill_selected": null,
+    "skill_confidence": null,
+    "brief_injected": false,
+    "n_claims": null
+  }
+}

@@ -1,0 +1,125 @@
+provider=openrouter model=openai/gpt-6-luna cells=145 jobs=3
+
+[  1/145] skipped     repair__resident__t3_implement_cap25_r1__r1               0s  in=       0  -                  conf=-
+[  2/145] skipped     repair__resident__t3_implement_cap25_r1__r2               0s  in=       0  -                  conf=-
+[  3/145] skipped     repair__resident__t3_implement_cap25_r2__r1               0s  in=       0  -                  conf=-
+[  4/145] skipped     repair__resident__t3_implement_cap25_r1__r3               0s  in=       0  -                  conf=-
+[  5/145] skipped     repair__resident__t3_implement_cap25_r3__r1               0s  in=       0  -                  conf=-
+[  6/145] skipped     repair__resident__t3_implement_cap25_r2__r2               0s  in=       0  -                  conf=-
+[  7/145] skipped     repair__resident__t3_implement_cap25_r2__r3               0s  in=       0  -                  conf=-
+[  8/145] skipped     repair__resident__t3_implement_cap25_r3__r2               0s  in=       0  -                  conf=-
+[  9/145] skipped     repair__resident__t3_implement_cap25_r3__r3               0s  in=       0  -                  conf=-
+[ 10/145] skipped     repair__resident__t3_implement_cap25_r4__r1               0s  in=       0  -                  conf=-
+[ 11/145] skipped     repair__resident__t3_implement_cap25_r5__r1               0s  in=       0  -                  conf=-
+[ 12/145] skipped     repair__resident__t3_implement_cap25_r4__r3               0s  in=       0  -                  conf=-
+[ 13/145] skipped     repair__resident__t3_implement_cap25_r4__r2               0s  in=       0  -                  conf=-
+[ 14/145] skipped     repair__resident__t3_implement_cap25_r5__r3               0s  in=       0  -                  conf=-
+[ 15/145] skipped     s1_deliver__resident__t3_implement_cap25_r1__r1           0s  in=       0  -                  conf=-
+[ 16/145] skipped     repair__resident__t3_implement_cap25_r5__r2               0s  in=       0  -                  conf=-
+[ 17/145] skipped     s1_deliver__resident__t3_implement_cap25_r1__r3           0s  in=       0  -                  conf=-
+[ 18/145] skipped     s1_deliver__resident__t3_implement_cap25_r1__r2           0s  in=       0  -                  conf=-
+[ 19/145] skipped     s1_deliver__resident__t3_implement_cap25_r2__r1           0s  in=       0  -                  conf=-
+[ 20/145] skipped     s1_deliver__resident__t3_implement_cap25_r2__r2           0s  in=       0  -                  conf=-
+[ 21/145] skipped     s1_deliver__resident__t3_implement_cap25_r2__r3           0s  in=       0  -                  conf=-
+[ 22/145] skipped     s1_deliver__resident__t3_implement_cap25_r3__r2           0s  in=       0  -                  conf=-
+[ 23/145] skipped     s1_deliver__resident__t3_implement_cap25_r3__r1           0s  in=       0  -                  conf=-
+[ 24/145] skipped     s1_deliver__resident__t3_implement_cap25_r3__r3           0s  in=       0  -                  conf=-
+[ 25/145] skipped     s1_deliver__resident__t3_implement_cap25_r4__r1           0s  in=       0  -                  conf=-
+[ 26/145] skipped     s1_deliver__resident__t3_implement_cap25_r4__r2           0s  in=       0  -                  conf=-
+[ 27/145] skipped     s1_deliver__resident__t3_implement_cap25_r4__r3           0s  in=       0  -                  conf=-
+[ 28/145] skipped     s1_deliver__resident__t3_implement_cap25_r5__r1           0s  in=       0  -                  conf=-
+[ 29/145] skipped     s1_deliver__resident__t3_implement_cap25_r5__r2           0s  in=       0  -                  conf=-
+[ 30/145] skipped     s1_deliver__resident__t3_implement_cap25_r5__r3           0s  in=       0  -                  conf=-
+[ 31/145] skipped     repair__spawned__t4_w16_r1__r1                            0s  in=       0  -                  conf=-
+[ 32/145] skipped     repair__spawned__t4_w16_r1__r2                            0s  in=       0  -                  conf=-
+[ 33/145] skipped     repair__spawned__t4_w16_r2__r1                            0s  in=       0  -                  conf=-
+[ 34/145] skipped     repair__spawned__t4_w16_r1__r3                            0s  in=       0  -                  conf=-
+[ 35/145] skipped     repair__spawned__t4_w16_r2__r2                            0s  in=       0  -                  conf=-
+[ 36/145] skipped     repair__spawned__t4_w16_r2__r3                            0s  in=       0  -                  conf=-
+[ 37/145] skipped     repair__spawned__t4_w16_r3__r1                            0s  in=       0  -                  conf=-
+[ 38/145] skipped     repair__spawned__t4_w16_r3__r3                            0s  in=       0  -                  conf=-
+[ 39/145] skipped     repair__spawned__t4_w16_r3__r2                            0s  in=       0  -                  conf=-
+[ 40/145] skipped     repair__spawned__t4_w16_r4__r1                            0s  in=       0  -                  conf=-
+[ 41/145] skipped     repair__spawned__t4_w16_r4__r3                            0s  in=       0  -                  conf=-
+[ 42/145] skipped     repair__spawned__t4_w16_r4__r2                            0s  in=       0  -                  conf=-
+[ 43/145] skipped     repair__spawned__t4_w16_r5__r1                            0s  in=       0  -                  conf=-
+[ 44/145] skipped     repair__spawned__t4_w16_r5__r2                            0s  in=       0  -                  conf=-
+[ 45/145] skipped     repair__spawned__t4_w16_r5__r3                            0s  in=       0  -                  conf=-
+[ 46/145] skipped     s1_deliver__spawned__t4_w16_r1__r2                        0s  in=       0  -                  conf=-
+[ 47/145] skipped     s1_deliver__spawned__t4_w16_r1__r3                        0s  in=       0  -                  conf=-
+[ 48/145] skipped     s1_deliver__spawned__t4_w16_r1__r1                        0s  in=       0  -                  conf=-
+[ 49/145] skipped     s1_deliver__spawned__t4_w16_r2__r2                        0s  in=       0  -                  conf=-
+[ 50/145] skipped     s1_deliver__spawned__t4_w16_r2__r3                        0s  in=       0  -                  conf=-
+[ 51/145] skipped     s1_deliver__spawned__t4_w16_r3__r1                        0s  in=       0  -                  conf=-
+[ 52/145] skipped     s1_deliver__spawned__t4_w16_r3__r2                        0s  in=       0  -                  conf=-
+[ 53/145] skipped     s1_deliver__spawned__t4_w16_r2__r1                        0s  in=       0  -                  conf=-
+[ 54/145] skipped     s1_deliver__spawned__t4_w16_r4__r1                        0s  in=       0  -                  conf=-
+[ 55/145] skipped     s1_deliver__spawned__t4_w16_r3__r3                        0s  in=       0  -                  conf=-
+[ 56/145] skipped     s1_deliver__spawned__t4_w16_r4__r2                        0s  in=       0  -                  conf=-
+[ 57/145] skipped     s1_deliver__spawned__t4_w16_r4__r3                        0s  in=       0  -                  conf=-
+[ 58/145] skipped     s1_deliver__spawned__t4_w16_r5__r2                        0s  in=       0  -                  conf=-
+[ 59/145] skipped     s1_deliver__spawned__t4_w16_r5__r1                        0s  in=       0  -                  conf=-
+[ 60/145] skipped     s1_deliver__spawned__t4_w16_r5__r3                        0s  in=       0  -                  conf=-
+[ 61/145] skipped     s4_transfer__resident__t3_implement_cap25_r1__r1          0s  in=       0  -                  conf=-
+[ 62/145] skipped     s4_transfer__resident__t3_implement_cap25_r1__r2          0s  in=       0  -                  conf=-
+[ 63/145] skipped     s4_transfer__resident__t3_implement_cap25_r1__r3          0s  in=       0  -                  conf=-
+[ 64/145] skipped     s4_transfer__resident__t3_implement_cap25_r2__r1          0s  in=       0  -                  conf=-
+[ 65/145] skipped     s4_transfer__resident__t3_implement_cap25_r2__r2          0s  in=       0  -                  conf=-
+[ 66/145] skipped     s4_transfer__resident__t3_implement_cap25_r3__r1          0s  in=       0  -                  conf=-
+[ 67/145] skipped     s4_transfer__resident__t3_implement_cap25_r2__r3          0s  in=       0  -                  conf=-
+[ 68/145] skipped     s4_transfer__resident__t3_implement_cap25_r3__r2          0s  in=       0  -                  conf=-
+[ 69/145] skipped     s4_transfer__resident__t3_implement_cap25_r3__r3          0s  in=       0  -                  conf=-
+[ 70/145] skipped     s4_transfer__resident__t3_implement_cap25_r4__r1          0s  in=       0  -                  conf=-
+[ 71/145] skipped     s4_transfer__resident__t3_implement_cap25_r4__r2          0s  in=       0  -                  conf=-
+[ 72/145] skipped     s4_transfer__resident__t3_implement_cap25_r4__r3          0s  in=       0  -                  conf=-
+[ 73/145] skipped     s4_transfer__resident__t3_implement_cap25_r5__r1          0s  in=       0  -                  conf=-
+[ 74/145] skipped     s4_transfer__resident__t3_implement_cap25_r5__r2          0s  in=       0  -                  conf=-
+[ 75/145] skipped     s4_transfer__resident__t3_implement_cap25_r5__r3          0s  in=       0  -                  conf=-
+[ 76/145] skipped     all_defect__resident__t3_implement_cap25_r1__r1           0s  in=       0  -                  conf=-
+[ 77/145] skipped     all_defect__resident__t3_implement_cap25_r1__r2           0s  in=       0  -                  conf=-
+[ 78/145] skipped     all_defect__resident__t3_implement_cap25_r1__r3           0s  in=       0  -                  conf=-
+[ 79/145] skipped     all_defect__resident__t3_implement_cap25_r2__r1           0s  in=       0  -                  conf=-
+[ 80/145] skipped     all_defect__resident__t3_implement_cap25_r2__r2           0s  in=       0  -                  conf=-
+[ 81/145] skipped     all_defect__resident__t3_implement_cap25_r2__r3           0s  in=       0  -                  conf=-
+[ 82/145] skipped     all_defect__resident__t3_implement_cap25_r3__r1           0s  in=       0  -                  conf=-
+[ 83/145] skipped     all_defect__resident__t3_implement_cap25_r3__r2           0s  in=       0  -                  conf=-
+[ 84/145] skipped     all_defect__resident__t3_implement_cap25_r3__r3           0s  in=       0  -                  conf=-
+[ 85/145] skipped     all_defect__resident__t3_implement_cap25_r4__r1           0s  in=       0  -                  conf=-
+[ 86/145] skipped     all_defect__resident__t3_implement_cap25_r4__r2           0s  in=       0  -                  conf=-
+[ 87/145] skipped     all_defect__resident__t3_implement_cap25_r4__r3           0s  in=       0  -                  conf=-
+[ 88/145] skipped     all_defect__resident__t3_implement_cap25_r5__r1           0s  in=       0  -                  conf=-
+[ 89/145] skipped     all_defect__resident__t3_implement_cap25_r5__r2           0s  in=       0  -                  conf=-
+[ 90/145] skipped     all_defect__resident__t3_implement_cap25_r5__r3           0s  in=       0  -                  conf=-
+[ 91/145] skipped     s2_steps__resident__t3_implement_cap25_r1__r1             0s  in=       0  -                  conf=-
+[ 92/145] skipped     s2_steps__resident__t3_implement_cap25_r1__r2             0s  in=       0  -                  conf=-
+[ 93/145] skipped     s2_steps__resident__t3_implement_cap25_r2__r1             0s  in=       0  -                  conf=-
+[ 94/145] skipped     s2_steps__resident__t3_implement_cap25_r2__r2             0s  in=       0  -                  conf=-
+[ 95/145] skipped     s2_steps__resident__t3_implement_cap25_r3__r1             0s  in=       0  -                  conf=-
+[ 96/145] skipped     s2_steps__resident__t3_implement_cap25_r3__r2             0s  in=       0  -                  conf=-
+[ 97/145] skipped     s2_steps__resident__t3_implement_cap25_r4__r1             0s  in=       0  -                  conf=-
+[ 98/145] skipped     s2_steps__resident__t3_implement_cap25_r4__r2             0s  in=       0  -                  conf=-
+[ 99/145] skipped     s2_steps__resident__t3_implement_cap25_r5__r1             0s  in=       0  -                  conf=-
+[100/145] skipped     s2_steps__resident__t3_implement_cap25_r5__r2             0s  in=       0  -                  conf=-
+[101/145] skipped     s3_thread__resident__t3_implement_cap25_r1__r1            0s  in=       0  -                  conf=-
+[102/145] skipped     s3_thread__resident__t3_implement_cap25_r1__r2            0s  in=       0  -                  conf=-
+[103/145] skipped     s3_thread__resident__t3_implement_cap25_r2__r1            0s  in=       0  -                  conf=-
+[104/145] skipped     s3_thread__resident__t3_implement_cap25_r3__r1            0s  in=       0  -                  conf=-
+[105/145] skipped     s3_thread__resident__t3_implement_cap25_r4__r1            0s  in=       0  -                  conf=-
+[106/145] skipped     s3_thread__resident__t3_implement_cap25_r3__r2            0s  in=       0  -                  conf=-
+[107/145] skipped     s3_thread__resident__t3_implement_cap25_r4__r2            0s  in=       0  -                  conf=-
+[108/145] skipped     s3_thread__resident__t3_implement_cap25_r5__r1            0s  in=       0  -                  conf=-
+[109/145] skipped     s3_thread__resident__t3_implement_cap25_r2__r2            0s  in=       0  -                  conf=-
+[110/145] skipped     repair__healthy__t3_implement_nocap_r2__r1                0s  in=       0  -                  conf=-
+[111/145] skipped     repair__healthy__t3_implement_nocap_r1__r1                0s  in=       0  -                  conf=-
+[112/145] skipped     repair__healthy__t3_implement_nocap_r3__r1                0s  in=       0  -                  conf=-
+[113/145] skipped     repair__healthy__t3_implement_nocap_r5__r1                0s  in=       0  -                  conf=-
+[114/145] skipped     repair__healthy__t3_implement_nocap_r4__r1                0s  in=       0  -                  conf=-
+[115/145] skipped     s3_thread__resident__t3_implement_cap25_r5__r2            0s  in=       0  -                  conf=-
+[116/145] skipped     all_defect__healthy__t3_implement_nocap_r1__r1            0s  in=       0  -                  conf=-
+[117/145] skipped     all_defect__healthy__t3_implement_nocap_r2__r1            0s  in=       0  -                  conf=-
+[118/145] skipped     all_defect__healthy__t3_implement_nocap_r4__r1            0s  in=       0  -                  conf=-
+[119/145] skipped     all_defect__healthy__t3_implement_nocap_r5__r1            0s  in=       0  -                  conf=-
+[120/145] skipped     all_defect__healthy__t3_implement_nocap_r3__r1            0s  in=       0  -                  conf=-
+[121/145] ok          s1_reversed__spawned__t4_w16_r1__r1                     138s  in= 412,626  cpu_saturation     conf=0.78
+[122/145] ok          s1_reversed__spawned__t4_w16_r1__r2                     139s  in= 469,424  cpu_saturation     conf=0.94
+[123/145] ok          s1_reversed__spawned__t4_w16_r1__r3                     255s  in= 661,495  cpu_saturation     conf=0.92

@@ -1,0 +1,72 @@
+{
+  "config": "s3_thread",
+  "klass": "resident",
+  "run": "t3_implement_cap25_r1",
+  "run_dir": "C:\\workplace\\microservice-trace-dataset\\Blueprint\\latency\\1_svc_cpu_cap\\agentic-os-noise\\runs\\t3_implement_cap25_r1",
+  "rep": 2,
+  "cell": "s3_thread__resident__t3_implement_cap25_r1__r2",
+  "status": "ok",
+  "returncode": 0,
+  "wall_s": 220.9,
+  "env_ablation": {
+    "ABL_THREAD_BUDGET": "80000"
+  },
+  "result": {
+    "run_id": "t3_implement_cap25_r1",
+    "diagnosis": {
+      "what_is_wrong": "The trace does not confirm a kernel-level fault causing the coding task to run slowly. It shows workload phases changing, including a sharp activity drop near 03:17:31 and later CPU work by python3, but the samples show idle CPUs rather than sustained scheduling contention; the reported delay may be real, but its cause is not established by this trace.",
+      "root_cause_service": "unknown",
+      "culprit_kind": "unknown",
+      "fault_type": "normal",
+      "evidence": "Compared whole-span indexed event-rate data for 03:17:26\u201303:17:59, including worker1.1's 1-second aggregates and worker2.100's per-task scheduling counts. At 03:17:31 sched_switch dropped from 807 to 266/s and sched_stat_runtime from 749 to 319 events/s, but events continued to be recorded and activity rebounded at 03:17:33, ruling against a capture blackout. During python3's later high-runtime phase (03:17:42\u201303:17:53), it used about 233\u2013247 ms CPU/s; raw sched_switch samples show swapper/3 as the previous task with prev_state=0 before python3 runs, consistent with idle CPU, not a busy run queue. Disk checks found only 13 exact-sector issue/completion matches, with 0.264\u20131.230 ms latency (median 0.603 ms); sampled network transmit records succeeded (rc=0), and sampled futex calls returned quickly. These checks do not establish end-to-end task latency, but they provide no positive evidence of resource contention or a kernel mechanism explaining the reported slowdown.",
+      "confidence": 0.81,
+      "incident_window": "unknown",
+      "window_evidence": "The only sharp boundary in the full-span rate series is around 03:17:31, but it aligns with reduced activity by the coding workload and is followed by intermittent workload activity, not evidence of a fault onset or recovery. The later python3 CPU-use interval is measurable, but the raw scheduling samples show CPUs idle before dispatch and do not establish that it delayed the task. Therefore no fault interval can be defensibly assigned."
+    },
+    "ranked_services": null,
+    "ranked_candidates": null,
+    "trajectory": [
+      {
+        "step": 0,
+        "tool": "worker1.0",
+        "service": null
+      },
+      {
+        "step": 1,
+        "tool": "worker1.1",
+        "service": null
+      },
+      {
+        "step": 2,
+        "tool": "worker1.2",
+        "service": null
+      },
+      {
+        "step": 3,
+        "tool": "worker1.3",
+        "service": null
+      },
+      {
+        "step": 4,
+        "tool": "worker2.100",
+        "service": null
+      }
+    ],
+    "n_tool_calls": 63,
+    "n_code_snippets": 23,
+    "n_findings": 14,
+    "n_computed": 23,
+    "bytes_touched": 134956,
+    "tokens": {
+      "in": 782059,
+      "out": 19129
+    },
+    "model": "openai/gpt-6-luna",
+    "wall_s": 220.0,
+    "transcript_file": "C:\\workplace\\microservice-trace-dataset\\nier-2027\\transcripts\\s3_thread__resident__t3_implement_cap25_r1__r2.json",
+    "skill_selected": null,
+    "skill_confidence": null,
+    "brief_injected": false,
+    "n_claims": null
+  }
+}

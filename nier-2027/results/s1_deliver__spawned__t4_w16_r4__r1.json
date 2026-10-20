@@ -1,0 +1,67 @@
+{
+  "config": "s1_deliver",
+  "klass": "spawned",
+  "run": "t4_w16_r4",
+  "run_dir": "C:\\workplace\\microservice-trace-dataset\\agentic-runs\\2_threads_vs_cores\\runs\\t4_w16_r4",
+  "rep": 1,
+  "cell": "s1_deliver__spawned__t4_w16_r4__r1",
+  "status": "ok",
+  "returncode": 0,
+  "wall_s": 123.0,
+  "env_ablation": {
+    "ABL_FLAT_CAP": "2000"
+  },
+  "result": {
+    "run_id": "t4_w16_r4",
+    "diagnosis": {
+      "what_is_wrong": "A brief CPU-saturation episode coincided with the coding-task runner: ttworker in pid_ns 4026531836 used almost four cores continuously, leaving no observed CPU idle time through most of the burst. This plausibly explains the reported slowdown, although the trace does not measure task latency or establish scheduler wait time, so causation is not proven.",
+      "root_cause_service": "ttworker in pid_ns 4026531836",
+      "culprit_kind": "container",
+      "fault_type": "cpu_saturation",
+      "evidence": "Using the whole-trace process lifetimes and run_python sched_stat_runtime totals, I compared 02:46:06.400\u201302:46:10.400 with 02:46:11.000\u201302:46:15.000 and the post-burst 02:46:15.000\u201302:46:17.200. Container CPU rose from 1.697 CPU-seconds (0.424 average cores) in the preceding four seconds to 15.412 CPU-seconds (3.853 cores) during the task window; ttworker alone used 14.840 CPU-seconds, about 96% of that interval's container CPU. Its 100-ms buckets were mostly 390\u2013400 ms CPU from 02:46:11.2 through 02:46:14.7, then it disappeared after its last observed bucket at 02:46:14.8. The trace shows four CPU IDs (0\u20133) in raw sched_switch records, and power_cpu_idle counts were zero in the 02:46:12 and 02:46:13 seconds. ctf_proclife places run_all.sh, xargs, and ttworker in the same 3.8-second lifetime. ctf_lines showed ordinary-priority switches among ttworker threads, but there were no usable wakeup-to-run delay records; thus CPU use and no idle time support saturation, but do not quantify victim delay. Counts do not support disk saturation in this interval (block_bio_queue: 75 total in 02:46:11\u201315 and none in 02:46:14), and the recorded futex rate fell rather than rising. The check that would falsify saturation as the cause of the task slowdown is evidence that CPUs remained available or that the task incurred no scheduler wait; the observed idle counts argue against available CPU, but the trace cannot complete the scheduler-delay check.",
+      "confidence": 0.8,
+      "incident_window": "02:46:11 - 02:46:14.800",
+      "window_evidence": "The boundary is supported by ctf_proclife: run_all.sh, xargs, and ttworker first appear at 02:46:11.000 and last at 02:46:14.800. In run_python's 100-ms sched_stat_runtime buckets, ttworker jumps from no runtime before 02:46:11 to near four CPU-seconds per wall-second beginning at 02:46:11.1; its last recorded bucket is 02:46:14.8, after which its runtime is zero. Container CPU drops to 0.143 CPU-seconds over 02:46:15.000\u201302:46:17.200, marking cessation rather than an earlier event-rate rise as the endpoint."
+    },
+    "ranked_services": null,
+    "ranked_candidates": null,
+    "trajectory": [
+      {
+        "step": 0,
+        "tool": "worker1.0",
+        "service": null
+      },
+      {
+        "step": 1,
+        "tool": "worker1.1",
+        "service": null
+      },
+      {
+        "step": 2,
+        "tool": "worker1.2",
+        "service": null
+      },
+      {
+        "step": 3,
+        "tool": "worker1.3",
+        "service": null
+      }
+    ],
+    "n_tool_calls": 62,
+    "n_code_snippets": 29,
+    "n_findings": 11,
+    "n_computed": 29,
+    "bytes_touched": 151243,
+    "tokens": {
+      "in": 485068,
+      "out": 14051
+    },
+    "model": "openai/gpt-6-luna",
+    "wall_s": 122.0,
+    "transcript_file": "C:\\workplace\\microservice-trace-dataset\\nier-2027\\transcripts\\s1_deliver__spawned__t4_w16_r4__r1.json",
+    "skill_selected": null,
+    "skill_confidence": null,
+    "brief_injected": false,
+    "n_claims": null
+  }
+}

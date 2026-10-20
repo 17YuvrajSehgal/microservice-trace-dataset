@@ -1,0 +1,67 @@
+{
+  "config": "s3_thread",
+  "klass": "resident",
+  "run": "t3_implement_cap25_r2",
+  "run_dir": "C:\\workplace\\microservice-trace-dataset\\Blueprint\\latency\\1_svc_cpu_cap\\agentic-os-noise\\runs\\t3_implement_cap25_r2",
+  "rep": 2,
+  "cell": "s3_thread__resident__t3_implement_cap25_r2__r2",
+  "status": "ok",
+  "returncode": 0,
+  "wall_s": 199.0,
+  "env_ablation": {
+    "ABL_THREAD_BUDGET": "80000"
+  },
+  "result": {
+    "run_id": "t3_implement_cap25_r2",
+    "diagnosis": {
+      "what_is_wrong": "The reported slowdown is not corroborated as a kernel-level fault: the trace shows a change in workload\u2014from `claude` activity to `python3` work\u2014with no persuasive evidence of CPU starvation, disk wait, or a network fault. This does not prove the coding task was fast or rule out causes the kernel trace cannot expose; it means no injected fault is evident in this capture.",
+      "root_cause_service": "unknown",
+      "culprit_kind": "unknown",
+      "fault_type": "normal",
+      "evidence": "Compared full recording 03:26:40.800\u201303:27:15.800 using the workers' whole-span event counts and per-process sched_stat_runtime. CPU runtime fell from 1.317 CPU-s in the first 5 seconds to 0.348 CPU-s across seconds 5\u201312, then `python3` used 3.236 CPU-s across seconds 16\u201330 (about 0.231 average core); all activity was in pid_ns 4026531836, with no separate CPU-heavy container identified. Scheduler, block, and network rates did not exhibit a common sustained collapse: network events stayed roughly 50\u2013101 per 5-second bucket, while block requests contracted with workload and later resumed. Raw scheduler examples showed wake-to-switch around 10\u201316 microseconds; sampled block requests completed with error=0 and sub-millisecond issue/completion gaps; sampled transmit events had rc=0. Lifecycle evidence showed ordinary short-lived command turnover, not a main-workload restart. A counterexample that would change this assessment would be prolonged wake-to-run delay or sustained long/erroring block requests during the quiet trough; workers inspected raw scheduler and block records, though samples and this short trace cannot exclude every such event.",
+      "confidence": 0.77,
+      "incident_window": "unknown",
+      "window_evidence": "The candidate activity transition is around 03:26:45.8\u201303:26:52.8, where scheduler/runtime counts decline, but it does not establish an incident: the decrease is not matched by network collapse, disk request examples are prompt and successful, and subsequent CPU use is attributable to `python3` rather than evidence of recovery from a host fault. Since the trace supports workload change but no fault boundary, assigning an incident window would be speculative."
+    },
+    "ranked_services": null,
+    "ranked_candidates": null,
+    "trajectory": [
+      {
+        "step": 0,
+        "tool": "worker1.0",
+        "service": null
+      },
+      {
+        "step": 1,
+        "tool": "worker1.1",
+        "service": null
+      },
+      {
+        "step": 2,
+        "tool": "worker1.2",
+        "service": null
+      },
+      {
+        "step": 3,
+        "tool": "worker1.3",
+        "service": null
+      }
+    ],
+    "n_tool_calls": 53,
+    "n_code_snippets": 17,
+    "n_findings": 10,
+    "n_computed": 17,
+    "bytes_touched": 86683,
+    "tokens": {
+      "in": 607566,
+      "out": 12524
+    },
+    "model": "openai/gpt-6-luna",
+    "wall_s": 198.0,
+    "transcript_file": "C:\\workplace\\microservice-trace-dataset\\nier-2027\\transcripts\\s3_thread__resident__t3_implement_cap25_r2__r2.json",
+    "skill_selected": null,
+    "skill_confidence": null,
+    "brief_injected": false,
+    "n_claims": null
+  }
+}

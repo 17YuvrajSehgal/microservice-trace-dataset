@@ -1,0 +1,72 @@
+{
+  "config": "s1_deliver",
+  "klass": "spawned",
+  "run": "t4_w16_r3",
+  "run_dir": "C:\\workplace\\microservice-trace-dataset\\agentic-runs\\2_threads_vs_cores\\runs\\t4_w16_r3",
+  "rep": 3,
+  "cell": "s1_deliver__spawned__t4_w16_r3__r3",
+  "status": "ok",
+  "returncode": 0,
+  "wall_s": 240.6,
+  "env_ablation": {
+    "ABL_FLAT_CAP": "2000"
+  },
+  "result": {
+    "run_id": "t4_w16_r3",
+    "diagnosis": {
+      "what_is_wrong": "A short, parallel CPU-heavy `ttworker` burst coincided with sharply reduced CPU execution for the coding process `claude`, making CPU contention a credible explanation for the reported slowdown. The trace establishes that association strongly, but does not fully reconstruct per-thread runnable wait or prove the task's wall-clock delay.",
+      "root_cause_service": "ttworker in pid_ns 4026531836",
+      "culprit_kind": "container",
+      "fault_type": "cpu_saturation",
+      "evidence": "The full-span `ctf_proclife` scan places `ttworker` in pid_ns 4026531836 from 02:50:14.600 through its final exits at 02:50:18.506. `run_python` sched_stat_runtime totals show 15.044 CPU-seconds during its 3.9-second lifetime (about 3.86 cores); the 100-ms runtime payload is then about 400 ms/bin, and raw sched_switch records show ttworker threads scheduled across CPUs 0\u20133. Against the preceding quiet comparison, 02:50:10\u201302:50:14, claude runtime falls from about 0.977 CPU-seconds to 0.063 CPU-seconds during the burst, while ttworker was absent in the quiet range. Checked available event inventories and phase counts: network traffic and block_bio_queue activity do not rise with the burst, and reclaim/OOM/throttle event families were not present. The large event drop at trace start was not used as the incident signal. Timeline/query matching returned zero despite events in the full DataFrame, so the attribution relies on run_python aggregations and the supplied raw scheduler lines. The direct per-thread wake-to-run comparison was attempted but the available raw records were too sparse to establish exact runnable delay; that, or evidence claude received normal CPU service during the burst, would weaken/falsify the contention explanation.",
+      "confidence": 0.87,
+      "incident_window": "02:50:14.600 - 02:50:18.506",
+      "window_evidence": "The candidate begins at the `ctf_proclife` first-seen time for ttworker and the runtime payload jumps from low values to roughly 360\u2013400 ms per 100-ms bin at 14.6\u201314.7. It ends at ttworker's final recorded thread exit at 18.506; runtime payload collapses to under 1 ms per bin from 18.6, and the post-burst interval shows no continuing ttworker CPU use of consequence."
+    },
+    "ranked_services": null,
+    "ranked_candidates": null,
+    "trajectory": [
+      {
+        "step": 0,
+        "tool": "worker1.0",
+        "service": null
+      },
+      {
+        "step": 1,
+        "tool": "worker1.1",
+        "service": null
+      },
+      {
+        "step": 2,
+        "tool": "worker1.2",
+        "service": null
+      },
+      {
+        "step": 3,
+        "tool": "worker1.3",
+        "service": null
+      },
+      {
+        "step": 4,
+        "tool": "worker2.100",
+        "service": null
+      }
+    ],
+    "n_tool_calls": 79,
+    "n_code_snippets": 31,
+    "n_findings": 15,
+    "n_computed": 31,
+    "bytes_touched": 127289,
+    "tokens": {
+      "in": 616566,
+      "out": 20140
+    },
+    "model": "openai/gpt-6-luna",
+    "wall_s": 239.6,
+    "transcript_file": "C:\\workplace\\microservice-trace-dataset\\nier-2027\\transcripts\\s1_deliver__spawned__t4_w16_r3__r3.json",
+    "skill_selected": null,
+    "skill_confidence": null,
+    "brief_injected": false,
+    "n_claims": null
+  }
+}

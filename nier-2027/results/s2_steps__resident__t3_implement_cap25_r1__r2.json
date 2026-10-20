@@ -1,0 +1,72 @@
+{
+  "config": "s2_steps",
+  "klass": "resident",
+  "run": "t3_implement_cap25_r1",
+  "run_dir": "C:\\workplace\\microservice-trace-dataset\\Blueprint\\latency\\1_svc_cpu_cap\\agentic-os-noise\\runs\\t3_implement_cap25_r1",
+  "rep": 2,
+  "cell": "s2_steps__resident__t3_implement_cap25_r1__r2",
+  "status": "ok",
+  "returncode": 0,
+  "wall_s": 272.7,
+  "env_ablation": {
+    "ABL_WORKER_STEPS": "12"
+  },
+  "result": {
+    "run_id": "t3_implement_cap25_r1",
+    "diagnosis": {
+      "what_is_wrong": "The reported slow coding task is not confirmed as a kernel-visible resource incident: the trace shows changing workload activity, but no convincing evidence that CPU saturation, I/O, network delay, or another host fault slowed it. Python's busiest measured phase used about 1.19 CPU-seconds in five seconds (0.24 cores), and the apparent scheduler-latency outliers are invalid because the raw event samples are incomplete.",
+      "root_cause_service": "unknown",
+      "culprit_kind": "unknown",
+      "fault_type": "normal",
+      "evidence": "Reviewed the full 03:17:26.200\u201303:17:59.100 UTC trace. Lifecycle data shows one container (pid_ns 4026531836); git appears briefly but accounts for only about 0.014 CPU-seconds. Indexed event rates fall after the initial high-activity seconds, while network rates later remain roughly steady; the changes fit workload activity variation better than a broad resource failure. CPU accounting shows a peak aggregate of only 1.272 CPU-seconds per five-second phase (0.254 cores), with python3 highest at 1.193 CPU-seconds in that phase, not evidence of host CPU saturation. The sampled wake-to-run comparisons cannot establish a latency problem: the apparent long baseline delays came from missing intervening raw events; the trough's small sample showed a maximum of 0.035 ms, but is not a complete distribution. ctf_timeline and direct ctf_lines were unusable, so workers used indexed counts and sampled raw lines instead. No single kernel-visible culprit or fault mechanism is established.",
+      "confidence": 0.76,
+      "incident_window": "unknown",
+      "window_evidence": "No incident boundary is supported: the initial synchronized rate decline follows a very high-activity opening burst and is not tied to a verified resource delay; a later scheduler/runtime trough does not coincide with a comparable network decline. The final-bin rebound and lifecycle edges are only candidate workload transitions. Since no fault window can be distinguished from ordinary task activity, reporting a timed incident would be speculation."
+    },
+    "ranked_services": null,
+    "ranked_candidates": null,
+    "trajectory": [
+      {
+        "step": 0,
+        "tool": "worker1.0",
+        "service": null
+      },
+      {
+        "step": 1,
+        "tool": "worker1.1",
+        "service": null
+      },
+      {
+        "step": 2,
+        "tool": "worker1.2",
+        "service": null
+      },
+      {
+        "step": 3,
+        "tool": "worker1.3",
+        "service": null
+      },
+      {
+        "step": 4,
+        "tool": "worker2.100",
+        "service": null
+      }
+    ],
+    "n_tool_calls": 57,
+    "n_code_snippets": 16,
+    "n_findings": 13,
+    "n_computed": 16,
+    "bytes_touched": 49982,
+    "tokens": {
+      "in": 432101,
+      "out": 14717
+    },
+    "model": "openai/gpt-6-luna",
+    "wall_s": 271.7,
+    "transcript_file": "C:\\workplace\\microservice-trace-dataset\\nier-2027\\transcripts\\s2_steps__resident__t3_implement_cap25_r1__r2.json",
+    "skill_selected": null,
+    "skill_confidence": null,
+    "brief_injected": false,
+    "n_claims": null
+  }
+}

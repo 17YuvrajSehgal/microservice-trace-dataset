@@ -1,0 +1,70 @@
+{
+  "config": "all_defect",
+  "klass": "resident",
+  "run": "t3_implement_cap25_r4",
+  "run_dir": "C:\\workplace\\microservice-trace-dataset\\Blueprint\\latency\\1_svc_cpu_cap\\agentic-os-noise\\runs\\t3_implement_cap25_r4",
+  "rep": 2,
+  "cell": "all_defect__resident__t3_implement_cap25_r4__r2",
+  "status": "ok",
+  "returncode": 0,
+  "wall_s": 146.0,
+  "env_ablation": {
+    "ABL_FLAT_CAP": "2000",
+    "ABL_WORKER_STEPS": "12",
+    "ABL_THREAD_BUDGET": "80000",
+    "ABL_NO_COMPUTED": "1"
+  },
+  "result": {
+    "run_id": "t3_implement_cap25_r4",
+    "diagnosis": {
+      "what_is_wrong": "The trace shows a pronounced but unexplained drop in recorded workload activity, not evidence of CPU saturation or another established host resource fault. It cannot confirm that the coding task itself was delayed or explain why; the recorded pattern is more consistent with the workload becoming idle or pausing than with a demonstrated kernel resource bottleneck.",
+      "root_cause_service": "container in pid_ns 4026531836 (observed workload includes claude, python3, and git)",
+      "culprit_kind": "container",
+      "fault_type": "other",
+      "evidence": "Compared the full-span per-second event rates and runtime figures reported from run_python. Between 01:57:58\u201301:58:02 and 01:58:03\u201301:58:09, sched_switch fell about 69% (1,000/s to 310/s), sched_wakeup about 70% (488/s to 148/s), sched_stat_runtime about 70% (876/s to 266/s), futex entries 79%, and napi_poll 64%; activity partially rebounded in 01:58:10\u201301:58:14. The separate 4-second comparison reported sched_stat_runtime dropping from 1,012 ms to 57 ms. Across the whole 32.9-second trace, recorded runtime averaged only about 0.167 CPU cores; python3 and claude consumed 3.065 and 1.550 CPU-seconds respectively, with no escalating container-wide CPU surge. These rates locate an activity change in the only substantial namespace observed, but do not establish its cause. ctf_proclife shows partial-span git/grep and lttng-consumerd, but first/last appearances do not establish a fault. No raw ctf_lines check or measured wakeup delay, block latency, or other mechanism was supplied, so those checks cannot be claimed as run.",
+      "confidence": 0.64,
+      "incident_window": "01:58:03 - 01:58:09",
+      "window_evidence": "The reported per-second rates place the onset of the synchronized decline at about 01:58:03, after the busy 01:57:58\u201301:58:02 interval; rates partially rebound beginning 01:58:10. I use the low-rate interval through 01:58:09 as the observed anomaly window, not as proof that the coding task was delayed for exactly that duration."
+    },
+    "ranked_services": null,
+    "ranked_candidates": null,
+    "trajectory": [
+      {
+        "step": 0,
+        "tool": "worker1.0",
+        "service": null
+      },
+      {
+        "step": 1,
+        "tool": "worker1.1",
+        "service": null
+      },
+      {
+        "step": 2,
+        "tool": "worker1.2",
+        "service": null
+      },
+      {
+        "step": 3,
+        "tool": "worker1.3",
+        "service": null
+      }
+    ],
+    "n_tool_calls": 45,
+    "n_code_snippets": 18,
+    "n_findings": 6,
+    "n_computed": 18,
+    "bytes_touched": 64342,
+    "tokens": {
+      "in": 248866,
+      "out": 9673
+    },
+    "model": "openai/gpt-6-luna",
+    "wall_s": 145.1,
+    "transcript_file": "C:\\workplace\\microservice-trace-dataset\\nier-2027\\transcripts\\all_defect__resident__t3_implement_cap25_r4__r2.json",
+    "skill_selected": null,
+    "skill_confidence": null,
+    "brief_injected": false,
+    "n_claims": null
+  }
+}

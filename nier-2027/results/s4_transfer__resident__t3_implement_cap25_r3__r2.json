@@ -1,0 +1,72 @@
+{
+  "config": "s4_transfer",
+  "klass": "resident",
+  "run": "t3_implement_cap25_r3",
+  "run_dir": "C:\\workplace\\microservice-trace-dataset\\Blueprint\\latency\\1_svc_cpu_cap\\agentic-os-noise\\runs\\t3_implement_cap25_r3",
+  "rep": 2,
+  "cell": "s4_transfer__resident__t3_implement_cap25_r3__r2",
+  "status": "ok",
+  "returncode": 0,
+  "wall_s": 228.9,
+  "env_ablation": {
+    "ABL_NO_COMPUTED": "1"
+  },
+  "result": {
+    "run_id": "t3_implement_cap25_r3",
+    "diagnosis": {
+      "what_is_wrong": "No kernel-level fault is established, so the reported longer coding task cannot be confirmed as caused by host or container contention. The trace shows a workload shift\u2014CPU activity in the container drops around 03:27:35 and python3 begins sustained CPU execution around 03:27:41.5\u2014but the observed disk, network, and scheduler samples do not identify a cause for abnormal delay.",
+      "root_cause_service": "none evident",
+      "culprit_kind": "unknown",
+      "fault_type": "normal",
+      "evidence": "Compared whole-trace ctf_timespan (03:27:30.200\u201303:28:02.100) and ctf_proclife; the synchronized process exits near 03:27:57.6\u201357.7 could be task/trace teardown, not demonstrated service failure. Whole-span timeline/aggregation showed an opening scheduler burst, but unrelated event series did not share a synchronized collapse. run_python showed container sched_stat_runtime falling from 245.7 CPU ms/s in 03:27:30\u201303:27:35 to 56.6 ms/s in 03:27:35\u201303:27:41, then recovering; python3 subsequently used about 3.17 CPU-seconds through 03:27:57, typically 24\u201325 ms per 100 ms. ctf_lines showed a sampled claude wake-to-switch interval of 17 \u00b5s and block completions under 1 ms; sampled network transmissions succeeded. Wake-to-run matching was incomplete and its long-tail estimates inconsistent across short intervals, so it does not establish contention. These checks would be falsified by sustained high wake-to-run delays or elevated I/O latency in the coding interval; the sampled evidence does not show that, but is not broad enough to rule out every intermittent delay.",
+      "confidence": 0.72,
+      "incident_window": "unknown",
+      "window_evidence": "The candidate CPU-activity trough is bounded by the measured decrease around 03:27:35 and recovery by about 03:27:45, while python3 starts around 03:27:41.5. Those are workload transitions, not verified fault boundaries: the trace provides no decisive mechanism or causal link to the reported task delay, and ends at 03:28:02.100. Therefore no incident window is supported."
+    },
+    "ranked_services": null,
+    "ranked_candidates": null,
+    "trajectory": [
+      {
+        "step": 0,
+        "tool": "worker1.0",
+        "service": null
+      },
+      {
+        "step": 1,
+        "tool": "worker1.1",
+        "service": null
+      },
+      {
+        "step": 2,
+        "tool": "worker1.2",
+        "service": null
+      },
+      {
+        "step": 3,
+        "tool": "worker1.3",
+        "service": null
+      },
+      {
+        "step": 4,
+        "tool": "worker2.100",
+        "service": null
+      }
+    ],
+    "n_tool_calls": 74,
+    "n_code_snippets": 24,
+    "n_findings": 13,
+    "n_computed": 24,
+    "bytes_touched": 103304,
+    "tokens": {
+      "in": 734425,
+      "out": 22228
+    },
+    "model": "openai/gpt-6-luna",
+    "wall_s": 227.9,
+    "transcript_file": "C:\\workplace\\microservice-trace-dataset\\nier-2027\\transcripts\\s4_transfer__resident__t3_implement_cap25_r3__r2.json",
+    "skill_selected": null,
+    "skill_confidence": null,
+    "brief_injected": false,
+    "n_claims": null
+  }
+}

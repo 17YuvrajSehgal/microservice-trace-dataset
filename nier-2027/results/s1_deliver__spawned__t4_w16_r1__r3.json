@@ -1,0 +1,72 @@
+{
+  "config": "s1_deliver",
+  "klass": "spawned",
+  "run": "t4_w16_r1",
+  "run_dir": "C:\\workplace\\microservice-trace-dataset\\agentic-runs\\2_threads_vs_cores\\runs\\t4_w16_r1",
+  "rep": 3,
+  "cell": "s1_deliver__spawned__t4_w16_r1__r3",
+  "status": "ok",
+  "returncode": 0,
+  "wall_s": 221.7,
+  "env_ablation": {
+    "ABL_FLAT_CAP": "2000"
+  },
+  "result": {
+    "run_id": "t4_w16_r1",
+    "diagnosis": {
+      "what_is_wrong": "A short-lived `ttworker` workload consumed essentially all four CPUs while it was present, creating a strong CPU-saturation explanation for the coding task running slowly. The trace supports the resource contention and timing, though it cannot directly quantify the coding task\u2019s runnable delay, so the causal link to its completion time is plausible rather than proven.",
+      "root_cause_service": "ttworker in pid_ns 4026531836",
+      "culprit_kind": "container",
+      "fault_type": "cpu_saturation",
+      "evidence": "Using the reported full trace span (02:49:09.900\u201302:49:20.700), compare the pre-worker interval 02:49:09.900\u201302:49:14.600 with the worker lifetime 02:49:14.700\u201302:49:18.500 and post interval 02:49:18.600\u201302:49:20.700. `ctf_proclife` places `ttworker` in the container at 02:49:14.700\u201318.500; the process comparison reports it absent in the quiet 02:49:12\u201314 range and present during the worker interval. `run_python` sums `sched_stat_runtime`: the container used 15,192.9 ms CPU over 3.8 s (3.998 cores), with `ttworker` accounting for 14,804.0 ms (97.4%), versus 0.379 average cores in the earlier pre-arrival interval and 0.052 after exit. Raw scheduler records show worker threads running across CPU IDs 0\u20133; runtime drops sharply after the worker exits. Checks found no corresponding block-request increase (64 issues in both 02:49:12\u201314 and 02:49:14.6\u201318.6), no meaningful network surge, fewer futex calls during the active window, and no repeated worker respawn. Direct ttworker wakeup-to-run latency could not be paired from the available records, so the trace establishes near-capacity CPU consumption more strongly than the task-specific delay mechanism.",
+      "confidence": 0.84,
+      "incident_window": "02:49:14.700 - 02:49:18.500",
+      "window_evidence": "The selected bounds are the `ctf_proclife` first and last observed times for `ttworker` in pid_ns 4026531836, corroborated by `worker.py` activity beginning at 02:49:14.600 and ttworker thread exits around 02:49:18.326\u201318.541. Container CPU jumps into a sustained ~4-core level during this interval and falls after the worker disappears; the early event-rate burst near 02:49:10 is outside this lifetime and was not used as the incident start."
+    },
+    "ranked_services": null,
+    "ranked_candidates": null,
+    "trajectory": [
+      {
+        "step": 0,
+        "tool": "worker1.0",
+        "service": null
+      },
+      {
+        "step": 1,
+        "tool": "worker1.1",
+        "service": null
+      },
+      {
+        "step": 2,
+        "tool": "worker1.2",
+        "service": null
+      },
+      {
+        "step": 3,
+        "tool": "worker1.3",
+        "service": null
+      },
+      {
+        "step": 4,
+        "tool": "worker2.100",
+        "service": null
+      }
+    ],
+    "n_tool_calls": 78,
+    "n_code_snippets": 37,
+    "n_findings": 13,
+    "n_computed": 36,
+    "bytes_touched": 138388,
+    "tokens": {
+      "in": 706145,
+      "out": 22506
+    },
+    "model": "openai/gpt-6-luna",
+    "wall_s": 220.7,
+    "transcript_file": "C:\\workplace\\microservice-trace-dataset\\nier-2027\\transcripts\\s1_deliver__spawned__t4_w16_r1__r3.json",
+    "skill_selected": null,
+    "skill_confidence": null,
+    "brief_injected": false,
+    "n_claims": null
+  }
+}

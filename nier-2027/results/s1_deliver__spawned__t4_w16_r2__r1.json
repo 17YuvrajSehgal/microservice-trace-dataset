@@ -1,0 +1,72 @@
+{
+  "config": "s1_deliver",
+  "klass": "spawned",
+  "run": "t4_w16_r2",
+  "run_dir": "C:\\workplace\\microservice-trace-dataset\\agentic-runs\\2_threads_vs_cores\\runs\\t4_w16_r2",
+  "rep": 1,
+  "cell": "s1_deliver__spawned__t4_w16_r2__r1",
+  "status": "ok",
+  "returncode": 0,
+  "wall_s": 245.1,
+  "env_ablation": {
+    "ABL_FLAT_CAP": "2000"
+  },
+  "result": {
+    "run_id": "t4_w16_r2",
+    "diagnosis": {
+      "what_is_wrong": "A brief CPU-saturation episode coincides with the launch of the coding workload: `ttworker` in the only observed container consumed nearly four CPU-seconds per second, matching all four CPUs' recorded runtime. This makes CPU contention a plausible contributor to the longer task, though the trace does not measure its actual completion-time impact or establish scheduler-wait latency.",
+      "root_cause_service": "ttworker in pid_ns 4026531836",
+      "culprit_kind": "container",
+      "fault_type": "cpu_saturation",
+      "evidence": "Compared sched_stat_runtime in Python across 02:48:28.200\u201302:48:33.000 (1.735 CPU-s, 0.361 cores), 02:48:33.000\u201302:48:37.000 (15.684 CPU-s, 3.921 cores), and 02:48:37.000\u201302:48:39.000 (0.107 CPU-s, 0.054 cores). During the middle interval, `ttworker` alone used 15.104 CPU-s (about 96%); indexed 100-ms buckets show total recorded runtime about 400 ms per bucket, roughly four CPUs busy. `ctf_proclife` places the run_all.sh/xargs/worker.py/ttworker launch at 02:48:33 and their disappearance by 02:48:36.900. The burst is not evidence of disk or network delay: sampled block completion had error=0 and net transmissions rc=0, but no issue-to-completion latency was computed. Raw scheduler sampling was sparse and wake-to-run pairing unreliable, so I do not treat its apparent delays as valid measurements. The check that could falsify contention as the explanation is a reliable wake-to-run delay comparison showing no elevated runnable delay during the burst; that check was not obtainable from the available samples.",
+      "confidence": 0.82,
+      "incident_window": "02:48:33 - 02:48:37",
+      "window_evidence": "The start boundary is the clustered process launch and sharp rise in recorded CPU runtime at 02:48:33; the end is the disappearance of `ttworker` around 02:48:37 and runtime collapse from 3.7\u20134.0 CPU-s/s during the active seconds to 0.054 cores over 02:48:37\u201302:48:39. Neighboring pre/post intervals provide the comparison."
+    },
+    "ranked_services": null,
+    "ranked_candidates": null,
+    "trajectory": [
+      {
+        "step": 0,
+        "tool": "worker1.0",
+        "service": null
+      },
+      {
+        "step": 1,
+        "tool": "worker1.1",
+        "service": null
+      },
+      {
+        "step": 2,
+        "tool": "worker1.2",
+        "service": null
+      },
+      {
+        "step": 3,
+        "tool": "worker1.3",
+        "service": null
+      },
+      {
+        "step": 4,
+        "tool": "worker2.100",
+        "service": null
+      }
+    ],
+    "n_tool_calls": 65,
+    "n_code_snippets": 32,
+    "n_findings": 10,
+    "n_computed": 32,
+    "bytes_touched": 109046,
+    "tokens": {
+      "in": 530252,
+      "out": 21248
+    },
+    "model": "openai/gpt-6-luna",
+    "wall_s": 244.1,
+    "transcript_file": "C:\\workplace\\microservice-trace-dataset\\nier-2027\\transcripts\\s1_deliver__spawned__t4_w16_r2__r1.json",
+    "skill_selected": null,
+    "skill_confidence": null,
+    "brief_injected": false,
+    "n_claims": null
+  }
+}

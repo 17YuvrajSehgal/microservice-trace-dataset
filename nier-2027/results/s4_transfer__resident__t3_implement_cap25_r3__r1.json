@@ -1,0 +1,72 @@
+{
+  "config": "s4_transfer",
+  "klass": "resident",
+  "run": "t3_implement_cap25_r3",
+  "run_dir": "C:\\workplace\\microservice-trace-dataset\\Blueprint\\latency\\1_svc_cpu_cap\\agentic-os-noise\\runs\\t3_implement_cap25_r3",
+  "rep": 1,
+  "cell": "s4_transfer__resident__t3_implement_cap25_r3__r1",
+  "status": "ok",
+  "returncode": 0,
+  "wall_s": 217.6,
+  "env_ablation": {
+    "ABL_NO_COMPUTED": "1"
+  },
+  "result": {
+    "run_id": "t3_implement_cap25_r3",
+    "diagnosis": {
+      "what_is_wrong": "The trace does not establish a kernel-level fault explaining the coding task's reported slowdown. Claude's activity falls around 03:27:35, but it remains schedulable with only 11\u201318 \u03bcs wake-to-run samples; the later python3 CPU increase is not accompanied by host-wide CPU pressure, and the recorded disk and network activity show no congestion signal. The slowdown cannot be confirmed or attributed from this trace alone.",
+      "root_cause_service": "unknown",
+      "culprit_kind": "unknown",
+      "fault_type": "normal",
+      "evidence": "Compared the full trace span, 03:27:30.200\u201303:28:02.100, using the workers' ctf_proclife and indexed event-rate/runtime analyses. At 03:27:35, scheduler rates fell (sched_switch 1,130/s to 324/s; sched_wakeup 556/s to 155/s), alongside block and network rates, but these rates do not identify a resource bottleneck. For claude TID 11250, paired wakeup-to-schedule samples maxed at 0.018 ms and it continued to run; runtime declined, consistent with less work rather than scheduling delay. Block issues/completions tracked closely with no sustained buildup and raw completions had error=0. python3 runtime rose to 1,922.8 ms over 8 seconds at 03:27:46.2\u201303:27:54.2, but aggregate CPU was only 2,018 ms in that interval and the evidence does not show host-wide saturation. The falsifying checks for a resource fault\u2014wake-to-run delay, disk queue/latency buildup, network-specific anomaly, or broad CPU consumption\u2014were examined in the available notes and were not present. ctf_lines itself was unavailable to one worker, though raw event records were examined through the Python index.",
+      "confidence": 0.76,
+      "incident_window": "unknown",
+      "window_evidence": "The trace has observable workload-rate changes beginning near 03:27:35 and a python3 runtime increase beginning around 03:27:46.2, but neither boundary is supported as the start or end of an incident: main-task wake-to-run delay stays negligible, resource-event checks do not show a bottleneck, and process-lifetime changes do not isolate a culprit. Therefore no incident window is justified."
+    },
+    "ranked_services": null,
+    "ranked_candidates": null,
+    "trajectory": [
+      {
+        "step": 0,
+        "tool": "worker1.0",
+        "service": null
+      },
+      {
+        "step": 1,
+        "tool": "worker1.1",
+        "service": null
+      },
+      {
+        "step": 2,
+        "tool": "worker1.2",
+        "service": null
+      },
+      {
+        "step": 3,
+        "tool": "worker1.3",
+        "service": null
+      },
+      {
+        "step": 4,
+        "tool": "worker2.100",
+        "service": null
+      }
+    ],
+    "n_tool_calls": 84,
+    "n_code_snippets": 26,
+    "n_findings": 11,
+    "n_computed": 26,
+    "bytes_touched": 147423,
+    "tokens": {
+      "in": 916813,
+      "out": 20378
+    },
+    "model": "openai/gpt-6-luna",
+    "wall_s": 216.6,
+    "transcript_file": "C:\\workplace\\microservice-trace-dataset\\nier-2027\\transcripts\\s4_transfer__resident__t3_implement_cap25_r3__r1.json",
+    "skill_selected": null,
+    "skill_confidence": null,
+    "brief_injected": false,
+    "n_claims": null
+  }
+}

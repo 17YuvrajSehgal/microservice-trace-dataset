@@ -1,0 +1,73 @@
+{
+  "config": "s1_reversed",
+  "klass": "spawned",
+  "run": "t4_w16_r1",
+  "run_dir": "C:\\workplace\\microservice-trace-dataset\\agentic-runs\\2_threads_vs_cores\\runs\\t4_w16_r1",
+  "rep": 3,
+  "cell": "s1_reversed__spawned__t4_w16_r1__r3",
+  "status": "ok",
+  "returncode": 0,
+  "wall_s": 255.1,
+  "env_ablation": {
+    "ABL_FLAT_CAP": "2000",
+    "ABL_REVERSE_KEYS": "1"
+  },
+  "result": {
+    "run_id": "t4_w16_r1",
+    "diagnosis": {
+      "what_is_wrong": "A burst from `ttworker` in the coding-task workload consumed essentially all four logical CPUs, plausibly slowing the reported coding task through CPU contention. The trace supports saturation, though it cannot directly measure the task\u2019s latency or quantify run-queue delay.",
+      "root_cause_service": "ttworker in pid_ns 4026531836",
+      "culprit_kind": "container",
+      "fault_type": "cpu_saturation",
+      "evidence": "Using the workers\u2019 whole-trace `run_python` aggregations, I compared the pre-burst interval (02:49:10\u201302:49:14.7), burst (02:49:14.7\u201302:49:19), and post-burst interval (02:49:19\u201302:49:20.7): aggregate CPU fell from 0.371 cores to 0.060 cores around a burst averaging 3.594/4 cores, with `ttworker` accounting for 3.492 cores and 15.02 CPU-seconds. In the sustained part, 38 of 43 100-ms buckets were at or above 3.9 core-equivalents. Narrow raw `sched_stat_runtime`/`sched_switch` lines show `ttworker` threads running across CPUs 0\u20133. Disk and network event rates were lower, not higher, in the compared late interval; futex activity also fell. Wakeup-to-switch pairing was checked but was not reliable evidence of wait duration, and the trace has no `sched_stat_wait` or CPU-pressure/PSI instrumentation.",
+      "confidence": 0.92,
+      "incident_window": "02:49:14.700 - 02:49:18.600",
+      "window_evidence": "The workload boundary is visible in process/event data: `run_all.sh` and `xargs` appear at 02:49:14.600 and `ttworker` at 02:49:14.700, when per-100-ms CPU rises to about four cores and remains there. `ttworker` is last seen at 02:49:18.500; CPU use drops sharply in the 02:49:18.600 bucket and remains low afterward. The earlier common event-count drop near 02:49:10\u201312 was considered separately; it precedes the identified `ttworker` CPU burst and does not define this incident window."
+    },
+    "ranked_services": null,
+    "ranked_candidates": null,
+    "trajectory": [
+      {
+        "step": 0,
+        "tool": "worker1.0",
+        "service": null
+      },
+      {
+        "step": 1,
+        "tool": "worker1.1",
+        "service": null
+      },
+      {
+        "step": 2,
+        "tool": "worker1.2",
+        "service": null
+      },
+      {
+        "step": 3,
+        "tool": "worker1.3",
+        "service": null
+      },
+      {
+        "step": 4,
+        "tool": "worker2.100",
+        "service": null
+      }
+    ],
+    "n_tool_calls": 77,
+    "n_code_snippets": 41,
+    "n_findings": 12,
+    "n_computed": 41,
+    "bytes_touched": 126910,
+    "tokens": {
+      "in": 661495,
+      "out": 22181
+    },
+    "model": "openai/gpt-6-luna",
+    "wall_s": 254.1,
+    "transcript_file": "C:\\workplace\\microservice-trace-dataset\\nier-2027\\transcripts\\s1_reversed__spawned__t4_w16_r1__r3.json",
+    "skill_selected": null,
+    "skill_confidence": null,
+    "brief_injected": false,
+    "n_claims": null
+  }
+}

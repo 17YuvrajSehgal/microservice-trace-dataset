@@ -1,0 +1,72 @@
+{
+  "config": "s1_deliver",
+  "klass": "spawned",
+  "run": "t4_w16_r5",
+  "run_dir": "C:\\workplace\\microservice-trace-dataset\\agentic-runs\\2_threads_vs_cores\\runs\\t4_w16_r5",
+  "rep": 2,
+  "cell": "s1_deliver__spawned__t4_w16_r5__r2",
+  "status": "ok",
+  "returncode": 0,
+  "wall_s": 256.9,
+  "env_ablation": {
+    "ABL_FLAT_CAP": "2000"
+  },
+  "result": {
+    "run_id": "t4_w16_r5",
+    "diagnosis": {
+      "what_is_wrong": "A short-lived `ttworker` workload consumed nearly all four CPUs and plausibly delayed the coding process while it ran. Kernel scheduling/runtime evidence supports CPU saturation as the mechanism; disk I/O does not show a matching latency increase, though the trace alone cannot prove the exact user-visible duration impact.",
+      "root_cause_service": "ttworker in pid_ns 4026531836",
+      "culprit_kind": "container",
+      "fault_type": "cpu_saturation",
+      "evidence": "Compared the quiet-looking pre-task interval (02:47:26.200\u201302:47:31.200) with the task interval and post-task interval using the workers\u2019 run_python aggregates of sched_stat_runtime and power_cpu_idle. During 02:47:31.200\u201302:47:35.300, total runtime was 15.851 CPU-s in 4.1 s on four CPUs (96.7% of capacity), of which ttworker used 15.328 CPU-s (3.74 cores average); idle-transition counts were 400 versus 14,030 before and rose after the workload. ctf_proclife places ttworker\u2019s arrival and departure at 02:47:31.200 and 02:47:35.300; raw sched_switch samples show ttworker repeatedly scheduled. A bounded wakeup-to-dispatch sample also found long delays for claude during the run (14 matched samples, median about 2.53 s), but pairing and sampling are imperfect, so this is corroborative rather than definitive. Disk was checked as a competing explanation: candidate block issue/complete counts were lower, and sampled matched request latency was sub-millisecond in adjacent periods. The falsifier would be substantial idle capacity or no scheduler delay during ttworker\u2019s run; the runtime and idle evidence contradicts the former, while the sparse raw sample cannot robustly settle the latter.",
+      "confidence": 0.91,
+      "incident_window": "02:47:31.200 - 02:47:35.400",
+      "window_evidence": "The boundary is anchored by ctf_proclife\u2019s ttworker first-seen time at 02:47:31.200 and last-seen time at 02:47:35.300, and by 100-ms sched_stat_runtime buckets: near-four-CPU usage starts in the 02:47:31.200 bucket, remains near capacity through 02:47:35.000, then drops sharply; ttworker is absent from the top runtime consumers at 02:47:35.400. The surrounding pre/post comparisons have much lower CPU runtime and more idle transitions."
+    },
+    "ranked_services": null,
+    "ranked_candidates": null,
+    "trajectory": [
+      {
+        "step": 0,
+        "tool": "worker1.0",
+        "service": null
+      },
+      {
+        "step": 1,
+        "tool": "worker1.1",
+        "service": null
+      },
+      {
+        "step": 2,
+        "tool": "worker1.2",
+        "service": null
+      },
+      {
+        "step": 3,
+        "tool": "worker1.3",
+        "service": null
+      },
+      {
+        "step": 4,
+        "tool": "worker2.100",
+        "service": null
+      }
+    ],
+    "n_tool_calls": 101,
+    "n_code_snippets": 40,
+    "n_findings": 12,
+    "n_computed": 40,
+    "bytes_touched": 121056,
+    "tokens": {
+      "in": 717394,
+      "out": 25963
+    },
+    "model": "openai/gpt-6-luna",
+    "wall_s": 256.0,
+    "transcript_file": "C:\\workplace\\microservice-trace-dataset\\nier-2027\\transcripts\\s1_deliver__spawned__t4_w16_r5__r2.json",
+    "skill_selected": null,
+    "skill_confidence": null,
+    "brief_injected": false,
+    "n_claims": null
+  }
+}

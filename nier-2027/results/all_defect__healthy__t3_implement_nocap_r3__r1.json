@@ -1,0 +1,75 @@
+{
+  "config": "all_defect",
+  "klass": "healthy",
+  "run": "t3_implement_nocap_r3",
+  "run_dir": "C:\\workplace\\microservice-trace-dataset\\Blueprint\\latency\\1_svc_cpu_cap\\agentic-os-noise\\runs\\t3_implement_nocap_r3",
+  "rep": 1,
+  "cell": "all_defect__healthy__t3_implement_nocap_r3__r1",
+  "status": "ok",
+  "returncode": 0,
+  "wall_s": 157.6,
+  "env_ablation": {
+    "ABL_FLAT_CAP": "2000",
+    "ABL_WORKER_STEPS": "12",
+    "ABL_THREAD_BUDGET": "80000",
+    "ABL_NO_COMPUTED": "1"
+  },
+  "result": {
+    "run_id": "t3_implement_nocap_r3",
+    "diagnosis": {
+      "what_is_wrong": "The trace does not establish a kernel-level cause for the reported longer coding task. Several event rates are unusually high in the opening second and then fall, but CPU use is modest and targeted wake-to-run delays are only 0.002\u20130.011 ms; the evidence is insufficient to call this saturation or another fault.",
+      "root_cause_service": "unknown",
+      "culprit_kind": "unknown",
+      "fault_type": "normal",
+      "evidence": "Compared the full 03:20:35.900\u201303:20:54.000 trace and process lifetimes as recorded by ctf_timespan/ctf_proclife, then reviewed the full-span one-second event buckets and per-process sched_stat_runtime from run_python. In the first second sched_switch was about 5,665/s, sched_wakeup 2,899/s, and block issues/completes about 349/350/s; these fell in the next two seconds to averages of 654/s, 328/s, and 0/s. Yet measured CPU totaled only 5.453 CPU-seconds across the trace, and the targeted JSCWarmUp/JITWorker wake-to-run samples were 0.002\u20130.011 ms. Workers also cautioned that the broader wake/switch pairing was sparse and not attributable. No evidence in the notes identifies a responsible process or demonstrates a resource bottleneck; the operator-reported delay therefore is neither confirmed nor explained by this trace.",
+      "confidence": 0.73,
+      "incident_window": "unknown",
+      "window_evidence": "The only clear boundary is the opening-second activity drop, around 03:20:36.900: multiple event series fall together after the trace begins with a burst. That establishes a rate transition, not an incident window\u2014the recording has no preceding in-span period to show what led into it, and the scheduler-delay checks do not support CPU starvation. I therefore cannot justify labeling any interval as the incident."
+    },
+    "ranked_services": null,
+    "ranked_candidates": null,
+    "trajectory": [
+      {
+        "step": 0,
+        "tool": "worker1.0",
+        "service": null
+      },
+      {
+        "step": 1,
+        "tool": "worker1.1",
+        "service": null
+      },
+      {
+        "step": 2,
+        "tool": "worker1.2",
+        "service": null
+      },
+      {
+        "step": 3,
+        "tool": "worker1.3",
+        "service": null
+      },
+      {
+        "step": 4,
+        "tool": "worker2.100",
+        "service": null
+      }
+    ],
+    "n_tool_calls": 71,
+    "n_code_snippets": 34,
+    "n_findings": 9,
+    "n_computed": 34,
+    "bytes_touched": 173359,
+    "tokens": {
+      "in": 421385,
+      "out": 16360
+    },
+    "model": "openai/gpt-6-luna",
+    "wall_s": 156.6,
+    "transcript_file": "C:\\workplace\\microservice-trace-dataset\\nier-2027\\transcripts\\all_defect__healthy__t3_implement_nocap_r3__r1.json",
+    "skill_selected": null,
+    "skill_confidence": null,
+    "brief_injected": false,
+    "n_claims": null
+  }
+}

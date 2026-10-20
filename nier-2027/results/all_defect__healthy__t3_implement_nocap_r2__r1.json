@@ -1,0 +1,75 @@
+{
+  "config": "all_defect",
+  "klass": "healthy",
+  "run": "t3_implement_nocap_r2",
+  "run_dir": "C:\\workplace\\microservice-trace-dataset\\Blueprint\\latency\\1_svc_cpu_cap\\agentic-os-noise\\runs\\t3_implement_nocap_r2",
+  "rep": 1,
+  "cell": "all_defect__healthy__t3_implement_nocap_r2__r1",
+  "status": "ok",
+  "returncode": 0,
+  "wall_s": 198.0,
+  "env_ablation": {
+    "ABL_FLAT_CAP": "2000",
+    "ABL_WORKER_STEPS": "12",
+    "ABL_THREAD_BUDGET": "80000",
+    "ABL_NO_COMPUTED": "1"
+  },
+  "result": {
+    "run_id": "t3_implement_nocap_r2",
+    "diagnosis": {
+      "what_is_wrong": "No kernel evidence establishes a fault causing the coding task to run slowly. The trace begins during a high-activity burst and shows a sharp fall in runnable-work generation at about 03:24:08.300, but the recording has no pre-burst baseline and the fall is not evidence of CPU starvation or a host resource failure; the reported task slowdown cannot be confirmed or rejected from this short trace.",
+      "root_cause_service": "unknown",
+      "culprit_kind": "unknown",
+      "fault_type": "normal",
+      "evidence": "Used the recorded ctf_timespan/proclife findings to establish the 03:24:07.500\u201303:24:26.200 recording and that the claude/Bun workload remained present in the sole observed pid_ns 4026531836, with no in-trace turnover. Compared the matched 0.8-second windows from run_python: at 03:24:08.300 sched_wakeup and sched_switch each fell 84.5%, sched_stat_runtime event count fell 84.6%, and aggregate runtime fell 80.7%. Other summaries show the activity drop and no sustained block-I/O elevation; CPU time later rises, largely in python3, without evidence of a competing container. The check that would falsify the benign workload-phase interpretation is evidence of growing wakeup-to-run delay, sustained block-request latency, or a workload/dependency stall across the transition; the supplied notes do not provide those measurements or inspectable raw block lines. Thus the task-duration symptom is not verifiable from these kernel data, and the synchronized count drop alone does not identify a fault.",
+      "confidence": 0.72,
+      "incident_window": "unknown",
+      "window_evidence": "The only sharp boundary supported by the recorded counts is the activity collapse around 03:24:08.300 (matched windows 03:24:07.500\u201308.300 and 08.300\u201309.100). However, because recording begins within the burst and there is no evidence that this transition marks a fault rather than workload completion/idle behavior, it cannot be honestly reported as an incident window."
+    },
+    "ranked_services": null,
+    "ranked_candidates": null,
+    "trajectory": [
+      {
+        "step": 0,
+        "tool": "worker1.0",
+        "service": null
+      },
+      {
+        "step": 1,
+        "tool": "worker1.1",
+        "service": null
+      },
+      {
+        "step": 2,
+        "tool": "worker1.2",
+        "service": null
+      },
+      {
+        "step": 3,
+        "tool": "worker1.3",
+        "service": null
+      },
+      {
+        "step": 4,
+        "tool": "worker2.100",
+        "service": null
+      }
+    ],
+    "n_tool_calls": 79,
+    "n_code_snippets": 29,
+    "n_findings": 8,
+    "n_computed": 29,
+    "bytes_touched": 163341,
+    "tokens": {
+      "in": 433377,
+      "out": 15878
+    },
+    "model": "openai/gpt-6-luna",
+    "wall_s": 197.1,
+    "transcript_file": "C:\\workplace\\microservice-trace-dataset\\nier-2027\\transcripts\\all_defect__healthy__t3_implement_nocap_r2__r1.json",
+    "skill_selected": null,
+    "skill_confidence": null,
+    "brief_injected": false,
+    "n_claims": null
+  }
+}
