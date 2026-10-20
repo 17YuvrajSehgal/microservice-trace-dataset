@@ -357,3 +357,45 @@ sit where they are put regardless of how the path is later re-routed. The four
 short edge labels keep riding their edges — they are narrow enough that the
 midpoint is always safe. Also shortened the band-2 title box so it cannot
 collide with the relocated label.
+
+## Audited flow.drawio against the abstract, and closed the gaps
+
+Checked each claim in `thesis/ABSTRACT.md` against the diagram. **10 of 19 were
+not represented.** The missing ones were not decoration — three of them are
+named components of the framework and four are the evaluation itself:
+
+| Missing | Why it mattered |
+|---|---|
+| the **hierarchy** (issue class → root cause) | a named framework component, entirely absent. The library was drawn flat, which contradicts the abstract |
+| **evidence-based selection** | SELECT was a black box labelled "the hard part". The mechanism — survey evidence, prechecks, ordered shortlist — was nowhere |
+| feedback into **telemetry collection** | the text claimed it but no arrow reached band 1. The loop stopped at the blueprint |
+| **~10 operational issue classes** | the diagram only had 27 fault families, which is the dataset unit, not the evaluation unit |
+| **monolithic and agent-based** architectures | only microservice was shown |
+| **with / without the library** | the headline experiment was absent |
+| **deterministic baseline** | the strong control was absent |
+| the **four research questions** | transfer · abstention · executable-vs-prose · evidence sufficiency |
+
+Changes, with the reasoning:
+
+- **Replaced the flat library strip with a two-level hierarchy**: a row of issue
+  classes with LATENCY expanded, fanning down to its cause-level blueprints.
+  This is the single most important fix — a flat library and a hierarchy make
+  *different claims about how selection works*, and the abstract commits to the
+  hierarchy.
+- **Split feedback into two paths, (a) and (b).** The abstract says diagnosis
+  informs *subsequent telemetry collection*, which is a different loop from
+  revising a blueprint. One arrow could not honestly carry both, so there are
+  now two lanes up the right-hand side: (a) into the blueprint, (b) into the
+  collection panel.
+- **Added band 4, EVALUATE**, styled grey and solid rather than coloured and
+  dashed, so it reads as *how we test this* rather than *how it runs*. Three
+  arms plus the four RQs. The evidence-sufficiency RQ carries the same teal as
+  SELECT, tying the bottleneck to the question that measures it.
+- **Moved the architecture scope into band 4**, not band 1. The abstract scopes
+  microservice/monolithic/agentic as an *evaluation* claim, not a collection
+  claim — band 1 only ever collected from microservices.
+- **Hierarchy connectors are point-to-point edges, not `shape=line` vertices.**
+  `shape=line` with `direction=north` renders inconsistently; explicit
+  source/target points always draw.
+
+Page grew to 3100×3000. Previous version kept at `thesis/flow.drawio.v1`.
