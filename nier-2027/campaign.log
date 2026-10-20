@@ -3,3 +3,13 @@ provider=openrouter model=openai/gpt-6-luna cells=120 jobs=3
 [  1/120] ok          repair__resident__t3_implement_cap25_r1__r1             121s  in= 582,854  normal             conf=0.82
 [  2/120] ok          repair__resident__t3_implement_cap25_r1__r2             164s  in= 690,581  cpu_throttling     conf=0.76
 [  3/120] ok          repair__resident__t3_implement_cap25_r1__r3             188s  in= 778,060  normal             conf=0.84
+[  4/120] ok          repair__resident__t3_implement_cap25_r2__r1             109s  in= 438,825  normal             conf=0.7
+[  5/120] ok          repair__resident__t3_implement_cap25_r2__r2             122s  in= 622,772  normal             conf=0.76
+[  6/120] ok          repair__resident__t3_implement_cap25_r2__r3             211s  in= 543,857  normal             conf=0.78
+[  7/120] ok          repair__resident__t3_implement_cap25_r3__r1             231s  in= 875,016  normal             conf=0.78
+[  8/120] ok          repair__resident__t3_implement_cap25_r3__r2             245s  in= 792,257  normal             conf=0.78
+[  9/120] ok          repair__resident__t3_implement_cap25_r3__r3             158s  in= 567,159  normal             conf=0.7
+[ 10/120] ok          repair__resident__t3_implement_cap25_r4__r1             207s  in= 911,201  normal             conf=0.84
+[ 11/120] ok          repair__resident__t3_implement_cap25_r4__r3             149s  in= 646,627  normal             conf=0.76
+[ 12/120] ok          repair__resident__t3_implement_cap25_r4__r2             250s  in= 875,914  normal             conf=0.74
+[ 13/120] ok          repair__resident__t3_implement_cap25_r5__r2              94s  in= 515,802  normal             conf=0.82

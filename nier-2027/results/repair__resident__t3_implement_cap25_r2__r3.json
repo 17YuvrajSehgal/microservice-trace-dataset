@@ -1,0 +1,70 @@
+{
+  "config": "repair",
+  "klass": "resident",
+  "run": "t3_implement_cap25_r2",
+  "run_dir": "C:\\workplace\\microservice-trace-dataset\\Blueprint\\latency\\1_svc_cpu_cap\\agentic-os-noise\\runs\\t3_implement_cap25_r2",
+  "rep": 3,
+  "cell": "repair__resident__t3_implement_cap25_r2__r3",
+  "status": "ok",
+  "returncode": 0,
+  "wall_s": 211.0,
+  "env_ablation": {},
+  "result": {
+    "run_id": "t3_implement_cap25_r2",
+    "diagnosis": {
+      "what_is_wrong": "The trace does not establish a kernel-level fault or confirm that the coding task was delayed by the host. It does show a sharp, synchronized drop in workload activity around 03:26:45\u201303:26:52, but the low observed CPU use, lack of increased scheduler waits during that drop, and lack of evident I/O queueing make a resource-failure diagnosis unsupported.",
+      "root_cause_service": "unknown",
+      "culprit_kind": "unknown",
+      "fault_type": "normal",
+      "evidence": "Used ctf_timespan/proclife findings for the 03:26:40.800\u201303:27:15.900 trace and the sole observed namespace (pid_ns 4026531836); git appears 03:26:41.400\u201303:27:10.900, while claude and python3 persist. Compared full-span event rates: from 03:26:40.8\u201303:26:45 to 03:26:45\u201303:26:52, sched_switch fell 1,241/s\u2192314/s, sched_wakeup 606/s\u2192150/s, runtime samples 1,015/s\u2192274/s, futex 923/s\u2192207/s, block issues 71/s\u219215/s, and net transmits 47/s\u219215/s. The later CPU redistribution to python3 was not saturation: in 03:27:00\u201303:27:10 it used 2.3087 CPU-s over 10 seconds (0.231 mean cores), with aggregate accounted runtime 0.251 cores. The claude TID-matched wake-to-run sample found no collapse-associated increase: median/p90/max 0.015/0.026/298.904 ms during 03:26:45\u201303:26:52 versus 91.036/1247.151/1591.359 ms before; only 8 pre-collapse wakes were matched, so this is limited evidence, not a full latency distribution. Raw block records included a matched 12,288-byte request completing successfully in about 611 \u03bcs; five-second issue/completion counts were 157/158, then 48/48 and 35/35 as rates declined. Network raw records showed successful transmissions but do not measure RTT or loss. These checks argue against CPU saturation, increased scheduler delay during the collapse, and an evident disk queue stall; the trace still cannot rule out every application-level or external cause.",
+      "confidence": 0.78,
+      "incident_window": "03:26:45 - 03:26:52",
+      "window_evidence": "The boundary is the measured transition from the high-rate 03:26:40.8\u201303:26:45 interval into the synchronized decline beginning at 03:26:45, reaching the pronounced minimum during 03:26:48\u201303:26:52. Rates partially rebound after 03:26:52. This is the window of the observed activity change, not a confirmed fault interval."
+    },
+    "ranked_services": null,
+    "ranked_candidates": null,
+    "trajectory": [
+      {
+        "step": 0,
+        "tool": "worker1.0",
+        "service": null
+      },
+      {
+        "step": 1,
+        "tool": "worker1.1",
+        "service": null
+      },
+      {
+        "step": 2,
+        "tool": "worker1.2",
+        "service": null
+      },
+      {
+        "step": 3,
+        "tool": "worker1.3",
+        "service": null
+      },
+      {
+        "step": 4,
+        "tool": "worker2.100",
+        "service": null
+      }
+    ],
+    "n_tool_calls": 52,
+    "n_code_snippets": 23,
+    "n_findings": 12,
+    "n_computed": 23,
+    "bytes_touched": 81585,
+    "tokens": {
+      "in": 543857,
+      "out": 19591
+    },
+    "model": "openai/gpt-6-luna",
+    "wall_s": 210.0,
+    "transcript_file": "C:\\workplace\\microservice-trace-dataset\\nier-2027\\transcripts\\repair__resident__t3_implement_cap25_r2__r3.json",
+    "skill_selected": null,
+    "skill_confidence": null,
+    "brief_injected": false,
+    "n_claims": null
+  }
+}

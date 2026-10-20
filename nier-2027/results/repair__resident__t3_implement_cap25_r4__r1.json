@@ -1,0 +1,70 @@
+{
+  "config": "repair",
+  "klass": "resident",
+  "run": "t3_implement_cap25_r4",
+  "run_dir": "C:\\workplace\\microservice-trace-dataset\\Blueprint\\latency\\1_svc_cpu_cap\\agentic-os-noise\\runs\\t3_implement_cap25_r4",
+  "rep": 1,
+  "cell": "repair__resident__t3_implement_cap25_r4__r1",
+  "status": "ok",
+  "returncode": 0,
+  "wall_s": 206.6,
+  "env_ablation": {},
+  "result": {
+    "run_id": "t3_implement_cap25_r4",
+    "diagnosis": {
+      "what_is_wrong": "The trace does not establish a kernel or host fault explaining the reported longer coding task. It shows a marked lull in workload activity, followed by renewed work, but the recorded CPU use is modest and the inspected scheduler and futex records do not show sustained contention or blocking; the task-duration symptom therefore cannot be confirmed or attributed from this trace alone.",
+      "root_cause_service": "unknown",
+      "culprit_kind": "unknown",
+      "fault_type": "normal",
+      "evidence": "Compared whole-trace per-second and 100 ms event counts (run_python; ctf_timeline/query_ctf returned zero matches despite these tracepoints being present). Scheduling activity drops around 01:58:02\u201301:58:06 and reaches a low in 01:58:06\u201301:58:10, then rises again around 01:58:10\u201301:58:14. But sched_stat_runtime shows only about 0.25 core-equivalent in the busy phases and 0.014 core-equivalent in 01:58:06\u201301:58:10; peak one-second CPU is 0.258 CPU-s, with no meaningful CPU in pid_ns 0. The candidate 01:58:02\u201301:58:06 has fewer CPU-seconds than the comparison 01:58:20\u201301:58:24, not evidence of saturation. Inspected raw scheduler lines show claude/JITWorker voluntarily sleeping and sampled wake-to-run transitions in microseconds; observed futex entry/exit pairs complete in microseconds. The apparent block burst is substantially attributed to lttng-consumerd, and the inspected issue/completion records are close in time. Process lifetime evidence shows git and short-lived shell utilities consistent with task activity, not a service restart. Checked CPU, scheduler/wakeup behavior, futexes, and sample block events; none supports a resource-fault explanation. The trace has no application-level task duration or outcome evidence, so it cannot confirm the operator's comparison with usual completion time.",
+      "confidence": 0.84,
+      "incident_window": "unknown",
+      "window_evidence": "There is a measurable workload-activity transition around 01:58:02\u201301:58:06, a low-activity phase through roughly 01:58:10, and renewed activity thereafter. Those are workload phase boundaries, not supported fault boundaries: CPU consumption is low rather than saturated, and the inspected task transitions show voluntary sleep/immediate scheduling. Thus no incident window is justified."
+    },
+    "ranked_services": null,
+    "ranked_candidates": null,
+    "trajectory": [
+      {
+        "step": 0,
+        "tool": "worker1.0",
+        "service": null
+      },
+      {
+        "step": 1,
+        "tool": "worker1.1",
+        "service": null
+      },
+      {
+        "step": 2,
+        "tool": "worker1.2",
+        "service": null
+      },
+      {
+        "step": 3,
+        "tool": "worker1.3",
+        "service": null
+      },
+      {
+        "step": 4,
+        "tool": "worker2.100",
+        "service": null
+      }
+    ],
+    "n_tool_calls": 65,
+    "n_code_snippets": 26,
+    "n_findings": 13,
+    "n_computed": 26,
+    "bytes_touched": 137914,
+    "tokens": {
+      "in": 911201,
+      "out": 19954
+    },
+    "model": "openai/gpt-6-luna",
+    "wall_s": 205.5,
+    "transcript_file": "C:\\workplace\\microservice-trace-dataset\\nier-2027\\transcripts\\repair__resident__t3_implement_cap25_r4__r1.json",
+    "skill_selected": null,
+    "skill_confidence": null,
+    "brief_injected": false,
+    "n_claims": null
+  }
+}

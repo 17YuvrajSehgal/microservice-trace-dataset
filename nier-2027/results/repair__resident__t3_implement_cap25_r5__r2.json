@@ -1,0 +1,65 @@
+{
+  "config": "repair",
+  "klass": "resident",
+  "run": "t3_implement_cap25_r5",
+  "run_dir": "C:\\workplace\\microservice-trace-dataset\\Blueprint\\latency\\1_svc_cpu_cap\\agentic-os-noise\\runs\\t3_implement_cap25_r5",
+  "rep": 2,
+  "cell": "repair__resident__t3_implement_cap25_r5__r2",
+  "status": "ok",
+  "returncode": 0,
+  "wall_s": 93.5,
+  "env_ablation": {},
+  "result": {
+    "run_id": "t3_implement_cap25_r5",
+    "diagnosis": {
+      "what_is_wrong": "The trace does not establish a kernel or host resource fault causing the coding task to run slowly. Activity shifts from `claude` to `python3`, but aggregate CPU use remains low on a four-CPU host, and the sampled scheduler, disk, and futex records show no corresponding wait or bottleneck; the reported slowdown is therefore not confirmed by this evidence.",
+      "root_cause_service": "unknown",
+      "culprit_kind": "unknown",
+      "fault_type": "normal",
+      "evidence": "Compared full-span event rates (18:55:57\u201318:56:30): several series drop around 18:56:01\u201302, but there is no sustained synchronized recovery, and the drop is consistent with changing workload rather than demonstrated host degradation. `run_python` CPU accounting shows only 1.72 CPU-seconds in the first 10 seconds and 3.60 CPU-seconds in the next 17 seconds (about 0.17 and 0.21 average cores); `python3` rises to about 0.24 core while `claude` declines, not host saturation. Representative raw records show wakeup-to-switch in microseconds, successful block requests completing in about 0.6\u20131.0 ms, and immediate futex returns. Brief package/update process activity around 18:56:13.9\u201314.0 is not shown to cause a bottleneck. These checks argue against CPU saturation, disk wait, and futex contention; the trace has no application latency measurements, so it cannot prove or disprove the user-visible duration directly.",
+      "confidence": 0.82,
+      "incident_window": "unknown",
+      "window_evidence": "There is no boundary-supported fault interval. The clearest count change is the broad decline beginning around 18:56:01\u201302, but it is not accompanied by evidence of contention or a sustained recovery; the later python3 CPU increase is a workload shift at low aggregate CPU consumption, not a demonstrated incident onset."
+    },
+    "ranked_services": null,
+    "ranked_candidates": null,
+    "trajectory": [
+      {
+        "step": 0,
+        "tool": "worker1.0",
+        "service": null
+      },
+      {
+        "step": 1,
+        "tool": "worker1.1",
+        "service": null
+      },
+      {
+        "step": 2,
+        "tool": "worker1.2",
+        "service": null
+      },
+      {
+        "step": 3,
+        "tool": "worker1.3",
+        "service": null
+      }
+    ],
+    "n_tool_calls": 48,
+    "n_code_snippets": 18,
+    "n_findings": 10,
+    "n_computed": 18,
+    "bytes_touched": 67931,
+    "tokens": {
+      "in": 515802,
+      "out": 12228
+    },
+    "model": "openai/gpt-6-luna",
+    "wall_s": 92.5,
+    "transcript_file": "C:\\workplace\\microservice-trace-dataset\\nier-2027\\transcripts\\repair__resident__t3_implement_cap25_r5__r2.json",
+    "skill_selected": null,
+    "skill_confidence": null,
+    "brief_injected": false,
+    "n_claims": null
+  }
+}

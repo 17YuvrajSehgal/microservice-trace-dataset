@@ -1,0 +1,70 @@
+{
+  "config": "repair",
+  "klass": "resident",
+  "run": "t3_implement_cap25_r3",
+  "run_dir": "C:\\workplace\\microservice-trace-dataset\\Blueprint\\latency\\1_svc_cpu_cap\\agentic-os-noise\\runs\\t3_implement_cap25_r3",
+  "rep": 1,
+  "cell": "repair__resident__t3_implement_cap25_r3__r1",
+  "status": "ok",
+  "returncode": 0,
+  "wall_s": 231.3,
+  "env_ablation": {},
+  "result": {
+    "run_id": "t3_implement_cap25_r3",
+    "diagnosis": {
+      "what_is_wrong": "The trace does not establish a kernel or host fault explaining the reported slower coding task. It shows changing workload phases\u2014including a sharp drop in event rates around 03:27:35.4\u2014but measured CPU use is low relative to the four CPUs visible in the trace, and the evidence does not demonstrate scheduler delay, I/O latency, or another causal bottleneck; the reported slowdown therefore cannot be confirmed or attributed from this trace.",
+      "root_cause_service": "unknown",
+      "culprit_kind": "unknown",
+      "fault_type": "normal",
+      "evidence": "Compared full-trace process lifetimes and event-rate windows using the workers' ctf_proclife and run_python results. Process lifetimes show no clear service restart boundary. Around 03:27:35.4 scheduler, block, and network event rates fall together (for example sched_switch 996/s to 175/s in 03:27:35.4\u201303:27:36.6), but this is a workload/activity change, not evidence of a bottleneck by itself. Per-process sched_stat_runtime totals are 5.54 CPU-seconds across the 32-second recording (about 0.17 CPU-seconds per wall second); even the sustained intervals are roughly 0.25 CPU-seconds per wall second, with the largest later share from python3 in pid_ns 4026531836. Raw scheduling examples show python3 receiving about 0.41 ms runtime per 100 ms, not monopolizing a CPU. Sampled disk completions succeeded and network transmissions had rc=0, but these are limited samples rather than latency distributions. The apparent wakeup-to-switch maxima were rejected because raw-line coverage was incomplete; no defensible scheduler-delay measurement was obtained. ctf_timeline returned no matches, and ctf_lines could not open the trace path, so indexed run_python counts and get_lines samples were used instead.",
+      "confidence": 0.78,
+      "incident_window": "unknown",
+      "window_evidence": "No bounded interval meets the standard for a fault window. The event-rate collapse at 03:27:35.4\u201303:27:36.6 is a measured boundary in activity, but later rates shift again with a change in active workload, and neither that boundary nor the subsequent python3 CPU use demonstrates a causal service slowdown. With no valid scheduler-delay distribution or measured I/O/network latency, assigning that activity transition as an incident window would overstate the evidence."
+    },
+    "ranked_services": null,
+    "ranked_candidates": null,
+    "trajectory": [
+      {
+        "step": 0,
+        "tool": "worker1.0",
+        "service": null
+      },
+      {
+        "step": 1,
+        "tool": "worker1.1",
+        "service": null
+      },
+      {
+        "step": 2,
+        "tool": "worker1.2",
+        "service": null
+      },
+      {
+        "step": 3,
+        "tool": "worker1.3",
+        "service": null
+      },
+      {
+        "step": 4,
+        "tool": "worker2.100",
+        "service": null
+      }
+    ],
+    "n_tool_calls": 59,
+    "n_code_snippets": 24,
+    "n_findings": 14,
+    "n_computed": 24,
+    "bytes_touched": 99333,
+    "tokens": {
+      "in": 875016,
+      "out": 18794
+    },
+    "model": "openai/gpt-6-luna",
+    "wall_s": 230.3,
+    "transcript_file": "C:\\workplace\\microservice-trace-dataset\\nier-2027\\transcripts\\repair__resident__t3_implement_cap25_r3__r1.json",
+    "skill_selected": null,
+    "skill_confidence": null,
+    "brief_injected": false,
+    "n_claims": null
+  }
+}

@@ -65,11 +65,14 @@ The research conversation about agent context is largely about the first
 property of a window, its size, and about attention within it, as in work on
 positional degradation in long contexts~\cite{liu2024lost}. Harness papers
 describe their scaffolding as an engineering
-detail~\cite{yang2024sweagent,jimenez2024swebench}. Failure taxonomies derived
-from agent trajectories attribute errors to agents and
-steps~\cite{cemri2025mast}. What is missing is a measurement of the plumbing
-between them: how much of what an agent produced actually reaches the decision
-it makes.
+detail~\cite{yang2024sweagent,jimenez2024swebench}. Failure taxonomies built from large
+collections of agent trajectories classify what went wrong across frameworks,
+including categories for system design~\cite{cemri2025mast}. That work and
+ours are complementary, and the gap between them is the point: a trajectory
+records the result a tool \emph{delivered}, not the one it \emph{produced},
+so a loss that happens on the way into the transcript cannot be recovered from
+the transcript. What is missing is a measurement of the plumbing itself: how
+much of what an agent produced actually reaches the decision it makes.
 
 This paper reports what happened when we measured it. In a kernel-trace
 root-cause-analysis agent evaluated against labelled fault injections, the
@@ -188,13 +191,24 @@ followed by a list of those present throughout, and vary only how many
 short-lived processes the trace contains, which is a property of the workload
 and not of the question being asked.
 
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{fig_cliff.pdf}
+\caption{The delivery cliff. Varying only how many short-lived processes a
+trace contains, the late field of a tool result is delivered completely until
+the result crosses the bound, then disappears entirely and takes the payload's
+validity with it. A row-aware bound keeps every field at every size. Nothing
+about the diagnostic question changes along this axis.}
+\label{fig:cliff}
+\end{figure}
+
 Under a prefix-slice bound the late list is delivered completely until the
 result crosses the budget and then collapses: the field goes from fully present
-to entirely absent, and the payload becomes unparseable. Under a bound that
-drops whole rows and labels what it dropped, every field survives at every
-size. The cliff explains the field number mechanically: busy hosts carry well
-over the threshold number of short-lived processes, so the late field was
-almost always past the cut.
+to entirely absent, and the payload becomes unparseable
+(Fig.~\ref{fig:cliff}). Under a bound that drops whole rows and labels what it
+dropped, every field survives at every size. The cliff explains the field
+number mechanically: busy hosts carry well over the threshold number of
+short-lived processes, so the late field was almost always past the cut.
 
 \subsection{E1b: replaying real tool results}
 
