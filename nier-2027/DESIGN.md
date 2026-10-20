@@ -370,3 +370,33 @@ deepens; the single-path fatal case is carried by the archival field data.
 
 Campaign cost: 83.85M input tokens across 145 runs (~$10 at measured rates),
 ~5 hours wall at 3 parallel.
+
+## A8. Fatal-case probes on the real microservice substrate (20 Oct, pre-registered live)
+
+`data-sample/svc_cpu_cap_aggressive_steady_r1`: real 21-container trace,
+carts throttled to 0.2 CPUs. Deterministic delivery at the DEPLOYED 6000 cap
+measured first (E1c): proclife 33,370 chars; defect delivers early 30/118,
+late **0/128**, invalid; repair 246/246.
+
+Headroom probes, plain agent, repaired, symptom hint only:
+- r1: `unknown` / other / 0.78 - did not localise.
+- r2: committed to `conn* in pid_ns 4026533035` = a mongod cohort (carts-db),
+  one hop behind the throttled service - the documented "one hop away"
+  trace-blame pattern, now reproduced by the agent from kernel data.
+
+So the plain agent has no reliable headroom here. Last probe: the GIVEN arm
+(service-cpu-throttle skill via skillreg, frontmatter stripped). Registered
+before its result: if given+repair localises carts, run given+defect at the
+deployed cap x5 repeats each arm; a drop is the causal fatal case. If
+given+repair also fails, the fatal case stays field-evidence and the paper
+says so explicitly in Threats.
+
+**A8 outcome.** The given arm also committed to the mongod cohort
+(`conn* in pid_ns 4026533035`, 0.78) - the same one-hop-off container as
+plain r2. Per the registered rule: no accuracy baseline exists to destroy, so
+the fatal-case matrix is NOT run, and the accuracy-destruction half remains
+field-evidence. The probes add their own finding: on the hardest substrate the
+repaired, skill-given agent is itself at the floor - the September low side
+was plausibly capability AND delivery jointly, and the paper's threats section
+now says so. The clean causal fatal-case candidate is slow_db on Trillium,
+whose 22-09 repaired-era baseline showed real headroom (24/60 WHERE).
