@@ -399,3 +399,26 @@ Changes, with the reasoning:
   source/target points always draw.
 
 Page grew to 3100×3000. Previous version kept at `thesis/flow.drawio.v1`.
+
+## (20-10) NIER ablation complete: 145/145, H2' refuted with mechanism
+
+Audit-early paid off twice (scoring bug inflating 2/15 to 14/15; design flaw -
+resident floored at 13% repaired). Both fixed mid-campaign with registered
+amendments (A6, A7) instead of post-hoc stories.
+
+Final shape of the result, and it is better than the planned one:
+- s1_deliver x spawned 15/15 despite ~26 destroyed unparseable results/run.
+- s1_reversed (culprit's field fully severed, verified in transcripts) STILL
+  15/15 - recovered via run_python because the culprit is the loudest process
+  in the trace (14% of kernel events). order_only inert (10/10, 0 truncations).
+- So: harm is gated by evidence-path redundancy; cost shows up as work before
+  error (53->68->76 tool calls, +64-78% computations, +0/+5/+14% tokens).
+  The fatal single-path case is the archival field data (4.7% delivery,
+  0-24/60). The defect spares easy cases, kills hard ones, moves aggregates
+  2.5% - which is why the class survives inspection.
+
+Paper updated: results section written, abstract carries the law, citations
+verified (incl. arXiv 2609.00006 as the non-empirical anatomy ours completes),
+check_tex.py passes (braces, envs, cites, refs, figure, no TODOs, ~3.6k words).
+Remaining before Friday: Overleaf compile + page fit, double-anonymous pass,
+HotCRP submission. Trillium replication stays optional-but-valuable.

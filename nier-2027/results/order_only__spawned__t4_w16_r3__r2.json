@@ -1,0 +1,67 @@
+{
+  "config": "order_only",
+  "klass": "spawned",
+  "run": "t4_w16_r3",
+  "run_dir": "C:\\workplace\\microservice-trace-dataset\\agentic-runs\\2_threads_vs_cores\\runs\\t4_w16_r3",
+  "rep": 2,
+  "cell": "order_only__spawned__t4_w16_r3__r2",
+  "status": "ok",
+  "returncode": 0,
+  "wall_s": 94.1,
+  "env_ablation": {
+    "ABL_REVERSE_KEYS": "1"
+  },
+  "result": {
+    "run_id": "t4_w16_r3",
+    "diagnosis": {
+      "what_is_wrong": "The coding-task interval coincides with a concentrated CPU burst from `ttworker`: it consumed almost four cores continuously, leaving no CPU-idle events during the sustained portion. This supports CPU saturation as a plausible cause of the reported slowdown, though the trace does not directly measure task latency.",
+      "root_cause_service": "ttworker in pid_ns 4026531836",
+      "culprit_kind": "container",
+      "fault_type": "cpu_saturation",
+      "evidence": "The trace spans 02:50:10.000\u201302:50:20.300. Comparing the 3.8 s before the burst (02:50:10.800\u201302:50:14.600) with 02:50:14.600\u201302:50:18.500, run_python summed sched_stat_runtime at 820.5 ms (0.216 core-equivalents) versus 15,559.1 ms (3.990 cores); ttworker alone contributed 15,043.8 ms. Per-100-ms buckets show ttworker at roughly 390\u2013400 ms CPU from 02:50:14.800 to 02:50:18.400, and power_cpu_idle events are absent through 02:50:15\u201302:50:18. ctf_proclife places ttworker's observed lifetime at 02:50:14.600\u201302:50:18.500. ctf_lines sampled wakeup-to-switch intervals of about 18\u201321 microseconds and a block request completing in 0.947 ms, with successful network transmissions; these samples do not support CPU starvation delay, disk latency, or network failure. They also do not directly prove the coding task's latency.",
+      "confidence": 0.91,
+      "incident_window": "02:50:14.600 - 02:50:18.500",
+      "window_evidence": "The left edge is when ttworker first appears and its CPU use begins rising sharply (27.7 ms in the 02:50:14.600 bucket, then about 300 ms in the next and roughly 400 ms per 100 ms thereafter). The right edge is ttworker's last observed time and the end of the sustained four-core run; total CPU use falls to 241.2 ms over the following 1.8 s."
+    },
+    "ranked_services": null,
+    "ranked_candidates": null,
+    "trajectory": [
+      {
+        "step": 0,
+        "tool": "worker1.0",
+        "service": null
+      },
+      {
+        "step": 1,
+        "tool": "worker1.1",
+        "service": null
+      },
+      {
+        "step": 2,
+        "tool": "worker1.2",
+        "service": null
+      },
+      {
+        "step": 3,
+        "tool": "worker1.3",
+        "service": null
+      }
+    ],
+    "n_tool_calls": 37,
+    "n_code_snippets": 13,
+    "n_findings": 10,
+    "n_computed": 13,
+    "bytes_touched": 65830,
+    "tokens": {
+      "in": 344256,
+      "out": 13294
+    },
+    "model": "openai/gpt-6-luna",
+    "wall_s": 93.1,
+    "transcript_file": "C:\\workplace\\microservice-trace-dataset\\nier-2027\\transcripts\\order_only__spawned__t4_w16_r3__r2.json",
+    "skill_selected": null,
+    "skill_confidence": null,
+    "brief_injected": false,
+    "n_claims": null
+  }
+}

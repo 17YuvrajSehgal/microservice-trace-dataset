@@ -1,0 +1,73 @@
+{
+  "config": "s1_reversed",
+  "klass": "spawned",
+  "run": "t4_w16_r3",
+  "run_dir": "C:\\workplace\\microservice-trace-dataset\\agentic-runs\\2_threads_vs_cores\\runs\\t4_w16_r3",
+  "rep": 1,
+  "cell": "s1_reversed__spawned__t4_w16_r3__r1",
+  "status": "ok",
+  "returncode": 0,
+  "wall_s": 226.7,
+  "env_ablation": {
+    "ABL_FLAT_CAP": "2000",
+    "ABL_REVERSE_KEYS": "1"
+  },
+  "result": {
+    "run_id": "t4_w16_r3",
+    "diagnosis": {
+      "what_is_wrong": "A newly launched `run_all.sh`/`xargs` workload drove `ttworker` to consume nearly all four CPU cores, leaving little CPU capacity for the co-resident `claude` coding process and plausibly explaining the slowdown. This is a brief, workload-attributed CPU saturation episode, not evidence of a host-wide dependency, disk, or network failure.",
+      "root_cause_service": "ttworker in pid_ns 4026531836",
+      "culprit_kind": "container",
+      "fault_type": "cpu_saturation",
+      "evidence": "The trace spans 02:50:10.000\u201302:50:20.400 UTC. Comparing the 4 s before the workload burst ([02:50:10, 02:50:14)) with the 3.9 s burst ([02:50:14.600, 02:50:18.500)), sched_stat_runtime rises from 1.79 CPU-seconds to 15.56 CPU-seconds; `ttworker` alone accounts for about 15.04 CPU-seconds (96% of the four-core capacity over that interval), versus zero recorded `ttworker` CPU in the first four seconds. The process group `run_all.sh`, `xargs`, and `ttworker` first appears together at 02:50:14.600; `ttworker` has runtime in 40 100-ms buckets through 02:50:18.500. Raw sched_stat_runtime records identify `ttworker` on CPUs 2 and 3, and raw sched_switch records show threads switching among `ttworker` while the burst is active. Container CPU averages 0.433 cores before versus 3.405 cores during the burst. I checked alternative mechanism evidence: block issue/completion and network event counts decline during the interval rather than showing a corresponding surge, and no reliable wake-to-run delay comparison is available because the retrieved raw scheduler lines are incomplete. The only observed nonzero workload pid_ns is 4026531836, so the trace does not establish whether this workload affected other containers beyond the observed coding process.",
+      "confidence": 0.94,
+      "incident_window": "02:50:14.600 - 02:50:18.500",
+      "window_evidence": "The 100-ms process-lifetime/runtime summaries place `run_all.sh`, `xargs`, and `ttworker` first in the 02:50:14.600 bucket, with `ttworker` consuming near four CPU-seconds per second across the sustained burst; `run_all.sh`, `xargs`, and `ttworker` last appear in the 02:50:18.500 bucket, where `sort` and `wc` appear. Runtime falls sharply after that edge, so those observed workload boundaries define the episode. The trace is short and bucketized, so these are observed boundaries, not exact fork/exit times."
+    },
+    "ranked_services": null,
+    "ranked_candidates": null,
+    "trajectory": [
+      {
+        "step": 0,
+        "tool": "worker1.0",
+        "service": null
+      },
+      {
+        "step": 1,
+        "tool": "worker1.1",
+        "service": null
+      },
+      {
+        "step": 2,
+        "tool": "worker1.2",
+        "service": null
+      },
+      {
+        "step": 3,
+        "tool": "worker1.3",
+        "service": null
+      },
+      {
+        "step": 4,
+        "tool": "worker2.100",
+        "service": null
+      }
+    ],
+    "n_tool_calls": 76,
+    "n_code_snippets": 37,
+    "n_findings": 12,
+    "n_computed": 36,
+    "bytes_touched": 159904,
+    "tokens": {
+      "in": 647826,
+      "out": 19974
+    },
+    "model": "openai/gpt-6-luna",
+    "wall_s": 225.7,
+    "transcript_file": "C:\\workplace\\microservice-trace-dataset\\nier-2027\\transcripts\\s1_reversed__spawned__t4_w16_r3__r1.json",
+    "skill_selected": null,
+    "skill_confidence": null,
+    "brief_injected": false,
+    "n_claims": null
+  }
+}

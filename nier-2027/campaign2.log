@@ -123,3 +123,27 @@ provider=openrouter model=openai/gpt-6-luna cells=145 jobs=3
 [121/145] ok          s1_reversed__spawned__t4_w16_r1__r1                     138s  in= 412,626  cpu_saturation     conf=0.78
 [122/145] ok          s1_reversed__spawned__t4_w16_r1__r2                     139s  in= 469,424  cpu_saturation     conf=0.94
 [123/145] ok          s1_reversed__spawned__t4_w16_r1__r3                     255s  in= 661,495  cpu_saturation     conf=0.92
+[124/145] ok          s1_reversed__spawned__t4_w16_r2__r1                     235s  in= 682,706  cpu_saturation     conf=0.87
+[125/145] ok          s1_reversed__spawned__t4_w16_r2__r2                     236s  in= 729,121  cpu_saturation     conf=0.88
+[126/145] ok          s1_reversed__spawned__t4_w16_r2__r3                     214s  in= 769,668  cpu_saturation     conf=0.91
+[127/145] ok          s1_reversed__spawned__t4_w16_r3__r1                     227s  in= 647,826  cpu_saturation     conf=0.94
+[128/145] ok          s1_reversed__spawned__t4_w16_r3__r2                     274s  in= 399,375  cpu_saturation     conf=0.87
+[129/145] ok          s1_reversed__spawned__t4_w16_r3__r3                     212s  in= 619,050  cpu_saturation     conf=0.86
+[130/145] ok          s1_reversed__spawned__t4_w16_r4__r3                     112s  in= 549,728  cpu_saturation     conf=0.92
+[131/145] ok          s1_reversed__spawned__t4_w16_r4__r1                     235s  in= 722,382  cpu_saturation     conf=0.91
+[132/145] ok          s1_reversed__spawned__t4_w16_r4__r2                     255s  in= 674,631  cpu_saturation     conf=0.83
+[133/145] ok          s1_reversed__spawned__t4_w16_r5__r1                     227s  in= 576,104  cpu_saturation     conf=0.76
+[134/145] ok          s1_reversed__spawned__t4_w16_r5__r3                     125s  in= 544,386  cpu_saturation     conf=0.84
+[135/145] ok          s1_reversed__spawned__t4_w16_r5__r2                     226s  in= 669,380  cpu_saturation     conf=0.95
+[136/145] ok          order_only__spawned__t4_w16_r1__r1                      128s  in= 511,979  cpu_saturation     conf=0.91
+[137/145] ok          order_only__spawned__t4_w16_r1__r2                      123s  in= 461,809  cpu_saturation     conf=0.91
+[138/145] ok          order_only__spawned__t4_w16_r3__r1                       85s  in= 322,178  cpu_saturation     conf=0.87
+[139/145] ok          order_only__spawned__t4_w16_r2__r1                      186s  in= 545,976  cpu_saturation     conf=0.91
+[140/145] ok          order_only__spawned__t4_w16_r3__r2                       94s  in= 344,256  cpu_saturation     conf=0.91
+[141/145] ok          order_only__spawned__t4_w16_r2__r2                      215s  in= 910,718  cpu_saturation     conf=0.91
+[142/145] ok          order_only__spawned__t4_w16_r4__r2                      107s  in= 468,455  cpu_saturation     conf=0.91
+[143/145] ok          order_only__spawned__t4_w16_r4__r1                      236s  in= 484,417  cpu_saturation     conf=0.88
+[144/145] ok          order_only__spawned__t4_w16_r5__r2                      135s  in= 530,439  cpu_saturation     conf=0.97
+[145/145] ok          order_only__spawned__t4_w16_r5__r1                      245s  in= 651,276  cpu_saturation     conf=0.89
+
+145 cells in 27 min -> C:\workplace\microservice-trace-dataset\nier-2027\results

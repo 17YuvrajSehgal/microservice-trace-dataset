@@ -43,7 +43,10 @@ each stage has a characteristic failure mode, and that none of them is reported
 in agentic software engineering evaluations today. We contribute a model of
 that pipeline, an \emph{attrition profile} that measures it, replay evidence
 over $864$ real tool results, and a controlled ablation that reintroduces each
-defect in isolation.
+defect in isolation. The ablation yields the sharper law: the harm of a
+delivery defect is gated by \emph{evidence-path redundancy} --- a dominant
+signal survives at a measured compensation tax of up to $+43\%$ tool calls and
+$+14\%$ tokens, while a signal carried by a single field dies with it.
 \end{abstract}
 
 \begin{IEEEkeywords}
@@ -310,7 +313,46 @@ The damage was severe and the answer survived, because the culprit sat in the
 early, surviving field. Healthy controls stayed clean under repair ($5/5$),
 with one false alarm under the full defect.
 
-\textbf{H2$'$.} \TODO{s1\_reversed and order\_only cells: insert outcome.}
+\textbf{H2$'$ was refuted, and the refutation is the finding.} Under reversal
+the manipulation worked exactly as designed --- transcripts show the
+enumeration result arriving reversed and the culprit absent from every one of
+its payloads --- yet the agent localised correctly in $15/15$ runs. It
+recovered the answer through its sandboxed self-written analysis, which
+surfaced the culprit in $12$ separate computations, because the culprit is the
+\emph{loudest process in the trace} ($14.0\%$ of all kernel events): every
+sorted aggregation carries it in the first rows, inside the surviving prefix.
+The order-only control was flat ($10/10$, zero truncations), so the
+manipulation was sound and the recovery is real.
+
+\begin{table}[t]
+\caption{Severing the primary evidence path does not change the answer; it
+changes the price. Spawned-culprit cells, medians per run.}
+\label{tab:compensation}
+\centering\small
+\begin{tabular}{@{}lrrrr@{}}
+\toprule
+ & \textbf{correct} & \textbf{tool calls} & \textbf{computations} & \textbf{in-tokens} \\
+\midrule
+repair            & 14/15 & 53 & 21 & (baseline) \\
+defect            & 15/15 & 68 & 34 & $+5\%$ \\
+defect, reversed  & 15/15 & 76 & 37 & $+14\%$ \\
+order only        & 10/10 & 48 & 18 & $-12\%$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+What emerges instead of H2$'$ is a sharper conditional
+(Table~\ref{tab:compensation}): \textbf{the harm of a positional delivery
+defect is gated by evidence-path redundancy, and its cost appears as work
+before it appears as error.} A dominant culprit survives the severing of any
+single path, because every aggregation is a path --- but the agent pays a
+monotone compensation tax ($53\rightarrow68\rightarrow76$ tool calls,
+$+64$--$78\%$ self-written computations) to re-derive what delivery destroyed.
+A quiet culprit carried by exactly one enumeration field has no second path:
+that is the archival case, where the field delivered at $4.7\%$ and the class
+scored $0$--$24/60$. The defect therefore spares the easy cases and kills
+precisely the hard ones, while barely moving aggregate numbers --- $2.5\%$ of
+calls in the replay corpus --- which is why the class survives inspection.
 
 \section{Why This Goes Unnoticed}
 \label{sec:unnoticed}

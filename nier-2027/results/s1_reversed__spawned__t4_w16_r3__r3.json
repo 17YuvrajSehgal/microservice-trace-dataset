@@ -1,0 +1,73 @@
+{
+  "config": "s1_reversed",
+  "klass": "spawned",
+  "run": "t4_w16_r3",
+  "run_dir": "C:\\workplace\\microservice-trace-dataset\\agentic-runs\\2_threads_vs_cores\\runs\\t4_w16_r3",
+  "rep": 3,
+  "cell": "s1_reversed__spawned__t4_w16_r3__r3",
+  "status": "ok",
+  "returncode": 0,
+  "wall_s": 212.0,
+  "env_ablation": {
+    "ABL_FLAT_CAP": "2000",
+    "ABL_REVERSE_KEYS": "1"
+  },
+  "result": {
+    "run_id": "t4_w16_r3",
+    "diagnosis": {
+      "what_is_wrong": "A newly appearing `ttworker` workload in the coding-task container consumed nearly all recorded CPU during the task window\u2014about 15.04 CPU-seconds in 3.9 seconds, or 3.86 cores\u2014and likely created CPU contention that could explain the slower completion. The trace supports that contention, but cannot directly prove how much runnable delay the coding task experienced or establish its normal completion time.",
+      "root_cause_service": "ttworker in pid_ns 4026531836",
+      "culprit_kind": "container",
+      "fault_type": "cpu_saturation",
+      "evidence": "The trace spans 02:50:10.000\u201302:50:20.400. Lifecycle results (ctf_proclife/run_python) show `ttworker`, `run_all.sh`, and `xargs` arriving at 02:50:14.600 and ending at 02:50:18.500. In that interval, run_python's sched_stat_runtime totals give ttworker 15,043.79 ms of 15,559.1 ms total (96.7%); before 02:50:14.600 it recorded zero ttworker CPU, and after 02:50:18.500 only about 0.094 CPU-seconds. During the peak 02:50:15\u201302:50:18, the container used about 4 CPU-seconds per wall-second, with ttworker at 99.4% of runtime. ctf_procdiff/range comparisons distinguish the worker period from the pre-task and post-task quiet periods. Raw scheduler records at 02:50:15\u201317 show ordinary-priority ttworker threads repeatedly scheduled across CPUs 0\u20133 with roughly 1 ms runtime samples. Disk/network/reclaim checks do not indicate an alternate cause: the representative block request completed in about 0.95 ms, transmissions returned rc=0, and no reclaim events were found. A falsifier for the proposed CPU-contention mechanism would be evidence of CPU headroom or no sustained ttworker runtime dominance in the task interval; the recorded comparisons show the opposite. However, a direct per-task runnable-to-running delay test was attempted from scheduler records but could not be reliably correlated with the available fields, so actual task delay attribution remains unproven.",
+      "confidence": 0.86,
+      "incident_window": "02:50:14.600 - 02:50:18.500",
+      "window_evidence": "The task-group lifecycle boundary is the clearest onset/offset: ttworker, run_all.sh, and xargs first appear at 02:50:14.600; ttworker's final bucket and the subsequent wc/sort activity are at 02:50:18.500. CPU measurements independently rise sharply beginning around 02:50:14.7 and collapse after 02:50:18.4, with only about 0.094 CPU-seconds after the task-group end."
+    },
+    "ranked_services": null,
+    "ranked_candidates": null,
+    "trajectory": [
+      {
+        "step": 0,
+        "tool": "worker1.0",
+        "service": null
+      },
+      {
+        "step": 1,
+        "tool": "worker1.1",
+        "service": null
+      },
+      {
+        "step": 2,
+        "tool": "worker1.2",
+        "service": null
+      },
+      {
+        "step": 3,
+        "tool": "worker1.3",
+        "service": null
+      },
+      {
+        "step": 4,
+        "tool": "worker2.100",
+        "service": null
+      }
+    ],
+    "n_tool_calls": 76,
+    "n_code_snippets": 39,
+    "n_findings": 11,
+    "n_computed": 39,
+    "bytes_touched": 167924,
+    "tokens": {
+      "in": 619050,
+      "out": 19115
+    },
+    "model": "openai/gpt-6-luna",
+    "wall_s": 211.1,
+    "transcript_file": "C:\\workplace\\microservice-trace-dataset\\nier-2027\\transcripts\\s1_reversed__spawned__t4_w16_r3__r3.json",
+    "skill_selected": null,
+    "skill_confidence": null,
+    "brief_injected": false,
+    "n_claims": null
+  }
+}

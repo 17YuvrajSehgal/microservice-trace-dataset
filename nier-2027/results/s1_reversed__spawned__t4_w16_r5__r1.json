@@ -1,0 +1,73 @@
+{
+  "config": "s1_reversed",
+  "klass": "spawned",
+  "run": "t4_w16_r5",
+  "run_dir": "C:\\workplace\\microservice-trace-dataset\\agentic-runs\\2_threads_vs_cores\\runs\\t4_w16_r5",
+  "rep": 1,
+  "cell": "s1_reversed__spawned__t4_w16_r5__r1",
+  "status": "ok",
+  "returncode": 0,
+  "wall_s": 226.8,
+  "env_ablation": {
+    "ABL_FLAT_CAP": "2000",
+    "ABL_REVERSE_KEYS": "1"
+  },
+  "result": {
+    "run_id": "t4_w16_r5",
+    "diagnosis": {
+      "what_is_wrong": "A short, four-core CPU-saturating workload coincides with the coding task: `ttworker` consumes nearly all recorded CPU during the burst, plausibly competing with `claude` and contributing to the longer completion time. The trace does not prove the exact amount of user-visible delay, and it does not show whether this workload was expected or an independent neighbor.",
+      "root_cause_service": "ttworker in pid_ns 4026531836",
+      "culprit_kind": "container",
+      "fault_type": "cpu_saturation",
+      "evidence": "Compared the indexed sched_stat_runtime totals for the quiet pre-burst interval 02:47:26.200\u201302:47:31.200 with the burst 02:47:31.200\u201302:47:35.200: total runtime rose from 1.838 CPU-s (0.368 CPU-s per wall-second) to 15.749 CPU-s (3.937 per wall-second), of which ttworker used 15.228 CPU-s. Its 100 ms buckets repeatedly account for about 400 ms of CPU per 100 ms wall time, across CPUs 0\u20133; ttworker is first observed at 02:47:31.200 and its runtime collapses after 02:47:35.0. Raw sched_switch/runtime exemplars show its threads running across CPUs. Disk/network evidence does not support congestion: the burst has fewer block issues and transmits than the preceding 4 seconds, with sampled successful network packets and promptly completed sampled I/O. A worker's wakeup-to-switch pairing suggested multi-second delays for claude, but the raw switch sample is too sparse to trust as a latency measurement, so it is not treated as proof of impact.",
+      "confidence": 0.76,
+      "incident_window": "02:47:31.200 - 02:47:35.200",
+      "window_evidence": "The onset is marked by the first indexed ttworker activity and abrupt increase to a near-four-core runtime rate at 02:47:31.200; successive 100 ms buckets remain around 400 ms CPU through 02:47:34.900, and the rate falls sharply at 02:47:35.0\u201335.2 as the worker workload ends. The preceding 02:47:26.200\u201331.200 interval was used as the quiet comparison because it precedes this process arrival and has low recorded CPU use."
+    },
+    "ranked_services": null,
+    "ranked_candidates": null,
+    "trajectory": [
+      {
+        "step": 0,
+        "tool": "worker1.0",
+        "service": null
+      },
+      {
+        "step": 1,
+        "tool": "worker1.1",
+        "service": null
+      },
+      {
+        "step": 2,
+        "tool": "worker1.2",
+        "service": null
+      },
+      {
+        "step": 3,
+        "tool": "worker1.3",
+        "service": null
+      },
+      {
+        "step": 4,
+        "tool": "worker2.100",
+        "service": null
+      }
+    ],
+    "n_tool_calls": 66,
+    "n_code_snippets": 34,
+    "n_findings": 11,
+    "n_computed": 34,
+    "bytes_touched": 183242,
+    "tokens": {
+      "in": 576104,
+      "out": 20025
+    },
+    "model": "openai/gpt-6-luna",
+    "wall_s": 225.9,
+    "transcript_file": "C:\\workplace\\microservice-trace-dataset\\nier-2027\\transcripts\\s1_reversed__spawned__t4_w16_r5__r1.json",
+    "skill_selected": null,
+    "skill_confidence": null,
+    "brief_injected": false,
+    "n_claims": null
+  }
+}

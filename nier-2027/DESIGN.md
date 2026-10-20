@@ -344,3 +344,29 @@ spares the easy cases (dominant signal, many paths) and kills exactly the hard
 ones (quiet signal, one path), while moving aggregate numbers barely at all -
 2.5% of calls in the replay corpus. That is why the defect class survives
 inspection.
+
+## Final results (20 Oct, 145/145 cells, zero harness failures)
+
+Both A7 predictions held exactly: `s1_reversed` 15/15, `order_only` 10/10 with
+zero truncations. The inertness control passed, so the refutation of H2' is
+valid and the redundancy interpretation stands.
+
+| config x class | correct | destroyed/run | tool calls | computations | in-tokens |
+|---|---|---|---|---|---|
+| repair x spawned | 14/15 | 0 | 53 | 21 | baseline (567k) |
+| s1_deliver x spawned | 15/15 | 26 | 68 | 34 | +5% |
+| s1_reversed x spawned | 15/15 | 29 | 76 | 37 | +14% |
+| order_only x spawned | 10/10 | 0 | 48 | 18 | -12% |
+| repair x healthy | 5/5 clean | - | - | - | - |
+| all_defect x healthy | 4/5 (1 false alarm) | - | - | - | - |
+| resident, all configs | 7-13% (substrate floor) | - | - | - | - |
+
+H1 confirmed: median 567k in-tokens per run, max 1.0M - capacity never bound.
+
+The law the paper states: **the harm of a positional delivery defect is gated
+by evidence-path redundancy, and its cost appears as work before it appears as
+error.** Monotone compensation tax 53 -> 68 -> 76 tool calls as severance
+deepens; the single-path fatal case is carried by the archival field data.
+
+Campaign cost: 83.85M input tokens across 145 runs (~$10 at measured rates),
+~5 hours wall at 3 parallel.

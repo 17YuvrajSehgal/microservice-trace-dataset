@@ -1,0 +1,68 @@
+{
+  "config": "s1_reversed",
+  "klass": "spawned",
+  "run": "t4_w16_r4",
+  "run_dir": "C:\\workplace\\microservice-trace-dataset\\agentic-runs\\2_threads_vs_cores\\runs\\t4_w16_r4",
+  "rep": 3,
+  "cell": "s1_reversed__spawned__t4_w16_r4__r3",
+  "status": "ok",
+  "returncode": 0,
+  "wall_s": 111.5,
+  "env_ablation": {
+    "ABL_FLAT_CAP": "2000",
+    "ABL_REVERSE_KEYS": "1"
+  },
+  "result": {
+    "run_id": "t4_w16_r4",
+    "diagnosis": {
+      "what_is_wrong": "A short CPU-saturation episode coincides with the coding-task worker run: `ttworker` consumed nearly all available CPU, plausibly slowing the coding task. The trace supports the workload and saturation, though without a baseline it cannot prove how much longer the task took than usual.",
+      "root_cause_service": "ttworker in pid_ns 4026531836",
+      "culprit_kind": "container",
+      "fault_type": "cpu_saturation",
+      "evidence": "Compared the full 02:46:06.400\u201302:46:17.200 recording and process-life boundaries, then used run_python CPU-runtime totals and 100ms/1s bins. `ttworker` appears with the coordinated task processes at 02:46:11.000 and is last observed at 02:46:14.800; it accounts for 14,840 ms CPU during 02:46:11.000\u201302:46:15.000, out of 15,412 ms total. The container reaches about 3,934\u20134,000 CPU-ms per second for seconds 02:46:11\u201313 (approximately four cores fully busy), versus 1,725 ms total across the preceding 4.6 seconds and 136 ms after 02:46:15. The key attribution is consumption by ttworker, rather than merely high event counts. Other indexed namespaces have negligible CPU. This supports a workload-driven CPU saturation rather than disk or network latency; the sampled raw lines were from the earlier burst, not the ttworker interval, so they do not independently establish wait latency.",
+      "confidence": 0.92,
+      "incident_window": "02:46:11.000 - 02:46:14.900",
+      "window_evidence": "The coordinated run_all.sh/worker.py/ttworker/xargs process cluster first appears in the 02:46:11.000 bucket, where CPU use jumps; ttworker then consumes nearly all CPU across the 11.1\u201314.7 buckets. Its final observed bucket is 02:46:14.800 and total CPU activity collapses by 02:46:15.000, defining the approximate end. The preceding 02:46:06.400\u201302:46:11.000 period was used as the comparison, not the later task interval."
+    },
+    "ranked_services": null,
+    "ranked_candidates": null,
+    "trajectory": [
+      {
+        "step": 0,
+        "tool": "worker1.0",
+        "service": null
+      },
+      {
+        "step": 1,
+        "tool": "worker1.1",
+        "service": null
+      },
+      {
+        "step": 2,
+        "tool": "worker1.2",
+        "service": null
+      },
+      {
+        "step": 3,
+        "tool": "worker1.3",
+        "service": null
+      }
+    ],
+    "n_tool_calls": 64,
+    "n_code_snippets": 31,
+    "n_findings": 8,
+    "n_computed": 31,
+    "bytes_touched": 127146,
+    "tokens": {
+      "in": 549728,
+      "out": 15755
+    },
+    "model": "openai/gpt-6-luna",
+    "wall_s": 110.6,
+    "transcript_file": "C:\\workplace\\microservice-trace-dataset\\nier-2027\\transcripts\\s1_reversed__spawned__t4_w16_r4__r3.json",
+    "skill_selected": null,
+    "skill_confidence": null,
+    "brief_injected": false,
+    "n_claims": null
+  }
+}

@@ -1,0 +1,72 @@
+{
+  "config": "order_only",
+  "klass": "spawned",
+  "run": "t4_w16_r4",
+  "run_dir": "C:\\workplace\\microservice-trace-dataset\\agentic-runs\\2_threads_vs_cores\\runs\\t4_w16_r4",
+  "rep": 1,
+  "cell": "order_only__spawned__t4_w16_r4__r1",
+  "status": "ok",
+  "returncode": 0,
+  "wall_s": 236.5,
+  "env_ablation": {
+    "ABL_REVERSE_KEYS": "1"
+  },
+  "result": {
+    "run_id": "t4_w16_r4",
+    "diagnosis": {
+      "what_is_wrong": "A short, highly parallel compute burst by `ttworker` consumed nearly four CPU cores and coincided with the coding workload\u2019s other processes receiving much less CPU, making CPU contention the best explanation for the reported slowdown. The trace supports a localized CPU-saturation episode, though the available samples cannot quantify the resulting scheduling delay or prove the exact amount of task latency.",
+      "root_cause_service": "ttworker in pid_ns 4026531836",
+      "culprit_kind": "container",
+      "fault_type": "cpu_saturation",
+      "evidence": "The full trace was 02:46:06.400\u201302:46:17.200. ctf_proclife located a coherent `ttworker`/`worker.py`/`xargs`/`run_all.sh` lifetime in pid_ns 4026531836 from 02:46:11.000 to 02:46:14.800. run_python runtime accounting shows `ttworker` accrued 14.84 CPU-seconds in that 3.8-second interval (about 3.91 CPU-seconds per wall second); container runtime was about 0.38 core-equivalents before, 3.85 during 02:46:10.900\u201314.900, and 0.07 afterward. Meanwhile `claude` fell from about 0.234 cores in the first four seconds to about 0.014 cores during the central burst. Scheduler counts show substantial switching during the burst, but wakeups fell from about 708/s in the preceding 4 seconds to 139/s; the raw sampled switch records show equal-priority tasks across four CPUs. Block issue/complete counts fell rather than rose (440/441 pre versus 77/77 candidate), sampled network transmit records had rc=0, and futex volume declined, so those mechanisms do not better explain the slowdown. The wake-to-switch check was attempted but its representative-line sampling produced too few TID matches for a valid delay distribution; consequently the trace demonstrates intense CPU consumption and plausible contention, not a measured wait-latency value. A robust full-event wake-to-switch latency comparison showing no increased delay would have weakened the contention explanation; that check could not be completed reliably.",
+      "confidence": 0.88,
+      "incident_window": "02:46:11.000 - 02:46:14.800",
+      "window_evidence": "The boundary comes from ctf_proclife: `ttworker` and the related worker bundle first appear at 02:46:11.000 and last appear at 02:46:14.800. Per-process runtime bins independently show `ttworker` beginning activity at approximately 02:46:11.0 and ceasing after 02:46:14.8; aggregate CPU runtime is elevated across 02:46:10.900\u201302:46:14.900 and drops sharply afterward. I use the observed process lifetime for the incident edges, with the slightly wider runtime bins as corroboration."
+    },
+    "ranked_services": null,
+    "ranked_candidates": null,
+    "trajectory": [
+      {
+        "step": 0,
+        "tool": "worker1.0",
+        "service": null
+      },
+      {
+        "step": 1,
+        "tool": "worker1.1",
+        "service": null
+      },
+      {
+        "step": 2,
+        "tool": "worker1.2",
+        "service": null
+      },
+      {
+        "step": 3,
+        "tool": "worker1.3",
+        "service": null
+      },
+      {
+        "step": 4,
+        "tool": "worker2.100",
+        "service": null
+      }
+    ],
+    "n_tool_calls": 57,
+    "n_code_snippets": 22,
+    "n_findings": 12,
+    "n_computed": 22,
+    "bytes_touched": 42141,
+    "tokens": {
+      "in": 484417,
+      "out": 18595
+    },
+    "model": "openai/gpt-6-luna",
+    "wall_s": 235.5,
+    "transcript_file": "C:\\workplace\\microservice-trace-dataset\\nier-2027\\transcripts\\order_only__spawned__t4_w16_r4__r1.json",
+    "skill_selected": null,
+    "skill_confidence": null,
+    "brief_injected": false,
+    "n_claims": null
+  }
+}

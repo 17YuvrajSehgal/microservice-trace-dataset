@@ -1,0 +1,67 @@
+{
+  "config": "order_only",
+  "klass": "spawned",
+  "run": "t4_w16_r1",
+  "run_dir": "C:\\workplace\\microservice-trace-dataset\\agentic-runs\\2_threads_vs_cores\\runs\\t4_w16_r1",
+  "rep": 2,
+  "cell": "order_only__spawned__t4_w16_r1__r2",
+  "status": "ok",
+  "returncode": 0,
+  "wall_s": 122.7,
+  "env_ablation": {
+    "ABL_REVERSE_KEYS": "1"
+  },
+  "result": {
+    "run_id": "t4_w16_r1",
+    "diagnosis": {
+      "what_is_wrong": "A brief, workload-local CPU saturation coincides with the coding task: `ttworker` consumed about 15.0 CPU-seconds in 3.9 seconds, effectively filling four CPU cores, and its CPU use fell away immediately afterward. This is strong evidence of a CPU-heavy phase that could explain the delay, though the trace alone cannot prove that the CPU burst caused the reported task slowdown.",
+      "root_cause_service": "ttworker in pid_ns 4026531836",
+      "culprit_kind": "container",
+      "fault_type": "cpu_saturation",
+      "evidence": "Workers established the full trace span (02:49:09.900\u201302:49:20.700) and compared adjacent CPU-runtime windows using `run_python` over sched_stat_runtime payloads: before 02:49:14.700, the container used 1,947.6 ms CPU in 4.8 s (0.406 cores); 02:49:14.700\u201302:49:18.600, it used 15,444.8 ms in 3.9 s (3.960 cores), of which ttworker accounted for 15,016.7 ms; afterward it used 109.7 ms in 2.1 s (0.052 cores). The per-second totals plateau near 4,000 ms CPU/s during the burst. `ctf_proclife` independently places ttworker's appearance/disappearance at 02:49:14.700 and 02:49:18.500. Aggregate wakeups, block issues, and network transmits fell during the CPU burst rather than rising together, so this is not a common subsystem workload rise or recovery. Block volume was lower during the burst; request-level disk latency could not be evaluated reliably because only 2 of 13 sampled requests could be paired. The workers also report that standard `ctf_timeline` matches failed, so these rate comparisons came from direct full-span dataframe summaries, not timeline output. The interval 02:49:10\u201302:49:13 was explicitly ruled out as a quiet baseline because it was a much busier workload phase.",
+      "confidence": 0.91,
+      "incident_window": "02:49:14.700 - 02:49:18.600",
+      "window_evidence": "The window is bounded by the adjacent CPU-payload comparisons: ttworker CPU begins in the 02:49:14.700 bucket, remains near four core-equivalents through the 02:49:18.500 bucket, and drops to no recorded ttworker CPU in the following interval after 02:49:18.600. `ctf_proclife` reports first/last appearances at 02:49:14.700 and 02:49:18.500, corroborating those edges."
+    },
+    "ranked_services": null,
+    "ranked_candidates": null,
+    "trajectory": [
+      {
+        "step": 0,
+        "tool": "worker1.0",
+        "service": null
+      },
+      {
+        "step": 1,
+        "tool": "worker1.1",
+        "service": null
+      },
+      {
+        "step": 2,
+        "tool": "worker1.2",
+        "service": null
+      },
+      {
+        "step": 3,
+        "tool": "worker1.3",
+        "service": null
+      }
+    ],
+    "n_tool_calls": 45,
+    "n_code_snippets": 15,
+    "n_findings": 10,
+    "n_computed": 15,
+    "bytes_touched": 56476,
+    "tokens": {
+      "in": 461809,
+      "out": 14757
+    },
+    "model": "openai/gpt-6-luna",
+    "wall_s": 121.7,
+    "transcript_file": "C:\\workplace\\microservice-trace-dataset\\nier-2027\\transcripts\\order_only__spawned__t4_w16_r1__r2.json",
+    "skill_selected": null,
+    "skill_confidence": null,
+    "brief_injected": false,
+    "n_claims": null
+  }
+}

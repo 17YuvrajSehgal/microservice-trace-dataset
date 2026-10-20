@@ -1,0 +1,68 @@
+{
+  "config": "s1_reversed",
+  "klass": "spawned",
+  "run": "t4_w16_r5",
+  "run_dir": "C:\\workplace\\microservice-trace-dataset\\agentic-runs\\2_threads_vs_cores\\runs\\t4_w16_r5",
+  "rep": 3,
+  "cell": "s1_reversed__spawned__t4_w16_r5__r3",
+  "status": "ok",
+  "returncode": 0,
+  "wall_s": 124.8,
+  "env_ablation": {
+    "ABL_FLAT_CAP": "2000",
+    "ABL_REVERSE_KEYS": "1"
+  },
+  "result": {
+    "run_id": "t4_w16_r5",
+    "diagnosis": {
+      "what_is_wrong": "The coding/test invocation appears to drive near-capacity CPU use: the newly appearing `ttworker` consumes roughly 3.7 CPU cores and displaces `claude`'s CPU time during the burst. This makes CPU contention a plausible explanation for the reported slowness, but the 11.3-second trace cannot establish how much longer the task took than usual or prove a latency impact.",
+      "root_cause_service": "ttworker in pid_ns 4026531836",
+      "culprit_kind": "container",
+      "fault_type": "cpu_saturation",
+      "evidence": "The trace spans 02:47:26.200\u201302:47:37.500 UTC and sees one pid namespace. Process-lifetime data places `run_all.sh` at 02:47:31.100 and `ttworker` at 02:47:31.200\u201302:47:35.300. In run_python sched_stat_runtime totals, the pre-burst 5.0 s used 1.838 CPU-s (0.368 cores average), versus 15.963 CPU-s in the 4.2 s burst (3.801 cores); `ttworker` alone used 15.411 CPU-s (96.5%). Its per-second runtime is about 3.98\u20133.99 CPU-s/s in seconds 02:47:32\u201334, while `claude` fell from 1.032 CPU-s pre-burst to 0.073 CPU-s during it. After 02:47:35.400, total CPU use falls to 0.138 CPU-s over 2 seconds. Event counts do not show a broad workload increase matching this CPU use: wakeups, disk requests and network transmits are lower during the burst. Raw block samples in the early window complete successfully with zero errors and sub-millisecond matched issue/completion times; sampled network transmits return rc=0, though neither check rules out all latency. The pre-task interval is only a short candidate comparison, not a certified healthy baseline.",
+      "confidence": 0.84,
+      "incident_window": "02:47:31.200 - 02:47:35.400",
+      "window_evidence": "The onset is pinned to the first indexed activity of `ttworker` at 02:47:31.200, alongside the `run_all.sh` task invocation. Runtime remains near 4 CPU-seconds per second through 02:47:34 and then drops in the 02:47:35 buckets; the worker's last indexed activity is 02:47:35.300 and it contributes no CPU after the 02:47:35.400 boundary. The trace's abrupt completion-phase decline is not treated as a separate recovery incident."
+    },
+    "ranked_services": null,
+    "ranked_candidates": null,
+    "trajectory": [
+      {
+        "step": 0,
+        "tool": "worker1.0",
+        "service": null
+      },
+      {
+        "step": 1,
+        "tool": "worker1.1",
+        "service": null
+      },
+      {
+        "step": 2,
+        "tool": "worker1.2",
+        "service": null
+      },
+      {
+        "step": 3,
+        "tool": "worker1.3",
+        "service": null
+      }
+    ],
+    "n_tool_calls": 65,
+    "n_code_snippets": 30,
+    "n_findings": 11,
+    "n_computed": 30,
+    "bytes_touched": 117127,
+    "tokens": {
+      "in": 544386,
+      "out": 17814
+    },
+    "model": "openai/gpt-6-luna",
+    "wall_s": 123.8,
+    "transcript_file": "C:\\workplace\\microservice-trace-dataset\\nier-2027\\transcripts\\s1_reversed__spawned__t4_w16_r5__r3.json",
+    "skill_selected": null,
+    "skill_confidence": null,
+    "brief_injected": false,
+    "n_claims": null
+  }
+}

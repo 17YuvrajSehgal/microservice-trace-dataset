@@ -1,0 +1,67 @@
+{
+  "config": "order_only",
+  "klass": "spawned",
+  "run": "t4_w16_r3",
+  "run_dir": "C:\\workplace\\microservice-trace-dataset\\agentic-runs\\2_threads_vs_cores\\runs\\t4_w16_r3",
+  "rep": 1,
+  "cell": "order_only__spawned__t4_w16_r3__r1",
+  "status": "ok",
+  "returncode": 0,
+  "wall_s": 85.0,
+  "env_ablation": {
+    "ABL_REVERSE_KEYS": "1"
+  },
+  "result": {
+    "run_id": "t4_w16_r3",
+    "diagnosis": {
+      "what_is_wrong": "A short, CPU-intensive `ttworker` workload occupied essentially all four CPUs and plausibly slowed the coding task through CPU competition. This is supported by the trace, though it does not directly measure the coding task's latency or prove the precise amount of slowdown.",
+      "root_cause_service": "ttworker in pid_ns 4026531836",
+      "culprit_kind": "container",
+      "fault_type": "cpu_saturation",
+      "evidence": "Compared the quiet pre-onset period [02:50:10.000, 02:50:14.600) with the worker interval [02:50:14.700, 02:50:18.500): `ttworker` went from 0 CPU runtime to 15,016 ms of 15,199 ms total scheduled runtime, about 3.99 CPU-seconds per wall-second. Its process lifetime begins at 02:50:14.600, and 100-ms buckets show roughly 390\u2013400 ms runtime and 134\u2013158 scheduler switches per bucket while active. Raw scheduler records show normal-priority `ttworker` threads running across CPUs 0\u20133. Disk and network event counts decreased rather than surging during the interval (block issue/complete 410/411 before versus 64/64 during; transmit 206 versus 40), making those mechanisms less likely. The post-workload scheduler/runtime collapse at 02:50:18.600 aligns with its end. The evidence supports CPU saturation as the likely cause, but no wakeup-to-run latency or application timing is available to directly quantify the coding task's delay.",
+      "confidence": 0.87,
+      "incident_window": "02:50:14.600 - 02:50:18.500",
+      "window_evidence": "The start is the `ctf_proclife` first-seen time for `ttworker` and the onset of sustained 100-ms CPU-runtime buckets. Its last-seen time is 02:50:18.500; at 02:50:18.600 host scheduled runtime and context-switch rates fall sharply, and the `ttworker` CPU runtime is zero in the 02:50:19 one-second bin. The later rebound at 02:50:20 is separate activity, not continuation of this workload."
+    },
+    "ranked_services": null,
+    "ranked_candidates": null,
+    "trajectory": [
+      {
+        "step": 0,
+        "tool": "worker1.0",
+        "service": null
+      },
+      {
+        "step": 1,
+        "tool": "worker1.1",
+        "service": null
+      },
+      {
+        "step": 2,
+        "tool": "worker1.2",
+        "service": null
+      },
+      {
+        "step": 3,
+        "tool": "worker1.3",
+        "service": null
+      }
+    ],
+    "n_tool_calls": 35,
+    "n_code_snippets": 11,
+    "n_findings": 7,
+    "n_computed": 11,
+    "bytes_touched": 59650,
+    "tokens": {
+      "in": 322178,
+      "out": 10348
+    },
+    "model": "openai/gpt-6-luna",
+    "wall_s": 84.1,
+    "transcript_file": "C:\\workplace\\microservice-trace-dataset\\nier-2027\\transcripts\\order_only__spawned__t4_w16_r3__r1.json",
+    "skill_selected": null,
+    "skill_confidence": null,
+    "brief_injected": false,
+    "n_claims": null
+  }
+}

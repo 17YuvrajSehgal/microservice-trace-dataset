@@ -1,0 +1,72 @@
+{
+  "config": "order_only",
+  "klass": "spawned",
+  "run": "t4_w16_r2",
+  "run_dir": "C:\\workplace\\microservice-trace-dataset\\agentic-runs\\2_threads_vs_cores\\runs\\t4_w16_r2",
+  "rep": 2,
+  "cell": "order_only__spawned__t4_w16_r2__r2",
+  "status": "ok",
+  "returncode": 0,
+  "wall_s": 214.9,
+  "env_ablation": {
+    "ABL_REVERSE_KEYS": "1"
+  },
+  "result": {
+    "run_id": "t4_w16_r2",
+    "diagnosis": {
+      "what_is_wrong": "A short-lived `ttworker` workload consumed nearly all four CPUs and left effectively no scheduler-idle capacity, plausibly slowing the coding task during its overlap. The trace supports CPU saturation by this workload, although it does not directly measure the coding task's latency or prove a specific runnable delay for its threads.",
+      "root_cause_service": "ttworker in pid_ns 4026531836",
+      "culprit_kind": "container",
+      "fault_type": "cpu_saturation",
+      "evidence": "Compared sched_stat_runtime in the pre-task interval 02:48:29\u201302:48:33, the active interval 02:48:33\u201302:48:37, and post interval 02:48:37\u201302:48:39. In the active interval ttworker accumulated 15.104 CPU-seconds (about 3.78 cores over four seconds), with total runtime 15.684 CPU-seconds and only about 0.10 ms recorded idle runtime across four CPUs; adjacent totals were about 0.852 and 0.107 CPU-seconds. Process-life and raw scheduler records place the worker's single burst from about 02:48:33.1 through exits at 02:48:36.9, repeatedly scheduled across CPUs at priority 20. Storage issue/completion counts and sector totals matched, network events were sparse, futex activity declined, and no reclaim/OOM-like events were found, which argues against those alternatives. The wakeup-to-switch pairing for non-worker threads in the task interval was sparse and inconclusive, so CPU contention is supported but direct task-specific starvation is not established.",
+      "confidence": 0.91,
+      "incident_window": "02:48:33 - 02:48:37",
+      "window_evidence": "The boundary is identified by the appearance of the workload around 02:48:33 (ttworker first appears at 02:48:33.1 and CPU runtime rises sharply) and its exit sequence ending at 02:48:36.9; the post interval from 02:48:37 shows no ttworker runtime and total CPU runtime falls sharply."
+    },
+    "ranked_services": null,
+    "ranked_candidates": null,
+    "trajectory": [
+      {
+        "step": 0,
+        "tool": "worker1.0",
+        "service": null
+      },
+      {
+        "step": 1,
+        "tool": "worker1.1",
+        "service": null
+      },
+      {
+        "step": 2,
+        "tool": "worker1.2",
+        "service": null
+      },
+      {
+        "step": 3,
+        "tool": "worker1.3",
+        "service": null
+      },
+      {
+        "step": 4,
+        "tool": "worker2.100",
+        "service": null
+      }
+    ],
+    "n_tool_calls": 62,
+    "n_code_snippets": 30,
+    "n_findings": 14,
+    "n_computed": 30,
+    "bytes_touched": 96909,
+    "tokens": {
+      "in": 910718,
+      "out": 19666
+    },
+    "model": "openai/gpt-6-luna",
+    "wall_s": 213.9,
+    "transcript_file": "C:\\workplace\\microservice-trace-dataset\\nier-2027\\transcripts\\order_only__spawned__t4_w16_r2__r2.json",
+    "skill_selected": null,
+    "skill_confidence": null,
+    "brief_injected": false,
+    "n_claims": null
+  }
+}
