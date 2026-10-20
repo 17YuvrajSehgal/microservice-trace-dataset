@@ -347,3 +347,13 @@ edges with no dangling endpoints, nothing outside the page, no unintended
 overlaps, and every band child actually inside its band.
 
 Original kept at `thesis/flow.drawio.bak`.
+
+**Follow-up fix: long edge labels drift.** draw.io anchors an edge label at the
+midpoint of the whole path. On the FEEDBACK edge that midpoint falls near the
+right end of its long horizontal run, so a three-line label hung off the edge of
+band 2. Same exposure on the dataset-to-measure edge. Fixed by detaching both
+into standalone text boxes with explicit `width` and `whiteSpace=wrap`, so they
+sit where they are put regardless of how the path is later re-routed. The four
+short edge labels keep riding their edges — they are narrow enough that the
+midpoint is always safe. Also shortened the band-2 title box so it cannot
+collide with the relocated label.
