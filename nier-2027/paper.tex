@@ -235,6 +235,19 @@ results, so only $2.5\%$ of all calls were affected, which is precisely why a
 defect of this kind survives casual inspection while removing the answer on the
 calls that matter.
 
+\subsection{E1c: the deployed bound on deployed data}
+
+Finally, we replayed the enumeration tool on a full production trace of the
+original kind: a $21$-container microservice deployment under a container CPU
+quota --- a \emph{resident, quiet} culprit, one JVM among five at $\sim$$1.4\%$
+of kernel events each, against an infrastructure daemon at $24\%$. The result
+is $33{,}370$ characters, $5.6\times$ the deployed bound, so no calibration is
+involved. Under the deployed prefix slice the early list delivers $30$ of
+$118$ records and the late list --- the only place a resident culprit can
+appear --- delivers \textbf{$0$ of $128$}, in an unparseable payload. Under
+row-dropping, all $246$ records arrive. At the deployed bound, on the deployed
+data, the culprit's entire evidence class vanishes before the model sees it.
+
 \section{Controlled Ablation}
 \label{sec:ablation}
 
