@@ -1,0 +1,354 @@
+%% ICSE 2027 NIER. 4 pages main text + 1 page references. Double-anonymous.
+%% Compile: pdflatex paper && bibtex paper && pdflatex paper && pdflatex paper
+%% NOTE: no TeX engine was available where this was written -- compile on Overleaf.
+\documentclass[10pt,conference]{IEEEtran}
+\IEEEoverridecommandlockouts
+
+\usepackage{cite}
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{xcolor}
+\usepackage[hidelinks]{hyperref}
+\usepackage{balance}
+
+\newcommand{\TODO}[1]{\textcolor{red}{[#1]}}
+
+\begin{document}
+
+\title{Context Is a Pipeline, Not a Window:\\
+Information Attrition in LLM Agent Harnesses}
+
+\author{\IEEEauthorblockN{Anonymous Author(s)}
+\IEEEauthorblockA{Submitted for double-anonymous review}}
+
+\maketitle
+
+\begin{abstract}
+Work on long-context LLM agents treats context as a \emph{capacity} problem:
+how many tokens fit, and what the model attends to once they are there. We
+report a measurement that points elsewhere. Instrumenting a tool-using
+root-cause-analysis agent against verifiable ground truth, we found its context
+window used to $6.6\%$ of capacity while a third of all tool results were being
+destroyed before the model ever saw them. The destruction was not random. The
+harness bounded tool results by slicing serialized JSON, and because key order
+is preserved this \emph{deletes} late keys rather than sampling them: one field
+reached the model in $4.7\%$ of calls while its sibling, in the same payloads,
+reached it $99.3\%$ of the time. Which field carries the culprit depends on
+whether the culprit process started during the trace, so a one-line
+serialization choice partitioned a diagnosis benchmark into a solvable and an
+unsolvable half along an axis with no diagnostic meaning. We argue that an
+agent's context is the output of a \emph{pipeline} of lossy transforms, that
+each stage has a characteristic failure mode, and that none of them is reported
+in agentic software engineering evaluations today. We contribute a model of
+that pipeline, an \emph{attrition profile} that measures it, replay evidence
+over $864$ real tool results, and a controlled ablation that reintroduces each
+defect in isolation.
+\end{abstract}
+
+\begin{IEEEkeywords}
+LLM agents, context engineering, agent harnesses, empirical evaluation,
+root cause analysis
+\end{IEEEkeywords}
+
+\section{Introduction}
+\label{sec:intro}
+
+An LLM agent that uses tools does not read its context window; it reads
+whatever its harness decided to put there. Between a tool producing a result
+and a model conditioning on it sit several transforms that an engineer wrote:
+the result is serialized, bounded to fit a budget, retained or trimmed across
+turns, handed from one agent phase to the next, and discarded at the end of the
+run. Each is a design decision. Each is lossy.
+
+The research conversation about agent context is largely about the first
+property of a window, its size, and about attention within it, as in work on
+positional degradation in long contexts~\cite{liu2024lost}. Harness papers
+describe their scaffolding as an engineering
+detail~\cite{yang2024sweagent,jimenez2024swebench}. Failure taxonomies derived
+from agent trajectories attribute errors to agents and
+steps~\cite{cemri2025mast}. What is missing is a measurement of the plumbing
+between them: how much of what an agent produced actually reaches the decision
+it makes.
+
+This paper reports what happened when we measured it. In a kernel-trace
+root-cause-analysis agent evaluated against labelled fault injections, the
+context window was used to a median of $6.6\%$ of capacity. In the same runs,
+$3{,}827$ of $11{,}189$ tool results were truncated, and \emph{every truncated
+one was unparseable JSON}. Because the serializer preserves insertion order, a
+prefix slice does not sample a result, it removes late keys entirely. One list
+of containers reached the model in $4.7\%$ of $742$ calls; the sibling list in
+the same payloads reached it in $99.3\%$.
+
+The consequence was not noise. A process injected as a fault \emph{spawns}
+during a trace and therefore appears in the early list. A container that was
+throttled or network-degraded was \emph{already running} and appears only in
+the late one. Localisation accuracy split exactly along that line, on both
+subject applications: spawn-type faults scored $40$--$55$ of $60$,
+already-running faults $0$--$24$ of $60$. The original reading of those numbers
+was a claim about what kernel traces can observe. It was a claim about a
+serializer.
+
+We make four contributions.
+\begin{enumerate}
+\item A model of agent context as a five-stage \emph{pipeline}, with the
+characteristic failure mode of each stage (Sec.~\ref{sec:pipeline}).
+\item The \emph{attrition profile}: a per-stage instrument, and \emph{evidence
+yield}, the fraction of what an agent produced that reaches its decision
+(Sec.~\ref{sec:pipeline}).
+\item Evidence that the defect class is real and consequential: a deterministic
+mechanism result, and a replay of $864$ recorded tool results from real runs
+(Sec.~\ref{sec:measured}).
+\item A controlled ablation that reintroduces each defect alone, with
+predictions registered before the runs (Sec.~\ref{sec:ablation}).
+\end{enumerate}
+
+We also argue the negative case, why this goes unnoticed. Attrition costs
+correctness and money but almost no wall-clock time, because an agent spends
+roughly $84\%$ of its wall clock waiting on the model (Sec.~\ref{sec:unnoticed}).
+It is invisible to the metric practitioners watch.
+
+\section{Context as a Pipeline}
+\label{sec:pipeline}
+
+We model the path from a tool's output to a model's decision as five
+boundaries. Each is a transform the harness author must implement, and each
+admits a characteristic way of losing information.
+
+\begin{table}[t]
+\caption{The context pipeline. Every stage is a lossy transform written by an
+engineer; none is reported in agent evaluations today.}
+\label{tab:pipeline}
+\centering\small
+\begin{tabular}{@{}llp{3.6cm}@{}}
+\toprule
+& \textbf{Boundary} & \textbf{Characteristic failure} \\
+\midrule
+S1 & produce $\rightarrow$ deliver & format-destroying truncation; positional deletion of late fields \\
+S2 & deliver $\rightarrow$ act & a step budget that is a wall, not a stopping point \\
+S3 & act $\rightarrow$ retain & within-phase trimming; re-send cost grows with the square of turns \\
+S4 & retain $\rightarrow$ transfer & voluntary hand-off; silence is indistinguishable from absence \\
+S5 & transfer $\rightarrow$ persist & nothing survives the run \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Table~\ref{tab:pipeline} names them. Two points matter for what follows.
+
+\textbf{The stages are not optional.} Any tool-using agent must serialize a
+result, bound it against some budget, decide what to keep across turns, and
+move conclusions between phases. A harness that appears to skip a stage has
+chosen a default for it. This is why we treat these failures as a defect
+\emph{class} rather than as one system's bug.
+
+\textbf{Loss at a boundary is structured, not stochastic.} A truncation rule
+interacts with the shape of the data it truncates. If results are serialized
+with a stable key order and bounded by a prefix, the probability that a field
+survives is a function of its \emph{position}, and nothing in an agent's design
+makes late fields less important than early ones.
+
+\subsection{The attrition profile}
+
+We propose instrumenting all five boundaries and reporting, for every piece of
+evidence an agent produced, whether it survived to the decision. The headline
+summary is \emph{evidence yield}: the ratio of evidence reaching the decision
+to evidence produced. Per stage we record, for S1 the share of results
+truncated and the per-field delivery rate, for S2 the share of workers hitting
+the step wall, for S3 the share of turns where trimming fired, and for S4 the
+share of produced evidence never written into the channel that crosses the
+phase boundary.
+
+The S4 quantity is the one no benchmark reports, because benchmarks score what
+an agent \emph{said}. In the harness studied here, a worker's conclusions reach
+the final answer only through an explicit call; a worker that investigates and
+records nothing is indistinguishable from one that checked and found nothing.
+Across two campaigns, $234$ of $554$ workers exhausted their step budget with
+tool calls still pending, and $98$ of those had recorded nothing at all. In a
+single run of the ablation harness below, the agent computed $18$ results and
+recorded $9$ findings.
+
+\section{The Defect Class, Measured}
+\label{sec:measured}
+
+\subsection{Field evidence}
+
+The measurements quoted in Sec.~\ref{sec:intro} come from a deployed harness
+over $720$ evaluation runs: $3{,}827/11{,}189$ results truncated, all into
+invalid JSON; per-field delivery of $4.7\%$ against $99.3\%$ within the same
+payloads; localisation accuracy split along the spawned/resident line; and
+median context utilisation of $6.6\%$, with the largest single prompt in $120$
+runs reaching $23$k tokens against a $400$k window. Evidence was being
+destroyed to save room that was $94\%$ empty.
+
+\subsection{E1: the delivery cliff}
+
+The mechanism is deterministic and can be shown without a model. We take the
+shape of a real tool result, a list of processes that appeared during the trace
+followed by a list of those present throughout, and vary only how many
+short-lived processes the trace contains, which is a property of the workload
+and not of the question being asked.
+
+Under a prefix-slice bound the late list is delivered completely until the
+result crosses the budget and then collapses: the field goes from fully present
+to entirely absent, and the payload becomes unparseable. Under a bound that
+drops whole rows and labels what it dropped, every field survives at every
+size. The cliff explains the field number mechanically: busy hosts carry well
+over the threshold number of short-lived processes, so the late field was
+almost always past the cut.
+
+\subsection{E1b: replaying real tool results}
+
+Transcripts in this harness record, for each tool call, both the full result
+object and the exact string sent to the model, so the produced-versus-delivered
+gap can be measured on real data with no re-execution. We replayed $864$
+recorded results from $31$ runs through both regimes.
+
+Of results exceeding the bound, $100\%$ became unparseable under the prefix
+slice and $0\%$ under row-dropping. The tools that overflow are the ones that
+\emph{enumerate}: the process-enumeration tool was unparseable in $50\%$ of its
+calls and the agent-written-analysis tool in $43\%$, against $1\%$ for tools
+returning small scalar summaries. The corpus as a whole is dominated by small
+results, so only $2.5\%$ of all calls were affected, which is precisely why a
+defect of this kind survives casual inspection while removing the answer on the
+calls that matter.
+
+\section{Controlled Ablation}
+\label{sec:ablation}
+
+Field evidence of this kind is correlational, and the repair in the deployed
+system shipped alongside a capability change, so it cannot be attributed. We
+therefore reintroduce each defect in isolation, holding the agent, task, data
+and model fixed.
+
+\subsection{Design}
+
+Four boundaries are made switchable: the S1 bound reverts to a flat prefix
+slice; the S2 step budget reverts to the value at which half of all workers
+previously stopped; the S3 retention budget reverts to its earlier value; and
+the S4 automatic transfer channel is removed, leaving only the voluntary call.
+S5 is held constant, because carrying memory between runs would make later runs
+easier than earlier ones and destroy the independence the scores assume.
+
+Subjects are traced executions of a coding agent under cgroup resource limits,
+with exact ground truth from the kernel's own accounting. Two fault classes
+differ in the property the mechanism predicts matters: a \textbf{spawned}
+culprit launched during the trace, and a \textbf{resident} culprit already
+running when tracing began. Healthy executions act as negative controls, and
+every cell receives an identical symptom-level operator report, so a hint
+cannot leak the answer differentially.
+
+\textbf{Pre-registration.} Predictions were fixed before any cell ran. H1:
+context utilisation stays low in every configuration, so capacity is not the
+binding constraint. H2: the S1 defect costs little on spawned culprits and a
+large amount on resident ones. H3: removing S4 shifts failures toward confident
+false negatives rather than wrong answers. H4: evidence yield predicts accuracy
+better than context utilisation does.
+
+Two deviations were forced by smoke tests and logged before the campaign. The
+subject traces are smaller than those that produced the field evidence, so at
+the original bound the defect never fires; the bound was calibrated to the
+point where the same positional effect appears, with the early field fully
+delivered and the late field reduced to a quarter. And the resident fault is a
+cgroup limit rather than a container fault, so the trace carries a single
+namespace and the fault manifests as absence; accordingly the dependent
+variable is the established \emph{localisation} axis, whether the correct
+culprit process is named, scored independently of the fault label as that
+harness already treats those axes.
+
+\subsection{Results}
+
+\TODO{E2 results table and interaction to be inserted when the 120-cell
+campaign completes.}
+
+\section{Why This Goes Unnoticed}
+\label{sec:unnoticed}
+
+Three properties conspire to hide pipeline attrition.
+
+\textbf{It does not cost time.} Kernel traces of production coding agents show
+that roughly $84\%$ of wall-clock time is spent with a model request
+outstanding, against on the order of $5$ CPU-seconds of local computation.
+Context attrition costs correctness and tokens, and almost nothing on the
+clock, so it is invisible to the metric most teams watch.
+
+\textbf{Capacity looks fine.} A harness operating at $6.6\%$ of its window
+gives no signal that anything is being discarded. The budget that binds is one
+the engineer chose, far below the one the model imposes.
+
+\textbf{Structure substitutes for volume, which masks the symptom.} In the same
+system, supplying a structured prior procedure reached the same verdict as free
+exploration using $35\%$ of the input tokens, and a single well-constructed
+deterministic brief matched a full tool-using agent at $27\%$. Teams
+experiencing context pressure reach for structure and see the symptom improve,
+which is the right remedy for the wrong reason: the gain comes from needing
+less delivered evidence, not from delivering it better.
+
+\section{Threats to Validity}
+
+\textbf{One harness, one domain.} All measurements come from a single agent on
+kernel-trace diagnosis. We claim the defect class generalises because the
+pipeline is unavoidable, not because we surveyed other systems; a survey of
+open-source harnesses' bounding code is the obvious next step and is named
+below.
+
+\textbf{We authored the defect.} That is the reason the central experiment is
+an ablation with registered predictions rather than a narrative about a repair.
+
+\textbf{Calibrated bound.} The ablation's bound is scaled to the subject traces
+rather than fixed at the deployed value; what is held constant is the mechanism
+and the early-to-late delivery ratio, not the byte count. Replicating at the
+deployed bound on the larger traces is in progress.
+
+\textbf{Scale.} Cells use five distinct executions with repeats rather than
+large independent samples; we report ranges, and H2 asks for a ratio between
+conditions rather than a marginal difference.
+
+\section{Future Plans}
+
+\textbf{Replication at deployed scale.} Repeat the ablation on the
+multi-service traces that produced the field evidence, at the deployed bound,
+where results routinely exceed it. This converts a calibrated demonstration
+into a direct replication.
+
+\textbf{A survey of harness bounding code.} Read how widely used open-source
+agent frameworks bound tool results, and classify each as positional (prefix or
+suffix slicing) or structural (row- or field-aware). The hypothesis that
+follows from Sec.~\ref{sec:pipeline} is that positional bounding is common
+because it is the one-line option, and that its cost is invisible to those
+frameworks' own test suites.
+
+\textbf{Attrition profiling as a reporting standard.} Package the instrument so
+a harness can emit an attrition profile alongside its accuracy number, and
+propose it as an artifact requirement for agentic SE evaluations. The claim to
+test is that two harnesses reporting the same accuracy on the same benchmark
+can differ substantially in evidence yield, and that the difference predicts
+how they transfer to new task distributions.
+
+\textbf{Conformance tests for agent memory.} The failures in
+Table~\ref{tab:pipeline} are mechanical and therefore testable without a model:
+a result that does not survive its own bound, a step budget with a spike at its
+limit, a phase boundary that drops computed evidence. We plan a small
+conformance suite a harness can run in continuous integration.
+
+\textbf{Designing the hand-off.} S4 is the stage with no good default. Making
+transfer automatic removed one failure mode in this system, but raises the
+question of what belongs in a phase hand-off and what is noise. We intend to
+study that trade-off directly, with evidence yield and token cost as the two
+axes.
+
+\section{Conclusion}
+
+An agent's context is not a window it is given; it is the output of a pipeline
+its harness built. We measured that pipeline in a working system and found a
+window used to $6.6\%$ of capacity, a third of tool results destroyed in
+transit, and a benchmark partitioned into solvable and unsolvable halves by the
+ordering of keys in a serialized object. The engineering decisions that did
+this are the kind every agent harness must make, and no current evaluation
+reports them. We think they should be measured, and we have given an instrument
+for doing it.
+
+\balance
+\bibliographystyle{IEEEtran}
+\bibliography{refs}
+
+\end{document}
