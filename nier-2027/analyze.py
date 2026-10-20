@@ -64,8 +64,14 @@ def score(rec: dict) -> dict:
         "abstained": not committed,
         "confidence": dx.get("confidence"),
     }
-    if klass == "healthy":          # correct = did NOT invent a culprit
-        out["correct"] = not committed
+    if klass == "healthy":
+        # The is-anything-wrong claim is the LABEL, not root_cause_service: runs
+        # that answer fault_type=normal while describing the dominant process in
+        # rcs are correct healthy verdicts, not false alarms. A false alarm is a
+        # non-normal label (audited 20 Oct: 3 of 4 "committed" healthy cells had
+        # label=normal and prose saying nothing is wrong).
+        out["false_alarm"] = out["fault_label"] not in ("normal", "", "unknown")
+        out["correct"] = not out["false_alarm"]
     else:
         out["correct"] = out["named_culprit"]
     return out

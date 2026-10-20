@@ -1,0 +1,121 @@
+abstained,cell,committed,confidence,config,correct,fault_label,klass,matched,max_thread_chars,mentioned_not_committed,n_code_snippets,n_computed,n_findings,n_findings_run,n_out_of_steps,n_sent_unparseable,n_tool_calls,n_truncated,n_workers,named_culprit,rep,root_cause_service,run,status,tokens_in,wall_s
+False,all_defect__healthy__t3_implement_nocap_r1__r1,True,0.79,all_defect,False,other,healthy,,29407,False,23,23,9,9,3,25,56,25,4,False,1,python3 in pid_ns 4026531836,t3_implement_nocap_r1,ok,351341,124.1
+True,all_defect__healthy__t3_implement_nocap_r2__r1,False,0.72,all_defect,True,normal,healthy,,33295,False,29,29,8,8,3,27,79,27,5,False,1,unknown,t3_implement_nocap_r2,ok,433377,197.1
+True,all_defect__healthy__t3_implement_nocap_r3__r1,False,0.73,all_defect,True,normal,healthy,,29742,False,34,34,9,9,3,26,71,26,5,False,1,unknown,t3_implement_nocap_r3,ok,421385,156.6
+False,all_defect__healthy__t3_implement_nocap_r4__r1,True,0.72,all_defect,False,normal,healthy,,30206,False,23,23,8,8,1,20,50,20,4,False,1,python3 in pid_ns 4026531836,t3_implement_nocap_r4,ok,337585,115.6
+True,all_defect__healthy__t3_implement_nocap_r5__r1,False,0.78,all_defect,True,normal,healthy,,31358,False,22,22,8,8,1,17,60,17,4,False,1,unknown,t3_implement_nocap_r5,ok,359163,105.4
+False,all_defect__resident__t3_implement_cap25_r1__r1,True,0.79,all_defect,False,normal,resident,,27102,False,29,29,10,10,2,26,65,26,5,False,1,host,t3_implement_cap25_r1,ok,460581,152.6
+True,all_defect__resident__t3_implement_cap25_r1__r2,False,0.78,all_defect,False,normal,resident,,28801,True,37,36,10,10,4,22,68,22,5,False,2,unknown,t3_implement_cap25_r1,ok,460920,177.9
+True,all_defect__resident__t3_implement_cap25_r1__r3,False,0.58,all_defect,False,other,resident,,31786,False,25,25,8,8,3,25,70,25,5,False,3,unknown,t3_implement_cap25_r1,ok,347712,211.6
+False,all_defect__resident__t3_implement_cap25_r2__r1,True,0.65,all_defect,False,other,resident,,30583,False,30,30,7,7,3,26,74,26,5,False,1,workload container in pid_ns 4026531836,t3_implement_cap25_r2,ok,406235,146.4
+True,all_defect__resident__t3_implement_cap25_r2__r2,False,0.72,all_defect,False,normal,resident,,31012,False,32,30,10,10,4,26,72,26,5,False,2,unknown,t3_implement_cap25_r2,ok,432693,143.8
+True,all_defect__resident__t3_implement_cap25_r2__r3,False,0.77,all_defect,False,normal,resident,,30682,True,28,28,9,9,3,29,71,29,5,False,3,unknown,t3_implement_cap25_r2,ok,433656,167.2
+True,all_defect__resident__t3_implement_cap25_r3__r1,False,0.79,all_defect,False,normal,resident,,29204,True,34,34,7,7,3,23,75,23,5,False,1,unknown,t3_implement_cap25_r3,ok,408742,211.3
+True,all_defect__resident__t3_implement_cap25_r3__r2,False,0.77,all_defect,False,normal,resident,,32402,True,31,31,7,7,2,26,69,26,5,False,2,unknown,t3_implement_cap25_r3,ok,378146,163.9
+True,all_defect__resident__t3_implement_cap25_r3__r3,False,0.68,all_defect,False,normal,resident,,31517,True,30,30,9,9,3,26,71,26,5,False,3,unknown,t3_implement_cap25_r3,ok,420648,159.8
+True,all_defect__resident__t3_implement_cap25_r4__r1,False,0.62,all_defect,False,normal,resident,,27722,True,22,22,8,8,1,18,46,18,4,False,1,unknown,t3_implement_cap25_r4,ok,340637,88.8
+False,all_defect__resident__t3_implement_cap25_r4__r2,True,0.64,all_defect,True,other,resident,"claude,python3",27653,False,18,18,6,6,2,15,45,15,4,True,2,container in pid_ns 4026531836 (observed workload includes c,t3_implement_cap25_r4,ok,248866,145.1
+True,all_defect__resident__t3_implement_cap25_r4__r3,False,0.78,all_defect,False,normal,resident,,40198,True,36,36,10,10,3,34,74,34,5,False,3,unknown,t3_implement_cap25_r4,ok,524691,175.2
+True,all_defect__resident__t3_implement_cap25_r5__r1,False,0.72,all_defect,False,normal,resident,,26300,True,25,25,8,8,2,19,62,19,5,False,1,unknown,t3_implement_cap25_r5,ok,358423,137.4
+True,all_defect__resident__t3_implement_cap25_r5__r2,False,0.52,all_defect,False,other,resident,,34892,True,31,31,8,8,3,28,83,28,5,False,2,unknown,t3_implement_cap25_r5,ok,437656,172.3
+True,all_defect__resident__t3_implement_cap25_r5__r3,False,0.78,all_defect,False,normal,resident,,31852,True,33,33,8,8,2,27,66,27,5,False,3,unknown,t3_implement_cap25_r5,ok,431032,148.7
+False,repair__healthy__t3_implement_nocap_r1__r1,True,0.78,repair,False,normal,healthy,,61182,False,18,18,14,14,1,0,51,0,4,False,1,python3 in pid_ns 4026531836,t3_implement_nocap_r1,ok,591774,121.4
+True,repair__healthy__t3_implement_nocap_r2__r1,False,0.76,repair,True,normal,healthy,,58063,False,18,18,9,9,0,0,44,0,4,False,1,unknown,t3_implement_nocap_r2,ok,417102,97.3
+False,repair__healthy__t3_implement_nocap_r3__r1,True,0.83,repair,False,normal,healthy,,91216,False,24,24,15,15,1,0,65,0,5,False,1,host,t3_implement_nocap_r3,ok,756163,265.2
+True,repair__healthy__t3_implement_nocap_r4__r1,False,0.76,repair,True,normal,healthy,,82520,False,27,27,11,11,1,0,78,0,5,False,1,unknown,t3_implement_nocap_r4,ok,797822,427.4
+True,repair__healthy__t3_implement_nocap_r5__r1,False,0.89,repair,True,normal,healthy,,72758,False,25,25,15,15,0,0,66,0,5,False,1,unknown,t3_implement_nocap_r5,ok,804232,251.3
+True,repair__resident__t3_implement_cap25_r1__r1,False,0.82,repair,False,normal,resident,,66699,True,18,18,9,9,0,0,54,0,4,False,1,unknown,t3_implement_cap25_r1,ok,582854,119.9
+False,repair__resident__t3_implement_cap25_r1__r2,True,0.76,repair,True,cpu_throttling,resident,python3,111855,False,22,22,9,9,1,0,65,0,4,True,2,python3 in pid_ns 4026531836,t3_implement_cap25_r1,ok,690581,163.2
+True,repair__resident__t3_implement_cap25_r1__r3,False,0.84,repair,False,normal,resident,,83585,True,22,22,11,11,0,0,65,0,5,False,3,unknown,t3_implement_cap25_r1,ok,778060,186.8
+True,repair__resident__t3_implement_cap25_r2__r1,False,0.7,repair,False,normal,resident,,47608,True,15,15,11,11,0,0,40,0,4,False,1,unknown,t3_implement_cap25_r2,ok,438825,108.5
+True,repair__resident__t3_implement_cap25_r2__r2,False,0.76,repair,False,normal,resident,,71313,True,17,17,12,12,1,0,66,0,4,False,2,unknown,t3_implement_cap25_r2,ok,622772,120.7
+True,repair__resident__t3_implement_cap25_r2__r3,False,0.78,repair,False,normal,resident,,52356,True,23,23,12,12,1,0,52,0,5,False,3,unknown,t3_implement_cap25_r2,ok,543857,210.0
+True,repair__resident__t3_implement_cap25_r3__r1,False,0.78,repair,False,normal,resident,,88508,True,24,24,14,14,1,0,59,0,5,False,1,unknown,t3_implement_cap25_r3,ok,875016,230.3
+True,repair__resident__t3_implement_cap25_r3__r2,False,0.78,repair,False,normal,resident,,59851,True,24,24,12,12,1,0,70,0,5,False,2,unknown,t3_implement_cap25_r3,ok,792257,244.2
+False,repair__resident__t3_implement_cap25_r3__r3,True,0.7,repair,True,normal,resident,claude,89496,False,21,21,9,9,1,0,49,0,4,True,3,claude in pid_ns 4026531836,t3_implement_cap25_r3,ok,567159,156.5
+True,repair__resident__t3_implement_cap25_r4__r1,False,0.84,repair,False,normal,resident,,93940,True,26,26,13,13,1,0,65,0,5,False,1,unknown,t3_implement_cap25_r4,ok,911201,205.5
+True,repair__resident__t3_implement_cap25_r4__r2,False,0.74,repair,False,normal,resident,,72448,True,26,26,13,13,1,0,72,0,5,False,2,unknown (no culprit established),t3_implement_cap25_r4,ok,875914,249.4
+True,repair__resident__t3_implement_cap25_r4__r3,False,0.76,repair,False,normal,resident,,92697,False,16,16,10,10,1,0,63,0,4,False,3,unknown,t3_implement_cap25_r4,ok,646627,148.0
+True,repair__resident__t3_implement_cap25_r5__r1,False,0.82,repair,False,normal,resident,,68122,True,21,21,13,13,0,0,65,0,5,False,1,unknown,t3_implement_cap25_r5,ok,719704,178.9
+True,repair__resident__t3_implement_cap25_r5__r2,False,0.82,repair,False,normal,resident,,57075,True,18,18,10,10,0,0,48,0,4,False,2,unknown,t3_implement_cap25_r5,ok,515802,92.5
+True,repair__resident__t3_implement_cap25_r5__r3,False,0.78,repair,False,normal,resident,,51861,True,28,28,14,14,0,0,60,0,5,False,3,unknown,t3_implement_cap25_r5,ok,723183,210.0
+False,repair__spawned__t4_w16_r1__r1,True,0.98,repair,True,cpu_saturation,spawned,ttworker,56218,False,20,20,8,8,0,0,65,0,4,True,1,ttworker in pid_ns 4026531836,t4_w16_r1,ok,469024,193.6
+False,repair__spawned__t4_w16_r1__r2,True,0.94,repair,True,cpu_saturation,spawned,ttworker,53038,False,14,14,9,9,0,0,51,0,4,True,2,ttworker in pid_ns 4026531836,t4_w16_r1,ok,436014,130.7
+False,repair__spawned__t4_w16_r1__r3,True,0.82,repair,True,cpu_saturation,spawned,ttworker,63306,False,18,18,11,11,1,0,53,0,4,True,3,ttworker in pid_ns 4026531836,t4_w16_r1,ok,567031,145.9
+False,repair__spawned__t4_w16_r2__r1,True,0.89,repair,True,cpu_saturation,spawned,ttworker,74593,False,21,21,10,10,0,0,59,0,5,True,1,ttworker in pid_ns 4026531836,t4_w16_r2,ok,745127,236.8
+False,repair__spawned__t4_w16_r2__r2,True,0.97,repair,True,cpu_saturation,spawned,ttworker,46793,False,12,12,8,8,0,0,42,0,4,True,2,ttworker in pid_ns 4026531836,t4_w16_r2,ok,315058,287.1
+False,repair__spawned__t4_w16_r2__r3,True,0.93,repair,True,cpu_saturation,spawned,ttworker,75154,False,27,27,16,16,1,0,70,0,5,True,3,ttworker in pid_ns 4026531836,t4_w16_r2,ok,953590,339.2
+False,repair__spawned__t4_w16_r3__r1,True,0.91,repair,True,cpu_saturation,spawned,ttworker,75576,False,21,21,13,13,1,0,64,0,5,True,1,ttworker in pid_ns 4026531836,t4_w16_r3,ok,774975,206.1
+False,repair__spawned__t4_w16_r3__r2,True,0.97,repair,True,cpu_saturation,spawned,ttworker,71359,False,28,28,14,14,0,0,62,0,5,True,2,ttworker in pid_ns 4026531836,t4_w16_r3,ok,817483,258.4
+False,repair__spawned__t4_w16_r3__r3,True,0.9,repair,True,cpu_saturation,spawned,ttworker,61309,False,12,12,9,9,0,0,48,0,4,True,3,ttworker in pid_ns 4026531836,t4_w16_r3,ok,418056,94.0
+False,repair__spawned__t4_w16_r4__r1,True,0.94,repair,True,cpu_saturation,spawned,ttworker,85728,False,18,18,10,10,1,0,60,0,4,True,1,ttworker in pid_ns 4026531836,t4_w16_r4,ok,590844,116.3
+False,repair__spawned__t4_w16_r4__r2,True,0.91,repair,True,cpu_saturation,spawned,ttworker,67758,False,22,22,9,9,1,0,50,0,4,True,2,ttworker in pid_ns 4026531836,t4_w16_r4,ok,549712,120.0
+False,repair__spawned__t4_w16_r4__r3,True,0.91,repair,True,cpu_saturation,spawned,ttworker,65639,False,16,16,11,11,0,0,44,0,4,True,3,ttworker in pid_ns 4026531836,t4_w16_r4,ok,491354,141.6
+False,repair__spawned__t4_w16_r5__r1,True,0.92,repair,True,cpu_saturation,spawned,ttworker,79022,False,18,18,11,11,0,0,50,0,4,True,1,ttworker in pid_ns 4026531836,t4_w16_r5,ok,570189,156.7
+True,repair__spawned__t4_w16_r5__r2,False,0.8,repair,False,normal,spawned,,45830,True,14,14,11,11,0,0,47,0,4,False,2,unknown,t4_w16_r5,ok,455522,167.9
+False,repair__spawned__t4_w16_r5__r3,True,0.92,repair,True,cpu_saturation,spawned,ttworker,66722,False,22,22,13,13,0,0,61,0,5,True,3,ttworker in pid_ns 4026531836,t4_w16_r5,ok,699533,197.1
+True,s1_deliver__resident__t3_implement_cap25_r1__r1,False,0.75,s1_deliver,False,normal,resident,,30932,True,28,28,12,12,0,24,67,24,5,False,1,unknown,t3_implement_cap25_r1,ok,530637,147.2
+True,s1_deliver__resident__t3_implement_cap25_r1__r2,False,0.85,s1_deliver,False,normal,resident,,38189,True,38,38,11,11,2,36,71,36,5,False,2,unknown,t3_implement_cap25_r1,ok,617600,166.4
+True,s1_deliver__resident__t3_implement_cap25_r1__r3,False,0.77,s1_deliver,False,normal,resident,,34230,True,27,27,9,9,1,22,54,22,4,False,3,unknown,t3_implement_cap25_r1,ok,429169,127.3
+True,s1_deliver__resident__t3_implement_cap25_r2__r1,False,0.78,s1_deliver,False,normal,resident,,35139,False,35,35,12,12,1,27,88,27,5,False,1,unknown,t3_implement_cap25_r2,ok,664894,211.4
+False,s1_deliver__resident__t3_implement_cap25_r2__r2,True,0.66,s1_deliver,True,other,resident,claude,40150,False,28,28,10,10,1,26,54,26,4,True,2,claude in pid_ns 4026531836,t3_implement_cap25_r2,ok,500749,103.4
+True,s1_deliver__resident__t3_implement_cap25_r2__r3,False,0.73,s1_deliver,False,normal,resident,,35151,True,37,37,11,11,1,28,73,28,5,False,3,unknown (no faulting process or container established),t3_implement_cap25_r2,ok,633373,223.4
+True,s1_deliver__resident__t3_implement_cap25_r3__r1,False,0.78,s1_deliver,False,normal,resident,,32728,True,30,30,8,8,0,21,68,21,4,False,1,unknown,t3_implement_cap25_r3,ok,471134,104.0
+True,s1_deliver__resident__t3_implement_cap25_r3__r2,False,0.82,s1_deliver,False,normal,resident,,40991,True,41,41,9,9,2,32,86,32,5,False,2,unknown,t3_implement_cap25_r3,ok,672694,197.5
+True,s1_deliver__resident__t3_implement_cap25_r3__r3,False,0.73,s1_deliver,False,normal,resident,,39141,True,30,29,8,8,2,26,76,26,4,False,3,unknown (no culprit identified),t3_implement_cap25_r3,ok,553446,117.0
+True,s1_deliver__resident__t3_implement_cap25_r4__r1,False,0.79,s1_deliver,False,normal,resident,,36321,True,43,43,12,12,1,28,84,28,5,False,1,unknown,t3_implement_cap25_r4,ok,703800,239.3
+True,s1_deliver__resident__t3_implement_cap25_r4__r2,False,0.73,s1_deliver,False,normal,resident,,41924,True,35,35,13,13,1,30,70,30,5,False,2,unknown,t3_implement_cap25_r4,ok,598627,176.3
+True,s1_deliver__resident__t3_implement_cap25_r4__r3,False,0.78,s1_deliver,False,normal,resident,,36234,True,27,27,9,9,1,21,58,21,4,False,3,unknown,t3_implement_cap25_r4,ok,475817,130.8
+True,s1_deliver__resident__t3_implement_cap25_r5__r1,False,0.79,s1_deliver,False,normal,resident,,38089,True,32,32,10,10,1,21,71,21,4,False,1,unknown,t3_implement_cap25_r5,ok,515560,135.7
+False,s1_deliver__resident__t3_implement_cap25_r5__r2,True,0.76,s1_deliver,False,normal,resident,,45230,False,36,36,10,10,1,29,80,29,5,False,2,host,t3_implement_cap25_r5,ok,600727,265.3
+True,s1_deliver__resident__t3_implement_cap25_r5__r3,False,0.78,s1_deliver,False,normal,resident,,43383,True,35,35,10,10,2,30,91,30,5,False,3,unknown,t3_implement_cap25_r5,ok,652230,413.5
+False,s1_deliver__spawned__t4_w16_r1__r1,True,0.83,s1_deliver,True,cpu_saturation,spawned,ttworker,40377,False,53,53,12,12,2,37,88,37,5,True,1,ttworker in pid_ns 4026531836,t4_w16_r1,ok,800015,277.9
+False,s1_deliver__spawned__t4_w16_r1__r2,True,0.88,s1_deliver,True,cpu_saturation,spawned,ttworker,37190,False,32,32,6,6,1,24,55,24,4,True,2,ttworker in pid_ns 4026531836,t4_w16_r1,ok,462323,131.1
+False,s1_deliver__spawned__t4_w16_r1__r3,True,0.84,s1_deliver,True,cpu_saturation,spawned,ttworker,38611,False,37,36,13,13,0,30,78,30,5,True,3,ttworker in pid_ns 4026531836,t4_w16_r1,ok,706145,220.7
+False,s1_deliver__spawned__t4_w16_r2__r1,True,0.82,s1_deliver,True,cpu_saturation,spawned,ttworker,29330,False,32,32,10,10,0,21,65,21,5,True,1,ttworker in pid_ns 4026531836,t4_w16_r2,ok,530252,244.1
+False,s1_deliver__spawned__t4_w16_r2__r2,True,0.84,s1_deliver,True,cpu_saturation,spawned,ttworker,34211,False,43,43,11,11,2,28,75,28,5,True,2,ttworker in pid_ns 4026531836,t4_w16_r2,ok,650099,228.2
+False,s1_deliver__spawned__t4_w16_r2__r3,True,0.89,s1_deliver,True,cpu_saturation,spawned,ttworker,29742,False,23,23,10,10,1,20,53,20,4,True,3,ttworker in pid_ns 4026531836,t4_w16_r2,ok,413305,155.2
+False,s1_deliver__spawned__t4_w16_r3__r1,True,0.96,s1_deliver,True,cpu_saturation,spawned,ttworker,38182,False,29,29,8,8,1,19,59,19,4,True,1,ttworker in pid_ns 4026531836,t4_w16_r3,ok,463791,122.3
+False,s1_deliver__spawned__t4_w16_r3__r2,True,0.88,s1_deliver,True,cpu_saturation,spawned,ttworker,30846,False,37,37,9,9,0,28,72,28,5,True,2,ttworker in pid_ns 4026531836,t4_w16_r3,ok,598094,229.3
+False,s1_deliver__spawned__t4_w16_r3__r3,True,0.87,s1_deliver,True,cpu_saturation,spawned,ttworker,41057,False,31,31,15,15,1,28,79,28,5,True,3,ttworker in pid_ns 4026531836,t4_w16_r3,ok,616566,239.6
+False,s1_deliver__spawned__t4_w16_r4__r1,True,0.8,s1_deliver,True,cpu_saturation,spawned,ttworker,31261,False,29,29,11,11,1,22,62,22,4,True,1,ttworker in pid_ns 4026531836,t4_w16_r4,ok,485068,122.0
+False,s1_deliver__spawned__t4_w16_r4__r2,True,0.96,s1_deliver,True,cpu_saturation,spawned,ttworker,33121,False,24,24,10,10,1,19,49,19,4,True,2,ttworker in pid_ns 4026531836,t4_w16_r4,ok,431690,138.6
+False,s1_deliver__spawned__t4_w16_r4__r3,True,0.8,s1_deliver,True,cpu_saturation,spawned,ttworker,33957,False,34,34,13,13,1,28,68,28,5,True,3,ttworker in pid_ns 4026531836,t4_w16_r4,ok,611697,202.6
+False,s1_deliver__spawned__t4_w16_r5__r1,True,0.78,s1_deliver,True,cpu_saturation,spawned,ttworker,41799,False,40,40,12,12,2,34,90,34,5,True,1,ttworker in pid_ns 4026531836,t4_w16_r5,ok,762770,250.9
+False,s1_deliver__spawned__t4_w16_r5__r2,True,0.91,s1_deliver,True,cpu_saturation,spawned,ttworker,35015,False,40,40,12,12,2,27,101,27,5,True,2,ttworker in pid_ns 4026531836,t4_w16_r5,ok,717394,256.0
+False,s1_deliver__spawned__t4_w16_r5__r3,True,0.95,s1_deliver,True,cpu_saturation,spawned,ttworker,35022,False,27,27,9,9,1,16,60,16,4,True,3,ttworker in pid_ns 4026531836,t4_w16_r5,ok,425599,107.1
+True,s2_steps__resident__t3_implement_cap25_r1__r1,False,0.78,s2_steps,False,normal,resident,,53868,True,14,14,8,8,2,0,56,0,4,False,1,unknown,t3_implement_cap25_r1,ok,384940,110.0
+True,s2_steps__resident__t3_implement_cap25_r1__r2,False,0.76,s2_steps,False,normal,resident,,41748,True,16,16,13,13,2,0,57,0,5,False,2,unknown,t3_implement_cap25_r1,ok,432101,271.7
+True,s2_steps__resident__t3_implement_cap25_r2__r1,False,0.77,s2_steps,False,normal,resident,,61669,True,15,15,9,9,2,0,52,0,4,False,1,unknown,t3_implement_cap25_r2,ok,457836,95.7
+True,s2_steps__resident__t3_implement_cap25_r2__r2,False,0.77,s2_steps,False,normal,resident,,59415,True,25,25,8,8,2,0,70,0,5,False,2,unknown,t3_implement_cap25_r2,ok,576674,149.7
+False,s2_steps__resident__t3_implement_cap25_r3__r1,True,0.68,s2_steps,True,cpu_throttling,resident,python3,66470,False,27,27,9,9,3,0,64,0,5,True,1,python3 in pid_ns 4026531836,t3_implement_cap25_r3,ok,729268,204.9
+True,s2_steps__resident__t3_implement_cap25_r3__r2,False,0.81,s2_steps,False,normal,resident,,77436,True,24,24,11,11,3,0,73,0,5,False,2,unknown,t3_implement_cap25_r3,ok,729553,173.9
+True,s2_steps__resident__t3_implement_cap25_r4__r1,False,0.87,s2_steps,False,normal,resident,,69557,True,22,22,11,11,2,0,78,0,5,False,1,unknown,t3_implement_cap25_r4,ok,723859,223.0
+True,s2_steps__resident__t3_implement_cap25_r4__r2,False,0.76,s2_steps,False,normal,resident,,63468,True,20,19,10,10,2,0,72,0,5,False,2,unknown,t3_implement_cap25_r4,ok,582114,212.7
+True,s2_steps__resident__t3_implement_cap25_r5__r1,False,0.78,s2_steps,False,normal,resident,,64491,True,14,14,8,8,1,0,39,0,4,False,1,unknown,t3_implement_cap25_r5,ok,359225,112.7
+True,s2_steps__resident__t3_implement_cap25_r5__r2,False,0.82,s2_steps,False,normal,resident,,52837,True,13,13,10,10,0,0,42,0,4,False,2,none evident,t3_implement_cap25_r5,ok,390966,95.6
+True,s3_thread__resident__t3_implement_cap25_r1__r1,False,0.83,s3_thread,False,normal,resident,,82278,True,23,23,13,13,0,0,68,0,5,False,1,unknown,t3_implement_cap25_r1,ok,811135,198.7
+True,s3_thread__resident__t3_implement_cap25_r1__r2,False,0.81,s3_thread,False,normal,resident,,83004,True,23,23,14,14,1,0,63,0,5,False,2,unknown,t3_implement_cap25_r1,ok,782059,220.0
+True,s3_thread__resident__t3_implement_cap25_r2__r1,False,0.84,s3_thread,False,normal,resident,,73034,True,28,28,13,13,1,0,78,0,5,False,1,unknown,t3_implement_cap25_r2,ok,988610,314.0
+True,s3_thread__resident__t3_implement_cap25_r2__r2,False,0.77,s3_thread,False,normal,resident,,73624,True,17,17,10,10,1,0,53,0,4,False,2,unknown,t3_implement_cap25_r2,ok,607566,198.0
+False,s3_thread__resident__t3_implement_cap25_r3__r1,True,0.83,s3_thread,True,normal,resident,python3,71604,False,21,21,11,11,0,0,58,0,5,True,1,python3 in pid_ns 4026531836 (observed workload; not establi,t3_implement_cap25_r3,ok,592046,217.3
+True,s3_thread__resident__t3_implement_cap25_r3__r2,False,0.79,s3_thread,False,normal,resident,,71176,True,18,18,10,10,0,0,50,0,4,False,2,unknown,t3_implement_cap25_r3,ok,537652,109.0
+True,s3_thread__resident__t3_implement_cap25_r4__r1,False,0.83,s3_thread,False,normal,resident,,58634,True,15,15,12,12,1,0,57,0,4,False,1,unknown (the observed coding workload is in pid_ns 402653183,t3_implement_cap25_r4,ok,520339,158.7
+True,s3_thread__resident__t3_implement_cap25_r4__r2,False,0.82,s3_thread,False,normal,resident,,81363,True,15,15,10,10,0,0,48,0,4,False,2,unknown,t3_implement_cap25_r4,ok,629553,148.3
+True,s3_thread__resident__t3_implement_cap25_r5__r1,False,0.81,s3_thread,False,normal,resident,,65055,True,13,13,9,9,0,0,47,0,4,False,1,unknown,t3_implement_cap25_r5,ok,446232,116.7
+True,s3_thread__resident__t3_implement_cap25_r5__r2,False,0.78,s3_thread,False,normal,resident,,89626,True,31,31,11,11,1,0,79,0,5,False,2,unknown,t3_implement_cap25_r5,ok,1001167,251.5
+True,s4_transfer__resident__t3_implement_cap25_r1__r1,False,0.76,s4_transfer,False,normal,resident,,56488,True,17,17,9,9,1,0,62,0,4,False,1,none evident,t3_implement_cap25_r1,ok,476498,185.3
+True,s4_transfer__resident__t3_implement_cap25_r1__r2,False,0.78,s4_transfer,False,normal,resident,,64849,False,28,28,13,13,0,0,75,0,5,False,2,"unknown; only pid_ns 4026531836 was observed, and no faulty ",t3_implement_cap25_r1,ok,774025,246.3
+False,s4_transfer__resident__t3_implement_cap25_r1__r3,True,0.78,s4_transfer,True,normal,resident,python3,65776,False,28,28,12,12,0,0,67,0,5,True,3,python3 in pid_ns 4026531836,t3_implement_cap25_r1,ok,657597,202.0
+True,s4_transfer__resident__t3_implement_cap25_r2__r1,False,0.78,s4_transfer,False,normal,resident,,69650,True,24,23,11,11,0,0,61,0,5,False,1,unknown,t3_implement_cap25_r2,ok,605201,206.2
+True,s4_transfer__resident__t3_implement_cap25_r2__r2,False,0.83,s4_transfer,False,normal,resident,,76019,True,16,16,10,10,0,0,47,0,4,False,2,unknown,t3_implement_cap25_r2,ok,442655,113.9
+True,s4_transfer__resident__t3_implement_cap25_r2__r3,False,0.82,s4_transfer,False,normal,resident,,66545,False,14,14,9,9,0,0,46,0,4,False,3,unknown,t3_implement_cap25_r2,ok,455474,102.7
+True,s4_transfer__resident__t3_implement_cap25_r3__r1,False,0.76,s4_transfer,False,normal,resident,,120282,True,26,26,11,11,0,0,84,0,5,False,1,unknown,t3_implement_cap25_r3,ok,916813,216.6
+True,s4_transfer__resident__t3_implement_cap25_r3__r2,False,0.72,s4_transfer,False,normal,resident,,84274,True,24,24,13,13,0,0,74,0,5,False,2,none evident,t3_implement_cap25_r3,ok,734425,227.9
+True,s4_transfer__resident__t3_implement_cap25_r3__r3,False,0.78,s4_transfer,False,normal,resident,,83668,False,30,30,14,14,1,0,84,0,5,False,3,unknown,t3_implement_cap25_r3,ok,860464,235.2
+True,s4_transfer__resident__t3_implement_cap25_r4__r1,False,0.78,s4_transfer,False,normal,resident,,69301,True,19,19,12,12,0,0,59,0,4,False,1,unknown,t3_implement_cap25_r4,ok,537443,117.8
+False,s4_transfer__resident__t3_implement_cap25_r4__r2,True,0.76,s4_transfer,True,normal,resident,claude,71110,False,24,24,12,12,1,0,62,0,5,True,2,claude in pid_ns 4026531836,t3_implement_cap25_r4,ok,666274,186.8
+True,s4_transfer__resident__t3_implement_cap25_r4__r3,False,0.82,s4_transfer,False,normal,resident,,80246,True,30,30,13,13,1,0,73,0,5,False,3,unknown,t3_implement_cap25_r4,ok,824481,194.2
+True,s4_transfer__resident__t3_implement_cap25_r5__r1,False,0.76,s4_transfer,False,normal,resident,,49528,True,15,15,9,9,0,0,45,0,4,False,1,unknown,t3_implement_cap25_r5,ok,399424,93.0
+True,s4_transfer__resident__t3_implement_cap25_r5__r2,False,0.82,s4_transfer,False,normal,resident,,77715,True,17,17,10,10,0,0,58,0,4,False,2,unknown,t3_implement_cap25_r5,ok,485916,108.0
+True,s4_transfer__resident__t3_implement_cap25_r5__r3,False,0.84,s4_transfer,False,normal,resident,,63873,True,25,25,12,12,1,0,59,0,5,False,3,none evident,t3_implement_cap25_r5,ok,580856,247.8
