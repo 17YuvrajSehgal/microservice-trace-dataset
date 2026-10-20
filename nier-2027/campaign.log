@@ -1,0 +1,5 @@
+provider=openrouter model=openai/gpt-6-luna cells=120 jobs=3
+
+[  1/120] ok          repair__resident__t3_implement_cap25_r1__r1             121s  in= 582,854  normal             conf=0.82
+[  2/120] ok          repair__resident__t3_implement_cap25_r1__r2             164s  in= 690,581  cpu_throttling     conf=0.76
+[  3/120] ok          repair__resident__t3_implement_cap25_r1__r3             188s  in= 778,060  normal             conf=0.84

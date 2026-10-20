@@ -873,14 +873,22 @@ def diagnose(run_dir, blueprint=None, blueprint_only=False, transcript_path=None
 
 if __name__ == "__main__":
     # usage: python agent_v2.py <run_dir> [<blueprint.md>] [--blueprint-only]
-    argv = [a for a in sys.argv[1:] if a != "--blueprint-only"]
-    bp_only = "--blueprint-only" in sys.argv
+    # --hint "<symptom>" injects an operator report (a symptom, never a diagnosis).
+    hint = None
+    _av = sys.argv[1:]
+    if "--hint" in _av:
+        i = _av.index("--hint")
+        hint = _av[i + 1]
+        _av = _av[:i] + _av[i + 2:]
+    argv = [a for a in _av if a != "--blueprint-only"]
+    bp_only = "--blueprint-only" in _av
     rd = argv[0]
     bp = argv[1] if len(argv) > 1 else None
     tp = os.environ.get("RCA_TRANSCRIPT",
                         os.path.join("transcripts", "v2",
                                      os.path.basename(rd.rstrip("/")) + ".json"))
-    o = diagnose(rd, blueprint=bp, blueprint_only=bp_only, transcript_path=tp)
+    o = diagnose(rd, blueprint=bp, blueprint_only=bp_only, transcript_path=tp,
+                 problem_hint=hint)
     print(json.dumps(o, indent=2, default=str))
 
 

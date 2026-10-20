@@ -152,3 +152,90 @@ this re-tests it inside the same harness.
    table above needs.
 3. Launch the ~100-run campaign.
 4. Analyse, make the two figures, write the 4 pages.
+
+---
+
+# Amendment log
+
+Pre-registration is only worth something if deviations are recorded with their
+reason, **before** the run that tests them. These were all forced by smoke
+tests on 19 Oct, before any campaign cell was executed.
+
+## A1. Sample size: n=5 runs per condition, not 10
+
+The 19 Oct inventory counted 10 runs per condition. That double-counted: there
+are **5 Claude runs and 5 Codex runs** of each. Subject agent must be held
+constant (different runtimes give different process names, RSS and syscall
+mixes), so the usable n per condition is **5**.
+
+Compensated with **repeats** (the house device: 3 incidents x 2 arms x 2 asks x
+5 repeats was the standard matrix), giving 15 observations per headline cell.
+
+## A2. The cap is calibrated to the trace, not fixed at 6000
+
+**Measured first:** `ctf_proclife` on the local agentic runs returns
+**3,777 and 3,837 chars** — *under* the v1 cap of 6000. So at 6000 the defect
+**never fires** on this data, and the ablation would have been null by
+construction. Caught by the smoke test; it would have cost a full campaign.
+
+Why these traces are smaller: they are one 4-vCPU box running one coding agent
+(2 pid namespaces, ~24 processes). The microservice traces that produced the
+original finding have 16–47 services.
+
+**Measured delivery against cap, by textual presence** (what an LLM can still
+read out of a truncated payload):
+
+| flat cap | early key (spawned procs) | late key (resident procs) |
+|---|---|---|
+| 6000 | 8/8 | 16/16 |
+| 3000 | 8/8 | 16/16 |
+| 2500 | 8/8 | 11/16 |
+| **2000** | **8/8** | **4/16** |
+
+So the campaign uses **`ABL_FLAT_CAP=2000`**. What is held constant across the
+replication is the **mechanism and the early-to-late delivery ratio**, not the
+absolute byte count. The absolute cap is a free parameter of any deployment;
+the claim is about prefix-slicing versus row-dropping at whatever budget binds.
+This is stated as a limitation in the paper.
+
+## A3. The delivery metric is textual presence, not parseability
+
+Our first instrument scored a key as lost whenever the payload failed
+`json.loads`. That is wrong for this question: a model is not a strict parser,
+and it still reads the early part of a truncated object. Scoring strictly made
+both keys die together (0/8 and 0/16) and hid the positional effect entirely.
+
+It also could not have reproduced the field numbers, which are 99.3% and 4.7%
+for two keys in the *same* payloads — impossible if invalid JSON meant total
+loss. **Delivery is therefore measured as textual presence of a row's
+identifying field.** Parseability is reported separately, as its own harm.
+
+## A4. The dependent variable is WHERE, not the fault label
+
+Smoke-tested the repaired agent on a resident fault, with and without a hint.
+Both answered `fault_type: normal`. There is no headroom on the label axis, so
+an accuracy effect could not appear there.
+
+The reason is specific and worth reporting: the coding agent runs in a
+**cgroup, not a pid namespace**, so these traces carry one container
+(`4026531836`) and a cgroup cap manifests as *absence* rather than as a
+nameable culprit. The agent said so itself — *"Only pid_ns 4026531836 was
+observed."*
+
+But the same run **did** name the affected process and quote its throttled rate
+— *"CPU runtime later remained around 250 ms/s"*, which is exactly the
+0.25-core cap. So the primary DV is the established **WHERE** axis (did it name
+the correct culprit **process**), scored independently of the fault label,
+exactly as the house scorer already treats those axes. The label and abstention
+are reported alongside.
+
+This also records a fourth instance of the repo's recurring pattern: the agent
+computed the discriminating number and did not act on it.
+
+## A5. All accuracy arms carry a hint
+
+Given A4, every fault-class and healthy cell gets the **same** symptom-level
+operator hint — *"the coding task on this machine took noticeably longer than
+usual to finish"*. It names a symptom, never a mechanism, and it is identical
+across classes so it cannot leak the answer differentially. On healthy runs it
+is a **hard negative**: an operator reports a symptom and nothing is wrong.
