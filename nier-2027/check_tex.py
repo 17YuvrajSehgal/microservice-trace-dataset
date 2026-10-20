@@ -22,8 +22,10 @@ cites = set(re.findall(r"\\cite\{([^}]*)\}", s))
 keys = set()
 for c in cites:
     keys.update(k.strip() for k in c.split(","))
-bib = open(p.replace("paper.tex", "refs.bib"), encoding="utf-8").read()
-bibkeys = set(re.findall(r"@\w+\{([^,]+),", bib))
+bibkeys = set(re.findall(r"\\bibitem\{([^}]+)\}", s))
+if not bibkeys:
+    bib = open(p.replace("paper.tex", "refs.bib"), encoding="utf-8").read()
+    bibkeys = set(re.findall(r"@\w+\{([^,]+),", bib))
 missing = keys - bibkeys
 unused = bibkeys - keys
 print("cite keys used         :", sorted(keys))
