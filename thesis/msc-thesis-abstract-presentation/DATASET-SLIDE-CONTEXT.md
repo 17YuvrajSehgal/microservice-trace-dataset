@@ -4,7 +4,7 @@
 presentation. Written 19 October 2026.
 
 **Sources:** `blueprints/docs/DATASET-v2-INVENTORY.md` (microservice corpus),
-`agentic-runs/` + `Blueprint/latency/1_svc_cpu_cap/agentic-os-noise/` (agentic
+`agentic-runs/` + `../../agentic-runs/1_svc_cpu_cap/agentic-os-noise/` (agentic
 corpus). Run counts below were taken from the `manifest.csv` files on disk, not
 from prose — see [How these numbers were checked](#how-these-numbers-were-checked).
 
@@ -352,7 +352,7 @@ contribution of the talk rather than supporting material.
 | working copy (extracted) | `/scratch/yuvraj17/stratatrace/data/stratatrace-v2/<app>/<recipe>/<run_id>/` |
 | Prometheus TSDBs | 362 MB (SS) + 582 MB (TT), taken with Prometheus **stopped** so the database is consistent |
 | campaign logs | swept off both VMs before deletion — the driver's own narrative, which no run bundle carries |
-| agentic corpus, code + metadata | in-repo under `agentic-runs/` and `Blueprint/latency/1_svc_cpu_cap/agentic-os-noise/`; raw traces gitignored to Trillium |
+| agentic corpus, code + metadata | in-repo under `agentic-runs/` and `../../agentic-runs/1_svc_cpu_cap/agentic-os-noise/`; raw traces gitignored to Trillium |
 | agentic artifact repo | `C:/workplace/os-noise-for-agentic-ai` — code + every per-run `meta/` + `agent.log`, Zenodo DOI pending |
 
 **Every collection VM has been deleted**, each only after its archives verified.

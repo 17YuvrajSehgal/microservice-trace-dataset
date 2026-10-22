@@ -128,16 +128,16 @@ and tooling already are. The difference is that this is now stated as a starting
 than a boundary, and the design must not assume one issue class, one telemetry type, or one
 system class.
 
-| RQ | Question | Status |
-|---|---|---|
-| **RQ1** | Does an agent with a blueprint diagnose better than the same agent without one? | **measured once** (§5.2) |
-| **RQ2** | Does a blueprint written from one incident transfer to a different incident, service, and application? | partially measured |
-| **RQ3** | Does a blueprint beat a strong deterministic control, not just a naive agent? | **measured** (§5.2) |
-| **RQ4** | On faults no blueprint covers, does the library stay quiet or mislead? | **measured** (§5.2) |
-| **RQ5** | Does shipping *executable code* in a blueprint beat prose describing the same step? | **strong preliminary signal** (§5.3) |
-| **RQ6** | Can a blueprint's collection order cut the data needed without losing accuracy? | designed, not run |
-| **RQ7** | Can a selector choose the right blueprint from evidence alone? | **measured — this is the bottleneck** (§5.2) |
-| **RQ8** | Can blueprints be *mined* from past investigations rather than hand-written? | future work |
+| RQ      | Question                                                                                               | Status                                       |
+|---------|--------------------------------------------------------------------------------------------------------|----------------------------------------------|
+| **RQ1** | Does an agent with a blueprint diagnose better than the same agent without one?                        | **measured once** (§5.2)                     |
+| **RQ2** | Does a blueprint written from one incident transfer to a different incident, service, and application? | partially measured                           |
+| **RQ3** | Does a blueprint beat a strong deterministic control, not just a naive agent?                          | **measured** (§5.2)                          |
+| **RQ4** | On faults no blueprint covers, does the library stay quiet or mislead?                                 | **measured** (§5.2)                          |
+| **RQ5** | Does shipping *executable code* in a blueprint beat prose describing the same step?                    | **strong preliminary signal** (§5.3)         |
+| **RQ6** | Can a blueprint's collection order cut the data needed without losing accuracy?                        | designed, not run                            |
+| **RQ7** | Can a selector choose the right blueprint from evidence alone?                                         | **measured — this is the bottleneck** (§5.2) |
+| **RQ8** | Can blueprints be *mined* from past investigations rather than hand-written?                           | future work                                  |
 
 RQ5 and RQ7 are where this thesis can say something others cannot: RQ5 because the harness is
 leak-audited and can measure run-to-run variance, RQ7 because the library is large enough for
@@ -169,10 +169,10 @@ experiment has been run once.
 available or not. Both arms received a deterministic investigation brief, so the control is the
 strong version that already matched a full tool-using agent in earlier work.
 
-| Arm | Fully correct |
-|---|---|
-| Without blueprints | 32 / 57 |
-| With blueprints | 29 / 57 |
+| Arm                | Fully correct |
+|--------------------|---------------|
+| Without blueprints | 32 / 57       |
+| With blueprints    | 29 / 57       |
 
 Read alone this says blueprints hurt. **It does not.** On 30 of the 57 runs the selector chose
 no blueprint, so both arms had identical input — and still scored 15 against 13. The noise floor
@@ -290,15 +290,15 @@ without. Then the thesis itself.
 
 ## 8. Evaluation plan
 
-| RQ | Design | Metric |
-|---|---|---|
-| RQ1 | with/without, same model, same incidents, repeats | fully-correct rate, with a measured noise floor |
-| RQ2 | author on run A, test on run B / other service / other app | transfer rate, autonomy gap |
-| RQ3 | blueprint arm versus deterministic-brief control | difference against the strong control |
-| RQ4 | leave-one-family-out; healthy-run controls | false-fire rate, abstention recall |
-| RQ5 | code-in-blueprint versus prose describing the same step | accuracy and run-to-run variance |
-| RQ6 | collection ladder: full kernel trace down to a named event set | accuracy versus bytes collected |
-| RQ7 | hierarchical versus flat selection | selection precision, confusion matrix |
+| RQ  | Design                                                         | Metric                                          |
+|-----|----------------------------------------------------------------|-------------------------------------------------|
+| RQ1 | with/without, same model, same incidents, repeats              | fully-correct rate, with a measured noise floor |
+| RQ2 | author on run A, test on run B / other service / other app     | transfer rate, autonomy gap                     |
+| RQ3 | blueprint arm versus deterministic-brief control               | difference against the strong control           |
+| RQ4 | leave-one-family-out; healthy-run controls                     | false-fire rate, abstention recall              |
+| RQ5 | code-in-blueprint versus prose describing the same step        | accuracy and run-to-run variance                |
+| RQ6 | collection ladder: full kernel trace down to a named event set | accuracy versus bytes collected                 |
+| RQ7 | hierarchical versus flat selection                             | selection precision, confusion matrix           |
 
 Controls that must stay in place: the leakage lint, healthy runs as negative controls, and the
 deterministic brief in both arms.

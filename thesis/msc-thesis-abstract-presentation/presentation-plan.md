@@ -1,6 +1,6 @@
 # 20-minute M.Sc. abstract presentation — plan
 
-Date: 2026-10-14. For the abstract submitted as `thesis/abstract-merged.txt`
+Date: 2026-10-14. For the abstract submitted as `../abstract-merged.txt`
 (title: *Agentic Software Observability: Executable Blueprints for Reusing
 Diagnostic Expertise*).
 
@@ -31,12 +31,12 @@ Three things, in this order of importance:
 
 ## Storyline — four acts, same as the abstract's four paragraphs
 
-| Act | Abstract paragraph | Slides | Time |
-|---|---|---|---|
-| 1. Problem | expertise lost + datasets stop at app boundary | 2–4 | 4 min |
-| 2. Idea | the blueprint + the framework around it | 5–7 | 4 min |
-| 3. Evidence | what is built + what we measured already | 8–13 | 6 min |
-| 4. Plan | evaluation questions, scope, timeline, contributions | 14–17 | 3 min |
+| Act         | Abstract paragraph                                   | Slides | Time  |
+|-------------|------------------------------------------------------|--------|-------|
+| 1. Problem  | expertise lost + datasets stop at app boundary       | 2–4    | 4 min |
+| 2. Idea     | the blueprint + the framework around it              | 5–7    | 4 min |
+| 3. Evidence | what is built + what we measured already             | 8–13   | 6 min |
+| 4. Plan     | evaluation questions, scope, timeline, contributions | 14–17  | 3 min |
 
 ---
 
@@ -63,12 +63,12 @@ Three things, in this order of importance:
 ### 4. Problem 2: datasets stop at the application boundary
 - One table: RCAEval, LEMMA-RCA, OpenRCA, AIOps Challenge, Nezha, LO2 —  metrics ✓ logs ✓ traces ✓ kernel ✗ (all of them).
 - So faults below the app (co-tenant CPU theft, cgroup caps, saturated disk) are outside both the analysis and its evaluation.
-- Source: `thesis/PROPOSAL.md` §3.1.
+- Source: `../PROPOSAL.md` §3.1.
 
 ### 5. The idea: the observability blueprint
 - Definition: one solved investigation, written down so it can be **re-executed** — what to collect, what to run, how to decide, when not to trust it, common patterns and antipatterns for RCA
 - Show the anatomy as a short list (from the schema): applies-when, reproduction, collection order (exact tracepoints), runnable steps, decision rule with measured thresholds, rule-out conditions.
-- **Show one real discriminator** from `Blueprint/latency/1_svc_cpu_cap/README_v1.md`:
+- **Show one real discriminator** from `../../Blueprint/latency/1_svc_cpu_cap/README_v1.md`:
 
 ### 6. Two properties that make it more than a runbook
 - **Executable.** Steps bind to real commands through a capability registry. A blueprint never names a tool — swap babeltrace2 for Trace Compass and
@@ -85,7 +85,7 @@ Three things, in this order of importance:
   **~24 fault families**, all four modalities in every run, time-aligned to
   0.001 ms; 779 GB compressed, 1.18 TB raw.
 - The kernel layer is the one no public incident corpus has.
-- Source: `blueprints/docs/DATASET-v2-INVENTORY.md`.
+- Source: `../../blueprints/docs/DATASET-v2-INVENTORY.md`.
 also tell them that we have already published work related to kernel traces earlier.
 
 ### 9. What exists: blueprints + a leakage-controlled agent (9:30–10:30)
@@ -99,15 +99,15 @@ also tell them that we have already published work related to kernel traces earl
 ### 10. Early evidence — the headline (10:30–12:00)
 - Kernel traces only. Same agent, same incidents. Only difference: blueprint.
 
-| problem | with blueprint | without |
-|---|---|---|
-| deadlock | **30 / 30** | 3 / 30 |
-| connection-pool exhaustion | **27 / 30** | 2 / 30 |
+| problem                    | with blueprint | without |
+|----------------------------|----------------|---------|
+| deadlock                   | **30 / 30**    | 3 / 30  |
+| connection-pool exhaustion | **27 / 30**    | 2 / 30  |
 
 - Add the earliness detail: without a blueprint the agent reports the
   *recovery* (+180 s onset error on a 125 s fault); with one it hits the
   incident window (+1 s).
-- Source: `blueprints/README.md`, `progress-notes/29-09-2026/decisions.md`.
+- Source: `../../blueprints/README.md`, `../../progress-notes/29-09-2026/decisions.md`.
 
 ### 11. Early evidence — executable beats prose (12:00–13:00)
 - A deterministic rule engine built from the same blueprints, no model at
@@ -116,7 +116,7 @@ also tell them that we have already published work related to kernel traces earl
 - The same knowledge handed to a capable model as markdown: roughly half.
 - Say: "Rules transfer; prose does not. This is why the abstract says
   *executable* — and it is one of the four evaluation questions."
-- Source: `blueprints/docs/RESULTSv2.md`, `blueprints/problems/RESULTS-v2-all-blueprints.md`.
+- Source: `../../blueprints/docs/RESULTSv2.md`, `../../blueprints/problems/RESULTS-v2-all-blueprints.md`.
 
 ### 12. Early evidence — the honest tie, and what it taught us (13:00–14:30)
 - The first full with/without study (57 incidents, both apps): 56% without
@@ -129,7 +129,7 @@ also tell them that we have already published work related to kernel traces earl
   why selection and the hierarchy are in the proposal."
 - This slide is the credibility slide. A committee trusts a presenter who
   leads with their own null result and explains it.
-- Source: `blueprints/docs/RESULTS-withwithout.md`.
+- Source: `../../blueprints/docs/RESULTS-withwithout.md`.
 
 ### 13. Early evidence — knowing when to say nothing (14:30–15:15)
 - Two faults proven *not* diagnosable from kernel traces alone (frozen
@@ -143,12 +143,12 @@ also tell them that we have already published work related to kernel traces earl
 - The four questions from the abstract, each already designed and some
   already run once:
 
-| question | design | status |
-|---|---|---|
-| transfer across services/systems? | author on run A, test on service B, app B | partially measured |
-| abstain when nothing fits? | leave-one-family-out + healthy runs | measured once |
-| executable > prose? | code-in-blueprint vs same step as text | strong early signal |
-| selection from evidence alone? | hierarchical vs flat routing | the measured bottleneck |
+| question                          | design                                    | status                  |
+|-----------------------------------|-------------------------------------------|-------------------------|
+| transfer across services/systems? | author on run A, test on service B, app B | partially measured      |
+| abstain when nothing fits?        | leave-one-family-out + healthy runs       | measured once           |
+| executable > prose?               | code-in-blueprint vs same step as text    | strong early signal     |
+| selection from evidence alone?    | hierarchical vs flat routing              | the measured bottleneck |
 
 - Controls that stay: deterministic brief in both arms, leakage lint,
   healthy runs as negatives, repeats so the noise floor is designed in.
@@ -162,10 +162,10 @@ also tell them that we have already published work related to kernel traces earl
   agents under cgroup limits — 260 runs, two agents; ~84% of wall time is
   model wait on a healthy box, and a CPU cap adds up to +75% wall. The same
   method, pointed at the agent itself.
-- Source: `Blueprint/latency/OS-NOISE-FOR-AGENTIC-AI.md`, `Blueprint/research-paper/paper2.tex`.
+- Source: `../../Blueprint/latency/OS-NOISE-FOR-AGENTIC-AI.md`, `Blueprint/research-paper/paper2.tex`.
 
 ### 16. Timeline (17:00–17:30)
-- Six phases from `thesis/PROPOSAL.md` §6, one line each: taxonomy →
+- Six phases from `../PROPOSAL.md` §6, one line each: taxonomy →
   hierarchical selection (the bottleneck) → micro-benchmarks → the stronger
   with/without (no pre-computed evidence) → transfer + external validation →
   writing.
@@ -182,19 +182,19 @@ also tell them that we have already published work related to kernel traces earl
 
 ## Numbers cheat sheet (all traceable)
 
-| number | meaning | source |
-|---|---|---|
-| 304 runs, ~24 families, 4 modalities, 779 GB | dataset v2 | `blueprints/docs/DATASET-v2-INVENTORY.md` |
-| 0.001 ms | cross-modality clock alignment | `progress-notes/28-07-2026/` |
-| 30/30 vs 3/30; 27/30 vs 2/30 | with/without blueprint, kernel only | `blueprints/README.md` |
-| 13% → 93% | best single cell (noisy_neighbor, no hint) | `blueprints/docs/Q2-FULL-6-problems.md` |
-| 93% (38/41) | rule-engine precision when it fires | `blueprints/docs/RESULTSv2.md` |
-| 3 false fires / 826 opportunities | rule-engine false-fire rate | `blueprints/problems/RESULTS-v2-all-blueprints.md` |
-| 56% vs 51% (= tie) | 57-incident with/without | `blueprints/docs/RESULTS-withwithout.md` |
-| 19/57 | correct blueprint selections — the bottleneck | same file |
-| 29% → 12% | wrong fires after anti-pattern screen | `blueprints/docs/RESULTS-antipattern-ceiling.md` |
-| 84% / +75% / 260 runs | agent OS-noise study | `Blueprint/research-paper/*-RESULT.md` |
-| $5 per 60-run matrix, ~$120 full campaign | measured cost | `blueprints/README.md` |
+| number                                       | meaning                                       | source                                                   |
+|----------------------------------------------|-----------------------------------------------|----------------------------------------------------------|
+| 304 runs, ~24 families, 4 modalities, 779 GB | dataset v2                                    | `../../blueprints/docs/DATASET-v2-INVENTORY.md`          |
+| 0.001 ms                                     | cross-modality clock alignment                | `../../progress-notes/28-07-2026`                        |
+| 30/30 vs 3/30; 27/30 vs 2/30                 | with/without blueprint, kernel only           | `../../blueprints/README.md`                             |
+| 13% → 93%                                    | best single cell (noisy_neighbor, no hint)    | `../../blueprints/docs/Q2-FULL-6-problems.md`            |
+| 93% (38/41)                                  | rule-engine precision when it fires           | `../../blueprints/docs/RESULTSv2.md`                     |
+| 3 false fires / 826 opportunities            | rule-engine false-fire rate                   | `../../blueprints/problems/RESULTS-v2-all-blueprints.md` |
+| 56% vs 51% (= tie)                           | 57-incident with/without                      | `../../blueprints/docs/RESULTS-withwithout.md`           |
+| 19/57                                        | correct blueprint selections — the bottleneck | same file                                                |
+| 29% → 12%                                    | wrong fires after anti-pattern screen         | `../../blueprints/docs/RESULTS-antipattern-ceiling.md`   |
+| 84% / +75% / 260 runs                        | agent OS-noise study                          | `Blueprint/research-paper/*-RESULT.md`                   |
+| $5 per 60-run matrix, ~$120 full campaign    | measured cost                                 | `../../blueprints/README.md`                             |
 
 ## Numbers NOT to use
 
@@ -205,7 +205,7 @@ also tell them that we have already published work related to kernel traces earl
   problems cancel the middle).
 - **"<1% variation"** for the OS-noise work — Mahsa's review proved it false
   (wall varies 10–15% from LLM noise alone).
-- Before putting 30/30 on a slide: `blueprints/problems/deadlock-lock-order/blueprint.json`
+- Before putting 30/30 on a slide: `../../blueprints/problems/deadlock-lock-order/blueprint.json`
   currently has an uncommitted edit that leaves a trailing comma (invalid
   JSON). The result predates the edit, but fix the file so nobody loads it
   and fails during Q&A.
@@ -250,11 +250,11 @@ also tell them that we have already published work related to kernel traces earl
 
 ## Reusable assets
 
-- Charts: `blueprints/docs/charts-ss/`, `blueprints/docs/charts-tt/`.
-- Old deck to mine for visuals: `blueprints/docs/presentations/presentation1/`
+- Charts: `../../blueprints/docs/charts-ss`, `../../blueprints/docs/charts-tt`.
+- Old deck to mine for visuals: `../../blueprints/docs/presentations/presentation1`
   (`slides.html`, `ciena-slides.html` + notes).
 - Method figure: `fig_method` in `Blueprint/research-paper/paper2.tex`.
-- Per-family run table: `temp.md` (uncommitted — move it somewhere stable).
+- Per-family run table: `../../temp.md` (uncommitted — move it somewhere stable).
 
 ## If the slot is 15 minutes
 
