@@ -49,3 +49,18 @@
   so it can be presented one idea at a time, then hand off to the live demo.
 - Removed the demo's "How it works" tab, its panel and its now-dead CSS; Trace is the default
   tab again. Verified: five tabs, Trace chart paints on load, no console errors on any tab.
+
+## Blueprints tab: render the markdown properly
+- The viewer showed raw markdown in a monospace block, so the blueprints' 1,838 table lines,
+  124 code fences and 64 headings were unreadable - the worst case for the tab that is supposed
+  to prove a blueprint is a real engineering document.
+- Wrote a small markdown renderer in the demo (no library, no network - it stays offline):
+  headings, GFM pipe tables with alignment, fenced code, bullet/numbered lists, blockquotes,
+  rules, bold, inline code. Code spans are pulled out behind a control-char placeholder before
+  styling, so a plain number in prose can never be mistaken for one.
+- Viewer is now a document pane: title from the H1, chips for the blueprint name, size and each
+  of its tools/ scripts, a section outline built from the H2s (click to jump, active highlighted),
+  and a Raw toggle - because "these are the exact files handed to the agent" should be checkable.
+- Verified on svc_cpu_cap: 9 tables, 21 headings, 18 code blocks rendered, no raw markdown
+  leaking, outline jump works, Raw toggles, switching blueprints works. No console errors,
+  light and dark.

@@ -178,9 +178,58 @@ canvas{width:100%;height:180px;display:block;border:1px solid var(--rule);
 pre{background:var(--surface-2);border:1px solid var(--rule);padding:13px 15px;overflow-x:auto;
   font-family:var(--mono);font-size:12px;line-height:1.55;margin:10px 0;white-space:pre-wrap;
   word-break:break-word;max-height:460px;border-radius:var(--radius-sm)}
-.bp{border:1px solid var(--rule);background:var(--surface);padding:18px 20px;max-height:640px;
-  overflow:auto;font-family:var(--mono);font-size:12.5px;line-height:1.64;white-space:pre-wrap;
-  border-radius:var(--radius);box-shadow:var(--shadow-sm)}
+.bp{border:1px solid var(--rule);border-top:none;background:var(--surface);
+  padding:4px 22px 22px;max-height:580px;overflow:auto;font-family:var(--mono);
+  font-size:12.5px;line-height:1.64;white-space:pre-wrap;
+  border-radius:0 0 var(--radius) var(--radius);box-shadow:var(--shadow-sm)}
+
+/* ---- blueprint viewer ---- */
+.bpview{display:flex;flex-direction:column;min-width:0}
+.bphead{display:flex;align-items:flex-start;gap:14px;justify-content:space-between;
+  background:var(--surface);border:1px solid var(--rule);border-bottom:none;
+  border-radius:var(--radius) var(--radius) 0 0;padding:16px 22px 13px;
+  box-shadow:var(--shadow-sm)}
+.bpid{min-width:0}
+.bphead h3{margin:0 0 9px;font-size:16.5px;letter-spacing:-.01em}
+.bpmeta{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font-family:var(--mono);font-size:11px;padding:3px 9px;border-radius:999px;
+  background:var(--surface-2);border:1px solid var(--rule);color:var(--muted);white-space:nowrap}
+.chip.tool{background:var(--signal-soft);border-color:color-mix(in srgb,var(--signal) 22%,transparent);
+  color:var(--signal)}
+.bpout{display:flex;flex-wrap:wrap;gap:5px;background:var(--surface-2);
+  border:1px solid var(--rule);border-bottom:none;padding:9px 20px}
+.bpout:empty{display:none}
+.bpout a{font-size:11.5px;color:var(--muted);text-decoration:none;padding:3px 10px;
+  border-radius:999px;border:1px solid transparent;white-space:nowrap}
+.bpout a:hover{color:var(--ink);background:var(--surface)}
+.bpout a.on{color:var(--signal);border-color:color-mix(in srgb,var(--signal) 28%,transparent);
+  background:var(--signal-soft)}
+
+/* ---- rendered markdown ---- */
+.prose{font-family:var(--sans);font-size:14px;line-height:1.65;white-space:normal;
+  color:var(--ink-2)}
+.prose h1{font-size:19px;font-weight:680;letter-spacing:-.015em;color:var(--ink);
+  margin:22px 0 10px}
+.prose h2{font-size:16px;font-weight:660;letter-spacing:-.01em;color:var(--ink);
+  margin:26px 0 9px;padding-top:14px;border-top:1px solid var(--rule);
+  text-transform:none}
+.prose h1:first-child,.prose h2:first-child{margin-top:12px;border-top:none;padding-top:0}
+.prose h3{font-size:14.5px;font-weight:650;color:var(--ink);margin:18px 0 7px}
+.prose p{margin:9px 0;max-width:none}
+.prose ul,.prose ol{margin:9px 0;padding-left:22px}
+.prose li{margin:4px 0}
+.prose strong{color:var(--ink);font-weight:640}
+.prose code{font-family:var(--mono);font-size:12px;background:var(--surface-2);
+  border:1px solid var(--rule);border-radius:4px;padding:1px 5px;white-space:nowrap}
+.prose pre{margin:11px 0;font-size:12px;white-space:pre;max-height:none}
+.prose pre code{background:none;border:none;padding:0;white-space:pre}
+.prose hr{border:none;border-top:1px solid var(--rule);margin:20px 0}
+.prose blockquote{margin:12px 0;padding:2px 16px;border-left:3px solid var(--signal);
+  background:var(--signal-soft);border-radius:0 8px 8px 0}
+.prose blockquote p{margin:8px 0}
+.prose table{font-size:12.5px}
+.prose th,.prose td{white-space:normal;vertical-align:top;padding:7px 11px}
+.prose .tw{margin:12px 0}
 
 /* ---- agent steps ---- */
 .step{border:1px solid var(--rule);background:var(--surface);margin:12px 0;padding:14px 16px 14px 18px;
@@ -304,7 +353,17 @@ pre{background:var(--surface-2);border:1px solid var(--rule);padding:13px 15px;o
   validator rejects any check that does not. These are the exact files handed to the agent.</p>
   <div class="split">
     <div class="list" id="blist"></div>
-    <div class="bp" id="bbody">Select a blueprint.</div>
+    <div class="bpview">
+      <div class="bphead">
+        <div class="bpid">
+          <h3 id="bptitle">Select a blueprint</h3>
+          <div class="bpmeta" id="bpmeta"></div>
+        </div>
+        <button class="ghost go" id="bpraw" title="Show the exact file handed to the agent">Raw</button>
+      </div>
+      <nav class="bpout" id="bpout"></nav>
+      <article class="bp prose" id="bbody"></article>
+    </div>
   </div>
 </div>
 
@@ -618,11 +677,114 @@ async function loadBlueprints(){
   const first=(want&&$(`#blist div[data-n="${want}"]`))||$('#blist div[data-n]');
   if(first){ first.click(); first.scrollIntoView({block:'center'}); }
 }
+/* ---------- markdown, enough for what the blueprints use ----------
+   Headings, GFM pipe tables (1,800+ lines of them), fenced code, lists,
+   blockquotes, rules, bold and inline code. No network, no library. */
+function mdInline(t){
+  const code=[];
+  // pull code spans out first so their contents are never styled
+  t=String(t).replace(/`([^`]+)`/g,(m,c)=>{code.push(c);return '\u0001'+(code.length-1)+'\u0001';});
+  t=esc(t)
+    .replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>')
+    .replace(/(^|[\s(])\*([^*\n]+)\*/g,'$1<em>$2</em>');
+  return t.replace(/\u0001(\d+)\u0001/g,(m,i)=>'<code>'+esc(code[+i])+'</code>');
+}
+function mdRender(src){
+  const L=String(src||'').replace(/\r/g,'').split('\n');
+  const out=[]; let i=0, hn=0;
+  const isRow=s=>/^\s*\|/.test(s);
+  const isSep=s=>/^\s*\|?[\s:|-]*-[\s:|-]*\|?\s*$/.test(s)&&s.includes('-');
+  const cells=s=>{let r=s.trim();
+    if(r.startsWith('|'))r=r.slice(1);
+    if(r.endsWith('|'))r=r.slice(0,-1);
+    return r.split('|').map(x=>x.trim());};
+  while(i<L.length){
+    const l=L[i];
+    if(/^```/.test(l)){                                   // fenced code
+      const buf=[]; i++;
+      while(i<L.length&&!/^```/.test(L[i]))buf.push(L[i++]);
+      i++; out.push('<pre>'+esc(buf.join('\n'))+'</pre>'); continue;
+    }
+    if(isRow(l)&&i+1<L.length&&isSep(L[i+1])){            // table
+      const head=cells(l);
+      const align=cells(L[i+1]).map(c=>/^:-+:$/.test(c)?'center':/-+:$/.test(c)?'right':'left');
+      i+=2; const rows=[];
+      while(i<L.length&&isRow(L[i]))rows.push(cells(L[i++]));
+      out.push('<div class="tw"><table><thead><tr>'+
+        head.map((c,k)=>'<th style="text-align:'+(align[k]||'left')+'">'+mdInline(c)+'</th>').join('')+
+        '</tr></thead><tbody>'+
+        rows.map(r=>'<tr>'+r.map((c,k)=>'<td style="text-align:'+(align[k]||'left')+'">'+
+          mdInline(c)+'</td>').join('')+'</tr>').join('')+
+        '</tbody></table></div>');
+      continue;
+    }
+    const m=l.match(/^(#{1,6})\s+(.*)$/);
+    if(m){                                                // heading, anchored
+      const lv=m[1].length, id='bph'+(++hn);
+      out.push('<h'+lv+' id="'+id+'">'+mdInline(m[2])+'</h'+lv+'>'); i++; continue;
+    }
+    if(/^\s*(-{3,}|\*{3,}|_{3,})\s*$/.test(l)){ out.push('<hr>'); i++; continue; }
+    if(/^\s*>/.test(l)){                                  // blockquote
+      const buf=[];
+      while(i<L.length&&/^\s*>/.test(L[i]))buf.push(L[i++].replace(/^\s*>\s?/,''));
+      out.push('<blockquote>'+mdRender(buf.join('\n'))+'</blockquote>'); continue;
+    }
+    if(/^\s*[-*+]\s+/.test(l)){                           // bullet list
+      const buf=[];
+      while(i<L.length&&/^\s*[-*+]\s+/.test(L[i]))buf.push(L[i++].replace(/^\s*[-*+]\s+/,''));
+      out.push('<ul>'+buf.map(x=>'<li>'+mdInline(x)+'</li>').join('')+'</ul>'); continue;
+    }
+    if(/^\s*\d+[.)]\s+/.test(l)){                         // numbered list
+      const buf=[];
+      while(i<L.length&&/^\s*\d+[.)]\s+/.test(L[i]))buf.push(L[i++].replace(/^\s*\d+[.)]\s+/,''));
+      out.push('<ol>'+buf.map(x=>'<li>'+mdInline(x)+'</li>').join('')+'</ol>'); continue;
+    }
+    if(!l.trim()){ i++; continue; }
+    const buf=[];                                         // paragraph
+    while(i<L.length&&L[i].trim()
+          &&!/^(#{1,6}\s|```|\s*>|\s*[-*+]\s|\s*\d+[.)]\s)/.test(L[i])
+          &&!(isRow(L[i])&&i+1<L.length&&isSep(L[i+1]))) buf.push(L[i++]);
+    if(buf.length) out.push('<p>'+mdInline(buf.join(' '))+'</p>');
+  }
+  return out.join('\n');
+}
+
+/* ---------- the blueprint viewer ---------- */
+let BPRAW='', BPMD=true;
 async function openBlueprint(n){
   const d=await api('/api/blueprint?name='+encodeURIComponent(n));
-  $('#bbody').textContent=d.body||'not found';
-  $('#bbody').scrollTop=0;
+  BPRAW=d.body||'';
+  const title=(BPRAW.match(/^#\s+(.+)$/m)||[,n])[1];
+  $('#bptitle').textContent=title;
+  const tools=(d.meta&&d.meta.tools)||[];
+  $('#bpmeta').innerHTML='<span class="chip">'+esc(n)+'</span>'+
+    '<span class="chip">'+(BPRAW.length/1000).toFixed(1)+'k chars</span>'+
+    tools.map(t=>'<span class="chip tool">'+esc(t)+'</span>').join('');
+  drawBlueprint();
 }
+function drawBlueprint(){
+  const body=$('#bbody');
+  if(BPMD){
+    body.innerHTML=mdRender(BPRAW);
+    body.classList.add('prose');
+    // outline from the ## headings, so a long blueprint stays navigable
+    const hs=[...body.querySelectorAll('h2')];
+    $('#bpout').innerHTML=hs.length
+      ? hs.map(h=>'<a href="#" data-h="'+h.id+'">'+esc(h.textContent)+'</a>').join('')
+      : '';
+    $$('#bpout a').forEach(a=>a.onclick=e=>{
+      e.preventDefault();
+      const t=document.getElementById(a.dataset.h);
+      if(t) body.scrollTop = t.offsetTop - body.offsetTop - 8;
+      $$('#bpout a').forEach(x=>x.classList.toggle('on',x===a));
+    });
+  }else{
+    body.textContent=BPRAW; body.classList.remove('prose'); $('#bpout').innerHTML='';
+  }
+  body.scrollTop=0;
+  $('#bpraw').textContent = BPMD ? 'Raw' : 'Rendered';
+}
+$('#bpraw').onclick=()=>{ BPMD=!BPMD; drawBlueprint(); };
 
 /* ---------- agent ---------- */
 const esc=s=>String(s??'').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
