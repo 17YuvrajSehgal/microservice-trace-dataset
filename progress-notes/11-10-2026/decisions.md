@@ -7,7 +7,7 @@
   (Codex CLI in a container), categorize every problem as kernel vs
   configuration vs code, and kernel-traces-only for the blueprint analysis.
 - Wrote the agentic OS-noise collection plan:
-  `../../Blueprint/latency/1_svc_cpu_cap/agentic-os-noise/PLAN.md`. Key choices: no stress-ng —
+  `../../agentic-runs/1_svc_cpu_cap/agentic-os-noise/PLAN.md`. Key choices: no stress-ng —
   the cgroup `cpu.max` cap IS the condition (it's how agent sandboxes are
   configured); observe-first step to see if harnesses self-limit; paired
   cap grid (unlimited/1/0.5/0.25 core) with ~5 reps because LLM runs are
@@ -33,7 +33,7 @@
   sudo. Runner: `pilot_run.sh` on the VM (also in session scratchpad).
 - Built the real collection rig (mirrors
   `microservice-lttng-data-collection-scripts/` structure) in
-  `Blueprint/latency/1_svc_cpu_cap/agentic-os-noise/collection/`:
+  `../../agentic-runs/1_svc_cpu_cap/agentic-os-noise/collection/`:
   `vm_setup_agentic.sh`, `collect_agent_run.sh` (one run), `run_campaign.sh`
   (tasks×4 caps×N reps, shuffled, resumable, manifest.csv), `tasks/`
   (t1_toy, t2_medium with 3 seeded bugs + CPU-burning test suite), README.
