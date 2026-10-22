@@ -83,3 +83,20 @@
      clean carts/cpu_cap). These blueprints belong with the agentic traces they were built for,
      on a machine with babeltrace. Natural demo pairing: an agentic trace + its matching
      blueprint.
+
+## Blueprint tools run via WSL (babeltrace usable on Windows)
+- blueprints.py Runner now executes the blueprint's own scripts through WSL when on Windows
+  without native babeltrace2 (use_wsl). Paths ($TRACE/$WORK/$DUMP) are translated to /mnt/c/...
+  (incl. the NTFS junction to the CTF). Native on Linux, WSL on Windows, python fallback if
+  neither - one blueprint, any environment. (Also fixed: a function-local `import shlex` in the
+  remote branch shadowed the module import -> UnboundLocalError in the WSL branch.)
+- Verified directly on the demo svc_cpu_cap run: idx_summary (12 CPUs, date), extract_slice.sh
+  (516,743-event slice via real babeltrace), sched_budget.py (java/carts: run 0.20s wait 7.58s,
+  743 waits >=50ms - the CPU-cap signature).
+- Live agent now DOES call blueprint_tool (it never did in full mode before). But it skipped the
+  blueprint's Step 2 (idx_summary, which reports the date) and passed date '2026-??-??' to
+  extract_slice -> exit 1. ctf_timespan gives only HH:MM:SS, so without idx_summary the agent
+  can't know the day. This is blueprint-following/tuning (user will tune): the blueprint must
+  force "get the date first", or the tools should resolve the day from the trace. Verdict on the
+  Sock Shop trace is still weak for this reason, but the cause is now clean and fixable, not the
+  environment.

@@ -26,11 +26,20 @@ import gzip
 import json
 import os
 import re
+import shlex
 import shutil
 import subprocess
 import sys
 
 import skillreg
+
+
+def _wsl_path(winpath: str) -> str:
+    """C:\\a\\b -> /mnt/c/a/b so a WSL process can read a Windows path (incl. NTFS junctions)."""
+    p = os.path.abspath(winpath).replace("\\", "/")
+    if len(p) > 1 and p[1] == ":":
+        return "/mnt/" + p[0].lower() + p[2:]
+    return p
 
 RUNNABLE = (".py", ".sh")
 TIMEOUT_S = 300
@@ -153,6 +162,12 @@ class Runner:
         os.makedirs(workdir, exist_ok=True)
         self.trace_dir = find_trace_dir(run_dir)
         self._dump = None            # decoded trace text, materialized on first use
+        # On Windows the blueprint's own tools (bash + babeltrace2) are not native, but they
+        # are in WSL. Run them through WSL so the blueprint works unchanged - same scripts,
+        # real babeltrace - instead of the degraded no-babeltrace fallback. Any other OS runs
+        # them natively. This is what lets one blueprint survive the environment.
+        self.use_wsl = (os.name == "nt" and not shutil.which("babeltrace2")
+                        and bool(shutil.which("wsl")))
 
     def _ssh(self, cmd: str, timeout: int = TIMEOUT_S) -> dict:
         full = self.preamble + "; " + cmd if getattr(self, "preamble", None) else cmd
@@ -186,17 +201,21 @@ class Runner:
                 self._dump = ""
         return self._dump
 
-    def _expand(self, a: str) -> str:
-        a = a.replace("$TRACE", self.trace_dir or "$TRACE")
+    def _expand(self, a: str, wsl: bool = False) -> str:
+        work = _wsl_path(self.workdir) if wsl else self.workdir
+        trace = (_wsl_path(self.trace_dir) if wsl else self.trace_dir) if self.trace_dir \
+            else "$TRACE"
+        a = a.replace("$TRACE", trace)
         if "$WORK" in a:
-            a = a.replace("$WORK", self.workdir)
+            a = a.replace("$WORK", work)
             # The blueprint names slices after times ($WORK/s_03:17:26.txt). Colons are
-            # illegal in NTFS filenames, so sanitize the part under the workdir. Applied
-            # identically on write and read, so later calls find the same file.
-            head, tail = a[:len(self.workdir)], a[len(self.workdir):]
+            # illegal in NTFS filenames (and under /mnt/c), so sanitize the part under the
+            # workdir. Applied identically on write and read, so later calls find the file.
+            head, tail = a[:len(work)], a[len(work):]
             a = head + tail.replace(":", "-")
         if "$DUMP" in a:
-            a = a.replace("$DUMP", self.dump_path() or "$DUMP")
+            dump = self.dump_path()
+            a = a.replace("$DUMP", (_wsl_path(dump) if (wsl and dump) else dump) or "$DUMP")
         return a
 
     def run(self, script: str, args: list) -> dict:
@@ -215,7 +234,6 @@ class Runner:
             return {"error": "this run has no CTF trace folder (no `metadata` found), "
                              "so $TRACE cannot be expanded. Work from $DUMP instead."}
         if self.host:
-            import shlex
             rpath = self.remote_tools + "/" + script
             interp = "bash" if script.endswith(".sh") else "python3"
             cmd = "cd %s && %s %s %s" % (self.workdir, interp, shlex.quote(rpath),
@@ -224,6 +242,23 @@ class Runner:
             res["cmd"] = [script, *argv]
             return res
         path = os.path.join(self.tools_dir, script)
+
+        if self.use_wsl:
+            wargv = [self._expand(str(a), wsl=True) for a in (args or [])]
+            rscript = _wsl_path(path)
+            interp = "bash" if script.endswith(".sh") else "python3"
+            inner = "cd %s && BT2=${BT2:-babeltrace2} %s %s %s" % (
+                shlex.quote(_wsl_path(self.workdir)), interp, shlex.quote(rscript),
+                " ".join(shlex.quote(a) for a in wargv))
+            try:
+                p = subprocess.run(["wsl", "-e", "bash", "-lc", inner], capture_output=True,
+                                   text=True, errors="replace", timeout=TIMEOUT_S)
+            except subprocess.TimeoutExpired:
+                return {"cmd": [script, *wargv], "error": f"timed out after {TIMEOUT_S}s"}
+            out = p.stdout[:RAW_STDOUT_CAP]
+            return {"cmd": [script, *wargv], "exit": p.returncode, "stdout": out,
+                    "stdout_truncated": len(p.stdout) > RAW_STDOUT_CAP,
+                    "stderr": p.stderr[-4000:]}
 
         if script == "extract_slice.sh" and not (shutil.which("bash")
                                                  and shutil.which("babeltrace2")):
