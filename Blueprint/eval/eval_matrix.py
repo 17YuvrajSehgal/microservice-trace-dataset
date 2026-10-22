@@ -15,6 +15,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import subprocess
 import sys
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -23,7 +24,6 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 
 import datasets as D          # noqa: E402
-import eval_one as E          # noqa: E402
 
 # GPT-6 Luna standard pricing, for a running cost estimate (confirm against your account).
 PRICE_IN = float(os.environ.get("PRICE_IN_PER_M", "0.10")) / 1e6
@@ -78,12 +78,28 @@ def main() -> int:
     t0 = time.time()
 
     def one(rd):
+        # Each cell runs as its OWN PROCESS. agent_v2.diagnose keeps per-run state in a module
+        # global (CTX), so two diagnoses in one process corrupt each other - parallelism has to
+        # be process-level, never threads sharing the interpreter.
         rid = os.path.basename(rd.rstrip("/\\"))
+        cell_out = os.path.join(a.out, rid)
+        cmd = [sys.executable, os.path.join(HERE, "eval_one.py"),
+               "--run-dir", rd, "--problem", a.problem,
+               "--index-root", a.index_root, "--out", cell_out,
+               "--transcript", os.path.join(cell_out, "transcript.json")]
+        if bp:
+            cmd += ["--blueprint", bp]
         try:
-            return E.run(rd, bp, a.problem, a.index_root, os.path.join(a.out, rid),
-                         transcript=os.path.join(a.out, rid, "transcript.json"))
-        except Exception as e:                                          # noqa: BLE001
-            return {"run_id": rid, "error": "%s: %s" % (type(e).__name__, e)}
+            p = subprocess.run(cmd, capture_output=True, text=True, timeout=1800)
+        except subprocess.TimeoutExpired:
+            return {"run_id": rid, "error": "timed out after 1800s"}
+        rp = os.path.join(cell_out, "result.json")
+        if os.path.exists(rp):
+            try:
+                return json.load(open(rp, encoding="utf-8"))
+            except (OSError, ValueError):
+                pass
+        return {"run_id": rid, "error": (p.stderr or p.stdout or "no result").strip()[-200:]}
 
     spent = 0.0
     done = 0
