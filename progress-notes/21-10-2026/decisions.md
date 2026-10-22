@@ -100,3 +100,21 @@
   force "get the date first", or the tools should resolve the day from the trace. Verdict on the
   Sock Shop trace is still weak for this reason, but the cause is now clean and fixable, not the
   environment.
+
+## Bug: ctf tools failed on a loaded trace ("no CTF" / 0 events) - three root causes
+Symptom: running the agent on ext_t6a_high_768_r1 gave ctf_timespan "no CTF at ...kernel/kernel"
+and ctf_timeline "total events 0", though the index had 49,975 rows and ctf_proclife worked.
+1. The new ctf_timespan/ctf_lines bailed on a missing CTF dir BEFORE reading the index. Made
+   them index-first: error only when there is neither CTF nor index/sample (ctf_timeline and
+   ctf_proclife were already index-first). The raw-decode helpers (_timeline_from_trace,
+   _query_from_trace) still require the CTF - correct, they only run when there is no index.
+2. The live run used the OLD agentic-rca ctf_tool (which decodes) via module caching - the
+   scorer imports it. Hardened import_agent to drop EVERY cached sibling whose __file__ is not
+   under Blueprint/agent, not just agent_v2.
+3. The CTF junction (demo/data/run/ext_*/kernel) was lost after a restart - discover_external_runs
+   re-registered the run but never rebuilt the junction, and we had not stored the source. Now
+   _register_external writes run/<rid>/source.txt (the junction target) and _ensure_ctf_link
+   rebuilds the junction; discover_external_runs rebuilds it from source.txt on startup.
+Verified: import_agent loads Blueprint/agent/ctf_tool; timespan 48.0s no error; timeline
+sched_switch matched 76,757; CTF reachable. (Recreated ext_t6a's junction + source.txt by hand
+since it predated the sidecar.)

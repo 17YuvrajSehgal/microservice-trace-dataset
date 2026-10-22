@@ -50,6 +50,25 @@ def available_runs():
             if os.path.exists(os.path.join(DATA, rid + ".tsv.gz"))]
 
 
+def _ensure_ctf_link(rd, target):
+    """Make rd/kernel a junction to `target` so rd/kernel/kernel is the CTF. Idempotent."""
+    link = os.path.join(rd, "kernel")
+    if os.path.exists(os.path.join(link, "kernel", "metadata")):
+        return
+    if not target or not os.path.isdir(target):
+        return
+    try:
+        if os.path.exists(link):
+            try:
+                os.rmdir(link)
+            except OSError:
+                return
+        subprocess.run(["cmd", "/c", "mklink", "/J", link, target],
+                       capture_output=True, text=True)
+    except OSError:
+        pass
+
+
 def discover_external_runs():
     """Re-register ext_* traces whose index was built in an earlier session. Loaded traces
     live as demo/data/ext_<id>.tsv.gz (+ a run dir), but RUNS is in memory, so without this a
@@ -61,6 +80,14 @@ def discover_external_runs():
         RUNS[rid] = {"label": rid[4:].replace("_", " ") if rid.startswith("ext_") else rid,
                      "blueprint": None, "gt": None, "event": "sched_switch", "signal": "cpu",
                      "note": "Loaded trace.", "external": True}
+        # rebuild the CTF junction from the stored source so the trace survives a restart
+        rd = os.path.join(DATA, "run", rid)
+        src = os.path.join(rd, "source.txt")
+        if os.path.exists(src):
+            try:
+                _ensure_ctf_link(rd, open(src, encoding="utf-8").read().strip())
+            except OSError:
+                pass
 
 
 discover_external_runs()
@@ -310,15 +337,19 @@ _AGENT_MODS = ("agent_v2", "utils", "ctf_tool", "codetool", "coderepo",
 
 def import_agent():
     """Import Blueprint/agent's agent_v2, dropping any same-named modules loaded from
-    elsewhere (e.g. the scorer's agentic-rca copies) so there is no cross-contamination."""
-    cur = sys.modules.get("agent_v2")
-    if cur is not None and "Blueprint" not in             getattr(cur, "__file__", "").replace("\\", "/"):
-        for m in _AGENT_MODS:
-            sys.modules.pop(m, None)
-    if AGENT_DIR not in sys.path:
-        sys.path.insert(0, AGENT_DIR)
-    else:
-        sys.path.remove(AGENT_DIR); sys.path.insert(0, AGENT_DIR)
+    elsewhere (e.g. the scorer's agentic-rca copies) so there is no cross-contamination.
+    Checks EVERY sibling, not just agent_v2: the scorer can replace ctf_tool alone, which then
+    silently decodes the trace instead of reading the index."""
+    want = os.path.realpath(AGENT_DIR)
+    for m in _AGENT_MODS:
+        mod = sys.modules.get(m)
+        if mod is not None:
+            f = os.path.realpath(getattr(mod, "__file__", "") or "")
+            if not f.startswith(want):
+                sys.modules.pop(m, None)
+    if AGENT_DIR in sys.path:
+        sys.path.remove(AGENT_DIR)
+    sys.path.insert(0, AGENT_DIR)
     import agent_v2
     return agent_v2
 
@@ -910,20 +941,17 @@ def _register_external(rid, ctf, src):
                  "blueprint": None, "gt": None, "event": "sched_switch", "signal": "cpu",
                  "note": "Loaded from " + src, "external": True}
     rd = os.path.join(DATA, "run", rid)
-    link = os.path.join(rd, "kernel")
+    os.makedirs(rd, exist_ok=True)
+    # Remember where the CTF lives so the junction can be rebuilt after a restart (RUNS is
+    # in memory; the run dir persists). Without this a rediscovered trace loses its CTF and
+    # every index tool that checks for it, plus blueprint_tool, fails.
     try:
-        os.makedirs(rd, exist_ok=True)
-        if not os.path.exists(os.path.join(link, "kernel", "metadata")):
-            if os.path.exists(link):
-                try:
-                    os.rmdir(link)
-                except OSError:
-                    pass
-            # junction rd/kernel -> parent of the CTF, so rd/kernel/kernel == the CTF
-            subprocess.run(["cmd", "/c", "mklink", "/J", link, os.path.dirname(ctf)],
-                           capture_output=True, text=True)
+        with open(os.path.join(rd, "source.txt"), "w", encoding="utf-8") as f:
+            f.write(os.path.dirname(ctf))     # junction target: its /kernel == the CTF
     except OSError:
         pass
+    _ensure_ctf_link(rd, os.path.dirname(ctf))
+
 
 
 def _trace_build_worker(ctf, rid, src):

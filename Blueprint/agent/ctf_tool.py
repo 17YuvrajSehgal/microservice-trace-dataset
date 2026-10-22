@@ -437,8 +437,8 @@ def ctf_lines(run_dir: str, event: str, begin: str, end: str, n: int = 10,
     the counts have told you where to look.
     """
     ctf = os.path.join(run_dir, ctf_subdir)
-    if not os.path.isdir(ctf):
-        return {"error": "no CTF at %s" % ctf}
+    if not os.path.isdir(ctf) and _index_for(run_dir) is None and _lines_for(run_dir) is None:
+        return {"error": "no CTF at %s and no index/sample either" % ctf}
     try:
         ev_re = re.compile(event)
     except re.error as e:
