@@ -57,3 +57,29 @@
 - Confirms the earlier analysis: service-memory-cap is the wrong lens for these agentic memory
   runs (it keys on IRQ/disk proxy, not mm_vmscan reclaim). A real memory blueprint would key on
   mm_vmscan_memcg_reclaim_begin/end, which these runs DO carry.
+
+## Demo switched to the Blueprint/ agent + blueprints
+- The demo was on the old agentic-rca agent and blueprints/skills-kernel-only. Repointed to
+  Blueprint/agent/agent_v2.py and Blueprint/latency/*/README_v1.md, where each blueprint carries
+  its own tools/ scripts wired in via blueprint_tool. diagnose(run_dir, blueprint=<md>,
+  index_root=DATA) and Chat(run_dir, blueprint=<md>, ...) - both take a run_dir PATH now (no
+  load_run) and a blueprint markdown path.
+- Module-collision guard (import_agent): both trees define agent_v2/ctf_tool/codetool/config.
+  The Verdict scorer imports the OLD agent_v2; import_agent() drops any non-Blueprint copy from
+  sys.modules so the Blueprint/agent ones always win, regardless of order.
+- Blueprint library tab + picker now read Blueprint/latency: 5 blueprints (svc_cpu_cap 10 tools,
+  noisy_neighbor 10, slow_db 13, svc_mem_cap 11, svc_net 11). RUNS svc_cpu_cap blueprint ->
+  "svc_cpu_cap".
+- Verified: full live run to completion (335 s) with the new agent; START shows the new
+  blueprint; worker toolset = 7 fixed + blueprint_tool; Chat constructs with blueprint_tool.
+- HONEST CAVEAT (two findings):
+  1. On this Windows demo box there is NO babeltrace2, so the blueprint's raw-slice tools
+     (extract_slice.sh -> sched_budget/cpu_ceiling) cannot decode; the demo run dirs have no
+     trace.txt.gz dump either. The agent therefore falls back to the fixed index tools (which
+     read the same tsv.gz index). blueprint_only mode would FAIL here for the same reason, so
+     the demo stays in full mode.
+  2. The new svc_cpu_cap blueprint was authored/tuned for the AGENTIC runs, not Sock Shop. On
+     the Sock Shop svc_cpu_cap trace the new agent returned "unknown/other" (vs the old setup's
+     clean carts/cpu_cap). These blueprints belong with the agentic traces they were built for,
+     on a machine with babeltrace. Natural demo pairing: an agentic trace + its matching
+     blueprint.

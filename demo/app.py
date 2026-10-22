@@ -34,7 +34,7 @@ DATA = os.path.join(HERE, "data")
 RUNS = {
     "svc_cpu_cap_aggressive_steady_r1": {
         "label": "One service's CPU cap",
-        "blueprint": "service-cpu-throttle",
+        "blueprint": "svc_cpu_cap",
         "gt": "gt-svc_cpu_cap.json",
         "event": "sched_switch",
         "signal": "cpu",
@@ -293,52 +293,85 @@ def raw_lines(event: str, t0: float, t1: float, limit: int = 12):
 # ----------------------------------------------------------------------------------
 # Blueprints, read from the repo so the interface cannot drift from what the agent is given.
 # ----------------------------------------------------------------------------------
-SKILLS = os.path.join(ROOT, "blueprints", "skills-kernel-only")
-PROBLEMS = os.path.join(ROOT, "blueprints", "problems")
+# The agent and its blueprints: the Blueprint/ tree, not the old agentic-rca harness.
+# Each blueprint is a self-contained folder (README_v1.md + its own tools/ scripts); giving one
+# to the agent injects its method AND exposes its scripts via blueprint_tool.
+AGENT_DIR = os.path.join(ROOT, "Blueprint", "agent")
+BP_ROOT = os.path.join(ROOT, "Blueprint", "latency")
+
+
+# Both Blueprint/agent and the old agentic-rca harness define modules named agent_v2,
+# ctf_tool, codetool, config, ... Python caches by name, so whichever imports first wins.
+# The Verdict scorer pulls in the OLD agent_v2; this forces the Blueprint/agent copies to be
+# the live ones for every agent operation, regardless of import order.
+_AGENT_MODS = ("agent_v2", "utils", "ctf_tool", "codetool", "coderepo",
+               "blueprints", "skillreg", "config", "transcript", "leakguard")
+
+
+def import_agent():
+    """Import Blueprint/agent's agent_v2, dropping any same-named modules loaded from
+    elsewhere (e.g. the scorer's agentic-rca copies) so there is no cross-contamination."""
+    cur = sys.modules.get("agent_v2")
+    if cur is not None and "Blueprint" not in             getattr(cur, "__file__", "").replace("\\", "/"):
+        for m in _AGENT_MODS:
+            sys.modules.pop(m, None)
+    if AGENT_DIR not in sys.path:
+        sys.path.insert(0, AGENT_DIR)
+    else:
+        sys.path.remove(AGENT_DIR); sys.path.insert(0, AGENT_DIR)
+    import agent_v2
+    return agent_v2
+
+
+def blueprint_catalog():
+    """name -> {md, tools, folder} for each Blueprint/latency/<n>_<name>/ with README_v1.md.
+    name matches blueprints.load(): the folder with any leading 'N_' stripped."""
+    out = {}
+    if not os.path.isdir(BP_ROOT):
+        return out
+    for folder in sorted(os.listdir(BP_ROOT)):
+        d = os.path.join(BP_ROOT, folder)
+        md = os.path.join(d, "README_v1.md")
+        if os.path.isdir(d) and os.path.exists(md):
+            out[re.sub(r"^\d+_", "", folder)] = {
+                "md": md, "tools": os.path.join(d, "tools"), "folder": folder}
+    return out
+
+
+def blueprint_md(name):
+    e = blueprint_catalog().get(name or "")
+    return e["md"] if e else None
+
+
+def _bp_scripts(tools_dir):
+    if not os.path.isdir(tools_dir):
+        return []
+    return sorted(f for f in os.listdir(tools_dir)
+                  if f.endswith((".py", ".sh")) and not f.startswith("_"))
 
 
 def blueprint_list():
     out = []
-    if not os.path.isdir(SKILLS):
-        return out
-    for f in sorted(os.listdir(SKILLS)):
-        if not f.endswith(".md"):
-            continue
-        name = f[:-3]
-        body = open(os.path.join(SKILLS, f), encoding="utf-8", errors="replace").read()
-        m = re.search(r"^covers:\s*(.+)$", body, re.M)
-        v = re.search(r"^version:\s*(\d+)$", body, re.M)
-        sig = re.search(r"## When this applies\n(.+?)\n\n", body, re.S)
+    active = RUNS.get(RUN_ID, {}).get("blueprint") if RUN_ID else None
+    for name, e in blueprint_catalog().items():
+        body = open(e["md"], encoding="utf-8", errors="replace").read()
+        title = re.search(r"^#\s+(.+)$", body, re.M)
+        scripts = _bp_scripts(e["tools"])
         out.append({
-            "name": name,
-            "covers": (m.group(1).strip() if m else ""),
-            "version": int(v.group(1)) if v else None,
-            "chars": len(body),
-            "summary": (sig.group(1).strip().replace("\n", " ")[:190] if sig else ""),
-            # which blueprint the SELECTED trace uses, not a hardcoded one - the tag
-            # was sitting on the network blueprint while the CPU trace was loaded
-            "active": bool(RUN_ID) and name == RUNS[RUN_ID]["blueprint"],
+            "name": name, "covers": name,
+            "title": title.group(1).strip() if title else name,
+            "chars": len(body), "tools": scripts, "n_tools": len(scripts),
+            "active": name == active,
         })
     return out
 
 
-def blueprint_body(name: str):
-    p = os.path.join(SKILLS, re.sub(r"[^a-z0-9-]", "", name) + ".md")
-    if not os.path.exists(p):
+def blueprint_body(name):
+    e = blueprint_catalog().get(name or "")
+    if not e:
         return None
-    body = open(p, encoding="utf-8", errors="replace").read()
-    jp = os.path.join(PROBLEMS, os.path.basename(p)[:-3], "blueprint.json")
-    meta = {}
-    if os.path.exists(jp):
-        try:
-            d = json.load(open(jp, encoding="utf-8"))
-            meta = {"capabilities": [c.get("id") if isinstance(c, dict) else c
-                                     for c in d.get("capabilities_required", [])],
-                    "steps": [s.get("step") for s in d.get("processing", [])],
-                    "version": d.get("version")}
-        except Exception:                                               # noqa: BLE001
-            meta = {}
-    return {"name": name, "body": body, "meta": meta}
+    body = open(e["md"], encoding="utf-8", errors="replace").read()
+    return {"name": name, "body": body, "meta": {"tools": _bp_scripts(e["tools"])}}
 
 
 # ----------------------------------------------------------------------------------
@@ -578,18 +611,13 @@ def live_ready():
 def _live_worker():
     try:
         os.environ["CTF_INDEX_ROOT"] = DATA
-        sys.path.insert(0, os.path.join(ROOT, "agentic-rca"))
-        sys.path.insert(0, ROOT)
         from dotenv import load_dotenv
         load_dotenv(os.path.join(ROOT, ".env"))
-        from stratatrace import load_run
-        import agent_v2, skillreg
+        agent_v2 = import_agent()          # Blueprint/agent, guarded against the old harness
         # The operator's pick wins; None falls back to the run's configured default.
         chosen = LIVE.get("blueprint")
         bpname = (RUNS[RUN_ID].get("blueprint") if chosen is None else (chosen or None))
-        sk = [x for x in skillreg.load_skills(
-            os.path.join(ROOT, "blueprints", "skills-kernel-only"))
-            if bpname and x.name == bpname]
+        md = blueprint_md(bpname)              # path to the blueprint's README_v1.md, or None
 
         # CLEAR IT FIRST. agent_v2.CTX is a module global that outlives a run, so on a second
         # run the watcher below latched onto the PREVIOUS run's context immediately and the
@@ -607,10 +635,9 @@ def _live_worker():
                     return
                 time.sleep(0.25)
         threading.Thread(target=watch, daemon=True).start()
-        out = agent_v2.diagnose(load_run(RUN_DIR), app="sockshop",
+        out = agent_v2.diagnose(RUN_DIR, blueprint=md,
                                 transcript_path=os.path.join(DATA, "live.json"),
-                                condition="demo-live",
-                                skills=(sk or None), skill_given=bool(sk))
+                                condition="demo-live", index_root=DATA)
         LIVE["out"] = out
         # Every finished run becomes a session on disk, so a refresh or restart loses
         # nothing: the transcript replays, and the chat continues where it stopped.
@@ -665,8 +692,7 @@ def live_stop():
     if not LIVE["running"]:
         return {"stopped": False, "reason": "nothing is running"}
     try:
-        sys.path.insert(0, os.path.join(ROOT, "agentic-rca"))
-        import agent_v2
+        agent_v2 = import_agent()
         agent_v2.CANCEL.set()
         LIVE["stopped"] = True
         return {"stopped": True}
@@ -937,7 +963,8 @@ def code_connect(path):
     if not path:                                   # disconnect
         sess.pop("code_root", None)
     else:
-        sys.path.insert(0, os.path.join(ROOT, "agentic-rca"))
+        if AGENT_DIR not in sys.path:
+            sys.path.insert(0, AGENT_DIR)
         import coderepo
         try:
             repo = coderepo.CodeRepo(path)
@@ -1025,24 +1052,21 @@ def chat_ask(q: str):
     def work():
         try:
             os.environ["CTF_INDEX_ROOT"] = DATA
-            sys.path.insert(0, os.path.join(ROOT, "agentic-rca"))
-            sys.path.insert(0, ROOT)
-            from stratatrace import load_run
-            import agent_v2, skillreg
+            from dotenv import load_dotenv
+            load_dotenv(os.path.join(ROOT, ".env"))
+            agent_v2 = import_agent()       # Blueprint/agent, guarded against the old harness
             if CHAT["obj"] is None:
                 sess = _sess_load(CHAT["sid"]) or {}
                 rid = sess.get("run_id") or RUN_ID
                 rd = os.path.join(DATA, "run", rid)
-                sk = [x for x in skillreg.load_skills(
-                    os.path.join(ROOT, "blueprints", "skills-kernel-only"))
-                    if x.name == RUNS.get(rid, {}).get("blueprint")]
+                md = blueprint_md(RUNS.get(rid, {}).get("blueprint"))
                 snap = sess.get("chat") or {}
                 croot = sess.get("code_root")
                 if snap.get("msgs"):
                     # resume: the stored thread is the whole context, verbatim
-                    CHAT["obj"] = agent_v2.Chat(load_run(rd), app="sockshop",
-                                                skill=sk[0] if sk else None,
-                                                restore=snap, code_root=croot)
+                    CHAT["obj"] = agent_v2.Chat(rd, blueprint=md,
+                                                restore=snap, code_root=croot,
+                                                index_root=DATA)
                 else:
                     # first question in this session: seed from the stored run
                     rev = sess.get("run_events") or []
@@ -1051,10 +1075,9 @@ def chat_ask(q: str):
                                  if e.get("type") == "scratchpad"), None)
                     comp = next((e.get("computed") for e in reversed(rev)
                                  if e.get("type") == "computed"), None)
-                    CHAT["obj"] = agent_v2.Chat(load_run(rd), app="sockshop",
-                                                skill=sk[0] if sk else None, diagnosis=dx,
+                    CHAT["obj"] = agent_v2.Chat(rd, blueprint=md, diagnosis=dx,
                                                 findings=find, computed=comp,
-                                                code_root=croot)
+                                                code_root=croot, index_root=DATA)
             CHAT["obj"].ask(q)
             save_chat()
         except Exception as e:                                          # noqa: BLE001

@@ -607,7 +607,7 @@ async function loadBlueprints(){
     d.blueprints.map(b=>`<option value="${b.name}" ${b.name===dflt?'selected':''}>${b.name}</option>`).join('');
   $('#blist').innerHTML=d.blueprints.map(b=>`<div data-n="${b.name}">
     <div class="bn">${b.name}${b.active?'<span class="tag">used here</span>':''}</div>
-    <div class="bc">${b.covers||'—'} · v${b.version??'?'} · ${(b.chars/1000).toFixed(1)}k chars</div>
+    <div class="bc">${b.n_tools??0} tools · ${(b.chars/1000).toFixed(1)}k chars</div>
   </div>`).join('');
   $$('#blist div[data-n]').forEach(el=>el.onclick=()=>{
     $$('#blist div[data-n]').forEach(x=>x.classList.toggle('on',x===el));
