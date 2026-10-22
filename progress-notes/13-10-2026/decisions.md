@@ -1,6 +1,6 @@
 # 13-10-2026
 
-- Designed problem #3 (memory cap): `Blueprint/latency/3_memory_cap/PLAN.md`.
+- Designed problem #3 (memory cap): `../../Blueprint/latency/del-this/3_memory_cap/PLAN.md`.
   Configuration-level, memory analog of #1's CPU cap. Mechanism = reclaim +
   refault I/O (vmscan_*/block_* already in profile), ground truth from
   cgroup memory.events/memory.stat/memory.peak (the cpu.stat analog).
@@ -75,7 +75,7 @@
   adds, 5 takeaways, open/parked). This is the doc to show Naser. Matches
   his 07-10 framing (configuration-level, kernel-only, package 3-4
   problems). Shape to be aligned with his model paper once it arrives.
-- Swept ALL provenance off the VM to `Blueprint/latency/provenance/`
+- Swept ALL provenance off the VM to `../../Blueprint/latency/del-this/provenance/`
   before any future deletion: vm_env.txt (uname/lttng/lscpu/lsblk/free/
   swap/node/claude/cgroup-controllers), all 9 campaign logs, all 6 run
   manifests, and collection_as_run/ (the CRLF-stripped scripts as they ran

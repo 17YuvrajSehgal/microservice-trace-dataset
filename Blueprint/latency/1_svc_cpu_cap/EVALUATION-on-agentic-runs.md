@@ -5,7 +5,7 @@ diagnose a CPU cap on our **agentic** runs? Our Claude/Codex runs under
 `cpu.max` *are* svc_cpu_cap faults, but on a very different application: an
 AI agent that is bursty and LLM-bound, not a steady Sock Shop service.
 
-Scope: CPU-cap runs only (`agentic-os-noise/runs/t3_implement_*`). Fault =
+Scope: CPU-cap runs only (`../../../agentic-runs/1_svc_cpu_cap/agentic-os-noise/runs/t3_implement_*`). Fault =
 `t3_implement_cap25_r1` (0.25 core); baseline = `t3_implement_nocap_r1`
 (uncapped). The slicing scripts need babeltrace2 (not local); the analytical
 core (`sched_budget.py`) runs directly on our decoded `trace.txt.gz` dumps.

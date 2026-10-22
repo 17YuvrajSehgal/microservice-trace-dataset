@@ -1,7 +1,7 @@
 # OS noise for agentic AI — data collection plan
 
 Date: 2026-10-11. Comes from the 07-10-2026 meeting
-(`../../../../meeting-notes/07-10-2026-summary.md`): recreate the CPU-cap problem under
+(`../../../meeting-notes/07-10-2026-summary.md`): recreate the CPU-cap problem under
 an agentic workload and measure how much of an agent's slowness is the OS,
 not the LLM.
 

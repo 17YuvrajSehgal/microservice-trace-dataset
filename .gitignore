@@ -65,3 +65,17 @@ demo/data/run/
 # NIER ablation: transcripts are large and regenerable from the driver
 nier-2027/transcripts/
 demo/data/aggregate-*.json
+
+
+agentic-runs
+# Blueprint/agent generated scratch (regenerable per run)
+Blueprint/agent/bp_work/
+Blueprint/agent/ctf-index/
+Blueprint/agent/transcripts/
+/bp_work/
+# demo last-run transcript (written every run; sessions/run/ already ignored)
+demo/data/live.json
+# editor/backup junk
+*.drawio.pre-*
+*.drawio.bkp
+.$*.bkp

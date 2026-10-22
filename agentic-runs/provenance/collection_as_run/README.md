@@ -1,7 +1,7 @@
 # Collection scripts — agentic OS-noise experiment
 
 What these collect and why: see `../PLAN.md`. Structure mirrors
-`microservice-lttng-data-collection-scripts/` (per-run collector, campaign
+`../../../microservice-lttng-data-collection-scripts` (per-run collector, campaign
 driver, manifest, ground truth per run).
 
 ## Files

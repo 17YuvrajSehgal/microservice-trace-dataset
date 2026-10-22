@@ -42,9 +42,9 @@ kernel mechanism.
 | 3 | memory cap | `memory.high` / `memory.max` | reclaim + refault / OOM | 4.7x slower (cache) **or** killed mid-task (anon) |
 | 4 | disk I/O cap | `io.max` | block-layer throttle | 50 MB/s -> 3.4x slower; wall ~ 1/rbps |
 
-Details and tables: `1_svc_cpu_cap/agentic-os-noise/RESULTS.md`,
-`2_threads_vs_cores/RESULTS.md`, `3_memory_cap/RESULTS.md`,
-`4_io_cap/RESULTS.md`.
+Details and tables: `../../agentic-runs/1_svc_cpu_cap/agentic-os-noise/RESULTS.md`,
+`del-this/2_threads_vs_cores/RESULTS.md`, `del-this/3_memory_cap/RESULTS.md`,
+`del-this/4_io_cap/RESULTS.md`.
 
 ## What each one adds to the story
 

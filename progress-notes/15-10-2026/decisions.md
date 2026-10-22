@@ -2,7 +2,7 @@
 
 ## M.Sc. abstract presentation (20 min) planned
 
-Work lives in `msc-thesis-abstract-presentation/` (kept separate from the
+Work lives in `../../thesis/msc-thesis-abstract-presentation/` (kept separate from the
 research tracks on purpose). Plan: `presentation-plan.md`.
 
 Decisions and why:

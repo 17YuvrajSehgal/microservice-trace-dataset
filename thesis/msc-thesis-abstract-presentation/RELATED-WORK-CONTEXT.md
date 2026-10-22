@@ -102,16 +102,16 @@ without it need reading first.
 
 ### 2A — Classical RCA for microservices
 
-| Work | Venue | Status |
-|---|---|---|
-| **BARO** (Pham et al.) | FSE 2024 | see §2D — same authors as RCAEval |
-| **DepGraph** (**Ezzati-Jivan** et al.) | SCAM 2020 | **[S]** waiting-dependency graph: who is blocked on whom, from kernel traces. Fills the gap Giraldeau leaves — *which* thread holds the resource |
-| **CPI²** (Zhang et al., Google) | EuroSys 2013 | **[S]** learns normal CPI per job, flags at 2σ, correlates victim CPI against suspect CPU to name the **antagonist**. Source of the victim/antagonist vocabulary. Deployed on all Google shared clusters |
-| **NetPoirot** (Arzani et al.) | SIGCOMM 2016 | **[S]** **blame allocation** — client / network / server — from a client-side TCP agent only, no app knowledge. Up to 96% |
-| **ASFC** (Song et al.) | FGCS 2024 | **[S]** autonomous selection of fault-classification models. **Uses Sock Shop** |
-| **MSoFSAnomaly** (Fu et al.) | JSS 2025 | **[S]** multi-source failure analysis for fault-sensitive microservices |
-| **Mining root cause knowledge** (Saha & Hoi) | ICSE-SEIP 2022 | **[S]** 2,000 Salesforce Sev0/1/2 post-mortems → causal knowledge graph, 60 symptom clusters. *Weights are cluster weights, not incident counts* |
-| CIRCA · RCD · MicroRCA · MicroCause · MicroRank · TraceRCA · Nezha · Eadro · DeepTraLog · ε-Diagnosis · DiagFusion | KDD'22 … ICSE'23 | **in `claude-recommendations/` only — unread.** Characterised in `non-llm-baseline.md` but not summarised |
+| Work                                                                                                               | Venue            | Status                                                                                                                                                                                                   |
+|--------------------------------------------------------------------------------------------------------------------|------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **BARO** (Pham et al.)                                                                                             | FSE 2024         | see §2D — same authors as RCAEval                                                                                                                                                                        |
+| **DepGraph** (**Ezzati-Jivan** et al.)                                                                             | SCAM 2020        | **[S]** waiting-dependency graph: who is blocked on whom, from kernel traces. Fills the gap Giraldeau leaves — *which* thread holds the resource                                                         |
+| **CPI²** (Zhang et al., Google)                                                                                    | EuroSys 2013     | **[S]** learns normal CPI per job, flags at 2σ, correlates victim CPI against suspect CPU to name the **antagonist**. Source of the victim/antagonist vocabulary. Deployed on all Google shared clusters |
+| **NetPoirot** (Arzani et al.)                                                                                      | SIGCOMM 2016     | **[S]** **blame allocation** — client / network / server — from a client-side TCP agent only, no app knowledge. Up to 96%                                                                                |
+| **ASFC** (Song et al.)                                                                                             | FGCS 2024        | **[S]** autonomous selection of fault-classification models. **Uses Sock Shop**                                                                                                                          |
+| **MSoFSAnomaly** (Fu et al.)                                                                                       | JSS 2025         | **[S]** multi-source failure analysis for fault-sensitive microservices                                                                                                                                  |
+| **Mining root cause knowledge** (Saha & Hoi)                                                                       | ICSE-SEIP 2022   | **[S]** 2,000 Salesforce Sev0/1/2 post-mortems → causal knowledge graph, 60 symptom clusters. *Weights are cluster weights, not incident counts*                                                         |
+| CIRCA · RCD · MicroRCA · MicroCause · MicroRank · TraceRCA · Nezha · Eadro · DeepTraLog · ε-Diagnosis · DiagFusion | KDD'22 … ICSE'23 | **in `claude-recommendations/` only — unread.** Characterised in `non-llm-baseline.md` but not summarised                                                                                                |
 
 **Why this family is insufficient — four structural arguments** from
 `non-llm-baseline.md`:

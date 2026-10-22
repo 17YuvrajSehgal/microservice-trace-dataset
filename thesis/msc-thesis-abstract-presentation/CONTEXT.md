@@ -2299,7 +2299,7 @@ Paths relative to the repo root `C:\workplace\microservice-trace-dataset`.
 | `Blueprint/000-what-is-telemetry/` … `005-how-to-use-lttng/` | **six short teaching notes**: telemetry, tracing, what to trace, application traces, system traces, LTTng. **Use these for the background slides** |
 | `Blueprint/latency/1_svc_cpu_cap/README_v1.md` | the **template** blueprint (CPU cap). Parts 1–6 + two appendices |
 | `Blueprint/latency/1_svc_cpu_cap/EVALUATION-on-agentic-runs.md` | the kernel-portability case study (§9.9). **Not a scored evaluation** |
-| `Blueprint/latency/1_svc_cpu_cap/agentic-os-noise/` | the OS-noise study: collection, analysis, runs, `RESULTS.md` |
+| `../../agentic-runs/1_svc_cpu_cap/agentic-os-noise/` | the OS-noise study: collection, analysis, runs, `RESULTS.md` |
 | `Blueprint/latency/2_noisy_neighbor/`, `3_slow_db/`, `4_svc_mem_cap/`, `5_svc_net/` | the other four blueprints, same shape. Each has `README_v1.md` + `tools/` |
 | `Blueprint/latency/OS-NOISE-FOR-AGENTIC-AI.md` | **the four-problem agentic catalogue** — the doc to show Naser |
 | `Blueprint/agent/` | the generation-2 agent: `agent_v2.py`, `utils.py`, `ctf_tool.py`, `codetool.py`, `leakguard.py`, `blueprints.py`, `skillreg.py`, `config.py`. `AGENT-V2-ARCHITECTURE.md` explains the loop and the documented scratchpad failure |
@@ -2327,7 +2327,7 @@ Paths relative to the repo root `C:\workplace\microservice-trace-dataset`.
 | `agentic-runs/provenance/collection_as_run/` | **the collection scripts exactly as they ran on the VM**, CRLF-stripped — preserved as a run artifact, not as source. Its README lists six "do not rediscover" gotchas, including the best bug in the set: `echo $BASHPID \| tee` wrote the *pipe-subshell* pid, so the agent never entered the cgroup — caught only because the `cpu.stat` delta was zero |
 
 > **OS-noise problem #1 is NOT in `agentic-runs/`.** It lives at
-> `Blueprint/latency/1_svc_cpu_cap/agentic-os-noise/`. The `Blueprint/latency/`
+> `../../agentic-runs/1_svc_cpu_cap/agentic-os-noise/`. The `Blueprint/latency/`
 > numbering was later reused for *blueprints*, so problems #2–#4 were moved out
 > to `agentic-runs/`. Some docs still carry stale `del-this/` links to the old
 > location.
