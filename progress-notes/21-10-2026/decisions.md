@@ -118,3 +118,18 @@ and ctf_timeline "total events 0", though the index had 49,975 rows and ctf_proc
 Verified: import_agent loads Blueprint/agent/ctf_tool; timespan 48.0s no error; timeline
 sched_switch matched 76,757; CTF reachable. (Recreated ext_t6a's junction + source.txt by hand
 since it predated the sidecar.)
+
+## Quick wins (user chose these before any bigger track)
+1. ctf_lines raw-decode now uses WSL babeltrace on Windows. Added _bt_argv() in ctf_tool.py:
+   on Windows without native babeltrace2 it routes `wsl -e babeltrace2 --clock-gmt <mnt-path>`;
+   native everywhere else. All 3 decode sites use it. Verified: ctf_lines returned real
+   mm_vmscan reclaim lines from the memory trace (was 4x "cannot run bt21.sh" before).
+2. extract_slice.sh self-heals a missing/placeholder date. The agent sometimes calls it before
+   idx_summary and passed `2026-??-??`; the script now resolves the day from the trace (same
+   source idx_summary uses) when the date is not YYYY-MM-DD. Patched all 5 blueprint copies.
+   Verified: bad date -> resolved 2026-10-13, cut 40,311 lines. (Tool robustness, not a
+   method/prose change - the blueprint-text tuning remains the user's.)
+3. Token cost: last run was 1.45M INPUT tokens, 1.05M in a single worker re-sending its thread
+   (18 steps, 150k budget, + the 24k-char blueprint body in every system prompt). The demo now
+   sets ABL_WORKER_STEPS=12 and ABL_THREAD_BUDGET=90000 via os.environ.setdefault at app import,
+   so demo runs are ~half the cost while the agent's research defaults (18/150k) are untouched.

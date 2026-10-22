@@ -38,8 +38,24 @@ import gzip
 import json
 import os
 import re
+import shutil
 import subprocess
 from collections import Counter
+
+
+def _wsl_path(p: str) -> str:
+    """C:\\a\\b -> /mnt/c/a/b so a WSL babeltrace2 can read a Windows path (incl. junctions)."""
+    q = os.path.abspath(p).replace("\\", "/")
+    return "/mnt/" + q[0].lower() + q[2:] if len(q) > 1 and q[1] == ":" else q
+
+
+def _bt_argv(ctf: str, *extra) -> list:
+    """babeltrace2 argv. On Windows without a native babeltrace2, route through WSL (its 2.1.2
+    reads these traces) and translate the trace path to /mnt/c. Native on every other host.
+    This is what lets the raw-decode fallbacks work off the demo box, like the blueprint tools."""
+    if os.name == "nt" and not shutil.which("babeltrace2") and shutil.which("wsl"):
+        return ["wsl", "-e", "babeltrace2", *GMT, _wsl_path(ctf), *extra]
+    return [BT2, *GMT, ctf, *extra]
 
 # babeltrace 2.1.2. 2.0.4 CANNOT read these traces and the wrapper silently falls back to it if
 # its paths go stale - check `bt21.sh --version` if a query comes back empty (CLUSTER-LAYOUT.md).
@@ -539,7 +555,7 @@ def ctf_lines(run_dir: str, event: str, begin: str, end: str, n: int = 10,
     except Exception:                                                   # noqa: BLE001
         hot = []
 
-    cmd = [BT2] + GMT + [ctf, "--begin", begin, "--end", end]
+    cmd = _bt_argv(ctf, "--begin", begin, "--end", end)
     lines, scanned = [], 0
     try:
         p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
@@ -835,7 +851,7 @@ def _timeline_from_trace(run_dir: str, event: str, buckets: int,
     ev_re = re.compile(event)
     stamps, scanned, truncated = [], 0, False
     try:
-        p = subprocess.Popen([BT2] + GMT + [ctf], stdout=subprocess.PIPE,
+        p = subprocess.Popen(_bt_argv(ctf), stdout=subprocess.PIPE,
                              stderr=subprocess.DEVNULL, text=True, bufsize=1 << 20)
     except OSError as e:
         return {"error": "cannot run babeltrace2 (%s): %r" % (BT2, e)}
@@ -889,7 +905,7 @@ def _query_from_trace(run_dir: str, event: str, begin, end, sample: int,
         return {"error": "no CTF at %s" % ctf}
     ev_re = re.compile(event)
     sample = max(0, min(int(sample), MAX_SAMPLE))
-    cmd = [BT2] + GMT + [ctf]
+    cmd = _bt_argv(ctf)
     if begin:
         cmd += ["--begin", begin]
     if end:

@@ -24,6 +24,13 @@ import argparse, glob, gzip, json, os, re, subprocess, sys, threading, time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse, parse_qs
 
+# Demo runs favour a bounded token cost over maximum depth; research runs use the agent's own
+# generous defaults. These are read by Blueprint/agent at import time. setdefault, so an explicit
+# environment override still wins. (Last full run cost 1.45M input tokens at 18 steps / 150k
+# budget, almost all in one worker re-sending its thread; 12 / 90k roughly halves that.)
+os.environ.setdefault("ABL_WORKER_STEPS", "12")
+os.environ.setdefault("ABL_THREAD_BUDGET", "90000")
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 DATA = os.path.join(HERE, "data")

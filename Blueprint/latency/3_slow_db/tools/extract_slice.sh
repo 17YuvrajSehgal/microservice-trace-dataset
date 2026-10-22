@@ -35,6 +35,14 @@ fi
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 trace="$1"; day="$2"; start="$3"; secs="$4"; out="$5"
 # "UTC" must be written out: without it, some versions of date read "+ N" as a time zone
+# Self-heal a missing/placeholder date (the agent sometimes calls this before idx_summary):
+# resolve the day from the trace itself - the same source idx_summary reads - so the slice
+# still cuts instead of failing on a bad date.
+if ! printf '%s' "$day" | grep -qE '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'; then
+  day="$(python3 "$here/idx_summary.py" "$trace" 2>/dev/null | awk '/^date \(UTC\)/{print $4}')"
+  [ -n "$day" ] || { echo "error: could not resolve the trace date from idx_summary" >&2; exit 1; }
+  echo "note: date was not YYYY-MM-DD; resolved from the trace -> $day" >&2
+fi
 end=$(date -u -d "$day $start UTC + $secs seconds" '+%Y-%m-%d %H:%M:%S')
 
 if [ ! -f "$trace/metadata" ]; then
