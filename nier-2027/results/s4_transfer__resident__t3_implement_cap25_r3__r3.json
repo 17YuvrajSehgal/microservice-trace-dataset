@@ -1,0 +1,72 @@
+{
+  "config": "s4_transfer",
+  "klass": "resident",
+  "run": "t3_implement_cap25_r3",
+  "run_dir": "C:\\workplace\\microservice-trace-dataset\\Blueprint\\latency\\1_svc_cpu_cap\\agentic-os-noise\\runs\\t3_implement_cap25_r3",
+  "rep": 3,
+  "cell": "s4_transfer__resident__t3_implement_cap25_r3__r3",
+  "status": "ok",
+  "returncode": 0,
+  "wall_s": 236.1,
+  "env_ablation": {
+    "ABL_NO_COMPUTED": "1"
+  },
+  "result": {
+    "run_id": "t3_implement_cap25_r3",
+    "diagnosis": {
+      "what_is_wrong": "The trace does not establish a kernel-level fault or confirm why the coding task took longer. There is a synchronized reduction in scheduler, block-I/O, and network event rates around 03:27:34\u201303:27:41, but activity continues, and the evidence supports a workload lull rather than demonstrated resource saturation, I/O failure, starvation, or a process restart.",
+      "root_cause_service": "unknown",
+      "culprit_kind": "unknown",
+      "fault_type": "normal",
+      "evidence": "Compared full-span rates reported by the workers: sched_switch fell from 1,130/s (03:27:30\u201303:27:35) to 177/s (03:27:38\u201303:27:41), block issue/complete from 66/s to 5.3/s, and network rates by roughly 56\u201359%. The trace has only pid_ns 4026531836; runtime there was about 245.7 ms/s in 03:27:30\u201303:27:35 and 56.6 ms/s in 03:27:35\u201303:27:41, not evidence of CPU saturation. The raw checks for 03:27:34\u201303:27:41 show 48 block issues and 48 completions (sampled completion error=0), ongoing scheduling, and no sustained wakeup delay (median 0.015 ms in the one-second sample). No direct OOM, throttling, reclaim, or pressure tracepoints were collected, so those causes cannot be positively ruled out. The later rate rebound and process activity changes likewise do not identify a culprit.",
+      "confidence": 0.78,
+      "incident_window": "unknown",
+      "window_evidence": "The rate change suggests a candidate activity dip around 03:27:34\u201303:27:41, with a partial rebound around 03:27:41, but the workers could not distinguish changing coding-task workload from a fault. The later 03:27:58\u201303:28:01 CPU drop is also not established as an incident. With no causal boundary supported, I am not assigning an incident window."
+    },
+    "ranked_services": null,
+    "ranked_candidates": null,
+    "trajectory": [
+      {
+        "step": 0,
+        "tool": "worker1.0",
+        "service": null
+      },
+      {
+        "step": 1,
+        "tool": "worker1.1",
+        "service": null
+      },
+      {
+        "step": 2,
+        "tool": "worker1.2",
+        "service": null
+      },
+      {
+        "step": 3,
+        "tool": "worker1.3",
+        "service": null
+      },
+      {
+        "step": 4,
+        "tool": "worker2.100",
+        "service": null
+      }
+    ],
+    "n_tool_calls": 84,
+    "n_code_snippets": 30,
+    "n_findings": 14,
+    "n_computed": 30,
+    "bytes_touched": 150069,
+    "tokens": {
+      "in": 860464,
+      "out": 21672
+    },
+    "model": "openai/gpt-6-luna",
+    "wall_s": 235.2,
+    "transcript_file": "C:\\workplace\\microservice-trace-dataset\\nier-2027\\transcripts\\s4_transfer__resident__t3_implement_cap25_r3__r3.json",
+    "skill_selected": null,
+    "skill_confidence": null,
+    "brief_injected": false,
+    "n_claims": null
+  }
+}

@@ -1,0 +1,73 @@
+{
+  "config": "s1_reversed",
+  "klass": "spawned",
+  "run": "t4_w16_r4",
+  "run_dir": "C:\\workplace\\microservice-trace-dataset\\agentic-runs\\2_threads_vs_cores\\runs\\t4_w16_r4",
+  "rep": 2,
+  "cell": "s1_reversed__spawned__t4_w16_r4__r2",
+  "status": "ok",
+  "returncode": 0,
+  "wall_s": 254.7,
+  "env_ablation": {
+    "ABL_FLAT_CAP": "2000",
+    "ABL_REVERSE_KEYS": "1"
+  },
+  "result": {
+    "run_id": "t4_w16_r4",
+    "diagnosis": {
+      "what_is_wrong": "A burst of `ttworker` activity in the coding-task container consumed nearly all four CPUs, plausibly slowing the coding task through CPU contention. The trace directly establishes the CPU-heavy burst, but the short trace does not conclusively quantify how much other tasks were delayed.",
+      "root_cause_service": "ttworker in pid_ns 4026531836",
+      "culprit_kind": "container",
+      "fault_type": "cpu_saturation",
+      "evidence": "Compared the 02:46:08\u201302:46:11 lull and 02:46:15\u201302:46:17 tail with 02:46:11\u201302:46:14: `ttworker` used 11.42 CPU-seconds in that three-second suspect interval (about 3.8 cores), with 3,946 of 4,572 sched_switch records; per-100-ms CPU use was mostly 390\u2013400 ms. In the tail it was absent from CPU leaders and total event rate fell from about 19,317/s to 3,894/s. Indexed scheduler samples show `ttworker` switching among its runnable threads (`prev_state=0`). The attempted wakeup-to-run comparison was inconclusive in the suspect interval (29 of 30 wakeups had no matching switch-in before the interval ended); quiet and tail paired wakeups had roughly 0.02-ms medians. Block issue/complete counts were 77 each in the suspect interval, with no measured block latency. Thus the workload and timing are clear, but collateral delay is not conclusively demonstrated.",
+      "confidence": 0.83,
+      "incident_window": "02:46:11.000 - 02:46:14.900",
+      "window_evidence": "The window begins when `ttworker` appears and its per-100-ms CPU runtime jumps to near 400 ms, remaining near that level through 02:46:14.7. Runtime drops to 238.9 ms at 02:46:14.8 and then to near-idle by 02:46:15; the later tail is a low-activity comparison. The lifecycle and indexed runtime buckets support these boundaries."
+    },
+    "ranked_services": null,
+    "ranked_candidates": null,
+    "trajectory": [
+      {
+        "step": 0,
+        "tool": "worker1.0",
+        "service": null
+      },
+      {
+        "step": 1,
+        "tool": "worker1.1",
+        "service": null
+      },
+      {
+        "step": 2,
+        "tool": "worker1.2",
+        "service": null
+      },
+      {
+        "step": 3,
+        "tool": "worker1.3",
+        "service": null
+      },
+      {
+        "step": 4,
+        "tool": "worker2.100",
+        "service": null
+      }
+    ],
+    "n_tool_calls": 73,
+    "n_code_snippets": 35,
+    "n_findings": 14,
+    "n_computed": 35,
+    "bytes_touched": 123458,
+    "tokens": {
+      "in": 674631,
+      "out": 23412
+    },
+    "model": "openai/gpt-6-luna",
+    "wall_s": 253.8,
+    "transcript_file": "C:\\workplace\\microservice-trace-dataset\\nier-2027\\transcripts\\s1_reversed__spawned__t4_w16_r4__r2.json",
+    "skill_selected": null,
+    "skill_confidence": null,
+    "brief_injected": false,
+    "n_claims": null
+  }
+}

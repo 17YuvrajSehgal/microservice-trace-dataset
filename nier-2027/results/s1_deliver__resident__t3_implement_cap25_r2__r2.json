@@ -1,0 +1,67 @@
+{
+  "config": "s1_deliver",
+  "klass": "resident",
+  "run": "t3_implement_cap25_r2",
+  "run_dir": "C:\\workplace\\microservice-trace-dataset\\Blueprint\\latency\\1_svc_cpu_cap\\agentic-os-noise\\runs\\t3_implement_cap25_r2",
+  "rep": 2,
+  "cell": "s1_deliver__resident__t3_implement_cap25_r2__r2",
+  "status": "ok",
+  "returncode": 0,
+  "wall_s": 104.4,
+  "env_ablation": {
+    "ABL_FLAT_CAP": "2000"
+  },
+  "result": {
+    "run_id": "t3_implement_cap25_r2",
+    "diagnosis": {
+      "what_is_wrong": "The coding workload shows a sharp, sustained reduction in execution after initially active work, consistent with a pause that could prolong completion; the trace does not establish what caused the pause, so it does not justify attributing it to host resource saturation or a failed dependency. The affected workload is represented by `claude` and its Bun/JIT threads, rather than evidence of a host-wide resource fault.",
+      "root_cause_service": "claude in pid_ns 4026531836",
+      "culprit_kind": "container",
+      "fault_type": "other",
+      "evidence": "Used ctf_timespan to establish 03:26:40.800\u201303:27:15.800 UTC and ctf_proclife/indexed process activity to check for arrivals or exits; the main workload processes persist, so this is not an obvious restart. Compared indexed event rates in the active early interval (03:26:41\u201303:26:44) with the sharp trough around 03:26:48\u201303:26:51: sched_switch fell from 3,249 to 395 per 3 seconds, sched_wakeup from 1,588 to 199, and sched_stat_runtime payload from 760.6 ms to 53.2 ms. The trace-wide per-second series shows the drop beginning around 03:26:45.8 and substantially lower activity continuing thereafter; the apparent late rise is preceded by a low interval and is not a sustained return to the early regime. Runtime attribution shows `claude` fell from 610.2 ms CPU in 03:26:41\u201303:26:44 to 42.1 ms in 03:26:48\u201303:26:51, while the later `python3` burst averaged only about 0.22 CPU equivalents. Raw ctf_lines samples show ordinary futex operations and prompt wake-to-switch samples, successful small network transmissions, and matching block issue/completion counts; no long wake delay, stalled I/O, or network failure was established. This rejects CPU saturation, disk, network, and demonstrated futex contention as explanations, but the trace cannot identify the underlying reason the workload did less work.",
+      "confidence": 0.66,
+      "incident_window": "03:26:45.800 - 03:27:15.800",
+      "window_evidence": "The boundary is the sharp synchronized fall in scheduler/runtime event rates at approximately 03:26:45.8 (the per-second series has sched_switch 118 and sched_wakeup 59 in the next bucket, after substantially higher early rates). Activity partially rebounds around 03:26:51.8\u201303:26:56.8, then remains at a lower regime; the offset 17\u201329 mean is 180.8 sched_switch/s versus 1,277.5/s in offsets 0\u20133. The final seconds show isolated blips, not sustained recovery, and the trace ends at 03:27:15.800, so the endpoint is the recording limit rather than a confirmed resolution."
+    },
+    "ranked_services": null,
+    "ranked_candidates": null,
+    "trajectory": [
+      {
+        "step": 0,
+        "tool": "worker1.0",
+        "service": null
+      },
+      {
+        "step": 1,
+        "tool": "worker1.1",
+        "service": null
+      },
+      {
+        "step": 2,
+        "tool": "worker1.2",
+        "service": null
+      },
+      {
+        "step": 3,
+        "tool": "worker1.3",
+        "service": null
+      }
+    ],
+    "n_tool_calls": 54,
+    "n_code_snippets": 28,
+    "n_findings": 10,
+    "n_computed": 28,
+    "bytes_touched": 121638,
+    "tokens": {
+      "in": 500749,
+      "out": 15098
+    },
+    "model": "openai/gpt-6-luna",
+    "wall_s": 103.4,
+    "transcript_file": "C:\\workplace\\microservice-trace-dataset\\nier-2027\\transcripts\\s1_deliver__resident__t3_implement_cap25_r2__r2.json",
+    "skill_selected": null,
+    "skill_confidence": null,
+    "brief_injected": false,
+    "n_claims": null
+  }
+}

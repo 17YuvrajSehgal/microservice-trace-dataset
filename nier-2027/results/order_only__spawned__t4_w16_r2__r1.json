@@ -1,0 +1,72 @@
+{
+  "config": "order_only",
+  "klass": "spawned",
+  "run": "t4_w16_r2",
+  "run_dir": "C:\\workplace\\microservice-trace-dataset\\agentic-runs\\2_threads_vs_cores\\runs\\t4_w16_r2",
+  "rep": 1,
+  "cell": "order_only__spawned__t4_w16_r2__r1",
+  "status": "ok",
+  "returncode": 0,
+  "wall_s": 185.5,
+  "env_ablation": {
+    "ABL_REVERSE_KEYS": "1"
+  },
+  "result": {
+    "run_id": "t4_w16_r2",
+    "diagnosis": {
+      "what_is_wrong": "A short-lived `ttworker` compute burst occupied essentially all four CPUs, plausibly delaying the reported coding task; this is a workload-specific CPU saturation signal, not evidence of disk, memory, or network failure. The trace supports the resource contention mechanism, although it cannot directly prove the user-visible delay.",
+      "root_cause_service": "ttworker in pid_ns 4026531836",
+      "culprit_kind": "container",
+      "fault_type": "cpu_saturation",
+      "evidence": "Compared the 02:48:28\u201302:48:32 pre-burst and 02:48:37\u201302:48:39 post-burst CPU accounting with 02:48:33\u201302:48:37: total sched_stat_runtime was 1.706 CPU-s before, 15.684 CPU-s in the 4-second burst, and 0.107 CPU-s after. `ttworker` alone accounted for 15.104 CPU-s (~96.3% of measured runtime during the burst), with per-second runtime near 4 CPU-s/s across four CPUs. ctf_proclife places its arrival/exit at 02:48:33.100/02:48:36.900 alongside a task-like `run_all.sh`/`worker.py` wave. Raw scheduler records show repeated ~1 ms `ttworker` runtime slices on CPUs 0\u20133. The sampled wakeup/switch data did not establish broad run-queue delays (only four pairs matched); the check that could falsify contention as the delay mechanism would be showing CPU headroom or no impact on the coding task during this burst, which this trace cannot establish directly. Disk issue/completion counts were both 64 in the burst, reclaim/OOM evidence was absent, and representative network transmit records succeeded, weakening those alternatives.",
+      "confidence": 0.91,
+      "incident_window": "02:48:33.100 - 02:48:36.900",
+      "window_evidence": "The window follows the observed quiet comparison period, starts with `ttworker`'s first appearance and the sharp runtime rise (the 02:48:33 second totals 3.920 CPU-s), continues with roughly 4 CPU-s/s through 02:48:36, and ends at its last observed appearance at 02:48:36.900; runtime falls to near zero in the following second."
+    },
+    "ranked_services": null,
+    "ranked_candidates": null,
+    "trajectory": [
+      {
+        "step": 0,
+        "tool": "worker1.0",
+        "service": null
+      },
+      {
+        "step": 1,
+        "tool": "worker1.1",
+        "service": null
+      },
+      {
+        "step": 2,
+        "tool": "worker1.2",
+        "service": null
+      },
+      {
+        "step": 3,
+        "tool": "worker1.3",
+        "service": null
+      },
+      {
+        "step": 4,
+        "tool": "worker2.100",
+        "service": null
+      }
+    ],
+    "n_tool_calls": 60,
+    "n_code_snippets": 20,
+    "n_findings": 9,
+    "n_computed": 20,
+    "bytes_touched": 119270,
+    "tokens": {
+      "in": 545976,
+      "out": 18504
+    },
+    "model": "openai/gpt-6-luna",
+    "wall_s": 184.5,
+    "transcript_file": "C:\\workplace\\microservice-trace-dataset\\nier-2027\\transcripts\\order_only__spawned__t4_w16_r2__r1.json",
+    "skill_selected": null,
+    "skill_confidence": null,
+    "brief_injected": false,
+    "n_claims": null
+  }
+}

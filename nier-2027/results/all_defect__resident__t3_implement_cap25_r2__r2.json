@@ -1,0 +1,75 @@
+{
+  "config": "all_defect",
+  "klass": "resident",
+  "run": "t3_implement_cap25_r2",
+  "run_dir": "C:\\workplace\\microservice-trace-dataset\\Blueprint\\latency\\1_svc_cpu_cap\\agentic-os-noise\\runs\\t3_implement_cap25_r2",
+  "rep": 2,
+  "cell": "all_defect__resident__t3_implement_cap25_r2__r2",
+  "status": "ok",
+  "returncode": 0,
+  "wall_s": 144.7,
+  "env_ablation": {
+    "ABL_FLAT_CAP": "2000",
+    "ABL_WORKER_STEPS": "12",
+    "ABL_THREAD_BUDGET": "80000",
+    "ABL_NO_COMPUTED": "1"
+  },
+  "result": {
+    "run_id": "t3_implement_cap25_r2",
+    "diagnosis": {
+      "what_is_wrong": "The trace does not establish a fault causing the coding task to run longer. It does show a synchronized reduction in scheduler, wakeup, runtime, and futex event counts around 03:26:45\u201303:26:51, but the recorded CPU use is far too low to support CPU saturation, and the available wakeup/switch samples do not prove CPU starvation; no specific dependency, I/O, or network failure is demonstrated. I therefore cannot confirm the reported slowdown from this trace and classify the evidence as normal/no fault evident.",
+      "root_cause_service": "unknown",
+      "culprit_kind": "unknown",
+      "fault_type": "normal",
+      "evidence": "Compared the whole 03:26:40.800\u201303:27:15.800 trace using the worker's per-second event aggregation: sched_switch fell from 1,013\u20131,150/sec at 03:26:43\u201344 to 490 then 129, with sched_wakeup, sched_stat_runtime, and syscall_entry_futex falling similarly around 03:26:45\u201346. The reduction is real, but ctf_timeline returned matched=0, so this relies on the reported whole-trace DataFrame aggregation. Runtime aggregation found only 5.937 seconds of CPU over the 35.1-second trace (about 0.263 cores averaged over the first 5-second bin and lower in most bins), not evidence of saturation. Raw wakeup/switch inspection for 03:26:45\u201303:26:51 did not establish a wake-to-run delay: several target wakeups were seen, but no complete one-to-one pairing was available. The checks that could have falsified this conclusion would be evidence of sustained high CPU contention or measurable wake-to-run delay, or concrete I/O/network/dependency failure; those were not established in the recorded checks. Process-lifetime findings show no service/container churn, and only pid_ns 4026531836 appears.",
+      "confidence": 0.72,
+      "incident_window": "unknown",
+      "window_evidence": "The event-rate reduction has a candidate interval around 03:26:45\u201303:26:51, but it is not attributable to a demonstrated fault: activity was already changing with workload, there was no clear sustained recovery spike, and the scheduler samples do not prove starvation. Since no incident is confirmed, assigning that candidate interval as an incident window would overstate the evidence."
+    },
+    "ranked_services": null,
+    "ranked_candidates": null,
+    "trajectory": [
+      {
+        "step": 0,
+        "tool": "worker1.0",
+        "service": null
+      },
+      {
+        "step": 1,
+        "tool": "worker1.1",
+        "service": null
+      },
+      {
+        "step": 2,
+        "tool": "worker1.2",
+        "service": null
+      },
+      {
+        "step": 3,
+        "tool": "worker1.3",
+        "service": null
+      },
+      {
+        "step": 4,
+        "tool": "worker2.100",
+        "service": null
+      }
+    ],
+    "n_tool_calls": 72,
+    "n_code_snippets": 32,
+    "n_findings": 10,
+    "n_computed": 30,
+    "bytes_touched": 129526,
+    "tokens": {
+      "in": 432693,
+      "out": 15304
+    },
+    "model": "openai/gpt-6-luna",
+    "wall_s": 143.8,
+    "transcript_file": "C:\\workplace\\microservice-trace-dataset\\nier-2027\\transcripts\\all_defect__resident__t3_implement_cap25_r2__r2.json",
+    "skill_selected": null,
+    "skill_confidence": null,
+    "brief_injected": false,
+    "n_claims": null
+  }
+}

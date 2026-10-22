@@ -1,0 +1,65 @@
+{
+  "config": "repair",
+  "klass": "spawned",
+  "run": "t4_w16_r5",
+  "run_dir": "C:\\workplace\\microservice-trace-dataset\\agentic-runs\\2_threads_vs_cores\\runs\\t4_w16_r5",
+  "rep": 2,
+  "cell": "repair__spawned__t4_w16_r5__r2",
+  "status": "ok",
+  "returncode": 0,
+  "wall_s": 168.9,
+  "env_ablation": {},
+  "result": {
+    "run_id": "t4_w16_r5",
+    "diagnosis": {
+      "what_is_wrong": "The trace shows a short, compute-heavy task run, but does not establish a host fault or explain an abnormal slowdown: ttworker consumed nearly four CPU-seconds per second while the task was active, then stopped, with no reported evidence of scheduler starvation, problematic disk latency, or a synchronized host-wide failure. The operator\u2019s symptom cannot be confirmed as a fault from this trace alone; I classify it as normal rather than attributing the task\u2019s own CPU work to an external cause.",
+      "root_cause_service": "unknown",
+      "culprit_kind": "unknown",
+      "fault_type": "normal",
+      "evidence": "Compared the reported Python-derived sched_stat_runtime totals across the aligned quiet-ish interval 02:47:30.200\u201302:47:31.200 and worker interval 02:47:31.200\u201302:47:35.200: container pid_ns 4026531836 rose from 82.39 ms CPU in the preceding second to 15,749.34 ms over the next four seconds, of which ttworker used 15,228.02 ms (96.7%). It then fell to 235.49 ms in 02:47:35.200\u201302:47:36.200; ttworker\u2019s exit was recorded at 02:47:35.382. ctf_proclife associates the run_all.sh/worker cohort with this boundary. ctf_timeline did not match recorded event names, so workers reconstructed rates from the indexed dataframe; those show no broad synchronized collapse/recovery. Reported raw sched_switch samples show normal-priority tasks and prev_state=0; sampled block completions report error=0 and sampled net_dev_xmit records rc=0. These checks do not prove all wait was absent, but they provide no positive evidence for a separate bottleneck. The notes contain no ctf_procdiff result and no measured comparison to a known-good coding-task run.",
+      "confidence": 0.8,
+      "incident_window": "02:47:31.200 - 02:47:35.382",
+      "window_evidence": "This is the observed task/compute-burst window, not a confirmed fault interval: the aligned CPU totals jump at 02:47:31.200 when the worker cohort becomes active, remain near four CPU-seconds per second through 02:47:35.200, then fall sharply; the raw sched_process_exit for ttworker TID 3480 is at 02:47:35.382. The preceding 02:47:30.200\u201302:47:31.200 interval is the comparison window, not an established historical baseline."
+    },
+    "ranked_services": null,
+    "ranked_candidates": null,
+    "trajectory": [
+      {
+        "step": 0,
+        "tool": "worker1.0",
+        "service": null
+      },
+      {
+        "step": 1,
+        "tool": "worker1.1",
+        "service": null
+      },
+      {
+        "step": 2,
+        "tool": "worker1.2",
+        "service": null
+      },
+      {
+        "step": 3,
+        "tool": "worker1.3",
+        "service": null
+      }
+    ],
+    "n_tool_calls": 47,
+    "n_code_snippets": 14,
+    "n_findings": 11,
+    "n_computed": 14,
+    "bytes_touched": 51386,
+    "tokens": {
+      "in": 455522,
+      "out": 13213
+    },
+    "model": "openai/gpt-6-luna",
+    "wall_s": 167.9,
+    "transcript_file": "C:\\workplace\\microservice-trace-dataset\\nier-2027\\transcripts\\repair__spawned__t4_w16_r5__r2.json",
+    "skill_selected": null,
+    "skill_confidence": null,
+    "brief_injected": false,
+    "n_claims": null
+  }
+}

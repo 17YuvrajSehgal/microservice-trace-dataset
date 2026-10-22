@@ -1,0 +1,67 @@
+{
+  "config": "s1_deliver",
+  "klass": "spawned",
+  "run": "t4_w16_r1",
+  "run_dir": "C:\\workplace\\microservice-trace-dataset\\agentic-runs\\2_threads_vs_cores\\runs\\t4_w16_r1",
+  "rep": 2,
+  "cell": "s1_deliver__spawned__t4_w16_r1__r2",
+  "status": "ok",
+  "returncode": 0,
+  "wall_s": 132.1,
+  "env_ablation": {
+    "ABL_FLAT_CAP": "2000"
+  },
+  "result": {
+    "run_id": "t4_w16_r1",
+    "diagnosis": {
+      "what_is_wrong": "The coding-task process tree launches `ttworker`, which consumes essentially all four CPU cores for a sharply bounded burst; this is credible CPU saturation during the task and could explain slower completion. The trace confirms the resource pressure, but has no usual-duration baseline, so it cannot quantify how much longer than normal the task took.",
+      "root_cause_service": "ttworker in pid_ns 4026531836",
+      "culprit_kind": "container",
+      "fault_type": "cpu_saturation",
+      "evidence": "The recorded span is 02:49:09.900\u201302:49:20.700. ctf_proclife places the task-related `run_all.sh`/`xargs` arrivals at 02:49:14.600 and `ttworker` from 02:49:14.700 to 02:49:18.500. Summing `sched_stat_runtime` in run_python for 02:49:14.700\u201302:49:18.600 gives 15.017 CPU-seconds in 3.9 seconds (3.85 average cores), 97.2% of the container's CPU in that interval; successive 100-ms buckets are near 400 ms of CPU per 100 ms, with `ttworker` accounting for nearly all of it. The equal-length preceding interval averaged 0.226 cores, and the following 2.2 seconds averaged 0.068 cores. ctf_lines were inspected: the long wake-to-run estimates are isolated, and the paired block requests have 0.722\u20130.849 ms observed latency, so neither establishes broad CPU starvation or disk delay. No ctf_procdiff result is included in the worker notes.",
+      "confidence": 0.88,
+      "incident_window": "02:49:14.700 - 02:49:18.500",
+      "window_evidence": "The start is the first `ttworker` appearance and onset of its sustained near-400-ms-per-100-ms CPU use; the end is its last appearance, where the CPU buckets taper and then drop to near zero. Those edges also fall within the task-tree lifetime reported by ctf_proclife."
+    },
+    "ranked_services": null,
+    "ranked_candidates": null,
+    "trajectory": [
+      {
+        "step": 0,
+        "tool": "worker1.0",
+        "service": null
+      },
+      {
+        "step": 1,
+        "tool": "worker1.1",
+        "service": null
+      },
+      {
+        "step": 2,
+        "tool": "worker1.2",
+        "service": null
+      },
+      {
+        "step": 3,
+        "tool": "worker1.3",
+        "service": null
+      }
+    ],
+    "n_tool_calls": 55,
+    "n_code_snippets": 32,
+    "n_findings": 6,
+    "n_computed": 32,
+    "bytes_touched": 130629,
+    "tokens": {
+      "in": 462323,
+      "out": 15374
+    },
+    "model": "openai/gpt-6-luna",
+    "wall_s": 131.1,
+    "transcript_file": "C:\\workplace\\microservice-trace-dataset\\nier-2027\\transcripts\\s1_deliver__spawned__t4_w16_r1__r2.json",
+    "skill_selected": null,
+    "skill_confidence": null,
+    "brief_injected": false,
+    "n_claims": null
+  }
+}

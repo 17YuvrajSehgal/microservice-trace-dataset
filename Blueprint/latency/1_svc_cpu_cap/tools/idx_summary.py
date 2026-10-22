@@ -6,8 +6,8 @@ Usage:
     python3 idx_summary.py <trace_dir> [--rate SECONDS]
 
 Examples:
-    python3 idx_summary.py ~/run_A/kernel/kernel
-    python3 idx_summary.py ~/run_A/kernel/kernel --rate 10
+    python3 idx_summary.py <trace_dir>
+    python3 idx_summary.py <trace_dir> --rate 10
 
     <trace_dir>  the folder with channel0_*, metadata and index/
     --rate N     also print how much trace data was written per N seconds,
@@ -25,9 +25,9 @@ What it prints:
 
 Two things to remember when you read the start and end:
     "trace start" is when the first packet was OPENED, not when the first event
-    happened. On the worked trace it was 0.91 s earlier than the first event.
-    "trace end" is when the last packet was closed. On the worked trace it was
-    7 ms after the last event.
+    happened. It can be up to about a second earlier than the first event.
+    "trace end" is when the last packet was closed. It is usually a few
+    milliseconds after the last event.
     For the exact first event use:  babeltrace2 --clock-gmt <trace_dir> | head -n 1
 
 idx_dump.py and idx_slice.py must be in the same folder as this script.

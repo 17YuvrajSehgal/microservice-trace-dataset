@@ -1,0 +1,72 @@
+{
+  "config": "s4_transfer",
+  "klass": "resident",
+  "run": "t3_implement_cap25_r5",
+  "run_dir": "C:\\workplace\\microservice-trace-dataset\\Blueprint\\latency\\1_svc_cpu_cap\\agentic-os-noise\\runs\\t3_implement_cap25_r5",
+  "rep": 3,
+  "cell": "s4_transfer__resident__t3_implement_cap25_r5__r3",
+  "status": "ok",
+  "returncode": 0,
+  "wall_s": 248.8,
+  "env_ablation": {
+    "ABL_NO_COMPUTED": "1"
+  },
+  "result": {
+    "run_id": "t3_implement_cap25_r5",
+    "diagnosis": {
+      "what_is_wrong": "No fault is evident in this trace, so the reported longer coding task cannot be attributed to a kernel-level incident from this evidence. Event rates fall in the latter part of the recording, but CPU use remains low and the checks do not show sustained CPU starvation, disk latency, or network errors; the change is more consistent with workload activity changing than a demonstrated system fault.",
+      "root_cause_service": "none evident",
+      "culprit_kind": "unknown",
+      "fault_type": "normal",
+      "evidence": "Compared the full 18:55:57.800\u201318:56:30.100 trace and the 18:56:00\u201318:56:14 versus 18:56:15\u201318:56:29 event-rate ranges. sched_switch fell 488.2\u2192199.3/s, sched_wakeup 236.6\u219293.1/s, net_dev_xmit 23.4\u219211.1/s, and block_rq_issue 18.6\u21925.7/s, but sched_stat_runtime totaled only 5.754 CPU-seconds across 32.3 seconds (0.178 average cores); in 18:56:14\u201318:56:25, python3 used 2.549 CPU-seconds and all four CPUs continued dispatching work. Wake-to-schedule pairs had median 0.016 ms and maximum 22.10 ms, with possible idle-period pairing caveats. The 18 matched block issue/completion pairs had median latency 0.739 ms and maximum 1.13 ms, and inspected network transmissions succeeded (rc=0). Lifecycle showed git in pid_ns 4026531836 from 18:55:58.500 to 18:56:25.300, but lifecycle alone does not establish a fault. The full-span raw scheduler, disk, and network checks did not support starvation, disk delay, or network failure; a quiet comparison interval was not established, so no stronger attribution is justified.",
+      "confidence": 0.84,
+      "incident_window": "unknown",
+      "window_evidence": "The rate decline spans the middle-to-late trace, but the notes do not identify a fault boundary: the decline is not accompanied by evidence of sustained resource pressure or a mechanism, and the trace ends without a clear recovery. The git lifecycle bounds describe workload presence, not an incident. Therefore no defensible incident window can be assigned."
+    },
+    "ranked_services": null,
+    "ranked_candidates": null,
+    "trajectory": [
+      {
+        "step": 0,
+        "tool": "worker1.0",
+        "service": null
+      },
+      {
+        "step": 1,
+        "tool": "worker1.1",
+        "service": null
+      },
+      {
+        "step": 2,
+        "tool": "worker1.2",
+        "service": null
+      },
+      {
+        "step": 3,
+        "tool": "worker1.3",
+        "service": null
+      },
+      {
+        "step": 4,
+        "tool": "worker2.100",
+        "service": null
+      }
+    ],
+    "n_tool_calls": 59,
+    "n_code_snippets": 25,
+    "n_findings": 12,
+    "n_computed": 25,
+    "bytes_touched": 106761,
+    "tokens": {
+      "in": 580856,
+      "out": 20304
+    },
+    "model": "openai/gpt-6-luna",
+    "wall_s": 247.8,
+    "transcript_file": "C:\\workplace\\microservice-trace-dataset\\nier-2027\\transcripts\\s4_transfer__resident__t3_implement_cap25_r5__r3.json",
+    "skill_selected": null,
+    "skill_confidence": null,
+    "brief_injected": false,
+    "n_claims": null
+  }
+}

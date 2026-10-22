@@ -1,0 +1,65 @@
+{
+  "config": "repair",
+  "klass": "spawned",
+  "run": "t4_w16_r1",
+  "run_dir": "C:\\workplace\\microservice-trace-dataset\\agentic-runs\\2_threads_vs_cores\\runs\\t4_w16_r1",
+  "rep": 2,
+  "cell": "repair__spawned__t4_w16_r1__r2",
+  "status": "ok",
+  "returncode": 0,
+  "wall_s": 131.6,
+  "env_ablation": {},
+  "result": {
+    "run_id": "t4_w16_r1",
+    "diagnosis": {
+      "what_is_wrong": "The coding workload had a short, sustained CPU-heavy execution burst: the newly appearing ttworker cohort consumed nearly four CPU cores continuously, plausibly extending the task's completion time. The trace localizes that work to one container; it does not establish host-wide CPU saturation or a CPU limit/throttling event.",
+      "root_cause_service": "ttworker in pid_ns 4026531836",
+      "culprit_kind": "container",
+      "fault_type": "cpu_saturation",
+      "evidence": "Compared quiet pre-work activity with the active interval using run_python sched_stat_runtime sums: over 02:49:12.0\u201314.6 the container averaged about 0.12 CPU cores, versus 15.19 CPU-seconds over 3.8 seconds (3.998 cores) in 02:49:14.7\u201318.5; ttworker alone accounted for 14.804 CPU-seconds (97.4%). Process-lifetime evidence places the ttworker/xargs/run_all.sh workload cohort at the same boundary. Raw sched_switch and sched_stat_runtime records show ttworker executing on CPUs and roughly 1 ms runtime samples; sampled wakeup/switch records did not show sustained runnable delay. Disk/network activity and sampled block timing do not support I/O as the mechanism, and writeback_pages_written samples were zero. A falsifier would be evidence of sustained wakeup-to-run delay, block latency, or a throttling counter rather than on-CPU execution; the sampled scheduler and block lines were checked, though throttling counters are not available in this trace.",
+      "confidence": 0.94,
+      "incident_window": "02:49:14.700 - 02:49:18.500",
+      "window_evidence": "The onset is the first sustained 100-ms CPU buckets at the container's 0.4 CPU-seconds per bucket beginning 02:49:14.700, coincident with ttworker's appearance; the interval ends at 02:49:18.500 when its CPU rate falls sharply and its process cohort ends. Adjacent pre-work CPU averaged roughly 0.12\u20130.41 cores depending on the exact baseline range, and post-work activity averaged about 0.16 cores."
+    },
+    "ranked_services": null,
+    "ranked_candidates": null,
+    "trajectory": [
+      {
+        "step": 0,
+        "tool": "worker1.0",
+        "service": null
+      },
+      {
+        "step": 1,
+        "tool": "worker1.1",
+        "service": null
+      },
+      {
+        "step": 2,
+        "tool": "worker1.2",
+        "service": null
+      },
+      {
+        "step": 3,
+        "tool": "worker1.3",
+        "service": null
+      }
+    ],
+    "n_tool_calls": 51,
+    "n_code_snippets": 14,
+    "n_findings": 9,
+    "n_computed": 14,
+    "bytes_touched": 55783,
+    "tokens": {
+      "in": 436014,
+      "out": 12915
+    },
+    "model": "openai/gpt-6-luna",
+    "wall_s": 130.7,
+    "transcript_file": "C:\\workplace\\microservice-trace-dataset\\nier-2027\\transcripts\\repair__spawned__t4_w16_r1__r2.json",
+    "skill_selected": null,
+    "skill_confidence": null,
+    "brief_injected": false,
+    "n_claims": null
+  }
+}

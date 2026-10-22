@@ -1,0 +1,70 @@
+{
+  "config": "repair",
+  "klass": "resident",
+  "run": "t3_implement_cap25_r1",
+  "run_dir": "C:\\workplace\\microservice-trace-dataset\\Blueprint\\latency\\1_svc_cpu_cap\\agentic-os-noise\\runs\\t3_implement_cap25_r1",
+  "rep": 3,
+  "cell": "repair__resident__t3_implement_cap25_r1__r3",
+  "status": "ok",
+  "returncode": 0,
+  "wall_s": 187.7,
+  "env_ablation": {},
+  "result": {
+    "run_id": "t3_implement_cap25_r1",
+    "diagnosis": {
+      "what_is_wrong": "No kernel evidence establishes a host or service fault behind the coding task\u2019s longer completion time. There is a real, brief system-activity trough, but CPU use remains low, sampled wakeup-to-run delays are tiny, and the trace shows no supporting disk or network blockage; the later python3 workload is actively consuming CPU rather than stalled.",
+      "root_cause_service": "unknown",
+      "culprit_kind": "unknown",
+      "fault_type": "normal",
+      "evidence": "Compared full-span event rates and the 03:17:26\u201331 baseline with the 03:17:31\u201333 trough using the workers\u2019 run_python/event-index results: sched_switch fell 77% (1091\u2192248/s), sched_wakeup 78% (533\u2192120/s), sched_stat_runtime 73% (916\u2192245/s), and irq_softirq_entry 68% (606\u2192195/s). The trough was not an obvious timestamp hole: timestamped records and CPU IDs 0\u20133 remained represented, and raw lines continued through it. But the full-trace sched_stat_runtime attribution shows only 0.148 CPU-seconds/second before and 0.226 during the later python3 phase; python3 accounts for 3.155 CPU-seconds over 16 seconds (about 0.20 core), not host saturation. In the raw samples around 03:17:35, a claude wakeup was followed by a switch about 16.6 \u03bcs later. Disk evidence did not show a latency buildup (sampled block issue/complete durations were about 0.01 ms), and network event counts were low. The task\u2019s runtime name is not a unique service identity; the only observed namespace was pid_ns 4026531836. The check that would support CPU starvation\u2014long wakeup-to-switch delays or a much higher CPU runtime rate\u2014was run in the sampled interval and was not observed. Direct ctf_lines access failed, so raw-line checks used the workers\u2019 run_python get_lines output.",
+      "confidence": 0.84,
+      "incident_window": "03:17:31 - 03:17:34",
+      "window_evidence": "This is the bounded system-activity trough, not a confirmed fault interval: the per-100-ms series drop sharply at 03:17:31.500 (sched_switch 61 to 16; sched_wakeup 29 to 8) and stay low through 03:17:33.500; activity rebounds at 03:17:33.600, with sched_switch reaching 132 then 307 at 03:17:33.800. Cross-series rates were compared against 03:17:26\u201331, and the sampled event streams remained populated during the trough."
+    },
+    "ranked_services": null,
+    "ranked_candidates": null,
+    "trajectory": [
+      {
+        "step": 0,
+        "tool": "worker1.0",
+        "service": null
+      },
+      {
+        "step": 1,
+        "tool": "worker1.1",
+        "service": null
+      },
+      {
+        "step": 2,
+        "tool": "worker1.2",
+        "service": null
+      },
+      {
+        "step": 3,
+        "tool": "worker1.3",
+        "service": null
+      },
+      {
+        "step": 4,
+        "tool": "worker2.100",
+        "service": null
+      }
+    ],
+    "n_tool_calls": 65,
+    "n_code_snippets": 22,
+    "n_findings": 11,
+    "n_computed": 22,
+    "bytes_touched": 141516,
+    "tokens": {
+      "in": 778060,
+      "out": 19088
+    },
+    "model": "openai/gpt-6-luna",
+    "wall_s": 186.8,
+    "transcript_file": "C:\\workplace\\microservice-trace-dataset\\nier-2027\\transcripts\\repair__resident__t3_implement_cap25_r1__r3.json",
+    "skill_selected": null,
+    "skill_confidence": null,
+    "brief_injected": false,
+    "n_claims": null
+  }
+}

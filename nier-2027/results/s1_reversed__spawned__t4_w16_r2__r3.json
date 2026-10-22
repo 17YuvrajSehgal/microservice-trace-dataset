@@ -1,0 +1,73 @@
+{
+  "config": "s1_reversed",
+  "klass": "spawned",
+  "run": "t4_w16_r2",
+  "run_dir": "C:\\workplace\\microservice-trace-dataset\\agentic-runs\\2_threads_vs_cores\\runs\\t4_w16_r2",
+  "rep": 3,
+  "cell": "s1_reversed__spawned__t4_w16_r2__r3",
+  "status": "ok",
+  "returncode": 0,
+  "wall_s": 214.0,
+  "env_ablation": {
+    "ABL_FLAT_CAP": "2000",
+    "ABL_REVERSE_KEYS": "1"
+  },
+  "result": {
+    "run_id": "t4_w16_r2",
+    "diagnosis": {
+      "what_is_wrong": "A parallel `ttworker` batch in pid namespace 4026531836 consumes essentially all four CPUs during the observed burst, plausibly delaying the coding task while it runs. The trace supports a brief CPU-saturation episode, but its 10.9-second duration and lack of a historical baseline or task-completion signal mean it cannot establish how much longer the task took than usual.",
+      "root_cause_service": "ttworker in pid_ns 4026531836",
+      "culprit_kind": "container",
+      "fault_type": "cpu_saturation",
+      "evidence": "Compared runtime in 02:48:30\u201302:48:33 (340.9 ms total CPU and no meaningful ttworker CPU) with 02:48:33\u201302:48:36.8 (15.12 CPU-seconds total, including 14.56 CPU-seconds from ttworker). Per-second totals plateaued at about 4 CPU-seconds/s from 02:48:33.2 through 02:48:36.2; ttworker used about 0.40 CPU-seconds per 100 ms across the burst. Raw sched_stat_runtime and sched_switch lines show active ttworker execution on multiple CPUs with prev_state=0, rather than prolonged sleeping. The 64 block requests in the burst completed with matching issue/completion counts, including a sampled ~0.75 ms request; network counts were modest and balanced, and futex activity was lower than in the preceding interval. These checks argue against disk, network, or futex wait as the cause. Process-exit records show the batch winding down near 02:48:36.7\u201336.9. The notes provide interval/process comparisons and raw lines, but no ctf_procdiff result or task-latency measurement.",
+      "confidence": 0.91,
+      "incident_window": "02:48:33.100 - 02:48:36.900",
+      "window_evidence": "The workload boundary is marked by worker.py and the run_all.sh/xargs launch around 02:48:33.000, followed by ttworker first appearing at 02:48:33.100 and CPU rising to roughly four CPU-seconds per second in the 02:48:33.200 bucket. Sustained saturation persists through 02:48:36.800; ttworker exits are recorded from 02:48:36.665 through 02:48:36.902, after which runtime drops sharply. The earlier 02:48:30\u201302:48:33 interval was used as the available low-activity comparison, not as a long-term baseline."
+    },
+    "ranked_services": null,
+    "ranked_candidates": null,
+    "trajectory": [
+      {
+        "step": 0,
+        "tool": "worker1.0",
+        "service": null
+      },
+      {
+        "step": 1,
+        "tool": "worker1.1",
+        "service": null
+      },
+      {
+        "step": 2,
+        "tool": "worker1.2",
+        "service": null
+      },
+      {
+        "step": 3,
+        "tool": "worker1.3",
+        "service": null
+      },
+      {
+        "step": 4,
+        "tool": "worker2.100",
+        "service": null
+      }
+    ],
+    "n_tool_calls": 86,
+    "n_code_snippets": 48,
+    "n_findings": 13,
+    "n_computed": 48,
+    "bytes_touched": 230484,
+    "tokens": {
+      "in": 769668,
+      "out": 21236
+    },
+    "model": "openai/gpt-6-luna",
+    "wall_s": 213.0,
+    "transcript_file": "C:\\workplace\\microservice-trace-dataset\\nier-2027\\transcripts\\s1_reversed__spawned__t4_w16_r2__r3.json",
+    "skill_selected": null,
+    "skill_confidence": null,
+    "brief_injected": false,
+    "n_claims": null
+  }
+}

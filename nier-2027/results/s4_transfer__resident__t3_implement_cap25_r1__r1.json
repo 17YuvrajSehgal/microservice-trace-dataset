@@ -1,0 +1,67 @@
+{
+  "config": "s4_transfer",
+  "klass": "resident",
+  "run": "t3_implement_cap25_r1",
+  "run_dir": "C:\\workplace\\microservice-trace-dataset\\Blueprint\\latency\\1_svc_cpu_cap\\agentic-os-noise\\runs\\t3_implement_cap25_r1",
+  "rep": 1,
+  "cell": "s4_transfer__resident__t3_implement_cap25_r1__r1",
+  "status": "ok",
+  "returncode": 0,
+  "wall_s": 186.2,
+  "env_ablation": {
+    "ABL_NO_COMPUTED": "1"
+  },
+  "result": {
+    "run_id": "t3_implement_cap25_r1",
+    "diagnosis": {
+      "what_is_wrong": "The trace does not establish a host or service fault that explains the reported slower coding task. python3 in the sole observed container had a short-lived CPU-use increase, but accounted CPU remained about 0.20 CPU-seconds per second for that process and 0.22 overall; the trace shows neither sustained CPU saturation nor a demonstrated scheduling, disk, or network bottleneck.",
+      "root_cause_service": "none evident",
+      "culprit_kind": "unknown",
+      "fault_type": "normal",
+      "evidence": "Used the recorded whole-trace range 03:17:26.200\u201303:17:59.000 and the workers' process-lifetime review; only pid_ns 4026531836 was substantial, with no clean service restart boundary. Compared the run_python sched_stat_runtime windows 03:17:26.200\u201303:17:41.200 and 03:17:41.200\u201303:17:56.200: python3 rose from 284.8 ms (19.0 ms/s) to 2,956.1 ms (197.1 ms/s), but all-process runtime in the latter window was 3,340.4 ms (222.7 ms/s), not evidence of host saturation. The workers also found no sustained wake-to-run delay, sampled block service times around 0.7\u20131.1 ms, and successful ordinary network sends. query_ctf returned unusable zero counts despite events being present, so those zeros were not treated as evidence. A check that could have falsified the no-fault conclusion is sustained CPU saturation or a persistent scheduling-delay increase during the python3 rise; the available runtime totals and raw scheduling samples do not show either. The recorded trace is short and cannot establish whether the task symptom occurred outside this interval.",
+      "confidence": 0.76,
+      "incident_window": "unknown",
+      "window_evidence": "No fault onset or recovery boundary is supported. The python3 CPU-use rise is visible by 03:17:41.200 and persists through 03:17:56.200, but its absolute rate and the observed kernel evidence do not establish that this was an incident; the late activity/count burst is at the trace end and was judged a possible drain, not a defensible onset."
+    },
+    "ranked_services": null,
+    "ranked_candidates": null,
+    "trajectory": [
+      {
+        "step": 0,
+        "tool": "worker1.0",
+        "service": null
+      },
+      {
+        "step": 1,
+        "tool": "worker1.1",
+        "service": null
+      },
+      {
+        "step": 2,
+        "tool": "worker1.2",
+        "service": null
+      },
+      {
+        "step": 3,
+        "tool": "worker1.3",
+        "service": null
+      }
+    ],
+    "n_tool_calls": 62,
+    "n_code_snippets": 17,
+    "n_findings": 9,
+    "n_computed": 17,
+    "bytes_touched": 59466,
+    "tokens": {
+      "in": 476498,
+      "out": 16071
+    },
+    "model": "openai/gpt-6-luna",
+    "wall_s": 185.3,
+    "transcript_file": "C:\\workplace\\microservice-trace-dataset\\nier-2027\\transcripts\\s4_transfer__resident__t3_implement_cap25_r1__r1.json",
+    "skill_selected": null,
+    "skill_confidence": null,
+    "brief_injected": false,
+    "n_claims": null
+  }
+}

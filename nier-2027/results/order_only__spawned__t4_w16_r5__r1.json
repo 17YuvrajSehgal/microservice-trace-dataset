@@ -1,0 +1,72 @@
+{
+  "config": "order_only",
+  "klass": "spawned",
+  "run": "t4_w16_r5",
+  "run_dir": "C:\\workplace\\microservice-trace-dataset\\agentic-runs\\2_threads_vs_cores\\runs\\t4_w16_r5",
+  "rep": 1,
+  "cell": "order_only__spawned__t4_w16_r5__r1",
+  "status": "ok",
+  "returncode": 0,
+  "wall_s": 245.4,
+  "env_ablation": {
+    "ABL_REVERSE_KEYS": "1"
+  },
+  "result": {
+    "run_id": "t4_w16_r5",
+    "diagnosis": {
+      "what_is_wrong": "A newly appearing `ttworker` workload consumed nearly all four observed CPU cores, leaving much less CPU and scheduling activity for the other tasks; this is a plausible cause of the coding task taking longer. The evidence localizes the workload, but does not directly measure the coding task's latency or prove how much it was delayed.",
+      "root_cause_service": "ttworker in pid_ns 4026531836",
+      "culprit_kind": "container",
+      "fault_type": "cpu_saturation",
+      "evidence": "The trace spans 02:47:26.200\u201302:47:37.400. Process-life data places `ttworker`'s arrival at 02:47:31.200, and `ctf_procdiff` comparing 02:47:26\u201330 with 02:47:31\u201335 finds it only in the latter. In the selected quiet comparison interval 02:47:29.2\u201331.2, total runtime was 368.1 ms over 2 s (0.184 cores) and there were 1,753 sched_switch events; during 02:47:31.2\u201335.3, `ttworker` accrued about 15.33 CPU-seconds in 4.1 s (~3.74 cores), while total runtime was about 3.87 cores in the other calculation. It accounted for 5,068 sched_switches, versus 820 for all other tasks in that window. Representative raw scheduler records identify `ttworker` in this pid_ns and show runtime near 1 ms per event; raw-line collection via ctf_lines failed, so workers used the get_lines fallback. Block issue/complete and network transmit rates did not rise with the workload, sampled transmit return codes were 0, and reclaim queries had no records. Wakeup-to-run matching suggested possible delays for some non-ttworker tasks, but sampling was sparse and ambiguous, so it does not establish comprehensive run-queue latency. The opening event-rate fall around 02:47:27.7 predates this workload and is not used as the incident onset.",
+      "confidence": 0.89,
+      "incident_window": "02:47:31.200 - 02:47:35.400",
+      "window_evidence": "The lower boundary is the first appearance of `ttworker` and the rise in its runtime at 02:47:31.2; the sustained near-four-core runtime plateau begins by 02:47:31.3. Runtime falls sharply after 02:47:34.9 and is low by 02:47:35.4, after which `ttworker` is no longer a sustained CPU consumer. Process-life records its last appearance at 02:47:35.3."
+    },
+    "ranked_services": null,
+    "ranked_candidates": null,
+    "trajectory": [
+      {
+        "step": 0,
+        "tool": "worker1.0",
+        "service": null
+      },
+      {
+        "step": 1,
+        "tool": "worker1.1",
+        "service": null
+      },
+      {
+        "step": 2,
+        "tool": "worker1.2",
+        "service": null
+      },
+      {
+        "step": 3,
+        "tool": "worker1.3",
+        "service": null
+      },
+      {
+        "step": 4,
+        "tool": "worker2.100",
+        "service": null
+      }
+    ],
+    "n_tool_calls": 67,
+    "n_code_snippets": 21,
+    "n_findings": 11,
+    "n_computed": 21,
+    "bytes_touched": 68848,
+    "tokens": {
+      "in": 651276,
+      "out": 19862
+    },
+    "model": "openai/gpt-6-luna",
+    "wall_s": 244.5,
+    "transcript_file": "C:\\workplace\\microservice-trace-dataset\\nier-2027\\transcripts\\order_only__spawned__t4_w16_r5__r1.json",
+    "skill_selected": null,
+    "skill_confidence": null,
+    "brief_injected": false,
+    "n_claims": null
+  }
+}

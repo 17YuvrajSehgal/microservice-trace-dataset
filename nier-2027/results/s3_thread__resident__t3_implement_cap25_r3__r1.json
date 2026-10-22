@@ -1,0 +1,72 @@
+{
+  "config": "s3_thread",
+  "klass": "resident",
+  "run": "t3_implement_cap25_r3",
+  "run_dir": "C:\\workplace\\microservice-trace-dataset\\Blueprint\\latency\\1_svc_cpu_cap\\agentic-os-noise\\runs\\t3_implement_cap25_r3",
+  "rep": 1,
+  "cell": "s3_thread__resident__t3_implement_cap25_r3__r1",
+  "status": "ok",
+  "returncode": 0,
+  "wall_s": 218.2,
+  "env_ablation": {
+    "ABL_THREAD_BUDGET": "80000"
+  },
+  "result": {
+    "run_id": "t3_implement_cap25_r3",
+    "diagnosis": {
+      "what_is_wrong": "The trace does not establish an infrastructure fault explaining the slower coding task. It does show a workload shift to sustained python3 execution in the only observed container, but aggregate CPU use stayed modest and the scheduler samples show CPUs idle before switching to python3; this is consistent with work being done, not host CPU saturation or demonstrated scheduling delay.",
+      "root_cause_service": "python3 in pid_ns 4026531836 (observed workload; not established as a fault source)",
+      "culprit_kind": "container",
+      "fault_type": "normal",
+      "evidence": "Compared full-span CPU/runtime windows using the workers' run_python analysis: python3 rises from 23.9 ms in 03:27:30.200\u201303:27:38.200 to 1,922.8 ms in 03:27:46.200\u201303:27:54.200, then is still elevated at 754.2 ms in 03:27:54.200\u201303:28:02.100. However total CPU was about 2.018 core-seconds over the 8-second high-python range on a four-CPU host, not evidence of host saturation. Raw scheduler lines around 03:27:48\u201303:27:52 show python3 switched in from swapper/idle, and the workers' wakeup pairing did not establish a competing runnable queue. Adjacent 10-second ranges also show block issue/complete counts matching (377/378, 149/149, 43/43) and modest network counts with successful rc=0 transmissions. ctf_timeline returned no matches for the requested common names, so the workers used the trace DataFrame\u2019s event index/rates instead; ctf_lines failed, and indexed raw records were inspected. The falsifying check for CPU contention\u2014whether python3 was held off-CPU behind runnable work\u2014was run and was not supported by the sampled switch context.",
+      "confidence": 0.83,
+      "incident_window": "03:27:38 - 03:27:58",
+      "window_evidence": "The candidate window comes from the per-process sched_stat_runtime change: python3 is negligible through 03:27:38.200, increases through the transition, is near 0.96 CPU-seconds in each 4-second interval from 03:27:46.200 to 03:27:54.200, and remains elevated through the 03:27:54.200\u201303:27:58.200 slice. It drops sharply in the 03:27:58.200\u201303:28:00.200 2-second bin. This bounds the observed workload burst, not a proven incident."
+    },
+    "ranked_services": null,
+    "ranked_candidates": null,
+    "trajectory": [
+      {
+        "step": 0,
+        "tool": "worker1.0",
+        "service": null
+      },
+      {
+        "step": 1,
+        "tool": "worker1.1",
+        "service": null
+      },
+      {
+        "step": 2,
+        "tool": "worker1.2",
+        "service": null
+      },
+      {
+        "step": 3,
+        "tool": "worker1.3",
+        "service": null
+      },
+      {
+        "step": 4,
+        "tool": "worker2.100",
+        "service": null
+      }
+    ],
+    "n_tool_calls": 58,
+    "n_code_snippets": 21,
+    "n_findings": 11,
+    "n_computed": 21,
+    "bytes_touched": 100408,
+    "tokens": {
+      "in": 592046,
+      "out": 18586
+    },
+    "model": "openai/gpt-6-luna",
+    "wall_s": 217.3,
+    "transcript_file": "C:\\workplace\\microservice-trace-dataset\\nier-2027\\transcripts\\s3_thread__resident__t3_implement_cap25_r3__r1.json",
+    "skill_selected": null,
+    "skill_confidence": null,
+    "brief_injected": false,
+    "n_claims": null
+  }
+}

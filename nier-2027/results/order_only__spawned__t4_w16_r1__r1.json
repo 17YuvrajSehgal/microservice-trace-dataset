@@ -1,0 +1,67 @@
+{
+  "config": "order_only",
+  "klass": "spawned",
+  "run": "t4_w16_r1",
+  "run_dir": "C:\\workplace\\microservice-trace-dataset\\agentic-runs\\2_threads_vs_cores\\runs\\t4_w16_r1",
+  "rep": 1,
+  "cell": "order_only__spawned__t4_w16_r1__r1",
+  "status": "ok",
+  "returncode": 0,
+  "wall_s": 127.6,
+  "env_ablation": {
+    "ABL_REVERSE_KEYS": "1"
+  },
+  "result": {
+    "run_id": "t4_w16_r1",
+    "diagnosis": {
+      "what_is_wrong": "The coding workload's `ttworker` process in pid_ns 4026531836 ran nearly continuously across all four CPUs during its brief execution, consuming about 15 CPU-seconds in roughly 3.9 seconds. This is a concentrated CPU-saturation interval that plausibly explains the reported longer task; the trace does not show disk, network, or scheduler-wakeup delay as the cause.",
+      "root_cause_service": "ttworker in pid_ns 4026531836",
+      "culprit_kind": "container",
+      "fault_type": "cpu_saturation",
+      "evidence": "Compared the quiet pre-work interval (02:49:10\u201302:49:14.5) with the worker interval and after-work interval using the workers' full-trace run_python runtime and event counts. `ttworker` is absent before/after and accounts for 15.017 CPU-seconds in the 02:49:14.7\u201302:49:18.6 bucketed interval; its 100-ms buckets are mostly 393\u2013400 ms of CPU time, consistent with all four CPUs being busy. In 02:49:15\u201302:49:18.5 it alone used 13.924 CPU-seconds, while pre-work total CPU was about 0.406 cores on average and post-work about 0.068. Lifecycle records place `ttworker` arrival at 02:49:14.600 and last appearance at 02:49:18.500. The raw scheduler sample shows prompt wake-to-run (about 8.5 microseconds for the sampled worker.py/xargs transition) and workers executing on multiple CPUs; block, network, and dirty-folio counts fell rather than rising during the candidate interval. Timeline queries failed to match the event names, so full-span bucket rates were reconstructed from the trace with Python.",
+      "confidence": 0.91,
+      "incident_window": "02:49:14.700 - 02:49:18.500",
+      "window_evidence": "The onset is supported by the CPU-runtime buckets: `ttworker` first appears in the 02:49:14.700 bucket and then consumes nearly 0.4 CPU-seconds per 100 ms. Its observed lifecycle ends at 02:49:18.500, where its runtime buckets stop and scheduler activity drops sharply; the next interval has only 0.149 CPU-seconds total across 2.2 seconds. The broader lifecycle cluster begins at 02:49:14.600, but the CPU anomaly itself starts at 14.700."
+    },
+    "ranked_services": null,
+    "ranked_candidates": null,
+    "trajectory": [
+      {
+        "step": 0,
+        "tool": "worker1.0",
+        "service": null
+      },
+      {
+        "step": 1,
+        "tool": "worker1.1",
+        "service": null
+      },
+      {
+        "step": 2,
+        "tool": "worker1.2",
+        "service": null
+      },
+      {
+        "step": 3,
+        "tool": "worker1.3",
+        "service": null
+      }
+    ],
+    "n_tool_calls": 50,
+    "n_code_snippets": 14,
+    "n_findings": 8,
+    "n_computed": 14,
+    "bytes_touched": 61220,
+    "tokens": {
+      "in": 511979,
+      "out": 12481
+    },
+    "model": "openai/gpt-6-luna",
+    "wall_s": 126.6,
+    "transcript_file": "C:\\workplace\\microservice-trace-dataset\\nier-2027\\transcripts\\order_only__spawned__t4_w16_r1__r1.json",
+    "skill_selected": null,
+    "skill_confidence": null,
+    "brief_injected": false,
+    "n_claims": null
+  }
+}

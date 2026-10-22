@@ -1,0 +1,67 @@
+{
+  "config": "s1_deliver",
+  "klass": "spawned",
+  "run": "t4_w16_r5",
+  "run_dir": "C:\\workplace\\microservice-trace-dataset\\agentic-runs\\2_threads_vs_cores\\runs\\t4_w16_r5",
+  "rep": 3,
+  "cell": "s1_deliver__spawned__t4_w16_r5__r3",
+  "status": "ok",
+  "returncode": 0,
+  "wall_s": 108.1,
+  "env_ablation": {
+    "ABL_FLAT_CAP": "2000"
+  },
+  "result": {
+    "run_id": "t4_w16_r5",
+    "diagnosis": {
+      "what_is_wrong": "The coding-task execution launched a CPU-bound `ttworker` cohort that consumed essentially all four available CPU cores, leaving the `claude` process with far less CPU; this is a credible kernel-level explanation for the reported slowdown. The trace supports workload-local CPU saturation, not a disk, network, or lock-wait problem.",
+      "root_cause_service": "ttworker in pid_ns 4026531836",
+      "culprit_kind": "container",
+      "fault_type": "cpu_saturation",
+      "evidence": "Compared sched_stat_runtime CPU accounting before [02:47:26.200, 02:47:31.200), during [02:47:31.200, 02:47:35.300), and after [02:47:35.300, 02:47:37.400). During the worker interval the container used 15,850.7 ms CPU in 4.1 s (3.866 cores); `ttworker` alone used 15,328.0 ms (3.739 cores), with per-100-ms buckets near 0.40 CPU-seconds. In the narrower execution interval, it used 15.03 of 15.55 CPU-seconds. `claude` CPU rate fell from 206.4 ms/s before to 13.5 ms/s during. Lifecycle records place `run_all.sh` at 02:47:31.100 and `ttworker` from 02:47:31.200 to 02:47:35.300; raw sched_switch lines show ttworker switching to its own tasks. Raw block/futex samples do not indicate a competing wait mechanism. Cross-event counts also show an earlier synchronized activity collapse around 02:47:27, before this workload; that is not the worker's onset and does not explain its measured CPU consumption. The event-index timeline/query tools returned zero, so the rate comparison relied on the workers' reconstructed indexed-event aggregates instead.",
+      "confidence": 0.95,
+      "incident_window": "02:47:31.200 - 02:47:35.300",
+      "window_evidence": "The lower boundary is the first-seen time of `ttworker` and the task cohort (`run_all.sh` starts at 02:47:31.100); raw fork/exec records show task launch at 02:47:31.194\u201331.200 and CPU rises to near four cores immediately afterward. At the upper boundary, `ttworker` and `run_all.sh` last appear at 02:47:35.300 and its CPU rate then drops to about 0.039 cores in the after window. The CPU-accounting and raw scheduling checks were run; sustained near-four-core runtime with no wait signature is the decisive change."
+    },
+    "ranked_services": null,
+    "ranked_candidates": null,
+    "trajectory": [
+      {
+        "step": 0,
+        "tool": "worker1.0",
+        "service": null
+      },
+      {
+        "step": 1,
+        "tool": "worker1.1",
+        "service": null
+      },
+      {
+        "step": 2,
+        "tool": "worker1.2",
+        "service": null
+      },
+      {
+        "step": 3,
+        "tool": "worker1.3",
+        "service": null
+      }
+    ],
+    "n_tool_calls": 60,
+    "n_code_snippets": 27,
+    "n_findings": 9,
+    "n_computed": 27,
+    "bytes_touched": 91534,
+    "tokens": {
+      "in": 425599,
+      "out": 13672
+    },
+    "model": "openai/gpt-6-luna",
+    "wall_s": 107.1,
+    "transcript_file": "C:\\workplace\\microservice-trace-dataset\\nier-2027\\transcripts\\s1_deliver__spawned__t4_w16_r5__r3.json",
+    "skill_selected": null,
+    "skill_confidence": null,
+    "brief_injected": false,
+    "n_claims": null
+  }
+}

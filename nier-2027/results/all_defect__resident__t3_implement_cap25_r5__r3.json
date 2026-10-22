@@ -1,0 +1,75 @@
+{
+  "config": "all_defect",
+  "klass": "resident",
+  "run": "t3_implement_cap25_r5",
+  "run_dir": "C:\\workplace\\microservice-trace-dataset\\Blueprint\\latency\\1_svc_cpu_cap\\agentic-os-noise\\runs\\t3_implement_cap25_r5",
+  "rep": 3,
+  "cell": "all_defect__resident__t3_implement_cap25_r5__r3",
+  "status": "ok",
+  "returncode": 0,
+  "wall_s": 149.7,
+  "env_ablation": {
+    "ABL_FLAT_CAP": "2000",
+    "ABL_WORKER_STEPS": "12",
+    "ABL_THREAD_BUDGET": "80000",
+    "ABL_NO_COMPUTED": "1"
+  },
+  "result": {
+    "run_id": "t3_implement_cap25_r5",
+    "diagnosis": {
+      "what_is_wrong": "The trace does not establish a host or service fault that explains the reported slower coding task. Activity changes substantially as `claude` and `python3` workload changes, but there is no evidence of CPU starvation, sustained resource pressure, or another recorded failure mechanism; the reported slowdown is therefore not confirmed by this trace.",
+      "root_cause_service": "unknown",
+      "culprit_kind": "unknown",
+      "fault_type": "normal",
+      "evidence": "Used the full 18:55:57.800\u201318:56:30.200 trace span reported by ctf_timespan and compared the full-span rates and process/runtime findings. The early 5 s had 1097 sched_switch/s and 70.4 block issues/s, versus 195 sched_switch/s and 4 block issues/s in 18:56:14.800\u201318:56:24.800; the later scheduler rate remained low rather than showing a synchronized recovery. However, sched_stat_runtime shows ongoing work: pid_ns 4026531836 used 5.754 CPU-seconds total (~0.178 core average), with `claude` and `python3` shifting in relative CPU use. A sampled wakeup-to-switch interval was about 17 \u03bcs, and the notes report no sched_stat_iowait events. The partial-lifetime process cluster around 18:56:13.9\u201318:56:14.0 was brief package/system activity, not a durable workload boundary. These observations support changing workload phases, not a demonstrated fault.",
+      "confidence": 0.78,
+      "incident_window": "unknown",
+      "window_evidence": "The measured event-rate and runtime changes occur at multiple points, but the notes identify no boundary that marks onset and resolution of a fault. The notable early-to-later activity decline is not accompanied by evidence of starvation or another causal mechanism, so assigning it an incident window would overstate the evidence."
+    },
+    "ranked_services": null,
+    "ranked_candidates": null,
+    "trajectory": [
+      {
+        "step": 0,
+        "tool": "worker1.0",
+        "service": null
+      },
+      {
+        "step": 1,
+        "tool": "worker1.1",
+        "service": null
+      },
+      {
+        "step": 2,
+        "tool": "worker1.2",
+        "service": null
+      },
+      {
+        "step": 3,
+        "tool": "worker1.3",
+        "service": null
+      },
+      {
+        "step": 4,
+        "tool": "worker2.100",
+        "service": null
+      }
+    ],
+    "n_tool_calls": 66,
+    "n_code_snippets": 33,
+    "n_findings": 8,
+    "n_computed": 33,
+    "bytes_touched": 153933,
+    "tokens": {
+      "in": 431032,
+      "out": 16664
+    },
+    "model": "openai/gpt-6-luna",
+    "wall_s": 148.7,
+    "transcript_file": "C:\\workplace\\microservice-trace-dataset\\nier-2027\\transcripts\\all_defect__resident__t3_implement_cap25_r5__r3.json",
+    "skill_selected": null,
+    "skill_confidence": null,
+    "brief_injected": false,
+    "n_claims": null
+  }
+}

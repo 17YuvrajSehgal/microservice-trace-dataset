@@ -1,0 +1,67 @@
+{
+  "config": "order_only",
+  "klass": "spawned",
+  "run": "t4_w16_r5",
+  "run_dir": "C:\\workplace\\microservice-trace-dataset\\agentic-runs\\2_threads_vs_cores\\runs\\t4_w16_r5",
+  "rep": 2,
+  "cell": "order_only__spawned__t4_w16_r5__r2",
+  "status": "ok",
+  "returncode": 0,
+  "wall_s": 134.7,
+  "env_ablation": {
+    "ABL_REVERSE_KEYS": "1"
+  },
+  "result": {
+    "run_id": "t4_w16_r5",
+    "diagnosis": {
+      "what_is_wrong": "A newly launched ttworker workload consumed nearly all four CPUs for about four seconds, plausibly slowing the coding task through CPU contention. It appeared alongside run_all.sh, xargs, and worker.py, then its CPU use dropped sharply; the trace supports a CPU-saturation episode rather than disk, network, or lock contention.",
+      "root_cause_service": "ttworker in pid_ns 4026531836",
+      "culprit_kind": "container",
+      "fault_type": "cpu_saturation",
+      "evidence": "Compared the clean pre-onset interval 02:47:28.200\u201302:47:31.200 with the burst 02:47:31.200\u201302:47:35.200 and the post interval 02:47:35.200\u201302:47:37.400 using whole-trace run_python sched_stat_runtime totals: CPU rose from 408 ms (0.14 core-equivalents) to 15,749 ms (3.94 core-equivalents), with ttworker accounting for 15,228 ms, then fell to 412 ms after. Per-100-ms buckets show ttworker near 390\u2013400 ms of CPU per 100 ms across the sustained burst. ctf_proclife and the process buckets place the worker cluster's arrival at 02:47:31.1\u2013.2 and disappearance by 02:47:35.3. Raw ctf_lines sched_switch records show ttworker threads being scheduled; comparative block request counts were essentially unchanged (66 vs 64 issues/completions), network transmit counts were similar (37 vs 43), and futex activity fell (2,028 to 519), weakening those alternatives. The earlier pre-onset window avoids the later comparison interval that partly overlaps worker activity.",
+      "confidence": 0.97,
+      "incident_window": "02:47:31.200 - 02:47:35.300",
+      "window_evidence": "The onset is marked by ttworker's first observed activity and the step to sustained near-four-core runtime beginning in the 02:47:31.2 bucket; runtime remains near 400 ms per 100 ms until it fades at 02:47:35.0\u2013.3, with ctf_proclife reporting the worker cluster gone by 02:47:35.300. The pre-onset 02:47:28.200\u201302:47:31.200 interval is the clean quiet comparison (ttworker 0 ms), and post-onset CPU returns near baseline."
+    },
+    "ranked_services": null,
+    "ranked_candidates": null,
+    "trajectory": [
+      {
+        "step": 0,
+        "tool": "worker1.0",
+        "service": null
+      },
+      {
+        "step": 1,
+        "tool": "worker1.1",
+        "service": null
+      },
+      {
+        "step": 2,
+        "tool": "worker1.2",
+        "service": null
+      },
+      {
+        "step": 3,
+        "tool": "worker1.3",
+        "service": null
+      }
+    ],
+    "n_tool_calls": 47,
+    "n_code_snippets": 18,
+    "n_findings": 9,
+    "n_computed": 18,
+    "bytes_touched": 86838,
+    "tokens": {
+      "in": 530439,
+      "out": 15319
+    },
+    "model": "openai/gpt-6-luna",
+    "wall_s": 133.8,
+    "transcript_file": "C:\\workplace\\microservice-trace-dataset\\nier-2027\\transcripts\\order_only__spawned__t4_w16_r5__r2.json",
+    "skill_selected": null,
+    "skill_confidence": null,
+    "brief_injected": false,
+    "n_claims": null
+  }
+}

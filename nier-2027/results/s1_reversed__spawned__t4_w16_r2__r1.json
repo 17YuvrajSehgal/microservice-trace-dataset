@@ -1,0 +1,73 @@
+{
+  "config": "s1_reversed",
+  "klass": "spawned",
+  "run": "t4_w16_r2",
+  "run_dir": "C:\\workplace\\microservice-trace-dataset\\agentic-runs\\2_threads_vs_cores\\runs\\t4_w16_r2",
+  "rep": 1,
+  "cell": "s1_reversed__spawned__t4_w16_r2__r1",
+  "status": "ok",
+  "returncode": 0,
+  "wall_s": 235.2,
+  "env_ablation": {
+    "ABL_FLAT_CAP": "2000",
+    "ABL_REVERSE_KEYS": "1"
+  },
+  "result": {
+    "run_id": "t4_w16_r2",
+    "diagnosis": {
+      "what_is_wrong": "A newly launched `ttworker` build workload consumes nearly four CPU cores continuously, displacing CPU time from other tasks in the same container; this is a credible explanation for the coding task running slower. The trace is very short and cannot directly quantify runnable-queue delay, so it supports CPU contention but does not prove the full reported delay.",
+      "root_cause_service": "ttworker in pid_ns 4026531836",
+      "culprit_kind": "container",
+      "fault_type": "cpu_saturation",
+      "evidence": "Using the trace span and process-lifetime findings, then comparing run_python sched_stat_runtime totals around the task's appearance: `run_all.sh`/`worker.py` appear at about 02:48:33.000 and `ttworker` first records runtime at 02:48:33.100. In 02:48:33.100\u201302:48:36.900, `ttworker` uses 14.960 CPU-seconds in 3.8 wall-seconds (~3.94 cores), versus zero in the preceding 3.8 seconds and 0.144 CPU-seconds after; other tasks' runtime falls from 0.997 CPU-seconds before to 0.238 during, with `claude` falling from 0.309 to 0.052 CPU-seconds. Raw scheduler records show `ttworker` scheduled across CPUs, consistent with the measured runtime. Disk latency is not supported: only six requests could be paired, with median 0.837 ms, maximum 0.987 ms, and no completion errors. The trace lacks sched_stat_wait and throttle/quota events, and representative scheduler lines cannot reliably establish wakeup-to-run delay or rule out throttling; no ctf_procdiff result is recorded.",
+      "confidence": 0.87,
+      "incident_window": "02:48:33.100 - 02:48:37.000",
+      "window_evidence": "This window starts at the first nonzero `ttworker` sched_stat_runtime bucket (02:48:33.100); the last nonzero bucket is 02:48:36.900 (144 ms of CPU runtime), with no runtime afterward. The task sequence begins around 02:48:33.000, and the adjacent pre/post runtime comparisons show the sharp onset and cessation."
+    },
+    "ranked_services": null,
+    "ranked_candidates": null,
+    "trajectory": [
+      {
+        "step": 0,
+        "tool": "worker1.0",
+        "service": null
+      },
+      {
+        "step": 1,
+        "tool": "worker1.1",
+        "service": null
+      },
+      {
+        "step": 2,
+        "tool": "worker1.2",
+        "service": null
+      },
+      {
+        "step": 3,
+        "tool": "worker1.3",
+        "service": null
+      },
+      {
+        "step": 4,
+        "tool": "worker2.100",
+        "service": null
+      }
+    ],
+    "n_tool_calls": 80,
+    "n_code_snippets": 43,
+    "n_findings": 12,
+    "n_computed": 43,
+    "bytes_touched": 161618,
+    "tokens": {
+      "in": 682706,
+      "out": 23355
+    },
+    "model": "openai/gpt-6-luna",
+    "wall_s": 234.2,
+    "transcript_file": "C:\\workplace\\microservice-trace-dataset\\nier-2027\\transcripts\\s1_reversed__spawned__t4_w16_r2__r1.json",
+    "skill_selected": null,
+    "skill_confidence": null,
+    "brief_injected": false,
+    "n_claims": null
+  }
+}

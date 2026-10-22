@@ -1,6 +1,39 @@
+"""
+sched_budget.py - time budget per process for one slice of scheduling events.
+
+Usage:
+    python3 sched_budget.py <sched_events.txt> <slice_seconds> [pid_to_always_show]
+
+Input:
+    A slice file made by extract_slice.sh (sched_switch and sched_waking lines).
+
+Output:
+    The 12 processes with the most waiting time, plus the pid you ask for.
+    run      average number of CPU cores in use
+    wait     average number of threads that were ready but had no CPU
+    preempt  the part of wait that came from being switched out while still runnable
+    S        average number of threads asleep (event, lock, timer, network)
+    D        average number of threads in disk-type sleep
+    >=1ms, >=10ms, >=50ms   how many single waits for a CPU lasted at least that long
+    max_ms   the longest single wait for a CPU
+
+prev_state codes of sched_switch (the script prints every code it saw):
+    0      runnable (gave up the CPU but still wants it)
+    1      S, sleeping
+    2      D, disk-type sleep
+    4, 8   stopped, traced
+    16, 32 exiting (dead, zombie)
+    64     parked
+    128    I, idle sleep (kernel worker threads)
+    256    flag: preempted while runnable (counted as waiting)
+    Codes other than 0, 1, 2 and 256 are counted as "other sleep". They are
+    not shown in a column, but their wake-up waits still count in wait.
+"""
 import re, sys
 from collections import defaultdict
 
+if len(sys.argv) < 3:
+    raise SystemExit(__doc__)
 path, secs = sys.argv[1], float(sys.argv[2])
 mark = sys.argv[3] if len(sys.argv) > 3 else None   # a pid to always show
 

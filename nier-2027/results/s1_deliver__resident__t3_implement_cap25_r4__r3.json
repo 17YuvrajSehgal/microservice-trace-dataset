@@ -1,0 +1,67 @@
+{
+  "config": "s1_deliver",
+  "klass": "resident",
+  "run": "t3_implement_cap25_r4",
+  "run_dir": "C:\\workplace\\microservice-trace-dataset\\Blueprint\\latency\\1_svc_cpu_cap\\agentic-os-noise\\runs\\t3_implement_cap25_r4",
+  "rep": 3,
+  "cell": "s1_deliver__resident__t3_implement_cap25_r4__r3",
+  "status": "ok",
+  "returncode": 0,
+  "wall_s": 131.7,
+  "env_ablation": {
+    "ABL_FLAT_CAP": "2000"
+  },
+  "result": {
+    "run_id": "t3_implement_cap25_r4",
+    "diagnosis": {
+      "what_is_wrong": "The trace does not establish a kernel-level fault behind the reported slower coding task. Activity changes appear to track workload changes\u2014an early `claude` burst followed later by `python3` activity\u2014rather than resource saturation or a demonstrated wait bottleneck; the slowdown symptom cannot be confirmed or explained from this trace alone.",
+      "root_cause_service": "unknown",
+      "culprit_kind": "unknown",
+      "fault_type": "normal",
+      "evidence": "Used the recorded 01:57:57.900\u201301:58:30.800 span and compared full-trace event rates and process activity. The early high-to-low scheduling shift coincides with `claude` CPU falling (894.5 ms to 237.3 ms per 5-second window), while `python3` later becomes active; the largest stated container interval is only 2.328 CPU-seconds over 10 seconds (0.233 cores), and the full-trace total is 5.50 CPU-seconds over 32.9 seconds (0.167 cores average), not evidence of host CPU saturation. Raw lines around 01:58:02 show ordinary runnable-task switches and successful small network transmissions; sampled block issue/completion lines show no errors and closely spaced completions, not evidence of disk delay. Futex call volume alone does not establish lock contention. The `ctf_procdiff` comparison was between changing adjacent workloads, not a proven quiet baseline, so it cannot attribute a fault. Checked plausible CPU, disk, network, and futex mechanisms; none is demonstrated by the supplied trace evidence.",
+      "confidence": 0.78,
+      "incident_window": "unknown",
+      "window_evidence": "No interval is supported as a fault window. The clear activity boundaries (the early decline around 01:58:02\u201301:58:03, later `python3` activity, and the final trace-edge burst) are workload/event-rate changes, but the process CPU totals and raw kernel samples do not establish a corresponding resource fault or recovery boundary."
+    },
+    "ranked_services": null,
+    "ranked_candidates": null,
+    "trajectory": [
+      {
+        "step": 0,
+        "tool": "worker1.0",
+        "service": null
+      },
+      {
+        "step": 1,
+        "tool": "worker1.1",
+        "service": null
+      },
+      {
+        "step": 2,
+        "tool": "worker1.2",
+        "service": null
+      },
+      {
+        "step": 3,
+        "tool": "worker1.3",
+        "service": null
+      }
+    ],
+    "n_tool_calls": 58,
+    "n_code_snippets": 27,
+    "n_findings": 9,
+    "n_computed": 27,
+    "bytes_touched": 97302,
+    "tokens": {
+      "in": 475817,
+      "out": 15748
+    },
+    "model": "openai/gpt-6-luna",
+    "wall_s": 130.8,
+    "transcript_file": "C:\\workplace\\microservice-trace-dataset\\nier-2027\\transcripts\\s1_deliver__resident__t3_implement_cap25_r4__r3.json",
+    "skill_selected": null,
+    "skill_confidence": null,
+    "brief_injected": false,
+    "n_claims": null
+  }
+}

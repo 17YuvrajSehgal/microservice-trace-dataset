@@ -1,0 +1,65 @@
+{
+  "config": "repair",
+  "klass": "healthy",
+  "run": "t3_implement_nocap_r1",
+  "run_dir": "C:\\workplace\\microservice-trace-dataset\\Blueprint\\latency\\1_svc_cpu_cap\\agentic-os-noise\\runs\\t3_implement_nocap_r1",
+  "rep": 1,
+  "cell": "repair__healthy__t3_implement_nocap_r1__r1",
+  "status": "ok",
+  "returncode": 0,
+  "wall_s": 122.3,
+  "env_ablation": {},
+  "result": {
+    "run_id": "t3_implement_nocap_r1",
+    "diagnosis": {
+      "what_is_wrong": "No kernel-visible host or service fault is established. The only clear task-related signal is a short CPU-bound `python3` burst; it plausibly accounts for compute time in the coding task, but the trace provides no baseline showing that work was abnormal or evidence of host CPU saturation, I/O delay, or a scheduler wait problem.",
+      "root_cause_service": "python3 in pid_ns 4026531836",
+      "culprit_kind": "container",
+      "fault_type": "normal",
+      "evidence": "Compared the full 03:21:49\u201303:22:06.3 trace rates and process activity, then inspected raw scheduler and block events. `sched_stat_runtime` attributes 2.920 of 3.072 CPU-seconds during 03:21:58\u201303:22:03 to python3 (pid 9562); its peak is about one CPU-second per second, while total recorded CPU is only 0.614 core-equivalents averaged over that interval. Raw samples show it running on CPU 3 at roughly 1 ms per 100 ms bucket, not delayed in a run queue. Block issue-to-completion matches were sub-millisecond (0.488\u20130.927 ms); the CPU-heavy 03:22:00\u201303:22:02 interval had no block requests, and sampled network transmissions succeeded. The synchronized rate drop just after trace start (03:21:49\u201303:21:52) is not enough to infer a host fault: it was not accompanied by demonstrated scheduler delay, and the subsequent CPU-heavy work is localized to python3. Falsification check: sustained scheduler run-queue delay or elevated block completion latency would support a resource fault; the reported raw scheduler samples and block latency checks do not show either. The trace alone cannot establish task-level success or expected runtime.",
+      "confidence": 0.78,
+      "incident_window": "03:21:56 - 03:22:03",
+      "window_evidence": "This is the interval of the distinct python3 CPU burst associated with the task: recorded CPU rises to 774 ms over 03:21:56\u201303:22:00 and about 2 CPU-seconds over 03:22:00\u201303:22:02, then falls to zero python3 runtime in 03:22:03\u201303:22:06. The strongest comparable 5-second window is 03:21:58\u201303:22:03 (2.920 s python3 CPU); the wider boundaries include its onset at 03:21:56 and the observed end at 03:22:03."
+    },
+    "ranked_services": null,
+    "ranked_candidates": null,
+    "trajectory": [
+      {
+        "step": 0,
+        "tool": "worker1.0",
+        "service": null
+      },
+      {
+        "step": 1,
+        "tool": "worker1.1",
+        "service": null
+      },
+      {
+        "step": 2,
+        "tool": "worker1.2",
+        "service": null
+      },
+      {
+        "step": 3,
+        "tool": "worker1.3",
+        "service": null
+      }
+    ],
+    "n_tool_calls": 51,
+    "n_code_snippets": 18,
+    "n_findings": 14,
+    "n_computed": 18,
+    "bytes_touched": 65228,
+    "tokens": {
+      "in": 591774,
+      "out": 15755
+    },
+    "model": "openai/gpt-6-luna",
+    "wall_s": 121.4,
+    "transcript_file": "C:\\workplace\\microservice-trace-dataset\\nier-2027\\transcripts\\repair__healthy__t3_implement_nocap_r1__r1.json",
+    "skill_selected": null,
+    "skill_confidence": null,
+    "brief_injected": false,
+    "n_claims": null
+  }
+}

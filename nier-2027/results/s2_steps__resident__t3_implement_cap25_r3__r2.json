@@ -1,0 +1,72 @@
+{
+  "config": "s2_steps",
+  "klass": "resident",
+  "run": "t3_implement_cap25_r3",
+  "run_dir": "C:\\workplace\\microservice-trace-dataset\\Blueprint\\latency\\1_svc_cpu_cap\\agentic-os-noise\\runs\\t3_implement_cap25_r3",
+  "rep": 2,
+  "cell": "s2_steps__resident__t3_implement_cap25_r3__r2",
+  "status": "ok",
+  "returncode": 0,
+  "wall_s": 174.8,
+  "env_ablation": {
+    "ABL_WORKER_STEPS": "12"
+  },
+  "result": {
+    "run_id": "t3_implement_cap25_r3",
+    "diagnosis": {
+      "what_is_wrong": "No kernel-trace evidence establishes a fault causing the coding task to run slowly. The trace shows a workload/activity phase change: scheduling, block, network, and writes all drop around 03:27:35, then python3 activity rises later, but python3's measured CPU use is modest and begins after the initial collapse.",
+      "root_cause_service": "unknown",
+      "culprit_kind": "unknown",
+      "fault_type": "normal",
+      "evidence": "Compared the whole 03:27:30.200\u201303:28:02.100 recording using full-span indexed per-second event rates and sched_stat_runtime process totals (ctf_timeline returned no matches, so the workers used run_python aggregation). From 03:27:30\u201303:27:34 to 03:27:35\u201303:27:40, sched_switch fell 1130.2\u2192323.8/s, sched_wakeup 556.2\u2192154.7/s, block_rq_issue 65.8\u21928/s, net_dev_xmit 38\u219215.5/s, and writes 260\u219248/s. However, python3 had zero measured runtime in the 03:27:34\u201303:27:41 decline; its rise follows at 03:27:41 and it used 2.552 CPU-seconds in 03:27:46\u201303:27:57, only about 0.23 CPU-seconds/second, while measured aggregate CPU never exceeded about 0.256 cores in any 5-second bucket on a reported 4-CPU host. Lifecycle review found no persuasive process restart explaining the slowdown. The wake-to-run pairing check was attempted but produced sampling-artifact multi-second tails, so it cannot support CPU starvation; the trace also provides no demonstrated disk latency or network delay. Thus the operator's reported slowness cannot be confirmed or attributed from this trace, rather than evidence supporting host saturation or another listed fault.",
+      "confidence": 0.81,
+      "incident_window": "unknown",
+      "window_evidence": "The candidate event-rate boundary is approximately 03:27:34\u201303:27:35, with a low-activity interval afterward and a partial rebound around 03:27:41\u201303:27:45; but this is a correlated change in observed workload activity, not a demonstrated fault interval. The python3 CPU increase begins later, around 03:27:41, and does not explain the preceding collapse. Since no measured kernel mechanism links either transition to the reported delay, an incident window is not supportable."
+    },
+    "ranked_services": null,
+    "ranked_candidates": null,
+    "trajectory": [
+      {
+        "step": 0,
+        "tool": "worker1.0",
+        "service": null
+      },
+      {
+        "step": 1,
+        "tool": "worker1.1",
+        "service": null
+      },
+      {
+        "step": 2,
+        "tool": "worker1.2",
+        "service": null
+      },
+      {
+        "step": 3,
+        "tool": "worker1.3",
+        "service": null
+      },
+      {
+        "step": 4,
+        "tool": "worker2.100",
+        "service": null
+      }
+    ],
+    "n_tool_calls": 73,
+    "n_code_snippets": 24,
+    "n_findings": 11,
+    "n_computed": 24,
+    "bytes_touched": 115420,
+    "tokens": {
+      "in": 729553,
+      "out": 18831
+    },
+    "model": "openai/gpt-6-luna",
+    "wall_s": 173.9,
+    "transcript_file": "C:\\workplace\\microservice-trace-dataset\\nier-2027\\transcripts\\s2_steps__resident__t3_implement_cap25_r3__r2.json",
+    "skill_selected": null,
+    "skill_confidence": null,
+    "brief_injected": false,
+    "n_claims": null
+  }
+}

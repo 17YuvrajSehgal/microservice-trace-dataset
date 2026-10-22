@@ -1,0 +1,68 @@
+{
+  "config": "s1_reversed",
+  "klass": "spawned",
+  "run": "t4_w16_r1",
+  "run_dir": "C:\\workplace\\microservice-trace-dataset\\agentic-runs\\2_threads_vs_cores\\runs\\t4_w16_r1",
+  "rep": 2,
+  "cell": "s1_reversed__spawned__t4_w16_r1__r2",
+  "status": "ok",
+  "returncode": 0,
+  "wall_s": 138.6,
+  "env_ablation": {
+    "ABL_FLAT_CAP": "2000",
+    "ABL_REVERSE_KEYS": "1"
+  },
+  "result": {
+    "run_id": "t4_w16_r1",
+    "diagnosis": {
+      "what_is_wrong": "The coding-task worker `ttworker` briefly consumed essentially all four CPUs, reaching about 3.85\u20133.96 CPU-seconds per second, so the trace supports CPU saturation as a plausible cause of the reported longer completion time. This is a concentrated workload in one container, not evidence of a separate co-tenant or a host-wide disk/network fault; the short trace cannot establish how much longer the task ran than normal.",
+      "root_cause_service": "ttworker in pid_ns 4026531836",
+      "culprit_kind": "container",
+      "fault_type": "cpu_saturation",
+      "evidence": "Compared `sched_stat_runtime` CPU payload across the quieter 02:49:09.900\u201302:49:14.500 interval, the worker-active interval, and the late interval: early total was about 1.782 CPU-s, while 02:49:14.500\u201302:49:18.600 had 15.017 CPU-s from `ttworker` alone and about 15.610 CPU-s overall; late total was about 0.110 CPU-s. Per-100-ms buckets during the main burst were mostly about 0.393\u20130.400 CPU-s from `ttworker`, and raw scheduler records place its threads across CPU IDs 0\u20133. Raw lines and event inventories were also checked for alternatives: sampled disk completions had error=0, network transmissions had rc=0, sampled futex events do not establish prolonged contention, and no reclaim/OOM/throttle families were found. The opening cross-event rate drop was not attributed as the coding-task incident because the recording begins during that burst and provides no preceding baseline.",
+      "confidence": 0.94,
+      "incident_window": "02:49:14.700 - 02:49:18.600",
+      "window_evidence": "The first observed `ttworker` lifecycle bucket is 02:49:14.700; its per-100-ms runtime then remains near 0.4 CPU-s per bucket across the four CPUs, and falls sharply in the final partial bucket at 02:49:18.500, with the measured active interval ending at 02:49:18.600. The preceding 02:49:09.900\u201302:49:14.500 CPU interval is the quiet comparison; after 02:49:18.600 CPU payload also collapses."
+    },
+    "ranked_services": null,
+    "ranked_candidates": null,
+    "trajectory": [
+      {
+        "step": 0,
+        "tool": "worker1.0",
+        "service": null
+      },
+      {
+        "step": 1,
+        "tool": "worker1.1",
+        "service": null
+      },
+      {
+        "step": 2,
+        "tool": "worker1.2",
+        "service": null
+      },
+      {
+        "step": 3,
+        "tool": "worker1.3",
+        "service": null
+      }
+    ],
+    "n_tool_calls": 56,
+    "n_code_snippets": 30,
+    "n_findings": 8,
+    "n_computed": 30,
+    "bytes_touched": 125953,
+    "tokens": {
+      "in": 469424,
+      "out": 14064
+    },
+    "model": "openai/gpt-6-luna",
+    "wall_s": 137.5,
+    "transcript_file": "C:\\workplace\\microservice-trace-dataset\\nier-2027\\transcripts\\s1_reversed__spawned__t4_w16_r1__r2.json",
+    "skill_selected": null,
+    "skill_confidence": null,
+    "brief_injected": false,
+    "n_claims": null
+  }
+}

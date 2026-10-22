@@ -1,0 +1,67 @@
+{
+  "config": "s1_deliver",
+  "klass": "spawned",
+  "run": "t4_w16_r2",
+  "run_dir": "C:\\workplace\\microservice-trace-dataset\\agentic-runs\\2_threads_vs_cores\\runs\\t4_w16_r2",
+  "rep": 3,
+  "cell": "s1_deliver__spawned__t4_w16_r2__r3",
+  "status": "ok",
+  "returncode": 0,
+  "wall_s": 156.1,
+  "env_ablation": {
+    "ABL_FLAT_CAP": "2000"
+  },
+  "result": {
+    "run_id": "t4_w16_r2",
+    "diagnosis": {
+      "what_is_wrong": "A short-lived ttworker workload drove CPU use to nearly four cores and likely contended with the coding task, consistent with the reported slowdown. It ran inside the only substantive container seen in the trace; the trace identifies the workload but not a service name.",
+      "root_cause_service": "ttworker in pid_ns 4026531836",
+      "culprit_kind": "container",
+      "fault_type": "cpu_saturation",
+      "evidence": "Compared the pre-arrival [02:48:29, 02:48:32) window with the worker interval: sched_stat_runtime rose from 0.823 CPU-seconds across all tasks to 11.920 CPU-seconds, of which ttworker used 11.391; sched_switch rose 3,052\u21924,518 while wakeups fell 1,520\u2192346. Matched 3.8-second CPU accounting gives about 0.262 average cores before versus 3.999 during, with ttworker alone at 3.937 cores. Lifecycle data places ttworker in pid_ns 4026531836 from 02:48:33.1 to 02:48:36.9. Block I/O, network, and futex counts fell in the candidate interval rather than rising, making those explanations less likely. The proposed CPU explanation would be weakened if the CPU increase came from another process or if I/O/network/futex activity instead showed the bottleneck; the process-attributed CPU and count comparisons were checked. Raw ctf_lines reads failed with a no-CTF path error, and memory reclaim/OOM could not be tested from available indexed events.",
+      "confidence": 0.89,
+      "incident_window": "02:48:33 - 02:48:36",
+      "window_evidence": "The incident window follows the exact observed ttworker lifetime: it first appears at 02:48:33.100 and last appears at 02:48:36.900. Its per-100ms runtime rises sharply at 02:48:33.0 and remains near 0.4 CPU-seconds per 100ms until the final partial bucket at 02:48:36.9; runtime then drops after the worker exits. This is the workload boundary, rather than the earlier broad activity decline near the trace start."
+    },
+    "ranked_services": null,
+    "ranked_candidates": null,
+    "trajectory": [
+      {
+        "step": 0,
+        "tool": "worker1.0",
+        "service": null
+      },
+      {
+        "step": 1,
+        "tool": "worker1.1",
+        "service": null
+      },
+      {
+        "step": 2,
+        "tool": "worker1.2",
+        "service": null
+      },
+      {
+        "step": 3,
+        "tool": "worker1.3",
+        "service": null
+      }
+    ],
+    "n_tool_calls": 53,
+    "n_code_snippets": 23,
+    "n_findings": 10,
+    "n_computed": 23,
+    "bytes_touched": 75559,
+    "tokens": {
+      "in": 413305,
+      "out": 13053
+    },
+    "model": "openai/gpt-6-luna",
+    "wall_s": 155.2,
+    "transcript_file": "C:\\workplace\\microservice-trace-dataset\\nier-2027\\transcripts\\s1_deliver__spawned__t4_w16_r2__r3.json",
+    "skill_selected": null,
+    "skill_confidence": null,
+    "brief_injected": false,
+    "n_claims": null
+  }
+}

@@ -1,0 +1,7 @@
+# Deps of the kernel-trace agent (agent_v2.py).
+anthropic>=0.40        # RCA_PROVIDER=claude (the default)
+openai>=1.40           # RCA_PROVIDER=openrouter | azure | gemini | openai | ollama
+langgraph>=0.2         # the plan/work/review/synthesise graph
+pandas>=2.0            # the run_python sandbox loads the trace index as a DataFrame
+numpy>=1.26
+# ollama: no extra package (OpenAI-compatible HTTP at http://localhost:11434/v1)

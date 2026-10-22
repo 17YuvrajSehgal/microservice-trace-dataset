@@ -1,0 +1,70 @@
+{
+  "config": "all_defect",
+  "klass": "healthy",
+  "run": "t3_implement_nocap_r4",
+  "run_dir": "C:\\workplace\\microservice-trace-dataset\\Blueprint\\latency\\1_svc_cpu_cap\\agentic-os-noise\\runs\\t3_implement_nocap_r4",
+  "rep": 1,
+  "cell": "all_defect__healthy__t3_implement_nocap_r4__r1",
+  "status": "ok",
+  "returncode": 0,
+  "wall_s": 116.6,
+  "env_ablation": {
+    "ABL_FLAT_CAP": "2000",
+    "ABL_WORKER_STEPS": "12",
+    "ABL_THREAD_BUDGET": "80000",
+    "ABL_NO_COMPUTED": "1"
+  },
+  "result": {
+    "run_id": "t3_implement_nocap_r4",
+    "diagnosis": {
+      "what_is_wrong": "The trace shows a brief CPU-heavy Python phase during the coding workload, but it does not establish CPU saturation or show that this phase caused the reported delay: the process used about one core, while aggregate traced CPU remained modest and scheduler activity was not broadly elevated. I therefore cannot confirm a fault from this trace; the closest classification is normal rather than host-wide CPU saturation.",
+      "root_cause_service": "python3 in pid_ns 4026531836",
+      "culprit_kind": "container",
+      "fault_type": "normal",
+      "evidence": "Used the workers' full-span process-lifetime and sched_stat_runtime summaries. The task's git process was present from 18:57:25.000 to 18:57:40.600 in pid_ns 4026531836. In that same namespace, python3 consumed about 2.51 CPU-seconds from 18:57:37\u201318:57:40, with roughly one CPU-second in each of 18:57:38 and 18:57:39. However, equal five-second traced CPU totals were only 0.437 cores at 18:57:34\u201339 and 0.338 cores at 18:57:39\u201344; around the Python burst sched_switch was 201\u2013627/s and sched_wakeup 102\u2013317/s, with idle events still present. The workers did not report raw ctf_lines checks or evidence of wakeup delay, throttling, or system-wide CPU pressure, so the CPU use alone cannot explain the reported slowdown. The full-span event-rate collapse after the opening second is not attributable to this Python burst and does not independently establish a fault.",
+      "confidence": 0.72,
+      "incident_window": "18:57:37 - 18:57:41",
+      "window_evidence": "This is the rounded interval of the strongest localized signal: the reported python3 runtime rises sharply from 18:57:37, reaches about one CPU-second per second at 18:57:38 and 18:57:39, and continues into 18:57:40.5. The broader git task ends at 18:57:40.600. This marks the observed CPU-heavy phase, not a proven incident interval."
+    },
+    "ranked_services": null,
+    "ranked_candidates": null,
+    "trajectory": [
+      {
+        "step": 0,
+        "tool": "worker1.0",
+        "service": null
+      },
+      {
+        "step": 1,
+        "tool": "worker1.1",
+        "service": null
+      },
+      {
+        "step": 2,
+        "tool": "worker1.2",
+        "service": null
+      },
+      {
+        "step": 3,
+        "tool": "worker1.3",
+        "service": null
+      }
+    ],
+    "n_tool_calls": 50,
+    "n_code_snippets": 23,
+    "n_findings": 8,
+    "n_computed": 23,
+    "bytes_touched": 97879,
+    "tokens": {
+      "in": 337585,
+      "out": 13530
+    },
+    "model": "openai/gpt-6-luna",
+    "wall_s": 115.6,
+    "transcript_file": "C:\\workplace\\microservice-trace-dataset\\nier-2027\\transcripts\\all_defect__healthy__t3_implement_nocap_r4__r1.json",
+    "skill_selected": null,
+    "skill_confidence": null,
+    "brief_injected": false,
+    "n_claims": null
+  }
+}

@@ -1,0 +1,67 @@
+{
+  "config": "order_only",
+  "klass": "spawned",
+  "run": "t4_w16_r4",
+  "run_dir": "C:\\workplace\\microservice-trace-dataset\\agentic-runs\\2_threads_vs_cores\\runs\\t4_w16_r4",
+  "rep": 2,
+  "cell": "order_only__spawned__t4_w16_r4__r2",
+  "status": "ok",
+  "returncode": 0,
+  "wall_s": 107.1,
+  "env_ablation": {
+    "ABL_REVERSE_KEYS": "1"
+  },
+  "result": {
+    "run_id": "t4_w16_r4",
+    "diagnosis": {
+      "what_is_wrong": "A short CPU-bound coding workload drove all four available cores at near capacity, plausibly slowing the coding task through CPU contention. The dominant workload was `ttworker`; trace evidence localizes it to one container rather than indicating a host-wide fault with no identifiable workload.",
+      "root_cause_service": "ttworker in pid_ns 4026531836",
+      "culprit_kind": "container",
+      "fault_type": "cpu_saturation",
+      "evidence": "The recording spans 02:46:06.400\u201302:46:17.100. Comparing run_python CPU totals for 02:46:06.400\u201302:46:11.000, 02:46:11.100\u201302:46:14.800, and 02:46:14.800\u201302:46:17.200 shows the container rising from 0.375 core-equivalents to 4.000, then dropping to 0.176. During the middle interval `ttworker` alone used 14.598 CPU-seconds (3.95 cores on average); 100-ms buckets were mostly about 0.39\u20130.40 CPU-seconds. Raw sched_stat_runtime lines show approximately one CPU-second of worker runtime per 100-ms sample across CPUs, consistent with all four cores being occupied. ctf_proclife places the worker's presence at 02:46:11.000\u201302:46:14.800. Checks reported in the notes found no long observed wakeup-to-run delays, no supported disk or network degradation, and little writeback activity; block requests completed promptly. The earlier 02:46:07.3 aggregate rate collapse was not attributed to this workload and is not the selected incident window.",
+      "confidence": 0.91,
+      "incident_window": "02:46:11.100 - 02:46:14.800",
+      "window_evidence": "The lower boundary is the abrupt worker CPU onset: its 100-ms CPU total is 3 ms at 02:46:11.000, then 277 ms at 11.100 and about 390\u2013400 ms per bucket thereafter. The upper boundary is where usage falls: the 14.800 bucket is down to 239 ms, and normalized container CPU falls to 0.176 cores over 14.800\u201317.200; worker-thread exits occur from 14.514 through 14.837 with no worker respawn reported. These process-specific runtime changes, rather than the earlier host aggregate rate transition, define the interval."
+    },
+    "ranked_services": null,
+    "ranked_candidates": null,
+    "trajectory": [
+      {
+        "step": 0,
+        "tool": "worker1.0",
+        "service": null
+      },
+      {
+        "step": 1,
+        "tool": "worker1.1",
+        "service": null
+      },
+      {
+        "step": 2,
+        "tool": "worker1.2",
+        "service": null
+      },
+      {
+        "step": 3,
+        "tool": "worker1.3",
+        "service": null
+      }
+    ],
+    "n_tool_calls": 46,
+    "n_code_snippets": 15,
+    "n_findings": 11,
+    "n_computed": 15,
+    "bytes_touched": 87135,
+    "tokens": {
+      "in": 468455,
+      "out": 12713
+    },
+    "model": "openai/gpt-6-luna",
+    "wall_s": 106.1,
+    "transcript_file": "C:\\workplace\\microservice-trace-dataset\\nier-2027\\transcripts\\order_only__spawned__t4_w16_r4__r2.json",
+    "skill_selected": null,
+    "skill_confidence": null,
+    "brief_injected": false,
+    "n_claims": null
+  }
+}

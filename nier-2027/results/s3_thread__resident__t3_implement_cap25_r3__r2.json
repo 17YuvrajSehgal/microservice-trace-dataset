@@ -1,0 +1,67 @@
+{
+  "config": "s3_thread",
+  "klass": "resident",
+  "run": "t3_implement_cap25_r3",
+  "run_dir": "C:\\workplace\\microservice-trace-dataset\\Blueprint\\latency\\1_svc_cpu_cap\\agentic-os-noise\\runs\\t3_implement_cap25_r3",
+  "rep": 2,
+  "cell": "s3_thread__resident__t3_implement_cap25_r3__r2",
+  "status": "ok",
+  "returncode": 0,
+  "wall_s": 110.0,
+  "env_ablation": {
+    "ABL_THREAD_BUDGET": "80000"
+  },
+  "result": {
+    "run_id": "t3_implement_cap25_r3",
+    "diagnosis": {
+      "what_is_wrong": "No kernel-trace evidence establishes a fault causing the coding task to run slowly. There is a real drop in recorded activity around 03:27:38, but actual CPU use also drops and the CPUs appear mostly idle; later python3 consumes CPU, while the trace shows no demonstrated starvation, I/O delay, network failure, or process restart. The operator-reported slowdown cannot be confirmed or attributed from this trace alone.",
+      "root_cause_service": "unknown",
+      "culprit_kind": "unknown",
+      "fault_type": "normal",
+      "evidence": "Used the full 03:27:30.200\u201303:28:02.100 trace rates computed with run_python, comparing the active opening interval and the lower-activity periods. Around 03:27:38, sched_switch and sched_wakeup rates fall sharply (for 03:27:38\u201303:27:40, 165.5/s and 83.5/s, versus 548.5/s and 254/s in 03:27:36\u201303:27:38); sched_stat_runtime also falls to 101.5/s. But container 4026531836 uses only about 0.02\u20130.016 CPU-seconds/s in 03:27:38\u201303:27:40, which is evidence of low execution, not demonstrated CPU contention. Later, python3 consumes about 0.24 CPU-seconds/s for much of 03:27:46\u201303:27:57. The disk check found matched issue/completion counts and a representative completion with error=0 about 0.77 ms after issue; network transmissions had rc=0 and continued. The process-exit burst was shell/tool churn, with claude present throughout. Raw indexed kernel fields were inspected because ctf_lines could not access the CTF path. No explicit ctf_procdiff result or latency measurement is recorded, so neither process membership differences nor task duration can be independently established here.",
+      "confidence": 0.79,
+      "incident_window": "unknown",
+      "window_evidence": "The measurable rate change begins near 03:27:38 (the two-second sched_switch rate falls from 548.5/s in 03:27:36\u201303:27:38 to 165.5/s in 03:27:38\u201303:27:40), but it is not established as an incident boundary: CPU runtime falls along with scheduling activity, there is no demonstrated wait or saturation mechanism, and there is no synchronized recovery through the trace end. Therefore this activity transition does not support assigning an incident window."
+    },
+    "ranked_services": null,
+    "ranked_candidates": null,
+    "trajectory": [
+      {
+        "step": 0,
+        "tool": "worker1.0",
+        "service": null
+      },
+      {
+        "step": 1,
+        "tool": "worker1.1",
+        "service": null
+      },
+      {
+        "step": 2,
+        "tool": "worker1.2",
+        "service": null
+      },
+      {
+        "step": 3,
+        "tool": "worker1.3",
+        "service": null
+      }
+    ],
+    "n_tool_calls": 50,
+    "n_code_snippets": 18,
+    "n_findings": 10,
+    "n_computed": 18,
+    "bytes_touched": 85838,
+    "tokens": {
+      "in": 537652,
+      "out": 13021
+    },
+    "model": "openai/gpt-6-luna",
+    "wall_s": 109.0,
+    "transcript_file": "C:\\workplace\\microservice-trace-dataset\\nier-2027\\transcripts\\s3_thread__resident__t3_implement_cap25_r3__r2.json",
+    "skill_selected": null,
+    "skill_confidence": null,
+    "brief_injected": false,
+    "n_claims": null
+  }
+}

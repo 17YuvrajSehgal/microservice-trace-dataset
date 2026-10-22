@@ -1,0 +1,72 @@
+{
+  "config": "s1_deliver",
+  "klass": "resident",
+  "run": "t3_implement_cap25_r2",
+  "run_dir": "C:\\workplace\\microservice-trace-dataset\\Blueprint\\latency\\1_svc_cpu_cap\\agentic-os-noise\\runs\\t3_implement_cap25_r2",
+  "rep": 3,
+  "cell": "s1_deliver__resident__t3_implement_cap25_r2__r3",
+  "status": "ok",
+  "returncode": 0,
+  "wall_s": 224.3,
+  "env_ablation": {
+    "ABL_FLAT_CAP": "2000"
+  },
+  "result": {
+    "run_id": "t3_implement_cap25_r2",
+    "diagnosis": {
+      "what_is_wrong": "The trace does not establish a kernel-level fault causing the coding task to run slowly. It does show a sustained workload-activity drop beginning at 03:26:45.800, but CPU use shifts between processes (notably from `claude`/JIT workers toward `python3`), sampled post-change wake-to-run delays are generally short, and the device/network samples do not show a sustained bottleneck; this is more consistent with a workload phase change than a diagnosed host or service failure.",
+      "root_cause_service": "unknown (no faulting process or container established)",
+      "culprit_kind": "unknown",
+      "fault_type": "normal",
+      "evidence": "Compared the full 03:26:40.800\u201303:27:15.800 trace and successive five-second windows using the workers\u2019 run_python rate/runtime aggregations; ctf_timeline returned zero matches for indexed events, so the workers charted the DataFrame directly. At 03:26:45.800, sched_switch fell from 1,134.6/s to 304.6/s, sched_wakeup from 553.4/s to 144.2/s, block_rq_issue from 71/s to 9.6/s, and net_dev_xmit from 44.2/s to 12.2/s. However, runtime accounting shows `claude` falling from 187.8 to 31.4 ms CPU/s while `python3` rises from 4.6 to 26.4 ms/s; total namespace CPU use is modest (peak about 1.32 CPU-s per five seconds on a four-CPU system). The sampled post-change wake-to-switch pairs show microsecond-scale medians for `claude` and HTTP Client, with only an isolated longer `claude` sample. Raw block issue/completion counts mostly match, and sampled network transmit records have rc=0. Process-lifetime checks show no service restart or distinct container arrival; all meaningful workload processes are in pid_ns 4026531836. The falsifying checks for this conclusion would be a complete wake-to-run distribution showing broad long runnable delays, sustained block request latency, or corroborating network failures; workers ran only partial scheduler pairing and narrow raw device/network samples, so those causes are not exhaustively excluded.",
+      "confidence": 0.73,
+      "incident_window": "03:26:45.800 - 03:27:15.800",
+      "window_evidence": "The boundary is the measured synchronized activity drop: comparing 03:26:40.800\u201303:26:45.800 with 03:26:45.800\u201303:26:50.800 shows the large rate reductions across scheduler, block, and network events. Rates stay mostly below the initial level through the trace end, without a clear return to the earlier pattern. This supports a workload-activity-change window, but not a confirmed fault window."
+    },
+    "ranked_services": null,
+    "ranked_candidates": null,
+    "trajectory": [
+      {
+        "step": 0,
+        "tool": "worker1.0",
+        "service": null
+      },
+      {
+        "step": 1,
+        "tool": "worker1.1",
+        "service": null
+      },
+      {
+        "step": 2,
+        "tool": "worker1.2",
+        "service": null
+      },
+      {
+        "step": 3,
+        "tool": "worker1.3",
+        "service": null
+      },
+      {
+        "step": 4,
+        "tool": "worker2.100",
+        "service": null
+      }
+    ],
+    "n_tool_calls": 73,
+    "n_code_snippets": 37,
+    "n_findings": 11,
+    "n_computed": 37,
+    "bytes_touched": 149695,
+    "tokens": {
+      "in": 633373,
+      "out": 20047
+    },
+    "model": "openai/gpt-6-luna",
+    "wall_s": 223.4,
+    "transcript_file": "C:\\workplace\\microservice-trace-dataset\\nier-2027\\transcripts\\s1_deliver__resident__t3_implement_cap25_r2__r3.json",
+    "skill_selected": null,
+    "skill_confidence": null,
+    "brief_injected": false,
+    "n_claims": null
+  }
+}

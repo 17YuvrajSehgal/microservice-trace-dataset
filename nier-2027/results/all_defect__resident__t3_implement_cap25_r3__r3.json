@@ -1,0 +1,75 @@
+{
+  "config": "all_defect",
+  "klass": "resident",
+  "run": "t3_implement_cap25_r3",
+  "run_dir": "C:\\workplace\\microservice-trace-dataset\\Blueprint\\latency\\1_svc_cpu_cap\\agentic-os-noise\\runs\\t3_implement_cap25_r3",
+  "rep": 3,
+  "cell": "all_defect__resident__t3_implement_cap25_r3__r3",
+  "status": "ok",
+  "returncode": 0,
+  "wall_s": 160.8,
+  "env_ablation": {
+    "ABL_FLAT_CAP": "2000",
+    "ABL_WORKER_STEPS": "12",
+    "ABL_THREAD_BUDGET": "80000",
+    "ABL_NO_COMPUTED": "1"
+  },
+  "result": {
+    "run_id": "t3_implement_cap25_r3",
+    "diagnosis": {
+      "what_is_wrong": "The trace does not establish a fault or confirm that the coding task was unusually slow. It does show a marked lull in task-associated CPU activity around 03:27:35\u201303:27:41, followed by later python3 CPU work, but the recorded evidence cannot distinguish ordinary waiting/workload transitions from a fault or identify what the task might have been waiting on.",
+      "root_cause_service": "unknown",
+      "culprit_kind": "unknown",
+      "fault_type": "normal",
+      "evidence": "The trace spans 03:27:30.200\u201303:28:02.200 UTC. The workers\u2019 whole-trace per-second run_python analysis found sched_stat_runtime falling from about 233 ms in 03:27:34 to 13 ms in 03:27:39; the reduction was mainly in claude and JITWorker in pid_ns 4026531836. Later, python3 used 3,033 ms CPU over 03:27:41.2\u201303:27:57.2, only about 0.19 core on average. These observations show changing workload activity, not CPU saturation. The timeline tool failed to match events; the notes provide no usable raw ctf_lines or procdiff result and no evidence of a specific wait mechanism, resource limit, or dependency failure. Thus there is no trace basis to assign a culprit or substantiate \u201clonger than usual\u201d against a baseline.",
+      "confidence": 0.68,
+      "incident_window": "unknown",
+      "window_evidence": "03:27:35\u201303:27:41 is a measured candidate activity lull, bounded by the sharp sched_stat_runtime decline after 03:27:34 and low values through 03:27:39; however, the later python3 activity and lack of mechanism or quiet-range comparison mean the notes do not establish that this lull was an incident or that it explains the reported delay. I therefore cannot honestly label it the incident window."
+    },
+    "ranked_services": null,
+    "ranked_candidates": null,
+    "trajectory": [
+      {
+        "step": 0,
+        "tool": "worker1.0",
+        "service": null
+      },
+      {
+        "step": 1,
+        "tool": "worker1.1",
+        "service": null
+      },
+      {
+        "step": 2,
+        "tool": "worker1.2",
+        "service": null
+      },
+      {
+        "step": 3,
+        "tool": "worker1.3",
+        "service": null
+      },
+      {
+        "step": 4,
+        "tool": "worker2.100",
+        "service": null
+      }
+    ],
+    "n_tool_calls": 71,
+    "n_code_snippets": 30,
+    "n_findings": 9,
+    "n_computed": 30,
+    "bytes_touched": 144253,
+    "tokens": {
+      "in": 420648,
+      "out": 15728
+    },
+    "model": "openai/gpt-6-luna",
+    "wall_s": 159.8,
+    "transcript_file": "C:\\workplace\\microservice-trace-dataset\\nier-2027\\transcripts\\all_defect__resident__t3_implement_cap25_r3__r3.json",
+    "skill_selected": null,
+    "skill_confidence": null,
+    "brief_injected": false,
+    "n_claims": null
+  }
+}

@@ -1,0 +1,72 @@
+{
+  "config": "s2_steps",
+  "klass": "resident",
+  "run": "t3_implement_cap25_r3",
+  "run_dir": "C:\\workplace\\microservice-trace-dataset\\Blueprint\\latency\\1_svc_cpu_cap\\agentic-os-noise\\runs\\t3_implement_cap25_r3",
+  "rep": 1,
+  "cell": "s2_steps__resident__t3_implement_cap25_r3__r1",
+  "status": "ok",
+  "returncode": 0,
+  "wall_s": 205.8,
+  "env_ablation": {
+    "ABL_WORKER_STEPS": "12"
+  },
+  "result": {
+    "run_id": "t3_implement_cap25_r3",
+    "diagnosis": {
+      "what_is_wrong": "The coding workload experienced severe scheduler dispatch delays beginning around 03:27:45, coincident with a newly active `python3` process consuming nearly all of an apparent ~0.25 CPU-second/second budget in the sole observed container. This is most consistent with container CPU throttling affecting `claude` and its workload threads, although the trace does not expose cgroup throttle counters, so the quota mechanism is an inference rather than directly proven.",
+      "root_cause_service": "python3 in pid_ns 4026531836",
+      "culprit_kind": "container",
+      "fault_type": "cpu_throttling",
+      "evidence": "Compared run_python scheduler and runtime summaries for 03:27:40.2\u201303:27:45.2 and 03:27:45.2\u201303:27:58.2: `claude` wake-to-dispatch delays changed from 17 matched wakeups (median 0.02 ms; 6 over 100 ms) to 47 (median 1,682 ms; p95 6,914 ms; 43 over 100 ms; max 7,691 ms). At the same transition, `python3` became the dominant runtime consumer, totaling 2.886 CPU-seconds in 13 seconds, while the container averaged 0.247 CPU-seconds per wall-second. The run_python event-rate comparison also showed broad scheduling/network/block event rate reductions after onset. Checked raw ctf_lines scheduler records and paired wakeups to subsequent dispatches; block request issue/complete samples were around 0.4\u20131.2 ms, not evidence of disk wait. ctf_proclife/procdiff found no separate service-container arrival. ctf_timeline/query_ctf returned unmatched zeros, so rates came from run_python rather than treating those query failures as absent events. The evidence supports CPU-budget contention but lacks direct cgroup throttling counters; this prevents a definitive distinction from another container-local scheduling constraint.",
+      "confidence": 0.68,
+      "incident_window": "03:27:45 - 03:27:58",
+      "window_evidence": "The onset is around 03:27:45.2: `python3` appears and begins sustained runtime, while the interval summary shows scheduler and other activity rates falling and the matched `claude` wake-to-dispatch delays worsening sharply versus 03:27:40\u201303:27:45.2. The observed severe-delay/collapse interval lasts through roughly 03:27:57, followed by a partial scheduler-rate rebound at 03:27:57.2; the trace tail after about 03:27:58 no longer supports extending the incident window."
+    },
+    "ranked_services": null,
+    "ranked_candidates": null,
+    "trajectory": [
+      {
+        "step": 0,
+        "tool": "worker1.0",
+        "service": null
+      },
+      {
+        "step": 1,
+        "tool": "worker1.1",
+        "service": null
+      },
+      {
+        "step": 2,
+        "tool": "worker1.2",
+        "service": null
+      },
+      {
+        "step": 3,
+        "tool": "worker1.3",
+        "service": null
+      },
+      {
+        "step": 4,
+        "tool": "worker2.100",
+        "service": null
+      }
+    ],
+    "n_tool_calls": 64,
+    "n_code_snippets": 27,
+    "n_findings": 9,
+    "n_computed": 27,
+    "bytes_touched": 121946,
+    "tokens": {
+      "in": 729268,
+      "out": 22570
+    },
+    "model": "openai/gpt-6-luna",
+    "wall_s": 204.9,
+    "transcript_file": "C:\\workplace\\microservice-trace-dataset\\nier-2027\\transcripts\\s2_steps__resident__t3_implement_cap25_r3__r1.json",
+    "skill_selected": null,
+    "skill_confidence": null,
+    "brief_injected": false,
+    "n_claims": null
+  }
+}

@@ -1,0 +1,73 @@
+{
+  "config": "s1_reversed",
+  "klass": "spawned",
+  "run": "t4_w16_r5",
+  "run_dir": "C:\\workplace\\microservice-trace-dataset\\agentic-runs\\2_threads_vs_cores\\runs\\t4_w16_r5",
+  "rep": 2,
+  "cell": "s1_reversed__spawned__t4_w16_r5__r2",
+  "status": "ok",
+  "returncode": 0,
+  "wall_s": 225.9,
+  "env_ablation": {
+    "ABL_FLAT_CAP": "2000",
+    "ABL_REVERSE_KEYS": "1"
+  },
+  "result": {
+    "run_id": "t4_w16_r5",
+    "diagnosis": {
+      "what_is_wrong": "A short, CPU-bound `ttworker` burst consumed nearly all four CPUs and caused severe runnable-task delays, plausibly explaining why the coding task took longer. The kernel evidence ties the impact to scheduler starvation during the burst, rather than disk, network, or memory pressure.",
+      "root_cause_service": "ttworker in pid_ns 4026531836",
+      "culprit_kind": "container",
+      "fault_type": "cpu_saturation",
+      "evidence": "Compared the burst with adjacent pre-period 02:47:26.200\u201302:47:31.100 and post-period 02:47:35.400\u201302:47:37.400. `sched_stat_runtime` attributes about 15.33 CPU-seconds to `ttworker` during the burst, averaging 3.87 cores over 4.1 seconds on the four CPUs visible in raw scheduler records; the surrounding process total was about 0.36 cores before and 0.07 cores after. In `run_python` wakeup-to-next-switch matching, `claude` had 15 matched burst wakeups with median delay 1,560 ms, p90 2,446 ms, max 2,696 ms, versus pre/post medians of 0.018/0.016 ms; `mi-scavenger` was also delayed. The process lifetime and raw scheduler/exit records place the worker run from about 02:47:31.2 to 02:47:35.3. Block, network, and writeback counts did not rise in the burst, and no reclaim/OOM family was found. A falsifying check would be no coincident rise in worker CPU and runnable delays; the workers ran this check and found the opposite. Wake/switch matches are incomplete (19/46 burst wakeups unmatched), so the measured delay distribution may omit some waits.",
+      "confidence": 0.95,
+      "incident_window": "02:47:31.200 - 02:47:35.400",
+      "window_evidence": "The worker appears in indexed activity at 02:47:31.200 and its CPU use rises sharply from that onset, reaching roughly 3.99 CPU-seconds per second through most of the run. Raw sched_process_exit records show its threads exiting from 02:47:34.782 through 02:47:35.382, and aggregate CPU/scheduling activity falls immediately afterward; adjacent pre/post wakeup delays return to millisecond-scale values. The window therefore covers the observed worker burst and its exit, with the post comparison beginning at 02:47:35.400."
+    },
+    "ranked_services": null,
+    "ranked_candidates": null,
+    "trajectory": [
+      {
+        "step": 0,
+        "tool": "worker1.0",
+        "service": null
+      },
+      {
+        "step": 1,
+        "tool": "worker1.1",
+        "service": null
+      },
+      {
+        "step": 2,
+        "tool": "worker1.2",
+        "service": null
+      },
+      {
+        "step": 3,
+        "tool": "worker1.3",
+        "service": null
+      },
+      {
+        "step": 4,
+        "tool": "worker2.100",
+        "service": null
+      }
+    ],
+    "n_tool_calls": 77,
+    "n_code_snippets": 41,
+    "n_findings": 12,
+    "n_computed": 41,
+    "bytes_touched": 172487,
+    "tokens": {
+      "in": 669380,
+      "out": 21294
+    },
+    "model": "openai/gpt-6-luna",
+    "wall_s": 225.0,
+    "transcript_file": "C:\\workplace\\microservice-trace-dataset\\nier-2027\\transcripts\\s1_reversed__spawned__t4_w16_r5__r2.json",
+    "skill_selected": null,
+    "skill_confidence": null,
+    "brief_injected": false,
+    "n_claims": null
+  }
+}

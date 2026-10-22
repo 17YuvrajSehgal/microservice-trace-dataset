@@ -1,0 +1,67 @@
+{
+  "config": "s2_steps",
+  "klass": "resident",
+  "run": "t3_implement_cap25_r5",
+  "run_dir": "C:\\workplace\\microservice-trace-dataset\\Blueprint\\latency\\1_svc_cpu_cap\\agentic-os-noise\\runs\\t3_implement_cap25_r5",
+  "rep": 1,
+  "cell": "s2_steps__resident__t3_implement_cap25_r5__r1",
+  "status": "ok",
+  "returncode": 0,
+  "wall_s": 113.6,
+  "env_ablation": {
+    "ABL_WORKER_STEPS": "12"
+  },
+  "result": {
+    "run_id": "t3_implement_cap25_r5",
+    "diagnosis": {
+      "what_is_wrong": "The trace does not demonstrate an infrastructure fault or establish that the coding task was slower than usual; it shows a sustained compute workload followed by its end, but no evidence that CPU, disk, or network contention delayed it. The perceived slowness therefore remains unconfirmed rather than attributable to a fault in this trace.",
+      "root_cause_service": "unknown",
+      "culprit_kind": "unknown",
+      "fault_type": "normal",
+      "evidence": "Workers covered the full trace span, 18:55:57.800\u201318:56:30.100, using process-lifetime data, full-span event counts/rates, runtime grouped by pid_ns/process, and representative raw kernel lines. The only user container observed was pid_ns 4026531836. python3 there used about 1.68 CPU-seconds from 18:56:18\u201318:56:25, with roughly 0.48 CPU-seconds per two-second bin through much of 18:56:13.8\u201318:56:23.8; that is a workload signal, not evidence of host-wide CPU saturation or delayed scheduling. The record also does not show a sustained disk or network problem: block issue/completion totals closely match, with the cited request completing in about 0.6 ms, and the network counts do not show a sustained corresponding failure. The opening scheduler/event burst declines, but later activity is a workload handoff rather than a demonstrated resource fault. Raw scheduling lines show python3 running periodically on CPU 3; they do not establish starvation. No measured wakeup-to-run delay or comparison to a known-good task duration is provided, so the claimed regression cannot be confirmed from these kernel data alone.",
+      "confidence": 0.78,
+      "incident_window": "unknown",
+      "window_evidence": "There is no evidence-backed fault boundary to label as an incident. The python3 CPU rise around 18:56:13.800 and disappearance of measurable runtime in the 18:56:25.800 bin delimit a workload interval, but the kernel evidence does not show that this interval was abnormal or caused delay; using it as a fault window would overstate the evidence."
+    },
+    "ranked_services": null,
+    "ranked_candidates": null,
+    "trajectory": [
+      {
+        "step": 0,
+        "tool": "worker1.0",
+        "service": null
+      },
+      {
+        "step": 1,
+        "tool": "worker1.1",
+        "service": null
+      },
+      {
+        "step": 2,
+        "tool": "worker1.2",
+        "service": null
+      },
+      {
+        "step": 3,
+        "tool": "worker1.3",
+        "service": null
+      }
+    ],
+    "n_tool_calls": 39,
+    "n_code_snippets": 14,
+    "n_findings": 8,
+    "n_computed": 14,
+    "bytes_touched": 90549,
+    "tokens": {
+      "in": 359225,
+      "out": 11444
+    },
+    "model": "openai/gpt-6-luna",
+    "wall_s": 112.7,
+    "transcript_file": "C:\\workplace\\microservice-trace-dataset\\nier-2027\\transcripts\\s2_steps__resident__t3_implement_cap25_r5__r1.json",
+    "skill_selected": null,
+    "skill_confidence": null,
+    "brief_injected": false,
+    "n_claims": null
+  }
+}

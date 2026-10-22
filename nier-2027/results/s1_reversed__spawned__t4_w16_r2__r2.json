@@ -1,0 +1,73 @@
+{
+  "config": "s1_reversed",
+  "klass": "spawned",
+  "run": "t4_w16_r2",
+  "run_dir": "C:\\workplace\\microservice-trace-dataset\\agentic-runs\\2_threads_vs_cores\\runs\\t4_w16_r2",
+  "rep": 2,
+  "cell": "s1_reversed__spawned__t4_w16_r2__r2",
+  "status": "ok",
+  "returncode": 0,
+  "wall_s": 236.4,
+  "env_ablation": {
+    "ABL_FLAT_CAP": "2000",
+    "ABL_REVERSE_KEYS": "1"
+  },
+  "result": {
+    "run_id": "t4_w16_r2",
+    "diagnosis": {
+      "what_is_wrong": "A short, task-associated CPU saturation occurred: the `ttworker` workload consumed nearly all four available CPUs while the coding-task process chain was active. This supports a CPU-bound episode that could slow competing work, but the trace does not establish that the coding task itself ran longer than normal; its initial Python task was dispatched within 8.2 microseconds, and no baseline or sustained runnable delay is shown.",
+      "root_cause_service": "ttworker in pid_ns 4026531836",
+      "culprit_kind": "container",
+      "fault_type": "cpu_saturation",
+      "evidence": "Compared full-trace context with the pre-burst window 02:48:28.2\u201302:48:33.0, burst 02:48:33.0\u201302:48:37.0, and post-burst 02:48:37.0\u201302:48:39.1 using lifecycle results and run_python scheduler-runtime profiles. Runtime rose from 1.735 CPU-s (0.36 cores average) before to 15.684 CPU-s (3.92 cores average) in the 4-second burst; `ttworker` accounts for 15.104 CPU-s (3.776 cores), with approximately 400 ms CPU per 100 ms elapsed across the four CPUs, then stops by 02:48:37. Raw scheduler records show `ttworker` repeatedly switched while runnable. Cross-checks do not support disk/network load or memory reclaim as the cause: block issue/completion and network event counts fell relative to the pre-burst interval, and direct reclaim/kswapd events were absent. The task's python3 PID 4091 was woken and scheduled 8.2 microseconds later; thus the trace confirms saturation but not a measured delay to that task. Lifecycle edges for run_all.sh/xargs/worker.py and ttworker align with the burst. Raw kernel records were inspected through run_python's indexed line retrieval; ctf_lines itself failed due to unavailable CTF path.",
+      "confidence": 0.88,
+      "incident_window": "02:48:33 - 02:48:37",
+      "window_evidence": "The boundary is supported by the task-chain arrival at 02:48:33.0 and first `ttworker` runtime in the 02:48:33.1 bucket; its CPU remains near four cores through 02:48:36.8, falls sharply in the 02:48:36.9 bucket, and is zero from 02:48:37.0 onward. The task-related processes disappear around 02:48:36.9."
+    },
+    "ranked_services": null,
+    "ranked_candidates": null,
+    "trajectory": [
+      {
+        "step": 0,
+        "tool": "worker1.0",
+        "service": null
+      },
+      {
+        "step": 1,
+        "tool": "worker1.1",
+        "service": null
+      },
+      {
+        "step": 2,
+        "tool": "worker1.2",
+        "service": null
+      },
+      {
+        "step": 3,
+        "tool": "worker1.3",
+        "service": null
+      },
+      {
+        "step": 4,
+        "tool": "worker2.100",
+        "service": null
+      }
+    ],
+    "n_tool_calls": 89,
+    "n_code_snippets": 46,
+    "n_findings": 8,
+    "n_computed": 46,
+    "bytes_touched": 211091,
+    "tokens": {
+      "in": 729121,
+      "out": 22669
+    },
+    "model": "openai/gpt-6-luna",
+    "wall_s": 235.3,
+    "transcript_file": "C:\\workplace\\microservice-trace-dataset\\nier-2027\\transcripts\\s1_reversed__spawned__t4_w16_r2__r2.json",
+    "skill_selected": null,
+    "skill_confidence": null,
+    "brief_injected": false,
+    "n_claims": null
+  }
+}

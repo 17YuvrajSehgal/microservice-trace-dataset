@@ -1,0 +1,67 @@
+{
+  "config": "s1_deliver",
+  "klass": "spawned",
+  "run": "t4_w16_r4",
+  "run_dir": "C:\\workplace\\microservice-trace-dataset\\agentic-runs\\2_threads_vs_cores\\runs\\t4_w16_r4",
+  "rep": 2,
+  "cell": "s1_deliver__spawned__t4_w16_r4__r2",
+  "status": "ok",
+  "returncode": 0,
+  "wall_s": 139.6,
+  "env_ablation": {
+    "ABL_FLAT_CAP": "2000"
+  },
+  "result": {
+    "run_id": "t4_w16_r4",
+    "diagnosis": {
+      "what_is_wrong": "A short-lived `ttworker` burst saturated the machine's four CPUs, plausibly delaying the coding task; it consumed about 3.81 cores on average and the trace shows CPU-bound runnable thread churn rather than disk wait or rising futex contention. The trace supports this mechanism, though it cannot directly measure the reported task's completion latency.",
+      "root_cause_service": "ttworker in pid_ns 4026531836",
+      "culprit_kind": "container",
+      "fault_type": "cpu_saturation",
+      "evidence": "Used ctf_timespan (02:46:06.400\u201302:46:17.200) and full-span ctf_proclife, which places ttworker's lifetime at about 02:46:11.000\u201302:46:14.800. Compared run_python sched_stat_runtime totals in 02:46:06.4\u201311.0, 02:46:11.0\u201314.9, and 02:46:14.9\u201317.2: container CPU was 1.725 s, 15.396 s, and 0.158 s respectively; ttworker alone used 14.840 CPU-seconds (85.88% of the trace total). Across 37 100-ms buckets from 02:46:11.1\u201314.8, total runtime averaged 399.97 ms per bucket\u2014about four busy cores\u2014with ttworker averaging about 3.81 cores. Raw ctf_lines scheduler records show ttworker switching to another ttworker thread with prev_state=0 (still runnable). Disk evidence does not support saturation: 77 issue/completion pairs during the burst versus 66 in the 02:46:08\u201310 comparison, and nine matched latencies were 0.58\u20131.02 ms; futex activity fell from about 851/s to 137/s. The separate shared event-rate collapse around 02:46:08.4 precedes ttworker and is not used as the CPU-burst start. ctf_timeline returned zero for requested patterns, so the workers used indexed counts and aligned buckets instead.",
+      "confidence": 0.96,
+      "incident_window": "02:46:11.000 - 02:46:14.800",
+      "window_evidence": "The lower boundary is ttworker's first_seen at 02:46:11.000, followed by its sustained near-four-core use from the 02:46:11.1 bucket; the upper boundary is its last_seen at 02:46:14.800, after which container runtime fell to only 157.78 ms over 02:46:14.9\u201317.2. The earlier event-rate trough around 02:46:08.4 has different timing and does not coincide with this measured CPU saturation."
+    },
+    "ranked_services": null,
+    "ranked_candidates": null,
+    "trajectory": [
+      {
+        "step": 0,
+        "tool": "worker1.0",
+        "service": null
+      },
+      {
+        "step": 1,
+        "tool": "worker1.1",
+        "service": null
+      },
+      {
+        "step": 2,
+        "tool": "worker1.2",
+        "service": null
+      },
+      {
+        "step": 3,
+        "tool": "worker1.3",
+        "service": null
+      }
+    ],
+    "n_tool_calls": 49,
+    "n_code_snippets": 24,
+    "n_findings": 10,
+    "n_computed": 24,
+    "bytes_touched": 101732,
+    "tokens": {
+      "in": 431690,
+      "out": 16131
+    },
+    "model": "openai/gpt-6-luna",
+    "wall_s": 138.6,
+    "transcript_file": "C:\\workplace\\microservice-trace-dataset\\nier-2027\\transcripts\\s1_deliver__spawned__t4_w16_r4__r2.json",
+    "skill_selected": null,
+    "skill_confidence": null,
+    "brief_injected": false,
+    "n_claims": null
+  }
+}

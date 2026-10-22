@@ -24,6 +24,13 @@ import argparse, glob, gzip, json, os, re, subprocess, sys, threading, time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse, parse_qs
 
+# Demo runs favour a bounded token cost over maximum depth; research runs use the agent's own
+# generous defaults. These are read by Blueprint/agent at import time. setdefault, so an explicit
+# environment override still wins. (Last full run cost 1.45M input tokens at 18 steps / 150k
+# budget, almost all in one worker re-sending its thread; 12 / 90k roughly halves that.)
+os.environ.setdefault("ABL_WORKER_STEPS", "12")
+os.environ.setdefault("ABL_THREAD_BUDGET", "90000")
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 DATA = os.path.join(HERE, "data")
@@ -34,7 +41,7 @@ DATA = os.path.join(HERE, "data")
 RUNS = {
     "svc_cpu_cap_aggressive_steady_r1": {
         "label": "One service's CPU cap",
-        "blueprint": "service-cpu-throttle",
+        "blueprint": "svc_cpu_cap",
         "gt": "gt-svc_cpu_cap.json",
         "event": "sched_switch",
         "signal": "cpu",
@@ -50,6 +57,47 @@ def available_runs():
             if os.path.exists(os.path.join(DATA, rid + ".tsv.gz"))]
 
 
+def _ensure_ctf_link(rd, target):
+    """Make rd/kernel a junction to `target` so rd/kernel/kernel is the CTF. Idempotent."""
+    link = os.path.join(rd, "kernel")
+    if os.path.exists(os.path.join(link, "kernel", "metadata")):
+        return
+    if not target or not os.path.isdir(target):
+        return
+    try:
+        if os.path.exists(link):
+            try:
+                os.rmdir(link)
+            except OSError:
+                return
+        subprocess.run(["cmd", "/c", "mklink", "/J", link, target],
+                       capture_output=True, text=True)
+    except OSError:
+        pass
+
+
+def discover_external_runs():
+    """Re-register ext_* traces whose index was built in an earlier session. Loaded traces
+    live as demo/data/ext_<id>.tsv.gz (+ a run dir), but RUNS is in memory, so without this a
+    loaded trace disappears after a restart - and the user can silently run on the wrong one."""
+    for f in glob.glob(os.path.join(DATA, "ext_*.tsv.gz")):
+        rid = os.path.basename(f)[:-len(".tsv.gz")]
+        if rid in RUNS:
+            continue
+        RUNS[rid] = {"label": rid[4:].replace("_", " ") if rid.startswith("ext_") else rid,
+                     "blueprint": None, "gt": None, "event": "sched_switch", "signal": "cpu",
+                     "note": "Loaded trace.", "external": True}
+        # rebuild the CTF junction from the stored source so the trace survives a restart
+        rd = os.path.join(DATA, "run", rid)
+        src = os.path.join(rd, "source.txt")
+        if os.path.exists(src):
+            try:
+                _ensure_ctf_link(rd, open(src, encoding="utf-8").read().strip())
+            except OSError:
+                pass
+
+
+discover_external_runs()
 _env = os.environ.get("DEMO_RUN")
 _av = available_runs()
 RUN_ID = (_env if (_env in RUNS and _env in _av) else (_av[0] if _av else None))
@@ -154,8 +202,11 @@ def load_state(rebuild=False, run_id=None):
     STATE["run"] = RUNS[RUN_ID]
     # Deliberately NOT under the index root or the run directory: the code
     # sandbox is handed the index, and the answer should not sit beside it.
-    gt = os.path.join(HERE, "answer", RUNS[RUN_ID]["gt"])
-    STATE["truth"] = json.load(open(gt, encoding="utf-8")) if os.path.exists(gt) else {}
+    # A loaded external trace has no ground truth, which is fine - the Verdict tab just
+    # has nothing to reveal.
+    gtname = RUNS[RUN_ID].get("gt")
+    gt = os.path.join(HERE, "answer", gtname) if gtname else None
+    STATE["truth"] = json.load(open(gt, encoding="utf-8")) if gt and os.path.exists(gt) else {}
     # One recording per trace. A single shared file meant selecting the network trace and
     # pressing Replay showed the CPU investigation, scored against the wrong ground truth.
     tp = os.path.join(HERE, "demo-transcript-%s.jsonl" % RUN_ID)
@@ -276,52 +327,89 @@ def raw_lines(event: str, t0: float, t1: float, limit: int = 12):
 # ----------------------------------------------------------------------------------
 # Blueprints, read from the repo so the interface cannot drift from what the agent is given.
 # ----------------------------------------------------------------------------------
-SKILLS = os.path.join(ROOT, "blueprints", "skills-kernel-only")
-PROBLEMS = os.path.join(ROOT, "blueprints", "problems")
+# The agent and its blueprints: the Blueprint/ tree, not the old agentic-rca harness.
+# Each blueprint is a self-contained folder (README_v1.md + its own tools/ scripts); giving one
+# to the agent injects its method AND exposes its scripts via blueprint_tool.
+AGENT_DIR = os.path.join(ROOT, "Blueprint", "agent")
+BP_ROOT = os.path.join(ROOT, "Blueprint", "latency")
+
+
+# Both Blueprint/agent and the old agentic-rca harness define modules named agent_v2,
+# ctf_tool, codetool, config, ... Python caches by name, so whichever imports first wins.
+# The Verdict scorer pulls in the OLD agent_v2; this forces the Blueprint/agent copies to be
+# the live ones for every agent operation, regardless of import order.
+_AGENT_MODS = ("agent_v2", "utils", "ctf_tool", "codetool", "coderepo",
+               "blueprints", "skillreg", "config", "transcript", "leakguard")
+
+
+def import_agent():
+    """Import Blueprint/agent's agent_v2, dropping any same-named modules loaded from
+    elsewhere (e.g. the scorer's agentic-rca copies) so there is no cross-contamination.
+    Checks EVERY sibling, not just agent_v2: the scorer can replace ctf_tool alone, which then
+    silently decodes the trace instead of reading the index."""
+    want = os.path.realpath(AGENT_DIR)
+    for m in _AGENT_MODS:
+        mod = sys.modules.get(m)
+        if mod is not None:
+            f = os.path.realpath(getattr(mod, "__file__", "") or "")
+            if not f.startswith(want):
+                sys.modules.pop(m, None)
+    if AGENT_DIR in sys.path:
+        sys.path.remove(AGENT_DIR)
+    sys.path.insert(0, AGENT_DIR)
+    import agent_v2
+    return agent_v2
+
+
+def blueprint_catalog():
+    """name -> {md, tools, folder} for each Blueprint/latency/<n>_<name>/ with README_v1.md.
+    name matches blueprints.load(): the folder with any leading 'N_' stripped."""
+    out = {}
+    if not os.path.isdir(BP_ROOT):
+        return out
+    for folder in sorted(os.listdir(BP_ROOT)):
+        d = os.path.join(BP_ROOT, folder)
+        md = os.path.join(d, "README_v1.md")
+        if os.path.isdir(d) and os.path.exists(md):
+            out[re.sub(r"^\d+_", "", folder)] = {
+                "md": md, "tools": os.path.join(d, "tools"), "folder": folder}
+    return out
+
+
+def blueprint_md(name):
+    e = blueprint_catalog().get(name or "")
+    return e["md"] if e else None
+
+
+def _bp_scripts(tools_dir):
+    if not os.path.isdir(tools_dir):
+        return []
+    return sorted(f for f in os.listdir(tools_dir)
+                  if f.endswith((".py", ".sh")) and not f.startswith("_"))
 
 
 def blueprint_list():
     out = []
-    if not os.path.isdir(SKILLS):
-        return out
-    for f in sorted(os.listdir(SKILLS)):
-        if not f.endswith(".md"):
-            continue
-        name = f[:-3]
-        body = open(os.path.join(SKILLS, f), encoding="utf-8", errors="replace").read()
-        m = re.search(r"^covers:\s*(.+)$", body, re.M)
-        v = re.search(r"^version:\s*(\d+)$", body, re.M)
-        sig = re.search(r"## When this applies\n(.+?)\n\n", body, re.S)
+    active = RUNS.get(RUN_ID, {}).get("blueprint") if RUN_ID else None
+    for name, e in blueprint_catalog().items():
+        body = open(e["md"], encoding="utf-8", errors="replace").read()
+        title = re.search(r"^#\s+(.+)$", body, re.M)
+        scripts = _bp_scripts(e["tools"])
         out.append({
-            "name": name,
-            "covers": (m.group(1).strip() if m else ""),
-            "version": int(v.group(1)) if v else None,
-            "chars": len(body),
-            "summary": (sig.group(1).strip().replace("\n", " ")[:190] if sig else ""),
-            # which blueprint the SELECTED trace uses, not a hardcoded one - the tag
-            # was sitting on the network blueprint while the CPU trace was loaded
-            "active": bool(RUN_ID) and name == RUNS[RUN_ID]["blueprint"],
+            "name": name, "covers": name,
+            "title": title.group(1).strip() if title else name,
+            "chars": len(body), "tools": scripts, "n_tools": len(scripts),
+            "active": name == active,
         })
     return out
 
 
-def blueprint_body(name: str):
-    p = os.path.join(SKILLS, re.sub(r"[^a-z0-9-]", "", name) + ".md")
-    if not os.path.exists(p):
+def blueprint_body(name):
+    e = blueprint_catalog().get(name or "")
+    if not e:
         return None
-    body = open(p, encoding="utf-8", errors="replace").read()
-    jp = os.path.join(PROBLEMS, os.path.basename(p)[:-3], "blueprint.json")
-    meta = {}
-    if os.path.exists(jp):
-        try:
-            d = json.load(open(jp, encoding="utf-8"))
-            meta = {"capabilities": [c.get("id") if isinstance(c, dict) else c
-                                     for c in d.get("capabilities_required", [])],
-                    "steps": [s.get("step") for s in d.get("processing", [])],
-                    "version": d.get("version")}
-        except Exception:                                               # noqa: BLE001
-            meta = {}
-    return {"name": name, "body": body, "meta": meta}
+    body = open(e["md"], encoding="utf-8", errors="replace").read()
+    return {"name": name, "body": body, "meta": {"tools": _bp_scripts(e["tools"])}}
 
 
 # ----------------------------------------------------------------------------------
@@ -561,15 +649,13 @@ def live_ready():
 def _live_worker():
     try:
         os.environ["CTF_INDEX_ROOT"] = DATA
-        sys.path.insert(0, os.path.join(ROOT, "agentic-rca"))
-        sys.path.insert(0, ROOT)
         from dotenv import load_dotenv
         load_dotenv(os.path.join(ROOT, ".env"))
-        from stratatrace import load_run
-        import agent_v2, skillreg
-        sk = [x for x in skillreg.load_skills(
-            os.path.join(ROOT, "blueprints", "skills-kernel-only"))
-            if x.name == RUNS[RUN_ID]["blueprint"]]
+        agent_v2 = import_agent()          # Blueprint/agent, guarded against the old harness
+        # The operator's pick wins; None falls back to the run's configured default.
+        chosen = LIVE.get("blueprint")
+        bpname = (RUNS[RUN_ID].get("blueprint") if chosen is None else (chosen or None))
+        md = blueprint_md(bpname)              # path to the blueprint's README_v1.md, or None
 
         # CLEAR IT FIRST. agent_v2.CTX is a module global that outlives a run, so on a second
         # run the watcher below latched onto the PREVIOUS run's context immediately and the
@@ -587,9 +673,9 @@ def _live_worker():
                     return
                 time.sleep(0.25)
         threading.Thread(target=watch, daemon=True).start()
-        out = agent_v2.diagnose(load_run(RUN_DIR), app="sockshop",
+        out = agent_v2.diagnose(RUN_DIR, blueprint=md,
                                 transcript_path=os.path.join(DATA, "live.json"),
-                                condition="demo-live", skills=sk, skill_given=True)
+                                condition="demo-live", index_root=DATA)
         LIVE["out"] = out
         # Every finished run becomes a session on disk, so a refresh or restart loses
         # nothing: the transcript replays, and the chat continues where it stopped.
@@ -608,7 +694,10 @@ def _live_worker():
         LIVE["running"] = False
 
 
-def live_start():
+def live_start(blueprint=None):
+    """blueprint: a skill name to force; '' means investigate with none; None means use the
+    run's configured default. The operator chooses in the Agent panel, so the RCA always runs
+    with a blueprint the user picked on purpose."""
     with LIVE_LOCK:
         if LIVE["running"]:
             return {"started": False, "reason": "a run is already in progress"}
@@ -617,7 +706,8 @@ def live_start():
             return {"started": False, "reason": "; ".join(r["why"])}
         LIVE.update({"running": True, "error": None, "started": time.time(),
                      "done": False, "out": None, "tr": None, "seen": 0,
-                     "head": False, "stopped": False})
+                     "head": False, "stopped": False,
+                     "blueprint": blueprint})
         # chat is grounded in a specific run's verdict; a new run makes the old seed stale
         if CHAT.get("obj") is not None:
             try:
@@ -640,8 +730,7 @@ def live_stop():
     if not LIVE["running"]:
         return {"stopped": False, "reason": "nothing is running"}
     try:
-        sys.path.insert(0, os.path.join(ROOT, "agentic-rca"))
-        import agent_v2
+        agent_v2 = import_agent()
         agent_v2.CANCEL.set()
         LIVE["stopped"] = True
         return {"stopped": True}
@@ -764,13 +853,13 @@ def session_fork(sid):
     return session_open(nid)
 
 
-def code_browse():
+def browse_dir(title):
     """Open the OS folder picker on the machine running the server; return the chosen path."""
     pick = chr(10).join([
         "import tkinter as tk",
         "from tkinter import filedialog",
         "r = tk.Tk(); r.withdraw(); r.attributes('-topmost', True)",
-        "p = filedialog.askdirectory(title='Select the application source directory')",
+        "p = filedialog.askdirectory(title=%r)" % title,
         "print(p or '')",
     ])
     try:
@@ -787,6 +876,115 @@ def code_browse():
     return {"path": path}
 
 
+def code_browse():
+    return browse_dir("Select the application source directory")
+
+
+# ----------------------------------------------------------------------------------
+# Load ANY kernel trace from disk: find its CTF, build the index, register it as a run.
+# Decoding needs babeltrace2, which lives in WSL on this machine, so the build shells out
+# to WSL. Small traces finish in seconds; the UI polls /api/trace/status while it runs.
+# ----------------------------------------------------------------------------------
+TRACE_LOAD = {"building": False, "run_id": None, "error": None, "msg": "", "src": None}
+
+
+def _wsl_path(winpath):
+    """C:\a\b -> /mnt/c/a/b so a WSL process can read a Windows path."""
+    pth = os.path.abspath(winpath).replace("\\", "/")
+    if len(pth) > 1 and pth[1] == ":":
+        return "/mnt/" + pth[0].lower() + pth[2:]
+    return pth
+
+
+def find_ctf(d):
+    """The CTF directory inside d (holds `metadata` and a channel). Checks d, d/kernel,
+    d/kernel/kernel - the layouts LTTng runs use in this project."""
+    for sub in ("", "kernel", os.path.join("kernel", "kernel"),
+                os.path.join("trace", "kernel")):
+        c = os.path.join(d, sub) if sub else d
+        if not os.path.isdir(c):
+            continue
+        if os.path.isfile(os.path.join(c, "metadata")) and \
+           any(f.startswith("channel") for f in os.listdir(c)):
+            return c
+    return None
+
+
+def _derive_run_id(src):
+    base = os.path.basename(src.rstrip("/\\"))
+    if base in ("kernel", "trace") or not base:
+        base = os.path.basename(os.path.dirname(src.rstrip("/\\"))) or base
+    slug = re.sub(r"[^A-Za-z0-9]+", "_", base).strip("_").lower() or "trace"
+    return "ext_" + slug
+
+
+def trace_load(path):
+    """Validate a trace directory and kick off an index build if needed."""
+    if not path or not os.path.isdir(path):
+        return {"error": "not a directory"}
+    if TRACE_LOAD["building"]:
+        return {"error": "already building " + (TRACE_LOAD["run_id"] or "")}
+    ctf = find_ctf(path)
+    if not ctf:
+        return {"error": "no kernel CTF found here (need a folder with metadata + channel0_*; "
+                         "e.g. a run's trace/kernel directory)"}
+    rid = _derive_run_id(path)
+    idx = os.path.join(DATA, rid + ".tsv.gz")
+    if os.path.exists(idx):
+        # already built once - register and switch, no decode needed
+        _register_external(rid, ctf, path)
+        with LOCK:
+            load_state(False, rid)
+        return {"ready": True, "run_id": rid}
+    TRACE_LOAD.update({"building": True, "run_id": rid, "error": None,
+                       "msg": "decoding the trace…", "src": path})
+    threading.Thread(target=_trace_build_worker, args=(ctf, rid, path), daemon=True).start()
+    return {"building": True, "run_id": rid}
+
+
+def _register_external(rid, ctf, src):
+    """Add a dynamic run entry and a run dir whose kernel/kernel points at the CTF."""
+    RUNS[rid] = {"label": rid.replace("ext_", "").replace("_", " "),
+                 "blueprint": None, "gt": None, "event": "sched_switch", "signal": "cpu",
+                 "note": "Loaded from " + src, "external": True}
+    rd = os.path.join(DATA, "run", rid)
+    os.makedirs(rd, exist_ok=True)
+    # Remember where the CTF lives so the junction can be rebuilt after a restart (RUNS is
+    # in memory; the run dir persists). Without this a rediscovered trace loses its CTF and
+    # every index tool that checks for it, plus blueprint_tool, fails.
+    try:
+        with open(os.path.join(rd, "source.txt"), "w", encoding="utf-8") as f:
+            f.write(os.path.dirname(ctf))     # junction target: its /kernel == the CTF
+    except OSError:
+        pass
+    _ensure_ctf_link(rd, os.path.dirname(ctf))
+
+
+
+def _trace_build_worker(ctf, rid, src):
+    try:
+        script = _wsl_path(os.path.join(HERE, "_build_index.py"))
+        # Paths go as bash positional args ($0..$3), never interpolated into the code - no
+        # shell-quoting of a program string, which is what made the inline version fragile.
+        cmd = ["wsl", "-e", "bash", "-lc",
+               'BT2=babeltrace2 python3 "$0" "$1" "$2" "$3"',
+               script, _wsl_path(ctf),
+               _wsl_path(os.path.join(DATA, rid + ".tsv.gz")),
+               _wsl_path(os.path.join(DATA, rid + ".lines.gz"))]
+        out = subprocess.run(cmd, capture_output=True, text=True, timeout=1800)
+        tail = ((out.stdout or "") + (out.stderr or "")).strip()
+        if not os.path.exists(os.path.join(DATA, rid + ".tsv.gz")):
+            TRACE_LOAD.update({"building": False,
+                               "error": "index build failed: " + tail[-300:]})
+            return
+        _register_external(rid, ctf, src)
+        with LOCK:
+            load_state(True, rid)      # rebuild aggregate for the fresh index
+        TRACE_LOAD.update({"building": False, "error": None, "msg": "ready"})
+    except Exception as e:                                              # noqa: BLE001
+        TRACE_LOAD.update({"building": False, "error": "%s: %s" % (type(e).__name__, e)})
+
+
 def code_connect(path):
     """Attach a local source directory to the CURRENT session, read-only."""
     sid = CHAT.get("sid")
@@ -800,7 +998,8 @@ def code_connect(path):
     if not path:                                   # disconnect
         sess.pop("code_root", None)
     else:
-        sys.path.insert(0, os.path.join(ROOT, "agentic-rca"))
+        if AGENT_DIR not in sys.path:
+            sys.path.insert(0, AGENT_DIR)
         import coderepo
         try:
             repo = coderepo.CodeRepo(path)
@@ -888,24 +1087,21 @@ def chat_ask(q: str):
     def work():
         try:
             os.environ["CTF_INDEX_ROOT"] = DATA
-            sys.path.insert(0, os.path.join(ROOT, "agentic-rca"))
-            sys.path.insert(0, ROOT)
-            from stratatrace import load_run
-            import agent_v2, skillreg
+            from dotenv import load_dotenv
+            load_dotenv(os.path.join(ROOT, ".env"))
+            agent_v2 = import_agent()       # Blueprint/agent, guarded against the old harness
             if CHAT["obj"] is None:
                 sess = _sess_load(CHAT["sid"]) or {}
                 rid = sess.get("run_id") or RUN_ID
                 rd = os.path.join(DATA, "run", rid)
-                sk = [x for x in skillreg.load_skills(
-                    os.path.join(ROOT, "blueprints", "skills-kernel-only"))
-                    if x.name == RUNS.get(rid, {}).get("blueprint")]
+                md = blueprint_md(RUNS.get(rid, {}).get("blueprint"))
                 snap = sess.get("chat") or {}
                 croot = sess.get("code_root")
                 if snap.get("msgs"):
                     # resume: the stored thread is the whole context, verbatim
-                    CHAT["obj"] = agent_v2.Chat(load_run(rd), app="sockshop",
-                                                skill=sk[0] if sk else None,
-                                                restore=snap, code_root=croot)
+                    CHAT["obj"] = agent_v2.Chat(rd, blueprint=md,
+                                                restore=snap, code_root=croot,
+                                                index_root=DATA)
                 else:
                     # first question in this session: seed from the stored run
                     rev = sess.get("run_events") or []
@@ -914,10 +1110,9 @@ def chat_ask(q: str):
                                  if e.get("type") == "scratchpad"), None)
                     comp = next((e.get("computed") for e in reversed(rev)
                                  if e.get("type") == "computed"), None)
-                    CHAT["obj"] = agent_v2.Chat(load_run(rd), app="sockshop",
-                                                skill=sk[0] if sk else None, diagnosis=dx,
+                    CHAT["obj"] = agent_v2.Chat(rd, blueprint=md, diagnosis=dx,
                                                 findings=find, computed=comp,
-                                                code_root=croot)
+                                                code_root=croot, index_root=DATA)
             CHAT["obj"].ask(q)
             save_chat()
         except Exception as e:                                          # noqa: BLE001
@@ -1082,13 +1277,22 @@ class H(BaseHTTPRequestHandler):
             if p == "/api/live/ready":
                 return self._json(live_ready())
             if p == "/api/live/start":
-                return self._json(live_start())
+                bp = q.get("blueprint")
+                return self._json(live_start(bp[0] if bp is not None else None))
             if p == "/api/live/stop":
                 return self._json(live_stop())
             if p == "/api/sessions":
                 return self._json(sessions_list())
             if p == "/api/code/browse":
                 return self._json(code_browse())
+            if p == "/api/trace/browse":
+                return self._json(browse_dir("Select a trace directory (its kernel CTF)"))
+            if p == "/api/trace/load":
+                return self._json(trace_load((q.get("path") or [""])[0]))
+            if p == "/api/trace/status":
+                return self._json({"building": TRACE_LOAD["building"],
+                                   "run_id": TRACE_LOAD["run_id"],
+                                   "error": TRACE_LOAD["error"], "msg": TRACE_LOAD["msg"]})
             if p == "/api/code/connect":
                 return self._json(code_connect((q.get("path") or [""])[0]))
             if p == "/api/session/fork":

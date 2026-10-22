@@ -1,0 +1,68 @@
+{
+  "config": "s1_reversed",
+  "klass": "spawned",
+  "run": "t4_w16_r1",
+  "run_dir": "C:\\workplace\\microservice-trace-dataset\\agentic-runs\\2_threads_vs_cores\\runs\\t4_w16_r1",
+  "rep": 1,
+  "cell": "s1_reversed__spawned__t4_w16_r1__r1",
+  "status": "ok",
+  "returncode": 0,
+  "wall_s": 137.9,
+  "env_ablation": {
+    "ABL_FLAT_CAP": "2000",
+    "ABL_REVERSE_KEYS": "1"
+  },
+  "result": {
+    "run_id": "t4_w16_r1",
+    "diagnosis": {
+      "what_is_wrong": "A short, CPU-bound `ttworker` burst is the clearest explanation for possible contention during the coding task: it consumed about 15.0 CPU-seconds in roughly 3.9 seconds, using nearly four cores. This supports CPU saturation as a plausible cause of the reported slowness, but the trace has no task-duration baseline and cannot establish that the task was abnormally slow rather than simply doing more work.",
+      "root_cause_service": "ttworker in pid_ns 4026531836",
+      "culprit_kind": "container",
+      "fault_type": "cpu_saturation",
+      "evidence": "Used the reported ctf_timespan (02:49:09.900\u201302:49:20.800) and ctf_proclife to locate `ttworker` appearing at 02:49:14.700 and last appearing at 02:49:18.500. In the reported run_python sched_stat_runtime aggregations, `ttworker` accrued 15.017 CPU-seconds over 3.9 seconds (about 3.85 cores on average, with many 100-ms bins near 0.40 CPU-seconds); aligned total CPU use was about 3.96 cores. The comparison interval before the burst averaged 0.41 cores, and after it 0.98 cores. Raw ctf_lines include `ttworker` runtime records around 999,000 ns and scheduler switches during the burst. Available block/network rate comparisons do not show a corresponding I/O or network surge; the reported wakeup evidence does not establish long wake-to-run delays. The lifecycle sequence (`worker.py`, `run_all.sh`, `xargs`, then `ttworker`) is task-associated, so this identifies the CPU-consuming workload, not proof of an external or unintended neighbor.",
+      "confidence": 0.78,
+      "incident_window": "02:49:14.700 - 02:49:18.500",
+      "window_evidence": "The boundary is anchored by ctf_proclife/run_python showing `ttworker` first present at 02:49:14.700 and last at 02:49:18.500. Its CPU runtime rises sharply at onset, stays near four cores in the interior 100-ms bins, and drops away after the final active bin; the adjacent before/after CPU comparisons are substantially lower."
+    },
+    "ranked_services": null,
+    "ranked_candidates": null,
+    "trajectory": [
+      {
+        "step": 0,
+        "tool": "worker1.0",
+        "service": null
+      },
+      {
+        "step": 1,
+        "tool": "worker1.1",
+        "service": null
+      },
+      {
+        "step": 2,
+        "tool": "worker1.2",
+        "service": null
+      },
+      {
+        "step": 3,
+        "tool": "worker1.3",
+        "service": null
+      }
+    ],
+    "n_tool_calls": 59,
+    "n_code_snippets": 27,
+    "n_findings": 7,
+    "n_computed": 27,
+    "bytes_touched": 116538,
+    "tokens": {
+      "in": 412626,
+      "out": 15887
+    },
+    "model": "openai/gpt-6-luna",
+    "wall_s": 136.9,
+    "transcript_file": "C:\\workplace\\microservice-trace-dataset\\nier-2027\\transcripts\\s1_reversed__spawned__t4_w16_r1__r1.json",
+    "skill_selected": null,
+    "skill_confidence": null,
+    "brief_injected": false,
+    "n_claims": null
+  }
+}

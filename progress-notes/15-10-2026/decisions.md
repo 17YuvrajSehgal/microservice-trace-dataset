@@ -101,6 +101,145 @@ section adds ~51 more real runs (e2e_cl 21 + e2e_cx 30), so 260 undercounts
 the full study (~311). Either bump to "over 300" or scope it as "260 across
 the four-problem campaign."
 
+## Carved out a standalone artifact repo for the paper
+
+New repo `C:/workplace/os-noise-for-agentic-ai` (name chosen by user from the
+paper title). Local git only (commit 07905f0, 4709 files, ~11MB); NOT pushed.
+Source left in place in the main repo.
+
+Decisions and why:
+- **Preserve the `latency/` + `research-paper/` layout** rather than
+  restructure, because the analysis scripts hard-code relative paths
+  (`parents[1]/latency`, `1_svc_cpu_cap/agentic-os-noise/runs`, etc.) - a
+  flat/clean layout would mean rewriting + retesting every path. Copying the
+  structure makes every script run unchanged.
+- **Ship code + all per-run `meta/` + agent.log, exclude the ~6GB traces**
+  (user's choice: "code + all run metadata"). meta holds the cgroup
+  ground-truth counters, so every headline number is inspectable offline;
+  only re-parsing the traces needs the Zenodo download. .gitignore blocks
+  `**/trace/` and `**/*.txt.gz` so a Zenodo unpack can't be committed.
+- Wrote README / REPRODUCE / DATA / CITATION.cff / LICENSE(MIT). DATA.md
+  carries a Zenodo-DOI placeholder (release pending, user will do later).
+- Dropped the stale `paper.tex` (kept paper2.tex) and the scratch
+  `analysis_compare_output.txt`; fixed the one repo-escaping link (PLAN.md ->
+  meeting-notes) and the research-paper README's `paper.tex` references.
+- Left out the StrataTrace blueprint + EVALUATION (separate work) to keep the
+  artifact focused on the OS-noise study.
+
+## (16-10) Blueprint/ becomes the active workspace; agent copied in
+
+User direction: the repo is getting big; `Blueprint/` is the latest line of
+work, `blueprints/` (root) is the previous generation and stays as reference.
+Next focus: new blueprints in `Blueprint/`, and making the agent use the new
+blueprint tools (`Blueprint/latency/*/tools/`). When 100% ready, `Blueprint/`
+graduates to its own repo for the paper.
+
+Did (copy, not move — originals untouched):
+- `agentic-rca/` -> `Blueprint/agent/` (28 py files + 12 skills + docs;
+  excluded old campaign `results/`, git-ignored `dev-runs/`, `__pycache__`.
+  734K).
+- **Vendored `stratatrace/` INSIDE `Blueprint/agent/`** — this is the
+  portability fix. Every agent entry point already does
+  `sys.path.insert(0, HERE)`, so the vendored copy resolves with ZERO code
+  changes; the `from stratatrace import load_run` imports no longer reach the
+  repo root. All data paths were already env vars (RUNS_ROOT, CTF_INDEX_ROOT,
+  BT2, RCA_SOURCE_ROOT; defaults = Trillium).
+- Smoke-tested from the new location: config.py OK, skillreg loads 12 skills,
+  vendored stratatrace imports, core + kernel-tool modules import.
+- Verified no `../` escapes in any copied script (only absolute cluster
+  paths, which are environment config, not repo coupling).
+- Added `Blueprint/README.md` (workspace map + direction) and a provenance/
+  portability header in `Blueprint/agent/README.md`.
+
+Not done yet (next): wiring the agent's toolset to the eight blueprint tools —
+that is the design task this copy sets up.
+
+## (16-10) Trimmed Blueprint/agent to the agent's actual dependency closure
+
+User: keep only what the agent uses; the 12 skills are old-generation (we
+have exactly one blueprint now, svc_cpu_cap README_v1).
+
+Method, not guesswork: computed the import graph over all 28 modules.
+closure(agent_v2) = 13 modules (agent, agent_v2, coderepo, codetool, config,
+context_builder, ctf_tool, leakguard, shared_context, skillreg, source_tool,
+tools, transcript) + vendored stratatrace/.
+
+Removed (still in agentic-rca/ at the repo root — nothing is lost):
+- skills/ (12 old-blueprint skills). skillreg.py STAYS: agent.py imports it
+  top-level, and it degrades cleanly to 0 skills (verified). It becomes the
+  mount point for blueprint-backed skills.
+- 15 out-of-closure modules: evaluate, degrade, runs, baseline_stat,
+  rcaeval_adapter, analyze, audit_leakage, bundle_artifact,
+  component_census, cost_report, inspect_run, peek_run, run_digest, and the
+  2 test files (they test kept modules but drive the old campaign setup).
+- 13 RESULTS-*.md + TRANSCRIPTS.md (old campaign records), campaign_driver /
+  review_driver / 3 sweep sbatch (old campaign machinery).
+- agent_v2 needs no runs.py: it takes the run dir as argv[1].
+
+654K, 17 entries. Smoke-verified after the cut: all 13 modules import
+(incl. the full agent_v2 LangGraph chain), skill registry loads 0 skills
+without error. README rewritten to match the clean folder.
+
+## (16-10) Second trim: agent.py consolidated into utils.py; stratatrace out
+
+User: v2 shouldn't need stratatrace; fold agent.py's pieces into v2 or a
+utils module. Verified first, then cut:
+
+- **stratatrace was only used for `load_run(rd).run_dir`** — the real imports
+  were in three `__main__` blocks, and v2's kernel-only path touches nothing
+  but the run-directory string. So `diagnose(run_dir)` / `Chat(run_dir)` now
+  take the path directly; vendored stratatrace/ deleted.
+- **agent.py (v1) retired.** What v2 imported from it moved to a new
+  `utils.py` with public names (prompts KO_HEAD/FAULT_VOCAB/KO_RULES byte-
+  identical — v2 asserts on the wording; fit_result; api_call/checked/
+  ProviderError; tool_defs now kernel-only-only with the "other" fault enum
+  baked in; run_tool now takes run_dir). v1-only machinery (four-modality
+  prompts+tools, loops, oneshot baseline, ranked mode, nudges) NOT copied.
+- Also deleted as v1-only: tools.py (RunTools, the pandas modality layer),
+  source_tool.py, context_builder.py, shared_context.py.
+- Fixed a latent bug while there: Ctx never initialized `self.repo`, so a
+  hallucinated code_* call in the graph path would AttributeError; now None.
+- requirements.txt rewritten (adds langgraph/pandas/numpy, drops the stale
+  stratatrace/mcp lines).
+
+Now 12 files. Verified: tool_defs == the 7 kernel-only schemas, fit_result
+trims to valid JSON, agent_v2 imports with wording asserts passing, graph
+builds, new signatures diagnose(run_dir,...) / Chat(run_dir,...).
+
+## (16-10) Blueprint tools wired into agent_v2 (blueprints.py)
+
+`python agent_v2.py <run_dir> <blueprint.md>` now does both halves
+automatically: inject the blueprint text as the given skill AND expose its
+sibling tools/ as a `blueprint_tool` the model can call with the exact CLIs
+the blueprint's steps show ($TRACE/$WORK/$DUMP placeholders expanded).
+
+Design decisions:
+- One generic `blueprint_tool(script, args)` rather than one schema per
+  script: the blueprint text IS the usage documentation and is already in
+  the prompt, so per-script schemas would duplicate it and drift.
+- `blueprints.load()` wraps ANY blueprint markdown into a skillreg.Skill
+  (name from the folder, e.g. 1_svc_cpu_cap -> svc_cpu_cap; signature from
+  the "What it looks like" section) - no reformatting of README_v1 into
+  skill frontmatter, no second copy to drift.
+- extract_slice.sh needs bash+babeltrace2; on machines without them
+  (Windows dev box) the runner falls back to a pure-Python cut of the run's
+  decoded trace.txt.gz with the same output contract (sched events in
+  window), so sched_budget/rhythm/victim_info/wake_graph run unchanged -
+  the whole blueprint is executable locally TODAY.
+- Chat gets the same blueprint= param; fixed its tool list being built from
+  the module-global CTX (now appends its own ctx's blueprint def).
+
+Verified end-to-end at the tool layer on t3_implement_cap25_r1 (no API):
+load -> 8 scripts enumerated -> trace dir auto-found -> idx_summary (DAY
+2026-10-12, start 03:17:25) -> fallback slice cut -> sched_budget shows the
+victim (python3 pid 8192, 34 waits >=50ms, max 88ms ~ the quota period) ->
+rhythm + victim_info run -> worker toolset includes blueprint_tool.
+
+Also confirmed OpenRouter works despite $0.00 credits reading: the account
+is BYOK (Naser's Azure/Google upstreams - hence the hard provider pinning),
+so billing is upstream and invisible to our API key; a real gpt-6-luna
+request through config.py succeeded. Budget visibility = Naser's dashboard.
+
 **One non-number accuracy item:** `paper2.tex` fig:method caption (line ~160)
 says "`prev_state`=0 means preempted" — that's the old, incomplete
 description (misses 256 = preempt-throttle). Flagged, not yet edited (paper

@@ -1,0 +1,70 @@
+{
+  "config": "repair",
+  "klass": "resident",
+  "run": "t3_implement_cap25_r3",
+  "run_dir": "C:\\workplace\\microservice-trace-dataset\\Blueprint\\latency\\1_svc_cpu_cap\\agentic-os-noise\\runs\\t3_implement_cap25_r3",
+  "rep": 2,
+  "cell": "repair__resident__t3_implement_cap25_r3__r2",
+  "status": "ok",
+  "returncode": 0,
+  "wall_s": 245.1,
+  "env_ablation": {},
+  "result": {
+    "run_id": "t3_implement_cap25_r3",
+    "diagnosis": {
+      "what_is_wrong": "The trace does not establish a kernel or service fault behind the slower coding task. It shows changing workload phases, including python3 using about 22.6% of one CPU during its busiest 5-second intervals, but no demonstrated host CPU saturation, sustained disk backlog, or validated broad scheduler delay; the reported symptom therefore remains unconfirmed by this trace.",
+      "root_cause_service": "unknown",
+      "culprit_kind": "unknown",
+      "fault_type": "normal",
+      "evidence": "Reviewed the full 03:27:30.200\u201303:28:02.100 span from ctf_timespan and the process lifetimes from ctf_proclife; no clear service/container restart boundary emerged. Compared indexed sched_switch/sched_wakeup and block_rq_issue/complete rates across the full span and adjacent intervals: the early scheduler count drop (4,759/2,343 events in 03:27:30\u201334 to 2,305/1,100 in 03:27:34\u201338) is a workload change, not itself evidence of delay; block requests matched issue-to-completion (329/330 then 32/32), with no growing backlog. run_python runtime totals show python3 at 1,132 ms and 1,129 ms in consecutive 5-second intervals, about 22.6% of one CPU, far short of evidence for host saturation. The initial 0.5\u20130.7 s wake-to-switch outliers were challenged against repeated same-TID wakes: only sparse, non-overlapping sample pairs remain and none support those large delays. Network activity persists rather than collapsing with scheduling. ctf_lines/raw complete ordering was unavailable, so the sampled scheduler check is limited; no confirmed fault mechanism or attributable culprit remains.",
+      "confidence": 0.78,
+      "incident_window": "unknown",
+      "window_evidence": "The apparent candidate at 03:27:34\u201303:27:38 was selected from a sharp fall in scheduler and block counts, but comparison shows matched issue/complete counts and no validated same-thread scheduler delay; moreover, the earlier 03:27:30\u201303:27:34 interval has similarly elevated event activity. The later python3 runtime-heavy phase is observable but has no demonstrated saturation or fault boundary. Thus no incident window is supportable."
+    },
+    "ranked_services": null,
+    "ranked_candidates": null,
+    "trajectory": [
+      {
+        "step": 0,
+        "tool": "worker1.0",
+        "service": null
+      },
+      {
+        "step": 1,
+        "tool": "worker1.1",
+        "service": null
+      },
+      {
+        "step": 2,
+        "tool": "worker1.2",
+        "service": null
+      },
+      {
+        "step": 3,
+        "tool": "worker1.3",
+        "service": null
+      },
+      {
+        "step": 4,
+        "tool": "worker2.100",
+        "service": null
+      }
+    ],
+    "n_tool_calls": 70,
+    "n_code_snippets": 24,
+    "n_findings": 12,
+    "n_computed": 24,
+    "bytes_touched": 87198,
+    "tokens": {
+      "in": 792257,
+      "out": 21111
+    },
+    "model": "openai/gpt-6-luna",
+    "wall_s": 244.2,
+    "transcript_file": "C:\\workplace\\microservice-trace-dataset\\nier-2027\\transcripts\\repair__resident__t3_implement_cap25_r3__r2.json",
+    "skill_selected": null,
+    "skill_confidence": null,
+    "brief_injected": false,
+    "n_claims": null
+  }
+}

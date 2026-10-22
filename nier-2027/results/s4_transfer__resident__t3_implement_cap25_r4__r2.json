@@ -1,0 +1,72 @@
+{
+  "config": "s4_transfer",
+  "klass": "resident",
+  "run": "t3_implement_cap25_r4",
+  "run_dir": "C:\\workplace\\microservice-trace-dataset\\Blueprint\\latency\\1_svc_cpu_cap\\agentic-os-noise\\runs\\t3_implement_cap25_r4",
+  "rep": 2,
+  "cell": "s4_transfer__resident__t3_implement_cap25_r4__r2",
+  "status": "ok",
+  "returncode": 0,
+  "wall_s": 187.7,
+  "env_ablation": {
+    "ABL_NO_COMPUTED": "1"
+  },
+  "result": {
+    "run_id": "t3_implement_cap25_r4",
+    "diagnosis": {
+      "what_is_wrong": "The trace does not establish a host or service fault that explains the coding task taking longer. It does show the `claude`/Bun workload in the sole observed container becoming much less active and then briefly rebounding, but the scheduler records voluntary sleeps and there is no measured CPU, disk, network, or memory pressure to attribute the delay to; an unrecorded wait remains possible.",
+      "root_cause_service": "claude in pid_ns 4026531836",
+      "culprit_kind": "container",
+      "fault_type": "normal",
+      "evidence": "Compared the early active period with the reduced-activity period using the workers\u2019 whole-trace event-rate reconstruction and runtime totals. At 01:58:02 to :03, sched_switch fell from 752 to 224 events/s and sched_stat_runtime from 694 to 248 events/s; by 01:58:06\u2013:10, total scheduled CPU runtime was 57.7 ms over 4 seconds versus 1,048 ms over :00\u2013:06, and claude runtime was 37.6 ms versus 692.7 ms. This is not evidence of saturation: the reported aggregate peak was only 0.251 CPU cores, sampled disk requests completed without errors, sampled network transmissions returned rc=0, and dirty memory was far below its threshold. Raw scheduler examples show claude/Bun switching out with prev_state=1, while CPUs became idle. No process exit/restart coincided with the drop. The checks that would have directly tested CPU throttling or runnable delay\u2014cgroup throttle counters and sched_stat_wait\u2014were unavailable, so those cannot be strictly excluded; there is likewise no trace evidence identifying a dependency wait.",
+      "confidence": 0.76,
+      "incident_window": "01:58:03 - 01:58:30.900",
+      "window_evidence": "The candidate window starts at the observed synchronized activity decline: the per-second scheduler/runtime counts fall sharply between 01:58:02 and :03, with the workload runtime collapsing further by :06. Low rates persist through most of the remaining trace; the terminal second, 01:58:30\u2013:30.900, shows a multi-event rebound, so the trace boundary limits the observed recovery window."
+    },
+    "ranked_services": null,
+    "ranked_candidates": null,
+    "trajectory": [
+      {
+        "step": 0,
+        "tool": "worker1.0",
+        "service": null
+      },
+      {
+        "step": 1,
+        "tool": "worker1.1",
+        "service": null
+      },
+      {
+        "step": 2,
+        "tool": "worker1.2",
+        "service": null
+      },
+      {
+        "step": 3,
+        "tool": "worker1.3",
+        "service": null
+      },
+      {
+        "step": 4,
+        "tool": "worker2.100",
+        "service": null
+      }
+    ],
+    "n_tool_calls": 62,
+    "n_code_snippets": 24,
+    "n_findings": 12,
+    "n_computed": 24,
+    "bytes_touched": 110256,
+    "tokens": {
+      "in": 666274,
+      "out": 15938
+    },
+    "model": "openai/gpt-6-luna",
+    "wall_s": 186.8,
+    "transcript_file": "C:\\workplace\\microservice-trace-dataset\\nier-2027\\transcripts\\s4_transfer__resident__t3_implement_cap25_r4__r2.json",
+    "skill_selected": null,
+    "skill_confidence": null,
+    "brief_injected": false,
+    "n_claims": null
+  }
+}

@@ -1,0 +1,68 @@
+{
+  "config": "s1_reversed",
+  "klass": "spawned",
+  "run": "t4_w16_r3",
+  "run_dir": "C:\\workplace\\microservice-trace-dataset\\agentic-runs\\2_threads_vs_cores\\runs\\t4_w16_r3",
+  "rep": 2,
+  "cell": "s1_reversed__spawned__t4_w16_r3__r2",
+  "status": "ok",
+  "returncode": 0,
+  "wall_s": 274.4,
+  "env_ablation": {
+    "ABL_FLAT_CAP": "2000",
+    "ABL_REVERSE_KEYS": "1"
+  },
+  "result": {
+    "run_id": "t4_w16_r3",
+    "diagnosis": {
+      "what_is_wrong": "The coding-task worker `ttworker` became a sustained CPU-bound workload, using nearly all four CPUs and plausibly extending the task\u2019s completion time through competition for host CPU. This is a short, workload-specific saturation episode, not evidence of disk, memory, network, or lock contention; the trace alone cannot establish the task\u2019s expected runtime or quantify the slowdown.",
+      "root_cause_service": "ttworker in pid_ns 4026531836",
+      "culprit_kind": "container",
+      "fault_type": "cpu_saturation",
+      "evidence": "The trace spans 02:50:10.000\u201302:50:20.400. Comparing the quiet pre-task interval (02:50:10\u201314) with the worker interval, `ttworker` first appears at 02:50:14.600 and accounts for 15.14 CPU-seconds, over 99% of recorded runtime for the trace. Per-second runtime reaches about 4.00 CPU-seconds per wall-second during 02:50:15\u201317, matching the host\u2019s four CPUs; total container use rises from 0.43 average cores before the burst to 3.15 over the five-second burst window. Process-life records `ttworker` through 02:50:18.500. Raw scheduler lines at 02:50:15\u201318 show `ttworker` threads switching with other `ttworker` threads and runtime records near 1 ms per 100 ms on individual CPUs. Competing explanations were checked: block issue/complete are 64 each during 14\u201319 with no elevated latency evidence, futex events are fewer in that interval than across the trace, and no reclaim or retransmit events are present (absence is limited by tracepoint coverage).",
+      "confidence": 0.87,
+      "incident_window": "02:50:14.600 - 02:50:18.500",
+      "window_evidence": "The lower-activity comparison interval ends at 02:50:14.000. The workload boundary is the arrival of `worker.py`, `ttworker`, and its orchestration processes in the 02:50:14.600 bucket, coincident with the first reported `ttworker` CPU runtime. Runtime is near four cores through 02:50:17 and declines at 02:50:18; `ttworker` and `run_all.sh` last appear in the 02:50:18.500 bucket, marking the end of the observed burst."
+    },
+    "ranked_services": null,
+    "ranked_candidates": null,
+    "trajectory": [
+      {
+        "step": 0,
+        "tool": "worker1.0",
+        "service": null
+      },
+      {
+        "step": 1,
+        "tool": "worker1.1",
+        "service": null
+      },
+      {
+        "step": 2,
+        "tool": "worker1.2",
+        "service": null
+      },
+      {
+        "step": 3,
+        "tool": "worker1.3",
+        "service": null
+      }
+    ],
+    "n_tool_calls": 51,
+    "n_code_snippets": 24,
+    "n_findings": 10,
+    "n_computed": 24,
+    "bytes_touched": 84595,
+    "tokens": {
+      "in": 399375,
+      "out": 12529
+    },
+    "model": "openai/gpt-6-luna",
+    "wall_s": 273.5,
+    "transcript_file": "C:\\workplace\\microservice-trace-dataset\\nier-2027\\transcripts\\s1_reversed__spawned__t4_w16_r3__r2.json",
+    "skill_selected": null,
+    "skill_confidence": null,
+    "brief_injected": false,
+    "n_claims": null
+  }
+}

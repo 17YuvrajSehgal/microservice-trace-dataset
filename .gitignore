@@ -61,3 +61,7 @@ results-download/
 demo/data/*.gz
 demo/data/sessions/
 demo/data/run/
+
+# NIER ablation: transcripts are large and regenerable from the driver
+nier-2027/transcripts/
+demo/data/aggregate-*.json

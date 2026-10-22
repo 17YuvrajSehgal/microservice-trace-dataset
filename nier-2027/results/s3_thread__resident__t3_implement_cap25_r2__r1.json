@@ -1,0 +1,72 @@
+{
+  "config": "s3_thread",
+  "klass": "resident",
+  "run": "t3_implement_cap25_r2",
+  "run_dir": "C:\\workplace\\microservice-trace-dataset\\Blueprint\\latency\\1_svc_cpu_cap\\agentic-os-noise\\runs\\t3_implement_cap25_r2",
+  "rep": 1,
+  "cell": "s3_thread__resident__t3_implement_cap25_r2__r1",
+  "status": "ok",
+  "returncode": 0,
+  "wall_s": 315.0,
+  "env_ablation": {
+    "ABL_THREAD_BUDGET": "80000"
+  },
+  "result": {
+    "run_id": "t3_implement_cap25_r2",
+    "diagnosis": {
+      "what_is_wrong": "The trace does not establish a kernel-level fault causing the coding task to run slowly. It shows a workload transition and substantial python3 CPU work, but not host CPU saturation or a clear disk, network, or process-churn bottleneck; the reported symptom cannot be confirmed or attributed from this trace alone.",
+      "root_cause_service": "unknown",
+      "culprit_kind": "unknown",
+      "fault_type": "normal",
+      "evidence": "Used the full 03:26:40.800\u201303:27:15.800 trace bounds and whole-span process/runtime summaries, then compared the selected quiet window 03:26:46\u201303:26:50 with the python-active interval 03:26:57\u201303:27:10. python3 in pid_ns 4026531836 accumulated about 3.026 CPU-seconds in the latter, roughly 0.22 of one CPU core; measured total host runtime averaged about 0.25 cores in the prior 5-second bin and 0.25 cores in the preceding 5-second bin, and raw lines show CPUs 0 and 1 entering idle while python3 ran on CPU 2. Disk issue/complete rates were 6.08/s in the candidate versus 12/s in quiet, with an inspected request completing successfully in 0.829 ms; network transmit returned rc=0. The apparent long Python wake-to-run samples were corrected: those events woke kworkers, not Python; Python's creation wake reached its first switch-in in 93.354 ms, and the quiet interval had no Python scheduler records for a same-task baseline. ctf_timeline returned zero matches, so the workers used whole-trace run_python aggregates; ctf_lines failed due to a path error, and representative raw events were read through run_python instead.",
+      "confidence": 0.84,
+      "incident_window": "unknown",
+      "window_evidence": "There is no evidenced fault interval to bound. Whole-trace aggregates show a sharp shared event-rate decline around 03:26:45\u201303:26:46, but it is not tied to a resource bottleneck; python3 runtime begins later and rises as a workload ramp, not as a documented recovery. The trace ends during active workload, so its final changes do not establish recovery either."
+    },
+    "ranked_services": null,
+    "ranked_candidates": null,
+    "trajectory": [
+      {
+        "step": 0,
+        "tool": "worker1.0",
+        "service": null
+      },
+      {
+        "step": 1,
+        "tool": "worker1.1",
+        "service": null
+      },
+      {
+        "step": 2,
+        "tool": "worker1.2",
+        "service": null
+      },
+      {
+        "step": 3,
+        "tool": "worker1.3",
+        "service": null
+      },
+      {
+        "step": 4,
+        "tool": "worker2.100",
+        "service": null
+      }
+    ],
+    "n_tool_calls": 78,
+    "n_code_snippets": 28,
+    "n_findings": 13,
+    "n_computed": 28,
+    "bytes_touched": 137884,
+    "tokens": {
+      "in": 988610,
+      "out": 24959
+    },
+    "model": "openai/gpt-6-luna",
+    "wall_s": 314.0,
+    "transcript_file": "C:\\workplace\\microservice-trace-dataset\\nier-2027\\transcripts\\s3_thread__resident__t3_implement_cap25_r2__r1.json",
+    "skill_selected": null,
+    "skill_confidence": null,
+    "brief_injected": false,
+    "n_claims": null
+  }
+}

@@ -1,0 +1,70 @@
+{
+  "config": "repair",
+  "klass": "spawned",
+  "run": "t4_w16_r2",
+  "run_dir": "C:\\workplace\\microservice-trace-dataset\\agentic-runs\\2_threads_vs_cores\\runs\\t4_w16_r2",
+  "rep": 3,
+  "cell": "repair__spawned__t4_w16_r2__r3",
+  "status": "ok",
+  "returncode": 0,
+  "wall_s": 340.1,
+  "env_ablation": {},
+  "result": {
+    "run_id": "t4_w16_r2",
+    "diagnosis": {
+      "what_is_wrong": "A short, CPU-intensive `ttworker` batch consumed nearly all four CPUs and plausibly slowed the coding workload (`claude`), whose CPU share fell sharply during the same period. The trace supports scheduler contention as the cause, though it cannot directly establish task elapsed time or quantify the precise delay.",
+      "root_cause_service": "ttworker in pid_ns 4026531836",
+      "culprit_kind": "container",
+      "fault_type": "cpu_saturation",
+      "evidence": "The recording spans 02:48:28.200\u201302:48:39.100. Using run_python sched_stat_runtime sums, compared the pre-burst 02:48:28.200\u201302:48:32.900 and post-burst 02:48:37.000\u201302:48:39.000 with 02:48:32.900\u201302:48:36.900: total runtime rose from 0.369 CPU-seconds/wall-second pre-burst to 3.921 during the burst, with `ttworker` alone at 3.776 cores (15.104 CPU-seconds); on this four-CPU host this is near full capacity. `claude` CPU share fell from 45.46% pre-burst to 0.51% during it and recovered to 32.90% post-burst. ctf_proclife identifies `ttworker` as a partial-lifetime process in pid_ns 4026531836, present about 02:48:33.100\u201302:48:36.900. Whole-span event-rate comparisons show the apparent scheduler increase is not a shared disk/network recovery; during the worker phase block issues and network transmits remain low. Raw scheduler records show `ttworker` children repeatedly running at normal priority; sampled block completions and network transmits succeed. The proposed disk/network explanation is not supported by these checks; direct claude wake-to-run latency matching was attempted but unreliable, so precise delay is unquantified. ctf_timeline/ctf_lines could not provide usable output in these notes; worker analyses used whole-trace run_python series and get_lines raw records instead.",
+      "confidence": 0.93,
+      "incident_window": "02:48:32.900 - 02:48:36.900",
+      "window_evidence": "The selected window is the measured runtime comparison interval where total container CPU jumps to 3.921 average cores and `ttworker` accounts for 15.104 CPU-seconds; its beginning is near the first sustained `ttworker` runtime bins and its end aligns with the fall in runtime and normal `ttworker` exits at 02:48:36.665\u201302:48:36.902. Rates and `claude` CPU share return to low levels in the post comparison interval beginning around 02:48:37.000. The earlier whole-host event burst at 02:48:28.300\u201302:48:29.100 is a distinct phase and was not used as the coding-task CPU incident window."
+    },
+    "ranked_services": null,
+    "ranked_candidates": null,
+    "trajectory": [
+      {
+        "step": 0,
+        "tool": "worker1.0",
+        "service": null
+      },
+      {
+        "step": 1,
+        "tool": "worker1.1",
+        "service": null
+      },
+      {
+        "step": 2,
+        "tool": "worker1.2",
+        "service": null
+      },
+      {
+        "step": 3,
+        "tool": "worker1.3",
+        "service": null
+      },
+      {
+        "step": 4,
+        "tool": "worker2.100",
+        "service": null
+      }
+    ],
+    "n_tool_calls": 70,
+    "n_code_snippets": 27,
+    "n_findings": 16,
+    "n_computed": 27,
+    "bytes_touched": 131171,
+    "tokens": {
+      "in": 953590,
+      "out": 20714
+    },
+    "model": "openai/gpt-6-luna",
+    "wall_s": 339.2,
+    "transcript_file": "C:\\workplace\\microservice-trace-dataset\\nier-2027\\transcripts\\repair__spawned__t4_w16_r2__r3.json",
+    "skill_selected": null,
+    "skill_confidence": null,
+    "brief_injected": false,
+    "n_claims": null
+  }
+}

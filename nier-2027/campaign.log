@@ -1,0 +1,124 @@
+provider=openrouter model=openai/gpt-6-luna cells=120 jobs=3
+
+[  1/120] ok          repair__resident__t3_implement_cap25_r1__r1             121s  in= 582,854  normal             conf=0.82
+[  2/120] ok          repair__resident__t3_implement_cap25_r1__r2             164s  in= 690,581  cpu_throttling     conf=0.76
+[  3/120] ok          repair__resident__t3_implement_cap25_r1__r3             188s  in= 778,060  normal             conf=0.84
+[  4/120] ok          repair__resident__t3_implement_cap25_r2__r1             109s  in= 438,825  normal             conf=0.7
+[  5/120] ok          repair__resident__t3_implement_cap25_r2__r2             122s  in= 622,772  normal             conf=0.76
+[  6/120] ok          repair__resident__t3_implement_cap25_r2__r3             211s  in= 543,857  normal             conf=0.78
+[  7/120] ok          repair__resident__t3_implement_cap25_r3__r1             231s  in= 875,016  normal             conf=0.78
+[  8/120] ok          repair__resident__t3_implement_cap25_r3__r2             245s  in= 792,257  normal             conf=0.78
+[  9/120] ok          repair__resident__t3_implement_cap25_r3__r3             158s  in= 567,159  normal             conf=0.7
+[ 10/120] ok          repair__resident__t3_implement_cap25_r4__r1             207s  in= 911,201  normal             conf=0.84
+[ 11/120] ok          repair__resident__t3_implement_cap25_r4__r3             149s  in= 646,627  normal             conf=0.76
+[ 12/120] ok          repair__resident__t3_implement_cap25_r4__r2             250s  in= 875,914  normal             conf=0.74
+[ 13/120] ok          repair__resident__t3_implement_cap25_r5__r2              94s  in= 515,802  normal             conf=0.82
+[ 14/120] ok          repair__resident__t3_implement_cap25_r5__r1             180s  in= 719,704  normal             conf=0.82
+[ 15/120] ok          s1_deliver__resident__t3_implement_cap25_r1__r1         148s  in= 530,637  normal             conf=0.75
+[ 16/120] ok          repair__resident__t3_implement_cap25_r5__r3             211s  in= 723,183  normal             conf=0.78
+[ 17/120] ok          s1_deliver__resident__t3_implement_cap25_r1__r2         167s  in= 617,600  normal             conf=0.85
+[ 18/120] ok          s1_deliver__resident__t3_implement_cap25_r1__r3         128s  in= 429,169  normal             conf=0.77
+[ 19/120] ok          s1_deliver__resident__t3_implement_cap25_r2__r2         104s  in= 500,749  other              conf=0.66
+[ 20/120] ok          s1_deliver__resident__t3_implement_cap25_r2__r1         212s  in= 664,894  normal             conf=0.78
+[ 21/120] ok          s1_deliver__resident__t3_implement_cap25_r3__r1         105s  in= 471,134  normal             conf=0.78
+[ 22/120] ok          s1_deliver__resident__t3_implement_cap25_r2__r3         224s  in= 633,373  normal             conf=0.73
+[ 23/120] ok          s1_deliver__resident__t3_implement_cap25_r3__r3         118s  in= 553,446  normal             conf=0.73
+[ 24/120] ok          s1_deliver__resident__t3_implement_cap25_r3__r2         198s  in= 672,694  normal             conf=0.82
+[ 25/120] ok          s1_deliver__resident__t3_implement_cap25_r4__r2         177s  in= 598,627  normal             conf=0.73
+[ 26/120] ok          s1_deliver__resident__t3_implement_cap25_r4__r3         132s  in= 475,817  normal             conf=0.78
+[ 27/120] ok          s1_deliver__resident__t3_implement_cap25_r4__r1         240s  in= 703,800  normal             conf=0.79
+[ 28/120] ok          s1_deliver__resident__t3_implement_cap25_r5__r1         137s  in= 515,560  normal             conf=0.79
+[ 29/120] ok          s1_deliver__resident__t3_implement_cap25_r5__r2         266s  in= 600,727  normal             conf=0.76
+[ 30/120] ok          repair__spawned__t4_w16_r1__r1                          195s  in= 469,024  cpu_saturation     conf=0.98
+[ 31/120] ok          repair__spawned__t4_w16_r1__r2                          132s  in= 436,014  cpu_saturation     conf=0.94
+[ 32/120] ok          s1_deliver__resident__t3_implement_cap25_r5__r3         414s  in= 652,230  normal             conf=0.78
+[ 33/120] ok          repair__spawned__t4_w16_r1__r3                          147s  in= 567,031  cpu_saturation     conf=0.82
+[ 34/120] ok          repair__spawned__t4_w16_r2__r1                          238s  in= 745,127  cpu_saturation     conf=0.89
+[ 35/120] ok          repair__spawned__t4_w16_r2__r2                          288s  in= 315,058  cpu_saturation     conf=0.97
+[ 36/120] ok          repair__spawned__t4_w16_r2__r3                          340s  in= 953,590  cpu_saturation     conf=0.93
+[ 37/120] ok          repair__spawned__t4_w16_r3__r1                          207s  in= 774,975  cpu_saturation     conf=0.91
+[ 38/120] ok          repair__spawned__t4_w16_r3__r3                           95s  in= 418,056  cpu_saturation     conf=0.9
+[ 39/120] ok          repair__spawned__t4_w16_r4__r1                          117s  in= 590,844  cpu_saturation     conf=0.94
+[ 40/120] ok          repair__spawned__t4_w16_r3__r2                          259s  in= 817,483  cpu_saturation     conf=0.97
+[ 41/120] ok          repair__spawned__t4_w16_r4__r2                          121s  in= 549,712  cpu_saturation     conf=0.91
+[ 42/120] ok          repair__spawned__t4_w16_r4__r3                          143s  in= 491,354  cpu_saturation     conf=0.91
+[ 43/120] ok          repair__spawned__t4_w16_r5__r1                          158s  in= 570,189  cpu_saturation     conf=0.92
+[ 44/120] ok          repair__spawned__t4_w16_r5__r2                          169s  in= 455,522  normal             conf=0.8
+[ 45/120] ok          repair__spawned__t4_w16_r5__r3                          198s  in= 699,533  cpu_saturation     conf=0.92
+[ 46/120] ok          s1_deliver__spawned__t4_w16_r1__r2                      132s  in= 462,323  cpu_saturation     conf=0.88
+[ 47/120] ok          s1_deliver__spawned__t4_w16_r1__r1                      279s  in= 800,015  cpu_saturation     conf=0.83
+[ 48/120] ok          s1_deliver__spawned__t4_w16_r1__r3                      222s  in= 706,145  cpu_saturation     conf=0.84
+[ 49/120] ok          s1_deliver__spawned__t4_w16_r2__r1                      245s  in= 530,252  cpu_saturation     conf=0.82
+[ 50/120] ok          s1_deliver__spawned__t4_w16_r2__r2                      229s  in= 650,099  cpu_saturation     conf=0.84
+[ 51/120] ok          s1_deliver__spawned__t4_w16_r2__r3                      156s  in= 413,305  cpu_saturation     conf=0.89
+[ 52/120] ok          s1_deliver__spawned__t4_w16_r3__r1                      123s  in= 463,791  cpu_saturation     conf=0.96
+[ 53/120] ok          s1_deliver__spawned__t4_w16_r4__r1                      123s  in= 485,068  cpu_saturation     conf=0.8
+[ 54/120] ok          s1_deliver__spawned__t4_w16_r3__r2                      230s  in= 598,094  cpu_saturation     conf=0.88
+[ 55/120] ok          s1_deliver__spawned__t4_w16_r3__r3                      241s  in= 616,566  cpu_saturation     conf=0.87
+[ 56/120] ok          s1_deliver__spawned__t4_w16_r4__r2                      140s  in= 431,690  cpu_saturation     conf=0.96
+[ 57/120] ok          s1_deliver__spawned__t4_w16_r4__r3                      204s  in= 611,697  cpu_saturation     conf=0.8
+[ 58/120] ok          s1_deliver__spawned__t4_w16_r5__r1                      252s  in= 762,770  cpu_saturation     conf=0.78
+[ 59/120] ok          s1_deliver__spawned__t4_w16_r5__r3                      108s  in= 425,599  cpu_saturation     conf=0.95
+[ 60/120] ok          s1_deliver__spawned__t4_w16_r5__r2                      257s  in= 717,394  cpu_saturation     conf=0.91
+[ 61/120] ok          s4_transfer__resident__t3_implement_cap25_r1__r1        186s  in= 476,498  normal             conf=0.76
+[ 62/120] ok          s4_transfer__resident__t3_implement_cap25_r1__r3        203s  in= 657,597  normal             conf=0.78
+[ 63/120] ok          s4_transfer__resident__t3_implement_cap25_r1__r2        247s  in= 774,025  normal             conf=0.78
+[ 64/120] ok          s4_transfer__resident__t3_implement_cap25_r2__r3        104s  in= 455,474  normal             conf=0.82
+[ 65/120] ok          s4_transfer__resident__t3_implement_cap25_r2__r2        115s  in= 442,655  normal             conf=0.83
+[ 66/120] ok          s4_transfer__resident__t3_implement_cap25_r2__r1        207s  in= 605,201  normal             conf=0.78
+[ 67/120] ok          s4_transfer__resident__t3_implement_cap25_r3__r1        218s  in= 916,813  normal             conf=0.76
+[ 68/120] ok          s4_transfer__resident__t3_implement_cap25_r3__r2        229s  in= 734,425  normal             conf=0.72
+[ 69/120] ok          s4_transfer__resident__t3_implement_cap25_r3__r3        236s  in= 860,464  normal             conf=0.78
+[ 70/120] ok          s4_transfer__resident__t3_implement_cap25_r4__r1        119s  in= 537,443  normal             conf=0.78
+[ 71/120] ok          s4_transfer__resident__t3_implement_cap25_r4__r2        188s  in= 666,274  normal             conf=0.76
+[ 72/120] ok          s4_transfer__resident__t3_implement_cap25_r5__r1         94s  in= 399,424  normal             conf=0.76
+[ 73/120] ok          s4_transfer__resident__t3_implement_cap25_r4__r3        195s  in= 824,481  normal             conf=0.82
+[ 74/120] ok          s4_transfer__resident__t3_implement_cap25_r5__r2        109s  in= 485,916  normal             conf=0.82
+[ 75/120] ok          all_defect__resident__t3_implement_cap25_r1__r1         154s  in= 460,581  normal             conf=0.79
+[ 76/120] ok          s4_transfer__resident__t3_implement_cap25_r5__r3        249s  in= 580,856  normal             conf=0.84
+[ 77/120] ok          all_defect__resident__t3_implement_cap25_r1__r2         179s  in= 460,920  normal             conf=0.78
+[ 78/120] ok          all_defect__resident__t3_implement_cap25_r2__r1         147s  in= 406,235  other              conf=0.65
+[ 79/120] ok          all_defect__resident__t3_implement_cap25_r1__r3         212s  in= 347,712  other              conf=0.58
+[ 80/120] ok          all_defect__resident__t3_implement_cap25_r2__r2         145s  in= 432,693  normal             conf=0.72
+[ 81/120] ok          all_defect__resident__t3_implement_cap25_r2__r3         168s  in= 433,656  normal             conf=0.77
+[ 82/120] ok          all_defect__resident__t3_implement_cap25_r3__r2         165s  in= 378,146  normal             conf=0.77
+[ 83/120] ok          all_defect__resident__t3_implement_cap25_r3__r1         212s  in= 408,742  normal             conf=0.79
+[ 84/120] ok          all_defect__resident__t3_implement_cap25_r4__r1          90s  in= 340,637  normal             conf=0.62
+[ 85/120] ok          all_defect__resident__t3_implement_cap25_r3__r3         161s  in= 420,648  normal             conf=0.68
+[ 86/120] ok          all_defect__resident__t3_implement_cap25_r4__r2         146s  in= 248,866  other              conf=0.64
+[ 87/120] ok          all_defect__resident__t3_implement_cap25_r4__r3         176s  in= 524,691  normal             conf=0.78
+[ 88/120] ok          all_defect__resident__t3_implement_cap25_r5__r1         138s  in= 358,423  normal             conf=0.72
+[ 89/120] ok          all_defect__resident__t3_implement_cap25_r5__r2         173s  in= 437,656  other              conf=0.52
+[ 90/120] ok          s2_steps__resident__t3_implement_cap25_r1__r1           111s  in= 384,940  normal             conf=0.78
+[ 91/120] ok          all_defect__resident__t3_implement_cap25_r5__r3         150s  in= 431,032  normal             conf=0.78
+[ 92/120] ok          s2_steps__resident__t3_implement_cap25_r2__r1            97s  in= 457,836  normal             conf=0.77
+[ 93/120] ok          s2_steps__resident__t3_implement_cap25_r2__r2           151s  in= 576,674  normal             conf=0.77
+[ 94/120] ok          s2_steps__resident__t3_implement_cap25_r1__r2           273s  in= 432,101  normal             conf=0.76
+[ 95/120] ok          s2_steps__resident__t3_implement_cap25_r3__r1           206s  in= 729,268  cpu_throttling     conf=0.68
+[ 96/120] ok          s2_steps__resident__t3_implement_cap25_r3__r2           175s  in= 729,553  normal             conf=0.81
+[ 97/120] ok          s2_steps__resident__t3_implement_cap25_r4__r1           224s  in= 723,859  normal             conf=0.87
+[ 98/120] ok          s2_steps__resident__t3_implement_cap25_r5__r1           114s  in= 359,225  normal             conf=0.78
+[ 99/120] ok          s2_steps__resident__t3_implement_cap25_r4__r2           214s  in= 582,114  normal             conf=0.76
+[100/120] ok          s2_steps__resident__t3_implement_cap25_r5__r2            96s  in= 390,966  normal             conf=0.82
+[101/120] ok          s3_thread__resident__t3_implement_cap25_r1__r1          200s  in= 811,135  normal             conf=0.83
+[102/120] ok          s3_thread__resident__t3_implement_cap25_r1__r2          221s  in= 782,059  normal             conf=0.81
+[103/120] ok          s3_thread__resident__t3_implement_cap25_r2__r2          199s  in= 607,566  normal             conf=0.77
+[104/120] ok          s3_thread__resident__t3_implement_cap25_r2__r1          315s  in= 988,610  normal             conf=0.84
+[105/120] ok          s3_thread__resident__t3_implement_cap25_r3__r1          218s  in= 592,046  normal             conf=0.83
+[106/120] ok          s3_thread__resident__t3_implement_cap25_r3__r2          110s  in= 537,652  normal             conf=0.79
+[107/120] ok          s3_thread__resident__t3_implement_cap25_r4__r1          160s  in= 520,339  normal             conf=0.83
+[108/120] ok          s3_thread__resident__t3_implement_cap25_r5__r1          118s  in= 446,232  normal             conf=0.81
+[109/120] ok          s3_thread__resident__t3_implement_cap25_r4__r2          149s  in= 629,553  normal             conf=0.82
+[110/120] ok          repair__healthy__t3_implement_nocap_r2__r1               98s  in= 417,102  normal             conf=0.76
+[111/120] ok          repair__healthy__t3_implement_nocap_r1__r1              122s  in= 591,774  normal             conf=0.78
+[112/120] ok          s3_thread__resident__t3_implement_cap25_r5__r2          252s  in=1,001,167  normal             conf=0.78
+[113/120] ok          repair__healthy__t3_implement_nocap_r3__r1              266s  in= 756,163  normal             conf=0.83
+[114/120] ok          repair__healthy__t3_implement_nocap_r5__r1              252s  in= 804,232  normal             conf=0.89
+[115/120] ok          all_defect__healthy__t3_implement_nocap_r1__r1          125s  in= 351,341  other              conf=0.79
+[116/120] ok          repair__healthy__t3_implement_nocap_r4__r1              428s  in= 797,822  normal             conf=0.76
+[117/120] ok          all_defect__healthy__t3_implement_nocap_r2__r1          198s  in= 433,377  normal             conf=0.72
+[118/120] ok          all_defect__healthy__t3_implement_nocap_r3__r1          158s  in= 421,385  normal             conf=0.73
+[119/120] ok          all_defect__healthy__t3_implement_nocap_r4__r1          117s  in= 337,585  normal             conf=0.72
+[120/120] ok          all_defect__healthy__t3_implement_nocap_r5__r1          106s  in= 359,163  normal             conf=0.78
+
+120 cells in 122 min -> C:\workplace\microservice-trace-dataset\nier-2027\results

@@ -1,0 +1,75 @@
+{
+  "config": "all_defect",
+  "klass": "resident",
+  "run": "t3_implement_cap25_r2",
+  "run_dir": "C:\\workplace\\microservice-trace-dataset\\Blueprint\\latency\\1_svc_cpu_cap\\agentic-os-noise\\runs\\t3_implement_cap25_r2",
+  "rep": 3,
+  "cell": "all_defect__resident__t3_implement_cap25_r2__r3",
+  "status": "ok",
+  "returncode": 0,
+  "wall_s": 168.3,
+  "env_ablation": {
+    "ABL_FLAT_CAP": "2000",
+    "ABL_WORKER_STEPS": "12",
+    "ABL_THREAD_BUDGET": "80000",
+    "ABL_NO_COMPUTED": "1"
+  },
+  "result": {
+    "run_id": "t3_implement_cap25_r2",
+    "diagnosis": {
+      "what_is_wrong": "No kernel-trace evidence establishes a host or service fault causing the coding task to run long. The trace shows a workload phase change and a shift in CPU use from claude to python3, but not sustained CPU saturation, a synchronized host resource collapse, or a demonstrated blocking mechanism; the reported slowdown therefore cannot be confirmed or attributed from this trace.",
+      "root_cause_service": "unknown",
+      "culprit_kind": "unknown",
+      "fault_type": "normal",
+      "evidence": "Using the full 03:26:40.800\u201303:27:15.800 recording, the process-lifetime review found git in pid_ns 4026531836 for 29.5 seconds and routine short-lived shell/inspection commands, not a convincing service restart. Indexed five-second event counts show a broad drop between the first and second bins (for example sched_switch 5,673\u21921,523; sched_wakeup 2,767\u2192721; block_rq_issue 355\u219248), but this aligned workload-volume change alone does not identify a fault. CPU accounting totals only 5.937 CPU-seconds over 35 seconds; total rate is 0.1625 CPU-s/s in the first 10 seconds, peaks at 0.2315 over elapsed seconds 15\u201325, and is 0.1496 in the last 10 seconds. CPU use shifts from claude (1.1428 CPU-s in the first 10 seconds) to python3 (2.0314 CPU-s over elapsed seconds 15\u201325), rather than showing sustained saturation. Raw scheduler/syscall evidence for claude in 03:26:48\u201303:27:02 shows repeated dispatches and wait/wake activity, not a sustained runnable-but-unscheduled interval; the futex owner or higher-level wait is not established. No candidate incident window or specific culprit is supported. A finding of long scheduler wake-to-run delays, high block latency, or a specific process/container accounting for sustained resource pressure would have supported an attributable fault; the recorded checks do not show that evidence.",
+      "confidence": 0.77,
+      "incident_window": "unknown",
+      "window_evidence": "The trace spans 03:26:40.800\u201303:27:15.800, but the changes around 03:26:45.800 and the later CPU-use shift are workload transitions without evidence tying them to the reported delay or a fault mechanism. Because no anomaly boundary can be established, assigning an incident window would be guesswork."
+    },
+    "ranked_services": null,
+    "ranked_candidates": null,
+    "trajectory": [
+      {
+        "step": 0,
+        "tool": "worker1.0",
+        "service": null
+      },
+      {
+        "step": 1,
+        "tool": "worker1.1",
+        "service": null
+      },
+      {
+        "step": 2,
+        "tool": "worker1.2",
+        "service": null
+      },
+      {
+        "step": 3,
+        "tool": "worker1.3",
+        "service": null
+      },
+      {
+        "step": 4,
+        "tool": "worker2.100",
+        "service": null
+      }
+    ],
+    "n_tool_calls": 71,
+    "n_code_snippets": 28,
+    "n_findings": 9,
+    "n_computed": 28,
+    "bytes_touched": 176169,
+    "tokens": {
+      "in": 433656,
+      "out": 15914
+    },
+    "model": "openai/gpt-6-luna",
+    "wall_s": 167.2,
+    "transcript_file": "C:\\workplace\\microservice-trace-dataset\\nier-2027\\transcripts\\all_defect__resident__t3_implement_cap25_r2__r3.json",
+    "skill_selected": null,
+    "skill_confidence": null,
+    "brief_injected": false,
+    "n_claims": null
+  }
+}

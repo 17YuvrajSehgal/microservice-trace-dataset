@@ -1,0 +1,72 @@
+{
+  "config": "s1_deliver",
+  "klass": "spawned",
+  "run": "t4_w16_r5",
+  "run_dir": "C:\\workplace\\microservice-trace-dataset\\agentic-runs\\2_threads_vs_cores\\runs\\t4_w16_r5",
+  "rep": 1,
+  "cell": "s1_deliver__spawned__t4_w16_r5__r1",
+  "status": "ok",
+  "returncode": 0,
+  "wall_s": 251.9,
+  "env_ablation": {
+    "ABL_FLAT_CAP": "2000"
+  },
+  "result": {
+    "run_id": "t4_w16_r5",
+    "diagnosis": {
+      "what_is_wrong": "A newly launched `ttworker` workload in the coding-task process cohort consumed nearly all four CPU cores for about four seconds, leaving little CPU capacity for the surrounding `claude` workload; this is the strongest trace-supported explanation for the reported slowdown. The preceding activity trough is real, but the sampled records do not establish that it was CPU starvation or the cause of the delay.",
+      "root_cause_service": "ttworker in pid_ns 4026531836",
+      "culprit_kind": "container",
+      "fault_type": "cpu_saturation",
+      "evidence": "Compared the quieter 02:47:26\u201302:47:30 interval with the worker-active 02:47:31\u201302:47:35 interval using the run_python index aggregates and process lifecycle findings. Total sched_stat_runtime rose from 1.752 CPU-seconds over four seconds (0.44 average cores) to 15.240 CPU-seconds (3.81 average cores); `ttworker` alone accounted for 14.666 CPU-seconds, with about 390\u2013400 ms of its CPU runtime per 100-ms bucket on the four-CPU host. `ttworker` first appears at 02:47:31.200 alongside `run_all.sh`/`worker.py`, dominates active sched_switch records (about 5,068 over 02:47:31.2\u201335.2), and exits from observation at 02:47:35.300. The 02:47:28.2\u201331.2 trough precedes this burst: sampled `claude` wakeups were followed by switches within roughly 17\u201319 microseconds, and block I/O counts fell rather than showing a queue buildup. This makes CPU consumption by the task cohort a stronger explanation than disk wait or runnable-task starvation, while trace data does not directly measure task latency or prove the counterfactual completion time.",
+      "confidence": 0.78,
+      "incident_window": "02:47:31.200 - 02:47:35.300",
+      "window_evidence": "The onset is marked by the coordinated `run_all.sh`/`ttworker`/`worker.py` appearance at 02:47:31.1\u201331.2 and the sharp rise in runtime from 02:47:31 onward; the endpoint is the last `ttworker` observation at 02:47:35.300, followed by CPU runtime falling to 0.017 CPU-seconds in the 02:47:36 second. The 02:47:28.2\u201331.2 collapse was examined as the preceding candidate interval but was not included as a proven saturation interval."
+    },
+    "ranked_services": null,
+    "ranked_candidates": null,
+    "trajectory": [
+      {
+        "step": 0,
+        "tool": "worker1.0",
+        "service": null
+      },
+      {
+        "step": 1,
+        "tool": "worker1.1",
+        "service": null
+      },
+      {
+        "step": 2,
+        "tool": "worker1.2",
+        "service": null
+      },
+      {
+        "step": 3,
+        "tool": "worker1.3",
+        "service": null
+      },
+      {
+        "step": 4,
+        "tool": "worker2.100",
+        "service": null
+      }
+    ],
+    "n_tool_calls": 90,
+    "n_code_snippets": 40,
+    "n_findings": 12,
+    "n_computed": 40,
+    "bytes_touched": 203190,
+    "tokens": {
+      "in": 762770,
+      "out": 24225
+    },
+    "model": "openai/gpt-6-luna",
+    "wall_s": 250.9,
+    "transcript_file": "C:\\workplace\\microservice-trace-dataset\\nier-2027\\transcripts\\s1_deliver__spawned__t4_w16_r5__r1.json",
+    "skill_selected": null,
+    "skill_confidence": null,
+    "brief_injected": false,
+    "n_claims": null
+  }
+}

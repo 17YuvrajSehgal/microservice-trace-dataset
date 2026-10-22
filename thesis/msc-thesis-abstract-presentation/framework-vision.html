@@ -1,0 +1,932 @@
+<title>How a blueprint works in practice — framework design</title>
+<style>
+  :root {
+    --ground: #FBFBFD;
+    --panel: #F2F4F8;
+    --panel-2: #E9EDF3;
+    --ink: #14202E;
+    --muted: #5C6B7F;
+    --rule: #DDE3EB;
+    --signal: #0B6E6E;
+    --signal-soft: #E4F0EF;
+    --retract: #A63D2F;
+    --retract-soft: #F7E8E5;
+
+    --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #0E1620;
+      --panel: #17212D;
+      --panel-2: #1E2A38;
+      --ink: #E8EDF3;
+      --muted: #93A3B5;
+      --rule: #26333F;
+      --signal: #3FB0A6;
+      --signal-soft: #13312F;
+      --retract: #E08670;
+      --retract-soft: #33201B;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground: #0E1620;
+    --panel: #17212D;
+    --panel-2: #1E2A38;
+    --ink: #E8EDF3;
+    --muted: #93A3B5;
+    --rule: #26333F;
+    --signal: #3FB0A6;
+    --signal-soft: #13312F;
+    --retract: #E08670;
+    --retract-soft: #33201B;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 17px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap {
+    max-width: 68rem;
+    margin: 0 auto;
+    padding: clamp(2.5rem, 6vw, 5rem) clamp(1.2rem, 5vw, 3rem) 6rem;
+    display: flex;
+    flex-direction: column;
+    gap: 2.6rem;
+  }
+
+  /* ---- masthead ---- */
+  .mast { display: flex; flex-direction: column; gap: 1rem; }
+  .kicker {
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--signal);
+    margin: 0;
+  }
+  h1 {
+    font-size: clamp(1.9rem, 4vw, 2.9rem);
+    line-height: 1.07;
+    letter-spacing: -0.025em;
+    font-weight: 700;
+    margin: 0;
+    text-wrap: balance;
+    max-width: 30ch;
+  }
+  h1 em { font-style: normal; color: var(--signal); }
+  .standfirst {
+    font-size: clamp(1.02rem, 1.5vw, 1.18rem);
+    color: var(--muted);
+    max-width: 62ch;
+    margin: 0;
+    text-wrap: pretty;
+  }
+  .standfirst strong { color: var(--ink); font-weight: 600; }
+
+  h2 {
+    font-size: clamp(1.25rem, 2.1vw, 1.6rem);
+    line-height: 1.15;
+    letter-spacing: -0.018em;
+    margin: 0;
+    text-wrap: balance;
+    max-width: 30ch;
+  }
+  h3 {
+    font-size: 1rem;
+    margin: 0 0 0.35rem;
+    letter-spacing: -0.005em;
+  }
+  h3 .sn {
+    font-family: var(--mono);
+    font-size: 0.78em;
+    color: var(--signal);
+    margin-right: 0.5rem;
+  }
+  .sec { display: flex; flex-direction: column; gap: 1.1rem; }
+  p { margin: 0; max-width: 68ch; text-wrap: pretty; }
+  p.note { color: var(--muted); font-size: 0.95rem; }
+  .divider { border: none; border-top: 1px solid var(--rule); margin: 0.6rem 0 0; }
+
+  /* ---- figures ---- */
+  figure {
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.9rem;
+  }
+  .canvas {
+    background: var(--panel);
+    border: 1px solid var(--rule);
+    border-radius: 5px;
+    padding: 1.2rem clamp(0.6rem, 2vw, 1.4rem);
+    overflow-x: auto;
+  }
+  svg.dia { display: block; max-width: 100%; height: auto; margin: 0 auto; color: var(--ink); }
+  figcaption {
+    font-size: 0.95rem;
+    color: var(--muted);
+    max-width: 70ch;
+    text-wrap: pretty;
+  }
+  figcaption b { color: var(--ink); font-weight: 600; }
+
+  /* SVG status encoding — repeats across every figure, hence the legend */
+  .box-built  { fill: var(--panel-2); stroke: currentColor; stroke-width: 1.5; }
+  .box-design { fill: none; stroke: currentColor; stroke-width: 1.5; stroke-dasharray: 7 5; opacity: 0.85; }
+  .box-focus  { fill: var(--signal-soft); stroke: var(--signal); stroke-width: 2.2; stroke-dasharray: 7 5; }
+  .ln   { stroke: currentColor; stroke-width: 1.4; fill: none; }
+  .ln-d { stroke: currentColor; stroke-width: 1.3; fill: none; stroke-dasharray: 5 4; opacity: 0.8; }
+  .ln-a { stroke: var(--signal); stroke-width: 1.6; fill: none; }
+  .t    { fill: currentColor; font-family: system-ui, sans-serif; }
+  .tm   { fill: currentColor; font-family: ui-monospace, monospace; }
+  .mut  { opacity: 0.68; }
+  .acc  { fill: var(--signal); }
+  .neg  { fill: var(--retract); }
+  .ln-n { stroke: var(--retract); stroke-width: 1.3; fill: none; stroke-dasharray: 2 4; }
+  .bold { font-weight: 700; }
+  .semi { font-weight: 600; }
+
+  /* ---- legend ---- */
+  .legend { display: grid; gap: 0.7rem; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); }
+  .lg { display: flex; gap: 0.7rem; align-items: flex-start; font-size: 0.92rem; }
+  .lg .sw { flex: 0 0 2.4rem; height: 1.15rem; border-radius: 3px; margin-top: 0.15rem; }
+  .sw.built  { background: var(--panel-2); border: 1.5px solid var(--ink); }
+  .sw.design { background: transparent; border: 1.5px dashed var(--muted); }
+  .sw.focus  { background: var(--signal-soft); border: 2px dashed var(--signal); }
+  .sw.unreach{ background: transparent; border: 1.5px dotted var(--retract); }
+  .lg b { display: block; }
+  .lg span { color: var(--muted); }
+
+  /* ---- the walk ---- */
+  .walk { display: flex; flex-direction: column; gap: 0.75rem; }
+  .stage {
+    display: grid;
+    grid-template-columns: 3.2rem 1fr;
+    gap: 0 1.1rem;
+    background: var(--panel);
+    border: 1px solid var(--rule);
+    border-left: 3px solid var(--rule);
+    border-radius: 0 4px 4px 0;
+    padding: 0.95rem 1.15rem;
+  }
+  .stage.on { border-left-color: var(--signal); }
+  .stage.off { border-left-color: var(--retract); }
+  .stage .sno {
+    font-family: var(--mono);
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--signal);
+    padding-top: 0.1rem;
+  }
+  .stage .sbody { display: flex; flex-direction: column; gap: 0.5rem; min-width: 0; }
+  .stage h4 { margin: 0; font-size: 1rem; letter-spacing: -0.005em; }
+  .stage p { font-size: 0.94rem; color: var(--muted); max-width: 64ch; }
+  .stage p b { color: var(--ink); }
+  .ev {
+    font-family: var(--mono);
+    font-size: 0.82rem;
+    line-height: 1.55;
+    background: var(--ground);
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    padding: 0.6rem 0.75rem;
+    overflow-x: auto;
+    white-space: pre;
+    margin: 0;
+    color: var(--ink);
+  }
+  .ev .k { color: var(--signal); }
+  .ev .x { color: var(--retract); }
+
+  /* ---- tables ---- */
+  .scroller { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; font-size: 0.93rem; }
+  th, td { text-align: left; padding: 0.55rem 0.8rem; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  th {
+    font-family: var(--mono);
+    font-size: 0.67rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  tbody tr:last-child td { border-bottom: none; }
+  td.st { font-family: var(--mono); font-size: 0.8rem; white-space: nowrap; }
+  .yes { color: var(--signal); font-weight: 700; }
+  .no  { color: var(--retract); font-weight: 700; }
+
+  code {
+    font-family: var(--mono);
+    font-size: 0.88em;
+    background: var(--panel-2);
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    padding: 0.05em 0.33em;
+  }
+
+  .callout {
+    background: var(--panel);
+    border: 1px solid var(--rule);
+    border-left: 3px solid var(--signal);
+    border-radius: 0 4px 4px 0;
+    padding: 1rem 1.2rem;
+  }
+  .callout.warn { border-left-color: var(--retract); }
+  .callout p { font-size: 0.96rem; }
+  .callout p + p { margin-top: 0.5rem; }
+  .pull {
+    font-size: clamp(1.1rem, 1.9vw, 1.4rem);
+    line-height: 1.3;
+    font-weight: 600;
+    letter-spacing: -0.015em;
+    color: var(--signal);
+    max-width: 44ch;
+    margin: 0;
+    text-wrap: balance;
+  }
+
+  ul { margin: 0; padding-left: 1.15rem; }
+  li { margin-bottom: 0.35rem; color: var(--muted); max-width: 66ch; }
+  li b, li strong { color: var(--ink); }
+  li::marker { color: var(--signal); }
+
+  .foot {
+    font-family: var(--mono);
+    font-size: 0.74rem;
+    letter-spacing: 0.05em;
+    color: var(--muted);
+    border-top: 1px solid var(--rule);
+    padding-top: 1.2rem;
+  }
+  :focus-visible { outline: 2px solid var(--signal); outline-offset: 3px; }
+
+  @media (max-width: 34rem) {
+    .stage { grid-template-columns: 1fr; gap: 0.4rem; }
+    .stage .sno { padding-top: 0; }
+  }
+</style>
+
+<div class="wrap">
+
+  <!-- ══ MASTHEAD ══ -->
+  <header class="mast">
+    <p class="kicker">Framework design · vision document</p>
+    <h1>How a blueprint works when somebody says <em>“the front-end is slow”</em></h1>
+    <p class="standfirst">
+      A library of solved investigations is only useful if an agent can pick the right
+      one from a vague complaint and run it unaided. This document walks that path end
+      to end, and marks honestly which parts exist today and which are the proposal.
+      <strong>The back half is built. The front half — choosing — is the thesis.</strong>
+    </p>
+  </header>
+
+  <hr class="divider">
+
+  <!-- ══ FIG 1 ══ -->
+  <section class="sec">
+    <h2>The run-time path</h2>
+    <p>
+      One complaint goes in. One of three honest answers comes out. The library sits
+      above the path rather than inside it, because it supplies two different things at
+      two different moments: <em>candidates</em> when the agent is deciding what this
+      might be, and <em>instructions</em> once it has decided.
+    </p>
+
+    <figure>
+      <div class="canvas">
+        <svg class="dia" viewBox="0 0 1280 620" role="img"
+             aria-label="A complaint from an operator passes through four phases — understand, select, run, decide — and exits as a verdict, a not-applicable, or an I-could-not-tell. The blueprint library feeds candidates into Select and steps into Run. Decide can send control back to Select when a rule-out fires, and feeds back into the library. Understand can exit early with healthy.">
+          <defs>
+            <marker id="a1" viewBox="0 0 10 10" refX="9" refY="5"
+                    markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor"/>
+            </marker>
+            <marker id="a1a" viewBox="0 0 10 10" refX="9" refY="5"
+                    markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path class="acc" d="M 0 0 L 10 5 L 0 10 z"/>
+            </marker>
+          </defs>
+
+          <!-- library -->
+          <rect class="box-built" x="460" y="56" width="420" height="126" rx="4"/>
+          <text class="tm mut" x="478" y="84" font-size="13">THE BLUEPRINT LIBRARY</text>
+          <text class="t semi" x="478" y="112" font-size="17">21 today, and growing</text>
+          <text class="t mut" x="478" y="138" font-size="14">one folder per problem · a parent per issue class</text>
+          <text class="t mut" x="478" y="160" font-size="14">each states when it applies — and when not to</text>
+
+          <line class="ln" x1="558" y1="182" x2="558" y2="218" marker-end="url(#a1)"/>
+          <text class="t mut" x="570" y="206" font-size="14">candidates</text>
+          <line class="ln" x1="782" y1="182" x2="782" y2="218" marker-end="url(#a1)"/>
+          <text class="t mut" x="794" y="206" font-size="14">its steps · what to collect</text>
+
+          <!-- inbound -->
+          <text class="tm mut" x="28" y="296" font-size="13">WHAT THE OPERATOR SAYS</text>
+          <text class="t" x="28" y="330" font-size="19">&#8220;the front-end</text>
+          <text class="t" x="28" y="354" font-size="19">is very slow&#8221;</text>
+          <text class="t mut" x="28" y="384" font-size="13">no fault named. no window.</text>
+          <line class="ln" x1="200" y1="331" x2="230" y2="331" marker-end="url(#a1)"/>
+
+          <!-- phase 1 -->
+          <rect class="box-design" x="236" y="222" width="196" height="218" rx="4"/>
+          <text class="tm acc" x="254" y="252" font-size="13">01</text>
+          <text class="t bold" x="254" y="280" font-size="18">UNDERSTAND</text>
+          <text class="t" x="254" y="314" font-size="14">normalise the ask</text>
+          <text class="t" x="254" y="340" font-size="14">triage — is anything</text>
+          <text class="t" x="254" y="358" font-size="14">actually wrong?</text>
+          <text class="t" x="254" y="388" font-size="14">name the issue class</text>
+          <text class="tm mut" x="254" y="424" font-size="12">DESIGNED</text>
+          <line class="ln" x1="432" y1="331" x2="456" y2="331" marker-end="url(#a1)"/>
+
+          <!-- phase 2 — the bottleneck, and the only literal hue -->
+          <rect class="box-focus" x="460" y="222" width="196" height="218" rx="4"/>
+          <text class="tm acc" x="478" y="252" font-size="13">02</text>
+          <text class="t bold" x="478" y="280" font-size="18">SELECT</text>
+          <text class="t" x="478" y="314" font-size="14">survey — one fixed set</text>
+          <text class="t" x="478" y="332" font-size="14">of cheap measurements</text>
+          <text class="t" x="478" y="358" font-size="14">narrow: class &#8594; cause</text>
+          <text class="t" x="478" y="384" font-size="14">rank, drop, shortlist</text>
+          <text class="tm acc" x="478" y="424" font-size="12">THE BOTTLENECK</text>
+          <line class="ln" x1="656" y1="331" x2="680" y2="331" marker-end="url(#a1)"/>
+
+          <!-- phase 3 -->
+          <rect class="box-built" x="684" y="222" width="196" height="218" rx="4"/>
+          <text class="tm acc" x="702" y="252" font-size="13">03</text>
+          <text class="t bold" x="702" y="280" font-size="18">RUN</text>
+          <text class="t" x="702" y="314" font-size="14">collect what it asks for</text>
+          <text class="t" x="702" y="340" font-size="14">bind capability &#8594; a</text>
+          <text class="t" x="702" y="358" font-size="14">real command</text>
+          <text class="t" x="702" y="388" font-size="14">run its steps in order</text>
+          <text class="tm mut" x="702" y="424" font-size="12">BUILT</text>
+          <line class="ln" x1="880" y1="331" x2="904" y2="331" marker-end="url(#a1)"/>
+
+          <!-- phase 4 -->
+          <rect class="box-built" x="908" y="222" width="196" height="218" rx="4"/>
+          <text class="tm acc" x="926" y="252" font-size="13">04</text>
+          <text class="t bold" x="926" y="280" font-size="18">DECIDE</text>
+          <text class="t" x="926" y="314" font-size="14">do all verdict_when</text>
+          <text class="t" x="926" y="332" font-size="14">conditions hold?</text>
+          <text class="t" x="926" y="358" font-size="14">did a rule_out fire?</text>
+          <text class="t" x="926" y="384" font-size="14">confident enough?</text>
+          <text class="tm mut" x="926" y="424" font-size="12">BUILT</text>
+          <line class="ln" x1="1104" y1="331" x2="1128" y2="331" marker-end="url(#a1)"/>
+
+          <!-- outcomes -->
+          <rect class="box-built" x="1132" y="250" width="134" height="162" rx="4"/>
+          <text class="tm mut" x="1146" y="278" font-size="12">ONE OF THREE</text>
+          <text class="t" x="1146" y="308" font-size="14">a verdict</text>
+          <text class="t" x="1146" y="340" font-size="14">not applicable</text>
+          <text class="t" x="1146" y="372" font-size="14">I could not tell</text>
+
+          <!-- early exit: healthy -->
+          <line class="ln-d" x1="334" y1="440" x2="334" y2="498" marker-end="url(#a1)"/>
+          <text class="t mut" x="346" y="494" font-size="13">nothing moved &#8594; &#8220;healthy&#8221;. stop.</text>
+
+          <!-- rule_out return into SELECT -->
+          <polyline class="ln-a" points="1050,440 1050,464 520,464 520,442" marker-end="url(#a1a)"/>
+          <text class="t acc" x="536" y="458" font-size="13">rule_out fired &#8594; switch to the blueprint it names</text>
+
+          <!-- the feedback frame -->
+          <polyline class="ln-d" points="1006,440 1006,578 212,578 212,136 456,136" marker-end="url(#a1)"/>
+          <text class="t mut" x="240" y="570" font-size="14">feedback — what should have been recorded, and what the library is missing</text>
+        </svg>
+      </div>
+      <figcaption>
+        <b>Two phases exist and two do not.</b> Running a blueprint and deciding from it
+        are built and measured — that is where the published results come from.
+        Understanding a vague complaint and choosing from the library are designed and
+        not built, and the teal stage is the one the thesis measured as the bottleneck.
+        Note the two returns: a <code>rule_out</code> sends control back to selection
+        rather than forcing a verdict, and the dashed frame is the loop that separates
+        this from a pipeline — the answer changes what gets collected next time.
+      </figcaption>
+    </figure>
+
+    <div class="legend">
+      <div class="lg"><span class="sw built"></span>
+        <span><b>Built and measured</b>Runs today; results published against it.</span></div>
+      <div class="lg"><span class="sw design"></span>
+        <span><b>Designed, not built</b>Specified in a design doc. No code yet.</span></div>
+      <div class="lg"><span class="sw focus"></span>
+        <span><b>The measured bottleneck</b>Where the proposed work is aimed.</span></div>
+      <div class="lg"><span class="sw unreach"></span>
+        <span><b>Proven unreachable</b>Measured, and it cannot be done from this data.</span></div>
+    </div>
+  </section>
+
+  <hr class="divider">
+
+  <!-- ══ THE WALK ══ -->
+  <section class="sec">
+    <h2>The same path, walked for one complaint</h2>
+    <p>
+      The operator says eight words. The agent is told nothing else — not that a fault
+      happened, not when, not which service is at fault. Here is what each stage does
+      with that, and the kind of evidence it would turn up.
+    </p>
+    <div class="callout warn">
+      <p><b>This walk is an illustration, not a recorded run.</b> The stages are the
+        designed ones; the numbers in the evidence strips are real
+        <em>discriminators and thresholds</em> taken from our blueprints, arranged to show
+        how the path resolves. No single run produced this exact sequence.</p>
+    </div>
+
+    <div class="walk">
+
+      <div class="stage on">
+        <span class="sno">00</span>
+        <div class="sbody">
+          <h4>Intake — turn a sentence into a question</h4>
+          <p>Eight words carry three facts and one gap. Scope: <b>one service</b>, not the
+            whole host. Symptom class: <b>latency</b>, with no claim of errors. And the gap:
+            <b>slow compared to what, and since when?</b> The output is an <em>issue class</em>,
+            not a cause — that is the entry point to the hierarchy.</p>
+          <pre class="ev">scope        one service — front-end
+class        <span class="k">latency</span>           (not: errors, not: outage)
+missing      a window, and a baseline to compare against
+→            enter the LATENCY parent blueprint</pre>
+        </div>
+      </div>
+
+      <div class="stage on">
+        <span class="sno">01</span>
+        <div class="sbody">
+          <h4>Triage — is anything actually wrong?</h4>
+          <p>Compare the incident window against the system's own earlier behaviour. If
+            nothing moves beyond a margin, the honest answer is <b>“healthy”</b> and the
+            run stops there. This step does not exist yet, and it is the one that decides
+            whether the framework is usable in production: <b>a tool that finds a fault in
+            a healthy system is worse than no tool.</b></p>
+          <pre class="ev">front-end p95 vs its own baseline      <span class="k">4.1x</span>   → something moved
+error rate                             flat   → it is slow, not broken
+→ continue</pre>
+        </div>
+      </div>
+
+      <div class="stage on">
+        <span class="sno">02</span>
+        <div class="sbody">
+          <h4>Survey — one fixed set of cheap measurements</h4>
+          <p>The <b>same</b> small set for every incident, so it cannot leak the answer.
+            From the kernel trace alone: on-CPU time per container, runqueue delay,
+            blocking-syscall durations, retransmissions, reclaim events, fork rate, disk
+            requests. The output is a set of symptom words drawn from a
+            <b>shared</b> vocabulary.</p>
+          <p>Why shared matters: if every blueprint invents its own words, matching on them
+            scores almost perfectly — <b>not because selection works, but because the word
+            names the answer.</b> Today 22 of our 24 symptom words are used by exactly one
+            blueprint, so this has to be fixed before any selection number means anything.</p>
+          <pre class="ev">host CPU                      raised, with headroom   (not exhausted)
+a newcomer container          <span class="x">none</span>
+front-end CPU waits ≥50ms     <span class="x">none</span>                    → not a CPU story
+front-end → datastore gap     <span class="k">0.9ms → 418.7ms</span>
+answers still arriving        <span class="k">yes</span>                     → slow, not down
+retransmissions on its flows  0.0%                    → path is clean</pre>
+        </div>
+      </div>
+
+      <div class="stage on">
+        <span class="sno">03</span>
+        <div class="sbody">
+          <h4>Narrow — the parent blueprint routes, it does not diagnose</h4>
+          <p>LATENCY asks one question: <b>where is the time going?</b> Waiting for a CPU,
+            waiting on something else, lost in the path, or stalled on memory. The survey
+            already answers it — CPU waits are absent and a connection gap jumped — so the
+            whole CPU branch is eliminated without running anything expensive.</p>
+          <pre class="ev">LATENCY
+├─ waiting for a CPU        <span class="x">ruled out</span> — no long CPU waits anywhere
+├─ waiting on a dependency  <span class="k">candidate</span> — the gap jumped 465x
+├─ degraded network path    weak      — retransmission is 0.0%
+└─ against a memory limit   <span class="x">ruled out</span> — no memcg reclaim events</pre>
+        </div>
+      </div>
+
+      <div class="stage on">
+        <span class="sno">04</span>
+        <div class="sbody">
+          <h4>Rank — score the candidates, drop most of them</h4>
+          <p>Symptom words that match score up. A <code>do_not_apply_when</code> condition
+            that is true scores down hard. A failed <code>cheap_precheck</code> drops the
+            blueprint entirely, before any expensive work runs. The output is an
+            <b>ordered shortlist</b>, not a single pick — the order is what gets scored.</p>
+          <pre class="ev">1.  db-latency-dependency-wait    strong   gap jumped, answers flowing
+2.  network-path-degradation      weak     kept as a fallback
+    service-cpu-throttle          <span class="x">dropped</span>  precheck: no CPU waits
+    cpu-contention-co-tenant      <span class="x">dropped</span>  precheck: no newcomer
+    service-memory-cap            <span class="x">dropped</span>  precheck: no reclaim
+    … 16 others                   <span class="x">dropped</span></pre>
+        </div>
+      </div>
+
+      <div class="stage on">
+        <span class="sno">05</span>
+        <div class="sbody">
+          <h4>Collect — the blueprint says what it needs</h4>
+          <p>This is the half that makes a blueprint more than an analysis script. The
+            chosen blueprint declares its <code>collection_order</code>: <b>exact tracepoint
+            names</b> and a window split into baseline, incident and recovery. If the
+            evidence is already on disk, nothing new is recorded. If it is not, collection
+            escalates <b>cheapest-adequate-first</b> — existing evidence, then low-overhead
+            sampling, and only then full tracing.</p>
+          <p>An overhead policy gates the escalation: querying what exists is automatic,
+            while active collection above a budget needs a human to approve it.</p>
+          <pre class="ev">needs      syscall entry/exit on the front-end's sockets
+           sched_switch, sched_waking   (as the negative control)
+window     60s baseline · 120s incident · 60s recovery
+tier       <span class="k">existing evidence is sufficient</span> — collect nothing new</pre>
+        </div>
+      </div>
+
+      <div class="stage on">
+        <span class="sno">06</span>
+        <div class="sbody">
+          <h4>Execute — capability, then a real command</h4>
+          <p>Every step names a <b>capability</b>, never a tool. A registry binds that to
+            whatever is installed here. Steps run in order, each with an expected result so
+            a failure is detectable rather than silent. A step the data cannot reach is
+            marked, skipped, and <b>its absence is not treated as evidence</b>.</p>
+          <p>Note the first step. It is a <b>gate</b>, added because the agent once called a
+            CPU-starved machine a dependency problem: everything talking to a starved
+            process shows inflated gaps, so gaps on a starved machine mislead.</p>
+          <pre class="ev">step 1  <span class="k">CPU GATE</span> — any long CPU waits anywhere?   none → continue
+step 2  request-to-answer gap per socket        <span class="k">10 fds at 0.46–0.56s</span>
+step 3  is it a pool?                           <span class="k">yes — 6 fds, same numbers</span>
+step 4  slow, or no answers at all?             <span class="k">answers arriving → slow</span>
+step 5  who is the peer?                        mirror rule → <span class="k">mysqld</span>
+step 6  is the peer itself struggling?          <span class="k">no CPU, no disk strain</span></pre>
+        </div>
+      </div>
+
+      <div class="stage on">
+        <span class="sno">07</span>
+        <div class="sbody">
+          <h4>Decide — and be willing not to</h4>
+          <p>Every <code>verdict_when</code> condition must hold. If a
+            <code>rule_out</code> condition is true instead, the blueprint stops and
+            <b>names the blueprint to go to</b> — control returns to selection rather than
+            forcing an answer. Below the confidence floor it collects more, up to a round
+            limit, then hands back.</p>
+          <pre class="ev">verdict      <span class="k">db_latency</span> — the app-to-mysqld connection path
+where        the front-end's connection pool; peer observed as mysqld
+evidence     gap 0.9ms → 418.7ms; peer mirrors it at 0.3 → 501.6ms
+reasoning    no CPU or disk strain on mysqld → the PATH, not the database
+confidence   0.92</pre>
+        </div>
+      </div>
+
+      <div class="stage off">
+        <span class="sno">—</span>
+        <div class="sbody">
+          <h4>The branch that matters just as much</h4>
+          <p>Had the CPU gate in step 1 found long waits, the blueprint would have stopped
+            there and handed the case to the CPU-cap blueprint. Had the pool check found a
+            single slow socket among many fast ones, it would have reported that its
+            signature <b>did not apply here</b> rather than naming the next most suspicious
+            container.</p>
+          <p class="note">We have measured both halves of this. On an application whose
+            callers already pool connections, the connection-pool blueprint's signature
+            reads <b>0.7–1.1 setup calls/s against 169–177 where it works</b> — so it
+            declines. And in a cross-fault test, one blueprint correctly refused a
+            dependency diagnosis on a CPU-cap run after the gate fired.</p>
+        </div>
+      </div>
+
+      <div class="stage on">
+        <span class="sno">08</span>
+        <div class="sbody">
+          <h4>Feed back — into collection, and into the library</h4>
+          <p>Two loops, and they are what separate this from a pipeline that runs once.</p>
+          <p><b>Into collection:</b> the verdict names the signal that decided it, so next
+            time that signal is recorded by default and the cheaper tier is enough more
+            often.</p>
+          <p><b>Into the library:</b> a wrong or hedged answer becomes a blueprint revision,
+            not a lost run. That loop is measured — it took one blueprint from a confident
+            wrong answer to three correct cells out of three, and a second from 2 of 4 to
+            4 of 4.</p>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <hr class="divider">
+
+  <!-- ══ FIG 2 ══ -->
+  <section class="sec">
+    <h2>Inside selection: why this is not “try all of them”</h2>
+    <p>
+      The obvious way to use a library is to run every blueprint and keep the best answer.
+      That is also the baseline a reviewer will reach for, so the framework has to beat it
+      on cost while matching it on accuracy. Cheap prechecks are how.
+    </p>
+
+    <figure>
+      <div class="canvas">
+        <svg class="dia" viewBox="0 0 1080 410" role="img"
+             aria-label="A funnel: twenty-one candidate blueprints narrow to four that survive cheap prechecks, then to an ordered shortlist of three, then one is fully run. The number fully run is the efficiency score — one is ideal, twenty-one is brute force.">
+          <defs>
+            <marker id="a2" viewBox="0 0 10 10" refX="9" refY="5"
+                    markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor"/>
+            </marker>
+          </defs>
+
+          <rect class="box-built" x="90" y="40" width="900" height="48" rx="3"/>
+          <text class="t" x="540" y="70" font-size="16" text-anchor="middle">21 candidate blueprints in the library</text>
+
+          <line class="ln" x1="540" y1="88" x2="540" y2="132" marker-end="url(#a2)"/>
+          <text class="t mut" x="556" y="116" font-size="14">a failed cheap_precheck drops a blueprint before any expensive work runs</text>
+
+          <rect class="box-design" x="330" y="132" width="420" height="48" rx="3"/>
+          <text class="t" x="540" y="162" font-size="16" text-anchor="middle">4 survive the prechecks</text>
+
+          <line class="ln" x1="540" y1="180" x2="540" y2="224" marker-end="url(#a2)"/>
+          <text class="t mut" x="556" y="208" font-size="14">ranked on shared symptom words, penalised by do_not_apply_when</text>
+
+          <rect class="box-design" x="390" y="224" width="98" height="48" rx="3"/>
+          <rect class="box-design" x="492" y="224" width="98" height="48" rx="3"/>
+          <rect class="box-design" x="594" y="224" width="98" height="48" rx="3"/>
+          <text class="t" x="439" y="254" font-size="15" text-anchor="middle">1st</text>
+          <text class="t mut" x="541" y="254" font-size="15" text-anchor="middle">2nd</text>
+          <text class="t mut" x="643" y="254" font-size="15" text-anchor="middle">3rd</text>
+          <text class="t mut" x="708" y="254" font-size="14">an ordered shortlist — not one pick</text>
+
+          <line class="ln" x1="439" y1="272" x2="439" y2="314" marker-end="url(#a2)"/>
+          <text class="t mut" x="455" y="298" font-size="14">confirm the top one properly</text>
+
+          <rect class="box-built" x="380" y="314" width="118" height="48" rx="3"/>
+          <text class="t semi" x="439" y="344" font-size="16" text-anchor="middle">run it</text>
+          <text class="t" x="516" y="338" font-size="14">count how many get fully run.</text>
+          <text class="t" x="516" y="358" font-size="14">1 is ideal. 21 is brute force.</text>
+        </svg>
+      </div>
+      <figcaption>
+        <b>The prechecks are the whole efficiency argument.</b> They are also the gap:
+        in all 16 first-generation blueprints the precheck is written as a
+        <em>sentence</em> — a person can run it, a program cannot. Making each one a
+        capability, a threshold and a direction is named work. Until then, selection
+        happens by a model reading blueprint text, which is both slower and the thing
+        we measured going wrong.
+      </figcaption>
+    </figure>
+  </section>
+
+  <hr class="divider">
+
+  <!-- ══ FIG 3 ══ -->
+  <section class="sec">
+    <h2>The hierarchy, and where the library stops</h2>
+    <p>
+      A flat library makes the agent guess from a long list. A parent blueprint per issue
+      class makes it <em>narrow</em> instead. The parent carries no diagnosis of its own —
+      its only job is to eliminate branches cheaply and hand off.
+    </p>
+
+    <figure>
+      <div class="canvas">
+        <svg class="dia" viewBox="0 0 960 390" role="img"
+             aria-label="The LATENCY parent blueprint branches to twelve causes. Ten are built, one is partial, and two — a frozen service and a silent queue backlog — are marked proven unreachable from kernel traces.">
+          <defs>
+            <marker id="a3" viewBox="0 0 10 10" refX="9" refY="5"
+                    markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor"/>
+            </marker>
+          </defs>
+
+          <rect class="box-design" x="30" y="146" width="206" height="92" rx="4"/>
+          <text class="tm mut" x="48" y="174" font-size="12">PARENT BLUEPRINT</text>
+          <text class="t bold" x="48" y="202" font-size="19">LATENCY</text>
+          <text class="t mut" x="48" y="224" font-size="13">routes, never diagnoses</text>
+
+          <line class="ln" x1="236" y1="192" x2="296" y2="192"/>
+          <line class="ln" x1="296" y1="46" x2="296" y2="338"/>
+
+          <line class="ln" x1="296" y1="46"  x2="330" y2="46"  marker-end="url(#a3)"/>
+          <line class="ln" x1="296" y1="72"  x2="330" y2="72"  marker-end="url(#a3)"/>
+          <line class="ln" x1="296" y1="98"  x2="330" y2="98"  marker-end="url(#a3)"/>
+          <line class="ln" x1="296" y1="124" x2="330" y2="124" marker-end="url(#a3)"/>
+          <line class="ln" x1="296" y1="150" x2="330" y2="150" marker-end="url(#a3)"/>
+          <line class="ln" x1="296" y1="176" x2="330" y2="176" marker-end="url(#a3)"/>
+          <line class="ln" x1="296" y1="202" x2="330" y2="202" marker-end="url(#a3)"/>
+          <line class="ln" x1="296" y1="228" x2="330" y2="228" marker-end="url(#a3)"/>
+          <line class="ln" x1="296" y1="254" x2="330" y2="254" marker-end="url(#a3)"/>
+          <line class="ln" x1="296" y1="280" x2="330" y2="280" marker-end="url(#a3)"/>
+          <line class="ln-n" x1="296" y1="310" x2="330" y2="310" marker-end="url(#a3)"/>
+          <line class="ln-n" x1="296" y1="336" x2="330" y2="336" marker-end="url(#a3)"/>
+
+          <text class="t" x="342" y="51"  font-size="15">its own CPU cap — a cgroup quota</text>
+          <text class="t" x="342" y="77"  font-size="15">a co-tenant stealing host CPU</text>
+          <text class="t" x="342" y="103" font-size="15">the host is simply out of CPU</text>
+          <text class="t" x="342" y="129" font-size="15">waiting on a slow dependency</text>
+          <text class="t" x="342" y="155" font-size="15">a degraded network path</text>
+          <text class="t" x="342" y="181" font-size="15">against its own memory limit</text>
+          <text class="t" x="342" y="207" font-size="15">the host disk is saturated</text>
+          <text class="t" x="342" y="233" font-size="15">connection-pool exhaustion</text>
+          <text class="t" x="342" y="259" font-size="15">a code defect, not a fault</text>
+          <text class="t" x="342" y="285" font-size="15">a deadlock on lock ordering</text>
+          <text class="t neg" x="342" y="315" font-size="15">a service frozen — stops answering</text>
+          <text class="t neg" x="342" y="341" font-size="15">a silent queue backlog</text>
+
+          <text class="tm mut" x="930" y="51"  font-size="12" text-anchor="end">BUILT</text>
+          <text class="tm mut" x="930" y="77"  font-size="12" text-anchor="end">BUILT</text>
+          <text class="tm mut" x="930" y="103" font-size="12" text-anchor="end">BUILT</text>
+          <text class="tm mut" x="930" y="129" font-size="12" text-anchor="end">BUILT</text>
+          <text class="tm mut" x="930" y="155" font-size="12" text-anchor="end">BUILT</text>
+          <text class="tm mut" x="930" y="181" font-size="12" text-anchor="end">BUILT</text>
+          <text class="tm mut" x="930" y="207" font-size="12" text-anchor="end">BUILT</text>
+          <text class="tm mut" x="930" y="233" font-size="12" text-anchor="end">BUILT</text>
+          <text class="tm mut" x="930" y="259" font-size="12" text-anchor="end">BUILT</text>
+          <text class="tm mut" x="930" y="285" font-size="12" text-anchor="end">BUILT</text>
+          <text class="tm neg" x="930" y="315" font-size="12" text-anchor="end">NOT REACHABLE</text>
+          <text class="tm neg" x="930" y="341" font-size="12" text-anchor="end">NOT REACHABLE</text>
+        </svg>
+      </div>
+      <figcaption>
+        <b>The two rust entries are the honest part.</b> Both were measured and proven
+        not diagnosable from kernel traces alone — they are defined by <em>absence</em>,
+        and a container that stops answering looks identical to one blocked on I/O. They
+        stay on the diagram because a library that knows its own boundary is worth more
+        than one that answers everything. Eleven fault families in total have been
+        measured as unbuildable from this layer.
+      </figcaption>
+    </figure>
+  </section>
+
+  <hr class="divider">
+
+  <!-- ══ FIG 4 ══ -->
+  <section class="sec">
+    <h2>How the library gets to twenty-one, and then to more</h2>
+    <p>
+      Blueprints are not written from knowledge. They are written from measurement, in a
+      fixed order, and the order is never reversed. A blueprint that fails its agent test
+      is revised rather than discarded — which means the agent's mistakes are an input to
+      the library, not just a score.
+    </p>
+
+    <figure>
+      <div class="canvas">
+        <svg class="dia" viewBox="0 0 1030 250" role="img"
+             aria-label="Five stages: a problem is solved by hand, measured against every fault family, authored as a blueprint, checked by a validator, then run by the agent on unseen data. A failure returns to the authoring stage. A success adds one to the library.">
+          <defs>
+            <marker id="a4" viewBox="0 0 10 10" refX="9" refY="5"
+                    markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor"/>
+            </marker>
+          </defs>
+
+          <rect class="box-built" x="10"  y="70" width="168" height="86" rx="4"/>
+          <rect class="box-built" x="218" y="70" width="168" height="86" rx="4"/>
+          <rect class="box-built" x="426" y="70" width="168" height="86" rx="4"/>
+          <rect class="box-built" x="634" y="70" width="168" height="86" rx="4"/>
+          <rect class="box-built" x="842" y="70" width="168" height="86" rx="4"/>
+
+          <text class="tm acc" x="24" y="94" font-size="12">01</text>
+          <text class="t" x="24" y="118" font-size="14">a problem is</text>
+          <text class="t" x="24" y="138" font-size="14">solved by hand</text>
+
+          <text class="tm acc" x="232" y="94" font-size="12">02</text>
+          <text class="t" x="232" y="118" font-size="14">measure it —</text>
+          <text class="t" x="232" y="138" font-size="14">against <tspan class="semi">every</tspan> family</text>
+
+          <text class="tm acc" x="440" y="94" font-size="12">03</text>
+          <text class="t" x="440" y="118" font-size="14">author it from</text>
+          <text class="t" x="440" y="138" font-size="14">what was observed</text>
+
+          <text class="tm acc" x="648" y="94" font-size="12">04</text>
+          <text class="t" x="648" y="118" font-size="14">validator rejects</text>
+          <text class="t" x="648" y="138" font-size="14">uncited claims</text>
+
+          <text class="tm acc" x="856" y="94" font-size="12">05</text>
+          <text class="t" x="856" y="118" font-size="14">the agent runs it</text>
+          <text class="t" x="856" y="138" font-size="14">on unseen data</text>
+
+          <line class="ln" x1="178" y1="113" x2="214" y2="113" marker-end="url(#a4)"/>
+          <line class="ln" x1="386" y1="113" x2="422" y2="113" marker-end="url(#a4)"/>
+          <line class="ln" x1="594" y1="113" x2="630" y2="113" marker-end="url(#a4)"/>
+          <line class="ln" x1="802" y1="113" x2="838" y2="113" marker-end="url(#a4)"/>
+
+          <polyline class="ln" points="940,156 940,212 510,212 510,158" marker-end="url(#a4)"/>
+          <text class="t" x="526" y="206" font-size="13">it fails &#8594; analyse the failure &#8594; one targeted fix &#8594; re-run</text>
+
+          <line class="ln" x1="940" y1="70" x2="940" y2="44" marker-end="url(#a4)"/>
+          <text class="t acc semi" x="926" y="48" font-size="13" text-anchor="end">+1 in the library</text>
+        </svg>
+      </div>
+      <figcaption>
+        <b>Stage 02 is the one that costs something.</b> Measuring a signal only against
+        the fault it was written for will always flatter it; measuring against every
+        family is what kills the signals that look decisive and are not. Our first three
+        draft discriminators all died at this stage — one of them was raised in
+        98–99% of <em>every</em> fault family, which identifies nothing. The loop at the
+        bottom is stages 01–05 run again, and it is measured: it took one blueprint from a
+        confident wrong answer to 3 correct cells out of 3.
+      </figcaption>
+    </figure>
+  </section>
+
+  <hr class="divider">
+
+  <!-- ══ STATUS ══ -->
+  <section class="sec">
+    <h2>What exists today, component by component</h2>
+    <p>
+      The framework above is a design. Roughly half of it runs. This table is the
+      difference, so nothing here reads as a claim it should not.
+    </p>
+
+    <div class="scroller">
+      <table>
+        <thead>
+          <tr><th>Component</th><th>What it does</th><th>Status</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>The blueprint format and schema</td>
+              <td>23 declared sections; discriminators and rule-outs are mandatory</td>
+              <td class="st yes">BUILT</td></tr>
+          <tr><td>21 blueprints</td>
+              <td>16 first-generation, 5 second-generation. 33 measured thresholds</td>
+              <td class="st yes">BUILT</td></tr>
+          <tr><td>The measure-first method and validator</td>
+              <td>Rejects any claim with no measurement behind it</td>
+              <td class="st yes">BUILT</td></tr>
+          <tr><td>Skill generation</td>
+              <td>The agent-facing text is derived from the blueprint, so they cannot drift</td>
+              <td class="st yes">BUILT</td></tr>
+          <tr><td>Execution of a blueprint's steps</td>
+              <td>Runs its own scripts; a step the data cannot reach is skipped and said so</td>
+              <td class="st yes">BUILT</td></tr>
+          <tr><td>The decision rule and rule-outs</td>
+              <td>A deterministic engine; no model involved</td>
+              <td class="st yes">BUILT</td></tr>
+          <tr><td>The agent, and its leakage controls</td>
+              <td>Ground truth unreachable by construction; 19 escape attempts checked it</td>
+              <td class="st yes">BUILT</td></tr>
+          <tr><td>The agent-feedback loop</td>
+              <td>A failed cell becomes a blueprint revision</td>
+              <td class="st yes">BUILT</td></tr>
+          <tr><td>Capability registry</td>
+              <td>22 capabilities bound to real tools, with an escalation policy</td>
+              <td class="st">DECLARED</td></tr>
+          <tr><td>Collection order</td>
+              <td>Exact tracepoints per blueprint — declared, but nothing consumes it yet</td>
+              <td class="st">DECLARED</td></tr>
+          <tr><td>Overhead and approval policy</td>
+              <td>What may run automatically vs. what needs a human</td>
+              <td class="st">DECLARED</td></tr>
+          <tr><td>Written explanation and recommended action</td>
+              <td>Declared by blueprints, written by nothing</td>
+              <td class="st">DECLARED</td></tr>
+          <tr><td>Triage — is anything wrong at all?</td>
+              <td>Every test so far told the agent a fault happened</td>
+              <td class="st">DESIGNED</td></tr>
+          <tr><td>Shared symptom vocabulary</td>
+              <td>22 of 24 words are used by one blueprint only — must be replaced</td>
+              <td class="st">DESIGNED</td></tr>
+          <tr><td>Executable cheap-prechecks</td>
+              <td>Currently prose. Need a capability, a threshold, a direction</td>
+              <td class="st">DESIGNED</td></tr>
+          <tr><td>The hierarchy and the selector</td>
+              <td>Parent per issue class, routing to causes. <b>The measured bottleneck</b></td>
+              <td class="st">DESIGNED</td></tr>
+          <tr><td>Intake — a sentence into a query</td>
+              <td>Turning “the front-end is slow” into a structured issue class</td>
+              <td class="st mut">VISION</td></tr>
+          <tr><td>Mining blueprints from past tickets</td>
+              <td>Instead of authoring each by hand</td>
+              <td class="st mut">VISION</td></tr>
+          <tr><td>The other three modalities</td>
+              <td>Phase one is kernel traces alone, deliberately</td>
+              <td class="st mut">VISION</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout">
+      <p><b>Why selection is the honest focus.</b> In a 57-incident study the library
+        scored level with no library at all on the faults it covers — 56% against 56%.
+        Underneath that tie, blueprints fixed 3 runs and broke 4, and
+        <b>all four breakages were the wrong blueprint being selected.</b> Not one was a
+        blueprint giving bad advice about its own fault. The network blueprint was picked
+        zero times across nine network incidents, while the deterministic engine scores
+        9 of 12 on those same faults using that same blueprint.</p>
+      <p>So the content is not the bottleneck. The routing is — which is why
+        <em>Select</em> is the only stage in teal, and why the proposed work starts there.</p>
+    </div>
+
+    <p class="pull">The library is the contribution. Any single blueprint is just an entry in it.</p>
+  </section>
+
+  <p class="foot">
+    Vision document · 19 Oct 2026 · companion to CONTEXT.md and slides.html ·
+    status column verified against the repository, not assumed
+  </p>
+
+</div>

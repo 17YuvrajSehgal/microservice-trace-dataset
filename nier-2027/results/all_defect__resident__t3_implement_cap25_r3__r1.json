@@ -1,0 +1,75 @@
+{
+  "config": "all_defect",
+  "klass": "resident",
+  "run": "t3_implement_cap25_r3",
+  "run_dir": "C:\\workplace\\microservice-trace-dataset\\Blueprint\\latency\\1_svc_cpu_cap\\agentic-os-noise\\runs\\t3_implement_cap25_r3",
+  "rep": 1,
+  "cell": "all_defect__resident__t3_implement_cap25_r3__r1",
+  "status": "ok",
+  "returncode": 0,
+  "wall_s": 212.3,
+  "env_ablation": {
+    "ABL_FLAT_CAP": "2000",
+    "ABL_WORKER_STEPS": "12",
+    "ABL_THREAD_BUDGET": "80000",
+    "ABL_NO_COMPUTED": "1"
+  },
+  "result": {
+    "run_id": "t3_implement_cap25_r3",
+    "diagnosis": {
+      "what_is_wrong": "The report that the coding task took longer is not confirmed as a kernel-visible resource fault. The trace shows a brief change in scheduling activity and a shift from claude toward python3 in the only materially active container, but the recorded CPU totals do not establish saturation or starvation, and the sampled disk completions are under 1.2 ms; there is no supported culprit or incident window.",
+      "root_cause_service": "unknown",
+      "culprit_kind": "unknown",
+      "fault_type": "normal",
+      "evidence": "I weighed the full-span ctf_proclife findings (primary workload persists; no coordinated restart), the two-second full-span event-count comparison (sched_switch and wakeups fall during 03:27:42\u201303:27:48 while net_dev_xmit and sched_stat_runtime do not show a matching collapse), and the sched_stat_runtime sums by process/container. In pid_ns 4026531836, python3's runtime rises during the candidate interval while claude's falls, indicating changed workload composition rather than proving CPU contention. The block-event check found only a brief 96-issue/96-completion burst at 03:27:45\u201303:27:46, with matched p95 latency 0.954 ms and maximum 1.174 ms. A falsifying check would be evidence of sustained scheduler wait/starvation or a broader resource bottleneck in that interval; the supplied notes do not report such evidence, so the slowdown cannot be confirmed from this trace.",
+      "confidence": 0.79,
+      "incident_window": "unknown",
+      "window_evidence": "03:27:42\u201303:27:48 is a candidate activity-change interval from the two-second sched_switch/wakeup counts, but other evidence does not establish it as an incident boundary: network activity stays similar, scheduled runtime does not share the same abrupt drop, and the process runtime change is a shift between workloads. Therefore I cannot defensibly label this an incident window."
+    },
+    "ranked_services": null,
+    "ranked_candidates": null,
+    "trajectory": [
+      {
+        "step": 0,
+        "tool": "worker1.0",
+        "service": null
+      },
+      {
+        "step": 1,
+        "tool": "worker1.1",
+        "service": null
+      },
+      {
+        "step": 2,
+        "tool": "worker1.2",
+        "service": null
+      },
+      {
+        "step": 3,
+        "tool": "worker1.3",
+        "service": null
+      },
+      {
+        "step": 4,
+        "tool": "worker2.100",
+        "service": null
+      }
+    ],
+    "n_tool_calls": 75,
+    "n_code_snippets": 34,
+    "n_findings": 7,
+    "n_computed": 34,
+    "bytes_touched": 126126,
+    "tokens": {
+      "in": 408742,
+      "out": 16707
+    },
+    "model": "openai/gpt-6-luna",
+    "wall_s": 211.3,
+    "transcript_file": "C:\\workplace\\microservice-trace-dataset\\nier-2027\\transcripts\\all_defect__resident__t3_implement_cap25_r3__r1.json",
+    "skill_selected": null,
+    "skill_confidence": null,
+    "brief_injected": false,
+    "n_claims": null
+  }
+}

@@ -1,0 +1,67 @@
+{
+  "config": "s3_thread",
+  "klass": "resident",
+  "run": "t3_implement_cap25_r5",
+  "run_dir": "C:\\workplace\\microservice-trace-dataset\\Blueprint\\latency\\1_svc_cpu_cap\\agentic-os-noise\\runs\\t3_implement_cap25_r5",
+  "rep": 1,
+  "cell": "s3_thread__resident__t3_implement_cap25_r5__r1",
+  "status": "ok",
+  "returncode": 0,
+  "wall_s": 117.6,
+  "env_ablation": {
+    "ABL_THREAD_BUDGET": "80000"
+  },
+  "result": {
+    "run_id": "t3_implement_cap25_r5",
+    "diagnosis": {
+      "what_is_wrong": "The trace does not substantiate a kernel-level fault behind the slower coding task. It shows a workload handoff within the only observed container\u2014early CPU by `claude`, then `python3` using about 1.09 CPU-seconds from 18:56:13\u201318:56:18 and 1.20 CPU-seconds from 18:56:18\u201318:56:23\u2014but not host CPU saturation or a demonstrated blocking mechanism.",
+      "root_cause_service": "unknown",
+      "culprit_kind": "unknown",
+      "fault_type": "normal",
+      "evidence": "Compared the full 18:55:57.800\u201318:56:30.200 trace using the reported `run_python` per-process and per-2-second `sched_stat_runtime` totals, then compared 18:56:03\u201318:56:08 with 18:56:13\u201318:56:18 using `query_ctf` and runtime payload sums: `python3` goes from zero runtime events to 1,246 (249.2/s) and 1,094.1 ms CPU. The apparent whole-trace scheduler-rate change is not evidence of contention: aggregate runtime is only 5.75 CPU-seconds across 32.4 seconds, and the active 2-second bins are about 0.5\u20130.61 CPU-seconds total on a four-CPU host; sampled wakeup-to-switch pairs were about 0.1 ms. Process comparison found only pid_ns 4026531836, and no coherent process arrival/departure cluster. Workers found no demonstrated disk, futex, or network bottleneck; relevant direct reclaim/OOM/throttling evidence was unavailable, so those causes cannot be conclusively excluded. The result that would falsify this normal assessment would be sustained CPU contention or long scheduling delays coincident with the task; the recorded CPU totals and sampled scheduling pairs do not show that.",
+      "confidence": 0.81,
+      "incident_window": "unknown",
+      "window_evidence": "There is a clear workload transition: scheduler event rates fall around 18:56:03, then python3 runtime rises around 18:56:08 and remains high through roughly 18:56:25. But the notes support interpreting these as changes in executed workload, not fault onset and recovery: runtime totals are modest, sampled wakeup delays are short, and there is no measured task latency. Thus no incident boundary is established."
+    },
+    "ranked_services": null,
+    "ranked_candidates": null,
+    "trajectory": [
+      {
+        "step": 0,
+        "tool": "worker1.0",
+        "service": null
+      },
+      {
+        "step": 1,
+        "tool": "worker1.1",
+        "service": null
+      },
+      {
+        "step": 2,
+        "tool": "worker1.2",
+        "service": null
+      },
+      {
+        "step": 3,
+        "tool": "worker1.3",
+        "service": null
+      }
+    ],
+    "n_tool_calls": 47,
+    "n_code_snippets": 13,
+    "n_findings": 9,
+    "n_computed": 13,
+    "bytes_touched": 63206,
+    "tokens": {
+      "in": 446232,
+      "out": 11912
+    },
+    "model": "openai/gpt-6-luna",
+    "wall_s": 116.7,
+    "transcript_file": "C:\\workplace\\microservice-trace-dataset\\nier-2027\\transcripts\\s3_thread__resident__t3_implement_cap25_r5__r1.json",
+    "skill_selected": null,
+    "skill_confidence": null,
+    "brief_injected": false,
+    "n_claims": null
+  }
+}

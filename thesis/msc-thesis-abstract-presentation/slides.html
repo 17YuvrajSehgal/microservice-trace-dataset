@@ -1,0 +1,1232 @@
+<title>Agentic Software Observability — M.Sc. abstract presentation</title>
+<style>
+  /* ---- palette: inherited from blueprints/docs/presentations/presentation1 ---- */
+  :root {
+    --ground: #FBFBFD;
+    --panel: #F2F4F8;
+    --panel-2: #E9EDF3;
+    --ink: #14202E;
+    --muted: #5C6B7F;
+    --rule: #DDE3EB;
+    --signal: #0B6E6E;
+    --signal-soft: #E2F0EF;
+    --retract: #A63D2F;
+    --retract-soft: #F7E8E5;
+
+    --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #0E1620;
+      --panel: #17212D;
+      --panel-2: #1E2A38;
+      --ink: #E8EDF3;
+      --muted: #93A3B5;
+      --rule: #26333F;
+      --signal: #3FB0A6;
+      --signal-soft: #13312F;
+      --retract: #E08670;
+      --retract-soft: #33201B;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground: #0E1620;
+    --panel: #17212D;
+    --panel-2: #1E2A38;
+    --ink: #E8EDF3;
+    --muted: #93A3B5;
+    --rule: #26333F;
+    --signal: #3FB0A6;
+    --signal-soft: #13312F;
+    --retract: #E08670;
+    --retract-soft: #33201B;
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-snap-type: y mandatory; scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 18px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .slide {
+    min-height: 100vh;
+    scroll-snap-align: start;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: clamp(1rem, 2.2vh, 1.7rem);
+    padding: 4rem clamp(1.4rem, 6vw, 6.5rem) 4.6rem;
+    border-bottom: 1px solid var(--rule);
+    position: relative;
+  }
+  .slide.appendix { background: var(--panel); }
+
+  /* ---- type ---- */
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--signal);
+    display: flex;
+    gap: 0.85rem;
+    align-items: baseline;
+    margin: 0;
+    flex-wrap: wrap;
+  }
+  .eyebrow .num { color: var(--muted); }
+
+  h1 {
+    font-size: clamp(1.8rem, 4vw, 3.1rem);
+    line-height: 1.06;
+    letter-spacing: -0.024em;
+    font-weight: 700;
+    margin: 0;
+    text-wrap: balance;
+    max-width: 26ch;
+  }
+  h1 em { font-style: normal; color: var(--signal); }
+  h1 .sub {
+    display: block;
+    font-size: 0.42em;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+    line-height: 1.25;
+    color: var(--muted);
+    margin-top: 0.7rem;
+    max-width: 40ch;
+  }
+
+  h2 {
+    font-size: 0.78rem;
+    font-family: var(--mono);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--muted);
+    font-weight: 600;
+    margin: 0;
+  }
+
+  .lede {
+    font-size: clamp(1rem, 1.55vw, 1.2rem);
+    color: var(--muted);
+    max-width: 64ch;
+    margin: 0;
+    text-wrap: pretty;
+  }
+  .lede strong { color: var(--ink); font-weight: 600; }
+
+  .byline {
+    font-family: var(--mono);
+    font-size: 0.86rem;
+    line-height: 1.8;
+    color: var(--muted);
+    margin: 0;
+  }
+  .byline b { color: var(--ink); font-weight: 600; }
+
+  /* ---- blocks ---- */
+  .cols { display: grid; gap: 1.1rem; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+  .cols.two { grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    padding: 1.05rem 1.2rem;
+  }
+  .slide.appendix .card { background: var(--ground); }
+  .card h3 {
+    margin: 0 0 0.4rem;
+    font-size: 0.95rem;
+    letter-spacing: 0.005em;
+  }
+  .card h3 .mk { color: var(--signal); font-family: var(--mono); font-size: 0.85em; }
+  .card p { margin: 0; color: var(--muted); font-size: 0.92rem; }
+  .card p + p { margin-top: 0.5rem; }
+  .card p strong { color: var(--ink); }
+
+  .scroller { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; font-size: 0.95rem; }
+  caption {
+    caption-side: bottom;
+    text-align: left;
+    padding-top: 0.75rem;
+    font-size: 0.88rem;
+    color: var(--muted);
+    text-wrap: pretty;
+  }
+  th, td {
+    text-align: left;
+    padding: 0.55rem 0.85rem;
+    border-bottom: 1px solid var(--rule);
+    vertical-align: baseline;
+  }
+  th {
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  tbody tr:last-child td { border-bottom: none; }
+  td.num, th.num { font-family: var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .hit { color: var(--signal); font-weight: 700; }
+  .no { color: var(--retract); font-weight: 700; }
+  .flat { color: var(--muted); }
+  tr.lift td { background: var(--signal-soft); }
+
+  /* ---- big numbers ---- */
+  .figs { display: grid; gap: 0.9rem; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+  .fig {
+    border-top: 2px solid var(--signal);
+    padding-top: 0.6rem;
+  }
+  .fig b {
+    display: block;
+    font-family: var(--mono);
+    font-variant-numeric: tabular-nums;
+    font-size: clamp(1.4rem, 2.6vw, 2.1rem);
+    line-height: 1.1;
+    letter-spacing: -0.03em;
+    font-weight: 700;
+  }
+  .fig span { display: block; font-size: 0.84rem; color: var(--muted); margin-top: 0.25rem; }
+
+  /* ---- quote / blueprint fragment ---- */
+  .quote {
+    font-family: var(--mono);
+    font-size: 0.88rem;
+    line-height: 1.6;
+    background: var(--panel);
+    border-left: 3px solid var(--signal);
+    padding: 0.95rem 1.1rem;
+    border-radius: 0 4px 4px 0;
+    overflow-x: auto;
+    white-space: pre-wrap;
+    margin: 0;
+  }
+  .slide.appendix .quote { background: var(--ground); }
+  .quote.warn { border-left-color: var(--retract); }
+
+  code {
+    font-family: var(--mono);
+    font-size: 0.88em;
+    background: var(--panel-2);
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    padding: 0.05em 0.32em;
+  }
+
+  .say {
+    font-size: clamp(1.05rem, 1.9vw, 1.45rem);
+    line-height: 1.3;
+    font-weight: 600;
+    letter-spacing: -0.015em;
+    max-width: 46ch;
+    margin: 0;
+    text-wrap: balance;
+  }
+  .say.accent { color: var(--signal); }
+
+  ul, ol { margin: 0; padding-left: 1.15rem; }
+  li { margin-bottom: 0.38rem; color: var(--muted); }
+  li strong, li b { color: var(--ink); }
+  li::marker { color: var(--signal); }
+  ul.tight li { margin-bottom: 0.2rem; }
+
+  /* ---- the layer stack (slide 2) ---- */
+  .stack { display: flex; flex-direction: column; gap: 0.4rem; max-width: 62rem; }
+  .layer {
+    display: grid;
+    grid-template-columns: minmax(8.5rem, 11rem) 1fr;
+    gap: 1rem;
+    align-items: baseline;
+    background: var(--panel);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    padding: 0.7rem 1rem;
+  }
+  .layer .name { font-family: var(--mono); font-size: 0.82rem; font-weight: 600; letter-spacing: 0.02em; }
+  .layer .what { font-size: 0.9rem; color: var(--muted); }
+  .layer.kernel {
+    background: var(--signal-soft);
+    border-color: color-mix(in srgb, var(--signal) 40%, transparent);
+  }
+  .layer.kernel .name { color: var(--signal); }
+  .boundary {
+    display: flex;
+    align-items: center;
+    gap: 0.9rem;
+    margin: 0.45rem 0;
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--retract);
+  }
+  .boundary::before, .boundary::after {
+    content: "";
+    flex: 1;
+    border-top: 2px dashed color-mix(in srgb, var(--retract) 55%, transparent);
+  }
+  .boundary::before { flex: 0 0 1.5rem; }
+
+  @media (max-width: 34rem) {
+    .layer { grid-template-columns: 1fr; gap: 0.2rem; }
+    .flow { flex-direction: column; }
+    .arrow { display: none; }
+    .foot { flex-direction: column; gap: 0.2rem; }
+    .foot .src { text-align: left; }
+  }
+
+  /* ---- the flow (slide 7) ---- */
+  .flow { display: flex; flex-wrap: wrap; align-items: stretch; gap: 0.5rem; }
+  .step {
+    flex: 1 1 8.5rem;
+    background: var(--panel);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    padding: 0.7rem 0.85rem;
+  }
+  .step .n { font-family: var(--mono); font-size: 0.66rem; letter-spacing: 0.1em; color: var(--signal); display: block; margin-bottom: 0.3rem; }
+  .step b { font-size: 0.92rem; display: block; line-height: 1.25; }
+  .step span.d { font-size: 0.82rem; color: var(--muted); display: block; margin-top: 0.25rem; }
+  .step.out { background: var(--signal-soft); border-color: color-mix(in srgb, var(--signal) 40%, transparent); }
+  .arrow { align-self: center; color: var(--muted); font-family: var(--mono); flex: 0 0 auto; }
+  .loop {
+    font-family: var(--mono);
+    font-size: 0.74rem;
+    letter-spacing: 0.06em;
+    color: var(--signal);
+    border: 1px dashed color-mix(in srgb, var(--signal) 45%, transparent);
+    border-radius: 4px;
+    padding: 0.45rem 0.8rem;
+    margin-top: 0.1rem;
+  }
+
+  /* ---- tags ---- */
+  .tags { display: flex; flex-wrap: wrap; gap: 0.45rem; }
+  .tag {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 0.2rem 0.52rem;
+    border-radius: 3px;
+    background: var(--signal-soft);
+    color: var(--signal);
+    border: 1px solid color-mix(in srgb, var(--signal) 30%, transparent);
+  }
+  .tag.warn {
+    background: var(--retract-soft);
+    color: var(--retract);
+    border-color: color-mix(in srgb, var(--retract) 30%, transparent);
+  }
+
+  /* ---- chrome ---- */
+  .foot {
+    position: absolute;
+    left: clamp(1.4rem, 6vw, 6.5rem);
+    right: clamp(1.4rem, 6vw, 6.5rem);
+    bottom: 1.5rem;
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.06em;
+    color: var(--muted);
+  }
+  .foot .src { text-align: right; opacity: 0.8; }
+
+  .progress {
+    position: fixed;
+    top: 0; left: 0;
+    height: 3px;
+    background: var(--signal);
+    width: 0;
+    z-index: 10;
+    transition: width 120ms linear;
+  }
+  @media (prefers-reduced-motion: reduce) { .progress { transition: none; } }
+  .pager {
+    position: fixed;
+    right: clamp(0.8rem, 3vw, 1.8rem);
+    bottom: clamp(0.8rem, 3vw, 1.4rem);
+    z-index: 10;
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    background: color-mix(in srgb, var(--ground) 88%, transparent);
+    border: 1px solid var(--rule);
+    border-radius: 999px;
+    padding: 0.3rem 0.8rem;
+    backdrop-filter: blur(6px);
+  }
+  :focus-visible { outline: 2px solid var(--signal); outline-offset: 3px; }
+
+  @media print {
+    html { scroll-snap-type: none; }
+    .slide { min-height: auto; page-break-after: always; border-bottom: none; }
+    .progress, .pager { display: none; }
+  }
+</style>
+
+<div class="progress" id="prog"></div>
+<div class="pager" id="pager">1 / 22</div>
+
+<main>
+
+<!-- ══ 1 ══ TITLE ══════════════════════════════════════════════ -->
+<section class="slide">
+  <p class="eyebrow"><span class="num">01</span> M.Sc. thesis proposal</p>
+  <h1>Agentic Software Observability
+    <span class="sub">Preserving and Reusing Diagnostic Expertise in Executable Form</span>
+  </h1>
+  <p class="byline">
+    <b>Yuvraj Sehgal</b><br>
+    Supervisor: Dr. Naser Ezzati-Jivan<br>
+    Department of Computer Science, Brock University
+  </p>
+  <p class="lede">
+    Software is now diagnosed by AI agents. This thesis is about making that
+    diagnosis something that <strong>accumulates</strong> instead of being redone
+    every time.
+  </p>
+  <div class="foot"><span>0:00</span><span class="src"></span></div>
+</section>
+
+<!-- ══ 2 ══ BACKGROUND ════════════════════════════════════════ -->
+<section class="slide">
+  <p class="eyebrow"><span class="num">02</span> Background</p>
+  <h1>Diagnosis starts with <em>telemetry</em></h1>
+  <p class="lede">
+    A running system emits four kinds of signal. When something breaks, an engineer
+    reads them and works out why.
+  </p>
+
+  <div class="stack">
+    <div class="layer">
+      <span class="name">Metrics</span>
+      <span class="what">Numbers sampled over time — CPU use, request latency, error rate.</span>
+    </div>
+    <div class="layer">
+      <span class="name">Logs</span>
+      <span class="what">Lines the code chose to write down.</span>
+    </div>
+    <div class="layer">
+      <span class="name">Traces</span>
+      <span class="what">One request's path across services, with timings per hop.</span>
+    </div>
+
+    <p class="boundary">where every public incident dataset stops</p>
+
+    <div class="layer kernel">
+      <span class="name">Kernel traces</span>
+      <span class="what">Every system call, every scheduler decision, every packet —
+        collected below the application. No service names, no request ids.</span>
+    </div>
+  </div>
+
+  <p class="lede">
+    The first three describe what the application <em>says about itself</em>. The
+    fourth records what the machine actually did.
+  </p>
+  <div class="foot"><span>0:30</span><span class="src">LTTng · Babeltrace2 · OpenTelemetry</span></div>
+</section>
+
+<!-- ══ 3 ══ PROBLEM 1 ═════════════════════════════════════════ -->
+<section class="slide">
+  <p class="eyebrow"><span class="num">03</span> Problem 1</p>
+  <h1>We keep the fix. We throw away the <em>method</em>.</h1>
+  <p class="lede">
+    Diagnosis is skilled work. It means knowing <strong>which signal</strong>
+    separates one cause from another, <strong>which events</strong> are worth
+    recording at all, and <strong>which threshold</strong> means something on
+    <em>this</em> system rather than in general.
+  </p>
+
+  <div class="cols two">
+    <div class="card">
+      <h3>What a closed ticket keeps</h3>
+      <p>The fix. A one-line resolution. Sometimes a dashboard screenshot.</p>
+    </div>
+    <div class="card">
+      <h3>What it loses</h3>
+      <p>The signal that actually separated the causes. The events someone decided
+         to collect. The threshold that meant something here. The three things that
+         were tried and did <strong>not</strong> work.</p>
+    </div>
+  </div>
+
+  <p class="quote">A tool team solves hard kernel-level problems — each one potentially
+a paper. But there is no history.
+
+        "The history is in Mohammed's brain."</p>
+
+  <p class="lede">
+    So the next investigation starts from nothing — whether the next investigator
+    is a new engineer or an AI agent. And a language model has no particular idea
+    what a CPU cap looks like in a scheduler trace.
+  </p>
+  <div class="foot"><span>1:45</span><span class="src">blueprint-idea.md · 26 Aug 2026 meeting</span></div>
+</section>
+
+<!-- ══ 4 ══ PROBLEM 2 ═════════════════════════════════════════ -->
+<section class="slide">
+  <p class="eyebrow"><span class="num">04</span> Problem 2</p>
+  <h1>Public datasets stop at the application boundary</h1>
+
+  <div class="scroller">
+    <table>
+      <thead>
+        <tr>
+          <th>Incident dataset</th>
+          <th class="num">Metrics</th>
+          <th class="num">Logs</th>
+          <th class="num">App traces</th>
+          <th class="num">Kernel</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>RCAEval</td><td class="num hit">✓</td><td class="num hit">✓</td><td class="num hit">✓</td><td class="num no">✗</td></tr>
+        <tr><td>LEMMA-RCA</td><td class="num hit">✓</td><td class="num hit">✓</td><td class="num hit">✓</td><td class="num no">✗</td></tr>
+        <tr><td>OpenRCA</td><td class="num hit">✓</td><td class="num hit">✓</td><td class="num hit">✓</td><td class="num no">✗</td></tr>
+        <tr><td>AIOps Challenge</td><td class="num hit">✓</td><td class="num hit">✓</td><td class="num hit">✓</td><td class="num no">✗</td></tr>
+        <tr><td>MSDS</td><td class="num hit">✓</td><td class="num hit">✓</td><td class="num hit">✓</td><td class="num no">✗</td></tr>
+        <tr><td>Nezha</td><td class="num hit">✓</td><td class="num hit">✓</td><td class="num hit">✓</td><td class="num no">✗</td></tr>
+        <tr><td>LO2</td><td class="num hit">✓</td><td class="num hit">✓</td><td class="num hit">✓</td><td class="num no">✗</td></tr>
+      </tbody>
+      <caption>Live agent testbeds — AIOpsLab, ITBench — share the same boundary.</caption>
+    </table>
+  </div>
+
+  <p class="lede">
+    So a fault that lives <em>below</em> that line — a co-tenant stealing CPU, a
+    cgroup quota, a saturated disk — is outside both the analysis
+    <strong>and its evaluation</strong>. You cannot score a method on a fault your
+    data cannot see.
+  </p>
+  <div class="foot"><span>3:00</span><span class="src">PROPOSAL.md §3.1</span></div>
+</section>
+
+<!-- ══ 5 ══ THE IDEA ══════════════════════════════════════════ -->
+<section class="slide">
+  <p class="eyebrow"><span class="num">05</span> The idea</p>
+  <h1>An observability <em>blueprint</em></h1>
+  <p class="lede">
+    One solved investigation, written down so it can be <strong>re-executed</strong> —
+    by a person or by an agent. It records what to <em>collect</em>, what to
+    <em>run</em>, and how to <em>decide</em> — not just what was concluded.
+  </p>
+
+  <div class="cols">
+    <div class="card">
+      <h3><span class="mk">01</span> Applies-when</h3>
+      <p>And when <strong>not</strong> to apply it, plus the cheapest check to run first.</p>
+    </div>
+    <div class="card">
+      <h3><span class="mk">02</span> Collection order</h3>
+      <p>The exact tracepoint names. "Kernel data" is rejected. A blueprint
+         <strong>drives</strong> collection, it does not only consume it.</p>
+    </div>
+    <div class="card">
+      <h3><span class="mk">03</span> Runnable steps</h3>
+      <p>Each step is a command with an expected result, so failure is detectable.</p>
+    </div>
+    <div class="card">
+      <h3><span class="mk">04</span> Decision rule</h3>
+      <p>Measured thresholds, and the look-alike each one rules out.</p>
+    </div>
+    <div class="card">
+      <h3><span class="mk">05</span> Rule-outs</h3>
+      <p>Mandatory. It must name the blueprint to go to <strong>instead</strong>.</p>
+    </div>
+    <div class="card">
+      <h3><span class="mk">06</span> Retractions</h3>
+      <p>What was disproven, kept in the file with the measurement that killed it.</p>
+    </div>
+  </div>
+  <div class="foot"><span>4:00</span><span class="src">blueprints/schema/blueprint.schema.json</span></div>
+</section>
+
+<!-- ══ 6 ══ ONE REAL DISCRIMINATOR ════════════════════════════ -->
+<section class="slide">
+  <p class="eyebrow"><span class="num">06</span> The idea · one real example</p>
+  <h1>What "evidence-bound" actually buys you</h1>
+  <p class="lede">
+    One discriminator, quoted from the co-tenant CPU contention blueprint. This is
+    the signal any engineer would reach for first.
+  </p>
+
+  <p class="quote">signal:        runqueue delay — sched_waking to the sched_switch
+               that actually runs the thread
+
+this problem:  raised — measured 7.12x — but this is CORROBORATION,
+               not evidence. It must never be the deciding signal.
+
+NOT this:      runqueue delay alone separates nothing. It is raised in
+               every CPU-family fault, and in healthy load bursts too,
+               and its ordering is INVERTED against severity.</p>
+
+  <div class="scroller">
+    <table>
+      <thead><tr><th>Runqueue delay, measured</th><th class="num">vs its own baseline</th></tr></thead>
+      <tbody>
+        <tr><td>Host CPU exhaustion</td><td class="num">52&times;</td></tr>
+        <tr><td>Service CPU cap (a cgroup quota)</td><td class="num">15.7&times;</td></tr>
+        <tr class="lift"><td>Co-tenant contention — <em>the fault we want</em></td><td class="num hit">7.1&times;</td></tr>
+        <tr><td>Healthy machine, busy workload</td><td class="num">3.7&times;</td></tr>
+      </tbody>
+      <caption>Ordered by how loud the signal is, the actual target comes third — behind
+        a fault it is meant to be distinguished from, and barely ahead of a healthy box.</caption>
+    </table>
+  </div>
+
+  <p class="say">The obvious signal was measured, and demoted to corroboration. No
+    prose runbook does that.</p>
+  <div class="foot"><span>5:30</span><span class="src">problems/cpu-contention-co-tenant/blueprint.json v8</span></div>
+</section>
+
+<!-- ══ 7 ══ TWO PROPERTIES ════════════════════════════════════ -->
+<section class="slide">
+  <p class="eyebrow"><span class="num">07</span> The idea · two properties</p>
+  <h1>Why this is not a runbook</h1>
+
+  <div class="cols two">
+    <div class="card">
+      <h3>It is executable</h3>
+      <p>A step declares a <strong>capability</strong>, never a tool:</p>
+      <p class="quote" style="margin-top:.6rem">needs: kernel.scheduler.runqueue_delay</p>
+      <p>A registry binds that to whatever is available — our Babeltrace2 script here,
+         Trace Compass or a vendor's own analyser elsewhere. <strong>Swap the tool and
+         the blueprint does not change.</strong> 22 capabilities registered.</p>
+    </div>
+    <div class="card">
+      <h3>It is evidence-bound</h3>
+      <p>No claim enters a blueprint until it is measured on our own data — and
+         measured against <strong>every</strong> fault family, not only its own.
+         A validator rejects uncited claims.</p>
+      <p>33 thresholds live in one file, each recording whether it
+         <strong>transfers</strong> to another machine. A threshold in cores measures
+         our hardware; a ratio to the run's own baseline measures the fault.</p>
+    </div>
+  </div>
+
+  <h2>The rule cost us our first three favourite ideas</h2>
+  <div class="scroller">
+    <table>
+      <thead><tr><th>Our first draft claimed</th><th>What 93 labelled runs showed</th></tr></thead>
+      <tbody>
+        <tr><td>the delayed services show raised runnable-wait</td>
+            <td>never exceeds <b class="no">4%</b> in any fault family — and was 1.6% on the
+                co-tenant case itself. Unusable.</td></tr>
+        <tr><td>the culprit's wait breakdown identifies it</td>
+            <td>host-attributed faults have <b class="no">no culprit-side record at all</b>.
+                Five whole families. Unmeasurable.</td></tr>
+        <tr><td>the suspect shows dominant off-CPU I/O wait</td>
+            <td>true — and equally true of <b class="no">every family, 98–99%</b>.
+                Identifies nothing.</td></tr>
+      </tbody>
+      <caption>All three would have been on a slide. Retracted claims stay in the
+        blueprint, with the measurement that killed them, so the agent is warned off them too.</caption>
+    </table>
+  </div>
+  <div class="foot"><span>6:45</span><span class="src">blueprints/docs/blueprint-report.md §5</span></div>
+</section>
+
+<!-- ══ 8 ══ THE FRAMEWORK ════════════════════════════════════ -->
+<section class="slide">
+  <p class="eyebrow"><span class="num">08</span> The framework</p>
+  <h1>The <em>library</em> is the contribution, not any single blueprint</h1>
+
+  <div class="flow">
+    <div class="step"><span class="n">IN</span><b>Incident</b><span class="d">Telemetry, and nothing else.</span></div>
+    <span class="arrow">&rarr;</span>
+    <div class="step"><span class="n">1</span><b>Select on evidence</b><span class="d">Which blueprint fits what we can see?</span></div>
+    <span class="arrow">&rarr;</span>
+    <div class="step"><span class="n">2</span><b>Narrow</b><span class="d">Issue class &rarr; cause.</span></div>
+    <span class="arrow">&rarr;</span>
+    <div class="step"><span class="n">3</span><b>Execute</b><span class="d">Capability binds to a real command.</span></div>
+    <span class="arrow">&rarr;</span>
+    <div class="step out"><span class="n">OUT</span><b>Verdict</b><span class="d">Or "not applicable". Or "I could not tell".</span></div>
+  </div>
+  <p class="loop">&#8630; feedback — the verdict decides what is worth collecting next time</p>
+
+  <div class="cols two">
+    <div class="card">
+      <h3>What this turns trace analysis into</h3>
+      <p>Not a stateless pipeline that runs once, but something that
+         <strong>gets better as it is used</strong>. A new blueprint makes the next
+         incident cheaper, and a corrected one makes every future run more accurate.</p>
+    </div>
+    <div class="card">
+      <h3>What runs automatically today — honestly</h3>
+      <p>The blueprints and the rule engine run. <strong>Selection is manual.</strong>
+         The knowledge objects are built and proven; the machine that routes between
+         them is the next phase, and slide 13 is why.</p>
+    </div>
+  </div>
+  <div class="foot"><span>7:45</span><span class="src">blueprints/docs/blueprint-report.md §9</span></div>
+</section>
+
+<!-- ══ 9 ══ WHAT EXISTS: DATASET ═════════════════════════════ -->
+<section class="slide">
+  <p class="eyebrow"><span class="num">09</span> What exists · the dataset</p>
+  <h1>StrataTrace — the kernel layer no public corpus has</h1>
+
+  <div class="figs">
+    <div class="fig"><b>304</b><span>labelled fault-injection runs</span></div>
+    <div class="fig"><b>27</b><span>fault families</span></div>
+    <div class="fig"><b>4</b><span>modalities, in every run</span></div>
+    <div class="fig"><b>0.001 ms</b><span>cross-modality clock drift</span></div>
+    <div class="fig"><b>779 GB</b><span>compressed, from 1.18 TB raw</span></div>
+  </div>
+
+  <div class="scroller">
+    <table>
+      <thead><tr><th></th><th class="num">Sock&nbsp;Shop</th><th class="num">Train&nbsp;Ticket</th><th class="num">Total</th></tr></thead>
+      <tbody>
+        <tr><td>Runs</td><td class="num">170</td><td class="num">134</td><td class="num hit">304</td></tr>
+        <tr><td>All four modality directories present</td><td class="num">170/170</td><td class="num">134/134</td><td class="num hit">304/304</td></tr>
+        <tr><td>Kernel traces with no event loss</td><td class="num">170/170</td><td class="num">133/134</td><td class="num hit">303/304</td></tr>
+      </tbody>
+      <caption>Usability was measured, not assumed: 293 runs fully usable, 11 with a
+        recorded caveat, 0 unusable as a positive. Two applications, ~16 and 47 services.</caption>
+    </table>
+  </div>
+
+  <p class="lede">
+    <strong>35 runs were measured to have no metric signature at all</strong> — the
+    fault is demonstrably present and the metrics cannot see it. For kernel-trace
+    work those are the most interesting runs in the set, not the weakest.
+  </p>
+  <div class="foot"><span>8:30</span><span class="src">blueprints/docs/DATASET-v2-INVENTORY.md</span></div>
+</section>
+
+<!-- ══ 10 ══ WHAT EXISTS: BLUEPRINTS + AGENT ═════════════════ -->
+<section class="slide">
+  <p class="eyebrow"><span class="num">10</span> What exists · library and agent</p>
+  <h1>A library, and an agent that cannot cheat</h1>
+
+  <div class="cols">
+    <div class="card">
+      <h3>The library</h3>
+      <p><strong>16 blueprints</strong>, 11 wired into the experiment harness.
+         33 measured thresholds, 22 capabilities.</p>
+      <p>A second generation of <strong>5</strong> is being built by the loop on
+         slide 14 — 24 agent-verdict cells so far, and <strong>zero confident wrong
+         answers</strong>.</p>
+    </div>
+    <div class="card">
+      <h3>The agent</h3>
+      <p>Plan &rarr; parallel workers &rarr; review &rarr; synthesise. Seven read-only
+         tools over the <strong>raw kernel trace</strong>, plus a sandboxed Python
+         interpreter so it is not limited to questions our fixed tools can express.</p>
+    </div>
+    <div class="card">
+      <h3>The controls</h3>
+      <p>Ground truth is <strong>unreachable by construction</strong> — it sits in the
+         run directory, so the sandbox is never given a path, only a pre-loaded table.
+         Names are masked, skills are leak-scanned, every transcript is audited.
+         <strong>19 adversarial escape attempts</strong> check the sandbox.</p>
+    </div>
+  </div>
+
+  <p class="say accent">The agent is never told that a fault happened — let alone when.</p>
+  <p class="lede">
+    Phase one uses <strong>kernel traces alone</strong>: no service names, no request
+    ids, no log lines. The hardest case, and the least studied. If a blueprint helps
+    there, it is carrying real method rather than restating a log line.
+  </p>
+  <div class="foot"><span>9:30</span><span class="src">agentic-rca/ · Blueprint/agent/</span></div>
+</section>
+
+<!-- ══ 11 ══ EVIDENCE: HEADLINE ══════════════════════════════ -->
+<section class="slide">
+  <p class="eyebrow"><span class="num">11</span> Early evidence · the headline</p>
+  <h1>Same agent, same incident. The only difference is the blueprint.</h1>
+
+  <div class="scroller">
+    <table>
+      <thead>
+        <tr><th>Arm</th><th>Was it hinted?</th><th class="num">n</th>
+            <th class="num">Named the right container</th><th class="num">Found the window</th>
+            <th class="num">Noticed at</th></tr>
+      </thead>
+      <tbody>
+        <tr class="lift"><td><b>Blueprint</b></td><td>hint</td><td class="num">15</td>
+            <td class="num hit">15</td><td class="num hit">15</td><td class="num hit">+1 s</td></tr>
+        <tr class="lift"><td><b>Blueprint</b></td><td>no hint</td><td class="num">15</td>
+            <td class="num hit">15</td><td class="num hit">15</td><td class="num hit">+1 s</td></tr>
+        <tr><td>None</td><td>hint</td><td class="num">15</td>
+            <td class="num">3</td><td class="num">2</td><td class="num no">+180 s</td></tr>
+        <tr><td>None</td><td>no hint</td><td class="num">15</td>
+            <td class="num no">0</td><td class="num no">0</td><td class="num no">+180 s</td></tr>
+      </tbody>
+      <caption>Deadlock, kernel traces only, 60 cells, 0 failures. The fault lasts
+        <b>125 seconds</b> — so the unaided arm is not late, it is describing the
+        <em>recovery</em>. Connection-pool exhaustion, same design: <b class="hit">27/30</b>
+        against <b>2/30</b>.</caption>
+    </table>
+  </div>
+
+  <p class="lede">
+    The blueprint arm also produced <strong>zero wrong containers</strong>. Its
+    failures are abstentions — which is the behaviour we want when the evidence is thin.
+  </p>
+  <div class="tags">
+    <span class="tag warn">caveat · one incident per matrix, 15 repeats</span>
+    <span class="tag warn">caveat · blueprint handed over, not chosen</span>
+  </div>
+  <div class="foot"><span>10:30</span><span class="src">results-download/{deadlock,conn_pool_exhaustion}/DIGEST.md</span></div>
+</section>
+
+<!-- ══ 12 ══ EVIDENCE: EXECUTABLE BEATS PROSE ════════════════ -->
+<section class="slide">
+  <p class="eyebrow"><span class="num">12</span> Early evidence · executable beats prose</p>
+  <h1>Rules transfer. The same rules as <em>prose</em> do not.</h1>
+  <p class="lede">
+    A deterministic rule engine built from the same blueprints. Same kernel data.
+    <strong>No model at all.</strong> 81 test runs, two applications.
+  </p>
+
+  <div class="figs">
+    <div class="fig"><b>38/41</b><span>right when it fires — 93% precision</span></div>
+    <div class="fig"><b>26/29</b><span>correct silences on runs it should ignore</span></div>
+    <div class="fig"><b>5/5</b><span>healthy runs correctly declined</span></div>
+    <div class="fig"><b>64/81</b><span>correct overall (79%)</span></div>
+  </div>
+
+  <p class="say">The same knowledge, written as markdown and handed to a capable
+    model, gets roughly <em>half</em> that.</p>
+
+  <div class="card">
+    <h3>And a clean negative control, from a separate 12-incident study</h3>
+    <p>Giving the model the kernel evidence pack changed <strong>nothing</strong>:
+      it named the same component on <strong>12 of 12</strong> incidents, for
+      <strong>+61% more tokens</strong>. More data, handed over as text, bought zero
+      accuracy. The deterministic blueprint scored <strong>83%</strong> fully correct
+      on those incidents against <strong>58%</strong> for every model arm — and 5/5 on
+      the co-tenant fault that no model arm ever got right.</p>
+  </div>
+
+  <p class="lede">
+    This is why the abstract says <em>executable</em> — and it is one of the four
+    evaluation questions, not a side observation.
+  </p>
+  <div class="foot"><span>12:00</span><span class="src">docs/RESULTSv2.md · docs/RESULTS-comparison.md</span></div>
+</section>
+
+<!-- ══ 13 ══ EVIDENCE: THE HONEST TIE ════════════════════════ -->
+<section class="slide">
+  <p class="eyebrow"><span class="num">13</span> Early evidence · the credibility slide</p>
+  <h1>On the faults we cover, it is a <em>tie</em></h1>
+  <p class="lede">
+    57 incidents, both applications, same model, same evidence. One difference:
+    the library is available, and the agent must <strong>choose</strong> from it.
+    Both arms got a strong deterministic brief — this is not a strawman control.
+  </p>
+
+  <div class="scroller">
+    <table>
+      <thead><tr><th>Fully correct</th><th class="num">n</th><th class="num">Without blueprints</th><th class="num">With blueprints</th></tr></thead>
+      <tbody>
+        <tr class="lift"><td>The fault <b>has</b> a blueprint</td><td class="num">36</td>
+            <td class="num">20 &nbsp;(56%)</td><td class="num">20 &nbsp;(56%)</td></tr>
+        <tr><td>The fault has <b>none</b></td><td class="num">21</td>
+            <td class="num">12 &nbsp;(57%)</td><td class="num no">9 &nbsp;(43%)</td></tr>
+      </tbody>
+      <caption>Dead even where a blueprint exists. Worse where one does not — because
+        the agent reached for a blueprint that did not fit.</caption>
+    </table>
+  </div>
+
+  <h2>What moved underneath the tie is the useful part</h2>
+  <ul class="tight">
+    <li>Blueprints <strong>fixed 3</strong> runs. Two were co-tenant CPU contention —
+        a fault the unaided model got right <strong>0 times out of 6</strong>.</li>
+    <li>Blueprints <strong>broke 4</strong> runs. <strong>All four were the wrong
+        blueprint being selected.</strong> Not one was a blueprint being wrong about
+        its own fault.</li>
+    <li>The right blueprint was picked <strong>19 times out of 27</strong>.</li>
+    <li>The network blueprint was picked <strong>zero times across 9 network
+        incidents</strong> — while the rule engine scores <strong>9/12</strong> on
+        those same faults, using that same blueprint.</li>
+  </ul>
+
+  <p class="say accent">The content is not the bottleneck. The routing is.</p>
+  <div class="foot"><span>13:00</span><span class="src">blueprints/docs/RESULTS-withwithout.md</span></div>
+</section>
+
+<!-- ══ 14 ══ THE FEEDBACK LOOP ═══════════════════════════════ -->
+<section class="slide">
+  <p class="eyebrow"><span class="num">14</span> Early evidence · the method working</p>
+  <h1>The loop that builds a blueprint is itself the result</h1>
+  <p class="lede">
+    Every blueprint is tested by the agent on its own fault, <em>plus</em> a healthy
+    negative, <em>plus</em> a different fault, <em>plus</em> the reverse — another
+    blueprint on this one's fault. The negatives and cross-cells are the point.
+  </p>
+
+  <p class="quote">blueprint &rarr; agent run &rarr; failure analysis &rarr; targeted fix &rarr; correct verdict</p>
+
+  <div class="scroller">
+    <table>
+      <thead><tr><th>Blueprint</th><th class="num">Verdict cells</th><th>What the loop found</th></tr></thead>
+      <tbody>
+        <tr><td>Service CPU cap</td><td class="num"><span class="no">0/1</span> &rarr; <span class="hit">3/3</span></td>
+            <td>"The blueprint assumes a cap hits one process; a cgroup cap hits a process <em>tree</em>."</td></tr>
+        <tr><td>Co-tenant contention</td><td class="num">3/4 &rarr; <span class="hit">4/4</span></td>
+            <td>Fair sharing <em>mimics</em> a quota ceiling. The separator is the idle share — 96% against 1%.</td></tr>
+        <tr><td>Slow dependency</td><td class="num">2/4 &rarr; <span class="hit">4/4</span></td>
+            <td>Blocking-read duration measures nothing on an async runtime: every read took 0.0 ms while every request took 500 ms.</td></tr>
+        <tr><td>Service memory cap</td><td class="num hit">5/5</td>
+            <td>First try, no iterations — the earlier lessons carried over.</td></tr>
+        <tr><td>Service network</td><td class="num hit">4/4</td>
+            <td>Tested on unseen data from day one. 0.94 confidence on a run it had never seen.</td></tr>
+      </tbody>
+      <caption>Across all of it: <b class="hit">zero confident wrong answers</b>. The repeating
+        pattern — negatives clean, positives find the right evidence but under-commit,
+        cross-cells expose exactly one missing rule.</caption>
+    </table>
+  </div>
+
+  <p class="lede">
+    And on unseen data from the real dataset, <strong>each blueprint solved the
+    other's fault</strong> by routing to it — while being honestly cautious about its
+    own. That is the library behaving like a library.
+  </p>
+  <div class="foot"><span>14:00</span><span class="src">progress-notes/12-10 … 17-10-2026</span></div>
+</section>
+
+<!-- ══ 15 ══ KNOWING WHEN TO SAY NOTHING ═════════════════════ -->
+<section class="slide">
+  <p class="eyebrow"><span class="num">15</span> Early evidence · abstention</p>
+  <h1>A blueprint must be able to say <em>"not applicable here"</em></h1>
+
+  <div class="cols two">
+    <div class="card">
+      <h3>Two faults proven <em>not</em> diagnosable from kernel traces</h3>
+      <p>A frozen service, and a silent queue backlog — after six and one measured
+         attempts. Both are defined by <strong>absence</strong>: the container stops
+         answering without losing packets or going quiet in the scheduler.</p>
+      <p>This matches what our <strong>pre-registered</strong> fault catalogue
+         predicted before collection began.</p>
+    </div>
+    <div class="card">
+      <h3>Screening anti-patterns from real faults</h3>
+      <p>Wrong fires <strong>29% &rarr; 12%</strong>, with <strong>zero</strong>
+         correct diagnoses lost. 27 false diagnoses removed.</p>
+      <p>And a measured example of refusal: connection-pool exhaustion on an
+         application whose callers already pool connections — <strong>0.7–1.1</strong>
+         setup calls/s against <strong>169–177</strong> where it works. The blueprint
+         reports that the check did not apply, rather than naming the next most
+         suspicious container.</p>
+    </div>
+  </div>
+
+  <p class="say">A blueprint that always produces an answer is not carrying
+    knowledge. It is guessing with structure.</p>
+  <div class="foot"><span>15:00</span><span class="src">PROPOSAL.md §5.4 · docs/RESULTS-antipattern-ceiling.md</span></div>
+</section>
+
+<!-- ══ 16 ══ EVALUATION PLAN ═════════════════════════════════ -->
+<section class="slide">
+  <p class="eyebrow"><span class="num">16</span> Evaluation plan</p>
+  <h1>Four questions, each already designed</h1>
+
+  <div class="scroller">
+    <table>
+      <thead><tr><th>Question</th><th>Design</th><th>Status</th></tr></thead>
+      <tbody>
+        <tr><td>Does a blueprint <b>transfer</b> to another service and another system?</td>
+            <td>Author on one run; test on another service, another intensity, another application.</td>
+            <td><span class="tag">partially measured</span></td></tr>
+        <tr><td>Does the library <b>abstain</b> when nothing fits?</td>
+            <td>Leave-one-family-out, with healthy runs as negative controls.</td>
+            <td><span class="tag">measured</span></td></tr>
+        <tr><td>Do <b>executable</b> steps beat prose describing the same step?</td>
+            <td>Code in the blueprint versus the identical step as text.</td>
+            <td><span class="tag">strong early signal</span></td></tr>
+        <tr class="lift"><td>Can the right blueprint be <b>selected</b> from evidence alone?</td>
+            <td>Hierarchical routing — issue class to cause — against a flat library.</td>
+            <td><span class="tag warn">the measured bottleneck</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2>Controls that stay in place</h2>
+  <div class="tags">
+    <span class="tag">deterministic brief in both arms</span>
+    <span class="tag">leakage lint</span>
+    <span class="tag">healthy runs as negatives</span>
+    <span class="tag">repeats, so the noise floor is designed in</span>
+  </div>
+
+  <p class="lede">
+    The control is deliberately unkind. We measured that a one-shot model call with
+    a good deterministic brief already <strong>ties</strong> a full tool-using agent,
+    at 27% of the tokens. A blueprint has to earn its place against <em>that</em>.
+  </p>
+  <div class="foot"><span>15:45</span><span class="src">PROPOSAL.md §8 · blueprint-idea.md</span></div>
+</section>
+
+<!-- ══ 17 ══ SCOPE ═══════════════════════════════════════════ -->
+<section class="slide">
+  <p class="eyebrow"><span class="num">17</span> Scope</p>
+  <h1>Ten issue classes. Three kinds of system.</h1>
+
+  <div class="cols">
+    <div class="card">
+      <h3>Microservice <span class="mk">done</span></h3>
+      <p>Two applications, 304 runs. Latency is the entry point — a taxonomy and six
+         causes are already covered by blueprints.</p>
+    </div>
+    <div class="card">
+      <h3>Monolithic <span class="mk">planned</span></h3>
+      <p>Purpose-built micro-benchmarks, each inducing exactly one latency cause.
+         Clean isolation, and it removes the two-application objection.</p>
+    </div>
+    <div class="card">
+      <h3>Agentic <span class="mk">underway</span></h3>
+      <p>The agent is not only the consumer of the library. It is also the
+         <strong>system under observation</strong>.</p>
+    </div>
+  </div>
+
+  <h2>One proof point for the agentic leg — the same method, pointed at the agent</h2>
+  <div class="figs">
+    <div class="fig"><b>260</b><span>controlled runs, two coding agents</span></div>
+    <div class="fig"><b>~84%</b><span>of wall time is model wait on a healthy box</span></div>
+    <div class="fig"><b>+75%</b><span>wall time added by a quarter-core CPU cap</span></div>
+    <div class="fig"><b>+295%</b><span>from over-subscribing cores, 4&times; the core count</span></div>
+  </div>
+  <p class="lede">
+    Kernel traces only. A memory limit set below the agent's own footprint
+    <strong>kills its tools mid-task</strong> — and the agent survives to report a
+    failed job without knowing why. Every effect reproduces on both agents.
+  </p>
+  <div class="foot"><span>16:15</span><span class="src">Blueprint/latency/OS-NOISE-FOR-AGENTIC-AI.md</span></div>
+</section>
+
+<!-- ══ 18 ══ TIMELINE ════════════════════════════════════════ -->
+<section class="slide">
+  <p class="eyebrow"><span class="num">18</span> Proposed work</p>
+  <h1>Six phases</h1>
+  <div class="flow">
+    <div class="step"><span class="n">PHASE 1</span><b>Latency taxonomy</b><span class="d">Enumerate the causes; state which kernel traces can observe.</span></div>
+    <div class="step out"><span class="n">PHASE 2</span><b>Hierarchical selection</b><span class="d">The measured bottleneck. Narrow instead of guessing from a flat list.</span></div>
+    <div class="step"><span class="n">PHASE 3</span><b>Micro-benchmarks</b><span class="d">One cause each, traced repeatedly. Removes the two-app objection.</span></div>
+    <div class="step"><span class="n">PHASE 4</span><b>The harder experiment</b><span class="d">Neither arm gets pre-computed evidence — tests the collection half.</span></div>
+    <div class="step"><span class="n">PHASE 5</span><b>Transfer</b><span class="d">Another service, another app, then a dataset that is not ours.</span></div>
+    <div class="step"><span class="n">PHASE 6</span><b>Writing</b><span class="d">A technical report per problem, then the thesis.</span></div>
+  </div>
+  <p class="lede">
+    Phase 4 matters more than it looks. Every experiment so far handed both arms the
+    evidence pack — so we have tested how to <em>read</em> the numbers, and never yet
+    tested <strong>what to collect</strong>. That is the half a blueprint should be
+    best at, and the half a model has no way to guess.
+  </p>
+  <div class="foot"><span>17:00</span><span class="src">PROPOSAL.md §6</span></div>
+</section>
+
+<!-- ══ 19 ══ CONTRIBUTIONS + CLOSE ═══════════════════════════ -->
+<section class="slide">
+  <p class="eyebrow"><span class="num">19</span> Contributions</p>
+  <h1>What this thesis delivers</h1>
+
+  <div class="cols two">
+    <div class="card">
+      <h3><span class="mk">01</span> The blueprint format, and the method for producing one</h3>
+      <p>Measure-first, validator-enforced: no discriminator is admitted until it is
+         measured against <em>all</em> fault families.
+         <strong>The method is the contribution, not any single blueprint.</strong></p>
+    </div>
+    <div class="card">
+      <h3><span class="mk">02</span> StrataTrace</h3>
+      <p>The first public incident dataset time-aligning <strong>kernel traces</strong>
+         with metrics, logs and application traces under labelled fault injection.</p>
+    </div>
+    <div class="card">
+      <h3><span class="mk">03</span> An honest map of where captured expertise helps</h3>
+      <p>Including that it is a tie overall, that it rescues faults a model cannot do
+         unaided, and that every observed harm came from <strong>misrouting</strong>
+         rather than bad content.</p>
+    </div>
+    <div class="card">
+      <h3><span class="mk">04</span> Executable beats prose</h3>
+      <p>Executable decisions transfer to an agent; the same knowledge as text does
+         not. A direct design consequence for <strong>anyone building agent skill
+         libraries</strong>.</p>
+    </div>
+  </div>
+
+  <p class="say accent">&hellip;moving trace analysis from work that is
+    <em>repeated</em> toward work that <em>accumulates</em>.</p>
+  <div class="foot"><span>17:30</span><span class="src">Thank you — questions</span></div>
+</section>
+
+<!-- ══ 20 ══ APPENDIX ════════════════════════════════════════ -->
+<section class="slide appendix">
+  <p class="eyebrow"><span class="num">A1</span> Backup · for questions</p>
+  <h1>"Isn't this just a threshold?"</h1>
+  <p class="lede">
+    Measured across all 272 runs: each blueprint's headline number on its own,
+    against the whole rule it sits inside.
+  </p>
+
+  <div class="scroller">
+    <table>
+      <thead><tr><th>Blueprint</th><th class="num">Its headline number alone</th><th class="num">The whole rule</th></tr></thead>
+      <tbody>
+        <tr><td>host-cpu-saturation</td><td class="num">separates all 272</td><td class="num hit">271/272</td></tr>
+        <tr><td>cpu-contention-co-tenant</td><td class="num">24 wrong</td><td class="num hit">271/272</td></tr>
+        <tr class="lift"><td>network-path-degradation</td><td class="num no">44 wrong</td><td class="num hit">268/272</td></tr>
+        <tr><td>host-disk-saturation</td><td class="num">10 wrong</td><td class="num hit">262/272</td></tr>
+        <tr><td>service-cpu-throttle</td><td class="num no">68 wrong</td><td class="num">261/272</td></tr>
+        <tr><td>db-latency-dependency-wait</td><td class="num no">88 wrong</td><td class="num">241/272</td></tr>
+      </tbody>
+      <caption>Retransmission alone gets 44 runs wrong. Add "was the baseline quiet"
+        and "was the loss in the queue", and it gets 268 of 272 right.</caption>
+    </table>
+  </div>
+  <p class="say">A threshold is not a blueprint — and now we can say by how much.</p>
+  <div class="foot"><span>backup</span><span class="src">blueprints/docs/RESULTS-blueprint-cards.md</span></div>
+</section>
+
+<!-- ══ 21 ══ APPENDIX ════════════════════════════════════════ -->
+<section class="slide appendix">
+  <p class="eyebrow"><span class="num">A2</span> Backup · for questions</p>
+  <h1>When a blueprint makes an agent <em>worse</em></h1>
+  <p class="lede">600 runs, two applications. On a network fault the blueprint arm
+    found the incident window far <em>less</em> often than the arm given nothing. It
+    did not answer wrongly — it answered <code>unknown</code>.</p>
+
+  <div class="scroller">
+    <table>
+      <thead><tr><th>Abstained on the window</th><th class="num">Without blueprint</th><th class="num">With blueprint</th></tr></thead>
+      <tbody>
+        <tr><td>Sock Shop, out of 30</td><td class="num">1</td><td class="num no">14</td></tr>
+        <tr><td>Train Ticket, out of 30</td><td class="num">9</td><td class="num no">23</td></tr>
+      </tbody>
+      <caption>Both applications, same direction, same size.</caption>
+    </table>
+  </div>
+
+  <p class="lede">
+    The deciding check was a <strong>threshold on a rate</strong>. The agent can show
+    retransmission <em>is or is not</em> happening, but the deployed tools cannot
+    compute a percentage. So it saw the signal, could not satisfy the check as
+    written, and honestly declined.
+  </p>
+  <p class="quote warn">A blueprint whose deciding check is a threshold on a quantity
+the deployed tools cannot compute will make an agent abstain —
+even when the underlying signal is plainly visible.</p>
+  <p class="lede">
+    Now part of the method: every thresholded discriminator needs a
+    <strong>qualitative fallback</strong>, and a blueprint must state which of its
+    checks are unreachable in the current deployment. This is a
+    <strong>portability</strong> result, and it is why "executable" has to mean
+    executable <em>here</em>.
+  </p>
+  <div class="foot"><span>backup</span><span class="src">blueprints/docs/WHEN-A-BLUEPRINT-HURTS.md</span></div>
+</section>
+
+<!-- ══ 22 ══ APPENDIX ════════════════════════════════════════ -->
+<section class="slide appendix">
+  <p class="eyebrow"><span class="num">A3</span> Backup · for questions</p>
+  <h1>How a run is scored</h1>
+  <p class="lede">One accuracy number is not enough, because "right answer" has
+    several independent parts. A run can get one right and the others wrong.</p>
+
+  <div class="cols">
+    <div class="card">
+      <h3>WHERE</h3>
+      <p>A kernel trace has no service names, only a numeric namespace id. Naming a
+         container is <strong>verified against the true id</strong>, never taken on trust.</p>
+    </div>
+    <div class="card">
+      <h3>WHEN</h3>
+      <p>Overlap with the true injection window. <code>unknown</code> is an honest
+         abstention — <strong>scored as nothing, not as wrong</strong>.</p>
+    </div>
+    <div class="card">
+      <h3>Earliness</h3>
+      <p><em>How early</em> it noticed, gated by overlap — because earliness alone is
+         trivially gamed by claiming the whole recording.</p>
+    </div>
+    <div class="card">
+      <h3>WHAT</h3>
+      <p>Concept coverage of the agent's own prose, not a label match. An agent that
+         describes the fault correctly in its own words should not score zero.</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>And harness health prints <em>above</em> the result, deliberately</h3>
+    <p>Three times we read a low score as a limit of kernel traces, and all three
+      times it was our own plumbing. The worst: a reply cap sliced tool results
+      mid-JSON, so the field identifying an <em>already-running</em> container reached
+      the model <strong>4.7%</strong> of the time while the field identifying a
+      <em>spawned</em> one reached it 99.3%. The scores split exactly along that line —
+      and peak context use was <strong>6.6%</strong>. We were destroying evidence to
+      save room nothing was using.</p>
+  </div>
+  <p class="say">Check the harness before believing the score.</p>
+  <div class="foot"><span>backup</span><span class="src">blueprints/docs/SCORING-EXPLAINED.md</span></div>
+</section>
+
+</main>
+
+<script>
+  const slides = Array.from(document.querySelectorAll('.slide'));
+  const pager = document.getElementById('pager');
+  const prog = document.getElementById('prog');
+
+  function current() {
+    const mid = window.scrollY + window.innerHeight / 2;
+    let i = 0;
+    slides.forEach((s, n) => { if (s.offsetTop <= mid) i = n; });
+    return i;
+  }
+  function paint() {
+    const i = current();
+    pager.textContent = (i + 1) + ' / ' + slides.length;
+    prog.style.width = ((i + 1) / slides.length * 100) + '%';
+  }
+  function go(n) {
+    const i = Math.max(0, Math.min(slides.length - 1, n));
+    slides[i].scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  addEventListener('scroll', paint, { passive: true });
+  addEventListener('resize', paint);
+  paint();
+
+  addEventListener('keydown', e => {
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    switch (e.key) {
+      case 'ArrowRight': case 'ArrowDown': case 'PageDown': case ' ':
+        e.preventDefault(); go(current() + 1); break;
+      case 'ArrowLeft': case 'ArrowUp': case 'PageUp':
+        e.preventDefault(); go(current() - 1); break;
+      case 'Home': e.preventDefault(); go(0); break;
+      case 'End':  e.preventDefault(); go(slides.length - 1); break;
+    }
+  });
+</script>

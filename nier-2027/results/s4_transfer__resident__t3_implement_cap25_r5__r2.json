@@ -1,0 +1,67 @@
+{
+  "config": "s4_transfer",
+  "klass": "resident",
+  "run": "t3_implement_cap25_r5",
+  "run_dir": "C:\\workplace\\microservice-trace-dataset\\Blueprint\\latency\\1_svc_cpu_cap\\agentic-os-noise\\runs\\t3_implement_cap25_r5",
+  "rep": 2,
+  "cell": "s4_transfer__resident__t3_implement_cap25_r5__r2",
+  "status": "ok",
+  "returncode": 0,
+  "wall_s": 109.0,
+  "env_ablation": {
+    "ABL_NO_COMPUTED": "1"
+  },
+  "result": {
+    "run_id": "t3_implement_cap25_r5",
+    "diagnosis": {
+      "what_is_wrong": "The trace does not establish an infrastructure fault or explain the reported slow coding task. The notable python3 CPU activity in the sole substantial container was modest (about 0.19 core over 15 seconds), and sampled wake-to-run and block-I/O delays were short; the shared event-rate decline is more consistent with workload activity tapering than with demonstrated host contention.",
+      "root_cause_service": "unknown",
+      "culprit_kind": "unknown",
+      "fault_type": "normal",
+      "evidence": "Used the full 18:55:57.800\u201318:56:30.100 timespan and lifecycle review: the brief 18:56:13.9 process cluster is confined to pid_ns 4026531836 and does not establish a service failure. Compared full-span event rates: scheduling, network, and block issue counts all decline after the first few seconds, with no sustained rebound, rather than showing an isolated resource bottleneck. run_python CPU aggregation reports only 5.754 CPU-seconds across the 32.3-second trace; python3 averages about 0.191 core during 18:56:13\u201318:56:28, and the maximum one-second aggregate is 0.354 core. Raw sampled wakeup-to-switch latency was about 27 microseconds, while sampled block requests completed successfully in about 0.2\u20130.9 ms. ctf_timeline returned no matches for the requested events, so the rate comparisons came from the workers' full-trace aggregation instead. These checks argue against CPU saturation and sampled disk delay; no evidence here demonstrates a different fault mechanism.",
+      "confidence": 0.82,
+      "incident_window": "unknown",
+      "window_evidence": "No interval is supported as an incident window. The activity change around 18:56:02\u201318:56:04 and python3 activity around 18:56:09.4\u201318:56:19.9 are observable workload changes, but the available CPU, wake-to-run, and I/O numbers do not show an associated fault boundary. The worker checks that could have supported CPU starvation or disk latency instead found low CPU use, a prompt wake-to-run sample, and fast successful I/O."
+    },
+    "ranked_services": null,
+    "ranked_candidates": null,
+    "trajectory": [
+      {
+        "step": 0,
+        "tool": "worker1.0",
+        "service": null
+      },
+      {
+        "step": 1,
+        "tool": "worker1.1",
+        "service": null
+      },
+      {
+        "step": 2,
+        "tool": "worker1.2",
+        "service": null
+      },
+      {
+        "step": 3,
+        "tool": "worker1.3",
+        "service": null
+      }
+    ],
+    "n_tool_calls": 58,
+    "n_code_snippets": 17,
+    "n_findings": 10,
+    "n_computed": 17,
+    "bytes_touched": 89303,
+    "tokens": {
+      "in": 485916,
+      "out": 14371
+    },
+    "model": "openai/gpt-6-luna",
+    "wall_s": 108.0,
+    "transcript_file": "C:\\workplace\\microservice-trace-dataset\\nier-2027\\transcripts\\s4_transfer__resident__t3_implement_cap25_r5__r2.json",
+    "skill_selected": null,
+    "skill_confidence": null,
+    "brief_injected": false,
+    "n_claims": null
+  }
+}

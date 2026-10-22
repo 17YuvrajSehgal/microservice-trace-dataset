@@ -1,0 +1,65 @@
+{
+  "config": "repair",
+  "klass": "spawned",
+  "run": "t4_w16_r5",
+  "run_dir": "C:\\workplace\\microservice-trace-dataset\\agentic-runs\\2_threads_vs_cores\\runs\\t4_w16_r5",
+  "rep": 1,
+  "cell": "repair__spawned__t4_w16_r5__r1",
+  "status": "ok",
+  "returncode": 0,
+  "wall_s": 157.7,
+  "env_ablation": {},
+  "result": {
+    "run_id": "t4_w16_r5",
+    "diagnosis": {
+      "what_is_wrong": "A short-lived `ttworker` coding workload consumed nearly all four CPUs, leaving little CPU for the interactive `claude` process; this is consistent with the coding task taking longer, though the trace alone cannot establish its usual completion time. The CPU burst ended when the worker exited, and the sampled evidence does not point to disk, futex, or network delay as its mechanism.",
+      "root_cause_service": "ttworker in pid_ns 4026531836",
+      "culprit_kind": "container",
+      "fault_type": "cpu_saturation",
+      "evidence": "Compared the pre-task interval 02:47:27.2\u201302:47:31.2 with the worker interval 02:47:31.2\u201302:47:35.2 using whole-trace runtime aggregation and process lifecycle findings. `ttworker` had zero CPU runtime before starting, then used 15.228 CPU-s (about 3.8 cores across four seconds); the active 4.1-second interval totaled 15.851 CPU-s, of which `ttworker` accounted for 96.7%. `claude` fell from 0.206 cores in the preceding five seconds to 0.014 cores during the active interval. Raw scheduler records show normal-priority worker execution across CPUs 0\u20133; the worker exits at 02:47:35.382 and recorded CPU use collapses afterward. In the active interval there were 64 block bio events and 453 futex calls, none attributed to `ttworker`, and its sampled network transmissions succeeded (rc=0). The broader event-rate collapse around 02:47:27\u201302:47:29 is a separate earlier change and does not explain the lifecycle-aligned CPU burst. A falsifier would be sustained wake-to-run delays or worker-attributed blocked I/O/network errors; the sampled raw lines showed neither, although the available samples cannot prove absence throughout the trace.",
+      "confidence": 0.92,
+      "incident_window": "02:47:31.200 - 02:47:35.382",
+      "window_evidence": "The left boundary is the task runner/worker arrival: lifecycle data places `ttworker` first appearance at 02:47:31.200, and runtime rises to roughly 400 ms per 100 ms bucket across the four CPUs. The right boundary is its recorded process exit at 02:47:35.382; runtime and overall activity fall immediately around that exit. These boundaries are supported by process lifecycle, per-process runtime aggregation, and raw scheduler/exit events."
+    },
+    "ranked_services": null,
+    "ranked_candidates": null,
+    "trajectory": [
+      {
+        "step": 0,
+        "tool": "worker1.0",
+        "service": null
+      },
+      {
+        "step": 1,
+        "tool": "worker1.1",
+        "service": null
+      },
+      {
+        "step": 2,
+        "tool": "worker1.2",
+        "service": null
+      },
+      {
+        "step": 3,
+        "tool": "worker1.3",
+        "service": null
+      }
+    ],
+    "n_tool_calls": 50,
+    "n_code_snippets": 18,
+    "n_findings": 11,
+    "n_computed": 18,
+    "bytes_touched": 101189,
+    "tokens": {
+      "in": 570189,
+      "out": 12849
+    },
+    "model": "openai/gpt-6-luna",
+    "wall_s": 156.7,
+    "transcript_file": "C:\\workplace\\microservice-trace-dataset\\nier-2027\\transcripts\\repair__spawned__t4_w16_r5__r1.json",
+    "skill_selected": null,
+    "skill_confidence": null,
+    "brief_injected": false,
+    "n_claims": null
+  }
+}

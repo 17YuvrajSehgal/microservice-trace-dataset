@@ -5,9 +5,9 @@ Usage:
     python3 idx_dump.py <trace_dir> <channel_name> [rows] [--raw]
 
 Examples:
-    python3 idx_dump.py ~/run_A/kernel/kernel channel0_0 8        # first 8 and last 8 rows
-    python3 idx_dump.py ~/run_A/kernel/kernel channel0_0 1000     # all rows (if fewer than 2000)
-    python3 idx_dump.py ~/run_A/kernel/kernel channel0_0 1000 --raw   # raw integers, no conversion
+    python3 idx_dump.py <trace_dir> channel0_0 8            # first 8 and last 8 rows
+    python3 idx_dump.py <trace_dir> channel0_0 1000         # all rows (if fewer than 2000)
+    python3 idx_dump.py <trace_dir> channel0_0 1000 --raw   # raw integers, no conversion
 
     <trace_dir>     the folder with channel0_*, metadata and index/
     <channel_name>  channel0_0 (the data file name, without .idx)
@@ -18,11 +18,14 @@ Fields in each row (index version 1.1, nine 8-byte numbers, big-endian):
     offset              byte position of the packet in the data file
     packet_size         size of the packet. The file stores BITS. Shown here in bytes
     content_size        part of the packet that holds events. The file stores BITS. Shown in bytes
-    timestamp_begin     time of the first event, in trace clock units (ns)
-    timestamp_end       time of the last event
-    events_discarded    events lost. As far as I know this is a running total up to the end
-                        of this packet, not a per-packet count. Not verified here, because
-                        the worked trace has 0 everywhere
+    timestamp_begin     when the packet was OPENED, in trace clock units (ns). This can be
+                        earlier than the packet's first event. The first packet of a trace
+                        can open up to about a second before any event
+    timestamp_end       when the packet was CLOSED. Usually equal to the next packet's
+                        timestamp_begin
+    events_discarded    events lost. We believe this is a running total up to the end of
+                        this packet, not a per-packet count. Either way, any non-zero value
+                        means events were lost
     stream_id           ID of the stream (channel type)
     stream_instance_id  ID of this stream instance (one per CPU buffer)
     packet_seq_num      packet counter inside the stream

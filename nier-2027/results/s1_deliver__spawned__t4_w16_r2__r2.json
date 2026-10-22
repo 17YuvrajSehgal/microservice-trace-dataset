@@ -1,0 +1,72 @@
+{
+  "config": "s1_deliver",
+  "klass": "spawned",
+  "run": "t4_w16_r2",
+  "run_dir": "C:\\workplace\\microservice-trace-dataset\\agentic-runs\\2_threads_vs_cores\\runs\\t4_w16_r2",
+  "rep": 2,
+  "cell": "s1_deliver__spawned__t4_w16_r2__r2",
+  "status": "ok",
+  "returncode": 0,
+  "wall_s": 229.1,
+  "env_ablation": {
+    "ABL_FLAT_CAP": "2000"
+  },
+  "result": {
+    "run_id": "t4_w16_r2",
+    "diagnosis": {
+      "what_is_wrong": "A transient `ttworker` batch workload consumed nearly all four available CPU cores while the coding task was running, plausibly slowing its completion. The trace firmly establishes the CPU surge, but sparse scheduler samples do not prove how much runnable delay the coding task experienced, so the user-visible causal link is likely rather than conclusive.",
+      "root_cause_service": "ttworker in pid_ns 4026531836",
+      "culprit_kind": "container",
+      "fault_type": "cpu_saturation",
+      "evidence": "Compared the adjacent quiet ranges 02:48:32\u201302:48:33 and 02:48:37\u201302:48:38 with the active range 02:48:33\u201302:48:37 using the workers' run_python sched_stat_runtime sums and indexed event rates. `ttworker` had zero runtime in each adjacent one-second baseline and accumulated about 15.104 CPU-seconds during the four-second burst (3.776 cores average); total runtime was 15.684 CPU-seconds, about 3.92 core-equivalents. Per-second ttworker runtime stayed around 3.4\u20134.0 CPU-seconds/s until it stopped near 02:48:36.9. Lifecycle results place `worker.py`, `run_all.sh`, `xargs`, and `ttworker` together in this pid namespace at the same boundary; raw sched_switch examples show ttworker threads being scheduled across CPUs 0\u20133. The workers found no comparable disk or network increase. Their wakeup-to-run pairing was too sparse to demonstrate the coding task's delay, and the trace has no sched_stat_wait event; thus saturation is supported, while the precise latency impact is not directly measured.",
+      "confidence": 0.84,
+      "incident_window": "02:48:33 - 02:48:37",
+      "window_evidence": "The onset is marked by the coordinated task-process arrivals around 02:48:33.0\u201333.1 and the sharp change from baseline runtime to sustained ttworker runtime (first full seconds: 3.424 and 3.978 CPU-seconds/s). The end is marked by ttworker's final activity around 02:48:36.9 and the collapse in runtime beginning in the 02:48:37.0 bucket; ttworker runtime then returns to zero in the 02:48:37\u201302:48:38 comparison range. The separate late event-rate collapse is therefore workload termination/recovery, not the incident onset."
+    },
+    "ranked_services": null,
+    "ranked_candidates": null,
+    "trajectory": [
+      {
+        "step": 0,
+        "tool": "worker1.0",
+        "service": null
+      },
+      {
+        "step": 1,
+        "tool": "worker1.1",
+        "service": null
+      },
+      {
+        "step": 2,
+        "tool": "worker1.2",
+        "service": null
+      },
+      {
+        "step": 3,
+        "tool": "worker1.3",
+        "service": null
+      },
+      {
+        "step": 4,
+        "tool": "worker2.100",
+        "service": null
+      }
+    ],
+    "n_tool_calls": 75,
+    "n_code_snippets": 43,
+    "n_findings": 11,
+    "n_computed": 43,
+    "bytes_touched": 160956,
+    "tokens": {
+      "in": 650099,
+      "out": 21301
+    },
+    "model": "openai/gpt-6-luna",
+    "wall_s": 228.2,
+    "transcript_file": "C:\\workplace\\microservice-trace-dataset\\nier-2027\\transcripts\\s1_deliver__spawned__t4_w16_r2__r2.json",
+    "skill_selected": null,
+    "skill_confidence": null,
+    "brief_injected": false,
+    "n_claims": null
+  }
+}

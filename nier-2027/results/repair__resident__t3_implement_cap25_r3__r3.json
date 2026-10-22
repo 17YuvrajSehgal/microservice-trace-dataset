@@ -1,0 +1,65 @@
+{
+  "config": "repair",
+  "klass": "resident",
+  "run": "t3_implement_cap25_r3",
+  "run_dir": "C:\\workplace\\microservice-trace-dataset\\Blueprint\\latency\\1_svc_cpu_cap\\agentic-os-noise\\runs\\t3_implement_cap25_r3",
+  "rep": 3,
+  "cell": "repair__resident__t3_implement_cap25_r3__r3",
+  "status": "ok",
+  "returncode": 0,
+  "wall_s": 157.5,
+  "env_ablation": {},
+  "result": {
+    "run_id": "t3_implement_cap25_r3",
+    "diagnosis": {
+      "what_is_wrong": "The trace shows a sharp temporary drop in activity for the coding workload, but does not establish a host resource fault or prove that this pause caused the reported longer completion time. During the trough the CPUs are often idle, and the available scheduler, disk, and network evidence does not show contention or a backed-up dependency; the change is more consistent with the workload becoming idle or waiting than with CPU saturation.",
+      "root_cause_service": "claude in pid_ns 4026531836",
+      "culprit_kind": "container",
+      "fault_type": "normal",
+      "evidence": "Compared full-span 100-ms and per-second event rates and sched_stat_runtime summaries over 03:27:30.200\u201303:28:02.100. At 03:27:35.4\u201335.8, sched_switch fell to 25 events and runtime to 1.64 ms total from 5,775 switches and 1.291 CPU-s in the preceding 5 s; rates remained generally lower afterward, while CPU runtime rose again at 03:27:41.2. Container CPU use averaged only about 0.17 cores across the trace, with no evidence of saturation. Raw ctf_lines around the trough show idle-to-claude/mi-scavenger scheduling and futex calls, but do not show delayed runnable tasks or an identified lock holder. Block issue/complete counts tracked closely, and the workers found no corroborating disk backlog or network collapse. No process-lifetime container change was reported. A sustained runnable-to-scheduled delay or evidence of a contended lock would have supported a fault diagnosis; the supplied checks did not show that, though ctf_procdiff was not reported as run.",
+      "confidence": 0.7,
+      "incident_window": "03:27:35.4 - 03:27:41.2",
+      "window_evidence": "The window starts at the sharply bounded trough: sched_switch/runtime drop to 25 events/1.64 ms over 03:27:35.4\u201335.8. It ends where per-second CPU runtime rises to 227.4 ms at 03:27:41.2, after several low-runtime seconds (about 15\u201319 ms/s from 03:27:37.2 through 03:27:40.2). This marks an observed workload-activity lull, not a proven fault interval."
+    },
+    "ranked_services": null,
+    "ranked_candidates": null,
+    "trajectory": [
+      {
+        "step": 0,
+        "tool": "worker1.0",
+        "service": null
+      },
+      {
+        "step": 1,
+        "tool": "worker1.1",
+        "service": null
+      },
+      {
+        "step": 2,
+        "tool": "worker1.2",
+        "service": null
+      },
+      {
+        "step": 3,
+        "tool": "worker1.3",
+        "service": null
+      }
+    ],
+    "n_tool_calls": 49,
+    "n_code_snippets": 21,
+    "n_findings": 9,
+    "n_computed": 21,
+    "bytes_touched": 109192,
+    "tokens": {
+      "in": 567159,
+      "out": 15296
+    },
+    "model": "openai/gpt-6-luna",
+    "wall_s": 156.5,
+    "transcript_file": "C:\\workplace\\microservice-trace-dataset\\nier-2027\\transcripts\\repair__resident__t3_implement_cap25_r3__r3.json",
+    "skill_selected": null,
+    "skill_confidence": null,
+    "brief_injected": false,
+    "n_claims": null
+  }
+}
