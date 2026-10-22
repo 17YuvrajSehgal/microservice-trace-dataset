@@ -154,8 +154,11 @@ def load_state(rebuild=False, run_id=None):
     STATE["run"] = RUNS[RUN_ID]
     # Deliberately NOT under the index root or the run directory: the code
     # sandbox is handed the index, and the answer should not sit beside it.
-    gt = os.path.join(HERE, "answer", RUNS[RUN_ID]["gt"])
-    STATE["truth"] = json.load(open(gt, encoding="utf-8")) if os.path.exists(gt) else {}
+    # A loaded external trace has no ground truth, which is fine - the Verdict tab just
+    # has nothing to reveal.
+    gtname = RUNS[RUN_ID].get("gt")
+    gt = os.path.join(HERE, "answer", gtname) if gtname else None
+    STATE["truth"] = json.load(open(gt, encoding="utf-8")) if gt and os.path.exists(gt) else {}
     # One recording per trace. A single shared file meant selecting the network trace and
     # pressing Replay showed the CPU investigation, scored against the wrong ground truth.
     tp = os.path.join(HERE, "demo-transcript-%s.jsonl" % RUN_ID)
@@ -567,9 +570,10 @@ def _live_worker():
         load_dotenv(os.path.join(ROOT, ".env"))
         from stratatrace import load_run
         import agent_v2, skillreg
+        bpname = RUNS[RUN_ID].get("blueprint")
         sk = [x for x in skillreg.load_skills(
             os.path.join(ROOT, "blueprints", "skills-kernel-only"))
-            if x.name == RUNS[RUN_ID]["blueprint"]]
+            if bpname and x.name == bpname]
 
         # CLEAR IT FIRST. agent_v2.CTX is a module global that outlives a run, so on a second
         # run the watcher below latched onto the PREVIOUS run's context immediately and the
@@ -589,7 +593,8 @@ def _live_worker():
         threading.Thread(target=watch, daemon=True).start()
         out = agent_v2.diagnose(load_run(RUN_DIR), app="sockshop",
                                 transcript_path=os.path.join(DATA, "live.json"),
-                                condition="demo-live", skills=sk, skill_given=True)
+                                condition="demo-live",
+                                skills=(sk or None), skill_given=bool(sk))
         LIVE["out"] = out
         # Every finished run becomes a session on disk, so a refresh or restart loses
         # nothing: the transcript replays, and the chat continues where it stopped.
@@ -764,13 +769,13 @@ def session_fork(sid):
     return session_open(nid)
 
 
-def code_browse():
+def browse_dir(title):
     """Open the OS folder picker on the machine running the server; return the chosen path."""
     pick = chr(10).join([
         "import tkinter as tk",
         "from tkinter import filedialog",
         "r = tk.Tk(); r.withdraw(); r.attributes('-topmost', True)",
-        "p = filedialog.askdirectory(title='Select the application source directory')",
+        "p = filedialog.askdirectory(title=%r)" % title,
         "print(p or '')",
     ])
     try:
@@ -785,6 +790,118 @@ def code_browse():
     if not os.path.isdir(path):
         return {"error": "not a directory: %s" % path}
     return {"path": path}
+
+
+def code_browse():
+    return browse_dir("Select the application source directory")
+
+
+# ----------------------------------------------------------------------------------
+# Load ANY kernel trace from disk: find its CTF, build the index, register it as a run.
+# Decoding needs babeltrace2, which lives in WSL on this machine, so the build shells out
+# to WSL. Small traces finish in seconds; the UI polls /api/trace/status while it runs.
+# ----------------------------------------------------------------------------------
+TRACE_LOAD = {"building": False, "run_id": None, "error": None, "msg": "", "src": None}
+
+
+def _wsl_path(winpath):
+    """C:\a\b -> /mnt/c/a/b so a WSL process can read a Windows path."""
+    pth = os.path.abspath(winpath).replace("\\", "/")
+    if len(pth) > 1 and pth[1] == ":":
+        return "/mnt/" + pth[0].lower() + pth[2:]
+    return pth
+
+
+def find_ctf(d):
+    """The CTF directory inside d (holds `metadata` and a channel). Checks d, d/kernel,
+    d/kernel/kernel - the layouts LTTng runs use in this project."""
+    for sub in ("", "kernel", os.path.join("kernel", "kernel"),
+                os.path.join("trace", "kernel")):
+        c = os.path.join(d, sub) if sub else d
+        if not os.path.isdir(c):
+            continue
+        if os.path.isfile(os.path.join(c, "metadata")) and \
+           any(f.startswith("channel") for f in os.listdir(c)):
+            return c
+    return None
+
+
+def _derive_run_id(src):
+    base = os.path.basename(src.rstrip("/\\"))
+    if base in ("kernel", "trace") or not base:
+        base = os.path.basename(os.path.dirname(src.rstrip("/\\"))) or base
+    slug = re.sub(r"[^A-Za-z0-9]+", "_", base).strip("_").lower() or "trace"
+    return "ext_" + slug
+
+
+def trace_load(path):
+    """Validate a trace directory and kick off an index build if needed."""
+    if not path or not os.path.isdir(path):
+        return {"error": "not a directory"}
+    if TRACE_LOAD["building"]:
+        return {"error": "already building " + (TRACE_LOAD["run_id"] or "")}
+    ctf = find_ctf(path)
+    if not ctf:
+        return {"error": "no kernel CTF found here (need a folder with metadata + channel0_*; "
+                         "e.g. a run's trace/kernel directory)"}
+    rid = _derive_run_id(path)
+    idx = os.path.join(DATA, rid + ".tsv.gz")
+    if os.path.exists(idx):
+        # already built once - register and switch, no decode needed
+        _register_external(rid, ctf, path)
+        with LOCK:
+            load_state(False, rid)
+        return {"ready": True, "run_id": rid}
+    TRACE_LOAD.update({"building": True, "run_id": rid, "error": None,
+                       "msg": "decoding the trace…", "src": path})
+    threading.Thread(target=_trace_build_worker, args=(ctf, rid, path), daemon=True).start()
+    return {"building": True, "run_id": rid}
+
+
+def _register_external(rid, ctf, src):
+    """Add a dynamic run entry and a run dir whose kernel/kernel points at the CTF."""
+    RUNS[rid] = {"label": rid.replace("ext_", "").replace("_", " "),
+                 "blueprint": None, "gt": None, "event": "sched_switch", "signal": "cpu",
+                 "note": "Loaded from " + src, "external": True}
+    rd = os.path.join(DATA, "run", rid)
+    link = os.path.join(rd, "kernel")
+    try:
+        os.makedirs(rd, exist_ok=True)
+        if not os.path.exists(os.path.join(link, "kernel", "metadata")):
+            if os.path.exists(link):
+                try:
+                    os.rmdir(link)
+                except OSError:
+                    pass
+            # junction rd/kernel -> parent of the CTF, so rd/kernel/kernel == the CTF
+            subprocess.run(["cmd", "/c", "mklink", "/J", link, os.path.dirname(ctf)],
+                           capture_output=True, text=True)
+    except OSError:
+        pass
+
+
+def _trace_build_worker(ctf, rid, src):
+    try:
+        script = _wsl_path(os.path.join(HERE, "_build_index.py"))
+        # Paths go as bash positional args ($0..$3), never interpolated into the code - no
+        # shell-quoting of a program string, which is what made the inline version fragile.
+        cmd = ["wsl", "-e", "bash", "-lc",
+               'BT2=babeltrace2 python3 "$0" "$1" "$2" "$3"',
+               script, _wsl_path(ctf),
+               _wsl_path(os.path.join(DATA, rid + ".tsv.gz")),
+               _wsl_path(os.path.join(DATA, rid + ".lines.gz"))]
+        out = subprocess.run(cmd, capture_output=True, text=True, timeout=1800)
+        tail = ((out.stdout or "") + (out.stderr or "")).strip()
+        if not os.path.exists(os.path.join(DATA, rid + ".tsv.gz")):
+            TRACE_LOAD.update({"building": False,
+                               "error": "index build failed: " + tail[-300:]})
+            return
+        _register_external(rid, ctf, src)
+        with LOCK:
+            load_state(True, rid)      # rebuild aggregate for the fresh index
+        TRACE_LOAD.update({"building": False, "error": None, "msg": "ready"})
+    except Exception as e:                                              # noqa: BLE001
+        TRACE_LOAD.update({"building": False, "error": "%s: %s" % (type(e).__name__, e)})
 
 
 def code_connect(path):
@@ -1089,6 +1206,14 @@ class H(BaseHTTPRequestHandler):
                 return self._json(sessions_list())
             if p == "/api/code/browse":
                 return self._json(code_browse())
+            if p == "/api/trace/browse":
+                return self._json(browse_dir("Select a trace directory (its kernel CTF)"))
+            if p == "/api/trace/load":
+                return self._json(trace_load((q.get("path") or [""])[0]))
+            if p == "/api/trace/status":
+                return self._json({"building": TRACE_LOAD["building"],
+                                   "run_id": TRACE_LOAD["run_id"],
+                                   "error": TRACE_LOAD["error"], "msg": TRACE_LOAD["msg"]})
             if p == "/api/code/connect":
                 return self._json(code_connect((q.get("path") or [""])[0]))
             if p == "/api/session/fork":
