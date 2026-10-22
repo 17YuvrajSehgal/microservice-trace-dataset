@@ -28,3 +28,18 @@
     run_ids matching the meta/ dirs (NOT the demo's ext_* ids).
 - Cost confirmed by the real run: ~$0.21/run research-default -> ~$52 for 250; ~half with the
   demo step cap. Fund $60 (matched) / $200 (full specificity matrix).
+
+## "How it works" page in the demo (for the Ciena walkthrough)
+- Added a first tab (now the default landing page) that explains the system before anyone sees
+  it run: the pipeline (raw trace -> index -> agent+blueprint -> verdict), why the index exists
+  (babeltrace2 cannot seek: 1 s at depth 3 s costs 9.6 s, at 213 s costs 133 s -> decode once),
+  what the index holds (100 ms buckets; pid_ns = container identity; value_sum because a count
+  is not a quantity - the guilty workload ranked 8th by count, 1st by CPU time), the 10 tools,
+  what a blueprint is (a folder: method text + its own scripts, both injected), the agent's four
+  stages with their real limits (4 subtasks / 18 turns / 2 rounds / synthesiser has no tools),
+  the four stopping conditions, and the 7-step narrowing workflow.
+- Ends with a real verdict + evidence, and the honest scoreboard (mem 25/44, cpu 4/29, controls
+  10/11) with the caveat that the low CPU number is most likely "cap set but did not bite".
+- Every number on the page was verified against the code/results, not written from memory.
+- Trace is no longer the default tab; verified its chart still paints on switch (the existing
+  tab-switch redraw handles the zero-width-canvas case). No console errors, light and dark.

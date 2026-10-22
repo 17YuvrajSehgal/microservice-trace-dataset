@@ -213,6 +213,24 @@ pre{background:var(--surface-2);border:1px solid var(--rule);padding:13px 15px;o
 .kv b{font-family:var(--mono);font-size:11px;font-weight:600;color:var(--muted);
   text-transform:lowercase;margin-right:5px}
 
+/* ---- "How it works" page ---- */
+.flow{display:flex;align-items:stretch;gap:10px;flex-wrap:wrap;margin:16px 0}
+.fbox{flex:1 1 170px;min-width:150px;background:var(--surface);border:1px solid var(--rule);
+  border-radius:var(--radius);padding:14px 15px;box-shadow:var(--shadow-sm);
+  display:flex;flex-direction:column;gap:5px}
+.fbox b{font-size:13.5px;letter-spacing:-.01em}
+.fbox span{font-size:12.5px;color:var(--muted);line-height:1.5}
+.fbox i{font-family:var(--mono);font-size:10.5px;font-style:normal;color:var(--signal);
+  margin-top:auto;padding-top:7px;letter-spacing:.02em}
+.fbox.hl{border-color:color-mix(in srgb,var(--signal) 40%,var(--rule));
+  background:linear-gradient(180deg,var(--signal-soft),var(--surface))}
+.farrow{display:flex;align-items:center;color:var(--rule-2);font-size:19px;flex:0 0 auto}
+@media(max-width:780px){.farrow{display:none}}
+.cell b{font-size:13.5px;display:block}
+ol.plainlist,ol.steps{max-width:80ch;color:var(--ink-2);padding-left:22px;margin:10px 0}
+ol.plainlist li,ol.steps li{margin:7px 0;line-height:1.6}
+ol.steps li b{color:var(--ink)}
+
 /* ---- status spinner & misc ---- */
 .spin{display:inline-block;width:12px;height:12px;border:2px solid var(--rule-2);
   border-top-color:var(--signal);border-radius:50%;animation:sp .7s linear infinite;
@@ -239,7 +257,8 @@ pre{background:var(--surface-2);border:1px solid var(--rule);padding:13px 15px;o
   <p class="sub">Autonomous root-cause analysis for Linux kernel traces — investigate an
   incident, question the findings, and connect your source to pinpoint the code.</p>
   <nav>
-    <button class="on" data-p="trace">Trace</button>
+    <button class="on" data-p="how">How it works</button>
+    <button data-p="trace">Trace</button>
     <button data-p="check">Discriminator</button>
     <button data-p="bp">Blueprints</button>
     <button data-p="agent">Agent</button>
@@ -247,8 +266,171 @@ pre{background:var(--surface-2);border:1px solid var(--rule);padding:13px 15px;o
   </nav>
 </header>
 
+<!-- ───────────────────────────── HOW IT WORKS ───────────────────────────── -->
+<div class="panel on" id="p-how">
+  <h2>How this works</h2>
+  <p>An agent is given a raw Linux kernel trace of an incident. It is <strong>not</strong> told
+  that anything went wrong, when it happened, or where to look. It has to find that itself,
+  and defend the answer with numbers.</p>
+
+  <div class="grid g4">
+    <div class="cell"><span class="n">15 GB</span><span class="l">one 4-minute trace</span></div>
+    <div class="cell"><span class="n">211 M</span><span class="l">kernel events in it</span></div>
+    <div class="cell"><span class="n">17 MB</span><span class="l">after one indexing pass</span></div>
+    <div class="cell"><span class="n">0</span><span class="l">hints given to the agent</span></div>
+  </div>
+
+  <h3>The pipeline</h3>
+  <div class="flow">
+    <div class="fbox"><b>Raw trace</b><span>LTTng kernel recording.<br>Too big to read.</span></div>
+    <div class="farrow">→</div>
+    <div class="fbox"><b>Index</b><span>Built <em>once</em>.<br>Every query reads this.</span></div>
+    <div class="farrow">→</div>
+    <div class="fbox hl"><b>Agent + Blueprint</b><span>Follows a written method<br>using read-only tools.</span></div>
+    <div class="farrow">→</div>
+    <div class="fbox"><b>Verdict</b><span>What, where, when<br>— with evidence.</span></div>
+  </div>
+
+  <h3>1 · Why we build an index</h3>
+  <p><strong>babeltrace2 cannot seek.</strong> To read one second of trace it decodes from the
+  beginning and discards the rest. So a query costs what its <em>depth</em> costs, not what it
+  returns. Measured:</p>
+  <div class="tw"><table>
+    <thead><tr><th>what you ask for</th><th class="n">time it takes</th></tr></thead>
+    <tbody>
+      <tr><td>1 second, 3 s into the trace</td><td class="n">9.6 s</td></tr>
+      <tr><td>1 second, 213 s into the trace</td><td class="n"><span class="sc bad">133 s</span></td></tr>
+    </tbody>
+  </table></div>
+  <p>An agent asking a dozen questions would spend ten minutes and still see only slivers. So we
+  decode <strong>once</strong>, summarise, and never decode again. A full-trace question now
+  answers in about <strong>2 seconds</strong> instead of 133.</p>
+
+  <h3>2 · What the index contains</h3>
+  <p>One row per 100&nbsp;ms bucket, per event type, per process, per container:</p>
+  <pre>bucket_start_s   event   procname   pid_ns   count   value_sum</pre>
+  <div class="grid g4" style="grid-template-columns:repeat(auto-fit,minmax(280px,1fr))">
+    <div class="cell"><b><code>pid_ns</code> &mdash; which container</b>
+      <span class="l" style="margin-top:6px">The only thing in a kernel trace that tells
+      <code>java</code> in one container from <code>java</code> in another. Without it you can
+      see a fault but never say whose it is.</span></div>
+    <div class="cell"><b><code>value_sum</code> &mdash; the quantity, not the count</b>
+      <span class="l" style="margin-top:6px">A count is not a quantity. In one trace the guilty
+      workload ranked <strong>8th by event count</strong> but <strong>1st by CPU time</strong>.
+      Counting alone would have missed it.</span></div>
+  </div>
+
+  <h3>3 · The tools the agent gets</h3>
+  <p class="hint">All read-only. The first five read the index and are fast; <code>ctf_lines</code>
+  is the only one that touches the raw trace, so it is deliberately restricted to narrow ranges.</p>
+  <div class="tw"><table>
+    <thead><tr><th>tool</th><th>what it answers</th></tr></thead>
+    <tbody>
+      <tr><td class="mono">ctf_timespan</td><td>When does this recording start and end?</td></tr>
+      <tr><td class="mono">ctf_timeline</td><td>Count one event across the <em>whole</em> recording — <strong>the change-point finder</strong></td></tr>
+      <tr><td class="mono">query_ctf</td><td>Counts and busiest processes in a window I choose</td></tr>
+      <tr><td class="mono">ctf_procdiff</td><td>What is different between window A and window B</td></tr>
+      <tr><td class="mono">ctf_proclife</td><td>Which processes appeared or vanished mid-recording</td></tr>
+      <tr><td class="mono">ctf_lines</td><td>Show me real raw event lines (expensive — narrow ranges)</td></tr>
+      <tr><td class="mono">run_python</td><td>Write and run my own analysis code over the index (sandboxed)</td></tr>
+      <tr><td class="mono">blueprint_tool</td><td>Run the blueprint's own scripts, with its exact commands</td></tr>
+      <tr><td class="mono">note_finding</td><td>Write a finding down — only these reach the final answer</td></tr>
+      <tr><td class="mono">submit_diagnosis</td><td>Commit to the verdict</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>4 · What a blueprint is</h3>
+  <p>Not a prompt — a <strong>folder</strong>, written by an engineer and backed by measurement:</p>
+  <pre>4_svc_mem_cap/
+  README_v1.md    the method: what the fault is, how to tell it from look-alikes, steps in order
+  tools/          the scripts that method tells you to run</pre>
+  <p>Handing one to the agent does <strong>two</strong> things at once:</p>
+  <ol class="plainlist">
+    <li><strong>The method text</strong> becomes part of its instructions — including a
+      look-alike table: how this fault differs from the ones it resembles.</li>
+    <li><strong>The blueprint's own scripts become a callable tool</strong>, so the agent runs
+      <em>its</em> commands rather than improvising.</li>
+  </ol>
+  <div class="note"><p><strong>Example of the discrimination a blueprint encodes.</strong>
+  <code>mm_vmscan_memcg_reclaim</code> means <em>the container's own limit</em> is biting.
+  A host-wide memory shortage uses <em>different</em> events (<code>direct_reclaim</code>,
+  <code>kswapd</code>). The event name alone separates "this container's cap" from "the machine
+  is full" — and that is what makes the verdict defensible.</p></div>
+
+  <h3>5 · How the agent runs</h3>
+  <div class="flow">
+    <div class="fbox"><b>Planner</b><span>Splits the job.<br>One call, no tools.</span>
+      <i>max 4 subtasks</i></div>
+    <div class="farrow">→</div>
+    <div class="fbox hl"><b>Workers</b><span>Investigate in parallel,<br>each with its own tools.</span>
+      <i>max 18 tool turns each</i></div>
+    <div class="farrow">→</div>
+    <div class="fbox"><b>Reviewer</b><span>Is this enough,<br>or go again?</span>
+      <i>max 2 rounds total</i></div>
+    <div class="farrow">→</div>
+    <div class="fbox"><b>Synthesiser</b><span>Weighs the findings<br>and commits.</span>
+      <i>has no tools</i></div>
+  </div>
+  <div class="grid g4" style="grid-template-columns:repeat(auto-fit,minmax(280px,1fr))">
+    <div class="cell"><b>The synthesiser has no tools</b>
+      <span class="l" style="margin-top:6px">It cannot go and look at anything. It can only weigh
+      evidence the workers recorded — so the final answer cannot be improvised.</span></div>
+    <div class="cell"><b>Only written findings survive</b>
+      <span class="l" style="margin-top:6px">Anything a worker saw but did not write down with
+      <code>note_finding</code> is lost. Harsh, but it forces evidence to be stated.</span></div>
+  </div>
+
+  <h3>6 · When it stops</h3>
+  <ol class="plainlist">
+    <li>A worker stops when it decides it has nothing left to ask — or it hits its turn limit.</li>
+    <li>A worker that recorded <em>nothing</em> gets one nudge: silence looks identical to
+      "checked and found nothing", so we make it say which.</li>
+    <li>The reviewer may order one extra round. Never more than two.</li>
+    <li>The synthesiser commits: what, where, when, evidence, confidence.</li>
+  </ol>
+  <p class="hint">Costs are bounded throughout — every tool reply is capped, and old tool output
+  in a long conversation is stubbed out so cost does not grow with the square of the turns.</p>
+
+  <h3>7 · How it narrows down</h3>
+  <p>This is the human workflow, deliberately:</p>
+  <ol class="steps">
+    <li><b>Orient.</b> How long is this recording?</li>
+    <li><b>Scan.</b> Count an event across the entire recording. A step up or a collapse is a candidate.</li>
+    <li><b>Doubt it.</b> Confirm against a second, unrelated event — a step in <em>everything</em>
+      means the workload changed, not that something broke.</li>
+    <li><b>Compare.</b> Pick a suspect window and a quiet window; diff them per container.</li>
+    <li><b>Attribute.</b> Which <code>pid_ns</code> moved? That is the container.</li>
+    <li><b>Confirm.</b> Pull a handful of raw event lines and read the mechanism directly.</li>
+    <li><b>Commit.</b> Name what, where and when — with the numbers.</li>
+  </ol>
+
+  <h3>What a finished answer looks like</h3>
+  <div class="note g">
+    <p><strong>Verdict:</strong> <code>ttmem</code> — memory limit — 04:31:09–04:31:37 — confidence 0.87</p>
+    <p><strong>Evidence:</strong> 8,937 cgroup-reclaim events and 18,132 block reads (4.76 GB) in
+    the active window, against <strong>zero reclaim</strong> in the quiet window.</p>
+    <p class="hint">Every number there can be checked independently. That is the bar.</p>
+  </div>
+
+  <h3>Where it stands today</h3>
+  <p>84 agentic traces, each run with the correct blueprint handed over:</p>
+  <div class="tw"><table>
+    <thead><tr><th>case</th><th class="n">result</th></tr></thead>
+    <tbody>
+      <tr><td>Memory caps detected</td><td class="n"><span class="sc mid">25 / 44</span></td></tr>
+      <tr><td>CPU caps detected</td><td class="n"><span class="sc bad">4 / 29</span></td></tr>
+      <tr><td>Clean baselines correctly cleared</td><td class="n"><span class="sc good">10 / 11</span></td></tr>
+    </tbody>
+  </table></div>
+  <div class="note w"><p><strong>The low CPU number is probably correct, not a failure.</strong>
+  A CPU cap on a bursty, LLM-bound agent often has so much headroom that it barely throttles —
+  there is nothing in the kernel to see, so the agent honestly reports "normal". The next step is
+  to score only against caps that <em>measurably bit</em>, using the cgroup counters as ground
+  truth.</p></div>
+</div>
+
 <!-- ─────────────────────────────── TRACE ─────────────────────────────── -->
-<div class="panel on" id="p-trace">
+<div class="panel" id="p-trace">
   <h2>What was recorded</h2>
   <div id="runnote"></div>
   <div class="grid g4" id="stats"></div>
