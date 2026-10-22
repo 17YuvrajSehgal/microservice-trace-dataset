@@ -1,12 +1,12 @@
 # Blueprint: finding a memory cap on one service from a kernel trace
 
-| | |
-|---|---|
-| Problem class | Latency (soft limit) and failure (hard limit) |
-| Root cause this blueprint confirms or rejects | One service (container) has a memory limit that is too small for its work |
-| Evidence | An LTTng kernel trace only: the `metadata` file, the channel data files, and the `index/` folder |
-| Also allowed | The list of event types the trace holds (read from `metadata`), and the event rules you turned on when you recorded the trace, if you know them |
-| Not used | Logs, request traces (spans), metrics, container settings |
+|                                               |                                                                                                                                                 |
+|-----------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------|
+| Problem class                                 | Latency (soft limit) and failure (hard limit)                                                                                                   |
+| Root cause this blueprint confirms or rejects | One service (container) has a memory limit that is too small for its work                                                                       |
+| Evidence                                      | An LTTng kernel trace only: the `metadata` file, the channel data files, and the `index/` folder                                                |
+| Also allowed                                  | The list of event types the trace holds (read from `metadata`), and the event rules you turned on when you recorded the trace, if you know them |
+| Not used                                      | Logs, request traces (spans), metrics, container settings                                                                                       |
 
 **How to use this blueprint.** Read Part 1 once, to learn what the fault is and what it looks like. Then do the steps in Part 4 in order. Each step says what to run, how to read the output, and which step comes next. Some steps can end the investigation. If a step tells you to stop, write down what you found and stop.
 
@@ -51,42 +51,42 @@ One warning, measured: **the victim looks like a slow-disk victim.** Its threads
 
 ### 1.3 Problems that look similar
 
-| Cause | What the kernel trace shows | How it differs from a memory cap |
-|---|---|---|
-| **Memory cap (this fault)** | memcg reclaim by one container's processes, the same processes re-reading many MB, `D` high; deaths only under the hard limit | — |
-| Plain slow or busy disk | Reads and `D` high, but **no reclaim at all** | A cap always reclaims. No `mm_vmscan_memcg_*` events, no cap |
-| Host out of memory | `mm_vmscan_direct_reclaim_*` and `kswapd` activity; processes in DIFFERENT containers stall | A cap uses memcg reclaim and hits one container |
-| CPU cap | The victim is ready-but-WAITING for a CPU (`wait` high), not sleeping on disk | A memory cap's victim sleeps in `D`; hand CPU waits to the CPU-cap blueprint |
-| Cold cache / first read | One pass of reads, roughly the size of the data, no reclaim, then it stops | A cap re-reads the same data repeatedly and reclaims the whole time |
-| A memory leak | Usage grows until SOMETHING stops it. If that something is the container's limit, the trace shows exactly this fault | The trace shows the limit biting; whether the growth was a leak needs the application's history |
-| Writeback storm | `writeback_*` events and WRITES dominate | A squeezed cache shows READS (refaults) |
+| Cause                       | What the kernel trace shows                                                                                                   | How it differs from a memory cap                                                                |
+|-----------------------------|-------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------|
+| **Memory cap (this fault)** | memcg reclaim by one container's processes, the same processes re-reading many MB, `D` high; deaths only under the hard limit | —                                                                                               |
+| Plain slow or busy disk     | Reads and `D` high, but **no reclaim at all**                                                                                 | A cap always reclaims. No `mm_vmscan_memcg_*` events, no cap                                    |
+| Host out of memory          | `mm_vmscan_direct_reclaim_*` and `kswapd` activity; processes in DIFFERENT containers stall                                   | A cap uses memcg reclaim and hits one container                                                 |
+| CPU cap                     | The victim is ready-but-WAITING for a CPU (`wait` high), not sleeping on disk                                                 | A memory cap's victim sleeps in `D`; hand CPU waits to the CPU-cap blueprint                    |
+| Cold cache / first read     | One pass of reads, roughly the size of the data, no reclaim, then it stops                                                    | A cap re-reads the same data repeatedly and reclaims the whole time                             |
+| A memory leak               | Usage grows until SOMETHING stops it. If that something is the container's limit, the trace shows exactly this fault          | The trace shows the limit biting; whether the growth was a leak needs the application's history |
+| Writeback storm             | `writeback_*` events and WRITES dominate                                                                                      | A squeezed cache shows READS (refaults)                                                         |
 
 ---
 
 ## Part 2. What you need
 
-| Input | Why |
-|---|---|
-| The trace folder: the `metadata` file, the channel data files (one per CPU), and `index/` | Everything comes from here |
-| `mm_vmscan_*`, `block_rq_*`, and `sched_*` events in the trace | Reclaim, refault reads, sleeps, and deaths |
+| Input                                                                                                         | Why                                               |
+|---------------------------------------------------------------------------------------------------------------|---------------------------------------------------|
+| The trace folder: the `metadata` file, the channel data files (one per CPU), and `index/`                     | Everything comes from here                        |
+| `mm_vmscan_*`, `block_rq_*`, and `sched_*` events in the trace                                                | Reclaim, refault reads, sleeps, and deaths        |
 | A normal period to compare with: a normal stretch in the same trace, or a fault-free trace of the same system | Numbers only mean something when you compare them |
-| `babeltrace2`, `python3`, GNU `date` | To read the trace and run the scripts |
-| The eleven scripts below, all in one folder | To read the index, cut slices, and measure |
+| `babeltrace2`, `python3`, GNU `date`                                                                          | To read the trace and run the scripts             |
+| The eleven scripts below, all in one folder                                                                   | To read the index, cut slices, and measure        |
 
 The scripts:
 
-| Script | What it does |
-|---|---|
-| `idx_summary.py` | Trace date, start, end, length, CPUs, health checks, and data written over time. Reads only the index, so it takes seconds |
-| `idx_dump.py` | Every field of one index file, one row per packet |
-| `idx_slice.py` | Copies only the packets that cover a time window into a small trace |
-| `extract_slice.sh` | Cuts one time slice and keeps the events you name (default: scheduling only; this blueprint passes a memory pattern) |
-| `mem_pressure.py` | The memory-cap check: who reclaims (container limit or host), who re-reads from disk, and who died doing it. The decisive tool here |
-| `sched_budget.py` | Time budget per process: running, waiting, sleeping (`S`), disk sleep (`D`) |
-| `victim_info.py` | Who a process is: PID, names, threads, container |
-| `wake_graph.py` | Which processes wake the victim, and which ones it wakes |
-| `cpu_hogs.py` | Who used the CPU; used here only to rule CPU problems out |
-| `rhythm.py`, `cpu_ceiling.py` | CPU-cap checks; used here only to hand a CPU case to the right blueprint |
+| Script                        | What it does                                                                                                                        |
+|-------------------------------|-------------------------------------------------------------------------------------------------------------------------------------|
+| `idx_summary.py`              | Trace date, start, end, length, CPUs, health checks, and data written over time. Reads only the index, so it takes seconds          |
+| `idx_dump.py`                 | Every field of one index file, one row per packet                                                                                   |
+| `idx_slice.py`                | Copies only the packets that cover a time window into a small trace                                                                 |
+| `extract_slice.sh`            | Cuts one time slice and keeps the events you name (default: scheduling only; this blueprint passes a memory pattern)                |
+| `mem_pressure.py`             | The memory-cap check: who reclaims (container limit or host), who re-reads from disk, and who died doing it. The decisive tool here |
+| `sched_budget.py`             | Time budget per process: running, waiting, sleeping (`S`), disk sleep (`D`)                                                         |
+| `victim_info.py`              | Who a process is: PID, names, threads, container                                                                                    |
+| `wake_graph.py`               | Which processes wake the victim, and which ones it wakes                                                                            |
+| `cpu_hogs.py`                 | Who used the CPU; used here only to rule CPU problems out                                                                           |
+| `rhythm.py`, `cpu_ceiling.py` | CPU-cap checks; used here only to hand a CPU case to the right blueprint                                                            |
 
 The slice pattern this blueprint uses everywhere (scheduling + reclaim + disk + births/deaths):
 
@@ -138,8 +138,6 @@ grep -c -E 'block_rq_issue'  $WORK/event_names.txt
 - If the trace has **no `mm_vmscan_memcg_*`** events, this blueprint loses its main evidence. You can still see refault-style re-reading (Step 6) and deaths, but say clearly in your report that reclaim itself was not recorded, and treat any verdict as weaker.
 - If `block_rq_issue` is missing, you cannot see the refault reads. Say so.
 
-**Next:** Step 2.
-
 ### Step 2. Find when something changed
 
 ```bash
@@ -152,8 +150,6 @@ A memory squeeze often makes the rate RISE — refault reads generate lots of bl
 WINDOW_START=<HH:MM:SS>   # or TRACE_START if nothing stands out
 WINDOW_END=<HH:MM:SS>     # or TRACE_END
 ```
-
-**Next:** Step 3.
 
 ### Step 3. Look for reclaim
 
@@ -185,8 +181,6 @@ BASE_START=<HH:MM:SS>
 FAULT_START=<HH:MM:SS>
 ```
 
-**Next:** Step 4.
-
 ### Step 4. Soft limit or hard limit: did anything die?
 
 **Goal:** tell the slowdown face (`memory.high`) from the killing face (`memory.max`). `mem_pressure.py` already printed the deaths; read them.
@@ -210,8 +204,6 @@ The signature is reads **far past the size of the data being worked on**, togeth
 
 If the job's data size is unknown, compare the victim's read MB per 10 s slice against the baseline slice: the squeezed case repeats, the healthy case reads once and stops.
 
-**Next:** Step 6.
-
 ### Step 6. Confirm what the victim's time went to
 
 **Goal:** a second, independent view of the same story, from the scheduler.
@@ -229,21 +221,17 @@ Read the victim's row:
 - **Careful — `D` is high on a cold-cache baseline too** (measured: 0.87 squeezed against 0.66 cold baseline). `D` supports the story; it does not prove it. The proof is Step 3's reclaim plus Step 5's re-read ratio.
 - If instead `wait` is high and `D` is low, the victim's problem is the CPU — hand the case to the CPU-cap blueprint and **stop**.
 
-**Next:** Step 7.
-
 ### Step 7. Rule out lookalikes
 
-| Check | Where to look | A memory cap looks like this |
-|---|---|---|
-| Is it plain disk work? | Step 3: reclaim | Reads WITH memcg reclaim. Reads without any reclaim are not a memory limit — check the disk, not the memory |
-| Is the host out of memory? | Step 3: which reclaim events | memcg reclaim only. Direct reclaim / kswapd means host pressure; also check whether processes in OTHER containers stall too |
-| Is it the CPU? | Step 6: `wait` against `D` | `D` high, CPU `wait` low |
-| Did the work simply start? | Step 2 + Step 5 baseline | A fresh workload reads its data ONCE. The cap re-reads it for as long as the window lasts |
-| Is it writeback, not reads? | `mem_pressure.py` writers line | Refaults are READS. A write storm is a different story |
+| Check                       | Where to look                  | A memory cap looks like this                                                                                                |
+|-----------------------------|--------------------------------|-----------------------------------------------------------------------------------------------------------------------------|
+| Is it plain disk work?      | Step 3: reclaim                | Reads WITH memcg reclaim. Reads without any reclaim are not a memory limit — check the disk, not the memory                 |
+| Is the host out of memory?  | Step 3: which reclaim events   | memcg reclaim only. Direct reclaim / kswapd means host pressure; also check whether processes in OTHER containers stall too |
+| Is it the CPU?              | Step 6: `wait` against `D`     | `D` high, CPU `wait` low                                                                                                    |
+| Did the work simply start?  | Step 2 + Step 5 baseline       | A fresh workload reads its data ONCE. The cap re-reads it for as long as the window lasts                                   |
+| Is it writeback, not reads? | `mem_pressure.py` writers line | Refaults are READS. A write storm is a different story                                                                      |
 
 If one check does not fit, say which one in your report, and treat the cap as unconfirmed.
-
-**Next:** Step 8.
 
 ### Step 8. Say what you can about the limit's size
 
@@ -255,8 +243,6 @@ The trace does not hold the limit, and unlike the CPU quota there is no per-peri
 
 Do not put a number on the limit unless the operator gives you the working-set size to compare against.
 
-**Next:** Step 9.
-
 ### Step 9. Identify the victim
 
 ```bash
@@ -265,8 +251,6 @@ python3 $TOOLS/wake_graph.py  $WORK/fault_slice.txt $VICTIM
 ```
 
 Same rules as the other blueprints: name the process and PID always; the container namespaces if recorded (a namespace number of 0 means "could not be read", not a real namespace); who it talks to as a hint. The kernel trace never holds a service or container NAME — report what you saw.
-
-**Next:** Step 10.
 
 ### Step 10. Write the RCA statement
 
