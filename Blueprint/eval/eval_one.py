@@ -53,6 +53,7 @@ def run(run_dir, blueprint, problem, index_root, out_dir, transcript=None):
         "blueprint": os.path.basename(os.path.dirname(blueprint)) if blueprint else None,
         "model": config.model_id(), "provider": config.PROVIDER,
         "verdict": {"where": diagnosis.get("root_cause_service"),
+                    "what_is_wrong": diagnosis.get("what_is_wrong"),
                     "when": diagnosis.get("incident_window"),
                     "fault": diagnosis.get("fault_type"),
                     "confidence": diagnosis.get("confidence")},

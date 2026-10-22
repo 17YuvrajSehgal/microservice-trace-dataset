@@ -38,11 +38,13 @@ NORMAL_WORDS = ("normal", "no fault", "no incident", "healthy", "nothing", "no a
                 "no issue", "baseline", "not a fault", "no cap", "uncapped")
 
 
-def _txt(dx: dict) -> str:
-    """All the free-text an agent put in its verdict, lowercased, for keyword matching."""
+def _conclusion(dx: dict) -> str:
+    """The agent's CONCLUSION only - fault_type and the one-line what_is_wrong - lowercased.
+    NOT the evidence: evidence on a clean run naturally says "checked CPU, found nothing", and
+    matching fault words there made every control look like a false positive. The verdict is
+    the fault_type the agent committed to, not the ground it walked to get there."""
     d = dx or {}
-    return " ".join(str(d.get(k, "")) for k in
-                    ("fault_type", "what_is_wrong", "root_cause_service", "evidence")).lower()
+    return (str(d.get("fault_type", "")) + " " + str(d.get("what_is_wrong", ""))).lower()
 
 
 # --------------------------------------------------------------------------------------
@@ -150,17 +152,21 @@ def score(dx: dict, run_dir: str, family: str, index_root=None) -> dict:
     """
     truth = load_truth(run_dir)
     fam = family or truth["family"]
-    text = _txt(dx)
     agentic = truth["scope"] == "cgroup"
 
-    fault_ok = _fault_match(text, fam)
-    normal = _says_normal(text) and not (dx.get("root_cause_service") or "").strip()
+    # Judge from the fault_type the agent committed to. A fault_type that is empty or names a
+    # normal/no-fault outcome is "said normal"; otherwise it is a real fault claim only when it
+    # carries this family's words.
+    ft = (dx.get("fault_type") or "").strip().lower()
+    concl = _conclusion(dx)
+    said_normal = (not ft) or _says_normal(ft)
+    fault_ok = (not said_normal) and _fault_match(ft or concl, fam)
 
     if truth["present"] is False:
-        # control/baseline: detecting it means NOT crying wolf
-        detected = normal or not fault_ok
+        # control/baseline: correct = the agent did NOT claim this fault
+        detected = said_normal or not fault_ok
         return {"detected": bool(detected), "control": True, "present": False,
-                "fault_ok": fault_ok, "said_normal": normal, "where": "n/a",
+                "fault_ok": fault_ok, "said_normal": said_normal, "where": "n/a",
                 "window_iou": None, "family": fam, "agentic": agentic}
 
     where = "n/a" if agentic else _where_microservice(dx, truth, run_dir, index_root)
