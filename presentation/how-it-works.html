@@ -1,0 +1,409 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>StrataTrace — how the agent works</title>
+<style>
+:root{
+  --ground:#eef1f5; --surface:#fff; --surface-2:#f1f4f8;
+  --ink:#141820; --ink-2:#3f4752; --muted:#6a7482;
+  --rule:#e1e7ef; --rule-2:#ccd4e0;
+  --signal:#3a5bd9; --signal-soft:#e9edfd;
+  --warn:#bc5f1d; --warn-soft:#faece0;
+  --good:#2b7d58; --good-soft:#e2f1e9;
+  --mono:ui-monospace,"Cascadia Mono","SF Mono",Menlo,Consolas,monospace;
+  --sans:ui-sans-serif,system-ui,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+}
+:root[data-theme="dark"]{
+  --ground:#0b0e14; --surface:#141822; --surface-2:#1b212e;
+  --ink:#eceff5; --ink-2:#c3cbd8; --muted:#8a95a6;
+  --rule:#242c3a; --rule-2:#333c4e;
+  --signal:#7ea0ff; --signal-soft:#18203a;
+  --warn:#e6a566; --warn-soft:#2a2015;
+  --good:#71c79d; --good-soft:#15251e;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--sans);
+  -webkit-font-smoothing:antialiased;overflow:hidden}
+
+/* deck chrome */
+#bar{position:fixed;top:0;left:0;height:3px;background:var(--signal);width:0;
+  transition:width .25s ease;z-index:50}
+#chrome{position:fixed;bottom:0;left:0;right:0;display:flex;align-items:center;
+  justify-content:space-between;padding:14px 26px;font-size:13px;color:var(--muted);
+  z-index:40;pointer-events:none}
+#chrome .right{display:flex;gap:10px;align-items:center;pointer-events:auto}
+#chrome button{font:inherit;background:var(--surface);color:var(--ink-2);
+  border:1px solid var(--rule-2);border-radius:8px;padding:5px 12px;cursor:pointer}
+#chrome button:hover{border-color:var(--signal);color:var(--ink)}
+#count{font-family:var(--mono);font-size:12px}
+
+/* slides */
+.slide{position:absolute;inset:0;display:none;flex-direction:column;justify-content:center;
+  padding:6vh 8vw 10vh;animation:in .32s cubic-bezier(.2,.7,.3,1) both}
+.slide.on{display:flex}
+@keyframes in{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+@media(prefers-reduced-motion:reduce){.slide{animation:none}}
+.kicker{font-family:var(--mono);font-size:13px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--signal);font-weight:600;margin-bottom:14px}
+h1{font-size:clamp(30px,4.6vw,56px);line-height:1.08;letter-spacing:-.025em;margin:0 0 20px;
+  font-weight:680;max-width:20ch}
+h2{font-size:clamp(23px,3vw,36px);line-height:1.15;letter-spacing:-.02em;margin:0 0 22px;
+  font-weight:670;max-width:24ch}
+p{font-size:clamp(16px,1.55vw,21px);line-height:1.55;color:var(--ink-2);margin:0 0 16px;
+  max-width:60ch}
+.lede{font-size:clamp(18px,1.8vw,24px);color:var(--ink)}
+strong{color:var(--ink);font-weight:660}
+em{font-style:italic}
+code{font-family:var(--mono);font-size:.88em;background:var(--surface-2);
+  border:1px solid var(--rule);border-radius:5px;padding:2px 7px}
+.sub{color:var(--muted);font-size:clamp(14px,1.25vw,17px);margin-top:18px}
+
+/* building blocks */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px;
+  margin:10px 0 6px}
+.stat{background:var(--surface);border:1px solid var(--rule);border-radius:14px;
+  padding:20px 22px}
+.stat .n{font-family:var(--mono);font-size:clamp(26px,3.4vw,42px);font-weight:680;
+  display:block;letter-spacing:-.03em;line-height:1}
+.stat .l{display:block;margin-top:9px;color:var(--muted);font-size:14px}
+.stat.hot .n{color:var(--warn)}
+.stat.cool .n{color:var(--signal)}
+.stat.good .n{color:var(--good)}
+
+.flow{display:flex;align-items:stretch;gap:12px;flex-wrap:wrap;margin:18px 0}
+.fbox{flex:1 1 180px;background:var(--surface);border:1px solid var(--rule);border-radius:14px;
+  padding:18px 20px;display:flex;flex-direction:column;gap:7px}
+.fbox b{font-size:clamp(15px,1.4vw,19px)}
+.fbox span{font-size:14.5px;color:var(--muted);line-height:1.5}
+.fbox i{font-family:var(--mono);font-size:12px;font-style:normal;color:var(--signal);
+  margin-top:auto;padding-top:9px}
+.fbox.hl{border-color:color-mix(in srgb,var(--signal) 45%,var(--rule));
+  background:linear-gradient(180deg,var(--signal-soft),var(--surface))}
+.arr{display:flex;align-items:center;font-size:22px;color:var(--rule-2)}
+@media(max-width:860px){.arr{display:none}}
+
+table{border-collapse:collapse;width:100%;max-width:1000px;font-size:clamp(14px,1.3vw,18px);
+  background:var(--surface);border:1px solid var(--rule);border-radius:14px;overflow:hidden}
+th,td{padding:12px 18px;text-align:left;border-bottom:1px solid var(--rule)}
+th{font-size:12px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);
+  background:var(--surface-2);font-weight:650}
+tr:last-child td{border-bottom:none}
+td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
+td.mono{font-family:var(--mono);font-size:.92em}
+.big{font-family:var(--mono);font-weight:680}
+.hot{color:var(--warn)} .cool{color:var(--signal)} .ok{color:var(--good)}
+
+ol,ul{max-width:62ch;padding-left:26px;margin:4px 0}
+li{font-size:clamp(15px,1.45vw,20px);line-height:1.6;color:var(--ink-2);margin:9px 0}
+li b{color:var(--ink)}
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px;margin-top:6px}
+.card{background:var(--surface);border:1px solid var(--rule);border-radius:14px;padding:20px 22px}
+.card b{display:block;font-size:clamp(15px,1.4vw,19px);margin-bottom:8px}
+.card span{color:var(--muted);font-size:15px;line-height:1.55}
+.note{border:1px solid color-mix(in srgb,var(--signal) 30%,var(--rule));
+  border-left:4px solid var(--signal);background:var(--signal-soft);
+  padding:18px 22px;border-radius:12px;max-width:900px}
+.note.g{border-color:color-mix(in srgb,var(--good) 30%,var(--rule));
+  border-left-color:var(--good);background:var(--good-soft)}
+.note.w{border-color:color-mix(in srgb,var(--warn) 30%,var(--rule));
+  border-left-color:var(--warn);background:var(--warn-soft)}
+.note p{margin:6px 0;max-width:none}
+pre{font-family:var(--mono);font-size:clamp(12px,1.05vw,15px);background:var(--surface-2);
+  border:1px solid var(--rule);border-radius:12px;padding:16px 20px;overflow-x:auto;
+  line-height:1.6;max-width:1000px}
+.center{align-items:center;text-align:center}
+.center h1{max-width:22ch}
+.center p{max-width:48ch}
+</style>
+</head>
+<body>
+<div id="bar"></div>
+
+<!-- 1 ───────────────────────────────────────────────── -->
+<section class="slide on center">
+  <div class="kicker">Brock University · StrataTrace</div>
+  <h1>Finding the root cause from a kernel trace, automatically</h1>
+  <p class="lede">An LLM agent is handed a raw Linux kernel trace and a written diagnostic
+  method. It has to find what broke, where, and when — and prove it.</p>
+  <p class="sub">Press <strong>→</strong> or space to advance</p>
+</section>
+
+<!-- 2 ───────────────────────────────────────────────── -->
+<section class="slide">
+  <div class="kicker">The problem</div>
+  <h2>A four-minute incident is 15 GB of kernel events</h2>
+  <div class="stats">
+    <div class="stat"><span class="n">15 GB</span><span class="l">one 4-minute trace</span></div>
+    <div class="stat"><span class="n">211 M</span><span class="l">kernel events in it</span></div>
+    <div class="stat cool"><span class="n">17 MB</span><span class="l">after one indexing pass</span></div>
+    <div class="stat hot"><span class="n">0</span><span class="l">hints given to the agent</span></div>
+  </div>
+  <p>No human reads that, and no model can be shown it. And the agent is <strong>not told</strong>
+  that an incident happened, when it was, or where to look — otherwise we would only be measuring
+  whether it can describe a window somebody already pointed at.</p>
+</section>
+
+<!-- 3 ───────────────────────────────────────────────── -->
+<section class="slide">
+  <div class="kicker">The shape of it</div>
+  <h2>Four pieces</h2>
+  <div class="flow">
+    <div class="fbox"><b>Raw trace</b><span>LTTng kernel recording.<br>Too big to read.</span></div>
+    <div class="arr">→</div>
+    <div class="fbox"><b>Index</b><span>Built <em>once</em>.<br>Every query reads this.</span></div>
+    <div class="arr">→</div>
+    <div class="fbox hl"><b>Agent + Blueprint</b><span>Follows a written method<br>with read-only tools.</span></div>
+    <div class="arr">→</div>
+    <div class="fbox"><b>Verdict</b><span>What, where, when<br>— with evidence.</span></div>
+  </div>
+  <p class="sub">The blueprint is the part a human engineer writes. Everything else is machinery.</p>
+</section>
+
+<!-- 4 ───────────────────────────────────────────────── -->
+<section class="slide">
+  <div class="kicker">1 · Why an index</div>
+  <h2>babeltrace2 cannot seek</h2>
+  <p>To read one second of trace it decodes from the beginning and throws the rest away. So a
+  query costs what its <strong>depth</strong> costs — not what it returns.</p>
+  <table>
+    <thead><tr><th>what you ask for</th><th class="n">time it takes</th></tr></thead>
+    <tbody>
+      <tr><td>1 second, 3 s into the trace</td><td class="n big">9.6 s</td></tr>
+      <tr><td>1 second, 213 s into the trace</td><td class="n big hot">133 s</td></tr>
+    </tbody>
+  </table>
+  <p class="sub">Same amount of data returned. Fourteen times the cost.</p>
+</section>
+
+<!-- 5 ───────────────────────────────────────────────── -->
+<section class="slide">
+  <div class="kicker">1 · Why an index</div>
+  <h2>So we decode once, and never again</h2>
+  <p>A dozen questions the naive way would cost ten minutes and still show only slivers of the
+  recording. One full pass costs about what a <em>single</em> deep query costs — and then answers
+  everything.</p>
+  <div class="stats">
+    <div class="stat hot"><span class="n">133 s</span><span class="l">one deep query, before</span></div>
+    <div class="stat good"><span class="n">~2 s</span><span class="l">any full-trace question, after</span></div>
+  </div>
+  <p>This is what makes the whole thing viable. Without it the agent is guessing from fragments.</p>
+</section>
+
+<!-- 6 ───────────────────────────────────────────────── -->
+<section class="slide">
+  <div class="kicker">2 · What the index holds</div>
+  <h2>One row per 100 ms, per event, per process, per container</h2>
+  <pre>bucket_start_s   event   procname   <b>pid_ns</b>   count   <b>value_sum</b></pre>
+  <div class="two">
+    <div class="card"><b><code>pid_ns</code> — which container</b>
+      <span>The only thing in a kernel trace that tells <code>java</code> in one container from
+      <code>java</code> in another. Without it you can see a fault but never say whose it is.</span></div>
+    <div class="card"><b><code>value_sum</code> — quantity, not count</b>
+      <span>In one trace the guilty workload ranked <strong>8th by event count</strong> but
+      <strong>1st by CPU time</strong>. Counting alone would have missed it.</span></div>
+  </div>
+</section>
+
+<!-- 7 ───────────────────────────────────────────────── -->
+<section class="slide">
+  <div class="kicker">3 · The toolbox</div>
+  <h2>Ten read-only tools</h2>
+  <table>
+    <tbody>
+      <tr><td class="mono">ctf_timespan</td><td>When does this recording start and end?</td></tr>
+      <tr><td class="mono">ctf_timeline</td><td>Count one event across the <em>whole</em> recording — <strong>the change-point finder</strong></td></tr>
+      <tr><td class="mono">query_ctf</td><td>Counts and busiest processes in a window I choose</td></tr>
+      <tr><td class="mono">ctf_procdiff</td><td>What differs between window A and window B</td></tr>
+      <tr><td class="mono">ctf_proclife</td><td>Which processes appeared or vanished mid-recording</td></tr>
+      <tr><td class="mono">ctf_lines</td><td>Real raw event lines — expensive, narrow ranges only</td></tr>
+      <tr><td class="mono">run_python</td><td>Write and run its own analysis code, sandboxed</td></tr>
+      <tr><td class="mono">blueprint_tool</td><td>Run the blueprint's own scripts, with its exact commands</td></tr>
+      <tr><td class="mono">note_finding</td><td>Write a finding down — only these reach the answer</td></tr>
+      <tr><td class="mono">submit_diagnosis</td><td>Commit to the verdict</td></tr>
+    </tbody>
+  </table>
+  <p class="sub">The first five read the index and answer in seconds. <code>ctf_lines</code> is the
+  only one that touches the raw trace, so it is deliberately restricted.</p>
+</section>
+
+<!-- 8 ───────────────────────────────────────────────── -->
+<section class="slide">
+  <div class="kicker">4 · The blueprint</div>
+  <h2>A blueprint is a folder, not a prompt</h2>
+  <pre>4_svc_mem_cap/
+  README_v1.md    the method: what the fault is, how to tell it from
+                  its look-alikes, and the steps in order
+  tools/          the scripts that method tells you to run</pre>
+  <p>Handing one to the agent does <strong>two</strong> things at once:</p>
+  <ol>
+    <li><b>The method text</b> becomes part of its instructions — including a look-alike table.</li>
+    <li><b>The blueprint's own scripts become a callable tool</b>, so it runs <em>those</em>
+      commands rather than improvising.</li>
+  </ol>
+</section>
+
+<!-- 9 ───────────────────────────────────────────────── -->
+<section class="slide">
+  <div class="kicker">4 · The blueprint</div>
+  <h2>What a blueprint actually encodes</h2>
+  <div class="note">
+    <p><strong><code>mm_vmscan_memcg_reclaim</code></strong> means <strong>this container's own
+    limit</strong> is biting.</p>
+    <p>A host-wide memory shortage uses <em>different</em> events — <code>direct_reclaim</code>,
+    and the <code>kswapd</code> thread.</p>
+    <p><strong>The event name alone separates "this container's cap" from "the machine is full."</strong></p>
+  </div>
+  <p style="margin-top:22px">That is the kind of distinction that makes a verdict defensible to an
+  engineer — and it is measured on our own data before it goes in the blueprint, never asserted
+  from the model's general knowledge.</p>
+</section>
+
+<!-- 10 ──────────────────────────────────────────────── -->
+<section class="slide">
+  <div class="kicker">5 · The agent</div>
+  <h2>Plan, investigate in parallel, review, commit</h2>
+  <div class="flow">
+    <div class="fbox"><b>Planner</b><span>Splits the job.<br>One call, no tools.</span><i>max 4 subtasks</i></div>
+    <div class="arr">→</div>
+    <div class="fbox hl"><b>Workers</b><span>Investigate in parallel,<br>each with its own tools.</span><i>max 18 turns each</i></div>
+    <div class="arr">→</div>
+    <div class="fbox"><b>Reviewer</b><span>Enough,<br>or go again?</span><i>max 2 rounds</i></div>
+    <div class="arr">→</div>
+    <div class="fbox"><b>Synthesiser</b><span>Weighs findings<br>and commits.</span><i>has no tools</i></div>
+  </div>
+  <div class="two">
+    <div class="card"><b>The synthesiser has no tools</b>
+      <span>It cannot go and look at anything. It can only weigh evidence the workers recorded —
+      so the final answer cannot be improvised.</span></div>
+    <div class="card"><b>Only written findings survive</b>
+      <span>Anything a worker saw but did not write down is lost. Harsh — but it forces evidence
+      to be stated rather than implied.</span></div>
+  </div>
+</section>
+
+<!-- 11 ──────────────────────────────────────────────── -->
+<section class="slide">
+  <div class="kicker">6 · Stopping</div>
+  <h2>When does it stop?</h2>
+  <ol>
+    <li>A worker stops when it decides it has <b>nothing left to ask</b> — or it hits its turn limit.</li>
+    <li>A worker that recorded <b>nothing</b> gets one nudge: silence looks identical to "checked
+      and found nothing", so we make it say which.</li>
+    <li>The reviewer may order <b>one extra round</b>. Never more than two.</li>
+    <li>The synthesiser <b>commits</b>: what, where, when, evidence, confidence.</li>
+  </ol>
+  <p class="sub">Cost is bounded throughout — every tool reply is capped, and old output in a long
+  conversation is stubbed out so cost does not grow with the square of the turns.</p>
+</section>
+
+<!-- 12 ──────────────────────────────────────────────── -->
+<section class="slide">
+  <div class="kicker">7 · The method</div>
+  <h2>How it narrows down — the human workflow</h2>
+  <ol>
+    <li><b>Orient.</b> How long is this recording?</li>
+    <li><b>Scan.</b> Count an event across the entire recording. A step up or a collapse is a candidate.</li>
+    <li><b>Doubt it.</b> Confirm against a second, unrelated event — a step in <em>everything</em>
+      means the workload changed, not that something broke.</li>
+    <li><b>Compare.</b> Pick a suspect window and a quiet window; diff them per container.</li>
+    <li><b>Attribute.</b> Which <code>pid_ns</code> moved? That is the container.</li>
+    <li><b>Confirm.</b> Pull a handful of raw event lines and read the mechanism directly.</li>
+    <li><b>Commit.</b> Name what, where and when — with the numbers.</li>
+  </ol>
+</section>
+
+<!-- 13 ──────────────────────────────────────────────── -->
+<section class="slide">
+  <div class="kicker">The output</div>
+  <h2>What a finished answer looks like</h2>
+  <div class="note g">
+    <p><strong>Verdict:</strong> <code>ttmem</code> — memory limit — 04:31:09–04:31:37 —
+    confidence 0.87</p>
+    <p><strong>Evidence:</strong> 8,937 cgroup-reclaim events and 18,132 block reads (4.76 GB) in
+    the active window, against <strong>zero reclaim</strong> in the quiet window.</p>
+  </div>
+  <p style="margin-top:22px">Every number there can be checked independently, against the trace
+  and against the cgroup counters. <strong>That is the bar</strong> — not a plausible sentence,
+  a claim an engineer can falsify.</p>
+</section>
+
+<!-- 14 ──────────────────────────────────────────────── -->
+<section class="slide">
+  <div class="kicker">Honest status</div>
+  <h2>Where it stands today</h2>
+  <p>84 agentic traces, each run with the correct blueprint handed over:</p>
+  <table>
+    <thead><tr><th>case</th><th class="n">result</th></tr></thead>
+    <tbody>
+      <tr><td>Memory caps detected</td><td class="n big">25 / 44</td></tr>
+      <tr><td>CPU caps detected</td><td class="n big hot">4 / 29</td></tr>
+      <tr><td>Clean baselines correctly cleared</td><td class="n big ok">10 / 11</td></tr>
+    </tbody>
+  </table>
+  <div class="note w" style="margin-top:20px">
+    <p><strong>The low CPU number is probably correct, not a failure.</strong> A CPU cap on a
+    bursty, LLM-bound agent often has so much headroom that it barely throttles — there is nothing
+    in the kernel to see, so the agent honestly reports "normal".</p>
+    <p>Next step: score only against caps that <em>measurably bit</em>, using the cgroup counters
+    as ground truth.</p>
+  </div>
+</section>
+
+<!-- 15 ──────────────────────────────────────────────── -->
+<section class="slide center">
+  <div class="kicker">Now the real thing</div>
+  <h1>Let's watch it run</h1>
+  <p class="lede">A real trace, a real blueprint, a live investigation — every tool call and every
+  number visible as it happens.</p>
+  <p class="sub">Switch to the demo at <code>127.0.0.1:8765</code></p>
+</section>
+
+<div id="chrome">
+  <span id="hint">← → navigate · F fullscreen · T theme</span>
+  <span class="right">
+    <button id="prev">←</button>
+    <span id="count">1 / 15</span>
+    <button id="next">→</button>
+  </span>
+</div>
+
+<script>
+const slides = [...document.querySelectorAll('.slide')];
+let i = 0;
+const show = n => {
+  i = Math.max(0, Math.min(slides.length - 1, n));
+  slides.forEach((s, k) => s.classList.toggle('on', k === i));
+  document.getElementById('count').textContent = (i + 1) + ' / ' + slides.length;
+  document.getElementById('bar').style.width =
+    ((i) / (slides.length - 1) * 100) + '%';
+  location.hash = i + 1;
+};
+addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') { e.preventDefault(); show(i + 1); }
+  else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); show(i - 1); }
+  else if (e.key === 'Home') show(0);
+  else if (e.key === 'End') show(slides.length - 1);
+  else if (e.key.toLowerCase() === 'f') {
+    document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen();
+  } else if (e.key.toLowerCase() === 't') {
+    const r = document.documentElement;
+    const dark = r.getAttribute('data-theme') === 'dark';
+    r.setAttribute('data-theme', dark ? 'light' : 'dark');
+    localStorage.setItem('deck-theme', dark ? 'light' : 'dark');
+  }
+});
+document.getElementById('next').onclick = () => show(i + 1);
+document.getElementById('prev').onclick = () => show(i - 1);
+// click anywhere (not a button) advances
+addEventListener('click', e => { if (!e.target.closest('#chrome')) show(i + 1); });
+// follow the OS theme unless the presenter chose one
+const saved = localStorage.getItem('deck-theme');
+document.documentElement.setAttribute('data-theme',
+  saved || (matchMedia('(prefers-color-scheme:dark)').matches ? 'dark' : 'light'));
+show(parseInt(location.hash.slice(1)) - 1 || 0);
+</script>
+</body>
+</html>
