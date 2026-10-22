@@ -41,3 +41,19 @@
   so the user confirms which one was used.
 - Verified: ran svc_cpu_cap (default service-cpu-throttle) but picked deadlock-lock-order in
   the dropdown; the START card showed blueprint=deadlock-lock-order, proving the override.
+
+## Wrong-trace trap: loaded traces now persist + the Agent panel names its trace
+- A memory_cap verdict looked wrong (window 02:48, "no reclaim seen") - it had actually run on
+  the THREADS trace (ext_t4_w2_r2 @ 02:48), not the memory trace (ext_t6a_high_768_r1 @ 04:31).
+  The memory trace's 9,311 mm_vmscan_memcg_reclaim events were never touched.
+- Root cause: external (loaded) traces were registered in the in-memory RUNS only, so a server
+  restart dropped them from the dropdown even though the index files persisted. The memory trace
+  vanished and the run landed on the threads trace.
+- Fix 1: discover_external_runs() at startup re-registers every demo/data/ext_*.tsv.gz, so a
+  loaded trace survives restarts.
+- Fix 2: the Agent panel shows "Trace: <run_id>" above the blueprint picker, and the running
+  note names the run id, so you cannot run on the wrong trace without seeing it.
+- Cleaned a stray ext_trace (bad run-id from an early load, duplicate of t4_w2_r2).
+- Confirms the earlier analysis: service-memory-cap is the wrong lens for these agentic memory
+  runs (it keys on IRQ/disk proxy, not mm_vmscan reclaim). A real memory blueprint would key on
+  mm_vmscan_memcg_reclaim_begin/end, which these runs DO carry.

@@ -50,6 +50,20 @@ def available_runs():
             if os.path.exists(os.path.join(DATA, rid + ".tsv.gz"))]
 
 
+def discover_external_runs():
+    """Re-register ext_* traces whose index was built in an earlier session. Loaded traces
+    live as demo/data/ext_<id>.tsv.gz (+ a run dir), but RUNS is in memory, so without this a
+    loaded trace disappears after a restart - and the user can silently run on the wrong one."""
+    for f in glob.glob(os.path.join(DATA, "ext_*.tsv.gz")):
+        rid = os.path.basename(f)[:-len(".tsv.gz")]
+        if rid in RUNS:
+            continue
+        RUNS[rid] = {"label": rid[4:].replace("_", " ") if rid.startswith("ext_") else rid,
+                     "blueprint": None, "gt": None, "event": "sched_switch", "signal": "cpu",
+                     "note": "Loaded trace.", "external": True}
+
+
+discover_external_runs()
 _env = os.environ.get("DEMO_RUN")
 _av = available_runs()
 RUN_ID = (_env if (_env in RUNS and _env in _av) else (_av[0] if _av else None))

@@ -319,6 +319,8 @@ pre{background:var(--surface-2);border:1px solid var(--rule);padding:13px 15px;o
   investigation instantly.</p>
   <div class="split" style="margin-top:16px">
     <div>
+      <div class="note" id="agenttrace" style="margin:0 0 11px;padding:9px 12px;font-size:12.5px">
+        Trace: <strong id="agenttraceid">—</strong></div>
       <label>Blueprint for this run</label>
       <select id="bpsel" style="width:100%;margin-bottom:9px"></select>
       <button class="go" id="live" style="width:100%">Run the agent (new session)</button>
@@ -600,6 +602,7 @@ async function loadBlueprints(){
   const d=await api('/api/blueprints');
   // the Agent-panel picker: default to the blueprint this run is configured for, if any
   const dflt=(RUN&&RUN.meta&&RUN.meta.blueprint)||'';
+  if($('#agenttraceid')) $('#agenttraceid').textContent=(RUN&&RUN.run_id)||'none loaded';
   $('#bpsel').innerHTML='<option value="">none — investigate with no blueprint</option>'+
     d.blueprints.map(b=>`<option value="${b.name}" ${b.name===dflt?'selected':''}>${b.name}</option>`).join('');
   $('#blist').innerHTML=d.blueprints.map(b=>`<div data-n="${b.name}">
@@ -764,8 +767,8 @@ $('#live').onclick=async()=>{
   $('#chat').innerHTML=''; chatCursor=0; chatEnable(false);
   if(chatTimer){clearTimeout(chatTimer); chatTimer=null;}
   $('#vans').innerHTML='<p class="hint">Running…</p>'; $('#vtruth').innerHTML='';
-  $('#livenote').innerHTML=`<div class="note"><p><strong>Running now</strong> on the trace in
-    the first tab, ${chosenBp?`with the <code>${esc(chosenBp)}</code> blueprint`
+  $('#livenote').innerHTML=`<div class="note"><p><strong>Running now</strong> on
+    <code>${esc((RUN&&RUN.run_id)||'')}</code>, ${chosenBp?`with the <code>${esc(chosenBp)}</code> blueprint`
       :'with <strong>no blueprint</strong> — investigating freely'}. Provider ${esc(r.provider)},
     model ${esc(r.model)}. Takes two to four minutes.</p></div>`;
   liveTick(0);
