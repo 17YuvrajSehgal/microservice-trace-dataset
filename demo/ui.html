@@ -319,6 +319,8 @@ pre{background:var(--surface-2);border:1px solid var(--rule);padding:13px 15px;o
   investigation instantly.</p>
   <div class="split" style="margin-top:16px">
     <div>
+      <label>Blueprint for this run</label>
+      <select id="bpsel" style="width:100%;margin-bottom:9px"></select>
       <button class="go" id="live" style="width:100%">Run the agent (new session)</button>
       <button class="ghost go" id="fork" style="width:100%;margin-top:8px" disabled>New chat on this run</button>
       <div style="margin-top:14px"><label>Source code (read-only)</label>
@@ -596,6 +598,10 @@ $('#reset').onclick=()=>{const n=SERIES.length;SEL=[Math.round(n*.25),Math.round
 /* ---------- blueprints ---------- */
 async function loadBlueprints(){
   const d=await api('/api/blueprints');
+  // the Agent-panel picker: default to the blueprint this run is configured for, if any
+  const dflt=(RUN&&RUN.meta&&RUN.meta.blueprint)||'';
+  $('#bpsel').innerHTML='<option value="">none — investigate with no blueprint</option>'+
+    d.blueprints.map(b=>`<option value="${b.name}" ${b.name===dflt?'selected':''}>${b.name}</option>`).join('');
   $('#blist').innerHTML=d.blueprints.map(b=>`<div data-n="${b.name}">
     <div class="bn">${b.name}${b.active?'<span class="tag">used here</span>':''}</div>
     <div class="bc">${b.covers||'—'} · v${b.version??'?'} · ${(b.chars/1000).toFixed(1)}k chars</div>
@@ -745,7 +751,8 @@ $('#live').onclick=async()=>{
       ${esc(r.why.join('; '))}</p><p class="hint">Replay still works — it needs nothing.</p></div>`;
     return;
   }
-  const st=await api('/api/live/start');
+  const chosenBp=$('#bpsel') ? $('#bpsel').value : '';
+  const st=await api('/api/live/start?blueprint='+encodeURIComponent(chosenBp));
   if(!st.started){
     $('#livenote').innerHTML=`<div class="note w"><p>${esc(st.reason)}</p></div>`; return;
   }
@@ -757,9 +764,9 @@ $('#live').onclick=async()=>{
   $('#chat').innerHTML=''; chatCursor=0; chatEnable(false);
   if(chatTimer){clearTimeout(chatTimer); chatTimer=null;}
   $('#vans').innerHTML='<p class="hint">Running…</p>'; $('#vtruth').innerHTML='';
-  $('#livenote').innerHTML=`<div class="note"><p><strong>Running now</strong> — same
-    <code>agent_v2.diagnose</code> the study calls, on the trace in the first tab, with the
-    <code>${esc((RUN&&RUN.meta&&RUN.meta.blueprint)||'')}</code> blueprint. Provider ${esc(r.provider)},
+  $('#livenote').innerHTML=`<div class="note"><p><strong>Running now</strong> on the trace in
+    the first tab, ${chosenBp?`with the <code>${esc(chosenBp)}</code> blueprint`
+      :'with <strong>no blueprint</strong> — investigating freely'}. Provider ${esc(r.provider)},
     model ${esc(r.model)}. Takes two to four minutes.</p></div>`;
   liveTick(0);
 };

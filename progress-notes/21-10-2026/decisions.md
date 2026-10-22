@@ -30,3 +30,14 @@
   dropdown handler's own reset is now redundant but harmless.
 - Verified: after loading a trace the window matches the new timeline and the discriminator
   rows are the new trace's namespaces.
+
+## Operator picks the blueprint before an agent run
+- Until the agent selects its own blueprint, the user chooses one explicitly. Added a
+  "Blueprint for this run" dropdown in the Agent panel (populated from /api/blueprints, 16 +
+  a "none - investigate with no blueprint" option), defaulting to the run's configured
+  blueprint if it has one.
+- live_start(blueprint) carries the choice: a name forces that skill, '' runs with none, None
+  keeps the run's default. _live_worker honours it; the START card already shows the blueprint,
+  so the user confirms which one was used.
+- Verified: ran svc_cpu_cap (default service-cpu-throttle) but picked deadlock-lock-order in
+  the dropdown; the START card showed blueprint=deadlock-lock-order, proving the override.

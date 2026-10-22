@@ -570,7 +570,9 @@ def _live_worker():
         load_dotenv(os.path.join(ROOT, ".env"))
         from stratatrace import load_run
         import agent_v2, skillreg
-        bpname = RUNS[RUN_ID].get("blueprint")
+        # The operator's pick wins; None falls back to the run's configured default.
+        chosen = LIVE.get("blueprint")
+        bpname = (RUNS[RUN_ID].get("blueprint") if chosen is None else (chosen or None))
         sk = [x for x in skillreg.load_skills(
             os.path.join(ROOT, "blueprints", "skills-kernel-only"))
             if bpname and x.name == bpname]
@@ -613,7 +615,10 @@ def _live_worker():
         LIVE["running"] = False
 
 
-def live_start():
+def live_start(blueprint=None):
+    """blueprint: a skill name to force; '' means investigate with none; None means use the
+    run's configured default. The operator chooses in the Agent panel, so the RCA always runs
+    with a blueprint the user picked on purpose."""
     with LIVE_LOCK:
         if LIVE["running"]:
             return {"started": False, "reason": "a run is already in progress"}
@@ -622,7 +627,8 @@ def live_start():
             return {"started": False, "reason": "; ".join(r["why"])}
         LIVE.update({"running": True, "error": None, "started": time.time(),
                      "done": False, "out": None, "tr": None, "seen": 0,
-                     "head": False, "stopped": False})
+                     "head": False, "stopped": False,
+                     "blueprint": blueprint})
         # chat is grounded in a specific run's verdict; a new run makes the old seed stale
         if CHAT.get("obj") is not None:
             try:
@@ -1199,7 +1205,8 @@ class H(BaseHTTPRequestHandler):
             if p == "/api/live/ready":
                 return self._json(live_ready())
             if p == "/api/live/start":
-                return self._json(live_start())
+                bp = q.get("blueprint")
+                return self._json(live_start(bp[0] if bp is not None else None))
             if p == "/api/live/stop":
                 return self._json(live_stop())
             if p == "/api/sessions":
