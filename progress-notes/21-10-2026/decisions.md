@@ -18,3 +18,15 @@
   <4 s (12k rows, 308 events, 2 containers, 7.2 s), appeared in the dropdown, became current,
   live agent ready, Trace chart + Verdict render, no console errors.
 - Note: loading a new trace needs WSL (for babeltrace2). Pre-built runs do not.
+
+## Bug: Discriminator showed the previous trace after a Load
+- Loading a trace calls boot() directly, but boot() did not reset the discriminator's SEL
+  window or its computed #dtab/#sum. So after loading, the suspect window kept the old trace's
+  times (15:19:49) and the Discriminator tab showed the PREVIOUS trace's table (Sock Shop
+  containers) because `if(!#dtab.innerHTML) runCheck()` skipped recompute on a non-empty table.
+  The chart was correct (uses fresh SERIES), which made the mismatch obvious.
+- Fix: reset all per-trace UI state at the TOP of boot() (SEL, #dtab, #sum, #i0/#i1, steps,
+  verdict), so every entry - initial load, dropdown switch, and Load-trace - starts clean. The
+  dropdown handler's own reset is now redundant but harmless.
+- Verified: after loading a trace the window matches the new timeline and the discriminator
+  rows are the new trace's namespaces.

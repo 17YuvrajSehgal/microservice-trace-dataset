@@ -461,6 +461,13 @@ function renderEmpty(){
   ['#c1','#c2'].forEach(id=>{const c=$(id); if(c){const g=c.getContext('2d'); g&&g.clearRect(0,0,c.width,c.height);}});
 }
 async function boot(){
+  // Reset everything that belongs to the PREVIOUS trace, so loading a new trace (which
+  // calls boot directly) cannot leave a stale discriminator window or table behind.
+  SEL=null; SHADE=null; STEPS=null; DX=null;
+  $('#dtab').innerHTML=''; $('#sum').innerHTML='';
+  $('#i0').value=''; $('#i1').value='';
+  $('#steps').innerHTML=''; $('#livenote').innerHTML='';
+  $('#vans').innerHTML='<p class="hint">Run the agent first.</p>'; $('#vtruth').innerHTML='';
   const rl=await api('/api/runs');
   $('#runsel').innerHTML=(rl.runs||[]).map(r=>`<option value="${r.id}" ${r.id===rl.current?'selected':''}>${r.label}</option>`).join('')
     || '<option value="">no trace loaded</option>';
