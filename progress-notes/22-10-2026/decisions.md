@@ -43,3 +43,9 @@
 - Every number on the page was verified against the code/results, not written from memory.
 - Trace is no longer the default tab; verified its chart still paints on switch (the existing
   tab-switch redraw handles the zero-width-canvas case). No console errors, light and dark.
+
+## "How it works" moved out of the demo into its own deck
+- The explanation now lives in presentation/how-it-works.html (15 slides, standalone, offline)
+  so it can be presented one idea at a time, then hand off to the live demo.
+- Removed the demo's "How it works" tab, its panel and its now-dead CSS; Trace is the default
+  tab again. Verified: five tabs, Trace chart paints on load, no console errors on any tab.
