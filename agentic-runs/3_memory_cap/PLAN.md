@@ -1,7 +1,7 @@
 # Problem #3: memory cap — experiment design
 
 Date: 2026-10-13. Third entry in the "OS noise for agentic AI" catalogue.
-Reuses the rig from `../1_svc_cpu_cap/agentic-os-noise/`. Category:
+Reuses the rig from `../1_svc_cpu_cap/agentic-os-noise`. Category:
 **configuration-level** — a container `memory.high`/`memory.max` set too
 low. No code bug, no kernel bug. The memory analog of problem #1's CPU cap.
 

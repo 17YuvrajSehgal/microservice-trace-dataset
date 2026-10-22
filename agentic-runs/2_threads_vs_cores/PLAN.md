@@ -2,7 +2,7 @@
 
 Date: 2026-10-12. Second entry in the "OS noise for agentic AI" catalogue
 (07-10 meeting; the angle Naser pushed hardest). Reuses the rig from
-`../1_svc_cpu_cap/agentic-os-noise/` (VM `agentic-noise`, collector,
+`../1_svc_cpu_cap/agentic-os-noise` (VM `agentic-noise`, collector,
 analyzer). Category: **configuration-level** — over-parallelism on an
 undersized box, no code bug, no kernel bug, no cpu.max cap.
 
