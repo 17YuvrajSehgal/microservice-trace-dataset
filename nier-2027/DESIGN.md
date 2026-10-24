@@ -460,3 +460,36 @@ Running the probe that previously failed on the real production trace (`probe_gi
 the skill-given arm that twice named the wrong container one hop away) with pagination now
 available, to see whether having the full data changes what it concludes. Outcome recorded
 separately once it lands; not yet known at the time of this entry.
+
+## A10. Fatal-case retest, after the paging fix + prompt + budget changes (20 Oct)
+
+A8 recorded three failed attempts at a causal accuracy link on the production trace, with
+no working repaired baseline. Amendments A9 (real pagination) and the prompt/budget changes
+that followed it (bigger step ceiling, explicit paging instructions) changed that.
+
+**First probe after the fix: correct.** `repair` arm, new prompt, 40-step budget: named
+`java in pid_ns 4026532538`, labelled `cpu_throttling`. Checked against the project's own
+`nsmap.ns_for_service` (not eyeballed): that namespace **is** `carts`, the actual throttled
+container. Fully correct, independently verified.
+
+**5 repair + 4 defect reps run since, same trace, same prompt, same budget:**
+
+| run | arm | correct | broken/unparseable payloads | max page asked |
+|---|---|---|---|---|
+| r3 | repair | **yes** | 0 | 1 |
+| r4 | repair | **yes** | 0 | 1 |
+| r5 | repair | no | 0 | 1 |
+| r6/r7/r8 | repair | pending | | |
+| d1 | defect | no | 10 | 2 |
+| d2 | defect | no | 13 | 2 |
+| d3/d4/d5 | defect | pending | | |
+
+Repair so far: **2/3 correct, 0 broken payloads in any of them** - r5's miss is not a data
+problem; it never needed a second page. Defect so far: **0/2 correct, both runs show real
+broken payloads on this real production trace** (10 and 13), confirming the old cut
+mechanically fires and damages real data here, not only in the stress test.
+
+Running 3 more of each (r6-r8, d3-d5) to reach 5 vs 5 before drawing a conclusion. This is
+the closest the project has come to a direct causal demonstration on deployed-scale data; if
+the pattern holds at 5 vs 5 it directly answers the gap both external reviews flagged as the
+paper's weakest point. Numbers below, once all 10 total reps have landed.
