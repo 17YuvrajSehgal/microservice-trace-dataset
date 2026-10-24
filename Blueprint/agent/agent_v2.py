@@ -72,7 +72,17 @@ MAX_ROUNDS = 2          # planner rounds; a second one only if the reviewer asks
 #
 # Affordable because the context window is nowhere near full - the worst single call in
 # 120 runs used 63k of 400k tokens, 15.7%.
-MAX_WORKER_STEPS = int(os.environ.get("ABL_WORKER_STEPS", "18"))   # tool-calling turns inside one worker; 12 was the measured wall
+#
+# Raised again, 20 Oct, from 18 to 40, because of safe paging (utils.page_result). 18 was
+# sized for a world where a tool answered once and that was final - there was nothing more
+# to ask for, so nothing to spend extra steps on. Now there is: recovering the paper's own
+# worst real case (a result the old flat cut dropped entirely) took 8 pages - 8 steps - for
+# ONE field of ONE call. An investigation can easily touch two or three results that large.
+# 40 covers that (roughly 10 steps of normal exploration, as the historical median already
+# was, plus two such recoveries, plus room to spare) without being open-ended. The
+# out-of-steps fallback below still fires if even that is not enough, so nothing is lost
+# silently either way.
+MAX_WORKER_STEPS = int(os.environ.get("ABL_WORKER_STEPS", "40"))   # tool-calling turns inside one worker; 12 was the old measured wall, 18 the pre-paging ceiling
 MAX_SUBTASKS = 4
 # S4 ablation: drop the automatic computed-evidence channel to the synthesiser.
 ABL_NO_COMPUTED = os.environ.get("ABL_NO_COMPUTED", "0") == "1"
@@ -137,6 +147,28 @@ _V2_CODE = (
     "check and do not report a figure you did not measure.\n"
     "\n")
 
+# Why this exists: measured on this exact project, a worker was handed a result with the
+# deciding number in it, saw only part of it, and reported "nothing found" - three separate
+# times, on three different faults. Paging removes the EXCUSE (nothing is silently cut any
+# more) but not the RISK (a worker can still stop reading early). This block closes that gap
+# in the prompt, not just in the tool.
+_V2_PAGING = (
+    "READING A RESULT THAT DOES NOT FIT IN ONE REPLY. Any tool can hand you back PART of an "
+    "answer, plus a `_page` field saying exactly what is missing and how to see it, for "
+    "example:\n"
+    '  "_page": {"page": 1, "note": "More data remains: {\'present_throughout\': 98}. Call '
+    "this SAME tool with the SAME other arguments and page: 2 to continue.\"}\n"
+    "Do that: call the identical tool with the identical other arguments, adding page: 2, "
+    "then 3, and so on, until a reply says you have now seen everything. This is free - you "
+    "are reading more of an answer already computed, not re-running the query.\n"
+    "\n"
+    "NEVER conclude something is absent, unknown, or normal from a PARTIAL page if the part "
+    "you have not read yet could hold it. Page through to the end first, or narrow the "
+    "question (a smaller time window, a procname filter) so the whole answer fits at once. "
+    "The one time it is fine to stop early: what you came for is already in hand, and the "
+    "remaining pages are a field you were not asking about.\n"
+    "\n")
+
 # --------------------------------------------------------------------------------------
 # Blueprint-only mode: the agent gets NOTHING but the blueprint's own scripts (via
 # blueprint_tool) and note_finding. No index tools, no run_python. This tests whether the
@@ -193,7 +225,7 @@ _PLANNER = (
 )
 
 _WORKER = (
-    _V2_HEAD + FAULT_VOCAB + _V2_CODE +
+    _V2_HEAD + FAULT_VOCAB + _V2_CODE + _V2_PAGING +
     "YOU ARE ONE WORKER of several, each given a different part of the same investigation. "
     "Do YOUR part properly rather than rushing to a verdict - another worker is covering the "
     "angle you were not given, and a reviewer will put the pieces together.\n"
@@ -211,7 +243,7 @@ _WORKER = (
 )
 
 _BP_WORKER = (
-    _BP_HEAD + FAULT_VOCAB +
+    _BP_HEAD + FAULT_VOCAB + _V2_PAGING +
     "YOU ARE THE INVESTIGATOR. Work the blueprint start to finish. Record what you find "
     "with note_finding as you find it - a finding is a specific claim with the numbers "
     "behind it: which process, which time range, what changed and by how much. Record what "
@@ -936,7 +968,9 @@ if __name__ == "__main__":
 # question already is. note_finding is dropped (there is no synthesiser to write to) and
 # submit_diagnosis is dropped (the verdict already exists); everything else is identical.
 # --------------------------------------------------------------------------------------
-MAX_CHAT_STEPS = 14
+# Raised 20 Oct from 14 to 30, same reason as MAX_WORKER_STEPS above: a follow-up question
+# can now need several pages of one tool's result, not just one shot at it.
+MAX_CHAT_STEPS = int(os.environ.get("ABL_CHAT_STEPS", "30"))
 
 _CHAT_SYS = (
     "You are the investigator that just analysed a Linux kernel trace of a microservice "
@@ -946,6 +980,7 @@ _CHAT_SYS = (
     "cannot express (joins, distributions, rankings, correlations), write and run code "
     "with run_python.\n"
     "- Give numbers, time windows (HH:MM:SS) and pid_ns ids, briefly.\n"
+    "\n" + _V2_PAGING +
     "- CHARTS: you can draw one. In run_python, print exactly one line of the form\n"
     '  PLOT {"title": "...", "kind": "line", "xlabel": "s of day", "ylabel": "...", '
     '"x": [..], "series": [{"name": "...", "y": [..]}]}\n'
@@ -1003,12 +1038,12 @@ class Chat:
         self.tools = [t for t in _worker_tools()
                       if t["name"] not in ("note_finding", "blueprint_tool")]
         if self.ctx.bp_def is not None:
-            self.tools.append(self.ctx.bp_def)
+            self.tools.append(add_paging(self.ctx.bp_def))
         code_note = ""
         if code_root:
             import coderepo
             self.ctx.repo = coderepo.CodeRepo(code_root)
-            self.tools += coderepo.TOOL_DEFS
+            self.tools += [add_paging(t) for t in coderepo.TOOL_DEFS]
             code_note = (
                 chr(10) * 2 +
                 "CODE REPOSITORY CONNECTED at %s. Explore it read-only with code_tree, "
