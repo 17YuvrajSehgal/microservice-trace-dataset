@@ -1,0 +1,11 @@
+C:\Users\17yuv\AppData\Roaming\Python\Python314\site-packages\langgraph\cache\base\__init__.py:8: LangChainPendingDeprecationWarning: The default value of `allowed_objects` will change in a future version. Pass an explicit value (e.g., allowed_objects='messages' or allowed_objects='core') to suppress this warning.
+  from langgraph.checkpoint.serde.jsonplus import JsonPlusSerializer
+{
+ "arm": "repair",
+ "rep": "r8",
+ "rcs": "java in pid_ns 4026532538",
+ "label": "cpu_throttling",
+ "conf": 0.75,
+ "what": "The strongest service-local signal is Java in pid_ns 4026532538 being held near 0.2 CPU cores during the slowdown, despite using about 0.52 cores beforehand and 0.73 afterward; this is consistent with a temporary CPU quo",
+ "tokens_in": 1345446
+}

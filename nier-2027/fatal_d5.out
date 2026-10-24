@@ -1,0 +1,11 @@
+C:\Users\17yuv\AppData\Roaming\Python\Python314\site-packages\langgraph\cache\base\__init__.py:8: LangChainPendingDeprecationWarning: The default value of `allowed_objects` will change in a future version. Pass an explicit value (e.g., allowed_objects='messages' or allowed_objects='core') to suppress this warning.
+  from langgraph.checkpoint.serde.jsonplus import JsonPlusSerializer
+{
+ "arm": "defect",
+ "rep": "d5",
+ "rcs": "unknown",
+ "label": "other",
+ "conf": 0.78,
+ "what": "There is a clear host-wide low-work interval: scheduler CPU fell to about 24% of its own pre-incident level, with activity across scheduling, disk, and network events dropping together and then recovering. The trace does",
+ "tokens_in": 1015566
+}

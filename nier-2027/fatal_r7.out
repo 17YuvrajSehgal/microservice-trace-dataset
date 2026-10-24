@@ -1,0 +1,11 @@
+C:\Users\17yuv\AppData\Roaming\Python\Python314\site-packages\langgraph\cache\base\__init__.py:8: LangChainPendingDeprecationWarning: The default value of `allowed_objects` will change in a future version. Pass an explicit value (e.g., allowed_objects='messages' or allowed_objects='core') to suppress this warning.
+  from langgraph.checkpoint.serde.jsonplus import JsonPlusSerializer
+{
+ "arm": "repair",
+ "rep": "r7",
+ "rcs": "unknown",
+ "label": "other",
+ "conf": 0.78,
+ "what": "The trace shows a pronounced host-wide activity trough and recovery, but it does not establish CPU-quota throttling or identify a culprit: on-CPU time drops sharply across many namespaces, while wake activity falls with ",
+ "tokens_in": 1209043
+}

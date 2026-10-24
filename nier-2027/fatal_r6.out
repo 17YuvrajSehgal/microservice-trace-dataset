@@ -1,0 +1,11 @@
+C:\Users\17yuv\AppData\Roaming\Python\Python314\site-packages\langgraph\cache\base\__init__.py:8: LangChainPendingDeprecationWarning: The default value of `allowed_objects` will change in a future version. Pass an explicit value (e.g., allowed_objects='messages' or allowed_objects='core') to suppress this warning.
+  from langgraph.checkpoint.serde.jsonplus import JsonPlusSerializer
+{
+ "arm": "repair",
+ "rep": "r6",
+ "rcs": "unknown",
+ "label": "other",
+ "conf": 0.68,
+ "what": "There is a pronounced host-wide activity collapse: CPU use drops from about 7.84 cores to 1.63\u20131.79 and scheduler, disk, and network event rates fall together, then recover. This is consistent with the reported slowdown,",
+ "tokens_in": 1106442
+}

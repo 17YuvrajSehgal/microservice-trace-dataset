@@ -472,24 +472,45 @@ that followed it (bigger step ceiling, explicit paging instructions) changed tha
 `nsmap.ns_for_service` (not eyeballed): that namespace **is** `carts`, the actual throttled
 container. Fully correct, independently verified.
 
-**5 repair + 4 defect reps run since, same trace, same prompt, same budget:**
+**Final: 6 repair reps + 5 defect reps, same trace, same prompt, same budget (checked against
+`nsmap.ns_for_service`, not eyeballed, re-verified 24 Oct by reading the raw transcripts rather
+than trusting a prior summary):**
 
 | run | arm | correct | broken/unparseable payloads | max page asked |
 |---|---|---|---|---|
 | r3 | repair | **yes** | 0 | 1 |
 | r4 | repair | **yes** | 0 | 1 |
 | r5 | repair | no | 0 | 1 |
-| r6/r7/r8 | repair | pending | | |
-| d1 | defect | no | 10 | 2 |
-| d2 | defect | no | 13 | 2 |
-| d3/d4/d5 | defect | pending | | |
+| r6 | repair | no | 0 | 1 |
+| r7 | repair | no | 0 | 1 |
+| r8 | repair | **yes** | 0 | 1 |
+| d1 | defect | no | 10 | 1 |
+| d2 | defect | no | 13 | 1 |
+| d3 | defect | no | 14 | 1 |
+| d4 | defect | no | 14 | 1 |
+| d5 | defect | no | 13 | 1 |
 
-Repair so far: **2/3 correct, 0 broken payloads in any of them** - r5's miss is not a data
-problem; it never needed a second page. Defect so far: **0/2 correct, both runs show real
-broken payloads on this real production trace** (10 and 13), confirming the old cut
-mechanically fires and damages real data here, not only in the stress test.
+(Two older repair transcripts, r1/r2, exist from before this fix - `max_worker_steps=18`, the
+pre-fix budget - and are correctly excluded here; both predate the paging/prompt/budget
+changes and are not comparable.)
 
-Running 3 more of each (r6-r8, d3-d5) to reach 5 vs 5 before drawing a conclusion. This is
-the closest the project has come to a direct causal demonstration on deployed-scale data; if
-the pattern holds at 5 vs 5 it directly answers the gap both external reviews flagged as the
-paper's weakest point. Numbers below, once all 10 total reps have landed.
+**Two different claims, two different strengths of evidence:**
+
+1. **Data integrity: clean, 100% separation.** Every one of the 6 repair reps delivered zero
+   broken or unparseable tool payloads. Every one of the 5 defect reps (the artificial
+   `ABL_FLAT_CAP=6000` stress condition that reproduces the original v1 cut) delivered 10-14
+   broken payloads. This is the mechanism claim the paper makes, and it holds without
+   exception on this real production trace, not just in the earlier synthetic stress test.
+2. **Diagnosis accuracy: a real difference, but noisier.** Repair got the actual culprit
+   right 3 of 6 times (r3, r4, r8); defect got it right 0 of 5. The gap is in the right
+   direction and co-occurs with the broken-payload gap, but at this n it is not a clean
+   100% split the way the data-integrity result is - the model's reasoning is a second,
+   independent bottleneck even when the data arrives intact (r5, r6, r7 had zero broken
+   payloads and were still wrong).
+
+**Honest framing for the paper:** report the data-integrity split as the strong, exceptionless
+result, and the accuracy split (3/6 vs 0/5) as a smaller, suggestive sample that moves in the
+same direction - not as a second clean proof. Both numbers are real and both are now backed by
+a single deployed-scale production trace, which is what both external reviews asked for; the
+accuracy number should not be inflated into "repair fixes diagnosis," because 3 of 6 repaired
+runs still got it wrong for reasoning reasons unrelated to data loss.

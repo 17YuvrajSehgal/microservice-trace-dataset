@@ -1,0 +1,11 @@
+C:\Users\17yuv\AppData\Roaming\Python\Python314\site-packages\langgraph\cache\base\__init__.py:8: LangChainPendingDeprecationWarning: The default value of `allowed_objects` will change in a future version. Pass an explicit value (e.g., allowed_objects='messages' or allowed_objects='core') to suppress this warning.
+  from langgraph.checkpoint.serde.jsonplus import JsonPlusSerializer
+{
+ "arm": "defect",
+ "rep": "d3",
+ "rcs": "unknown (not attributable from the trace)",
+ "label": "other",
+ "conf": 0.74,
+ "what": "There is a clear transient system-wide collapse in on-CPU work and scheduler, block, and network event rates, followed by recovery; the trace does not establish the proposed single-service CPU-quota cause. In particular,",
+ "tokens_in": 1529468
+}
