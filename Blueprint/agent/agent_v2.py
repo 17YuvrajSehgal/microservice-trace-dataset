@@ -39,9 +39,9 @@ import codetool
 import blueprints
 import leakguard
 import transcript as T
-from utils import (KERNEL_ONLY_TOOLS, SENT_CAP, SENT_CAP_BY_TOOL,
-                   api_call, checked, fit_result, run_tool, tool_defs, unmask_diagnosis,
-                   KO_HEAD, FAULT_VOCAB, KO_RULES)
+from utils import (KERNEL_ONLY_TOOLS, SENT_CAP, SENT_CAP_BY_TOOL, SAFE_PAGING, ABL_FLAT_CAP,
+                   api_call, checked, fit_result, page_result, run_tool, tool_defs,
+                   unmask_diagnosis, add_paging, KO_HEAD, FAULT_VOCAB, KO_RULES)
 
 # the chat-only code tools return file text; give them the room ctf_lines gets
 SENT_CAP_BY_TOOL.update({"code_read": 18000, "code_grep": 14000, "code_tree": 14000,
@@ -325,6 +325,8 @@ class Ctx:
         self.tok_out = 0
         self.snippets = []
         self.computed = []
+        self.page_cache = {}                  # (tool, other-args) -> paging state; see _exec_tool
+        self.page_lock = threading.Lock()
 
     def event(self, kind, **kw):
         with self.tr_lock:
@@ -364,34 +366,66 @@ def _call(messages, tools, node, step, force=None):
 
 
 def _exec_tool(name, args, node, step):
-    """Run one tool and return the masked, size-fitted string the model will see."""
-    if name == "run_python":
+    """Run one tool and return the masked, size-fitted string the model will see.
+
+    Paging (SAFE_PAGING, default on): `page` is read off args and never forwarded to the
+    underlying tool - the tool itself has no idea paging exists. On page 1 (or a key never
+    seen before) the tool runs for real, exactly as before, and its FULL result is cached.
+    Every later page is served from that cache - no re-run, no extra cost, no re-decoding a
+    trace just to see the next slice. This is skipped entirely under ABL_FLAT_CAP, which
+    exists only to reproduce the v1 defect measured in nier-2027/ - that condition must stay
+    exactly what it was when it was measured.
+    """
+    page = int(args.get("page") or 1) if isinstance(args, dict) else 1
+    call_args = {k: v for k, v in (args or {}).items() if k != "page"}
+
+    paging_active = SAFE_PAGING and not ABL_FLAT_CAP and name not in (
+        "submit_diagnosis", "note_finding", "submit_plan", "submit_review")
+    cache_key = (name, json.dumps(call_args, sort_keys=True, default=str)) if paging_active else None
+
+    cached = CTX.page_cache.get(cache_key) if cache_key else None
+    if cached is not None and page > 1:
+        res, b = cached["res"], 0          # already counted once, on page 1
+    elif name == "run_python":
         with CTX.sb_lock:
-            res = CTX.sb.run(args.get("code") or "")
-        CTX.snippets.append({"node": node, "code": args.get("code"),
-                             "why": args.get("why"), "result": res})
+            res = CTX.sb.run(call_args.get("code") or "")
+        CTX.snippets.append({"node": node, "code": call_args.get("code"),
+                             "why": call_args.get("why"), "result": res})
         # Capture it for the synthesiser too. The full snippet is already in the transcript;
         # this is the short version that travels with the run.
         out = (res.get("stdout") or "").strip()
         if out or res.get("error"):
             CTX.computed.append({
                 "node": node,
-                "why": (args.get("why") or "")[:160],
+                "why": (call_args.get("why") or "")[:160],
                 "output": out[:COMPUTED_OUT_CAP],
                 "truncated": len(out) > COMPUTED_OUT_CAP,
                 "error": (res.get("error") or "")[:160] or None,
             })
         b = len(json.dumps(res, default=str))
     elif name == "blueprint_tool" and CTX.bp is not None:
-        res = CTX.bp.run(args.get("script") or "", args.get("args") or [])
+        res = CTX.bp.run(call_args.get("script") or "", call_args.get("args") or [])
         b = len(json.dumps(res, default=str))
     elif name.startswith("code_") and CTX.repo is not None:
-        res = CTX.repo.call(name, args)
+        res = CTX.repo.call(name, call_args)
         b = len(json.dumps(res, default=str))
     else:
-        res, b = run_tool(CTX.run_dir, name, args)
+        res, b = run_tool(CTX.run_dir, name, call_args)
     CTX.bytes += b
     masked = CTX.guard.mask_obj(res)
+
+    if paging_active:
+        with CTX.page_lock:
+            if cached is None:
+                cached = {"res": res, "state": {}}
+                CTX.page_cache[cache_key] = cached
+            sent, complete = page_result(masked, page, SENT_CAP_BY_TOOL.get(name, SENT_CAP),
+                                         cached["state"])
+        CTX.event("tool_execution", node=node, step=step, tool=name, arguments=args,
+                  result=res, result_bytes=b, sent=sent, page=page, complete=complete,
+                  sent_cap=SENT_CAP_BY_TOOL.get(name, SENT_CAP))
+        return sent
+
     cap = SENT_CAP_BY_TOOL.get(name, SENT_CAP)
     sent, cut, dropped = fit_result(masked, cap)
     CTX.event("tool_execution", node=node, step=step, tool=name, arguments=args,
@@ -472,13 +506,13 @@ def _trim_thread(msgs, node=None, step=None):
 def _worker_tools():
     if CTX is not None and CTX.bp_only:
         # blueprint-only: the blueprint's scripts and the scratchpad, nothing else
-        return [CTX.bp_def, _NOTE_DEF]
+        return [add_paging(CTX.bp_def), _NOTE_DEF]
     defs = [t for t in tool_defs()
             if t["name"] in KERNEL_ONLY_TOOLS and t["name"] != "submit_diagnosis"]
     defs = defs + [codetool.TOOL_DEF, _NOTE_DEF]
     if CTX is not None and CTX.bp_def is not None:
         defs.append(CTX.bp_def)       # the blueprint's own scripts, when a blueprint is given
-    return defs
+    return [add_paging(d) for d in defs]
 
 
 # --------------------------------------------------------------------------------------

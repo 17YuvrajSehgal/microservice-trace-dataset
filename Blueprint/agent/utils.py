@@ -148,6 +148,143 @@ def fit_result(obj, cap: int):
     return text, bool(dropped), (dropped or None)
 
 
+# ---------------------------------------------------------------------------------------
+# Safe paging. fit_result() above still exists ONLY to reproduce the v1 defect under
+# ABL_FLAT_CAP for the published ablation (nier-2027/DESIGN.md) - it is frozen, not to be
+# changed. This is the real fix: no tool result is ever silently cut. If a result does not
+# fit, the agent is handed page 1 and told exactly how to ask for the rest, and told, in
+# words it cannot misread, the moment there is nothing left to ask for.
+#
+# Default ON. Set SAFE_PAGING=0 to fall back to the old one-shot fit_result() everywhere
+# (useful only for reproducing old behaviour; there is no reason to turn it off otherwise).
+SAFE_PAGING = os.environ.get("SAFE_PAGING", "1") == "1"
+
+PAGE_PARAM = {
+    "type": "integer",
+    "description": (
+        "Which page of THIS result to read. Starts at 1. If the last reply said more data "
+        "remains, call this same tool again with the SAME other arguments and page set one "
+        "higher. Never guess what a later page contains - ask for it."
+    ),
+}
+
+
+def add_paging(schema: dict) -> dict:
+    """Add the `page` parameter to a tool schema. Skipped for tools that do not return a
+    result to read (submit_diagnosis, note_finding) - paging a write has no meaning."""
+    if schema.get("name") in ("submit_diagnosis", "note_finding", "submit_plan",
+                               "submit_review"):
+        return schema
+    schema = dict(schema)
+    params = dict(schema.get("parameters") or {})
+    props = dict(params.get("properties") or {})
+    props["page"] = PAGE_PARAM
+    params["properties"] = props
+    schema["parameters"] = params
+    return schema
+
+
+def _page_units(obj: dict) -> dict:
+    """Which fields of a result are safe to page, and how they split into rows.
+
+    A list splits at its own item boundaries. A long string with line breaks splits at line
+    boundaries. Anything else (numbers, short strings, one-line notes) is left alone and
+    repeated on every page whole, because it is small and the model needs it for context
+    every time - things like "how_to_read" or "n_containers_seen".
+    """
+    units = {}
+    for k, v in obj.items():
+        if isinstance(v, list) and len(v) > 1:
+            units[k] = v
+        elif isinstance(v, str) and len(v) > 2000 and "\n" in v:
+            units[k] = v.split("\n")
+    return units
+
+
+def page_result(obj, page: int, cap: int, state: dict):
+    """Return page `page` of `obj`, bounded to `cap` characters, never splitting a row or a
+    line in half. `state` persists across calls for one (tool, same-other-arguments) key -
+    the caller owns looking it up; this function only reads and writes it.
+
+    Returns (text, complete): complete is True once every field has been fully shown, across
+    however many pages it took - the model's unambiguous "stop asking" signal.
+    """
+    page = max(1, int(page or 1))
+    if page == 1:
+        state.clear()
+        state["offsets"] = {}
+        state["last_page"] = 0
+
+    if not isinstance(obj, dict):
+        return json.dumps(obj, default=str), True
+
+    units = _page_units(obj)
+    if not units:
+        full = json.dumps(obj, default=str)
+        if len(full) <= cap:
+            return full, True
+        # Too big, and nothing to page on safely. The honest answer is "ask differently",
+        # never a byte slice - a byte slice is exactly the defect this file exists to avoid.
+        return json.dumps({
+            "_note": ("This result has no rows or lines to page on safely, and does not fit "
+                      "whole (%d characters, limit %d). Narrow the query - a smaller time "
+                      "range or a tighter filter - instead of asking for another page; there "
+                      "is no safe way to cut this one.") % (len(full), cap),
+        }, default=str), True
+
+    expected_next = state.get("last_page", 0) + 1
+    if page != expected_next:
+        return json.dumps({
+            "_note": ("Pages must be read in order. The next page of THIS result is page "
+                      "%d. Call again with page: %d - not %d.")
+                     % (expected_next, expected_next, page),
+        }, default=str), False
+
+    offsets = state["offsets"]
+    for k in units:
+        offsets.setdefault(k, 0)
+
+    def window(take):
+        out = dict(obj)
+        progress = {}
+        for k, items in units.items():
+            start = offsets[k]
+            chunk = items[start:start + max(0, take.get(k, 0))]
+            out[k] = chunk if isinstance(obj[k], list) else "\n".join(chunk)
+            progress[k] = {"shown_this_page": len(chunk),
+                           "shown_so_far": start + len(chunk), "total": len(items)}
+        return out, progress
+
+    take = {k: len(v) - offsets[k] for k, v in units.items()}
+    for _ in range(400):
+        out, progress = window(take)
+        if len(json.dumps(out, default=str)) <= cap:
+            break
+        k = max(take, key=lambda k: take[k])
+        if take[k] <= 1:
+            take[k] = 0
+            if all(v == 0 for v in take.values()):
+                break
+        else:
+            take[k] //= 2
+
+    for k in units:
+        offsets[k] += progress[k]["shown_this_page"]
+    state["last_page"] = page
+    complete = all(offsets[k] >= len(units[k]) for k in units)
+
+    if complete:
+        note = ("Page %d. You have now seen ALL rows/lines in every field of this result. "
+                "There is nothing more to ask for.") % page
+    else:
+        remaining = {k: p["total"] - p["shown_so_far"] for k, p in progress.items()
+                     if p["total"] - p["shown_so_far"] > 0}
+        note = ("Page %d. More data remains: %s. Call this SAME tool with the SAME other "
+                "arguments and page: %d to continue.") % (page, remaining, page + 1)
+    out["_page"] = {"page": page, "progress": progress, "note": note}
+    return json.dumps(out, default=str), complete
+
+
 # fault vocabulary the agent must choose from (aligns with ground_truth families for scoring)
 FAULT_TYPES = [
     "cpu_saturation", "memory_pressure", "disk_io", "network_latency", "db_latency",

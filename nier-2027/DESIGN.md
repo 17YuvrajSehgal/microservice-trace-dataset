@@ -400,3 +400,63 @@ repaired, skill-given agent is itself at the floor - the September low side
 was plausibly capability AND delivery jointly, and the paper's threats section
 now says so. The clean causal fatal-case candidate is slow_db on Trillium,
 whose 22-09 repaired-era baseline showed real headroom (24/60 WHERE).
+
+## A9. Made the tools and the agent safe: real pagination (20 Oct, post-submission-prep work)
+
+User asked, separately from the paper: make every tool in Blueprint/ safe to use, so the
+agent never silently loses data, and can ask for more until it knows there is no more.
+
+### What changed
+
+`Blueprint/agent/utils.py`: a new `page_result(obj, page, cap, state)`, next to the old
+`fit_result()` (left completely untouched - it exists only to reproduce the v1 defect under
+`ABL_FLAT_CAP` for the already-submitted ablation; diffed and confirmed byte-identical).
+
+Rule: a page boundary only ever falls between whole rows (list fields) or whole lines (long
+text fields, e.g. a blueprint script's stdout). Never a byte offset - a byte offset is the
+exact defect this paper studies. Small fields (numbers, short notes) repeat on every page so
+the model always has context. Every page is valid JSON. Pages must be requested in order;
+asking out of order gets a correction, not wrong data. The last page says, in words: "you
+have now seen ALL rows/lines - nothing more to ask for."
+
+`SAFE_PAGING=1` by default. `_exec_tool` now reads a `page` argument (never forwarded to the
+underlying tool), caches the FULL result the first time a (tool, other-arguments) combination
+is seen, and serves every later page from that cache - no re-running the tool, no re-decoding
+a trace, just a different slice of what is already in hand. This is automatically OFF when
+`ABL_FLAT_CAP` is set, so the published defect condition is unaffected.
+
+Every tool schema now carries a `page` parameter (added centrally via `add_paging()` in
+`_worker_tools()`, not hand-edited per tool) - including `blueprint_tool`, which covers all
+55 scripts under `Blueprint/latency/*/tools/` with zero changes to any of them, because they
+all return `{"stdout": "..."}` and that is exactly the long-text case `page_result` pages by
+line.
+
+### Verified, not assumed
+
+- `Blueprint/agent/test_paging.py`, 6 checks, all pass: list fields fully recovered in order;
+  text fields never split mid-line; out-of-order pages refused with the correct next page
+  named; small results pass through untouched; an unpageable oversized result says so rather
+  than silently slicing; and the paper's own worst case.
+- **The paper's own fatal case, fixed.** At the real deployed cap (6000, not calibrated), the
+  late field in `svc_cpu_cap_aggressive_steady_r1` went from the paper's measured **0 of 128**
+  to **128 of 128** recovered across 8 pages, including all 5 records of the throttled
+  culprit's own process.
+- `git diff` on `utils.py` is a pure insertion (`@@ -150,0 +151,137 @@`) - zero lines of
+  `fit_result` touched. `agent_v2.py`'s diff touches exactly the three places intended: the
+  import line, `Ctx.__init__`, and `_exec_tool`/`_worker_tools`. Nothing else moved.
+
+### An honest cost, found while testing
+
+Recovering a severely-cut result can take several pages, and each page still costs one of
+the worker's limited turns (`MAX_WORKER_STEPS = 18`) - the cache avoids re-running the tool,
+but not the step. The fatal-case recovery above took 8 of 18 steps on a single field of a
+single call. Pagination trades data loss for step-budget pressure; it does not make either
+free. Worth a larger per-page budget as a follow-up, but not changed today - that would alter
+`SENT_CAP_BY_TOOL`, which every existing measurement in this paper was tuned against.
+
+### Live check in progress
+
+Running the probe that previously failed on the real production trace (`probe_given.py`,
+the skill-given arm that twice named the wrong container one hop away) with pagination now
+available, to see whether having the full data changes what it concludes. Outcome recorded
+separately once it lands; not yet known at the time of this entry.
