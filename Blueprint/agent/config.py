@@ -134,8 +134,12 @@ def chat(system: str, messages: list, tools: list | None = None) -> Turn:
         if tools:
             kw["tools"] = [{"name": t["name"], "description": t.get("description", ""),
                             "input_schema": t["parameters"]} for t in tools]
+        # No temperature: Opus 4.6+ / Sonnet 5 / Fable 5 reject any non-default sampling
+        # param with a 400 (only pre-4.6 models accepted TEMPERATURE here).
+        if SEND_TEMPERATURE:
+            kw["temperature"] = TEMPERATURE
         r = client.messages.create(model=model_id(), max_tokens=MAX_TOKENS,
-                                   temperature=TEMPERATURE, system=system, messages=messages, **kw)
+                                   system=system, messages=messages, **kw)
         text = "".join(b.text for b in r.content if b.type == "text")
         calls = [{"id": b.id, "name": b.name, "arguments": b.input}
                  for b in r.content if b.type == "tool_use"]

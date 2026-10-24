@@ -30,6 +30,7 @@ data-layer dependency. diagnose(run_dir) / Chat(run_dir) take the path directly.
 """
 from __future__ import annotations
 import json, operator, os, sys, threading, time
+from types import SimpleNamespace
 from typing import Annotated, Any, TypedDict
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -374,23 +375,94 @@ class Ctx:
 CTX: Ctx | None = None      # set by diagnose(); the graph nodes read it
 
 
+def _to_anthropic_messages(messages):
+    """Translate the OpenAI chat-completions message list this whole file is written in terms
+    of into Anthropic's shape, so only this one function needs to know the difference. Merges
+    consecutive tool-result turns into one user message with several tool_result blocks - the
+    API accepts them separate, but splitting them trains the model to stop making parallel
+    tool calls (see the Claude API tool-use docs)."""
+    system, amsgs = "", []
+    for m in messages:
+        role = m["role"]
+        if role == "system":
+            system = (system + "\n\n" + m["content"]) if system else m["content"]
+        elif role == "tool":
+            block = {"type": "tool_result", "tool_use_id": m["tool_call_id"], "content": m["content"]}
+            if amsgs and amsgs[-1]["role"] == "user" and isinstance(amsgs[-1]["content"], list) \
+               and amsgs[-1]["content"][0].get("type") == "tool_result":
+                amsgs[-1]["content"].append(block)
+            else:
+                amsgs.append({"role": "user", "content": [block]})
+        elif role == "assistant":
+            blocks = []
+            if m.get("content"):
+                blocks.append({"type": "text", "text": m["content"]})
+            for c in m.get("tool_calls") or []:
+                blocks.append({"type": "tool_use", "id": c["id"], "name": c["function"]["name"],
+                               "input": json.loads(c["function"]["arguments"] or "{}")})
+            amsgs.append({"role": "assistant", "content": blocks or " "})
+        else:
+            amsgs.append({"role": "user", "content": m["content"]})
+    return system, amsgs
+
+
+class _CompatResponse:
+    """Normalizes a native anthropic.types.Message into the OpenAI ChatCompletion shape every
+    caller in this file expects (.choices[0].message.content/.tool_calls, .usage.*), so _call()
+    is the only place that knows Claude isn't OpenAI-compatible. model_dump() delegates to the
+    real response so the transcript (T.to_jsonable) still records it with full fidelity."""
+    def __init__(self, raw):
+        text = "".join(b.text for b in raw.content if b.type == "text")
+        tool_calls = [SimpleNamespace(id=b.id, type="function",
+                                      function=SimpleNamespace(name=b.name, arguments=json.dumps(b.input)))
+                      for b in raw.content if b.type == "tool_use"]
+        self.choices = [SimpleNamespace(message=SimpleNamespace(content=text, tool_calls=tool_calls))]
+        self.usage = SimpleNamespace(prompt_tokens=raw.usage.input_tokens,
+                                     completion_tokens=raw.usage.output_tokens)
+        self._raw = raw
+
+    def model_dump(self):
+        return self._raw.model_dump()
+
+
+def _anthropic_call(client, messages, tools, force):
+    system, amsgs = _to_anthropic_messages(messages)
+    kw = {}
+    atools = [{"name": t["name"], "description": t.get("description", ""),
+              "input_schema": t["parameters"]} for t in tools]
+    if atools:
+        kw["tools"] = atools          # tools=[] is rejected by some providers; omit instead
+    if force:
+        kw["tool_choice"] = {"type": "tool", "name": force}
+    # No temperature: Opus 4.6+ / Sonnet 5 / Fable 5 reject any non-default sampling param with
+    # a 400 (shared/model-migration.md), and this harness's reproducibility knob (RCA_TEMPERATURE)
+    # was never meaningful for Claude's deterministic-by-default behavior anyway.
+    return _CompatResponse(client.messages.create(
+        model=config.model_id(), max_tokens=config.MAX_TOKENS,
+        system=system, messages=amsgs, **kw))
+
+
 def _call(messages, tools, node, step, force=None):
     """One model call. Recorded in the transcript exactly as v1 records it."""
     if CANCEL.is_set():
         raise Cancelled("run cancelled")
     client = config.make_client()
-    kw = dict(config.openai_create_kwargs())
-    schema = [{"type": "function", "function": t} for t in tools]
-    if schema:
-        kw["tools"] = schema          # tools=[] is rejected by some providers; omit instead
-    if force:
-        kw["tool_choice"] = {"type": "function", "function": {"name": force}}
     t0 = time.time()
+    if config.sdk_kind() == "anthropic":
+        call = lambda: checked(_anthropic_call(client, messages, tools, force))
+    else:
+        kw = dict(config.openai_create_kwargs())
+        schema = [{"type": "function", "function": t} for t in tools]
+        if schema:
+            kw["tools"] = schema          # tools=[] is rejected by some providers; omit instead
+        if force:
+            kw["tool_choice"] = {"type": "function", "function": {"name": force}}
+        call = lambda: checked(client.chat.completions.create(
+            model=config.model_id(), messages=messages, **kw))
     # checked() raises when the provider returns 200 with an error body - OpenRouter does that
     # for rate limits - so _api_call's retry can see it. Without it the SDK hands back an object
     # whose .choices is None and the next line dies with a TypeError that says nothing.
-    r = api_call(lambda: checked(client.chat.completions.create(
-        model=config.model_id(), messages=messages, **kw)), CTX.tr, step)
+    r = api_call(call, CTX.tr, step)
     CTX.event("api_response", node=node, step=step,
               latency_ms=int((time.time() - t0) * 1000), response=T.to_jsonable(r))
     CTX.add_tokens(r)
