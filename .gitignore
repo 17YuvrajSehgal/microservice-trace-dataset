@@ -82,4 +82,5 @@ demo/data/live.json
 
 # built trace indexes (large, regenerable via Blueprint/eval/build_indexes.py)
 Blueprint/eval/index-agentic/
-Blueprint/eval/results/
+# keep the small result.json scoreboards in git; ignore only the large transcripts
+Blueprint/eval/results/**/transcript.json
