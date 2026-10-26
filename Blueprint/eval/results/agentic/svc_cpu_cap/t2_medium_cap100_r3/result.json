@@ -1,0 +1,30 @@
+{
+ "run_id": "t2_medium_cap100_r3",
+ "problem": "svc_cpu_cap",
+ "arm": "given",
+ "blueprint": "1_svc_cpu_cap",
+ "model": "openai/gpt-6-luna",
+ "provider": "openrouter",
+ "verdict": {
+  "where": "unknown",
+  "what_is_wrong": "No CPU-cap fault is established: activity drops sharply, but the available scheduling evidence points to reduced runnable work and idle CPUs rather than a service waiting for CPU. The later increase is mainly python3 activity and is not a return to the opening workload level; no single faulty workload or other fault mechanism is supported by these notes.",
+  "when": "03:16:08 - 03:16:35",
+  "fault": "normal",
+  "confidence": 0.88
+ },
+ "score": {
+  "detected": false,
+  "control": false,
+  "present": true,
+  "fault_ok": false,
+  "where": "n/a",
+  "where_ok": false,
+  "window_iou": null,
+  "family": "svc_cpu_cap",
+  "agentic": true
+ },
+ "seconds": 414.5,
+ "calls": 44,
+ "tokens_in": 1015183,
+ "tokens_out": 19671
+}

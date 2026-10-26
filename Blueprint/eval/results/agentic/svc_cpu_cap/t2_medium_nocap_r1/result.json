@@ -1,0 +1,30 @@
+{
+ "run_id": "t2_medium_nocap_r1",
+ "problem": "svc_cpu_cap",
+ "arm": "given",
+ "blueprint": "1_svc_cpu_cap",
+ "model": "openai/gpt-6-luna",
+ "provider": "openrouter",
+ "verdict": {
+  "where": "unknown",
+  "what_is_wrong": "No CPU-cap incident is demonstrated in this trace. Activity drops sharply around 03:30:43.7\u201303:30:45.7, but the recorded checks show no process suffering long runnable waits; the candidate PID\u2019s CPU ceiling is highly variable, and the later python3 burst is near one core without evidence of throttling. The change is more consistent with a workload taper followed by brief workload bursts than a confirmed fault.",
+  "when": "unknown",
+  "fault": "normal",
+  "confidence": 0.9
+ },
+ "score": {
+  "detected": true,
+  "control": true,
+  "present": false,
+  "fault_ok": false,
+  "said_normal": true,
+  "where": "n/a",
+  "window_iou": null,
+  "family": "svc_cpu_cap",
+  "agentic": true
+ },
+ "seconds": 439.2,
+ "calls": 45,
+ "tokens_in": 984304,
+ "tokens_out": 15964
+}

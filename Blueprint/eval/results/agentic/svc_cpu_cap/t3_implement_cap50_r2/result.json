@@ -1,0 +1,30 @@
+{
+ "run_id": "t3_implement_cap50_r2",
+ "problem": "svc_cpu_cap",
+ "arm": "given",
+ "blueprint": "1_svc_cpu_cap",
+ "model": "openai/gpt-6-luna",
+ "provider": "openrouter",
+ "verdict": {
+  "where": "unknown (no culprit established)",
+  "what_is_wrong": "No CPU-cap incident is established. The trace shows a sharp fall in workload activity and runtime after an initially busy interval, but not evidence that a runnable service was denied CPU; later `python3` CPU use also varies substantially rather than showing a demonstrated fixed ceiling.",
+  "when": "unknown",
+  "fault": "normal",
+  "confidence": 0.77
+ },
+ "score": {
+  "detected": false,
+  "control": false,
+  "present": true,
+  "fault_ok": false,
+  "where": "n/a",
+  "where_ok": false,
+  "window_iou": null,
+  "family": "svc_cpu_cap",
+  "agentic": true
+ },
+ "seconds": 351.3,
+ "calls": 46,
+ "tokens_in": 946294,
+ "tokens_out": 14333
+}

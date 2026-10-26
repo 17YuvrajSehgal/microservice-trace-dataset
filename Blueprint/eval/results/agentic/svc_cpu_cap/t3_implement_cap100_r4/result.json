@@ -1,0 +1,30 @@
+{
+ "run_id": "t3_implement_cap100_r4",
+ "problem": "svc_cpu_cap",
+ "arm": "given",
+ "blueprint": "1_svc_cpu_cap",
+ "model": "openai/gpt-6-luna",
+ "provider": "openrouter",
+ "verdict": {
+  "where": "unknown (no culprit established)",
+  "what_is_wrong": "No fault is established by this trace. The clearest change is a sharp fall in overall activity around 01:58:45.8 that persists to the recording end, but measured CPU activity also falls rather than showing sustained CPU starvation; the candidate CPU-cap check is variable and lacks a stable below-period ceiling. This is more consistent with a workload/activity reduction than evidence of a service failure.",
+  "when": "01:58:45.800 - 01:59:07.895",
+  "fault": "normal",
+  "confidence": 0.78
+ },
+ "score": {
+  "detected": false,
+  "control": false,
+  "present": true,
+  "fault_ok": false,
+  "where": "n/a",
+  "where_ok": false,
+  "window_iou": null,
+  "family": "svc_cpu_cap",
+  "agentic": true
+ },
+ "seconds": 228.3,
+ "calls": 30,
+ "tokens_in": 782481,
+ "tokens_out": 12353
+}

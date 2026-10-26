@@ -1,0 +1,30 @@
+{
+ "run_id": "t2_nocap_r1",
+ "problem": "svc_cpu_cap",
+ "arm": "given",
+ "blueprint": "1_svc_cpu_cap",
+ "model": "openai/gpt-6-luna",
+ "provider": "openrouter",
+ "verdict": {
+  "where": "unknown",
+  "what_is_wrong": "No CPU-cap or CPU-starvation incident is demonstrated: activity and CPU use drop sharply, but the scheduling evidence shows CPUs idle and no material runnable-task waits, consistent with reduced/paused workload rather than throttling. The short trace cannot establish whether the workload pause had an application-level cause or rule out unrelated non-CPU faults, so I find no fault type supported by the kernel evidence.",
+  "when": "unknown",
+  "fault": "normal",
+  "confidence": 0.7
+ },
+ "score": {
+  "detected": true,
+  "control": true,
+  "present": false,
+  "fault_ok": false,
+  "said_normal": true,
+  "where": "n/a",
+  "window_iou": null,
+  "family": "svc_cpu_cap",
+  "agentic": true
+ },
+ "seconds": 491.5,
+ "calls": 85,
+ "tokens_in": 1303055,
+ "tokens_out": 20132
+}

@@ -1,0 +1,30 @@
+{
+ "run_id": "t3_implement_cap100_r5",
+ "problem": "svc_cpu_cap",
+ "arm": "given",
+ "blueprint": "1_svc_cpu_cap",
+ "model": "openai/gpt-6-luna",
+ "provider": "openrouter",
+ "verdict": {
+  "where": "unknown",
+  "what_is_wrong": "No CPU-cap or other fault is demonstrated by the trace; the apparent scheduling-rate collapse is consistent with changing workload, and the strongest process-level change is a burst of python3 CPU work rather than evidence that it was denied CPU. The blueprint\u2019s key starvation signature is absent in the sampled scheduling budgets, so classify this as normal/no injected fault evident, not as a confirmed cap.",
+  "when": "unknown",
+  "fault": "normal",
+  "confidence": 0.79
+ },
+ "score": {
+  "detected": false,
+  "control": false,
+  "present": true,
+  "fault_ok": false,
+  "where": "n/a",
+  "where_ok": false,
+  "window_iou": null,
+  "family": "svc_cpu_cap",
+  "agentic": true
+ },
+ "seconds": 292.1,
+ "calls": 38,
+ "tokens_in": 726845,
+ "tokens_out": 12932
+}

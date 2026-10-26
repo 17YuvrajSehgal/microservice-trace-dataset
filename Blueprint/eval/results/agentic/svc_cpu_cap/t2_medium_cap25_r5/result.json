@@ -1,0 +1,30 @@
+{
+ "run_id": "t2_medium_cap25_r5",
+ "problem": "svc_cpu_cap",
+ "arm": "given",
+ "blueprint": "1_svc_cpu_cap",
+ "model": "openai/gpt-6-luna",
+ "provider": "openrouter",
+ "verdict": {
+  "where": "container in pid_ns 4026531836",
+  "what_is_wrong": "The trace shows intermittent, severe reductions in CPU runtime and many long ready-to-run waits for workloads in one namespace, but it does not establish the blueprint's specific CPU-cap diagnosis: the waits occur across all sampled slices, activity repeatedly rebounds, and no quota-period rhythm or per-period CPU ceiling was measured. This is evidence of CPU scheduling starvation or changing workload activity, not enough to distinguish a service CPU cap from workload variation or another cause.",
+  "when": "unknown",
+  "fault": "other",
+  "confidence": 0.68
+ },
+ "score": {
+  "detected": false,
+  "control": false,
+  "present": true,
+  "fault_ok": false,
+  "where": "n/a",
+  "where_ok": false,
+  "window_iou": null,
+  "family": "svc_cpu_cap",
+  "agentic": true
+ },
+ "seconds": 270.7,
+ "calls": 41,
+ "tokens_in": 1033575,
+ "tokens_out": 18398
+}

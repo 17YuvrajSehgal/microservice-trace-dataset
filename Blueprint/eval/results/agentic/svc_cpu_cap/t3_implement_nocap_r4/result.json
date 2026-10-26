@@ -1,0 +1,30 @@
+{
+ "run_id": "t3_implement_nocap_r4",
+ "problem": "svc_cpu_cap",
+ "arm": "given",
+ "blueprint": "1_svc_cpu_cap",
+ "model": "openai/gpt-6-luna",
+ "provider": "openrouter",
+ "verdict": {
+  "where": "unknown",
+  "what_is_wrong": "No injected CPU-cap fault is demonstrated. A short-lived python3 task ran at approximately one full core, but the trace does not show the long CPU-ready waits or a per-period CPU ceiling below the period needed to establish throttling; this looks like a bounded CPU workload rather than a service fault.",
+  "when": "unknown",
+  "fault": "normal",
+  "confidence": 0.87
+ },
+ "score": {
+  "detected": true,
+  "control": true,
+  "present": false,
+  "fault_ok": false,
+  "said_normal": true,
+  "where": "n/a",
+  "window_iou": null,
+  "family": "svc_cpu_cap",
+  "agentic": true
+ },
+ "seconds": 296.3,
+ "calls": 63,
+ "tokens_in": 1196859,
+ "tokens_out": 19914
+}

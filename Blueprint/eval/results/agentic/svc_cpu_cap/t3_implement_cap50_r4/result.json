@@ -1,0 +1,30 @@
+{
+ "run_id": "t3_implement_cap50_r4",
+ "problem": "svc_cpu_cap",
+ "arm": "given",
+ "blueprint": "1_svc_cpu_cap",
+ "model": "openai/gpt-6-luna",
+ "provider": "openrouter",
+ "verdict": {
+  "where": "unknown (no culprit established)",
+  "what_is_wrong": "No CPU-cap fault is established in this trace. Activity drops sharply around 18:54:14.6, but this is consistent with a workload becoming quieter: the container remains present, CPU consumption changes substantially by process and phase, and sampled wakeups are followed by prompt scheduling rather than showing a sustained ready-to-run stall.",
+  "when": "unknown",
+  "fault": "normal",
+  "confidence": 0.72
+ },
+ "score": {
+  "detected": false,
+  "control": false,
+  "present": true,
+  "fault_ok": false,
+  "where": "n/a",
+  "where_ok": false,
+  "window_iou": null,
+  "family": "svc_cpu_cap",
+  "agentic": true
+ },
+ "seconds": 642.9,
+ "calls": 50,
+ "tokens_in": 1093334,
+ "tokens_out": 15240
+}

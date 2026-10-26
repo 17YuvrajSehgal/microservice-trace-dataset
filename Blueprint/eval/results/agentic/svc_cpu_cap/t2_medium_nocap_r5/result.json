@@ -1,0 +1,30 @@
+{
+ "run_id": "t2_medium_nocap_r5",
+ "problem": "svc_cpu_cap",
+ "arm": "given",
+ "blueprint": "1_svc_cpu_cap",
+ "model": "openai/gpt-6-luna",
+ "provider": "openrouter",
+ "verdict": {
+  "where": "unknown",
+  "what_is_wrong": "The trace does not substantiate the proposed single-service CPU-cap fault: candidate low-activity periods show no process with meaningful long runnable waits, and the observed CPU changes are consistent with changing workload activity rather than demonstrated throttling. No other fault is established by these notes.",
+  "when": "unknown",
+  "fault": "normal",
+  "confidence": 0.84
+ },
+ "score": {
+  "detected": true,
+  "control": true,
+  "present": false,
+  "fault_ok": false,
+  "said_normal": true,
+  "where": "n/a",
+  "window_iou": null,
+  "family": "svc_cpu_cap",
+  "agentic": true
+ },
+ "seconds": 311.1,
+ "calls": 36,
+ "tokens_in": 699622,
+ "tokens_out": 10976
+}

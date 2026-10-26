@@ -1,0 +1,30 @@
+{
+ "run_id": "t2_cap100_r1",
+ "problem": "svc_cpu_cap",
+ "arm": "given",
+ "blueprint": "1_svc_cpu_cap",
+ "model": "openai/gpt-6-luna",
+ "provider": "openrouter",
+ "verdict": {
+  "where": "none evident",
+  "what_is_wrong": "No fault is established in this trace. The sharp drop in activity after the opening seconds is consistent with the workload becoming quieter, while the measured CPU-wait evidence does not show the sustained runnable delays expected from the proposed per-service CPU cap.",
+  "when": "unknown",
+  "fault": "normal",
+  "confidence": 0.78
+ },
+ "score": {
+  "detected": false,
+  "control": false,
+  "present": true,
+  "fault_ok": false,
+  "where": "n/a",
+  "where_ok": false,
+  "window_iou": null,
+  "family": "svc_cpu_cap",
+  "agentic": true
+ },
+ "seconds": 392.1,
+ "calls": 49,
+ "tokens_in": 1005513,
+ "tokens_out": 17248
+}

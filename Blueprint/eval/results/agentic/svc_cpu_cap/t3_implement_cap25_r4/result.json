@@ -1,0 +1,30 @@
+{
+ "run_id": "t3_implement_cap25_r4",
+ "problem": "svc_cpu_cap",
+ "arm": "given",
+ "blueprint": "1_svc_cpu_cap",
+ "model": "openai/gpt-6-luna",
+ "provider": "openrouter",
+ "verdict": {
+  "where": "python3 in pid_ns 4026531836",
+  "what_is_wrong": "PID 24492 (`python3`) in the container identified by pid_ns 4026531836 shows a strong per-period CPU-cap signature: it repeatedly gives up the CPU while still runnable, often onto an idle CPU, and its scheduled runtime sits near 25 ms per 100 ms during the busy stretch. This supports a service-level CPU throttling diagnosis, though the trace does not contain quota counters or cgroup settings to prove the enforcement mechanism directly.",
+  "when": "01:58:10 - 01:58:26",
+  "fault": "cpu_throttling",
+  "confidence": 0.78
+ },
+ "score": {
+  "detected": true,
+  "control": false,
+  "present": true,
+  "fault_ok": true,
+  "where": "n/a",
+  "where_ok": true,
+  "window_iou": null,
+  "family": "svc_cpu_cap",
+  "agentic": true
+ },
+ "seconds": 464.6,
+ "calls": 57,
+ "tokens_in": 1047269,
+ "tokens_out": 17661
+}

@@ -1,0 +1,30 @@
+{
+ "run_id": "t2_medium_nocap_r2",
+ "problem": "svc_cpu_cap",
+ "arm": "given",
+ "blueprint": "1_svc_cpu_cap",
+ "model": "openai/gpt-6-luna",
+ "provider": "openrouter",
+ "verdict": {
+  "where": "none identified",
+  "what_is_wrong": "No fault is established in this trace. Although kernel event and CPU activity rates fluctuate substantially, the sampled scheduling budgets show no meaningful CPU-ready waits or long freezes, so the blueprint's key CPU-starvation signature\u2014and therefore a CPU cap on any service\u2014is not supported.",
+  "when": "unknown",
+  "fault": "normal",
+  "confidence": 0.88
+ },
+ "score": {
+  "detected": true,
+  "control": true,
+  "present": false,
+  "fault_ok": false,
+  "said_normal": true,
+  "where": "n/a",
+  "window_iou": null,
+  "family": "svc_cpu_cap",
+  "agentic": true
+ },
+ "seconds": 108.9,
+ "calls": 32,
+ "tokens_in": 658215,
+ "tokens_out": 10634
+}

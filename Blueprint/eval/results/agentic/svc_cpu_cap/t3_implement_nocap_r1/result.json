@@ -1,0 +1,30 @@
+{
+ "run_id": "t3_implement_nocap_r1",
+ "problem": "svc_cpu_cap",
+ "arm": "given",
+ "blueprint": "1_svc_cpu_cap",
+ "model": "openai/gpt-6-luna",
+ "provider": "openrouter",
+ "verdict": {
+  "where": "unknown",
+  "what_is_wrong": "No fault is demonstrated in this trace. The opening burst of scheduling, block, and network activity quickly subsides, and python3 later becomes a brief CPU contributor, but the sampled processes show no sustained runnable-CPU starvation or CPU-quota signature; these changes are more consistent with workload variation than an established incident.",
+  "when": "unknown",
+  "fault": "normal",
+  "confidence": 0.91
+ },
+ "score": {
+  "detected": true,
+  "control": true,
+  "present": false,
+  "fault_ok": false,
+  "said_normal": true,
+  "where": "n/a",
+  "window_iou": null,
+  "family": "svc_cpu_cap",
+  "agentic": true
+ },
+ "seconds": 163.8,
+ "calls": 38,
+ "tokens_in": 668487,
+ "tokens_out": 11917
+}

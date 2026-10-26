@@ -1,0 +1,30 @@
+{
+ "run_id": "t3_implement_cap100_r1",
+ "problem": "svc_cpu_cap",
+ "arm": "given",
+ "blueprint": "1_svc_cpu_cap",
+ "model": "openai/gpt-6-luna",
+ "provider": "openrouter",
+ "verdict": {
+  "where": "unknown",
+  "what_is_wrong": "The trace shows a sharp scheduling-activity drop around 03:26:08.6, but the evidence does not establish a CPU-cap incident: the suspected waiter had only 10 waits of at least 10 ms, none of at least 50 ms, and raw switch records show `claude` sleeping rather than being switched out runnable. The later `python3` burst used about one full core for consecutive 100 ms buckets and then stopped; that is not evidence of throttling, so the best-supported classification is normal/workload activity change, not a confirmed fault.",
+  "when": "03:26:08.600 - 03:26:26.800",
+  "fault": "normal",
+  "confidence": 0.82
+ },
+ "score": {
+  "detected": false,
+  "control": false,
+  "present": true,
+  "fault_ok": false,
+  "where": "n/a",
+  "where_ok": false,
+  "window_iou": null,
+  "family": "svc_cpu_cap",
+  "agentic": true
+ },
+ "seconds": 293.4,
+ "calls": 55,
+ "tokens_in": 1099023,
+ "tokens_out": 17559
+}

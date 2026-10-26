@@ -1,0 +1,30 @@
+{
+ "problem": "svc_cpu_cap",
+ "dataset": "agentic-claude",
+ "cells": 42,
+ "fault_detected": [
+  14,
+  31
+ ],
+ "control_correct": [
+  11,
+  11
+ ],
+ "by_cap": {
+  "cap100": [
+   0,
+   11
+  ],
+  "cap25": [
+   8,
+   10
+  ],
+  "cap50": [
+   6,
+   10
+  ]
+ },
+ "cost_usd": 4.48,
+ "date": "2026-10-22",
+ "notes": "leak-free blueprints, dedicated blueprint worker, caps 12/90k"
+}

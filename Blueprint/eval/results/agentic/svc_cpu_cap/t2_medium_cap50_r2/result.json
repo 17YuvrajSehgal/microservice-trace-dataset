@@ -1,0 +1,30 @@
+{
+ "run_id": "t2_medium_cap50_r2",
+ "problem": "svc_cpu_cap",
+ "arm": "given",
+ "blueprint": "1_svc_cpu_cap",
+ "model": "openai/gpt-6-luna",
+ "provider": "openrouter",
+ "verdict": {
+  "where": "claude in pid_ns 4026531836 (same container also includes python3 and mi-scavenger)",
+  "what_is_wrong": "The trace suggests CPU throttling of one container\u2019s workload: scheduler-budget slices report many long runnable/preempted waits while the workload\u2019s CPU use and trace activity fall, with disk sleep near zero. However, the quota signature is not confirmed: no per-period CPU-ceiling or rhythm check was recorded, the candidate process changes across slices, and the sampled wake-to-switch check found no long delays.",
+  "when": "unknown",
+  "fault": "cpu_throttling",
+  "confidence": 0.57
+ },
+ "score": {
+  "detected": true,
+  "control": false,
+  "present": true,
+  "fault_ok": true,
+  "where": "n/a",
+  "where_ok": true,
+  "window_iou": null,
+  "family": "svc_cpu_cap",
+  "agentic": true
+ },
+ "seconds": 358.4,
+ "calls": 66,
+ "tokens_in": 1101587,
+ "tokens_out": 19605
+}

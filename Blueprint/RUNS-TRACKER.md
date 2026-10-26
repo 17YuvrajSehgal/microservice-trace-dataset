@@ -30,7 +30,7 @@ built index locally right now.
 
 | blueprint | dataset | runs | fault | control | traces | indexed | eval |
 |---|---|---|---|---|---|---|---|
-| **svc_cpu_cap** | agentic — Claude | 42 | 31 | 11 | **local** `agentic-runs/1_svc_cpu_cap/.../runs` | ✓ 42/42 | ⬜ |
+| **svc_cpu_cap** | agentic — Claude | 42 | 31 | 11 | **local** `agentic-runs/1_svc_cpu_cap/.../runs` | ✓ 42/42 | ✓ 14/31 faults, 11/11 controls (cap25 8/10, cap50 6/10, cap100 0/11) |
 | | agentic — Codex | 40 | — | — | Zenodo (meta-only local) | ⬜ 0/40 | ⬜ |
 | | Sock Shop | 8 | 8 | +10 normal | Trillium | ⬜ 0/8 | ⬜ |
 | | Train Ticket | 8 | 8 | +10 normal | Trillium | ⬜ 0/8 | ⬜ |

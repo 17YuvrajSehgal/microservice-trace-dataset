@@ -1,0 +1,30 @@
+{
+ "run_id": "t3_implement_nocap_r3",
+ "problem": "svc_cpu_cap",
+ "arm": "given",
+ "blueprint": "1_svc_cpu_cap",
+ "model": "openai/gpt-6-luna",
+ "provider": "openrouter",
+ "verdict": {
+  "where": "unknown",
+  "what_is_wrong": "No fault is established in this trace, and the blueprint\u2019s single-service CPU-cap hypothesis is not supported: the apparent activity drop has no accompanying CPU-starvation waits in the sampled processes. The trace instead shows changing workload activity, including a later python3 work burst, without evidence that the service was throttled.",
+  "when": "unknown",
+  "fault": "normal",
+  "confidence": 0.93
+ },
+ "score": {
+  "detected": true,
+  "control": true,
+  "present": false,
+  "fault_ok": false,
+  "said_normal": true,
+  "where": "n/a",
+  "window_iou": null,
+  "family": "svc_cpu_cap",
+  "agentic": true
+ },
+ "seconds": 301.1,
+ "calls": 46,
+ "tokens_in": 753625,
+ "tokens_out": 14996
+}

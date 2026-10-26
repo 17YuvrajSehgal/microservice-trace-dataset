@@ -1,0 +1,30 @@
+{
+ "run_id": "t2_medium_nocap_r3",
+ "problem": "svc_cpu_cap",
+ "arm": "given",
+ "blueprint": "1_svc_cpu_cap",
+ "model": "openai/gpt-6-luna",
+ "provider": "openrouter",
+ "verdict": {
+  "where": "unknown",
+  "what_is_wrong": "No fault is confirmed by this trace. The initial activity burst gives way to low, irregular, then bursty workload activity, but the CPU-cap signature was not established: the sampled scheduling slices had no significant CPU waits, and no victim-specific wait, rhythm, or per-period ceiling evidence was recorded.",
+  "when": "unknown",
+  "fault": "normal",
+  "confidence": 0.66
+ },
+ "score": {
+  "detected": true,
+  "control": true,
+  "present": false,
+  "fault_ok": false,
+  "said_normal": true,
+  "where": "n/a",
+  "window_iou": null,
+  "family": "svc_cpu_cap",
+  "agentic": true
+ },
+ "seconds": 366.2,
+ "calls": 37,
+ "tokens_in": 728393,
+ "tokens_out": 12907
+}

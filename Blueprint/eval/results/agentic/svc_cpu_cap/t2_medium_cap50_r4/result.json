@@ -1,0 +1,30 @@
+{
+ "run_id": "t2_medium_cap50_r4",
+ "problem": "svc_cpu_cap",
+ "arm": "given",
+ "blueprint": "1_svc_cpu_cap",
+ "model": "openai/gpt-6-luna",
+ "provider": "openrouter",
+ "verdict": {
+  "where": "none identified",
+  "what_is_wrong": "No CPU-cap incident is established. The sharp activity drop around 18:58:02 is better explained by changing or ceasing workload demand: runtime and scheduler activity fall together, idle CPUs remain available, and later python3 work runs again; the sampled long waits do not establish one continuously starved victim or a quota ceiling.",
+  "when": "unknown",
+  "fault": "normal",
+  "confidence": 0.82
+ },
+ "score": {
+  "detected": false,
+  "control": false,
+  "present": true,
+  "fault_ok": false,
+  "where": "n/a",
+  "where_ok": false,
+  "window_iou": null,
+  "family": "svc_cpu_cap",
+  "agentic": true
+ },
+ "seconds": 467.8,
+ "calls": 62,
+ "tokens_in": 1108902,
+ "tokens_out": 16100
+}

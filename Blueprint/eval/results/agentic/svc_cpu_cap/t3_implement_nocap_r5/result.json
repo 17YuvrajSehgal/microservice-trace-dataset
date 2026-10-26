@@ -1,0 +1,30 @@
+{
+ "run_id": "t3_implement_nocap_r5",
+ "problem": "svc_cpu_cap",
+ "arm": "given",
+ "blueprint": "1_svc_cpu_cap",
+ "model": "openai/gpt-6-luna",
+ "provider": "openrouter",
+ "verdict": {
+  "where": "unknown",
+  "what_is_wrong": "The trace does not verify the supplied CPU-cap hypothesis: the inspected slices show no substantial runnable-CPU waits, and the activity change is better supported as a workload transition than as CPU starvation. Scheduler and network event rates recover sharply when `http` appears, but the trace does not establish that this caused a service fault; broader health is also uncertain because the recording is very short and has some event loss.",
+  "when": "unknown",
+  "fault": "normal",
+  "confidence": 0.78
+ },
+ "score": {
+  "detected": true,
+  "control": true,
+  "present": false,
+  "fault_ok": false,
+  "said_normal": true,
+  "where": "n/a",
+  "window_iou": null,
+  "family": "svc_cpu_cap",
+  "agentic": true
+ },
+ "seconds": 313.9,
+ "calls": 52,
+ "tokens_in": 1011466,
+ "tokens_out": 15944
+}

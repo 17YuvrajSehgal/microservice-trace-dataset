@@ -1,0 +1,30 @@
+{
+ "run_id": "t2_medium_cap100_r2",
+ "problem": "svc_cpu_cap",
+ "arm": "given",
+ "blueprint": "1_svc_cpu_cap",
+ "model": "openai/gpt-6-luna",
+ "provider": "openrouter",
+ "verdict": {
+  "where": "unknown (no culprit identified)",
+  "what_is_wrong": "No fault is evident in this trace, and the blueprint\u2019s single-container CPU-cap signature is not present. CPU activity drops sharply around 03:16:49\u201303:16:53, but the affected `claude` and `JITWorker` processes remain present, their wakeups and work-related activity also decline, and the scheduling samples show no sustained CPU wait; this is more consistent with reduced workload than throttling.",
+  "when": "unknown",
+  "fault": "normal",
+  "confidence": 0.88
+ },
+ "score": {
+  "detected": false,
+  "control": false,
+  "present": true,
+  "fault_ok": false,
+  "where": "n/a",
+  "where_ok": false,
+  "window_iou": null,
+  "family": "svc_cpu_cap",
+  "agentic": true
+ },
+ "seconds": 643.9,
+ "calls": 59,
+ "tokens_in": 1154546,
+ "tokens_out": 18282
+}
