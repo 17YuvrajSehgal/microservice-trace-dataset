@@ -30,11 +30,11 @@ built index locally right now.
 
 | blueprint | dataset | runs | fault | control | traces | indexed | eval |
 |---|---|---|---|---|---|---|---|
-| **svc_cpu_cap** | agentic — Claude | 42 | 31 | 11 | **local** `agentic-runs/1_svc_cpu_cap/.../runs` | ⬜ 0/42 | ⬜ |
+| **svc_cpu_cap** | agentic — Claude | 42 | 31 | 11 | **local** `agentic-runs/1_svc_cpu_cap/.../runs` | ✓ 42/42 | ⬜ |
 | | agentic — Codex | 40 | — | — | Zenodo (meta-only local) | ⬜ 0/40 | ⬜ |
 | | Sock Shop | 8 | 8 | +10 normal | Trillium | ⬜ 0/8 | ⬜ |
 | | Train Ticket | 8 | 8 | +10 normal | Trillium | ⬜ 0/8 | ⬜ |
-| **svc_mem_cap** | agentic — Claude | 44 | 44 | 0 | **local** `agentic-runs/3_memory_cap/runs` | ⬜ 0/44 | ⬜ |
+| **svc_mem_cap** | agentic — Claude | 44 | 44 | 0 | **local** `agentic-runs/3_memory_cap/runs` | ✓ 44/44 | ⬜ |
 | | agentic — Codex | 44 | — | — | Zenodo (meta-only local) | ⬜ 0/44 | ⬜ |
 | | Sock Shop | 8 | 8 | +10 normal | Trillium | ⬜ 0/8 | ⬜ |
 | | Train Ticket | 8 | 8 | +10 normal | Trillium | ⬜ 0/8 | ⬜ |
@@ -52,7 +52,7 @@ blueprints (not per-blueprint copies).
 
 | | runs matching a blueprint | locally traced | evaluated |
 |---|---|---|---|
-| agentic (Claude, local CTF) | 86 | **86** | 0 |
+| agentic (Claude, local CTF) | 86 | **86** (indexed ✓) | 0 |
 | agentic (Codex, Zenodo) | 84 | 0 | 0 |
 | Sock Shop (Trillium) | 40 fault + 10 normal | 1 (svc_cpu_cap sample) | 0 |
 | Train Ticket (Trillium) | 40 fault + 10 normal | 0 | 0 |
@@ -63,7 +63,7 @@ blueprints (not per-blueprint copies).
 
 | dataset | location | notes |
 |---|---|---|
-| agentic — Claude | `agentic-runs/` (this repo) | 132 runs carry a raw CTF (`trace/kernel/`); of these 86 are CPU/memory caps. Build indexes with `Blueprint/eval/build_indexes.py`. |
+| agentic — Claude | `agentic-runs/` (this repo) | 132 runs carry a raw CTF (`trace/kernel/`); of these 86 are CPU/memory caps. **All 132 indexed 2026-10-22** into `Blueprint/eval/index-agentic/` (56 MB, gitignored) via `build_indexes.py`. |
 | agentic — Codex | Zenodo DOI `10.5281/zenodo.23523441` | Only `meta/` ships in `agentic-runs/`; kernel traces are the 2.6 GB Zenodo archive. See `os-noise-for-agentic-ai/DATA.md`. |
 | agentic — e2e / threads / io | `agentic-runs/2_*`, `4_*`, `*_e2e_*` | No matching blueprint (threads = run-queue, io = disk cap, e2e = no trace). 132-86 = 46 local CTFs are these. |
 | Sock Shop | Trillium `/scratch/yuvraj17/stratatrace/data/stratatrace-v2/sockshop/<fam>/<run>/` | 170 runs total; 40 across the 5 blueprint families + 10 normal. **Verified 2026-10-22.** Each run has `kernel/kernel/`, `ground_truth.json`, `meta/` — fully ready to index + eval on Trillium. (Each run also has a sibling `<run>_metrics/` dir — ignore it when counting.) |
