@@ -347,6 +347,7 @@ class Ctx:
     def __init__(self, run_dir, guard, tr, run_id, index_root=None):
         self.run_dir, self.guard, self.tr, self.run_id = run_dir, guard, tr, run_id
         self.repo = None                      # set by Chat when a code repo is connected
+        self.orientation = ""     # the recording's timespan, computed once, given to all workers
         self.bp = None                        # blueprints.Runner when a blueprint is given
         self.bp_def = None                    # the blueprint_tool schema for this run
         self.bp_only = False                  # blueprint-only mode: no index tools/run_python
@@ -651,6 +652,20 @@ def n_plan(state: S) -> dict:
         subs = [{"title": "full investigation",
                  "instruction": "Investigate the whole recording on your own judgement."}]
     subs = subs[:MAX_SUBTASKS]
+    if CTX is not None and CTX.bp_def is not None:
+        # A blueprint with its own tools was handed over, but the planner does not see it and
+        # its generic subtasks never direct anyone to RUN it - measured across three runs,
+        # blueprint_tool was called 8, 2 and 0 times, purely on worker whim, and the method's
+        # deciding checks mostly never executed. Dedicate one worker to the procedure,
+        # deterministically; the other subtasks keep their breadth.
+        bp_task = {"title": "execute the blueprint's procedure",
+                   "instruction": ("Work the given blueprint's steps IN ORDER with "
+                                   "blueprint_tool, start to finish, exactly as its method "
+                                   "shows ($TRACE/$WORK/$DUMP are expanded for you). Run its "
+                                   "deciding check even when earlier readings look normal, "
+                                   "and record each step's reading with note_finding - "
+                                   "including checks that come back clean.")}
+        subs = (subs[:MAX_SUBTASKS - 1] + [bp_task]) if len(subs) >= MAX_SUBTASKS             else subs + [bp_task]
     CTX.event("plan", round=1, subtasks=subs)
     return {"plan": subs, "round": 1}
 
@@ -664,8 +679,10 @@ def n_work(payload: dict) -> dict:
     task, i, rnd = payload["_task"], payload["_i"], payload["_round"]
     node = "worker%d.%d" % (rnd, i)
     tools = _worker_tools()
+    orient = (CTX.orientation + "\n\n") if CTX.orientation else ""
     msgs = [{"role": "system", "content": _WORKER},
             {"role": "user", "content":
+             orient +
              "YOUR SUBTASK: %s\n\n%s\n\nRecord findings with note_finding as you go."
              % (task.get("title", "?"), task.get("instruction", ""))}]
     CTX.event("worker_start", node=node, task=task)
@@ -907,6 +924,20 @@ def diagnose(run_dir, blueprint=None, blueprint_only=False, transcript_path=None
                     "kernel_only": True})
     CANCEL.clear()
     CTX = Ctx(run_dir, guard, tr, run_id, index_root=index_root)
+    # One ctf_timespan, shared. Measured: every worker opened with its own identical
+    # ctf_timespan call (4-5 per run), and slice tools were then called with guessed dates.
+    # The recording's own bounds are trace metadata, not fault information - handing them
+    # over removes duplicate orientation calls without telling anyone where to look.
+    try:
+        import ctf_tool as _ct
+        _ts = _ct.ctf_timespan(run_dir)
+        if not _ts.get("error"):
+            CTX.orientation = ("The recording spans %s to %s UTC (%.1f s). Every range you "
+                               "query must sit inside it."
+                               % (_ts.get("begin"), _ts.get("end"),
+                                  _ts.get("duration_s") or 0))
+    except Exception:                                                   # noqa: BLE001
+        pass
 
     if blueprint:
         sk, bp_tools = blueprints.load(blueprint)

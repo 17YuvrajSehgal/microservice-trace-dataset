@@ -38,10 +38,14 @@ trace="$1"; day="$2"; start="$3"; secs="$4"; out="$5"
 # Self-heal a missing/placeholder date (the agent sometimes calls this before idx_summary):
 # resolve the day from the trace itself - the same source idx_summary reads - so the slice
 # still cuts instead of failing on a bad date.
-if ! printf '%s' "$day" | grep -qE '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'; then
-  day="$(python3 "$here/idx_summary.py" "$trace" 2>/dev/null | awk '/^date \(UTC\)/{print $4}')"
-  [ -n "$day" ] || { echo "error: could not resolve the trace date from idx_summary" >&2; exit 1; }
-  echo "note: date was not YYYY-MM-DD; resolved from the trace -> $day" >&2
+trace_day="$(python3 "$here/idx_summary.py" "$trace" 2>/dev/null | awk '/^date \(UTC\)/{print $4}')"
+if [ -n "$trace_day" ] && [ "$day" != "$trace_day" ]; then
+  # malformed OR simply wrong (a guessed date slices an empty window and reads as "no data")
+  echo "note: date '$day' is not the trace's own date; using $trace_day" >&2
+  day="$trace_day"
+elif [ -z "$trace_day" ] && ! printf '%s' "$day" | grep -qE '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'; then
+  echo "error: bad date '$day' and could not resolve the trace date from idx_summary" >&2
+  exit 1
 fi
 end=$(date -u -d "$day $start UTC + $secs seconds" '+%Y-%m-%d %H:%M:%S')
 

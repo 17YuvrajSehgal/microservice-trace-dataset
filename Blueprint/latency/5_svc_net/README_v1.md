@@ -27,7 +27,7 @@ Two effects, usually together:
 
 ### 1.2 What it looks like in a kernel trace
 
-Measured on a run where one container (a Java service) had 150 ms delay, 40 ms jitter, and 4% packet loss put on its interface, against the same system healthy:
+Measured on a run where one container had 150 ms delay, 40 ms jitter, and 4% packet loss put on its interface, against the same system healthy:
 
 - **Healthy: retransmission is almost exactly zero.** 4 retransmitted segments out of 90,107 (0.0%). This is the normal background.
 - **Degraded: the retransmitting flows are all the victim's.** Every flow with retransmissions touched the victim's address — its talks with its database, in both directions, at 1.4–3.2% per flow — while every other service's flows stayed at 0%.
@@ -296,7 +296,7 @@ The same as the CPU-cap blueprint's Appendix A: each channel file has an `index/
 
 ## Appendix B. One solved case
 
-How the numbers looked on a run with a known fault: 150 ms delay, 40 ms jitter, and 4% loss on one Java service's interface, injected for 2 minutes in a 4-minute trace. Use the numbers to get a feel for the sizes. Do not reuse them as thresholds.
+How the numbers looked on a run with a known fault: 150 ms delay, 40 ms jitter, and 4% loss on one container's interface, injected for 2 minutes in a 4-minute trace. Use the numbers to get a feel for the sizes. Do not reuse them as thresholds.
 
 - **Step 1:** 12 CPUs, no lost events, `net_dev_queue` with full headers present.
 - **Step 2:** the data rate fell for the injection window and recovered after.

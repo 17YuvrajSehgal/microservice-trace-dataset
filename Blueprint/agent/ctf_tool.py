@@ -229,8 +229,8 @@ def ctf_timespan(run_dir: str, ctf_subdir: str = "kernel/kernel") -> dict:
     file may read.
     """
     ctf = os.path.join(run_dir, ctf_subdir)
-    if not os.path.isdir(ctf):
-        return {"error": "no CTF at %s" % ctf}
+    if not os.path.isdir(ctf) and _index_for(run_dir) is None:
+        return {"error": "no CTF at %s and no index either" % ctf}
 
     # Prefer the index: it was built from every event in the trace, so it knows the real ends.
     # The tick snapshots start a little after the recorder does and stop a little before it,

@@ -305,11 +305,11 @@ The same as the CPU-cap blueprint's Appendix A: `index/*.idx` is a table of cont
 
 ## Appendix B. One solved case
 
-A 12-CPU host running a shop application; its catalogue service talks to a MySQL database. A 500 ms (±100 ms jitter) delay was injected into the path between them for two minutes. Use the numbers for a feel of the sizes, not as thresholds.
+A multi-CPU host running a web application; one of its services talks to a SQL database. A delay of several hundred milliseconds (with jitter) was injected into the path between them for two minutes. Use the numbers for a feel of the sizes, not as thresholds.
 
 - **Step 2:** the data rate fell during the fault window and recovered after.
-- **Step 3 (census):** against baseline, the catalogue service's gap p50 went **0.9 ms → 419 ms**; the load generator **50 → 591 ms**; the gateway **114 → 367 ms**. The monitoring exporters sat at ~5 s gaps in BOTH slices — normal long-polling, ignored. `sched_budget.py` showed near-zero CPU waits for all of them.
-- **Step 5:** the catalogue's connection pool — six fds — read p50 **503–543 ms, p90 580–620 ms** in the fault slice, against sub-millisecond baselines. Its other fds stayed fast. Added delay ≈ 500 ms.
-- **The async trap, live:** every individual `read()` of the catalogue (a Go binary) completed in 0.0 ms in BOTH slices. Blocking-call duration showed nothing; only the request-to-answer gap carried the fault.
+- **Step 3 (census):** against baseline, the victim service's gap p50 went **0.9 ms → 419 ms**; the load generator **50 → 591 ms**; the gateway **114 → 367 ms**. The monitoring exporters sat at ~5 s gaps in BOTH slices — normal long-polling, ignored. `sched_budget.py` showed near-zero CPU waits for all of them.
+- **Step 5:** the victim's connection pool — six fds — read p50 **503–543 ms, p90 580–620 ms** in the fault slice, against sub-millisecond baselines. Its other fds stayed fast. Added delay ≈ 500 ms.
+- **The async trap, live:** every individual `read()` of the victim (a non-blocking runtime) completed in 0.0 ms in BOTH slices. Blocking-call duration showed nothing; only the request-to-answer gap carried the fault.
 - **Step 6:** the database process was healthy: `run` 0.06 cores, zero long CPU waits, `D` 0.00, **99.9 threads parked in the event loop**. Healthy dependency + half-second answers = the delay lived in the path. (Ground truth: a proxy between them was injecting the latency.)
 - **Step 8:** added delay ≈ 500 ms, jitter ≈ ±100 ms (p90 − p50). Both matched the injection.

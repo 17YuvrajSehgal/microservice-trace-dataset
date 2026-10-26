@@ -21,7 +21,7 @@ A container gets a memory limit that is too small for its work.
 In cgroup v2 the limit is a number of bytes in one of two files, and they behave very differently:
 
 ```
-memory.high = 768M     # the SOFT limit: slow down, never kill
+memory.high = 512M     # the SOFT limit: slow down, never kill
 memory.max  = 640M     # the HARD limit: reclaim, and kill if that fails
 ```
 
@@ -314,15 +314,15 @@ The same as the CPU-cap blueprint's Appendix A: each channel file has an `index/
 
 How the numbers looked on runs with known limits. Use them to get a feel for the sizes. Do not reuse them as thresholds.
 
-**The soft limit (memory.high = 768 MB, working set ~1.4 GB):**
+**A soft limit (memory.high roughly half the working set):**
 
-- Step 3: 9,224 memcg reclaims by one process (`ttmem`) in a 32 s window. Baseline: zero.
-- Step 5: the victim read 5,369 MB for a 1 GB file — over five passes. Baseline: 1,074 MB, one pass.
-- The job took 32.4 s against 8.5 s free — and across five repeats about 4.7x.
-- Step 4: one exit, 7.9 ms after its last reclaim, together with its launcher script — a finish, not a kill. Correct: memory.high never kills.
+- Step 3: thousands of memcg reclaims by one process in a half-minute window. Baseline: zero.
+- Step 5: the victim read about five times its file's size — the same data over and over. Baseline: one pass plus read-ahead.
+- The job took several times longer than the free run (about 4-5x across repeats).
+- Step 4: one exit, several milliseconds after its last reclaim, together with its launcher script — a finish, not a kill. Correct: memory.high never kills.
 
-**The hard limit (memory.max = 640 MB, a 512 MB anonymous allocation on a no-swap machine):**
+**A hard limit (memory.max below an anonymous allocation, no swap):**
 
-- Step 3: 785 memcg reclaims — the kernel tried.
-- Step 4: the allocating process exited **0.02 ms** after its own reclaim — inside it. Killed. Across three known kills the gap was 0.02–0.37 ms; across five known finishes 7.9–48.3 ms.
+- Step 3: hundreds of memcg reclaims — the kernel tried.
+- Step 4: the allocating process exited **well under a millisecond** after its own reclaim — inside it. Killed. Across known kills the gap was a few hundredths to a few tenths of a millisecond; across known finishes, several milliseconds to tens of milliseconds.
 - Step 5: modest reads (the memory was anonymous; there was nothing to refault from disk). The kill, not the re-reading, is the hard face's signature on heap memory.

@@ -64,3 +64,45 @@
 - Verified on svc_cpu_cap: 9 tables, 21 headings, 18 code blocks rendered, no raw markdown
   leaking, outline jump works, Raw toggles, switching blueprints works. No console errors,
   light and dark.
+
+## Full pre-run analysis (user asked: analyze before running), and what it changed
+Analyzed 4 full transcripts (3 cpu post-CRLF-fix + 1 memory). Findings -> fixes:
+
+ARCHITECTURE (workers/tokens)
+- Fan-out works (4 workers fire) but cost is skewed: the "inspect mechanisms" worker burns
+  21-59% of input alone; the reviewer's round-2 worker cost 19-51% for 2-5 findings (on one run
+  it cost MORE than all of round 1). Kept the architecture; bounded cost via ABL_WORKER_STEPS=12
+  + ABL_THREAD_BUDGET=90000 in the eval launcher (demo-measured safe).
+- Every worker re-ran the same orientation (ctf_timespan x4-5/run) and slice tools got guessed
+  dates. FIX: diagnose() computes ctf_timespan once and injects it into every worker prompt
+  (trace metadata, not fault info - fair).
+- blueprint_tool usage was 8/2/0 calls across three runs - worker whim, because the PLANNER
+  never sees the blueprint and its subtasks are generic. FIX: when a blueprint with tools is
+  given, n_plan deterministically dedicates one worker to "execute the blueprint procedure
+  start-to-finish incl. its deciding check"; other subtasks keep their breadth.
+
+GROUND TRUTH (scoring fairness, pro-agent direction too)
+- cpu.stat deltas prove EVERY capped run throttled (cap100: 12-29 episodes, cap50: 57-106,
+  cap25: 134-219; nocap: 0). So misses are real misses; denominator stands.
+
+TOOLS
+- ctf_timespan had LOST its index-first guard (old "no CTF" error returned on agentic layout);
+  re-applied. Verified: timespan + timeline read the index.
+- extract_slice date self-heal upgraded: it fixed malformed dates but passed through
+  valid-but-WRONG ones (agent guessed 2026-01-01 -> empty slice read as "no data"). Now always
+  resolves the trace's own date and overrides a mismatch with a note.
+
+BLUEPRINT ROBUSTNESS
+- cpu blueprint's Step-5 gate ("waits jump -> Step 6") misses MILD caps: cap100 runs throttle
+  only 12-29 times so the wait table barely moves; on t2_cap100_r1 the agent ran sched_budget
+  and stopped before cpu_ceiling (the deciding check). Added an explicit mild-cap path: small
+  waits + a candidate => run cpu_ceiling anyway (one call) before reporting "no victim".
+
+BLUEPRINT FAIRNESS (leaks removed - previous numbers were inflated)
+- 4_svc_mem_cap Appendix named `ttmem` (the eval victim), the exact 768M cap and exact counts
+  (9,224) - the demo verdict had matched these verbatim. Anonymized to the noisy_neighbor
+  Appendix-B style (rough magnitudes, no names); intro example 768M -> 512M.
+- 3_slow_db worked example named "catalogue + MySQL, 500ms" = the Sock Shop answer. Renamed to
+  "a service + its SQL database, several hundred ms"; numbers kept for scale.
+- 5_svc_net dropped "a Java service" (narrows carts/ts-basic); magnitudes kept.
+- noisy_neighbor was already clean (its Appendix B is the model the others now follow).

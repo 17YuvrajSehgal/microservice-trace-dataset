@@ -316,6 +316,7 @@ The script reads the `prev_state` code of each `sched_switch`. It prints every c
 Decide, by comparing the victim's two rows:
 
 - **`wait` and the long-wait counts jump, while `run` stays low or falls:** the victim is starved of CPU. Go to Step 6.
+- **The waits look SMALL but a candidate victim exists:** do not stop here. A mild cap (quota near the victim's natural use) throttles only a few dozen times in a whole run, so the wait columns barely move - measured: a 1-core cap on a bursty workload produced 12-29 throttle episodes in minutes, invisible in this table. The ceiling check costs one call and decides it: go straight to Step 6b and run `cpu_ceiling.py` on the busiest candidate at its busiest stretch. Only report "no victim" after the ceiling check is flat-free on the top candidates.
 - **`run` goes up a lot and `wait` stays small:** the victim is doing more work. This is not a cap. Report "the victim is busy, not starved" and **stop**.
 - **`D` goes up a lot:** the victim waits on the disk. This is not a cap. Report it and **stop**.
 - **`S` goes up a lot, while `wait` stays low:** the victim waits on locks, the network, or another service. This is not a cap. Report it and **stop**.
