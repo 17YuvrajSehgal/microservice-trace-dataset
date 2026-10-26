@@ -79,3 +79,7 @@ demo/data/live.json
 *.drawio.pre-*
 *.drawio.bkp
 .$*.bkp
+
+# built trace indexes (large, regenerable via Blueprint/eval/build_indexes.py)
+Blueprint/eval/index-agentic/
+Blueprint/eval/results/
