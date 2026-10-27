@@ -135,27 +135,25 @@ nodes have no internet). Same agent/model/scoring/budgets as §1–2 **except** 
 to 20 steps / 150 k budget — the microservice procedure (map → slice → sched_budget → victim →
 ceiling across dozens of containers) needs more turns than the agentic one-cgroup case.
 
-72 of 80 cells scored (8 lost to API rate-limits, resumable). **Only the ✅ rows are
-trustworthy.** The ⚠ rows are confounded by known, still-open bugs and must not be cited yet.
+72 of 80 cells scored (8 lost to API rate-limits, resumable). Graded **by hand against ground
+truth + the injection recipe** (`JUDGING.md`), not score.py — which under-counted badly by
+demanding the gt `target_service` string and rejecting the aggressor/proxy/DB-peer the agent
+correctly named. Per-run judgments: `results/<app>/JUDGMENTS*.md`.
 
-| app | blueprint | cells | detected | WHERE-ok | IoU | status |
-|---|---|---|---|---|---|---|
-| Sock Shop | **svc_cpu_cap** | 8 | **5/8** | 7/8 | 0.97 | ✅ validated |
-| Sock Shop | **svc_net** | 5 | **5/5** | 5/5 | 0.98 | ✅ validated |
-| Sock Shop | **noisy_neighbor** | 8 | **7/8** | host-scope | 0.98 | ✅ validated |
-| Sock Shop | svc_mem_cap | 7 | n/a | — | 0.87 | ⛔ **not evaluable** — trace lacks memcg tracepoints |
-| Sock Shop | slow_db | 11 | 1/11 | 1/11 | 0.91 | ⚠ blueprint misses — debugging |
-| Train Ticket | svc_cpu_cap | 6 | 1/6 | 1/6 | 0.08 | ⚠ TT-wide issue — debugging |
-| Train Ticket | svc_net | 5 | 0/5 | 0/5 | 0.98 | ⚠ TT-wide issue |
-| Train Ticket | noisy_neighbor | 8 | 1/8 | — | 0.99 | ⚠ TT-wide issue |
-| Train Ticket | slow_db | 8 | 1/8 | 1/8 | 0.92 | ⚠ TT-wide issue |
-| Train Ticket | svc_mem_cap | 6 | n/a | — | 0.58 | ⛔ **not evaluable** — trace lacks memcg tracepoints |
+### Sock Shop — the clean testbed (every fault `verification_status=confirmed`)
 
-### What is trustworthy
+| blueprint | by-hand DETECTED | score.py said | localisation |
+|---|---|---|---|
+| svc_cpu_cap | **6/8** | 5/8 | cpu_throttling on `java` (carts); 2 runs hedged "other" = MISS |
+| noisy_neighbor | **7/8** | 0/8 (pre-fix) | named aggressor `stress-ng`; 1 "normal" |
+| slow_db | **8/11** | 1/11 | db_latency via `toxiproxy`/`mysqld`; caught 2/3 subtle-60 ms |
+| svc_net | **5/5** | 5/5 | service_network on `java` (carts), netem 150 ms+4 % |
+| svc_mem_cap | ⛔ n/a | — | trace has no memcg tracepoints (below) |
 
-On **Sock Shop, three of five blueprints work**: svc_cpu_cap 5/8 (victim container named 7/8,
-window IoU 0.97), svc_net **5/5**, noisy_neighbor 7/8. These detect the fault *and* localise it —
-the real RCA task, harder than the agentic own-cgroup case.
+**Sock Shop headline: 26/32 = 81 % DETECTED** on the four evaluable blueprints, each with correct
+localisation and a window overlapping the injection, on faults the dataset's own verification
+confirms bit. Conservative grading throughout ("other"/"normal"/"unknown" = MISS). This is the
+trustworthy microservice result.
 
 ### svc_mem_cap is NOT evaluable on microservice (data-collection gap, not a miss)
 
@@ -164,27 +162,29 @@ sched, 13 block, 10 net, 5 irq, 3 skb, 1 power — and zero memory events** (no 
 `memcg_reclaim`, `oom`, `kswapd`). The agentic profile *did* carry
 `mm_vmscan_memcg_reclaim_begin/end`, which is exactly why agentic svc_mem_cap reached 44/44. The
 memory-cap signature the blueprint reads — the memcg-reclaim burst — is **physically absent** from
-these traces, so svc_mem_cap cannot be scored here. The agent behaved correctly: it cut the right
-slices, found no reclaim, and **declined to assert a memory cap** rather than inventing one
-("not confirmed … an observed workload interruption rather than a proven resource fault"). Those
-cells are marked ⛔ not-evaluable and excluded from the detection totals — counting them as misses
-would falsify the result. Re-collecting Sock Shop/TT with the memory tracepoints enabled is future
-work.
+these traces. The agent behaved correctly: it cut the right slices, found no reclaim, and
+**declined to assert a memory cap** rather than inventing one. Marked not-evaluable and excluded
+from totals; counting these as misses would falsify the result. Re-collecting with the memory
+tracepoints enabled is future work.
 
-### Known bugs behind the ⚠ rows (do not cite these numbers)
+### Train Ticket — held back by data quality, not the agent
 
-- **Scorer host-scope bug — FIXED 2026-10-27.** noisy_neighbor has `target_service=host`
-  (host-wide, no single victim); the scorer demanded a victim container and scored the agent
-  wrong even when it correctly named the aggressor `stress-ng` at IoU 0.99. Sock Shop
-  noisy_neighbor went **0/8 → 7/8** on re-score (no re-run). Train Ticket noisy stayed 1/8, so TT
-  has a *separate* problem.
-- **svc_mem_cap + slow_db miss on Sock Shop** (0/7, 1/11): the agent concludes "other"/normal.
-  Only svc_cpu_cap's tool path was smoke-tested before the campaign; these two blueprints have
-  untested tool paths (the `$BT2`-style class of bug). Open.
-- **Train Ticket fails across the board** — even svc_cpu_cap/svc_net that work on Sock Shop. The
-  agent finds a real throttle but in the wrong one of 60+ near-identical `ts-*` Java services and
-  at the wrong time (svc_cpu_cap IoU 0.08 while the gt window sits inside the trace). One
-  TT-environment issue, not five blueprint issues. Open.
+TT is **not** a clean testbed, for reasons in the dataset, not the method:
+
+- **TT svc_cpu_cap faults did not bite.** `ts-travel-service` is nearly idle under test load
+  (CPU 0.003 → 0.005 cores against a 0.2-core cap); all 8 runs are `verification_status=unconfirmed`,
+  sigma ~2. The agent correctly reports normal / "suspected not proven" — the same cap-set-but-did-
+  not-bite case as the agentic 1.0-core cap. Not a miss.
+- **TT svc_net / slow_db are also labeled `unconfirmed`**, but here the label is wrong, not the
+  fault: on slow_db the agent plainly reads the injected **~0.5 s DB-path gaps** in the trace and
+  localises `toxiproxy`/the MySQL endpoint (≈4/5 DETECTED by hand). This matches the known TT
+  `no_metric_signature` issue (CAMPAIGN-ISSUES) — the metric-side verification check misses a fault
+  the kernel trace shows clearly.
+- **TT noisy_neighbor** is confirmed (8/8 bit) and the agent gets some; needs a full hand pass.
+
+So TT mixes genuine non-bites (cpu), unreliable verification labels (net, slow_db), and the memcg
+gap (mem). A fair TT scoreboard needs per-run trace-level adjudication, not the metric labels —
+in progress. **Do not cite the raw TT numbers.**
 
 Cost so far: $11.4 for the 72 cells.
 

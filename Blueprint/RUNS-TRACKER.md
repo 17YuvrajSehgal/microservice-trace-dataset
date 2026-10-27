@@ -32,18 +32,18 @@ built index locally right now.
 |---|---|---|---|---|---|---|---|
 | **svc_cpu_cap** | agentic — Claude | 42 | 31 | 11 | **local** `agentic-runs/1_svc_cpu_cap/.../runs` | ✓ 42/42 | ✓ 14/31 faults, 11/11 controls (cap25 8/10, cap50 6/10, cap100 0/11) |
 | | agentic — Codex | 40 | — | — | Zenodo (meta-only local) | ⬜ 0/40 | ⬜ |
-| | Sock Shop | 8 | 8 | +10 normal | Trillium | ✓ 8/8 | ✅ **5/8** (where 7/8, IoU 0.97) |
-| | Train Ticket | 8 | 8 | +10 normal | Trillium | ✓ 8/8 | ⚠ 1/6 cells — TT-wide issue, debugging |
+| | Sock Shop | 8 | 8 | +10 normal | Trillium | ✓ 8/8 | ✅ **6/8** (by hand; carts throttle, confirmed faults) |
+| | Train Ticket | 8 | 8 | +10 normal | Trillium | ✓ 8/8 | ⛔ caps didn't bite (verification unconfirmed, ~0.005 cores) |
 | **svc_mem_cap** | agentic — Claude | 44 | 44 | 0 | **local** `agentic-runs/3_memory_cap/runs` | ✓ 44/44 | ✓ 25/44 raw; **44/44 aligned with cap-actually-bit** (0 miss, 0 FP) |
 | | agentic — Codex | 44 | — | — | Zenodo (meta-only local) | ⬜ 0/44 | ⬜ |
 | | Sock Shop | 8 | 8 | +10 normal | Trillium | ✓ 8/8 | ⛔ not evaluable — trace lacks memcg tracepoints |
 | | Train Ticket | 8 | 8 | +10 normal | Trillium | ✓ 8/8 | ⛔ not evaluable — trace lacks memcg tracepoints |
-| **noisy_neighbor** | Sock Shop | 8 | 8 | +10 normal | Trillium | ✓ 8/8 | ✅ **7/8** (host-scope, IoU 0.98) |
-| | Train Ticket | 8 | 8 | +10 normal | Trillium | ✓ 8/8 | ⚠ 1/8 — TT-wide issue, debugging |
-| **slow_db** | Sock Shop | 11 | 11 | +10 normal | Trillium | ✓ 11/11 | ⚠ 1/11 — blueprint misses, debugging |
-| | Train Ticket | 11 | 11 | +10 normal | Trillium | ✓ 8/8 | ⚠ 1/8 cells — debugging |
-| **svc_net** | Sock Shop | 5 | 5 | +10 normal | Trillium | ✓ 5/5 | ✅ **5/5** (where 5/5, IoU 0.98) |
-| | Train Ticket | 5 | 5 | +10 normal | Trillium | ✓ 5/5 | ⚠ 0/5 — TT-wide issue, debugging |
+| **noisy_neighbor** | Sock Shop | 8 | 8 | +10 normal | Trillium | ✓ 8/8 | ✅ **7/8** (by hand; aggressor named, confirmed) |
+| | Train Ticket | 8 | 8 | +10 normal | Trillium | ✓ 8/8 | ⚠ confirmed faults; needs full hand pass |
+| **slow_db** | Sock Shop | 11 | 11 | +10 normal | Trillium | ✓ 11/11 | ✅ **8/11** (by hand; toxiproxy path delay, incl. subtle 60ms) |
+| | Train Ticket | 11 | 11 | +10 normal | Trillium | ✓ 8/8 | ⚠ ~4/5 by hand but labels `unconfirmed` (no_metric_signature) |
+| **svc_net** | Sock Shop | 5 | 5 | +10 normal | Trillium | ✓ 5/5 | ✅ **5/5** (by hand; netem on carts) |
+| | Train Ticket | 5 | 5 | +10 normal | Trillium | ✓ 5/5 | ⛔ verification unconfirmed; needs hand pass |
 
 **"+10 normal"** = each microservice app has 10 fault-free runs shared as controls across all
 blueprints (not per-blueprint copies).

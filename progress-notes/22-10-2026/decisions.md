@@ -126,3 +126,28 @@ Action: svc_mem_cap is EXCLUDED from the microservice detection scoreboard (mark
 evaluable - trace lacks memcg tracepoints"), not counted as a miss. Re-collecting Sock Shop/TT
 with the memory tracepoints enabled is future work. The other four families use events that ARE
 present (cpu/noisy=sched, slow_db=syscall read/write, svc_net=net/skb), so they remain evaluable.
+
+## 2026-10-27 (cont): by-hand judgment overturns score.py; Sock Shop is the clean testbed
+Applied JUDGING.md to the microservice runs. score.py had massively under-counted via WHERE-string
+rigidity (it demanded gt target_service and rejected the aggressor/proxy/DB-peer the agent
+correctly named). By-hand, conservative ("other"/"normal"=MISS):
+
+SOCK SHOP (all faults verification=confirmed):
+- svc_cpu_cap 6/8 (score.py 5) - cpu_throttling on java(carts), 2 hedged "other"
+- noisy_neighbor 7/8 (score.py 0 pre-fix) - named aggressor stress-ng
+- slow_db 8/11 (score.py 1!) - db_latency via toxiproxy/mysqld, caught 2/3 subtle-60ms
+- svc_net 5/5 - service_network on java(carts)
+- svc_mem_cap n/a - no memcg tracepoints
+=> 26/32 = 81% on the 4 evaluable blueprints, correct localization, confirmed-biting faults.
+This is the trustworthy microservice headline.
+
+TRAIN TICKET - NOT a clean testbed (data quality, not the agent):
+- svc_cpu_cap: all 8 verification=UNCONFIRMED, ts-travel-service idle (0.005 cores vs 0.2 cap) -
+  caps didn't bite. Agent correctly says normal/suspected. Not a miss.
+- svc_net, slow_db: also labeled unconfirmed, but the label is WRONG - on slow_db the agent reads
+  the injected ~0.5s DB-path gaps in the trace and localizes toxiproxy (~4/5 by hand). Matches the
+  known TT no_metric_signature issue (metric check misses a kernel-visible fault).
+- noisy_neighbor: confirmed 8/8, needs full hand pass.
+=> TT scoreboard must be adjudicated per-run from the TRACE, not the metric labels. In progress.
+
+Also: gather.py added (collects gt+recipe+verdict for by-hand judging, does NOT grade).
