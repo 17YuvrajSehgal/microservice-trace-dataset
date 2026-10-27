@@ -1,0 +1,30 @@
+{
+ "run_id": "t6B_max_2_r2",
+ "problem": "svc_mem_cap",
+ "arm": "given",
+ "blueprint": "4_svc_mem_cap",
+ "model": "openai/gpt-6-luna",
+ "provider": "openrouter",
+ "verdict": {
+  "where": "unknown",
+  "what_is_wrong": "The trace does not support the blueprint\u2019s memory-cap diagnosis: no memcg reclaim was recorded in the baseline or either candidate slice, and no ttmem death was reported. The 1,061 MB of ttmem reads could be a fresh/cold read, while the activity burst aligns with a new workload; the evidence is insufficient to establish another fault, so I find no confirmed incident.",
+  "when": "unknown",
+  "fault": "normal",
+  "confidence": 0.86
+ },
+ "score": {
+  "detected": false,
+  "control": false,
+  "present": true,
+  "fault_ok": false,
+  "where": "n/a",
+  "where_ok": false,
+  "window_iou": null,
+  "family": "svc_mem_cap",
+  "agentic": true
+ },
+ "seconds": 442.9,
+ "calls": 29,
+ "tokens_in": 482940,
+ "tokens_out": 9566
+}

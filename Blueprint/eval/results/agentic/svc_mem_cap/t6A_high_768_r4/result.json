@@ -1,0 +1,30 @@
+{
+ "run_id": "t6A_high_768_r4",
+ "problem": "svc_mem_cap",
+ "arm": "given",
+ "blueprint": "4_svc_mem_cap",
+ "model": "openai/gpt-6-luna",
+ "provider": "openrouter",
+ "verdict": {
+  "where": "ttmem in pid_ns 4026531836",
+  "what_is_wrong": "The `ttmem` workload in one container is experiencing sustained cgroup memory-limit pressure, most consistent with the soft-limit/slowdown face: reclaim and repeated disk reads are present, but no kill of PID 4463 was observed in the sampled fault slices. The trace supports an undersized container memory limit as the cause; it does not reveal the limit value or the service's human-readable identity.",
+  "when": "04:32:04 - 04:32:31",
+  "fault": "memory_limit",
+  "confidence": 0.94
+ },
+ "score": {
+  "detected": true,
+  "control": false,
+  "present": true,
+  "fault_ok": true,
+  "where": "n/a",
+  "where_ok": true,
+  "window_iou": null,
+  "family": "svc_mem_cap",
+  "agentic": true
+ },
+ "seconds": 469.3,
+ "calls": 50,
+ "tokens_in": 820002,
+ "tokens_out": 16164
+}

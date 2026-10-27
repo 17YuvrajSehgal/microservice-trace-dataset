@@ -1,0 +1,30 @@
+{
+ "run_id": "t6A_high_1536_r3",
+ "problem": "svc_mem_cap",
+ "arm": "given",
+ "blueprint": "4_svc_mem_cap",
+ "model": "openai/gpt-6-luna",
+ "provider": "openrouter",
+ "verdict": {
+  "where": "unknown",
+  "what_is_wrong": "No fault is demonstrated in this trace; it shows changing workload phases, including a brief burst and a later `ttmem` read-heavy phase, but the decisive memory-cap signature is absent. The large reads therefore do not establish memory pressure, and the observed scheduling activity does not establish CPU saturation.",
+  "when": "unknown",
+  "fault": "normal",
+  "confidence": 0.82
+ },
+ "score": {
+  "detected": false,
+  "control": false,
+  "present": true,
+  "fault_ok": false,
+  "where": "n/a",
+  "where_ok": false,
+  "window_iou": null,
+  "family": "svc_mem_cap",
+  "agentic": true
+ },
+ "seconds": 277.9,
+ "calls": 31,
+ "tokens_in": 621436,
+ "tokens_out": 12480
+}

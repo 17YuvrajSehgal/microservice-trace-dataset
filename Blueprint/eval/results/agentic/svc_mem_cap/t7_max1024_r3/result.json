@@ -1,0 +1,30 @@
+{
+ "run_id": "t7_max1024_r3",
+ "problem": "svc_mem_cap",
+ "arm": "given",
+ "blueprint": "4_svc_mem_cap",
+ "model": "openai/gpt-6-luna",
+ "provider": "openrouter",
+ "verdict": {
+  "where": "unknown",
+  "what_is_wrong": "No fault is demonstrated by this trace. The suspected container memory-cap signature is absent: the reclaim checks found no reclaim in any of the compared slices, and the observed activity swings align with changing workloads rather than a supported resource failure.",
+  "when": "unknown",
+  "fault": "normal",
+  "confidence": 0.78
+ },
+ "score": {
+  "detected": false,
+  "control": false,
+  "present": true,
+  "fault_ok": false,
+  "where": "n/a",
+  "where_ok": false,
+  "window_iou": null,
+  "family": "svc_mem_cap",
+  "agentic": true
+ },
+ "seconds": 139.0,
+ "calls": 29,
+ "tokens_in": 547223,
+ "tokens_out": 10235
+}

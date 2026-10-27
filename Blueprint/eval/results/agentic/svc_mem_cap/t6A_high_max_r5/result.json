@@ -1,0 +1,30 @@
+{
+ "run_id": "t6A_high_max_r5",
+ "problem": "svc_mem_cap",
+ "arm": "given",
+ "blueprint": "4_svc_mem_cap",
+ "model": "openai/gpt-6-luna",
+ "provider": "openrouter",
+ "verdict": {
+  "where": "unknown",
+  "what_is_wrong": "No specific fault is established by this trace. The candidate workload transition around 04:23:38.8\u201304:23:40.8 produced a brief activity surge, but the blueprint\u2019s defining evidence for a container memory limit\u2014memcg reclaim\u2014is absent, and the observed claude exit is orderly rather than an OOM-like termination.",
+  "when": "unknown",
+  "fault": "normal",
+  "confidence": 0.86
+ },
+ "score": {
+  "detected": false,
+  "control": false,
+  "present": true,
+  "fault_ok": false,
+  "where": "n/a",
+  "where_ok": false,
+  "window_iou": null,
+  "family": "svc_mem_cap",
+  "agentic": true
+ },
+ "seconds": 234.1,
+ "calls": 39,
+ "tokens_in": 729500,
+ "tokens_out": 12417
+}

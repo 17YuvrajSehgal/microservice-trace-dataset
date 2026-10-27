@@ -1,0 +1,30 @@
+{
+ "run_id": "t6B_max_2_r3",
+ "problem": "svc_mem_cap",
+ "arm": "given",
+ "blueprint": "4_svc_mem_cap",
+ "model": "openai/gpt-6-luna",
+ "provider": "openrouter",
+ "verdict": {
+  "where": "unknown",
+  "what_is_wrong": "No fault is confirmed in this trace; in particular, the proposed container memory-cap signature fails its key check. Activity changes sharply as the workload composition changes\u2014from a claude-led burst to ttmem-led work\u2014but the trace does not establish that this is harmful rather than a workload phase transition.",
+  "when": "unknown",
+  "fault": "normal",
+  "confidence": 0.79
+ },
+ "score": {
+  "detected": false,
+  "control": false,
+  "present": true,
+  "fault_ok": false,
+  "where": "n/a",
+  "where_ok": false,
+  "window_iou": null,
+  "family": "svc_mem_cap",
+  "agentic": true
+ },
+ "seconds": 198.3,
+ "calls": 43,
+ "tokens_in": 760558,
+ "tokens_out": 15062
+}

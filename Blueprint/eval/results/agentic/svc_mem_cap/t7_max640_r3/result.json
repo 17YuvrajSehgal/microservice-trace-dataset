@@ -1,0 +1,30 @@
+{
+ "run_id": "t7_max640_r3",
+ "problem": "svc_mem_cap",
+ "arm": "given",
+ "blueprint": "4_svc_mem_cap",
+ "model": "openai/gpt-6-luna",
+ "provider": "openrouter",
+ "verdict": {
+  "where": "ttmem in pid_ns 4026531836",
+  "what_is_wrong": "ttmem underwent a concentrated burst of cgroup memory reclaim and exited about 0.02 ms after reclaim, which is consistent with a per-container memory limit being hit (the hard-limit-like face). The trace does not record an OOM-kill event, so the kill mechanism is strongly suggestive, not proven; the reported baseline is contaminated by the same reclaim episode, and no clean refault-ratio comparison is available.",
+  "when": "04:51:36.900 - 04:51:37.040",
+  "fault": "memory_limit",
+  "confidence": 0.79
+ },
+ "score": {
+  "detected": true,
+  "control": false,
+  "present": true,
+  "fault_ok": true,
+  "where": "n/a",
+  "where_ok": true,
+  "window_iou": null,
+  "family": "svc_mem_cap",
+  "agentic": true
+ },
+ "seconds": 401.3,
+ "calls": 45,
+ "tokens_in": 661261,
+ "tokens_out": 14070
+}

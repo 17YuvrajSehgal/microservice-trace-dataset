@@ -1,0 +1,30 @@
+{
+ "run_id": "t7_max640_r1",
+ "problem": "svc_mem_cap",
+ "arm": "given",
+ "blueprint": "4_svc_mem_cap",
+ "model": "openai/gpt-6-luna",
+ "provider": "openrouter",
+ "verdict": {
+  "where": "ttmem in pid_ns 4026531836",
+  "what_is_wrong": "A short-lived ttmem workload underwent intense container-scoped memcg reclaim and then exited almost immediately afterward, which strongly supports a hard memory-limit failure (though the trace lacks an explicit OOM-kill event, so the kill attribution is not conclusive). This is a localized container event, not evidence of host-wide memory pressure; the re-read ratio and scheduler wait-versus-D checks were not established in the notes.",
+  "when": "04:51:11.423 - 04:51:11.521",
+  "fault": "memory_limit",
+  "confidence": 0.82
+ },
+ "score": {
+  "detected": true,
+  "control": false,
+  "present": true,
+  "fault_ok": true,
+  "where": "n/a",
+  "where_ok": true,
+  "window_iou": null,
+  "family": "svc_mem_cap",
+  "agentic": true
+ },
+ "seconds": 613.8,
+ "calls": 52,
+ "tokens_in": 857675,
+ "tokens_out": 14434
+}

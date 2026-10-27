@@ -1,0 +1,55 @@
+{
+ "problem": "svc_mem_cap",
+ "dataset": "agentic-claude",
+ "cells": 44,
+ "fault_detected": [
+  25,
+  44
+ ],
+ "by_limit": {
+  "high1152": [
+   5,
+   5
+  ],
+  "high1536": [
+   0,
+   5
+  ],
+  "high768": [
+   5,
+   5
+  ],
+  "max1024": [
+   3,
+   6
+  ],
+  "max1280": [
+   3,
+   3
+  ],
+  "max2": [
+   0,
+   3
+  ],
+  "max640": [
+   3,
+   3
+  ],
+  "max768": [
+   6,
+   6
+  ],
+  "max896": [
+   0,
+   3
+  ],
+  "uncapped-ish": [
+   0,
+   5
+  ]
+ },
+ "bite_alignment": "44/44 - detected exactly when memory.events shows the cap bit (0 miss, 0 false positive)",
+ "cost_usd": 3.6,
+ "date": "2026-10-23",
+ "notes": "leak-free blueprint (ttmem/768M example anonymized), dedicated blueprint worker, caps 12/90k"
+}

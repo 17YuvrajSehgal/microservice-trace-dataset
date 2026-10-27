@@ -1,0 +1,30 @@
+{
+ "run_id": "t7_max1024_r2",
+ "problem": "svc_mem_cap",
+ "arm": "given",
+ "blueprint": "4_svc_mem_cap",
+ "model": "openai/gpt-6-luna",
+ "provider": "openrouter",
+ "verdict": {
+  "where": "workload in pid_ns 4026531836",
+  "what_is_wrong": "There is a brief, pronounced collapse in scheduling, wakeup, block-I/O, and futex activity across a group of user tasks, followed by partial resumption. The proposed memory-cap explanation is contradicted by the decisive checks: no memcg reclaim was observed in any sampled slice, and disk reads declined rather than showing a refault escalation. The trace establishes a workload pause, but not its underlying cause, so I classify it as other rather than attributing it to a specific kernel resource fault.",
+  "when": "04:50:00.800 - 04:50:02.500",
+  "fault": "other",
+  "confidence": 0.76
+ },
+ "score": {
+  "detected": false,
+  "control": false,
+  "present": true,
+  "fault_ok": false,
+  "where": "n/a",
+  "where_ok": false,
+  "window_iou": null,
+  "family": "svc_mem_cap",
+  "agentic": true
+ },
+ "seconds": 349.9,
+ "calls": 43,
+ "tokens_in": 706466,
+ "tokens_out": 14022
+}

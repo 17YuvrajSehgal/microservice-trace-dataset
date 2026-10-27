@@ -1,0 +1,30 @@
+{
+ "run_id": "t6A_high_1152_r5",
+ "problem": "svc_mem_cap",
+ "arm": "given",
+ "blueprint": "4_svc_mem_cap",
+ "model": "openai/gpt-6-luna",
+ "provider": "openrouter",
+ "verdict": {
+  "where": "ttmem in pid_ns 4026531836",
+  "what_is_wrong": "The ttmem workload is repeatedly triggering memcg reclaim in its container and rereading far more data from disk than in the pre-incident comparison, consistent with a container memory limit too small for its working set. No associated process exit was observed in the later fault slices, so the evidence supports reclaim-driven slowdown rather than a confirmed hard-limit kill; the exact configured limit is not visible in the trace.",
+  "when": "04:25:47 - 04:26:14",
+  "fault": "memory_limit",
+  "confidence": 0.95
+ },
+ "score": {
+  "detected": true,
+  "control": false,
+  "present": true,
+  "fault_ok": true,
+  "where": "n/a",
+  "where_ok": true,
+  "window_iou": null,
+  "family": "svc_mem_cap",
+  "agentic": true
+ },
+ "seconds": 201.7,
+ "calls": 30,
+ "tokens_in": 510904,
+ "tokens_out": 10726
+}

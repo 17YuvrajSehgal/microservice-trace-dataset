@@ -1,0 +1,30 @@
+{
+ "run_id": "t7_max768_r2",
+ "problem": "svc_mem_cap",
+ "arm": "given",
+ "blueprint": "4_svc_mem_cap",
+ "model": "openai/gpt-6-luna",
+ "provider": "openrouter",
+ "verdict": {
+  "where": "ttmem in pid_ns 4026531836",
+  "what_is_wrong": "There is a brief, container-local memcg reclaim episode consistent with a memory limit being applied to `ttmem`, but the evidence does not establish that it caused the earlier workload-activity collapse or a measurable refault slowdown. The reclaiming process had only 136 events and about 0.01 s of recorded stall; it read 11 blocks / 0 MB, so the blueprint\u2019s reclaim-plus-repeated-read discriminator failed, and its 48.3 ms exit gap is not consistent with an immediate OOM kill.",
+  "when": "04:50:53.400 - 04:50:54.900",
+  "fault": "memory_limit",
+  "confidence": 0.56
+ },
+ "score": {
+  "detected": true,
+  "control": false,
+  "present": true,
+  "fault_ok": true,
+  "where": "n/a",
+  "where_ok": true,
+  "window_iou": null,
+  "family": "svc_mem_cap",
+  "agentic": true
+ },
+ "seconds": 228.9,
+ "calls": 40,
+ "tokens_in": 818410,
+ "tokens_out": 15209
+}

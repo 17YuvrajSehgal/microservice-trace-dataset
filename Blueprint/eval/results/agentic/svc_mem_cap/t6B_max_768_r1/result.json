@@ -1,0 +1,30 @@
+{
+ "run_id": "t6B_max_768_r1",
+ "problem": "svc_mem_cap",
+ "arm": "given",
+ "blueprint": "4_svc_mem_cap",
+ "model": "openai/gpt-6-luna",
+ "provider": "openrouter",
+ "verdict": {
+  "where": "ttmem in pid_ns 4026531836",
+  "what_is_wrong": "The ttmem workload in one container is undergoing sustained cgroup memory-limit reclaim, with substantially increased disk reads during that work; this indicates its memory allowance is too small for the workload. No reclaim-associated process death was reported, so the evidence supports the slowdown/reclaim face, not a hard-limit kill.",
+  "when": "04:43:04.800 - 04:43:32.400",
+  "fault": "memory_limit",
+  "confidence": 0.88
+ },
+ "score": {
+  "detected": true,
+  "control": false,
+  "present": true,
+  "fault_ok": true,
+  "where": "n/a",
+  "where_ok": true,
+  "window_iou": null,
+  "family": "svc_mem_cap",
+  "agentic": true
+ },
+ "seconds": 195.4,
+ "calls": 53,
+ "tokens_in": 866931,
+ "tokens_out": 16497
+}

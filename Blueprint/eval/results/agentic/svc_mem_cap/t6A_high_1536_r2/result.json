@@ -1,0 +1,30 @@
+{
+ "run_id": "t6A_high_1536_r2",
+ "problem": "svc_mem_cap",
+ "arm": "given",
+ "blueprint": "4_svc_mem_cap",
+ "model": "openai/gpt-6-luna",
+ "provider": "openrouter",
+ "verdict": {
+  "where": "unknown",
+  "what_is_wrong": "No fault is established by this trace. The conspicuous 04:32:51 activity is a workload/process-arrival burst in pid_ns 4026531836, but the memory-cap signature is absent: the trace records no memcg reclaim, and the observed reads alone do not distinguish refaulting from ordinary workload I/O.",
+  "when": "unknown",
+  "fault": "normal",
+  "confidence": 0.84
+ },
+ "score": {
+  "detected": false,
+  "control": false,
+  "present": true,
+  "fault_ok": false,
+  "where": "n/a",
+  "where_ok": false,
+  "window_iou": null,
+  "family": "svc_mem_cap",
+  "agentic": true
+ },
+ "seconds": 198.9,
+ "calls": 41,
+ "tokens_in": 703652,
+ "tokens_out": 11823
+}

@@ -1,0 +1,30 @@
+{
+ "run_id": "t7_max896_r1",
+ "problem": "svc_mem_cap",
+ "arm": "given",
+ "blueprint": "4_svc_mem_cap",
+ "model": "openai/gpt-6-luna",
+ "provider": "openrouter",
+ "verdict": {
+  "where": "unknown",
+  "what_is_wrong": "The trace shows a pronounced activity pause in pid_ns 4026531836, followed by a brief workload burst, but it does not establish the cause. In particular, the proposed memory-cap diagnosis is unconfirmed: the sampled slices show no reclaim, and the event inventory lacks the decisive mm_vmscan_memcg_* events, so this trace cannot prove or rule out a cgroup memory limit during the unsampled portion of the pause.",
+  "when": "04:50:17.700 - 04:50:20.200",
+  "fault": "other",
+  "confidence": 0.68
+ },
+ "score": {
+  "detected": false,
+  "control": false,
+  "present": true,
+  "fault_ok": false,
+  "where": "n/a",
+  "where_ok": false,
+  "window_iou": null,
+  "family": "svc_mem_cap",
+  "agentic": true
+ },
+ "seconds": 217.1,
+ "calls": 34,
+ "tokens_in": 619078,
+ "tokens_out": 10741
+}

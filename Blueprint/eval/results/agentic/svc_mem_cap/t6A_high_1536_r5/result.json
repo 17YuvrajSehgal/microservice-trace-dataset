@@ -1,0 +1,30 @@
+{
+ "run_id": "t6A_high_1536_r5",
+ "problem": "svc_mem_cap",
+ "arm": "given",
+ "blueprint": "4_svc_mem_cap",
+ "model": "openai/gpt-6-luna",
+ "provider": "openrouter",
+ "verdict": {
+  "where": "unknown (no culprit established)",
+  "what_is_wrong": "No kernel-trace evidence establishes an operational fault. `ttmem` performs a bounded, sequential ~1 GiB read workload and exits; the memory-cap signature is unconfirmed because the trace lacks the decisive memcg reclaim events, and the observed reads do not show repeated passes or clear elevated device latency.",
+  "when": "unknown",
+  "fault": "normal",
+  "confidence": 0.79
+ },
+ "score": {
+  "detected": false,
+  "control": false,
+  "present": true,
+  "fault_ok": false,
+  "where": "n/a",
+  "where_ok": false,
+  "window_iou": null,
+  "family": "svc_mem_cap",
+  "agentic": true
+ },
+ "seconds": 488.8,
+ "calls": 51,
+ "tokens_in": 1052251,
+ "tokens_out": 20263
+}

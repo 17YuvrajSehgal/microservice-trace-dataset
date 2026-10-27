@@ -1,0 +1,30 @@
+{
+ "run_id": "t6A_high_max_r3",
+ "problem": "svc_mem_cap",
+ "arm": "given",
+ "blueprint": "4_svc_mem_cap",
+ "model": "openai/gpt-6-luna",
+ "provider": "openrouter",
+ "verdict": {
+  "where": "unknown",
+  "what_is_wrong": "No fault is established by this trace, and in particular the proposed one-container memory-cap signature is absent: the sampled slices report zero memcg and host reclaim. Workload activity changes around 04:22:08 and 04:22:17, but the recorded rates, successful block completions, and process activity do not by themselves demonstrate service degradation or a resource fault.",
+  "when": "unknown",
+  "fault": "normal",
+  "confidence": 0.84
+ },
+ "score": {
+  "detected": false,
+  "control": false,
+  "present": true,
+  "fault_ok": false,
+  "where": "n/a",
+  "where_ok": false,
+  "window_iou": null,
+  "family": "svc_mem_cap",
+  "agentic": true
+ },
+ "seconds": 297.2,
+ "calls": 53,
+ "tokens_in": 816654,
+ "tokens_out": 16802
+}

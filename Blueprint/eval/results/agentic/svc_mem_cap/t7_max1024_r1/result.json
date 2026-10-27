@@ -1,0 +1,30 @@
+{
+ "run_id": "t7_max1024_r1",
+ "problem": "svc_mem_cap",
+ "arm": "given",
+ "blueprint": "4_svc_mem_cap",
+ "model": "openai/gpt-6-luna",
+ "provider": "openrouter",
+ "verdict": {
+  "where": "unknown",
+  "what_is_wrong": "No fault is confirmed by this trace. There is a pronounced activity drop after 04:49:47.800 and intermittent later bursts, but the recorded evidence does not establish a resource failure or memory-cap episode: sampled slices report no reclaim and modest reads, with no repeated-read or reclaim-correlated death signature.",
+  "when": "unknown",
+  "fault": "normal",
+  "confidence": 0.72
+ },
+ "score": {
+  "detected": false,
+  "control": false,
+  "present": true,
+  "fault_ok": false,
+  "where": "n/a",
+  "where_ok": false,
+  "window_iou": null,
+  "family": "svc_mem_cap",
+  "agentic": true
+ },
+ "seconds": 222.8,
+ "calls": 29,
+ "tokens_in": 586946,
+ "tokens_out": 10401
+}

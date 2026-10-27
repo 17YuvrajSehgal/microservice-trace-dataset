@@ -34,7 +34,7 @@ built index locally right now.
 | | agentic — Codex | 40 | — | — | Zenodo (meta-only local) | ⬜ 0/40 | ⬜ |
 | | Sock Shop | 8 | 8 | +10 normal | Trillium | ⬜ 0/8 | ⬜ |
 | | Train Ticket | 8 | 8 | +10 normal | Trillium | ⬜ 0/8 | ⬜ |
-| **svc_mem_cap** | agentic — Claude | 44 | 44 | 0 | **local** `agentic-runs/3_memory_cap/runs` | ✓ 44/44 | ⬜ |
+| **svc_mem_cap** | agentic — Claude | 44 | 44 | 0 | **local** `agentic-runs/3_memory_cap/runs` | ✓ 44/44 | ✓ 25/44 raw; **44/44 aligned with cap-actually-bit** (0 miss, 0 FP) |
 | | agentic — Codex | 44 | — | — | Zenodo (meta-only local) | ⬜ 0/44 | ⬜ |
 | | Sock Shop | 8 | 8 | +10 normal | Trillium | ⬜ 0/8 | ⬜ |
 | | Train Ticket | 8 | 8 | +10 normal | Trillium | ⬜ 0/8 | ⬜ |

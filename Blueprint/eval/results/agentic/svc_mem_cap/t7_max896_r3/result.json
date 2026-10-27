@@ -1,0 +1,30 @@
+{
+ "run_id": "t7_max896_r3",
+ "problem": "svc_mem_cap",
+ "arm": "given",
+ "blueprint": "4_svc_mem_cap",
+ "model": "openai/gpt-6-luna",
+ "provider": "openrouter",
+ "verdict": {
+  "where": "unknown",
+  "what_is_wrong": "No specific fault is established by this trace. The proposed container memory-cap signature is not confirmed: the recorded mm_vmscan event classes are only shrink_slab start/end, with no observable memcg reclaim, and the late I/O/lifecycle burst alone does not prove memory pressure or service impact.",
+  "when": "unknown",
+  "fault": "normal",
+  "confidence": 0.77
+ },
+ "score": {
+  "detected": false,
+  "control": false,
+  "present": true,
+  "fault_ok": false,
+  "where": "n/a",
+  "where_ok": false,
+  "window_iou": null,
+  "family": "svc_mem_cap",
+  "agentic": true
+ },
+ "seconds": 189.4,
+ "calls": 41,
+ "tokens_in": 723311,
+ "tokens_out": 17877
+}
