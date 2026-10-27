@@ -124,6 +124,58 @@ near the kernel-trace detectability floor.**
 
 ---
 
+## 3. Microservice × 5 blueprints (Sock Shop + Train Ticket) — PARTIAL, 2026-10-27
+
+**Dataset (microservice):** StrataTrace v2 on Trillium. Sock Shop (Go/Node/Java, ~15 containers)
+and Train Ticket (Java/Spring, 60+ `ts-*` services), each under labeled fault injection with a
+real victim *service* — so these score **WHERE** (the agent must name the victim container, via
+`nsmap` pid_ns → service) and **window IoU**, which the agentic runs could not. 80 fault runs
+(8+8+8+11+5 per app); `--jobs 6` on the Trillium **login** node (agent calls OpenRouter; compute
+nodes have no internet). Same agent/model/scoring/budgets as §1–2 **except** worker caps raised
+to 20 steps / 150 k budget — the microservice procedure (map → slice → sched_budget → victim →
+ceiling across dozens of containers) needs more turns than the agentic one-cgroup case.
+
+72 of 80 cells scored (8 lost to API rate-limits, resumable). **Only the ✅ rows are
+trustworthy.** The ⚠ rows are confounded by known, still-open bugs and must not be cited yet.
+
+| app | blueprint | cells | detected | WHERE-ok | IoU | status |
+|---|---|---|---|---|---|---|
+| Sock Shop | **svc_cpu_cap** | 8 | **5/8** | 7/8 | 0.97 | ✅ validated |
+| Sock Shop | **svc_net** | 5 | **5/5** | 5/5 | 0.98 | ✅ validated |
+| Sock Shop | **noisy_neighbor** | 8 | **7/8** | host-scope | 0.98 | ✅ validated |
+| Sock Shop | svc_mem_cap | 7 | 0/7 | 0/7 | 0.87 | ⚠ blueprint misses — debugging |
+| Sock Shop | slow_db | 11 | 1/11 | 1/11 | 0.91 | ⚠ blueprint misses — debugging |
+| Train Ticket | svc_cpu_cap | 6 | 1/6 | 1/6 | 0.08 | ⚠ TT-wide issue — debugging |
+| Train Ticket | svc_net | 5 | 0/5 | 0/5 | 0.98 | ⚠ TT-wide issue |
+| Train Ticket | noisy_neighbor | 8 | 1/8 | — | 0.99 | ⚠ TT-wide issue |
+| Train Ticket | slow_db | 8 | 1/8 | 1/8 | 0.92 | ⚠ TT-wide issue |
+| Train Ticket | svc_mem_cap | 6 | 0/6 | 0/6 | 0.58 | ⚠ TT-wide issue |
+
+### What is trustworthy
+
+On **Sock Shop, three of five blueprints work**: svc_cpu_cap 5/8 (victim container named 7/8,
+window IoU 0.97), svc_net **5/5**, noisy_neighbor 7/8. These detect the fault *and* localise it —
+the real RCA task, harder than the agentic own-cgroup case.
+
+### Known bugs behind the ⚠ rows (do not cite these numbers)
+
+- **Scorer host-scope bug — FIXED 2026-10-27.** noisy_neighbor has `target_service=host`
+  (host-wide, no single victim); the scorer demanded a victim container and scored the agent
+  wrong even when it correctly named the aggressor `stress-ng` at IoU 0.99. Sock Shop
+  noisy_neighbor went **0/8 → 7/8** on re-score (no re-run). Train Ticket noisy stayed 1/8, so TT
+  has a *separate* problem.
+- **svc_mem_cap + slow_db miss on Sock Shop** (0/7, 1/11): the agent concludes "other"/normal.
+  Only svc_cpu_cap's tool path was smoke-tested before the campaign; these two blueprints have
+  untested tool paths (the `$BT2`-style class of bug). Open.
+- **Train Ticket fails across the board** — even svc_cpu_cap/svc_net that work on Sock Shop. The
+  agent finds a real throttle but in the wrong one of 60+ near-identical `ts-*` Java services and
+  at the wrong time (svc_cpu_cap IoU 0.08 while the gt window sits inside the trace). One
+  TT-environment issue, not five blueprint issues. Open.
+
+Cost so far: $11.4 for the 72 cells.
+
+---
+
 ## Threats to validity / caveats (keep with any published number)
 
 - **One model** (gpt-6-luna), one repeat per run (the grid itself carries 3–10 runs per level).
@@ -143,8 +195,15 @@ near the kernel-trace detectability floor.**
 
 ## Pending sections (same format, append below)
 
-- [ ] svc_cpu_cap × Sock Shop (8 runs, Trillium) and × Train Ticket (8)
-- [ ] svc_mem_cap × Sock Shop (8) and × Train Ticket (8)
-- [ ] noisy_neighbor / slow_db / svc_net × Sock Shop + Train Ticket
+- [x] svc_cpu_cap / svc_net / noisy_neighbor × Sock Shop — **validated** (§3)
+- [ ] svc_mem_cap + slow_db × Sock Shop — scored but blueprint misses; debugging (§3)
+- [ ] all 5 × Train Ticket — scored but TT-wide issue; debugging (§3)
+- [ ] microservice `normal`-run controls (specificity per blueprint)
 - [ ] svc_cpu_cap + svc_mem_cap × agentic (Codex) — traces on Zenodo
 - [ ] control arm (`--arm none`, no blueprint) for the blueprint-value comparison
+
+### Note: does the host-scope scorer fix change the agentic numbers? No.
+
+Re-scoring all 86 agentic cells with the post-fix scorer changed **0** of them (svc_cpu_cap
+42/42 and svc_mem_cap 44/44 identical). The fix only fires when `truth["scope"] == "host"`;
+agentic caps are `scope == "cgroup"`, so that branch never runs for them. §1–2 stand as-is.
