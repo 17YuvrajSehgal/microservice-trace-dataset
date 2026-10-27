@@ -56,7 +56,7 @@ else
   src="$trace"
 fi
 
-babeltrace2 --clock-gmt --begin "$day $start" --end "$end" "$src" 2>/dev/null \
+"${BT2:-babeltrace2}" --clock-gmt --begin "$day $start" --end "$end" "$src" 2>/dev/null \
   | { grep -E 'sched_switch|sched_waking|sched_wakeup|syscall_(entry|exit)_(read|readv|recv|recvfrom|recvmsg|recvmmsg|write|writev|sendto|sendmsg|sendmmsg|poll|ppoll|epoll_wait|epoll_pwait|epoll_pwait2|select|pselect6|futex|connect|accept|accept4|nanosleep|clock_nanosleep):' || true; } > "$out"
 
 echo "slice $day $start to $end UTC -> $out"

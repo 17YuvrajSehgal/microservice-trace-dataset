@@ -70,7 +70,7 @@ else
   src="$trace"
 fi
 
-babeltrace2 --clock-gmt --begin "$day $start" --end "$end" "$src" 2>/dev/null \
+"${BT2:-babeltrace2}" --clock-gmt --begin "$day $start" --end "$end" "$src" 2>/dev/null \
   | { grep -E "$events" || true; } > "$out"
 
 echo "slice $day $start to $end UTC -> $out"
