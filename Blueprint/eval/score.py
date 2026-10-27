@@ -170,7 +170,13 @@ def score(dx: dict, run_dir: str, family: str, index_root=None) -> dict:
                 "window_iou": None, "family": fam, "agentic": agentic}
 
     where = "n/a" if agentic else _where_microservice(dx, truth, run_dir, index_root)
-    where_ok = where in ("named", "container") or (agentic and fault_ok)
+    # A host-scope fault (noisy_neighbor) has no single victim service to name - the correct
+    # localisation is identifying the aggressor or saying "host-wide", and the recipe's own
+    # ground truth says target_service="host". So for host scope, do not gate detection on
+    # pinning a victim; the fault type carries it, same as the agentic (own-cgroup) case.
+    where_ok = (where in ("named", "container", "scope")
+                or (agentic and fault_ok)
+                or truth["scope"] == "host")
     iou = _window_iou((dx.get("incident_window") or ""), truth["window"])
     # headline: microservice needs type AND place; agentic needs the type (there is no service
     # to name - the cap is on the run's own cgroup).
