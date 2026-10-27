@@ -51,3 +51,36 @@ the **7 distinct kernel-visible mechanisms** that are confirmed in **both** apps
 Per the evidence-first rule, do **not** write any of them from knowledge. Next step: a quick
 **kernel-visibility probe** on one confirmed run of each candidate (does the signature actually show
 in the trace?), then build only the ones that prove out.
+
+---
+
+## Probe findings (2026-10-27): why we are stopping at 5 kernel blueprints
+
+Before writing any new blueprint, each candidate was probed on a **confirmed** run (evidence-first).
+All four of the "build / check-first" latency candidates turned out to have weak or absence-based
+kernel signatures — each for a different, instructive reason:
+
+| candidate | run probed | what the trace showed | verdict |
+|---|---|---|---|
+| **conn_pool_exhaustion** | SS r1 (confirmed) | 0 ECONNREFUSED / 0 timeouts; connect count *fell* in fault; only a mild read-gap rise. MySQL's `max_connections` rejection is **ERROR 1040 at the protocol layer** — the TCP `connect()` succeeds, so there is no syscall-level signal. | no clean kernel signal |
+| **lock_contention** | SS r1 (confirmed) | synthetic 16-thread futex microbenchmark; its futex waits are indistinguishable from the constant background **JVM thread-parking** in `futex`. Host-scope, not a service-latency fault. | signal drowns in noise |
+| **dependency_outage** | SS r1 (confirmed) | target `payment` emits **no procname even at baseline** (near-idle service); `docker pause` produces no visible silence; machine not quieter overall. Recipe's own winning modality is **traces**. | trace-visible only |
+| **fd_exhaustion** | SS r1 (confirmed, re-collected) | EMFILE (-24) on the service appears **once in 125 s** (baseline 0); node keeps serving; **no `sched_process_*`** tracepoints so the restart loop is not countable. | signal too sparse |
+
+### The structural reason (the profile)
+
+The v2 kernel profile is `sched_switch` + syscalls + net + block — **no `sched_process_*`** (fork/
+exit/exec) and **no memcg/vmscan** events. That profile cleanly supports exactly the fault classes
+the 5 existing blueprints cover (CPU scheduling, socket-latency, network retransmission). It makes
+**structurally invisible**: process-lifecycle faults (`fork_storm`, fd-restart loops), memory faults
+(`svc_mem_cap`/`anomaly_mem` on microservice), and app-protocol faults (`conn_pool`, `error_storm`).
+
+### Conclusion
+
+**The 5 blueprints are the kernel-clean latency/resource set for StrataTrace v2.** Adding a 6th would
+require asserting a signature the trace does not robustly carry. The documented negative result —
+which fault families are kernel-visible, which need traces/logs/metrics, and why — is the
+contribution here. Next: freeze the 5 and run the N-seed evaluation.
+
+(The exploratory `connect_census.py` tool and the probe scripts live in git history; the stub
+`6_conn_pool_exhaustion/` folder was removed since it will not become a blueprint.)
