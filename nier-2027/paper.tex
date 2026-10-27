@@ -76,19 +76,22 @@ between phases. Every one of these steps is a design choice. Every one of
 them can lose information.
 
 Most research on agent context asks how big the window is and how the
-model attends within it~\cite{liu2024lost}, or how to extend it with
-memory~\cite{packer2023memgpt}. Work on agent harnesses treats the
-surrounding code as a minor detail~\cite{yang2024sweagent,jimenez2024swebench}.
-One recent study reads the source code of eleven production harnesses, but
-does not measure what happens to the data~\cite{harness2026}. Failure
+model attends within it~\cite{liu2024lost,hsieh2024ruler}, or how to extend it with
+memory~\cite{packer2023memgpt}. Work on agent harnesses often treats the surrounding code as a minor
+detail~\cite{yang2024sweagent,jimenez2024swebench}, a gap also noted
+elsewhere~\cite{lindenbauer2025complexity}.
+Two recent studies read the source code of eleven~\cite{harness2026} and
+thirteen~\cite{rombaut2026scaffold} production harnesses, but neither
+measures what happens to the data. Failure
 taxonomies label what went wrong across thousands of agent
-runs~\cite{cemri2025mast}, but a label is not a loss measurement. Three
-recent studies come closer to ours. One asks how well a model uses a
+runs~\cite{cemri2025mast}, but a label is not a loss measurement. Four recent studies come closer to ours. One asks how well a model uses a
 tool's \emph{complete} output~\cite{kate2026tooloutputs}; we ask whether
 the output is complete in the first place. One measures how a harness's
 design changes outcomes across models and
-tasks~\cite{yao2026harnessbench}; we trace that variance to one
-measurable loss point, not the outcome. One shows that storing tool
+tasks~\cite{yao2026harnessbench}; we trace that variance to one measurable loss point, not the outcome.
+One varies context-management policies and window budgets in a coding
+harness~\cite{fan2026harnessdesign}; it reports success and cost, but not
+which evidence each policy deletes. One shows that storing tool
 output in a file for retrieval, instead of context, costs accuracy on
 some models but not others~\cite{zhang2026samesimulation}; our cause is
 different: destructive delivery, not a retrieval choice. The
@@ -97,7 +100,8 @@ gap all of this work shares: a run log records what a tool
 log cannot be found in the log.
 
 We measured this gap in an agent that finds the root cause of injected
-faults from Linux kernel traces. Three facts came out of that
+faults from Linux kernel traces. Such agents are an active research
+area~\cite{chen2024rcacopilot,xu2025openrca}. Three facts came out of that
 measurement.
 
 First, the window was nearly empty. Across all $720$ runs, the single
@@ -139,7 +143,8 @@ consistent, safer alternative (Sec.~\ref{sec:measured}).
 \section{Context as a Pipeline}
 \label{sec:pipeline}
 
-Picture one diagnostic run. The agent calls a tool, say a container
+Picture one diagnostic run. In the usual reason--act
+loop~\cite{yao2023react}, the agent calls a tool, say a container
 listing, and gets a result back (\emph{produced}). The harness turns
 that result into text and fits it inside a budget before the model ever
 reads it (\emph{delivered}). The agent splits its investigation across
@@ -157,7 +162,8 @@ matter for how to read it. S1 and S4 destroy evidence outright: a result or
 a finding is simply gone, as if it never existed. S2 does not destroy
 anything; it cuts a worker off before it finishes, so some work never
 happens at all. S3 does not destroy anything either; it only makes a run
-more expensive, by resending history that did not need resending. S5
+more expensive, by resending history that did not need resending, an open
+design question~\cite{lindenbauer2025complexity,fan2026harnessdesign}. S5
 looks absent in our setup, but that is a choice, not a failure: we turned
 it off on purpose, so one run cannot leak into the next. We still call
 all five one pipeline, because each is a point where the harness decides
@@ -203,7 +209,9 @@ at a time, with everything else held fixed.
 
 \textbf{Measuring the loss.} We propose instrumenting these boundaries
 and reporting, next to accuracy, how much produced evidence survived
-each one, with a concrete unit at each boundary. At S1, the unit is a
+each one, with a concrete unit at each boundary. Others argue for reporting
+cost, not just accuracy~\cite{kapoor2025agents}, and where a chain
+breaks~\cite{zhang2026phreeqc}; we add a loss count at each boundary. At S1, the unit is a
 top-level field of a tool result, counted as delivered when its content
 is present in the text the model receives (whether the payload still
 parses is reported separately). At S4, the unit is a recorded finding or
@@ -300,7 +308,8 @@ boundary, we also shipped two new analysis tools, so an accuracy gain in
 the field data could come from those tools, not the fix. To separate
 cause from confound, we put each defect back on its own, one at a time,
 holding the agent, tools, task, and model fixed. We wrote down our
-predictions before each wave of runs. Every change to the plan is
+predictions before each wave of runs, echoing registered
+reports~\cite{ernst2023registered}. Every change to the plan is
 logged, with its date and reason, in a file that ships with the
 artifact.
 
@@ -322,8 +331,8 @@ alone. Single-defect arms re-introduce S2 through S4 one at a time.
 \emph{All defects} re-introduces all five together, matching the
 original shipped harness.
 
-Each fault class has $5$ distinct recordings, times $3$ repeats, paired
-across configurations: $145$ runs total, none failed. Scoring counts
+Each fault class has $5$ distinct recordings, times $3$ repeats (temperature
+$0$ is not fully repeatable~\cite{ouyang2025nondeterminism}), paired across configurations: $145$ runs total, none failed. Scoring counts
 only a \emph{commitment}: the agent must name the culprit in its answer
 field, checked against ground truth, not a mention in passing. Our
 first scorer counted mentions instead, inflating one arm's score from
@@ -365,7 +374,7 @@ runs more computations without finding more, not because it finds less:
 findings stay at $11$ throughout. The order-only control, changing only
 key order and cutting nothing, lands back at $0.61$ too, confirming
 yield measures the real effect, not reordering. At
-equal answers, the extra tokens are unnecessary inference cost that
+equal answers, the extra tokens are unnecessary inference cost~\cite{kapoor2025agents} that
 will not show up in end-to-end latency.
 
 \textbf{The reversal test, and a refuted prediction.} We predicted that
@@ -391,7 +400,8 @@ We then fixed two things: delivery, so results are never truncated
 mid-record, and the step budget, giving workers more tool-calling turns
 before stopping. We also built a page-on-request mechanism, a safety net
 for oversized results that never fired here, since every result fit on
-the first page. We reran the same trace and prompt under both
+the first page. Other work also finds such recall tools rarely
+used~\cite{fan2026harnessdesign}. We reran the same trace and prompt under both
 conditions. Repaired: $3$
 of $6$ runs name the throttled service correctly, $0$ of $6$ broken
 payloads. S1 defect: $0$ of $5$ correct, every run broken, $10$ to $14$
@@ -425,8 +435,8 @@ One harness, one domain, one model: we argue the defect class is
 general because the pipeline itself is unavoidable, and two of the
 seven surveyed frameworks cut the same way, with no consistent
 alternative (Sec.~\ref{sec:measured}). The same shape recurs whenever a harness
-truncates a compiler error, a CI log, or a failing test's output before a
-coding agent gets to see it. We have not measured other harnesses end to
+truncates a compiler error, a CI log, or a failing test's output before a coding agent gets to see it; one coding harness caps every tool
+result at $24$k characters~\cite{fan2026harnessdesign}. We have not measured other harnesses end to
 end, nor a conventional build-test-fix coding agent; the evidence here
 is kernel traces only. We also wrote the defect ourselves, so the
 experiment reintroduces it under registered predictions, not as a repair
@@ -447,7 +457,8 @@ records are visible, whether the payload is valid, whether the culprit
 is recoverable elsewhere, and the final answer, across independent
 instances.
 \textbf{(2) A deeper survey.} Extend our reading to the eleven-harness
-corpus of~\cite{harness2026}, classify each cutter as position- or
+corpus of~\cite{harness2026} and the thirteen scaffolds
+of~\cite{rombaut2026scaffold}, classify each cutter as position- or
 structure-based, and replay it against the delivery cliff.
 \textbf{(3) Reporting loss as standard practice.}
 Package the instrument so any harness can print its loss profile beside
@@ -470,12 +481,18 @@ measure. We have shown how.
 
 \balance
 
-\begin{thebibliography}{9}
+\begin{thebibliography}{99}
 \bibitem{liu2024lost}
 N.~F. Liu, K.~Lin, J.~Hewitt, A.~Paranjape, M.~Bevilacqua, F.~Petroni, and
 P.~Liang, ``Lost in the middle: How language models use long contexts,''
 \emph{Transactions of the Association for Computational Linguistics}, vol.~12,
 pp.~157--173, 2024.
+
+\bibitem{hsieh2024ruler}
+C.-P. Hsieh, S.~Sun, S.~Kriman, S.~Acharya, D.~Rekesh, F.~Jia, Y.~Zhang,
+and B.~Ginsburg, ``{RULER}: What's the real context size of your
+long-context language models?'' in \emph{Conference on Language Modeling
+(COLM)}, 2024.
 
 \bibitem{packer2023memgpt}
 C.~Packer, S.~Wooders, K.~Lin, V.~Fang, S.~G. Patil, I.~Stoica, and J.~E.
@@ -494,16 +511,27 @@ K.~Narasimhan, ``{SWE-bench}: Can language models resolve real-world {GitHub}
 issues?'' in \emph{International Conference on Learning Representations
 (ICLR)}, 2024.
 
-\bibitem{cemri2025mast}
-M.~Cemri, M.~Z. Pan, S.~Yang, L.~A. Agrawal, B.~Chopra, R.~Tiwari,
-K.~Keutzer, A.~Parameswaran, D.~Klein, and K.~Ramchandran, ``Why do
-multi-agent {LLM} systems fail?'' \emph{arXiv preprint arXiv:2503.13657},
-2025.
+\bibitem{lindenbauer2025complexity}
+T.~Lindenbauer, I.~Slinko, L.~Felder, E.~Bogomolov, and Y.~Zharov, ``The
+complexity trap: Simple observation masking is as efficient as {LLM}
+summarization for agent context management,'' in \emph{4th Deep Learning
+for Code Workshop (DL4C) at NeurIPS}, 2025, arXiv:2508.21433.
 
 \bibitem{harness2026}
 P.~Barbaste, T.~Darrigol, G.~Vu, and T.~Wiltberger, ``Harness engineering:
 Anatomy, architecture, and evolution of coding agents: a source-code study
 of eleven systems,'' \emph{arXiv preprint arXiv:2609.00006}, 2026.
+
+\bibitem{rombaut2026scaffold}
+B.~Rombaut, ``Inside the scaffold: A source-code taxonomy of coding agent
+architectures,'' \emph{arXiv preprint arXiv:2604.03515}, 2026.
+
+\bibitem{cemri2025mast}
+M.~Cemri, M.~Z. Pan, S.~Yang, L.~A. Agrawal, B.~Chopra, R.~Tiwari,
+K.~Keutzer, A.~Parameswaran, D.~Klein, K.~Ramchandran, M.~Zaharia,
+J.~E. Gonzalez, and I.~Stoica, ``Why do multi-agent {LLM} systems fail?'' in
+\emph{Advances in Neural Information Processing Systems (NeurIPS), Datasets
+and Benchmarks Track}, 2025.
 
 \bibitem{kate2026tooloutputs}
 K.~Kate, Y.~Rizk, P.~Ghosh, A.~Gulati, T.~Chakraborti, Z.~Wright, and
@@ -517,10 +545,55 @@ L.~Sun, X.~Zhang, G.~Zhao, and T.~Yang, ``Harness-bench: Evaluating agent
 harnesses across models and realistic workflows,'' \emph{arXiv preprint
 arXiv:2605.27922}, 2026.
 
+\bibitem{fan2026harnessdesign}
+R.-Z. Fan, Z.~Zhang, S.~Ma, Y.~Hu, S.~Wang, K.~Song, F.~Liu, H.~Zamani,
+and X.~Wang, ``An empirical study of harness design for coding agents,''
+\emph{arXiv preprint arXiv:2609.20804}, 2026.
+
 \bibitem{zhang2026samesimulation}
 K.~Zhang, S.~Chundur, J.~P. Owusu, M.~J.~A. Qomi, and M.~Raissi, ``Same
 simulation, different evidence: Where retrieved tool output costs {LLM}
 agents accuracy,'' \emph{arXiv preprint arXiv:2610.26836}, 2026.
+
+\bibitem{chen2024rcacopilot}
+Y.~Chen, H.~Xie, M.~Ma, Y.~Kang, X.~Gao, L.~Shi, Y.~Cao, X.~Gao, H.~Fan,
+M.~Wen, J.~Zeng, S.~Ghosh, X.~Zhang, C.~Zhang, Q.~Lin, S.~Rajmohan,
+D.~Zhang, and T.~Xu, ``Automatic root cause analysis via large language
+models for cloud incidents,'' in \emph{Proceedings of the European
+Conference on Computer Systems (EuroSys)}, 2024,
+doi:~10.1145/3627703.3629553.
+
+\bibitem{xu2025openrca}
+J.~Xu, Q.~Zhang, Z.~Zhong, S.~He, C.~Zhang, Q.~Lin, D.~Pei, P.~He,
+D.~Zhang, and Q.~Zhang, ``{OpenRCA}: Can large language models locate the
+root cause of software failures?'' in \emph{International Conference on
+Learning Representations (ICLR)}, 2025.
+
+\bibitem{yao2023react}
+S.~Yao, J.~Zhao, D.~Yu, N.~Du, I.~Shafran, K.~Narasimhan, and Y.~Cao,
+``{ReAct}: Synergizing reasoning and acting in language models,'' in
+\emph{International Conference on Learning Representations (ICLR)}, 2023.
+
+\bibitem{kapoor2025agents}
+S.~Kapoor, B.~Stroebl, Z.~S. Siegel, N.~Nadgir, and A.~Narayanan, ``{AI}
+agents that matter,'' \emph{Transactions on Machine Learning Research},
+2025.
+
+\bibitem{zhang2026phreeqc}
+K.~Zhang, S.~Chundur, M.~J. Qomi, and M.~Raissi, ``{PHREEQC-MCQ-200}: A
+diagnostic benchmark for tool-augmented scientific simulator agents,''
+\emph{arXiv preprint arXiv:2607.00436}, 2026.
+
+\bibitem{ernst2023registered}
+N.~A. Ernst and M.~T. Baldassarre, ``Registered reports in software
+engineering,'' \emph{Empirical Software Engineering}, vol.~28, no.~2,
+art.~55, 2023.
+
+\bibitem{ouyang2025nondeterminism}
+S.~Ouyang, J.~M. Zhang, M.~Harman, and M.~Wang, ``An empirical study of the
+non-determinism of {ChatGPT} in code generation,'' \emph{ACM Transactions on
+Software Engineering and Methodology}, vol.~34, 2025,
+doi:~10.1145/3697010.
 \end{thebibliography}
 
 \end{document}

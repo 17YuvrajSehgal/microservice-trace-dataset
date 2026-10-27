@@ -124,11 +124,7 @@ pre{font-family:var(--mono);font-size:clamp(12px,1.05vw,15px);background:var(--s
 
 <!-- 1 ───────────────────────────────────────────────── -->
 <section class="slide on center">
-  <div class="kicker">Brock University · StrataTrace</div>
-  <h1>Finding the root cause from a kernel trace, automatically</h1>
-  <p class="lede">An LLM agent is handed a raw Linux kernel trace and a written diagnostic
-  method. It has to find what broke, where, and when — and prove it.</p>
-  <p class="sub">Press <strong>→</strong> or space to advance</p>
+  <h1>Blueprints Demo</h1>
 </section>
 
 <!-- 2 ───────────────────────────────────────────────── -->
@@ -159,7 +155,6 @@ pre{font-family:var(--mono);font-size:clamp(12px,1.05vw,15px);background:var(--s
     <div class="arr">→</div>
     <div class="fbox"><b>Verdict</b><span>What, where, when<br>— with evidence.</span></div>
   </div>
-  <p class="sub">The blueprint is the part a human engineer writes. Everything else is machinery.</p>
 </section>
 
 <!-- 4 ───────────────────────────────────────────────── -->
@@ -328,28 +323,6 @@ pre{font-family:var(--mono);font-size:clamp(12px,1.05vw,15px);background:var(--s
   <p style="margin-top:22px">Every number there can be checked independently, against the trace
   and against the cgroup counters. <strong>That is the bar</strong> — not a plausible sentence,
   a claim an engineer can falsify.</p>
-</section>
-
-<!-- 14 ──────────────────────────────────────────────── -->
-<section class="slide">
-  <div class="kicker">Honest status</div>
-  <h2>Where it stands today</h2>
-  <p>84 agentic traces, each run with the correct blueprint handed over:</p>
-  <table>
-    <thead><tr><th>case</th><th class="n">result</th></tr></thead>
-    <tbody>
-      <tr><td>Memory caps detected</td><td class="n big">25 / 44</td></tr>
-      <tr><td>CPU caps detected</td><td class="n big hot">4 / 29</td></tr>
-      <tr><td>Clean baselines correctly cleared</td><td class="n big ok">10 / 11</td></tr>
-    </tbody>
-  </table>
-  <div class="note w" style="margin-top:20px">
-    <p><strong>The low CPU number is probably correct, not a failure.</strong> A CPU cap on a
-    bursty, LLM-bound agent often has so much headroom that it barely throttles — there is nothing
-    in the kernel to see, so the agent honestly reports "normal".</p>
-    <p>Next step: score only against caps that <em>measurably bit</em>, using the cgroup counters
-    as ground truth.</p>
-  </div>
 </section>
 
 <!-- 15 ──────────────────────────────────────────────── -->
