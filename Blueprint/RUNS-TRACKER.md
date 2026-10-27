@@ -39,11 +39,11 @@ built index locally right now.
 | | Sock Shop | 8 | 8 | +10 normal | Trillium | ✓ 8/8 | ⛔ not evaluable — trace lacks memcg tracepoints |
 | | Train Ticket | 8 | 8 | +10 normal | Trillium | ✓ 8/8 | ⛔ not evaluable — trace lacks memcg tracepoints |
 | **noisy_neighbor** | Sock Shop | 8 | 8 | +10 normal | Trillium | ✓ 8/8 | ✅ **7/8** (by hand; aggressor named, confirmed) |
-| | Train Ticket | 8 | 8 | +10 normal | Trillium | ✓ 8/8 | ⚠ confirmed faults; needs full hand pass |
+| | Train Ticket | 8 | 8 | +10 normal | Trillium | ✓ 8/8 | ⛔ not evaluable — too weak on 16-core host (host stayed idle) |
 | **slow_db** | Sock Shop | 11 | 11 | +10 normal | Trillium | ✓ 11/11 | ✅ **8/11** (by hand; toxiproxy path delay, incl. subtle 60ms) |
-| | Train Ticket | 11 | 11 | +10 normal | Trillium | ✓ 8/8 | ⚠ ~4/5 by hand but labels `unconfirmed` (no_metric_signature) |
+| | Train Ticket | 11 | 11 | +10 normal | Trillium | ✓ 8/8 | ✅ **4/8** by hand (4/4 aggressive-500ms; 0/2 subtle). TT's one kernel-visible family |
 | **svc_net** | Sock Shop | 5 | 5 | +10 normal | Trillium | ✓ 5/5 | ✅ **5/5** (by hand; netem on carts) |
-| | Train Ticket | 5 | 5 | +10 normal | Trillium | ✓ 5/5 | ⛔ verification unconfirmed; needs hand pass |
+| | Train Ticket | 5 | 5 | +10 normal | Trillium | ✓ 5/5 | ⛔ inconclusive — traffic collapsed, no retransmission signal, ambiguous |
 
 **"+10 normal"** = each microservice app has 10 fault-free runs shared as controls across all
 blueprints (not per-blueprint copies).

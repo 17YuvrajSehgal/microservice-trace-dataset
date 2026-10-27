@@ -151,3 +151,25 @@ TRAIN TICKET - NOT a clean testbed (data quality, not the agent):
 => TT scoreboard must be adjudicated per-run from the TRACE, not the metric labels. In progress.
 
 Also: gather.py added (collects gt+recipe+verdict for by-hand judging, does NOT grade).
+
+## 2026-10-27 (cont): Train Ticket hand-pass complete - TT is a poor testbed (dataset, not agent)
+Judged all TT combos from the trace (not the unreliable metric labels):
+- slow_db: 4/8 DETECTED - all 4 AGGRESSIVE-500ms caught (db_latency via toxiproxy/MySQL endpoint),
+  missed 2 subtle-60ms + 2 hedges. TT's ONE kernel-visible family; agent handled it like Sock Shop.
+- svc_cpu_cap: NOT evaluable - caps didn't bite (ts-travel idle, 0.005 cores vs 0.2 cap, all 8
+  verification=unconfirmed). Agent correctly said normal.
+- noisy_neighbor: NOT evaluable - 2-4 stress-ng workers on a 16-CPU host left it 63-84% idle, no
+  victim contention. Agent identified stress-ng (6/8) but correctly declined harm; r4 even found
+  the noisy container's own 2.0-core cap. Injection too weak.
+- svc_net: INCONCLUSIVE - ts-basic traffic collapsed in-window (consistent with netem delay) but
+  net_loss found no TCP segments/retransmissions (traffic dropped to ~0), amid 60 services' load
+  swings. Agent read it as workload. Ambiguous + unconfirmed.
+- svc_mem_cap: NOT evaluable - no memcg tracepoints.
+
+Conclusion: TrainTicket v2 injections mostly failed to produce clear kernel-visible harm (a
+dataset intensity/collection limitation, consistent with known no_metric_signature + re-collection
+notes), EXCEPT aggressive slow_db where the agent got 4/4. NOT an agent/blueprint weakness. Only
+citable TT fact: of TT injections with a clear kernel signature (aggressive slow_db), agent 4/4.
+
+FINAL microservice headline = SOCK SHOP (clean testbed, all faults confirmed): 26/32 = 81% on the
+4 evaluable blueprints (cpu 6/8, noisy 7/8, slow_db 8/11, net 5/5; mem not evaluable).

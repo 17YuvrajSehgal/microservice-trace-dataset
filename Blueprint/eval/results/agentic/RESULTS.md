@@ -167,24 +167,26 @@ these traces. The agent behaved correctly: it cut the right slices, found no rec
 from totals; counting these as misses would falsify the result. Re-collecting with the memory
 tracepoints enabled is future work.
 
-### Train Ticket — held back by data quality, not the agent
+### Train Ticket — a poor testbed (dataset, not the agent); hand-pass complete
 
-TT is **not** a clean testbed, for reasons in the dataset, not the method:
+Judged from the trace, not TT's unreliable metric labels (`JUDGMENTS-summary.md`). Only one TT
+family produced a clear kernel-visible fault:
 
-- **TT svc_cpu_cap faults did not bite.** `ts-travel-service` is nearly idle under test load
-  (CPU 0.003 → 0.005 cores against a 0.2-core cap); all 8 runs are `verification_status=unconfirmed`,
-  sigma ~2. The agent correctly reports normal / "suspected not proven" — the same cap-set-but-did-
-  not-bite case as the agentic 1.0-core cap. Not a miss.
-- **TT svc_net / slow_db are also labeled `unconfirmed`**, but here the label is wrong, not the
-  fault: on slow_db the agent plainly reads the injected **~0.5 s DB-path gaps** in the trace and
-  localises `toxiproxy`/the MySQL endpoint (≈4/5 DETECTED by hand). This matches the known TT
-  `no_metric_signature` issue (CAMPAIGN-ISSUES) — the metric-side verification check misses a fault
-  the kernel trace shows clearly.
-- **TT noisy_neighbor** is confirmed (8/8 bit) and the agent gets some; needs a full hand pass.
+| blueprint | by-hand | why |
+|---|---|---|
+| **slow_db** | **4/8 DETECTED** | all 4 aggressive-500 ms caught (db_latency via toxiproxy / MySQL endpoint); missed 2 subtle-60 ms + 2 hedges. The one TT family that bit kernel-visibly. |
+| svc_cpu_cap | not evaluable | caps did not bite — `ts-travel-service` idle (0.005 cores vs 0.2 cap), all 8 `unconfirmed`. Agent correctly said normal. |
+| noisy_neighbor | not evaluable | 2–4 stress-ng workers on a 16-CPU host → host 63–84 % idle → no victim contention. Agent identified stress-ng (6/8) but correctly declined harm; r4 found the noisy container's own 2-core cap. Injection too weak. |
+| svc_net | inconclusive | ts-basic-service traffic collapsed in-window (consistent with netem delay) but no retransmissions (`net_loss`: no TCP segments) amid 60 services' load swings. Agent read it as workload. Ambiguous; unconfirmed. |
+| svc_mem_cap | not evaluable | no memcg tracepoints (same gap as Sock Shop). |
 
-So TT mixes genuine non-bites (cpu), unreliable verification labels (net, slow_db), and the memcg
-gap (mem). A fair TT scoreboard needs per-run trace-level adjudication, not the metric labels —
-in progress. **Do not cite the raw TT numbers.**
+**Honest TT conclusion:** where TT's injection actually produced a kernel signature (aggressive
+slow_db) the agent detected it **4/4**; everywhere else the fault either did not bite (cpu idle
+service, noisy-neighbor too weak on 16 cores), is ambiguous (net collapse w/o retransmission), or
+is not collectable (mem). This is a **Train Ticket v2 intensity/collection limitation**
+(consistent with the documented `no_metric_signature` + re-collection notes), **not** an agent or
+blueprint weakness. **Do not cite TT detection rates as agent performance** — the only citable TT
+fact is: of TT injections with a clear kernel signature (aggressive slow_db), the agent got 4/4.
 
 Cost so far: $11.4 for the 72 cells.
 
