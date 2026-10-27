@@ -1,0 +1,30 @@
+{
+ "run_id": "slow_db_aggressive_steady_r3",
+ "problem": "slow_db",
+ "arm": "given",
+ "blueprint": "3_slow_db",
+ "model": "openai/gpt-6-luna",
+ "provider": "openrouter",
+ "verdict": {
+  "where": "toxiproxy in pid_ns 4026532751",
+  "what_is_wrong": "The app\u2019s database-facing connection pool developed roughly 0.5-second request/answer gaps while replies continued, and the mysqld process showed matching gaps without CPU or disk strain. This supports injected or path-side latency to the database, rather than an overloaded or unavailable MySQL process; the trace suggests the toxiproxy container as the path component, but does not conclusively map the slow pool to it.",
+  "when": "14:54:50 - 14:56:49",
+  "fault": "db_latency",
+  "confidence": 0.82
+ },
+ "score": {
+  "detected": false,
+  "control": false,
+  "present": true,
+  "fault_ok": true,
+  "where": "wrong",
+  "where_ok": false,
+  "window_iou": 0.992,
+  "family": "slow_db",
+  "agentic": false
+ },
+ "seconds": 1719.4,
+ "calls": 82,
+ "tokens_in": 1781880,
+ "tokens_out": 23809
+}

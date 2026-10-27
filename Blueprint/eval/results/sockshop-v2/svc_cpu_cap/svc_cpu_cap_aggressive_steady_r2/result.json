@@ -1,0 +1,30 @@
+{
+ "run_id": "svc_cpu_cap_aggressive_steady_r2",
+ "problem": "svc_cpu_cap",
+ "arm": "given",
+ "blueprint": "1_svc_cpu_cap",
+ "model": "openai/gpt-6-luna",
+ "provider": "openrouter",
+ "verdict": {
+  "where": "java in pid_ns 4026532538",
+  "what_is_wrong": "From about 15:28:30 to 15:30:35 UTC, Java process PID 52884 was likely throttled by a service-local CPU quota: it accumulated many long runnable waits while its CPU use fell to roughly 0.2 cores, then recovered. This is an inferred quota rather than a directly observed setting; the trace contains no CFS throttling counters, but the repeating 100-ms pattern, sub-period CPU ceiling, and idle CPUs during waits strongly support the diagnosis despite a broader simultaneous workload decline.",
+  "when": "15:28:30 - 15:30:35",
+  "fault": "cpu_throttling",
+  "confidence": 0.94
+ },
+ "score": {
+  "detected": true,
+  "control": false,
+  "present": true,
+  "fault_ok": true,
+  "where": "container",
+  "where_ok": true,
+  "window_iou": 0.96,
+  "family": "svc_cpu_cap",
+  "agentic": false
+ },
+ "seconds": 647.6,
+ "calls": 72,
+ "tokens_in": 1506665,
+ "tokens_out": 20927
+}

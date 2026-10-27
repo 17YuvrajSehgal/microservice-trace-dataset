@@ -1,0 +1,30 @@
+{
+ "run_id": "slow_db_aggressive_burst_r2",
+ "problem": "slow_db",
+ "arm": "given",
+ "blueprint": "3_slow_db",
+ "model": "openai/gpt-6-luna",
+ "provider": "openrouter",
+ "verdict": {
+  "where": "toxiproxy in pid_ns 4026532751",
+  "what_is_wrong": "The mysqld connection-answer gaps rose from about 0.3\u20130.4 ms to roughly 500 ms while answers continued, then returned to sub-millisecond levels. Mysqld showed little CPU use, no long CPU waits, and no disk sleep, so the evidence points to latency on the path to the database rather than the database being CPU- or disk-strained; toxiproxy is the visible likely path component, though the trace does not prove the exact point of delay.",
+  "when": "06:22:40 - 06:25:00",
+  "fault": "db_latency",
+  "confidence": 0.82
+ },
+ "score": {
+  "detected": false,
+  "control": false,
+  "present": true,
+  "fault_ok": true,
+  "where": "wrong",
+  "where_ok": false,
+  "window_iou": 0.857,
+  "family": "slow_db",
+  "agentic": false
+ },
+ "seconds": 1532.6,
+ "calls": 111,
+ "tokens_in": 1437119,
+ "tokens_out": 27492
+}

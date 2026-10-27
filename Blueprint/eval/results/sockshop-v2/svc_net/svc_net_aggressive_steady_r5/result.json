@@ -1,0 +1,30 @@
+{
+ "run_id": "svc_net_aggressive_steady_r5",
+ "problem": "svc_net",
+ "arm": "given",
+ "blueprint": "5_svc_net",
+ "model": "openai/gpt-6-luna",
+ "provider": "openrouter",
+ "verdict": {
+  "where": "java in pid_ns 4026532538",
+  "what_is_wrong": "A degraded network path is the best-supported explanation for the traffic collapse affecting the Java workload at 172.18.0.3 and its datastore flows: retransmissions rise above the quiet comparison and Java-to-datastore traffic collapses, while the sampled Java scheduler budget shows greatly increased sleep but negligible CPU wait and no disk sleep. The trace does not establish the exact network mechanism, and the retransmission signal is modest overall and not fully consistent across slices, so this is a qualified rather than definitive attribution.",
+  "when": "17:29:30 - 17:31:30",
+  "fault": "service_network",
+  "confidence": 0.76
+ },
+ "score": {
+  "detected": true,
+  "control": false,
+  "present": true,
+  "fault_ok": true,
+  "where": "container",
+  "where_ok": true,
+  "window_iou": 0.983,
+  "family": "svc_net",
+  "agentic": false
+ },
+ "seconds": 1007.5,
+ "calls": 57,
+ "tokens_in": 1602151,
+ "tokens_out": 17290
+}

@@ -1,0 +1,30 @@
+{
+ "run_id": "slow_db_aggressive_burst_r1",
+ "problem": "slow_db",
+ "arm": "given",
+ "blueprint": "3_slow_db",
+ "model": "openai/gpt-6-luna",
+ "provider": "openrouter",
+ "verdict": {
+  "where": "toxiproxy in pid_ns 4026532751",
+  "what_is_wrong": "A sustained slow-answer signature is visible: mysqld PID 19881 had roughly 499\u2013505 ms request/answer gaps with thousands of answers, while Java and traefik also showed elevated gaps. The database process itself appeared mostly idle, which is consistent with delay in the path (the trace contains a toxiproxy container), but a clean baseline-to-fault connection-pool comparison and a definitive peer mapping were not established; Java futex/lock waits are a competing explanation for some symptoms.",
+  "when": "06:14:40 - 06:16:20",
+  "fault": "db_latency",
+  "confidence": 0.58
+ },
+ "score": {
+  "detected": false,
+  "control": false,
+  "present": true,
+  "fault_ok": true,
+  "where": "wrong",
+  "where_ok": false,
+  "window_iou": 0.833,
+  "family": "slow_db",
+  "agentic": false
+ },
+ "seconds": 1534.8,
+ "calls": 129,
+ "tokens_in": 2082701,
+ "tokens_out": 36305
+}

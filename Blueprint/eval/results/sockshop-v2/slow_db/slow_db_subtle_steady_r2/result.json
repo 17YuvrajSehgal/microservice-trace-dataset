@@ -1,0 +1,30 @@
+{
+ "run_id": "slow_db_subtle_steady_r2",
+ "problem": "slow_db",
+ "arm": "given",
+ "blueprint": "3_slow_db",
+ "model": "openai/gpt-6-luna",
+ "provider": "openrouter",
+ "verdict": {
+  "where": "none identified",
+  "what_is_wrong": "The trace does not establish a slow-database incident: although app PID 716726 in pid_ns 4026532609 connects to 172.18.0.6:3306 and shows roughly 50\u201375 ms socket gaps in sampled windows, those gaps remain essentially unchanged across adjacent samples and mysqld PID 19881 has matching, stable distributions. An earlier comparison suggests a possible app gap increase, but its proposed baseline is not demonstrably quiet and the per-connection and peer checks do not confirm a sustained database-specific delay; no culprit can be assigned from this evidence.",
+  "when": "unknown",
+  "fault": "normal",
+  "confidence": 0.82
+ },
+ "score": {
+  "detected": false,
+  "control": false,
+  "present": true,
+  "fault_ok": false,
+  "where": "wrong",
+  "where_ok": false,
+  "window_iou": null,
+  "family": "slow_db",
+  "agentic": false
+ },
+ "seconds": 532.9,
+ "calls": 53,
+ "tokens_in": 1380886,
+ "tokens_out": 20918
+}

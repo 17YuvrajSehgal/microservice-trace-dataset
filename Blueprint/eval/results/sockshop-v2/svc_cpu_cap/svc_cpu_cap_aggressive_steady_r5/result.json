@@ -1,0 +1,30 @@
+{
+ "run_id": "svc_cpu_cap_aggressive_steady_r5",
+ "problem": "svc_cpu_cap",
+ "arm": "given",
+ "blueprint": "1_svc_cpu_cap",
+ "model": "openai/gpt-6-luna",
+ "provider": "openrouter",
+ "verdict": {
+  "where": "java in pid_ns 4026532538",
+  "what_is_wrong": "Java PID 52884 in one container suffered severe runnable CPU starvation during a roughly two-minute interval: it ran at about 0.20 cores while accumulating 7\u20138 runnable-wait thread-seconds and hundreds of waits over 50 ms per 10 seconds. Its CPU use and scheduling returned to normal afterward; this strongly suggests a per-container CPU cap, though the trace does not record the quota, and the decisive per-period ceiling and CPU-idle-while-waiting checks were not run, so throttling is inferred rather than proven.",
+  "when": "15:54:55 - 15:56:57",
+  "fault": "cpu_throttling",
+  "confidence": 0.84
+ },
+ "score": {
+  "detected": true,
+  "control": false,
+  "present": true,
+  "fault_ok": true,
+  "where": "container",
+  "where_ok": true,
+  "window_iou": 0.984,
+  "family": "svc_cpu_cap",
+  "agentic": false
+ },
+ "seconds": 942.1,
+ "calls": 60,
+ "tokens_in": 1771351,
+ "tokens_out": 16914
+}

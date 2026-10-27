@@ -1,0 +1,30 @@
+{
+ "run_id": "noisy_neighbor_aggressive_steady_r5",
+ "problem": "noisy_neighbor",
+ "arm": "given",
+ "blueprint": "2_noisy_neighbor",
+ "model": "openai/gpt-6-luna",
+ "provider": "openrouter",
+ "verdict": {
+  "where": "stress-ng-cpu in pid_ns 4026533601",
+  "what_is_wrong": "A newly arrived stress-ng CPU workload consumed about two cores and increased runnable CPU waits for other processes, including dockerd. The activity is a noisy neighbor rather than a quota cap: stress-ng-cpu was a new CPU consumer, and it ran during dockerd's waits while idle was not the largest share.",
+  "when": "13:48:20 - 13:50:21",
+  "fault": "noisy_neighbor",
+  "confidence": 0.96
+ },
+ "score": {
+  "detected": true,
+  "control": false,
+  "present": true,
+  "fault_ok": true,
+  "where": "wrong",
+  "where_ok": true,
+  "window_iou": 0.992,
+  "family": "noisy_neighbor",
+  "agentic": false
+ },
+ "seconds": 460.6,
+ "calls": 37,
+ "tokens_in": 916231,
+ "tokens_out": 13190
+}

@@ -1,0 +1,30 @@
+{
+ "run_id": "svc_net_aggressive_steady_r2",
+ "problem": "svc_net",
+ "arm": "given",
+ "blueprint": "5_svc_net",
+ "model": "openai/gpt-6-luna",
+ "provider": "openrouter",
+ "verdict": {
+  "where": "java in pid_ns 4026532538",
+  "what_is_wrong": "A deliberate degradation of the Java service\u2019s network path caused its traffic to fall and its Java\u2194MongoDB TCP flows to retransmit. The trace brackets the degraded phase at about 17:06:21\u201317:08:21 UTC; the evidence points to a service-specific path problem rather than host-wide network congestion, CPU starvation, or disk wait.",
+  "when": "17:06:21 - 17:08:21",
+  "fault": "service_network",
+  "confidence": 0.94
+ },
+ "score": {
+  "detected": true,
+  "control": false,
+  "present": true,
+  "fault_ok": true,
+  "where": "container",
+  "where_ok": true,
+  "window_iou": 1.0,
+  "family": "svc_net",
+  "agentic": false
+ },
+ "seconds": 664.8,
+ "calls": 74,
+ "tokens_in": 1987241,
+ "tokens_out": 22002
+}

@@ -1,0 +1,30 @@
+{
+ "run_id": "svc_cpu_cap_aggressive_steady_r3",
+ "problem": "svc_cpu_cap",
+ "arm": "given",
+ "blueprint": "1_svc_cpu_cap",
+ "model": "openai/gpt-6-luna",
+ "provider": "openrouter",
+ "verdict": {
+  "where": "java in pid_ns 4026532538",
+  "what_is_wrong": "The Java workload in one container was strongly runnable-starved in a repeating burst/freeze pattern, consistent with that container being CPU-quota throttled; the trace does not record quota counters directly, so the cap is inferred rather than directly observed. Other workloads\u2019 activity fell at the same time, but the target\u2019s long runnable waits while CPUs were idle distinguish this from host-wide CPU contention.",
+  "when": "15:37:20 - 15:39:25",
+  "fault": "cpu_throttling",
+  "confidence": 0.96
+ },
+ "score": {
+  "detected": true,
+  "control": false,
+  "present": true,
+  "fault_ok": true,
+  "where": "container",
+  "where_ok": true,
+  "window_iou": 0.96,
+  "family": "svc_cpu_cap",
+  "agentic": false
+ },
+ "seconds": 867.2,
+ "calls": 61,
+ "tokens_in": 1605448,
+ "tokens_out": 15549
+}

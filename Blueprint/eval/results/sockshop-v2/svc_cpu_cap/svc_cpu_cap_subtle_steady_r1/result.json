@@ -1,0 +1,30 @@
+{
+ "run_id": "svc_cpu_cap_subtle_steady_r1",
+ "problem": "svc_cpu_cap",
+ "arm": "given",
+ "blueprint": "1_svc_cpu_cap",
+ "model": "openai/gpt-6-luna",
+ "provider": "openrouter",
+ "verdict": {
+  "where": "java in pid_ns 4026532538",
+  "what_is_wrong": "The `java` workload in one container suffered severe, time-bounded runnable CPU starvation: its run rate stayed near 0.5 cores while runnable wait rose from 0.36 to about 15.6 and waits \u226550 ms surged to roughly 1,800 per 10 seconds. This is consistent with a service CPU quota/throttling problem, but the quota-specific ceiling/rhythm and idle-CPU checks were not reported, so the cap mechanism is strongly suspected rather than conclusively proven.",
+  "when": "04:43:20 - 04:45:20",
+  "fault": "cpu_throttling",
+  "confidence": 0.78
+ },
+ "score": {
+  "detected": true,
+  "control": false,
+  "present": true,
+  "fault_ok": true,
+  "where": "container",
+  "where_ok": true,
+  "window_iou": 0.983,
+  "family": "svc_cpu_cap",
+  "agentic": false
+ },
+ "seconds": 1238.7,
+ "calls": 45,
+ "tokens_in": 1378645,
+ "tokens_out": 14535
+}

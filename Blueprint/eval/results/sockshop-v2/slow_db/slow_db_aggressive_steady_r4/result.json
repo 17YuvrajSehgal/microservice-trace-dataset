@@ -1,0 +1,30 @@
+{
+ "run_id": "slow_db_aggressive_steady_r4",
+ "problem": "slow_db",
+ "arm": "given",
+ "blueprint": "3_slow_db",
+ "model": "openai/gpt-6-luna",
+ "provider": "openrouter",
+ "verdict": {
+  "where": "toxiproxy in pid_ns 4026532751",
+  "what_is_wrong": "A slow database-response interval affected app traffic: database-associated connection gaps rose from about 0.2\u20130.3 ms to roughly 470\u2013541 ms while successful answers continued, then returned to baseline. mysqld showed little CPU or disk strain, so the evidence points to delay in the path to the datastore, likely the toxiproxy workload, rather than mysqld being resource-saturated.",
+  "when": "15:03:20 - 15:05:30",
+  "fault": "db_latency",
+  "confidence": 0.83
+ },
+ "score": {
+  "detected": false,
+  "control": false,
+  "present": true,
+  "fault_ok": true,
+  "where": "wrong",
+  "where_ok": false,
+  "window_iou": 0.923,
+  "family": "slow_db",
+  "agentic": false
+ },
+ "seconds": 339.4,
+ "calls": 65,
+ "tokens_in": 1063350,
+ "tokens_out": 16477
+}

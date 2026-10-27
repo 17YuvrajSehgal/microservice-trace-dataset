@@ -1,0 +1,30 @@
+{
+ "run_id": "noisy_neighbor_subtle_steady_r2",
+ "problem": "noisy_neighbor",
+ "arm": "given",
+ "blueprint": "2_noisy_neighbor",
+ "model": "openai/gpt-6-luna",
+ "provider": "openrouter",
+ "verdict": {
+  "where": "stress-ng-cpu in pid_ns 4026533601",
+  "what_is_wrong": "A temporary `stress-ng-cpu` workload in a new container added about one CPU-core of sustained work, coinciding with a modest rise in total recorded CPU use and ongoing scheduler waits in other workloads. This is consistent with a noisy neighbor, but the trace notes do not include the blueprint\u2019s decisive \u201cwho ran while the victim waited\u201d measurement; waits were already present before the workload, so the degree of victim impact is not conclusively established.",
+  "when": "03:48:09 - 03:50:09",
+  "fault": "noisy_neighbor",
+  "confidence": 0.72
+ },
+ "score": {
+  "detected": true,
+  "control": false,
+  "present": true,
+  "fault_ok": true,
+  "where": "wrong",
+  "where_ok": true,
+  "window_iou": 0.984,
+  "family": "noisy_neighbor",
+  "agentic": false
+ },
+ "seconds": 646.4,
+ "calls": 50,
+ "tokens_in": 1526454,
+ "tokens_out": 21265
+}

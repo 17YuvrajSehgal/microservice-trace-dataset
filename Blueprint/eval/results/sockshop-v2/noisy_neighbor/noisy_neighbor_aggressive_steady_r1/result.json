@@ -1,0 +1,30 @@
+{
+ "run_id": "noisy_neighbor_aggressive_steady_r1",
+ "problem": "noisy_neighbor",
+ "arm": "given",
+ "blueprint": "2_noisy_neighbor",
+ "model": "openai/gpt-6-luna",
+ "provider": "openrouter",
+ "verdict": {
+  "where": "stress-ng-cpu in pid_ns 4026533601",
+  "what_is_wrong": "A newly active stress-ng-cpu workload added sustained CPU competition, and dockerd showed increased ready-to-run waits while it was active. The workload was not the majority CPU consumer, but it was absent from the pre-arrival comparison and was running during dockerd's waits; this fits a subtle noisy neighbor rather than a host-wide saturation event.",
+  "when": "13:11:54 - 13:13:54",
+  "fault": "noisy_neighbor",
+  "confidence": 0.94
+ },
+ "score": {
+  "detected": true,
+  "control": false,
+  "present": true,
+  "fault_ok": true,
+  "where": "wrong",
+  "where_ok": true,
+  "window_iou": 0.992,
+  "family": "noisy_neighbor",
+  "agentic": false
+ },
+ "seconds": 459.4,
+ "calls": 35,
+ "tokens_in": 898837,
+ "tokens_out": 13091
+}

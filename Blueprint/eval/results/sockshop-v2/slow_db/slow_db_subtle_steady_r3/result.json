@@ -1,0 +1,30 @@
+{
+ "run_id": "slow_db_subtle_steady_r3",
+ "problem": "slow_db",
+ "arm": "given",
+ "blueprint": "3_slow_db",
+ "model": "openai/gpt-6-luna",
+ "provider": "openrouter",
+ "verdict": {
+  "where": "mysqld in pid_ns 4026533886",
+  "what_is_wrong": "The strongest fault signature is a slow-answer episode involving the MySQL process: mysqld PID 19881 in pid_ns 4026533886 went from a 0.3 ms median request/answer gap in the 04:31:40\u201304:31:50 sample to 61.4 ms in the 04:33:40\u201304:33:50 sample, while still producing thousands of answers. This supports db_latency, but the trace notes do not establish whether the added delay originates inside mysqld or in its path, nor do they pin both incident edges.",
+  "when": "unknown",
+  "fault": "db_latency",
+  "confidence": 0.7
+ },
+ "score": {
+  "detected": true,
+  "control": false,
+  "present": true,
+  "fault_ok": true,
+  "where": "container",
+  "where_ok": true,
+  "window_iou": null,
+  "family": "slow_db",
+  "agentic": false
+ },
+ "seconds": 389.9,
+ "calls": 38,
+ "tokens_in": 956960,
+ "tokens_out": 14021
+}

@@ -9,10 +9,10 @@ append new sections as more evaluations finish. Raw per-run rows live beside thi
 | | |
 |---|---|
 | research question | How often does the agent find the fault **when handed the correct blueprint** (matched arm)? Blueprint *selection* is a separate, later experiment. |
-| agent | `Blueprint/agent/agent_v2.py` — LangGraph plan → 4 parallel workers → review (≤1 extra round) → synthesise. One worker is **deterministically dedicated to executing the blueprint's procedure** via `blueprint_tool`; the others keep exploratory breadth. Worker caps: 12 tool turns, 90 k-char thread budget. |
+| agent | `../../agent/agent_v2.py` — LangGraph plan → 4 parallel workers → review (≤1 extra round) → synthesise. One worker is **deterministically dedicated to executing the blueprint's procedure** via `blueprint_tool`; the others keep exploratory breadth. Worker caps: 12 tool turns, 90 k-char thread budget. |
 | evidence available to the agent | the kernel-trace count index (`bucket, event, procname, pid_ns, count, value_sum` at 100 ms) + raw-line sampling + the blueprint's own scripts (babeltrace-backed). **No metrics, no logs, no spans. Ground truth is unreachable by construction** — it is read only by the scorer. |
 | model | `openai/gpt-6-luna` via OpenRouter (standard routing), temperature omitted |
-| scoring | `Blueprint/eval/score.py`. **detected** = the committed `fault_type` carries the family's words (evidence prose is ignored — on clean runs evidence legitimately says "checked CPU, found nothing"). Controls: detected = the agent says normal / does not claim the fault. Agentic runs have no victim service (the cap is on the run's own cgroup), so WHERE is not scored there. |
+| scoring | **Agentic (§1–2):** `../score.py` — **detected** = the committed `fault_type` carries the family's words. **Microservice (§3):** graded **by hand** against ground truth + the injection recipe (`../JUDGING.md`), because score.py's keyword/target-string matching mis-scored both ways (it rejected the aggressor/proxy the agent correctly named). Conservative: "other"/"normal"/"unknown" on a real fault = MISS; naming the aggressor/proxy/DB-peer the recipe used = correct WHERE. |
 | fairness | Blueprints were audited for answer leakage **before** these runs: the svc_mem_cap worked example had named the eval victim process (`ttmem`), its exact cap (768 M) and exact reclaim count; slow_db named "catalogue + MySQL + 500 ms" (the Sock Shop answer); svc_net named "a Java service". All anonymized to rough magnitudes with no names (commit `pre-run analysis fixes`). Results produced before that audit are invalid and were discarded. |
 | reproduce | `cd Blueprint/eval && RCA_PROVIDER=openrouter RCA_MODEL=openai/gpt-6-luna ABL_WORKER_STEPS=12 ABL_THREAD_BUDGET=90000 python eval_matrix.py --problem <p> --runs-root <runs> --index-root index-agentic --out results/agentic/<p> --jobs 4` (resumable; scored cells are skipped) |
 
@@ -28,7 +28,7 @@ whether the limit ever fired.
 ## 1. svc_cpu_cap × agentic (Claude) — COMPLETE 2026-10-22
 
 **Design:** 42 runs = 31 faults (`cpu.max` ∈ {0.25, 0.5, 1.0} core on 4 CPUs; two task types) +
-11 uncapped controls. Blueprint: `Blueprint/latency/1_svc_cpu_cap/README_v1.md` (10 tools).
+11 uncapped controls. Blueprint: `../../latency/1_svc_cpu_cap/README_v1.md` (10 tools).
 
 ### Headline
 
@@ -70,7 +70,7 @@ detectability floor for so mild a constraint. No false positives anywhere.
 
 **Design:** 44 runs, all with a memory limit configured (`memory.high` soft or `memory.max`
 hard, swept around the task's working set; no uncapped controls in this family — the uncapped
-baseline lives in the cpu family). Blueprint: `Blueprint/latency/4_svc_mem_cap/README_v1.md`
+baseline lives in the cpu family). Blueprint: `../../latency/4_svc_mem_cap/README_v1.md`
 (11 tools), **leak-free** (the worked example that previously named the victim process and the
 exact cap was anonymized before this run).
 
@@ -142,18 +142,33 @@ correctly named. Per-run judgments: `results/<app>/JUDGMENTS*.md`.
 
 ### Sock Shop — the clean testbed (every fault `verification_status=confirmed`)
 
-| blueprint | by-hand DETECTED | score.py said | localisation |
-|---|---|---|---|
-| svc_cpu_cap | **6/8** | 5/8 | cpu_throttling on `java` (carts); 2 runs hedged "other" = MISS |
-| noisy_neighbor | **7/8** | 0/8 (pre-fix) | named aggressor `stress-ng`; 1 "normal" |
-| slow_db | **8/11** | 1/11 | db_latency via `toxiproxy`/`mysqld`; caught 2/3 subtle-60 ms |
-| svc_net | **5/5** | 5/5 | service_network on `java` (carts), netem 150 ms+4 % |
-| svc_mem_cap | ⛔ n/a | — | trace has no memcg tracepoints (below) |
+Two passes, same model, graded by hand:
+- **v1** — original blueprints.
+- **v2** — after fixing the three miss root causes found by RCA (commit `6992bc3`): `cpu_ceiling`
+  judges a cap by collapse-vs-baseline + runnable-wait + idle CPUs instead of flatness; the
+  noisy blueprint forces the decisive `cpu_hogs` check before any verdict; slow_db takes its
+  baseline from a verified-quiet stretch outside the incident window. All three fixes are general
+  (no hardcoded service names / quotas / thresholds).
 
-**Sock Shop headline: 26/32 = 81 % DETECTED** on the four evaluable blueprints, each with correct
-localisation and a window overlapping the injection, on faults the dataset's own verification
-confirms bit. Conservative grading throughout ("other"/"normal"/"unknown" = MISS). This is the
-trustworthy microservice result.
+| blueprint | v1 DETECTED | **v2 DETECTED (fixed)** | localisation |
+|---|---|---|---|
+| svc_cpu_cap | 6/8 | **7/8** | cpu_throttling on `java` (carts); v1 misses r3,r5 **recovered**; 1 different cell (subtle_r2) hedged "other" |
+| noisy_neighbor | 7/8 | **7/7** (r2 rate-limited) | named aggressor `stress-ng`; v1 miss r3 **recovered** |
+| slow_db | 8/11 | **9/11** | db_latency via `toxiproxy`/`mysqld`; v1 burst misses **recovered**; 2 subtle-60 ms missed |
+| svc_net | 5/5 | **4/5** | service_network on `java` (carts); r1 hedged "other" this sample |
+| svc_mem_cap | ⛔ n/a | ⛔ n/a | trace has no memcg tracepoints (below) |
+
+**Sock Shop headline (v2, fixed blueprints): 27/31 scored = 87 % DETECTED** on the four evaluable
+blueprints (noisy r2 lost to a rate-limit, resumable), each with correct localisation and a
+window overlapping the injection, on faults the dataset's own verification confirms bit.
+Conservative grading throughout ("other"/"normal"/"unknown" = MISS).
+
+> ⚠️ **PRELIMINARY — single run per cell, not the final number.** The agent (gpt-6-luna) is
+> nondeterministic, so a borderline cell can flip DETECTED↔"other" between samples on noise alone:
+> the three targeted v1 misses recovered cleanly (correct mechanism), while two *other* cells that
+> detected in v1 (cpu subtle_r2, svc_net r1) hedged to "other" in this single v2 sample — both
+> still localised the right victim. The **final numbers come from the N-seed run after the
+> blueprints are frozen**; these guide fixing, they are not citable as the result yet.
 
 ### svc_mem_cap is NOT evaluable on microservice (data-collection gap, not a miss)
 
@@ -168,6 +183,13 @@ from totals; counting these as misses would falsify the result. Re-collecting wi
 tracepoints enabled is future work.
 
 ### Train Ticket — a poor testbed (dataset, not the agent); hand-pass complete
+
+> ⚠️ **These TT numbers are from the v1 (pre-fix) blueprints — Train Ticket has NOT been re-run
+> on the fixed (v2) blueprints.** The v2 re-run so far covers Sock Shop only. TT should be
+> re-run on v2 before any TT detection number is used. The dataset conclusions below (caps that
+> did not bite, unreliable verification labels, the memcg gap) are properties of the *data* and
+> are unaffected by the blueprint version, so they still hold; only the per-run detection grades
+> would change with v2.
 
 Judged from the trace, not TT's unreliable metric labels (`JUDGMENTS-summary.md`). Only one TT
 family produced a clear kernel-visible fault:
@@ -209,14 +231,16 @@ Cost so far: $11.4 for the 72 cells.
   preceded THESE runs: one worker always executes the blueprint procedure; tool scripts fixed
   (CRLF, wrong-date self-heal); recording timespan shared once with all workers.
 
-## Pending sections (same format, append below)
+## Pending sections / next steps
 
-- [x] svc_cpu_cap / svc_net / noisy_neighbor × Sock Shop — **validated** (§3)
-- [ ] svc_mem_cap + slow_db × Sock Shop — scored but blueprint misses; debugging (§3)
-- [ ] all 5 × Train Ticket — scored but TT-wide issue; debugging (§3)
-- [ ] microservice `normal`-run controls (specificity per blueprint)
+- [x] Sock Shop × 4 evaluable blueprints — v2 (fixed blueprints), **single-run preliminary** 27/31 (§3)
+- [ ] **Freeze the blueprints, then the N-seed run** (several seeds per cell) → the final, citable
+  Sock Shop numbers that do not move afterward. This replaces every single-run number above.
+- [ ] **Train Ticket on the v2 (fixed) blueprints** — only v1 has been run on TT so far.
+- [ ] microservice `normal`-run controls (false-alarm rate per blueprint)
 - [ ] svc_cpu_cap + svc_mem_cap × agentic (Codex) — traces on Zenodo
 - [ ] control arm (`--arm none`, no blueprint) for the blueprint-value comparison
+- [ ] re-collect Sock Shop/TT with memory tracepoints → makes svc_mem_cap evaluable on microservice
 
 ### Note: does the host-scope scorer fix change the agentic numbers? No.
 

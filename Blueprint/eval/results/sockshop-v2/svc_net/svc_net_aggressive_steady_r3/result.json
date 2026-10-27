@@ -1,0 +1,30 @@
+{
+ "run_id": "svc_net_aggressive_steady_r3",
+ "problem": "svc_net",
+ "arm": "given",
+ "blueprint": "5_svc_net",
+ "model": "openai/gpt-6-luna",
+ "provider": "openrouter",
+ "verdict": {
+  "where": "java in pid_ns 4026532538",
+  "what_is_wrong": "A degraded network path is strongly indicated for the Java workload at 172.18.0.3: during the trough, retransmissions are concentrated on its flows to/from 172.18.0.10:27017, while its packet progress and overall traffic collapse and its threads mostly sleep rather than wait for CPU or disk. The trace supports a service-specific network problem, but does not identify the physical cause of the path degradation; the raw packet sample shown also includes a different MongoDB flow, so attribution rests on the flow summaries and correlated counters rather than that line alone.",
+  "when": "17:14:04 - 17:16:02",
+  "fault": "service_network",
+  "confidence": 0.84
+ },
+ "score": {
+  "detected": true,
+  "control": false,
+  "present": true,
+  "fault_ok": true,
+  "where": "container",
+  "where_ok": true,
+  "window_iou": 0.975,
+  "family": "svc_net",
+  "agentic": false
+ },
+ "seconds": 763.1,
+ "calls": 59,
+ "tokens_in": 1507216,
+ "tokens_out": 17617
+}

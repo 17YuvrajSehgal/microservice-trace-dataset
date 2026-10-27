@@ -1,0 +1,30 @@
+{
+ "run_id": "noisy_neighbor_aggressive_steady_r3",
+ "problem": "noisy_neighbor",
+ "arm": "given",
+ "blueprint": "2_noisy_neighbor",
+ "model": "openai/gpt-6-luna",
+ "provider": "openrouter",
+ "verdict": {
+  "where": "stress-ng-cpu in pid_ns 4026533601",
+  "what_is_wrong": "A newly appearing four-process `stress-ng-cpu` workload consumed about 1.99 CPU cores on average for roughly two minutes, raising host CPU consumption and competing with existing workloads; the trace shows Java runnable waits during that phase. The late event-rate rise near 13:31:17 is not the incident onset: the stress workload was already active and then exited at about that time.",
+  "when": "13:29:18 - 13:31:18",
+  "fault": "noisy_neighbor",
+  "confidence": 0.87
+ },
+ "score": {
+  "detected": true,
+  "control": false,
+  "present": true,
+  "fault_ok": true,
+  "where": "wrong",
+  "where_ok": true,
+  "window_iou": 0.992,
+  "family": "noisy_neighbor",
+  "agentic": false
+ },
+ "seconds": 1057.9,
+ "calls": 60,
+ "tokens_in": 1277158,
+ "tokens_out": 24292
+}

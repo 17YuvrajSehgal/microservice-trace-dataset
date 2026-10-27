@@ -1,0 +1,30 @@
+{
+ "run_id": "svc_cpu_cap_aggressive_steady_r1",
+ "problem": "svc_cpu_cap",
+ "arm": "given",
+ "blueprint": "1_svc_cpu_cap",
+ "model": "openai/gpt-6-luna",
+ "provider": "openrouter",
+ "verdict": {
+  "where": "java in pid_ns 4026532538",
+  "what_is_wrong": "Java PID 52884 was runnable but repeatedly denied CPU in a quota-like burst/freeze pattern: its runnable wait rose sharply while its CPU use fell, despite most CPUs being idle. This strongly supports a CPU limit that was too restrictive for this workload; the limit itself was inferred from scheduling effects, not directly observed.",
+  "when": "15:19:48 - 15:21:48",
+  "fault": "cpu_throttling",
+  "confidence": 0.98
+ },
+ "score": {
+  "detected": true,
+  "control": false,
+  "present": true,
+  "fault_ok": true,
+  "where": "container",
+  "where_ok": true,
+  "window_iou": 0.967,
+  "family": "svc_cpu_cap",
+  "agentic": false
+ },
+ "seconds": 528.0,
+ "calls": 56,
+ "tokens_in": 1241243,
+ "tokens_out": 15803
+}

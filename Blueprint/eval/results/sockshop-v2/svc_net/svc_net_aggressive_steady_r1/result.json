@@ -1,0 +1,30 @@
+{
+ "run_id": "svc_net_aggressive_steady_r1",
+ "problem": "svc_net",
+ "arm": "given",
+ "blueprint": "5_svc_net",
+ "model": "openai/gpt-6-luna",
+ "provider": "openrouter",
+ "verdict": {
+  "where": "unknown",
+  "what_is_wrong": "The trace shows a real, temporary system-wide activity and CPU-usage collapse, followed by recovery, but it does not establish the underlying fault or a single culprit. The proposed single-service network-path diagnosis is not supported: retransmissions are sparse, not isolated to one container, and are not clearly present before the broad collapse.",
+  "when": "16:58:40 - 17:00:42",
+  "fault": "other",
+  "confidence": 0.76
+ },
+ "score": {
+  "detected": false,
+  "control": false,
+  "present": true,
+  "fault_ok": false,
+  "where": "wrong",
+  "where_ok": false,
+  "window_iou": 0.984,
+  "family": "svc_net",
+  "agentic": false
+ },
+ "seconds": 531.1,
+ "calls": 64,
+ "tokens_in": 1719879,
+ "tokens_out": 18718
+}

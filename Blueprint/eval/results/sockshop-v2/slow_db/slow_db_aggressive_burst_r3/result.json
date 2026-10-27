@@ -1,0 +1,30 @@
+{
+ "run_id": "slow_db_aggressive_burst_r3",
+ "problem": "slow_db",
+ "arm": "given",
+ "blueprint": "3_slow_db",
+ "model": "openai/gpt-6-luna",
+ "provider": "openrouter",
+ "verdict": {
+  "where": "path to mysqld (peer process in pid_ns 4026533886; specific intermediate hop not established)",
+  "what_is_wrong": "mysqld\u2019s connection-level response-gap signature changes from sub-millisecond to roughly 500 ms while answers continue, then returns to sub-millisecond. mysqld itself looks idle and healthy in the sampled fault period, so the evidence supports database-path latency rather than internal database saturation; the trace does not identify the specific hop causing the delay.",
+  "when": "06:31:20 - 06:34:10",
+  "fault": "db_latency",
+  "confidence": 0.89
+ },
+ "score": {
+  "detected": true,
+  "control": false,
+  "present": true,
+  "fault_ok": true,
+  "where": "container",
+  "where_ok": true,
+  "window_iou": 0.706,
+  "family": "slow_db",
+  "agentic": false
+ },
+ "seconds": 698.8,
+ "calls": 93,
+ "tokens_in": 1102438,
+ "tokens_out": 21832
+}

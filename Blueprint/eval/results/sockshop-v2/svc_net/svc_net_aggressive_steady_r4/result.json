@@ -1,0 +1,30 @@
+{
+ "run_id": "svc_net_aggressive_steady_r4",
+ "problem": "svc_net",
+ "arm": "given",
+ "blueprint": "5_svc_net",
+ "model": "openai/gpt-6-luna",
+ "provider": "openrouter",
+ "verdict": {
+  "where": "java in pid_ns 4026532538",
+  "what_is_wrong": "A service-specific network-path degradation is the best-supported explanation for the Java workload at 172.18.0.3: during the activity dip, TCP retransmissions were concentrated on its flows to/from 172.18.0.10:27017 and those flows' throughput fell sharply. This is not conclusive proof that the path alone caused the whole-host activity collapse: traffic dropped across many unrelated workloads too, and the sparse raw packet samples cannot establish request-to-response latency or prove demand stayed constant.",
+  "when": "17:21:43 - 17:23:43",
+  "fault": "service_network",
+  "confidence": 0.79
+ },
+ "score": {
+  "detected": true,
+  "control": false,
+  "present": true,
+  "fault_ok": true,
+  "where": "container",
+  "where_ok": true,
+  "window_iou": 0.983,
+  "family": "svc_net",
+  "agentic": false
+ },
+ "seconds": 595.5,
+ "calls": 52,
+ "tokens_in": 1607181,
+ "tokens_out": 23981
+}

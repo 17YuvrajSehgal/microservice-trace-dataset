@@ -1,0 +1,30 @@
+{
+ "run_id": "slow_db_aggressive_steady_r2",
+ "problem": "slow_db",
+ "arm": "given",
+ "blueprint": "3_slow_db",
+ "model": "openai/gpt-6-luna",
+ "provider": "openrouter",
+ "verdict": {
+  "where": "path to mysqld (peer process mysqld in pid_ns 4026533886)",
+  "what_is_wrong": "The app in pid_ns 4026532609 experienced slow answers from its MySQL dependency: a pool of connections rose from about 1 ms baseline p50 to roughly 460\u2013528 ms p50 while thousands of answers still arrived. The mysqld process looked mostly idle and had no meaningful CPU or disk wait, so the evidence points to latency in the path to the database rather than a struggling database process; it does not establish which path component caused it.",
+  "when": "14:46:05 - 14:48:05",
+  "fault": "db_latency",
+  "confidence": 0.94
+ },
+ "score": {
+  "detected": true,
+  "control": false,
+  "present": true,
+  "fault_ok": true,
+  "where": "container",
+  "where_ok": true,
+  "window_iou": 1.0,
+  "family": "slow_db",
+  "agentic": false
+ },
+ "seconds": 517.2,
+ "calls": 53,
+ "tokens_in": 860729,
+ "tokens_out": 14661
+}

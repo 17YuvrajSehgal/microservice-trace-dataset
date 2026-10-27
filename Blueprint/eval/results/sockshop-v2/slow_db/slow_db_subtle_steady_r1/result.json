@@ -1,0 +1,30 @@
+{
+ "run_id": "slow_db_subtle_steady_r1",
+ "problem": "slow_db",
+ "arm": "given",
+ "blueprint": "3_slow_db",
+ "model": "openai/gpt-6-luna",
+ "provider": "openrouter",
+ "verdict": {
+  "where": "unknown (no culprit established)",
+  "what_is_wrong": "No fault is established by the available trace evidence. In particular, the required slow-dependency signature is absent: sampled high-volume app connections did not show a consistent latency jump against baseline, and the later host-wide rate decline is modest without a clear recovery boundary.",
+  "when": "unknown",
+  "fault": "normal",
+  "confidence": 0.83
+ },
+ "score": {
+  "detected": false,
+  "control": false,
+  "present": true,
+  "fault_ok": false,
+  "where": "wrong",
+  "where_ok": false,
+  "window_iou": null,
+  "family": "slow_db",
+  "agentic": false
+ },
+ "seconds": 296.8,
+ "calls": 31,
+ "tokens_in": 822652,
+ "tokens_out": 15877
+}

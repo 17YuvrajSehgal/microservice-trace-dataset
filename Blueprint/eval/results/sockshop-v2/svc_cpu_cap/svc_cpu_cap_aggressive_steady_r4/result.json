@@ -1,0 +1,30 @@
+{
+ "run_id": "svc_cpu_cap_aggressive_steady_r4",
+ "problem": "svc_cpu_cap",
+ "arm": "given",
+ "blueprint": "1_svc_cpu_cap",
+ "model": "openai/gpt-6-luna",
+ "provider": "openrouter",
+ "verdict": {
+  "where": "java in pid_ns 4026532538",
+  "what_is_wrong": "A Java service in one container was CPU-starved in a pattern strongly consistent with a restrictive CPU quota: its runnable waits surged while its CPU use collapsed, despite most host CPUs being idle. The quota is inferred from scheduling effects; the trace does not directly record the configured limit or a CFS throttle event.",
+  "when": "15:46:16 - 15:48:16",
+  "fault": "cpu_throttling",
+  "confidence": 0.97
+ },
+ "score": {
+  "detected": true,
+  "control": false,
+  "present": true,
+  "fault_ok": true,
+  "where": "container",
+  "where_ok": true,
+  "window_iou": 1.0,
+  "family": "svc_cpu_cap",
+  "agentic": false
+ },
+ "seconds": 1006.2,
+ "calls": 58,
+ "tokens_in": 1557777,
+ "tokens_out": 15850
+}

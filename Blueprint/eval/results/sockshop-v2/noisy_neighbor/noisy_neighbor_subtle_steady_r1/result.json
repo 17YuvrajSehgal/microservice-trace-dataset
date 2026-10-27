@@ -1,0 +1,30 @@
+{
+ "run_id": "noisy_neighbor_subtle_steady_r1",
+ "problem": "noisy_neighbor",
+ "arm": "given",
+ "blueprint": "2_noisy_neighbor",
+ "model": "openai/gpt-6-luna",
+ "provider": "openrouter",
+ "verdict": {
+  "where": "stress-ng-cpu in pid_ns 4026533601",
+  "what_is_wrong": "A newly appearing `stress-ng-cpu` workload added roughly one continuously occupied CPU during the interval and plausibly increased runnable waiting in the separate app workload; this is a modest noisy-neighbor signal, not evidence that it caused all contention or measurable application-level degradation. The trace does not show a distinct host-wide event-rate surge, and the app's CPU runtime stayed nearly unchanged.",
+  "when": "03:37:31 - 03:39:31",
+  "fault": "noisy_neighbor",
+  "confidence": 0.87
+ },
+ "score": {
+  "detected": true,
+  "control": false,
+  "present": true,
+  "fault_ok": true,
+  "where": "wrong",
+  "where_ok": true,
+  "window_iou": 0.992,
+  "family": "noisy_neighbor",
+  "agentic": false
+ },
+ "seconds": 976.9,
+ "calls": 67,
+ "tokens_in": 1988430,
+ "tokens_out": 19347
+}

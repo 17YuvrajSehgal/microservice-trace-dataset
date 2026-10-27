@@ -1,0 +1,30 @@
+{
+ "run_id": "slow_db_aggressive_steady_r1",
+ "problem": "slow_db",
+ "arm": "given",
+ "blueprint": "3_slow_db",
+ "model": "openai/gpt-6-luna",
+ "provider": "openrouter",
+ "verdict": {
+  "where": "toxiproxy in pid_ns 4026532751",
+  "what_is_wrong": "From about 14:38:00 to 14:40:03 UTC, app PID 131904 in pid_ns 4026532609 experienced a slow database-path signature: its request-to-answer p50 rose from 0.9 ms in a quiet comparison slice to 418.7 ms, while answers continued arriving. Mysqld in pid_ns 4026533886 had matching ~501.6 ms gaps but little CPU, no meaningful CPU wait or disk sleep, so the evidence points to latency on the path to the database rather than demonstrated strain inside mysqld; toxiproxy is the likely path component, though the trace notes do not prove that it caused the delay.",
+  "when": "14:38:00 - 14:40:03",
+  "fault": "db_latency",
+  "confidence": 0.84
+ },
+ "score": {
+  "detected": false,
+  "control": false,
+  "present": true,
+  "fault_ok": true,
+  "where": "wrong",
+  "where_ok": false,
+  "window_iou": 0.976,
+  "family": "slow_db",
+  "agentic": false
+ },
+ "seconds": 641.4,
+ "calls": 38,
+ "tokens_in": 1026484,
+ "tokens_out": 16522
+}

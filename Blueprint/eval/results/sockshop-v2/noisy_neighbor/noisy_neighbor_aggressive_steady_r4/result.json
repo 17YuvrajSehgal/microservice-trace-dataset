@@ -1,0 +1,30 @@
+{
+ "run_id": "noisy_neighbor_aggressive_steady_r4",
+ "problem": "noisy_neighbor",
+ "arm": "given",
+ "blueprint": "2_noisy_neighbor",
+ "model": "openai/gpt-6-luna",
+ "provider": "openrouter",
+ "verdict": {
+  "where": "container-69a5e6 (stress-ng-cpu) in pid_ns 4026533601",
+  "what_is_wrong": "A newly started four-process `stress-ng-cpu` workload in container `container-69a5e6` consumed about 2 CPU cores and added scheduler competition; runnable waits for host `dockerd` increased while that workload was active. The trace supports a noisy-neighbor diagnosis, though the strong 310 ms rhythm score means the blueprint\u2019s no-rhythm check did not pass, so a quota-related contribution is not completely excluded.",
+  "when": "13:38:35 - 13:40:35",
+  "fault": "noisy_neighbor",
+  "confidence": 0.93
+ },
+ "score": {
+  "detected": true,
+  "control": false,
+  "present": true,
+  "fault_ok": true,
+  "where": "wrong",
+  "where_ok": true,
+  "window_iou": 0.984,
+  "family": "noisy_neighbor",
+  "agentic": false
+ },
+ "seconds": 1027.9,
+ "calls": 90,
+ "tokens_in": 2109754,
+ "tokens_out": 19493
+}
