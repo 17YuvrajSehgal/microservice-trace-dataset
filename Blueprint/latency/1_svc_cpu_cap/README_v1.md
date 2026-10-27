@@ -345,24 +345,23 @@ Read it:
 PERIOD_MS=<period from the repeat line, or 100 if none was found>
 ```
 
-**6b. Measure the per-period ceiling.** A quota refills every period, so a capped victim's on-CPU time **per period** sits at a flat ceiling near the quota, period after period — even when the rhythm is weak. Run this as soon as you have a victim and a period (use 100 if Step 6 found none): it is one call, and it is the decisive check — do not postpone it for more slicing.
+**6b. Measure the per-period ceiling.** A quota refills every period, so a capped victim's on-CPU time **per period** is bounded below the period — its busy periods sit at a ceiling near the quota. Run this as soon as you have a victim and a period (use 100 if Step 6 found none): it is one call, and it is the decisive check — do not postpone it for more slicing. **Pass the baseline slice as the 4th argument** so the tool prints the collapse (the single clearest sign):
 
 ```bash
-python3 $TOOLS/cpu_ceiling.py $WORK/fault_slice.txt    $VICTIM $PERIOD_MS
-python3 $TOOLS/cpu_ceiling.py $WORK/baseline_slice.txt $VICTIM $PERIOD_MS
+python3 $TOOLS/cpu_ceiling.py $WORK/fault_slice.txt $VICTIM $PERIOD_MS $WORK/baseline_slice.txt
 ```
 
-It prints the victim's on-CPU milliseconds for each period in its active window, then the ceiling (median/p90/max of the busy periods) and how flat it is.
+It prints the victim's on-CPU ms per period, the busy-period ceiling (median/p90/max), how far that ceiling sits **below the full period**, and — with the baseline — how far the per-period ceiling **collapsed** from the quiet slice to the fault slice.
 
-Read it:
+**Do not require a flat line.** A cgroup quota bounds the whole container (all its threads together), and the 100 ms buckets do not align with the kernel's CFS periods — so a real cap on a multi-threaded or bursty victim (a JVM with worker threads, a Node service) shows a **low but variable** ceiling, not a razor line. Flatness is a bonus when present, never a requirement. Decide from the **conjunction**, not from flatness:
 
-- **Cap:** the busy periods pile up at a flat ceiling clearly **below** the period (high flatness, max about equal to the ceiling). The quota is about the ceiling; the cap in cores is ceiling ÷ period. In the baseline the same process runs free of it.
+- **Cap:** the busy-period ceiling sits well **below** the period (clear headroom), and — against the baseline — the per-period ceiling **collapsed** (the same victim ran far higher per period in the quiet slice); **AND** Step 5's `sched_budget.py` showed the victim waiting runnable in this window; **AND** `cpu_hogs.py` (Step 7) shows the CPUs largely **IDLE** while it waits. CPU was available but withheld — that is a quota. The cap in cores is about ceiling ÷ period.
 - **Ceiling at the full period:** the victim simply saturates one core. A single thread at 100 of 100 ms cannot be told apart from a cap of one full core; say so rather than claiming a cap.
-- **A flat ceiling with BUSY CPUs is not a cap.** N equal busy threads sharing C cores each settle at a flat ~C/N of a core — fair sharing mimics a quota ceiling. A real cap leaves the CPUs IDLE while the victim waits. Decide with `cpu_hogs.py` (Step 7): if the CPU went to other processes rather than idle, this is competition, not a quota.
-- **Low flatness? Check your slice before concluding.** Under a load that comes in waves, periods where the victim had little to do mix into the window and drag the flatness down. Re-cut one slice on the victim's BUSIEST stretch (the slice where `sched_budget.py` showed it waiting most) and measure again. Measured on one real capped service: one slice read "not flat" while another slice of the same fault read a clean flat ceiling — the fault had not changed, the slice had.
-- **No flat ceiling and no beat, even on the busy stretch:** the victim is starved, but not by a quota. Report "the victim is starved of CPU, but there is no quota signature", then use the table in 1.3 (noisy neighbor, overload, pinning) to suggest a cause, and **stop**.
+- **A sub-period ceiling with BUSY CPUs is competition, not a cap.** N equal busy threads sharing C cores each settle at ~C/N of a core — fair sharing mimics a quota ceiling. The discriminator is idle vs busy CPUs while the victim waits (`cpu_hogs.py`): CPU to other processes = competition (hand to the noisy-neighbor blueprint); CPU idle = quota.
+- **Low per-period use but the victim is NOT waiting runnable:** it simply had little work. Not a cap. Report normal for this victim.
+- **Starved but no sub-period ceiling and no beat:** report "starved of CPU, but no quota signature", use the table in 1.3 to suggest a cause, and **stop**.
 
-Validated on runs with known limits: the measured ceiling matched the real quota each time, and an uncapped baseline pegged at the full period — correctly no cap.
+Validated on runs with known limits: a biting cap collapsed the per-period ceiling to near the quota while the CPUs sat idle and the victim waited — even when the periods were not flat; an uncapped baseline pegged at the full period.
 
 **Next:** Step 7.
 

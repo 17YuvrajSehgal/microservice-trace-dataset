@@ -197,6 +197,8 @@ Decide:
 - **The rate changed, but nothing waits:** the workload changed, nobody suffered. Report "no CPU competition found" and **stop**.
 - **Nothing changed and nothing waits:** report "no CPU competition found" and **stop**. Do not write "no fault" — this blueprint does not look for other kinds of faults.
 
+**Do not conclude from the census alone.** Steps 2–4 only locate the window and show *that* something waited — they cannot tell a neighbor from a cap, and they are not enough to decide. `cpu_hogs.py` (Steps 5–6, "who ran while the victim waited") is the **decisive** check. Go to it as soon as you have one slice inside the window; running it once says more than cutting more slices. Spending your budget on extra `sched_budget.py` slices and then reporting "normal"/"other" without ever running `cpu_hogs` is the classic miss — a real neighbor that drove the machine busy looks quiet until you ask where the CPU went. **Never emit a verdict before `cpu_hogs.py` has run on a window slice.**
+
 ### Step 5. Find who is eating the CPU
 
 **Goal:** name the processes that hold the CPU in the fault window, and compare with the baseline.

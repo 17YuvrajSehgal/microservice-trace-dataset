@@ -125,10 +125,12 @@ python3 $TOOLS/idx_summary.py $TRACE --rate 10 | sed -n '/^data written per/,$p'
 
 - With a slow dependency the rate usually **falls** during the fault — everything is waiting, so the machine does less — and recovers after.
 - Write down the candidate window, as in the other blueprints. If there is no clear change, spread Step 3's slices across the whole trace.
+- **The injection is a minutes-long window inside a longer recording — pin BOTH edges.** Find the start *and* the recovery, so you know the elevated stretch and the quiet stretch. A short burst fault (≈2 min) is easy to mislocate: the trace may open a few seconds into the fault, so the very first slice is NOT a baseline. Take the baseline from a stretch that is clearly **outside** the window — the opposite end of the recording from the change, or well before/after it — never within a few seconds of the edge.
 
 ```bash
-WINDOW_START=<HH:MM:SS>
-WINDOW_END=<HH:MM:SS>
+WINDOW_START=<HH:MM:SS>        # the change begins
+WINDOW_END=<HH:MM:SS>          # the rate recovers
+BASE_START=<HH:MM:SS>          # a quiet stretch OUTSIDE [WINDOW_START, WINDOW_END], far from both edges
 ```
 
 ### Step 3. Find the victim with the gap census
@@ -144,6 +146,8 @@ bash $TOOLS/dep_slice.sh $TRACE $DAY $FAULT_START 10 $WORK/fault.txt
 python3 $TOOLS/sock_lag.py $WORK/base.txt  10 all
 python3 $TOOLS/sock_lag.py $WORK/fault.txt 10 all
 ```
+
+**Verify the baseline is actually quiet BEFORE comparing.** This gap census only means something against a fault-free baseline. If your `base.txt` slice shows the *same* elevated gaps as `fault.txt` (e.g. both the database peer and the service pool already sit at hundreds of ms), your "baseline" is **inside the incident** — a classic burst-fault mistake where the recording started mid-fault or the window edges were misjudged. Do not conclude "no jump → normal" from it: re-cut the baseline from a stretch that is demonstrably quiet (gaps back near their sub-millisecond floor), trying the far ends of the recording. A real slow-DB fault compared against a true baseline shows the pool gap jump from ~1 ms to hundreds of ms; if you cannot find any quiet stretch at all, say the whole recording is affected rather than calling it normal.
 
 **First, the CPU gate — do this before reading any gaps.** Run `sched_budget.py` on the fault slice and look at the whole table, not just your suspects:
 
