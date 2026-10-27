@@ -1,5 +1,7 @@
 # Next blueprints to build — gap analysis against DATASET-v2-INVENTORY.md
 
+> **UPDATE 2026-10-27 — superseded by the probe findings at the bottom of this file.** Every candidate below was probed on a confirmed run and found to have a weak/absence-based kernel signal. Conclusion: **stop at the 5 existing blueprints.** Read the "Probe findings" section before acting on the recommendations above.
+
 We have **5 blueprints** (`svc_cpu_cap`, `svc_mem_cap`, `noisy_neighbor`, `slow_db`, `svc_net`).
 v2 collected **~24 fault families**. The eval is **kernel-trace only** (no metrics, no logs), so the
 real question is: which *uncovered* families have a **kernel signature** and real data?
