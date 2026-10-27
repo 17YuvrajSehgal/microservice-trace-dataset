@@ -36,8 +36,8 @@ built index locally right now.
 | | Train Ticket | 8 | 8 | +10 normal | Trillium | ✓ 8/8 | ⚠ 1/6 cells — TT-wide issue, debugging |
 | **svc_mem_cap** | agentic — Claude | 44 | 44 | 0 | **local** `agentic-runs/3_memory_cap/runs` | ✓ 44/44 | ✓ 25/44 raw; **44/44 aligned with cap-actually-bit** (0 miss, 0 FP) |
 | | agentic — Codex | 44 | — | — | Zenodo (meta-only local) | ⬜ 0/44 | ⬜ |
-| | Sock Shop | 8 | 8 | +10 normal | Trillium | ✓ 8/8 | ⚠ 0/7 — blueprint misses, debugging |
-| | Train Ticket | 8 | 8 | +10 normal | Trillium | ✓ 8/8 | ⚠ 0/6 cells — debugging |
+| | Sock Shop | 8 | 8 | +10 normal | Trillium | ✓ 8/8 | ⛔ not evaluable — trace lacks memcg tracepoints |
+| | Train Ticket | 8 | 8 | +10 normal | Trillium | ✓ 8/8 | ⛔ not evaluable — trace lacks memcg tracepoints |
 | **noisy_neighbor** | Sock Shop | 8 | 8 | +10 normal | Trillium | ✓ 8/8 | ✅ **7/8** (host-scope, IoU 0.98) |
 | | Train Ticket | 8 | 8 | +10 normal | Trillium | ✓ 8/8 | ⚠ 1/8 — TT-wide issue, debugging |
 | **slow_db** | Sock Shop | 11 | 11 | +10 normal | Trillium | ✓ 11/11 | ⚠ 1/11 — blueprint misses, debugging |

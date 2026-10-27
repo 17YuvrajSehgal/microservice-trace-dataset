@@ -106,3 +106,23 @@ BLUEPRINT FAIRNESS (leaks removed - previous numbers were inflated)
   "a service + its SQL database, several hundred ms"; numbers kept for scale.
 - 5_svc_net dropped "a Java service" (narrows carts/ts-basic); magnitudes kept.
 - noisy_neighbor was already clean (its Appendix B is the model the others now follow).
+
+## 2026-10-27: svc_mem_cap is NOT evaluable on the microservice dataset (trace lacks the signal)
+Switched to by-hand, evidence-based judging (JUDGING.md) at the user's request - score.py's
+keyword grading mis-scored both ways and risks falsified numbers in a paper. First finding:
+
+The Sock Shop / Train Ticket v2 LTTng profile has **425 event types: 377 syscall, 14 sched, 13
+block, 10 net, 5 irq, 3 skb, 1 power - ZERO memory events** (no mm_vmscan / memcg_reclaim / oom /
+kswapd). The agentic profile HAD mm_vmscan_memcg_reclaim_begin/end, which is why agentic
+svc_mem_cap scored 44/44 bite-aligned. The microservice svc_mem_cap blueprint detects a cap by
+its memcg-reclaim burst - a signal physically absent from these traces.
+
+=> svc_mem_cap microservice 0/7 (SS), 0/6 (TT) is a DATA-COLLECTION GAP, not an agent or
+blueprint miss. The agent behaved correctly: it ran the slices, found no reclaim, and DECLINED to
+assert a memory cap ("not confirmed... observed workload interruption rather than a proven
+resource fault"). That is the integrity-correct verdict given the trace.
+
+Action: svc_mem_cap is EXCLUDED from the microservice detection scoreboard (marked "not
+evaluable - trace lacks memcg tracepoints"), not counted as a miss. Re-collecting Sock Shop/TT
+with the memory tracepoints enabled is future work. The other four families use events that ARE
+present (cpu/noisy=sched, slow_db=syscall read/write, svc_net=net/skb), so they remain evaluable.

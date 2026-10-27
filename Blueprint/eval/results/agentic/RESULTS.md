@@ -143,19 +143,33 @@ trustworthy.** The ⚠ rows are confounded by known, still-open bugs and must no
 | Sock Shop | **svc_cpu_cap** | 8 | **5/8** | 7/8 | 0.97 | ✅ validated |
 | Sock Shop | **svc_net** | 5 | **5/5** | 5/5 | 0.98 | ✅ validated |
 | Sock Shop | **noisy_neighbor** | 8 | **7/8** | host-scope | 0.98 | ✅ validated |
-| Sock Shop | svc_mem_cap | 7 | 0/7 | 0/7 | 0.87 | ⚠ blueprint misses — debugging |
+| Sock Shop | svc_mem_cap | 7 | n/a | — | 0.87 | ⛔ **not evaluable** — trace lacks memcg tracepoints |
 | Sock Shop | slow_db | 11 | 1/11 | 1/11 | 0.91 | ⚠ blueprint misses — debugging |
 | Train Ticket | svc_cpu_cap | 6 | 1/6 | 1/6 | 0.08 | ⚠ TT-wide issue — debugging |
 | Train Ticket | svc_net | 5 | 0/5 | 0/5 | 0.98 | ⚠ TT-wide issue |
 | Train Ticket | noisy_neighbor | 8 | 1/8 | — | 0.99 | ⚠ TT-wide issue |
 | Train Ticket | slow_db | 8 | 1/8 | 1/8 | 0.92 | ⚠ TT-wide issue |
-| Train Ticket | svc_mem_cap | 6 | 0/6 | 0/6 | 0.58 | ⚠ TT-wide issue |
+| Train Ticket | svc_mem_cap | 6 | n/a | — | 0.58 | ⛔ **not evaluable** — trace lacks memcg tracepoints |
 
 ### What is trustworthy
 
 On **Sock Shop, three of five blueprints work**: svc_cpu_cap 5/8 (victim container named 7/8,
 window IoU 0.97), svc_net **5/5**, noisy_neighbor 7/8. These detect the fault *and* localise it —
 the real RCA task, harder than the agentic own-cgroup case.
+
+### svc_mem_cap is NOT evaluable on microservice (data-collection gap, not a miss)
+
+The Sock Shop / Train Ticket v2 trace profile recorded **425 event types — 377 syscall, 14
+sched, 13 block, 10 net, 5 irq, 3 skb, 1 power — and zero memory events** (no `mm_vmscan_*`,
+`memcg_reclaim`, `oom`, `kswapd`). The agentic profile *did* carry
+`mm_vmscan_memcg_reclaim_begin/end`, which is exactly why agentic svc_mem_cap reached 44/44. The
+memory-cap signature the blueprint reads — the memcg-reclaim burst — is **physically absent** from
+these traces, so svc_mem_cap cannot be scored here. The agent behaved correctly: it cut the right
+slices, found no reclaim, and **declined to assert a memory cap** rather than inventing one
+("not confirmed … an observed workload interruption rather than a proven resource fault"). Those
+cells are marked ⛔ not-evaluable and excluded from the detection totals — counting them as misses
+would falsify the result. Re-collecting Sock Shop/TT with the memory tracepoints enabled is future
+work.
 
 ### Known bugs behind the ⚠ rows (do not cite these numbers)
 
