@@ -60,6 +60,22 @@ Shell backgrounding trap: `cd DIR && ... & rest` backgrounds the whole
 `&&`-chain, so `rest` runs from the ORIGINAL cwd. Use absolute paths (as
 `run_gate.sh` does) or put the whole job in a script.
 
+### Bootstrap loops on `permission denied ... docker API`
+`vm_bootstrap.sh` adds the user to the `docker` group, but a group change does
+not apply to the shell that is already running — so the SAME bootstrap process
+keeps hitting `permission denied while trying to connect to the Docker daemon`
+and loops. Let bootstrap finish its non-docker steps, then **relaunch it in a
+fresh login shell** (`ssh ...` again, or `newgrp docker`) — the new shell has
+the group and docker works no-sudo. Bootstrap is idempotent, so the relaunch
+sails through the stack bring-up that failed the first time.
+
+### KERNEL_MEM on stock GCP kernels: only `mm_vmscan_*`/`writeback_*` exist
+On `7.0.0-*-gcp` (Ubuntu 24.04), `oom_*`, `mark_victim`, `mm_compaction_*`,
+`mm_migrate_*` are NOT present; `mm_vmscan_*` (incl. `mm_vmscan_memcg_reclaim_*`)
+and `writeback_*` ARE. The enable loop is `|| true` per group so the missing
+ones are harmless, and the memcg-reclaim signal we need is captured. Confirm via
+the guard line `KERNEL_MEM verified: N memory/reclaim events enabled`.
+
 ## Operational notes
 - `otlp-out/spans.jsonl` (collector's global span file) is truncated after
   each run's slice by `collect_trace.sh`, so it no longer grows unbounded.

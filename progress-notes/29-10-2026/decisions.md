@@ -26,3 +26,20 @@ GUARD that fails visibly if no mm_vmscan/oom events enabled, so this can never s
 The GUARD prints "KERNEL_MEM verified: N memory/reclaim events enabled". Also decode a sample and
 confirm mm_vmscan_memcg_reclaim_* actually appear with non-zero counts in the injection window —
 the whole point is that the memory blueprint now has its signal.
+
+## Execution (same day, on the VM)
+- **Tracepoint reality on kernel 7.0.0-1014-gcp:** `mm_vmscan_*` (14 events incl.
+  `mm_vmscan_memcg_reclaim_begin/end`) and `writeback_*` EXIST. `oom_*`, `mark_victim`,
+  `mm_compaction_*`, `mm_migrate_*` do NOT exist on this stock GCP kernel. This is fine: the enable
+  loop in collect_trace.sh is `|| true` per group, so missing wildcards enable 0 and the missing
+  NAMED event `mark_victim` fails harmlessly. The guard greps `mm_vmscan` which DOES match → count
+  >0 → no false alarm. So the fix is sound here; only the `mm_vmscan_*`/`writeback_*` half of the
+  KERNEL_MEM=1 set actually captures on this kernel, which is exactly the reclaim signal we need.
+- **Bootstrap gotcha (worth a TROUBLESHOOTING line):** vm_bootstrap adds the user to the `docker`
+  group but its own running shell doesn't get the group → docker calls loop on "permission denied".
+  Fix: let it finish the non-docker steps, then relaunch bootstrap in a FRESH login shell (has the
+  group). SSH from Windows plink is flaky; use WSL ssh to the external IP with the gcloud key.
+- **gate01: six OK** on the fresh VM (trace 39 spans, logs 4081/11 w/ trace_id, load 484 req,
+  metrics 541 series, kernel 1.6M events, clocks 0.000 ms drift). Pipeline validated.
+- **Collection launched:** `collect_wave2.sh mem` = 3×anomaly_mem + 3×svc_mem_cap, all KERNEL_MEM=1
+  (both families had the same wildcard bug in v2). ~24 min collect + metrics/verify/audit.
