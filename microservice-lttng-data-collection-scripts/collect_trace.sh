@@ -247,18 +247,38 @@ else
     #
     # But "memory tracepoints" is not one thing. The firehose is kmem_* and the page
     # alloc/free path; the signal we actually need - is this cgroup reclaiming? - lives in
-    # vmscan_*, which is far cheaper. So KERNEL_MEM=1 now enables the TARGETED set, and
+    # the vmscan tracepoints, which are far cheaper. So KERNEL_MEM=1 enables the TARGETED set,
     # KERNEL_MEM=full adds the firehose for anyone who needs allocation detail.
+    #
+    # BUG FIX (ICSE P3.1): the targeted set previously used `vmscan_* compaction_* migrate_*`,
+    # but the kernel tracepoints are actually named `mm_vmscan_*`, `mm_compaction_*`,
+    # `mm_migrate_*` (verified in the agentic traces: mm_vmscan_memcg_reclaim_begin/end etc.).
+    # An LTTng wildcard matches from the start of the event name, so `vmscan_*` matched NOTHING
+    # and every KERNEL_MEM=1 run (anomaly_mem, svc_mem_cap) silently recorded ZERO reclaim
+    # events - which is why svc_mem_cap was "not evaluable" on the v2 microservice dataset.
+    # The correct prefixes below capture the memcg-reclaim signal the memory blueprint reads.
     if [ "${KERNEL_MEM:-0}" = "full" ]; then
-        KERNEL_GROUPS="$KERNEL_GROUPS kmem_* mm_* vmscan_* writeback_* compaction_* migrate_*"
+        KERNEL_GROUPS="$KERNEL_GROUPS kmem_* mm_* writeback_* oom_* mark_victim"
         echo "[collect] KERNEL_MEM=full -> ALL memory tracepoints (very large traces)"
     elif [ "${KERNEL_MEM:-0}" = "1" ]; then
-        KERNEL_GROUPS="$KERNEL_GROUPS vmscan_* writeback_* compaction_* migrate_*"
-        echo "[collect] KERNEL_MEM=1 -> memory-management tracepoints ADDED to profile"
+        KERNEL_GROUPS="$KERNEL_GROUPS mm_vmscan_* writeback_* mm_compaction_* mm_migrate_* oom_* mark_victim"
+        echo "[collect] KERNEL_MEM=1 -> memory-management tracepoints ADDED to profile (mm_vmscan_*, oom)"
     fi
     for grp in $KERNEL_GROUPS; do
         sudo lttng enable-event -k "$grp" --channel channel0 2>/dev/null || true
     done
+fi
+
+# GUARD (ICSE P3.1): if memory tracing was requested, PROVE the reclaim events actually enabled.
+# The old vmscan_* wildcard matched nothing and nobody noticed for a whole campaign. Fail loud now.
+if [ "${KERNEL_MEM:-0}" != "0" ]; then
+    _nmem=$(sudo lttng list "${TRACE_APP}-kernel" 2>/dev/null | grep -cE 'mm_vmscan|mark_victim|oom_' || true)
+    if [ "${_nmem:-0}" -eq 0 ]; then
+        echo "[collect] !!! KERNEL_MEM=${KERNEL_MEM} but NO mm_vmscan/oom events enabled -" \
+             "reclaim will NOT be captured. Check tracepoint names with 'lttng list --kernel'." >&2
+    else
+        echo "[collect] KERNEL_MEM verified: $_nmem memory/reclaim events enabled on channel0"
+    fi
 fi
 sudo lttng add-context --kernel --channel channel0 --type=pid --type=tid --type=procname 2>/dev/null || true
 
