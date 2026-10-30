@@ -137,8 +137,12 @@ def build(run_dir: str, out_path: str, ctf_subdir: str = "kernel/kernel",
         lines_fh = gzip.open(lines_path + ".partial", "wt", compresslevel=6)
         lines_fh.write(TAB.join(["# bucket_start_s", "event", "procname", "pid_ns",
                                  "raw_line"]) + chr(10))
+    # errors="replace": a kernel string field (e.g. a procname) can carry a raw non-UTF-8 byte.
+    # With strict decoding a single 0xff aborts the whole decode mid-trace (hit on svc_mem_cap
+    # aggressive r4, 2026-10-30, ~355 M events in). Replacing it with U+FFFD keeps the pass going;
+    # that one garbled field matches no event/procname pattern, so the counts are unaffected.
     p = subprocess.Popen([BT2] + GMT + [ctf], stdout=subprocess.PIPE,
-                         stderr=subprocess.DEVNULL, text=True, bufsize=1 << 22)
+                         stderr=subprocess.DEVNULL, text=True, errors="replace", bufsize=1 << 22)
     with gzip.open(tmp, "wt", compresslevel=6) as out:
         out.write(SCHEMA)
         with p:
