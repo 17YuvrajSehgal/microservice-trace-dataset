@@ -43,3 +43,35 @@ the whole point is that the memory blueprint now has its signal.
   metrics 541 series, kernel 1.6M events, clocks 0.000 ms drift). Pipeline validated.
 - **Collection launched:** `collect_wave2.sh mem` = 3×anomaly_mem + 3×svc_mem_cap, all KERNEL_MEM=1
   (both families had the same wildcard bug in v2). ~24 min collect + metrics/verify/audit.
+
+## Result — fix PROVEN
+- All 6 runs collected. Verify: anomaly_mem 3/3 confirmed; svc_mem_cap r2+r3 confirmed, r1
+  "unconfirmed" (explained below). (`collect_wave2.sh` summary "6/6 confirmed" is a grep bug —
+  `grep -c confirmed` matches "unconfirmed" too.)
+- **DECODE PROOF (the whole point):** svc_mem_cap r2 injection window (23:36:21..23:38:21) contains
+  **78,418 mm_vmscan events**, incl. **1,238 mm_vmscan_memcg_reclaim_begin + 1,238 _end** pairs
+  (sample `nr_reclaimed=3676`), 6,980 lru_shrink_inactive, 31,517 shrink_slab pairs. In v2 this was
+  **ZERO**. The memory blueprint now has its signal.
+  - Fast-decode lesson: babeltrace2 text sink is too slow to scan a whole ~20 GB trace; and bt2
+    Python (object-per-message) is worse. The fast path is `--begin/--end` with the CTF **index/**
+    dir present (seek). My gunzip-to-/tmp step must copy `index/` too, not just metadata+channels.
+- **svc_mem_cap r1 "unconfirmed" is NOT a failed injection.** The `-m 160m` cap was applied for
+  100% of the window (`fraction_above_threshold=1.0`, `injection_mean=167772160`=160 MiB). It failed
+  only `direction_ok`: the canonical check wants the limit to *decrease*, but carts started with no
+  limit → Prometheus reports `0`, so `0→160M` reads as an increase. r2/r3 confirm because their
+  baseline is the restored host-total (42 GB→160M = real decrease). This is a pre-existing
+  `verify_injection.py:116` bug (treats `0`=unlimited as a real number). Fix proposed, not yet
+  applied — do NOT silently flip r1 to confirmed (no-falsification rule).
+
+## Transfer + replacement (Trillium)
+- Pulled via `pull_from_vm.sh` (Trillium dials the VM, restricted `ss_vm` forced-command key).
+  Setup gotchas fixed: export_recipe `SRC` was `/mnt/archive/runs` (old VM's archive disk) → set to
+  `/home/17yuv/traces`; metrics/load live in `$HOME` not `~/traces` → moved into the recipe dirs so
+  the bundle is complete; `pull_from_vm.sh` uses strict BatchMode → had to `ssh-keyscan` the VM into
+  Trillium `known_hosts` first.
+- Staging: `v2/sockshop-mem-20261029/` (svc_mem_cap 9.46 GB, anomaly_mem 10.87 GB, normal 186 MB).
+- Replacement: old `sockshop/{svc_mem_cap,anomaly_mem}` MOVED to
+  `sockshop/_superseded_no_memcg_20261029/` (reversible, not deleted); new runs extracted in place.
+  NOTE new set = 3 aggressive each (old had 5 aggressive + 3 subtle) — smaller but has the signal.
+- Format note: old Trillium runs store kernel channels RAW; new runs arrive GZIPPED
+  (channel0_*.gz). Must gunzip the new channels before the index rebuild (babeltrace can't read .gz).
