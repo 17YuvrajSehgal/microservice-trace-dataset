@@ -1,6 +1,7 @@
 # StrataTrace v2 — what was collected
 
-**Collection finished 6 September 2026. Partly re-collected 15-17 September 2026.**
+**Collection finished 6 September 2026. Partly re-collected 15-17 September 2026, and again
+29-30 October 2026 (Sock Shop `svc_mem_cap` + `anomaly_mem`, for memcg kernel tracepoints).**
 **304 runs** across two applications, four modalities each.
 
 This is the inventory: what exists, how good it is, and what to be careful about.
@@ -139,7 +140,7 @@ intensity and workload studies add 3 more to selected families (hence 8s and 11s
 | `normal` | 10 | 10 | fault-free reference (5 steady + 5 burst) |
 | `anomaly_cpu` | 5 | 5 | |
 | `anomaly_disk` | 5 | 5 | **not the same experiment on both** — see caveats |
-| `anomaly_mem` | 8 | 8 | |
+| `anomaly_mem` | 8 | 8 | **SS re-collected 2026-10-30 w/ memcg tracepoints** (§memory re-collection) |
 | `anomaly_net` | 8 | 8 | **SS re-collected 15 Sept** - baseline median retransmission now 0% |
 | `dependency_outage` | 5 | 5 | |
 | `error_storm` | 8 | 8 | **TT re-collected 17 Sept**; target fixed - the evidence is LOGS, not metrics (issue 24) |
@@ -147,7 +148,7 @@ intensity and workload studies add 3 more to selected families (hence 8s and 11s
 | `queue_backlog` | 5 | — | TT has no message broker |
 | `slow_db` | 11 | 11 | TT: `no_metric_signature`, measured (issue 23) |
 | `svc_cpu_cap` | 8 | 8 | TT 8/8 confirmed after re-scoring on `container_spec_cpu_quota` (issue 23) |
-| `svc_mem_cap` | 8 | 8 | |
+| `svc_mem_cap` | 8 | 8 | **SS re-collected 2026-10-30 w/ memcg tracepoints** — now kernel-evaluable (`mm_vmscan_memcg_reclaim`); TT still lacks them (§memory re-collection) |
 | `svc_net` | 5 | 5 | **TT re-collected 17 Sept**; 51.9-61.8% retransmission in the traces (issue 25) |
 | `lock_contention` | 5 | 5 | new in v2; **SS re-collected 16 Sept**, 2/5 -> 5/5 confirmed |
 | `priority_inversion` | 5 | 5 | new in v2 |
@@ -327,6 +328,55 @@ exist for the original campaign and is why the re-collection worked.
 
 `stratatrace-tt` and both its disks were **deleted 18 Sept** once the archives verified.
 
+## The memory re-collection, 29-30 October 2026
+
+**Why.** The v2 kernel profile for the memory-layer faults was broken: `collect_trace.sh`'s
+`KERNEL_MEM=1` path enabled `vmscan_*`, but the real tracepoints are named `mm_vmscan_*`. LTTng
+wildcards match from the start of the name, so `vmscan_*` matched **nothing** — every
+`KERNEL_MEM=1` run (`svc_mem_cap`, `anomaly_mem`) silently recorded **zero** reclaim events. The
+memory blueprint had no kernel signal, so Sock Shop `svc_mem_cap` was "not evaluable" on the kernel
+modality. (Fix committed; a loud post-enable guard now fails visibly if no `mm_vmscan`/`oom` events
+are enabled, so it cannot recur.)
+
+**What.** Re-collected on a fresh VM (`stratatrace-ss-mem`, same `n2-custom-12-40960` shape,
+kernel 7.0.0-1014-gcp, LTTng 2.15.3) with the fix:
+
+| family (SS) | runs | outcome |
+|---|---|---|
+| `svc_mem_cap` | 8 (5 aggr + 3 subtle) | **8/8 confirmed**, all carry `mm_vmscan_memcg_reclaim` |
+| `anomaly_mem` | 8 (5 aggr + 3 subtle) | **8/8 confirmed**, memory tracepoints present |
+
+**The proof it worked.** `svc_mem_cap` aggressive r2's injection window holds **78,418 `mm_vmscan`
+events — 1,238 `mm_vmscan_memcg_reclaim_begin`/`_end` pairs, 6,980 `lru_shrink_inactive`, 31,517
+`shrink_slab` pairs.** In the old (broken) runs this count was **0**. The counts carry into the
+index (`index-v2`), so the agent reads the signal, not just the raw trace.
+
+**Only `mm_vmscan_*` and `writeback_*` exist on the stock GCP kernel.** `oom_*`, `mark_victim`,
+`mm_compaction_*`, `mm_migrate_*` are absent on 7.0.0-*-gcp; the enable loop tolerates the misses
+(`|| true` per group) and the reclaim signal we need is the `mm_vmscan_*` half.
+
+**One run is unusually large.** `svc_mem_cap` aggressive r4 is ~355 M kernel events (~28 GB raw) —
+an aggressive 160 MiB cap on carts drives a continuous memcg-reclaim firehose. Rich signal, slow to
+index (build it alone, not in a parallel batch; its index build also exposed a `build_ctf_index`
+crash on a non-UTF-8 byte in a kernel string field, since fixed with `errors="replace"`).
+
+**The old no-memcg runs are preserved, not deleted:** the 8+8 Sept-era Sock Shop runs are in
+`data/stratatrace-v2/sockshop/_superseded_no_memcg_20261029/`, and their index entries in
+`dataset/index-v2/_superseded_no_memcg_20261029/`. Do not mix them with the new runs.
+
+**`verify_injection.py` had a related bug, now fixed.** Its "decrease" check read a memory-limit
+baseline of `0` as a real number — but `container_spec_memory_limit_bytes` is `0` when a container
+is *uncapped*, so a cap from unlimited (0 → 160 MiB) looked like an INCREASE and the first cap run
+read "unconfirmed" though the cap held 100% of the window. Fixed to treat `0` on a limit metric as
+unlimited; `svc_mem_cap` aggressive r1 re-verified honestly to `confirmed`.
+
+**`stratatrace-ss-mem` and its boot disk were DELETED 2026-10-30** once the 8+8 runs verified on
+Trillium (8 runs + 8 index tsv + 8 index lines per family). No archive disk, no snapshot. GCP cost
+is zero again.
+
+**Still open:** Train Ticket `svc_mem_cap` + `anomaly_mem` have the same memcg gap — not yet
+re-collected. The `svc_mem_cap` eval *scoring* (running the agent) is not done; the data is ready.
+
 ## Where the data is
 
 | | location |
@@ -334,14 +384,17 @@ exist for the original campaign and is why the re-collection worked.
 | archives, original | Trillium `/scratch/yuvraj17/stratatrace/v2/{sockshop,trainticket}/` |
 | archives, re-collected SS | Trillium `.../v2/sockshop-recollected-20260915/` - 12 archives, 156.4 GB, **all verified** |
 | archives, re-collected TT | Trillium `.../v2/trainticket-recollected-20260917/` - 3 archives, 56.2 GB, **all verified** |
+| archives, memcg re-collection SS | Trillium `.../v2/sockshop-mem-20261029/` (3 aggr each) + `.../v2/sockshop-mem-parity-20261030/` (2 aggr + 3 subtle each) - `svc_mem_cap` + `anomaly_mem`, extracted into the working copy |
+| retired (no-memcg mem runs) | Trillium `data/stratatrace-v2/sockshop/_superseded_no_memcg_20261029/` + `dataset/index-v2/_superseded_no_memcg_20261029/` - the Sept-era 8+8 SS mem runs, **moved not deleted** |
 | retired | Trillium `.../superseded-20260917/` - 133 GB archives + 1143 GB extracted + 53 stale packs |
 | working copy | Trillium `/scratch/yuvraj17/stratatrace/data/stratatrace-v2/<app>/<recipe>/<run_id>/` - extracted, fully decompressed |
 | Prometheus TSDBs | originals `C:\workplace\stratatrace-v2-prometheus\`; the re-collection's is on Trillium in `provenance_20260916.tar.gz` |
 | campaign logs | originals `C:\workplace\stratatrace-v2-campaign-logs\`; the re-collection's is in `provenance_20260916.tar.gz` |
 
 **Every collection VM has been deleted.** The original pair went on 2026-09-07, `stratatrace-ss`
-on 2026-09-16, and `stratatrace-tt` on 2026-09-18 - each only after its archives verified. GCP
-cost for this project is zero. **Trillium holds the only copy of the dataset.**
+on 2026-09-16, `stratatrace-tt` on 2026-09-18, and `stratatrace-ss-mem` (the memcg re-collection)
+on 2026-10-30 - each only after its archives verified. GCP cost for this project is zero.
+**Trillium holds the only copy of the dataset.**
 
 Note for whoever rebuilds one: an archive disk created with `auto-delete=no` **survives the
 instance** and keeps billing. Delete it explicitly.
