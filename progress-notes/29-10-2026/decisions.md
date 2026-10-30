@@ -75,3 +75,23 @@ the whole point is that the memory blueprint now has its signal.
   NOTE new set = 3 aggressive each (old had 5 aggressive + 3 subtle) — smaller but has the signal.
 - Format note: old Trillium runs store kernel channels RAW; new runs arrive GZIPPED
   (channel0_*.gz). Must gunzip the new channels before the index rebuild (babeltrace can't read .gz).
+
+## Index rebuild + verify fix (user decisions: collect parity + fix verify/re-verify r1)
+- Index: gunzipped new channels, quarantined 16 old index files to
+  `index-v2/_superseded_no_memcg_20261029/`, rebuilt index-v2 for the 6 new runs
+  (`build_ctf_index.py <run> --out-root index-v2`, ctf_subdir defaults to kernel/kernel).
+  CONFIRMED the index itself carries the signal: `svc_mem_cap_r2.tsv.gz` has 927 mm_vmscan rows
+  incl. mm_vmscan_memcg_reclaim_begin/end counts. `.lines.gz` not built by default (`--with-lines`
+  is opt-in) → rebuilding with it for dataset consistency with the old runs.
+- **verify_injection.py fix (committed):** the decrease check read a limit metric's baseline 0 as
+  a real number; a cap from unlimited (0→160M) looked like an INCREASE. Fixed: baseline 0 on a
+  limit metric (promql has spec_memory_limit/cpu.max/..., or a `zero_is_unlimited` flag) is treated
+  as +inf. Scoped so genuine zero-baseline decrease metrics are unaffected. 2 self-test cases added;
+  all 8 pass. **r1 RE-VERIFIED → confirmed** (honest: 160 MiB held 100% of window); corrected
+  verification.json/png copied to Trillium. Now all 3 aggressive svc_mem_cap runs confirm.
+- **Parity collection (user chose this):** collecting 10 more on the VM to match old depth —
+  svc_mem_cap {aggr r4,r5; subtle r1,r2,r3} + anomaly_mem {aggr r4,r5; subtle r1,r2,r3}, all
+  KERNEL_MEM=1. (collect_wave2's matrix has no svc_mem_cap subtle, so driven via run_scenario.sh
+  directly.) Then transfer + index, then DELETE the VM.
+- Transfer-script gotcha fixed: `pull_from_vm.sh` uses strict BatchMode → `ssh-keyscan` the VM into
+  Trillium known_hosts first (added to the lessons; the script could do this itself).
