@@ -113,7 +113,22 @@ def analyze(samples, t_start, t_end, baseline_s, recovery_s, target, settle_s=0)
         above = [v for v in inj if abs_thr is None or v >= abs_thr]
         sigma_ok = (delta_sigma is not None and delta_sigma >= sig_thr)
     else:  # decrease
-        direction_ok = i_mean < b_mean
+        # A resource-LIMIT metric reports 0 to mean "no limit set", not "zero bytes".
+        # cadvisor's container_spec_memory_limit_bytes is 0 when a container is uncapped, so a
+        # baseline of 0 means UNLIMITED. Capping it to a finite value IS a decrease from
+        # unlimited - but a naive `i_mean < b_mean` reads 0 as a real number, calls 160 MiB an
+        # INCREASE, and marks a fired cap "unconfirmed" (hit on svc_mem_cap r1, 2026-10-29: the
+        # 160 MiB cap held for 100% of the window yet failed direction_ok). Treat a 0 baseline on
+        # such a metric as +inf. Scoped to limit metrics (by promql, or an explicit flag) so a
+        # genuine zero-baseline decrease metric (e.g. an error rate) is unaffected.
+        b_cmp = b_mean
+        _pq = target.get("promql", "") or ""
+        _zero_unlimited = target.get("zero_is_unlimited",
+                                     any(k in _pq for k in ("spec_memory_limit", "spec_cpu_quota",
+                                                            "memory.max", "cpu.max")))
+        if _zero_unlimited and b_mean <= 0:
+            b_cmp = float("inf")
+        direction_ok = i_mean < b_cmp
         above = [v for v in inj if abs_thr is None or v <= abs_thr]
         sigma_ok = (delta_sigma is not None and delta_sigma <= -sig_thr)
 
@@ -318,6 +333,13 @@ def self_test():
            "threshold_sigma": 3, "abs_threshold": 0.001, "min_fraction": 0.8}
     bl = {"name": "bl", "canonical": True, "direction": "increase",
           "threshold_sigma": 10, "abs_threshold": 0.25, "min_fraction": 0.7}
+    # A memory-LIMIT metric: 0 at baseline = unlimited, so capping to 160 MiB is a decrease.
+    cap = {"name": "cap", "canonical": True, "direction": "decrease",
+           "promql": "min(container_spec_memory_limit_bytes{name=~'.*carts'})",
+           "threshold_sigma": 3, "min_fraction": 0.8}
+    # Same shape but NOT a limit metric: the 0-is-unlimited rule must NOT apply here.
+    rate = {"name": "rate", "canonical": True, "direction": "decrease",
+            "promql": "rate(some_counter[1m])", "threshold_sigma": 3, "min_fraction": 0.8}
 
     cases = [
         ("step-increase (flat base)", _series(t0, t1, 0.10, 0.95, 0.12), inc, "confirmed"),
@@ -325,6 +347,10 @@ def self_test():
         ("decrease-to-zero",          _series(t0, t1, 0.50, 0.00, 0.50), dec, "confirmed"),
         ("noisy-increase",            _noisy_series(t0, t1, noise, 0.90, 0.20), inc, "confirmed"),
         ("borderline (sub-sigma)",    _noisy_series(t0, t1, noise, 0.30, 0.20), bl, "borderline"),
+        # cap applied from UNLIMITED (0 -> 160 MiB): the 0=unlimited fix makes this confirm.
+        ("cap from unlimited",        _series(t0, t1, 0.0, 167772160.0, 0.0), cap, "confirmed"),
+        # scoping guard: a non-limit metric with a 0 baseline must NOT get the inf treatment.
+        ("non-limit 0-base decrease", _series(t0, t1, 0.0, 167772160.0, 0.0), rate, "unconfirmed"),
     ]
     ok = True
     for label, samples, tgt, expect in cases:
