@@ -95,3 +95,25 @@ the whole point is that the memory blueprint now has its signal.
   directly.) Then transfer + index, then DELETE the VM.
 - Transfer-script gotcha fixed: `pull_from_vm.sh` uses strict BatchMode → `ssh-keyscan` the VM into
   Trillium known_hosts first (added to the lessons; the script could do this itself).
+
+## DONE (2026-10-30) — both mem families at full old depth, VM deleted
+- **Parity collection: 10/10 confirmed.** svc_mem_cap {aggr r4,r5; subtle r1,r2,r3} + anomaly_mem
+  {aggr r4,r5; subtle r1,r2,r3}. Even subtle svc_mem_cap (300m) confirms.
+- **Final Trillium state: 8 runs + 8 tsv + 8 lines per family** (5 aggressive + 3 subtle = the old
+  depth, like-for-like; nothing less). All with memcg tracepoints, all indexed in index-v2.
+  Old no-memcg runs preserved in `sockshop/_superseded_no_memcg_20261029/` and
+  `index-v2/_superseded_no_memcg_20261029/`.
+- **Two tool bugs found + fixed while indexing the parity runs:**
+  1. `build_ctf_index.py` crashed on a non-UTF-8 byte (0xff) in a kernel string field at ~355M
+     events into svc_mem_cap aggressive r4. Fix: open the babeltrace pipe with `errors="replace"`
+     (both copies). r4 is unusually huge (~355M events) because an aggressive 160m cap on carts
+     drives a continuous memcg-reclaim firehose — great signal, slow decode.
+  2. A detached build must use `setsid`+logfile — a plain `ssh "...build... | tail"` dies (SIGHUP)
+     when the ssh session closes, leaving no index and no error. (Cost two wasted r4 attempts.)
+  - Also: big index builds must run ONE-AT-A-TIME for the huge runs — 4 parallel on the shared
+    login node starved r4 (it silently didn't finish in the batch). For a few runs, solo is safer.
+- **VM `stratatrace-ss-mem` DELETED** (instance + boot disk, no archive disk, no snapshots). GCP
+  cost back to zero. All data verified on Trillium before deletion.
+- RUNS-TRACKER updated: svc_mem_cap Sock Shop row flipped from "not evaluable" to evaluable.
+- **Not done (left for the user / next session):** running the actual svc_mem_cap eval scoring
+  (API cost, user tracks budget); Train Ticket svc_mem_cap still needs the same memcg re-collection.
