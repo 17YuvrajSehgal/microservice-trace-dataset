@@ -49,6 +49,11 @@ For the squeezed container (the **victim**):
 
 One warning, measured: **the victim looks like a slow-disk victim.** Its threads sit in disk-type sleep (`D`) in both cases — 0.87 squeezed against 0.66 on a cold-cache baseline — because refaulting IS disk reading. `D` alone cannot tell a memory limit from plain disk work. The reclaim events and the re-read ratio can.
 
+**Two traps that make readers miss a real cap — read these, they cause most misses:**
+
+- **A heap-heavy workload reclaims but barely re-reads.** The "reads the same data many times over" signature is the **file-cache face only**. A service whose memory is mostly **anonymous** — a JVM or any managed runtime holds its heap as anonymous pages, not file cache — has almost nothing to refault from disk, so under a cap it **reclaims hard while disk reads stay LOW**. Low (or near-zero) reads *with* memcg reclaim is the **anonymous / hard face**, NOT evidence against a cap. The decisive signal is the reclaim itself, above baseline, in one container — never withhold the verdict because the re-read storm is missing.
+- **The cap's cascade looks like a "scenario change".** When a cap bites hard the squeezed service stalls, or its process is killed, so it stops serving and its callers fall idle — producing a **broad drop in scheduling / network activity across the whole trace**. That collapse is the *consequence* of the cap, not a separate "workload teardown", "process-population change", or "scenario transition". Do not stop at "activity collapsed" and blame whichever cohort went quiet; find the container doing **memcg reclaim** and attribute the collapse to it. A container whose processes churn threads and **exit during, or within ~1 ms of, their own memcg reclaim** is the hard cap killing them — read that as the kill, not as the service shutting itself down.
+
 ### 1.3 Problems that look similar
 
 | Cause                       | What the kernel trace shows                                                                                                   | How it differs from a memory cap                                                                |
@@ -171,9 +176,9 @@ python3 $TOOLS/mem_pressure.py $WORK/m_f2.txt   10
 
 Decide:
 
-- **CONTAINER-LIMIT reclaim (memcg) on one container's processes, absent in the baseline:** a memory limit is biting. The reclaiming process is the **victim** — write down its pid. Go to Step 4.
+- **CONTAINER-LIMIT reclaim (memcg) on one container's processes, above the baseline:** this is the **decisive finding — a memory cap is confirmed.** You do NOT need any other signature to call it a cap; the remaining steps only tell you WHICH FACE (soft slowdown vs hard kill) and add supporting numbers. Commit to the memory-cap diagnosis now. `mem_pressure.py` prints a **`VICTIM CONTAINER = pid_ns N`** line — that pid_ns IS the capped container (memcg reclaim fires inside the cgroup that hit its own limit), so read the victim's container **straight off that line**, not from CPU-usage correlation. Write down the victim pid and its pid_ns. Go to Step 4.
 - **HOST-pressure reclaim (direct reclaim, kswapd) instead:** the machine is short of memory, not one container. That is a different fault (host memory pressure); report it and **stop**.
-- **No reclaim anywhere, in any slice:** no memory limit is biting. Report "no memory-limit pressure found" and **stop**. Do not write "no fault" — this blueprint does not look for other kinds of faults. If the victim you were asked about waits for the CPU instead, hand the case to the CPU-cap blueprint.
+- **No reclaim in the slices you sampled:** reclaim can be **intermittent** — a subtle cap reclaims in bursts, and a hard cap may burst once and then the victim stalls or dies. Before concluding anything, use Step 2's `--rate` view to find where the `mm_vmscan` events concentrate and **sample there**; reclaim above baseline in *any* in-window slice confirms the cap. Only after you have sampled where the events actually are, if there is still **no memcg reclaim anywhere**, report "no memory-limit pressure found" and **stop**. Do not write "no fault" — this blueprint does not look for other kinds of faults. If the victim you were asked about waits for the CPU instead, hand the case to the CPU-cap blueprint.
 
 ```bash
 VICTIM=<pid>             # the process doing memcg reclaim
@@ -191,9 +196,15 @@ FAULT_START=<HH:MM:SS>
 
 Write down which face you saw. **Next:** Step 5.
 
-### Step 5. Measure the damage: the re-read ratio
+### Step 5. Measure the damage: the re-read ratio (the FILE-CACHE face only — optional)
 
-**Goal:** show the refault storm with a number. The squeezed container's cache keeps being evicted, so it reads the same data from disk again and again.
+**This step confirms the file-cache face; it is NOT required to confirm the cap.** The cap is already
+confirmed by Step 3's reclaim. If the victim's memory is anonymous (a JVM / managed-runtime heap),
+there is little file cache to refault, so reads stay low and this step shows little — that is the
+**anonymous / hard face**, not a reason to doubt the cap. Only expect a big re-read ratio when the
+squeezed memory is file cache. Never downgrade the diagnosis because this number is small.
+
+**Goal (when it applies):** show the refault storm with a number. The squeezed container's cache keeps being evicted, so it reads the same data from disk again and again.
 
 Read the "Disk reads" section of `mem_pressure.py` for the victim, in the fault slices and the baseline:
 
@@ -231,7 +242,13 @@ Read the victim's row:
 | Did the work simply start?  | Step 2 + Step 5 baseline       | A fresh workload reads its data ONCE. The cap re-reads it for as long as the window lasts                                   |
 | Is it writeback, not reads? | `mem_pressure.py` writers line | Refaults are READS. A write storm is a different story                                                                      |
 
-If one check does not fit, say which one in your report, and treat the cap as unconfirmed.
+**Weigh these correctly.** The one decisive test is Step 3's reclaim: memcg reclaim in one container
+above baseline **is** the cap. The other rows only separate a cap from a *different* fault (plain
+disk with **zero** reclaim, host pressure via direct/kswapd reclaim, a CPU wait). A small re-read
+ratio (anonymous memory) or an exact kill-gap you could not pin down does **not** make the cap
+unconfirmed — those classify the face, they do not overturn the reclaim. Downgrade to "unconfirmed"
+only if a row shows a *competing mechanism* (reclaim is actually host-wide, or the victim is waiting
+on CPU not sleeping on memory), or if there is **no memcg reclaim at all**.
 
 ### Step 8. Say what you can about the limit's size
 
@@ -260,8 +277,16 @@ Template:
 
 Rules:
 
+- **Commit — do not hedge.** If Step 3 found memcg reclaim in one container above baseline, the
+  answer **is** a container memory cap on that container. Report it as the fault; name the victim by
+  its pid_ns (the `VICTIM CONTAINER` line). Do **not** answer "other", "unconfirmed", "workload
+  teardown", or "scenario change" merely because the broad activity collapse is unexplained or a
+  secondary signature (re-read storm, exact kill-gap) is missing — the collapse is the cascade and
+  the reclaim is the cause. The only honest non-commitments are: reclaim was host-wide (host
+  pressure), the victim was CPU-waiting not memory-sleeping (CPU cap), or there was no memcg reclaim
+  at all.
 - Name the victim, the time window, and which face of the limit (soft slowdown or hard kill).
-- Give at least two independent pieces of evidence: the reclaim (Step 3), the re-read ratio (Step 5), the kill gap (Step 4), the `D` budget (Step 6).
+- Give at least two independent pieces of evidence: the reclaim (Step 3), the re-read ratio (Step 5), the kill gap (Step 4), the `D` budget (Step 6). The reclaim alone is sufficient to commit; the others strengthen it and name the face.
 - Mark each claim **Measured** or **Inferred**. The limit's size is always **Inferred** (Step 8).
 - Say what you did not test.
 

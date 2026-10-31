@@ -39,6 +39,7 @@ re_time = re.compile(r'^\[(\d+):(\d+):(\d+)\.(\d+)\]')
 re_ctx = re.compile(r'pid = (\d+), tid = (\d+), procname = "([^"]*)"')
 re_bytes = re.compile(r'bytes = (\d+)')
 re_rwbs = re.compile(r'rwbs = (\d+)')
+re_pidns = re.compile(r'pid_ns = (\d+)')   # the container id - one number per container
 
 reclaim_open = {}                      # tid -> start ns of an open memcg reclaim
 memcg = defaultdict(lambda: [0, 0, 0])   # pid -> [count, total ns, max ns]
@@ -50,6 +51,7 @@ writes = defaultdict(lambda: [0, 0])
 forks = defaultdict(int)               # procname -> count
 exits = []                             # (t, pid, procname)
 last_reclaim_t = {}                    # pid -> ns of last memcg reclaim activity
+pidns = {}                             # pid -> pid_ns (the container the pid lives in)
 
 with open(path, errors="replace") as f:
     for line in f:
@@ -61,6 +63,9 @@ with open(path, errors="replace") as f:
         t = ((int(h) * 60 + int(mi)) * 60 + int(s)) * 1_000_000_000 + int(fr.ljust(9, '0'))
         pid, tid, pname = c.groups()
         names[pid] = pname
+        pn = re_pidns.search(line)        # the reclaiming pid's container id, straight off the event
+        if pn:
+            pidns[pid] = pn.group(1)
         if 'kswapd' in pname:
             kswapd_seen += 1
         if ' mm_vmscan_memcg_reclaim_begin:' in line:
@@ -107,9 +112,19 @@ if not memcg and not direct and not kswapd_seen:
 else:
     if memcg:
         print("  CONTAINER-LIMIT reclaim (mm_vmscan_memcg_*), per process:")
-        print(f"  {'pid':>8} {'name':<16}{'reclaims':>9}{'stalled s':>11}{'max ms':>8}")
+        print(f"  {'pid':>8} {'pid_ns':>12} {'name':<16}{'reclaims':>9}{'stalled s':>11}{'max ms':>8}")
         for pid, (n, tot, mx) in sorted(memcg.items(), key=lambda kv: -kv[1][1])[:6]:
-            print(f"  {pid:>8} {names.get(pid, '?'):<16}{n:>9}{tot/ns:>11.2f}{mx/1e6:>8.1f}")
+            print(f"  {pid:>8} {pidns.get(pid, '?'):>12} {names.get(pid, '?'):<16}{n:>9}{tot/ns:>11.2f}{mx/1e6:>8.1f}")
+        # Roll up by container. The pid_ns doing the memcg reclaim IS the capped container -
+        # memcg reclaim fires inside the cgroup that hit its own limit. Read the victim's
+        # container straight off this; do NOT map it by CPU usage (that correlation is noisy).
+        by_ns = defaultdict(int)
+        for pid, (n, tot, mx) in memcg.items():
+            by_ns[pidns.get(pid, '?')] += n
+        top = sorted(by_ns.items(), key=lambda kv: -kv[1])
+        vns, vn = top[0]
+        print(f"  -> VICTIM CONTAINER = pid_ns {vns}  ({vn} memcg reclaims by its processes here)")
+        print("     reclaim by pid_ns: " + ", ".join(f"{nsid}:{c}" for nsid, c in top[:5]))
     if direct:
         tot = sum(direct.values())
         print(f"  HOST-pressure reclaim (direct): {tot} events - the MACHINE is short of "
@@ -164,7 +179,7 @@ if exits:
             tag = (f"  (exited {gap/1e6:.1f} ms after its last reclaim - a few "
                    "ms or more means it finished and cleaned up; a killed "
                    "process exits within about 1 ms of its reclaim)")
-        print(f"  exit {pname} (pid {pid}) at +{t/ns % 86400:.3f}s{tag}")
+        print(f"  exit {pname} (pid {pid}, pid_ns {pidns.get(pid, '?')}) at +{t/ns % 86400:.3f}s{tag}")
 if not forks and not exits:
     print("  none")
 
@@ -177,6 +192,11 @@ print("  from disk, nobody dies. The work crawls instead of failing.")
 print("- HARD LIMIT (memory.max) killing: memcg reclaim bursts, then the biggest")
 print("  memory user exits suddenly right after its own reclaim. Often repeats")
 print("  (a supervisor restarts it and it dies again).")
+print("- LOW disk reads + memcg reclaim is STILL a cap. A heap-heavy workload (a JVM or")
+print("  other managed runtime) holds mostly ANONYMOUS memory, not file cache, so there is")
+print("  little to refault from disk: reclaim stays high while reads stay low. Do NOT read")
+print("  low/zero reads as 'not a cap' - the memcg reclaim above baseline is the proof. The")
+print("  re-read storm is the file-cache face only; its absence means the anonymous face.")
 print("- HOST pressure, not a container limit: direct reclaim / kswapd instead")
 print("  of memcg reclaim, and processes in DIFFERENT containers all stall.")
 print("- Reads with NO reclaim at all: cold cache or plain disk work - not a")
