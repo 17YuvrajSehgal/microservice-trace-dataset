@@ -37,8 +37,10 @@ Every classification below cites the inventory's own measured evidence, not assu
 
 - **error_storm** — "the evidence is in the **logs**" (462 link failures); nothing in metrics *or* a
   clean kernel signal. Skip for a kernel-trace eval.
-- **anomaly_mem** — same **memcg-tracepoint gap** that makes svc_mem_cap not evaluable on
-  microservice. Skip until a re-collection with memory tracepoints.
+- **anomaly_mem** — had the same **memcg-tracepoint gap** as svc_mem_cap. **Sock Shop re-collected
+  29-30 Oct 2026 with memcg tracepoints** (8 runs, indexed) — now has the signal; svc_mem_cap on
+  those runs evaluated 3/8 DET + 2 PARTIAL (see RESULTS.md §svc_mem_cap). Train Ticket still has the
+  gap (not re-collected).
 - **code_n_plus_one / code_unbounded_cache / code_lock_across_io** — Go, concurrency absorbs them;
   measured invisible.
 

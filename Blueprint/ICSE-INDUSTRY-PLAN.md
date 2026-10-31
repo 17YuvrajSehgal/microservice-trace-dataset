@@ -48,8 +48,10 @@ track rewards.
 | Scoring integrity | by-hand JUDGING rubric + bite-aligned ground truth; leakage audited | a genuine strength — keep it |
 
 **Dataset holes to fix or document airtight:**
-- `svc_mem_cap` not evaluable on microservice — the v2 kernel profile omitted `mm_vmscan`/memcg/oom
-  tracepoints. Re-collect with them enabled, or exclude + document.
+- ~~`svc_mem_cap` not evaluable on microservice~~ **FIXED for Sock Shop (29-31 Oct 2026):**
+  re-collected with `mm_vmscan_*`/memcg tracepoints (8 runs), evaluated 3/8 DET + 2 PARTIAL. **Train
+  Ticket still has the gap** — svc_mem_cap stays not-evaluable on TT until it gets the same
+  re-collection.
 - Train Ticket: caps didn't bite (`ts-travel-service` ~0.005 cores vs a 0.2-core cap); several
   verification labels were wrong (`no_metric_signature`). Re-collect with stronger, verified faults.
 
@@ -88,7 +90,9 @@ track rewards.
 - **P2.2** (fallback) if time-limited: Sock Shop only + a rigorous "why TT failed" lessons section.
 
 ### P3 — the dataset contribution
-- **P3.1** Fix or document the `svc_mem_cap` tracepoint gap (re-collect with the memory profile).
+- **P3.1** ✅ **DONE for Sock Shop** (29-31 Oct): re-collected svc_mem_cap + anomaly_mem with the
+  memcg profile, indexed, svc_mem_cap evaluated (3/8 DET + 2 PARTIAL). **TODO: Train Ticket** — same
+  re-collection still needed for TT svc_mem_cap/anomaly_mem.
 - **P3.2** Package the artifact: dataset + harness (`Blueprint/eval`, blueprints, `agent_v2`),
   reproduction scripts, a datasheet. Aim for an ICSE artifact-evaluation badge.
 
