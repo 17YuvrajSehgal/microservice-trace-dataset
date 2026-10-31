@@ -156,7 +156,7 @@ Two passes, same model, graded by hand:
 | noisy_neighbor | 7/8 | **7/7** (r2 rate-limited) | named aggressor `stress-ng`; v1 miss r3 **recovered** |
 | slow_db | 8/11 | **9/11** | db_latency via `toxiproxy`/`mysqld`; v1 burst misses **recovered**; 2 subtle-60 ms missed |
 | svc_net | 5/5 | **4/5** | service_network on `java` (carts); r1 hedged "other" this sample |
-| svc_mem_cap | ⛔ n/a | ⛔ n/a | trace has no memcg tracepoints (below) |
+| svc_mem_cap | ⛔ n/a | **3/8 DET + 2 PARTIAL** | re-collected w/ memcg 29-30 Oct, eval 31 Oct (§svc_mem_cap below); memcg reclaim on carts (pid_ns 4026532540); subtle 2/3 > aggressive 1/5 |
 
 **Sock Shop headline (v2, fixed blueprints): 27/31 scored = 87 % DETECTED** on the four evaluable
 blueprints (noisy r2 lost to a rate-limit, resumable), each with correct localisation and a
@@ -170,17 +170,48 @@ Conservative grading throughout ("other"/"normal"/"unknown" = MISS).
 > still localised the right victim. The **final numbers come from the N-seed run after the
 > blueprints are frozen**; these guide fixing, they are not citable as the result yet.
 
-### svc_mem_cap is NOT evaluable on microservice (data-collection gap, not a miss)
+### svc_mem_cap — re-collected with memcg tracepoints, now evaluable (Sock Shop)
 
-The Sock Shop / Train Ticket v2 trace profile recorded **425 event types — 377 syscall, 14
-sched, 13 block, 10 net, 5 irq, 3 skb, 1 power — and zero memory events** (no `mm_vmscan_*`,
-`memcg_reclaim`, `oom`, `kswapd`). The agentic profile *did* carry
-`mm_vmscan_memcg_reclaim_begin/end`, which is exactly why agentic svc_mem_cap reached 44/44. The
-memory-cap signature the blueprint reads — the memcg-reclaim burst — is **physically absent** from
-these traces. The agent behaved correctly: it cut the right slices, found no reclaim, and
-**declined to assert a memory cap** rather than inventing one. Marked not-evaluable and excluded
-from totals; counting these as misses would falsify the result. Re-collecting with the memory
-tracepoints enabled is future work.
+**The gap (v2), now fixed.** The original Sock Shop/Train Ticket v2 profile recorded **zero memory
+events** (no `mm_vmscan_*`, `memcg_reclaim`, `oom`, `kswapd`) — a `collect_trace.sh` bug (the
+`vmscan_*` wildcard matched nothing; the real tracepoints are `mm_vmscan_*`). So svc_mem_cap was not
+evaluable on microservice, while agentic svc_mem_cap (whose profile DID carry the memcg tracepoints)
+reached 44/44. **Sock Shop svc_mem_cap + anomaly_mem were re-collected 29-30 Oct 2026 with the memcg
+tracepoints** (5 aggressive + 3 subtle each, 8/8 verification-confirmed); r2's injection window
+alone holds 1,238 `mm_vmscan_memcg_reclaim` begin/end pairs vs 0 before. **Train Ticket still has
+the gap** (not re-collected) — svc_mem_cap stays not-evaluable on TT.
+
+**Result (Sock Shop, 31 Oct, by hand — `results/sockshop/JUDGMENTS-svc_mem_cap.md`):** 8 runs,
+matched arm, blueprint `4_svc_mem_cap`, direct OpenAI gpt-6-luna.
+
+| grade | count | runs |
+|---|---|---|
+| **DETECTED** | **3/8** | aggr_r3, subtle_r1, subtle_r2 |
+| PARTIAL | 2/8 | aggr_r1 (committed memory_limit + carts but self-hedged "unconfirmed"); aggr_r5 (mechanism right, PID→ns unmapped) |
+| MISS | 3/8 | aggr_r2, aggr_r4, subtle_r3 (all committed `other`) |
+
+By intensity: **subtle 2/3 DETECTED > aggressive 1/5** clean. Localization verified by **mechanism,
+not nsmap** (whose CPU correlation mislabelled carts here as front-end): the in-window memcg reclaim
+is `java` in pid_ns 4026532540 = carts (299 events r1, 236 subtle_r2), so the agent's named pid_ns
+is the correct victim.
+
+**Honest reading** — not a regression vs agentic 44/44, a harder setting:
+- The signal is present in all 8 and the agent *found* the reclaim in carts in every run, including
+  the misses. The fix works at the eval level.
+- Detection is lower than agentic because (a) a 13-container app also demands *localization*
+  (pid_ns→service), which failed twice, and (b) the aggressive 160m cap causes a violent teardown
+  the agent twice read as "workload teardown" → `other`.
+- Subtle (300m) reads cleaner than aggressive (160m): the gentler cap gives sustained reclaim
+  without the dramatic collapse. A real, reportable pattern.
+- Failures are over-conservatism, never hallucination: the agent never asserted a cap that was not
+  there; where it missed, it declined to commit. Safe failure direction.
+
+> ⚠️ **Single run per cell = preliminary** (same caveat as the rest of §3). Also the **first run on
+> the direct-OpenAI provider** (§1-3 used OpenRouter); this model needs `reasoning_effort=none` via
+> chat.completions, so reasoning is off — as the OpenRouter chat path effectively was too. The
+> N-seed run after the freeze gives the citable number.
+
+Cost: **$0.97** for the 8 cells (9.3 M in + 75 k out tokens, ~13 min wall at jobs=6).
 
 ### Train Ticket — a poor testbed (dataset, not the agent); hand-pass complete
 
@@ -234,13 +265,16 @@ Cost so far: $11.4 for the 72 cells.
 ## Pending sections / next steps
 
 - [x] Sock Shop × 4 evaluable blueprints — v2 (fixed blueprints), **single-run preliminary** 27/31 (§3)
-- [ ] **Freeze the blueprints, then the N-seed run** (several seeds per cell) → the final, citable
-  Sock Shop numbers that do not move afterward. This replaces every single-run number above.
+- [x] **svc_mem_cap × Sock Shop** — re-collected w/ memcg (29-30 Oct), eval 31 Oct, single-run
+  preliminary **3/8 DET + 2 PARTIAL** (§svc_mem_cap). Now 5 evaluable Sock Shop blueprints.
+- [x] re-collect **Sock Shop** with memory tracepoints → svc_mem_cap evaluable (DONE 29-30 Oct)
+- [ ] re-collect **Train Ticket** with memory tracepoints → svc_mem_cap still not-evaluable on TT
+- [ ] **Freeze the blueprints, then the N-seed run** (several seeds per cell, now incl. svc_mem_cap)
+  → the final, citable Sock Shop numbers that do not move afterward. Replaces every single-run number.
 - [ ] **Train Ticket on the v2 (fixed) blueprints** — only v1 has been run on TT so far.
 - [ ] microservice `normal`-run controls (false-alarm rate per blueprint)
 - [ ] svc_cpu_cap + svc_mem_cap × agentic (Codex) — traces on Zenodo
 - [ ] control arm (`--arm none`, no blueprint) for the blueprint-value comparison
-- [ ] re-collect Sock Shop/TT with memory tracepoints → makes svc_mem_cap evaluable on microservice
 
 ### Note: does the host-scope scorer fix change the agentic numbers? No.
 
