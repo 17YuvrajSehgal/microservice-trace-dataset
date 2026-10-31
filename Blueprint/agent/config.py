@@ -120,6 +120,15 @@ def openai_create_kwargs() -> dict:
             kw["temperature"] = TEMPERATURE
         return kw
     kw = {"max_completion_tokens": MAX_TOKENS}
+    if PROVIDER == "openai":
+        # GPT-5.x reasoning models (e.g. luna) reject a chat.completions call unless
+        # reasoning_effort is pinned - OpenAI exposes their reasoning only through the Responses
+        # API, so via chat.completions the param must be 'none'. OpenRouter accepted the call
+        # without it, which is why this only bites on the direct `openai` provider. Env-tunable
+        # (RCA_REASONING_EFFORT); an empty value omits it for non-reasoning models that reject it.
+        effort = os.environ.get("RCA_REASONING_EFFORT", "none")
+        if effort:
+            kw["reasoning_effort"] = effort
     if SEND_TEMPERATURE:
         kw["temperature"] = TEMPERATURE
     return kw
