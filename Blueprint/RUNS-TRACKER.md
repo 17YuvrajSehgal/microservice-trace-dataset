@@ -36,7 +36,7 @@ built index locally right now.
 | | Train Ticket | 8 | 8 | +10 normal | Trillium | ✓ 8/8 | ⛔ caps didn't bite (verification unconfirmed, ~0.005 cores) |
 | **svc_mem_cap** | agentic — Claude | 44 | 44 | 0 | **local** `agentic-runs/3_memory_cap/runs` | ✓ 44/44 | ✓ 25/44 raw; **44/44 aligned with cap-actually-bit** (0 miss, 0 FP) |
 | | agentic — Codex | 44 | — | — | Zenodo (meta-only local) | ⬜ 0/44 | ⬜ |
-| | Sock Shop | 8 | 8 | +10 normal | Trillium | ✓ 8/8 | ✅ **re-collected 2026-10-30 w/ memcg**, **eval 2026-10-31: 3/8 DET + 2 PARTIAL + 3 MISS** (by hand; subtle 2/3 > aggr 1/5; reclaim on carts pid_ns 4026532540; misses = over-conservative `other`). Single-run prelim. Old no-memcg runs → `_superseded_no_memcg_20261029/` |
+| | Sock Shop | 8 | 8 | +10 normal | Trillium | ✓ 8/8 | ✅ **re-collected 2026-10-30 w/ memcg**; eval 2026-10-31 by hand: v1 blueprint 3/8 → **audit-fixed v2 blueprint 8/8 DETECTED** (aggr 5/5, subtle 3/3; reclaim on carts pid_ns 4026532540). Single-run prelim. Old no-memcg runs → `_superseded_no_memcg_20261029/` |
 | | Train Ticket | 8 | 8 | +10 normal | Trillium | ✓ 8/8 | ⛔ not evaluable — trace lacks memcg tracepoints (Sock Shop re-collected; TT pending the same fix) |
 | **noisy_neighbor** | Sock Shop | 8 | 8 | +10 normal | Trillium | ✓ 8/8 | ✅ **7/8** (by hand; aggressor named, confirmed) |
 | | Train Ticket | 8 | 8 | +10 normal | Trillium | ✓ 8/8 | ⛔ not evaluable — too weak on 16-core host (host stayed idle) |

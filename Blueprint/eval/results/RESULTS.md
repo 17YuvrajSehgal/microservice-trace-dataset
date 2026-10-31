@@ -156,12 +156,16 @@ Two passes, same model, graded by hand:
 | noisy_neighbor | 7/8 | **7/7** (r2 rate-limited) | named aggressor `stress-ng`; v1 miss r3 **recovered** |
 | slow_db | 8/11 | **9/11** | db_latency via `toxiproxy`/`mysqld`; v1 burst misses **recovered**; 2 subtle-60 ms missed |
 | svc_net | 5/5 | **4/5** | service_network on `java` (carts); r1 hedged "other" this sample |
-| svc_mem_cap | ⛔ n/a | **3/8 DET + 2 PARTIAL** | re-collected w/ memcg 29-30 Oct, eval 31 Oct (§svc_mem_cap below); memcg reclaim on carts (pid_ns 4026532540); subtle 2/3 > aggressive 1/5 |
+| svc_mem_cap | 3/8 | **8/8** | re-collected w/ memcg 29-30 Oct; eval 31 Oct, v1 blueprint 3/8 → audit-fixed v2 blueprint **8/8** (§svc_mem_cap below); memcg reclaim on carts (pid_ns 4026532540); aggr 5/5, subtle 3/3 |
 
 **Sock Shop headline (v2, fixed blueprints): 27/31 scored = 87 % DETECTED** on the four evaluable
 blueprints (noisy r2 lost to a rate-limit, resumable), each with correct localisation and a
 window overlapping the injection, on faults the dataset's own verification confirms bit.
 Conservative grading throughout ("other"/"normal"/"unknown" = MISS).
+
+**svc_mem_cap is now the 5th evaluable blueprint at 8/8** (re-collected w/ memcg + audit-fixed
+blueprint; §svc_mem_cap). It is a separate direct-OpenAI run from the 27/31 OpenRouter pass above, so
+it is reported on its own rather than folded into that total.
 
 > ⚠️ **PRELIMINARY — single run per cell, not the final number.** The agent (gpt-6-luna) is
 > nondeterministic, so a borderline cell can flip DETECTED↔"other" between samples on noise alone:
@@ -182,36 +186,42 @@ alone holds 1,238 `mm_vmscan_memcg_reclaim` begin/end pairs vs 0 before. **Train
 the gap** (not re-collected) — svc_mem_cap stays not-evaluable on TT.
 
 **Result (Sock Shop, 31 Oct, by hand — `results/sockshop/JUDGMENTS-svc_mem_cap.md`):** 8 runs,
-matched arm, blueprint `4_svc_mem_cap`, direct OpenAI gpt-6-luna.
+matched arm, blueprint `4_svc_mem_cap`, direct OpenAI gpt-6-luna. Two passes (v1 → audit → v2):
 
-| grade | count | runs |
-|---|---|---|
-| **DETECTED** | **3/8** | aggr_r3, subtle_r1, subtle_r2 |
-| PARTIAL | 2/8 | aggr_r1 (committed memory_limit + carts but self-hedged "unconfirmed"); aggr_r5 (mechanism right, PID→ns unmapped) |
-| MISS | 3/8 | aggr_r2, aggr_r4, subtle_r3 (all committed `other`) |
+| pass | DETECTED | PARTIAL | MISS |
+|---|---|---|---|
+| **v1** — original blueprint | 3/8 | 2 | 3 |
+| **v2** — audit-driven blueprint + tool fixes | **8/8** | 0 | 0 |
 
-By intensity: **subtle 2/3 DETECTED > aggressive 1/5** clean. Localization verified by **mechanism,
-not nsmap** (whose CPU correlation mislabelled carts here as front-end): the in-window memcg reclaim
-is `java` in pid_ns 4026532540 = carts (299 events r1, 236 subtle_r2), so the agent's named pid_ns
-is the correct victim.
+**The v1 misses were a blueprint flaw, not the agent.** The agent found the memcg reclaim in carts in
+*every* v1 run — including the 3 misses — but retreated to `other`/`unconfirmed` because the blueprint
+forced a **file-cache re-read storm that a JVM heap (anonymous-memory) cap never produces**, and read
+the cap's activity-collapse **cascade** as a "workload teardown". The fixes (commits 2026-10-31):
+- re-read ratio is the file-cache face only (optional), never a gate; **memcg reclaim above baseline
+  is the decisive, commit-worthy signal**.
+- the activity collapse is the cap's cascade — trace it to the reclaiming container, don't call it a
+  scenario change; a container whose process exits during its own reclaim is the hard-cap kill.
+- sample where reclaim concentrates (intermittent reclaim); **commit, don't hedge to `other`**.
+- `mem_pressure.py` now prints `VICTIM CONTAINER = pid_ns N` and never reports the unreadable pid_ns
+  0 as the victim (fixed r5's and subtle_r3's localization).
 
-**Honest reading** — not a regression vs agentic 44/44, a harder setting:
-- The signal is present in all 8 and the agent *found* the reclaim in carts in every run, including
-  the misses. The fix works at the eval level.
-- Detection is lower than agentic because (a) a 13-container app also demands *localization*
-  (pid_ns→service), which failed twice, and (b) the aggressive 160m cap causes a violent teardown
-  the agent twice read as "workload teardown" → `other`.
-- Subtle (300m) reads cleaner than aggressive (160m): the gentler cap gives sustained reclaim
-  without the dramatic collapse. A real, reportable pattern.
-- Failures are over-conservatism, never hallucination: the agent never asserted a cap that was not
-  there; where it missed, it declined to commit. Safe failure direction.
+All fixes are general mechanism reasoning, **leakage-audited** (no service name / cap value / pid_ns /
+count appears in the blueprint), and do **not** enable false positives — the trigger is still real
+memcg reclaim above baseline, which only fires on a real cap, so abstention on a no-cap run is
+unchanged. 5 cells recovered (r1, r2, r4, r5, subtle_r3); the 3 already-DETECTED held.
 
-> ⚠️ **Single run per cell = preliminary** (same caveat as the rest of §3). Also the **first run on
-> the direct-OpenAI provider** (§1-3 used OpenRouter); this model needs `reasoning_effort=none` via
-> chat.completions, so reasoning is off — as the OpenRouter chat path effectively was too. The
-> N-seed run after the freeze gives the citable number.
+By intensity (v2): aggressive **5/5**, subtle **3/3**. Localization verified by **mechanism, not
+nsmap** (its CPU correlation mislabelled carts): the in-window memcg reclaim is `java` in pid_ns
+4026532540 = carts (raw-decode: 299 events r1, 236 subtle_r2, 756 subtle_r3).
 
-Cost: **$0.97** for the 8 cells (9.3 M in + 75 k out tokens, ~13 min wall at jobs=6).
+> ⚠️ **Single run per cell = preliminary** (same caveat as the rest of §3); the N-seed run after the
+> freeze is the citable number. First run on the **direct-OpenAI** provider (§1-3 used OpenRouter);
+> this model needs `reasoning_effort=none` via chat.completions (reasoning off), as the OpenRouter
+> chat path effectively was too. The v2 pass used two `mem_pressure.py` versions (the pid_ns-0 guard
+> was added after the first 7 cells); it only affects the pid_ns-0 edge (subtle_r3), so 8/8 is on a
+> consistent decision rule. v1 cells preserved at `results/sockshop/svc_mem_cap_v1blueprint/`.
+
+Cost: **~$2.1** total (v1 8 cells $0.97; v2 8 cells ~$0.97; subtle_r3 re-validate ~$0.15).
 
 ### Train Ticket — a poor testbed (dataset, not the agent); hand-pass complete
 
@@ -265,8 +275,8 @@ Cost so far: $11.4 for the 72 cells.
 ## Pending sections / next steps
 
 - [x] Sock Shop × 4 evaluable blueprints — v2 (fixed blueprints), **single-run preliminary** 27/31 (§3)
-- [x] **svc_mem_cap × Sock Shop** — re-collected w/ memcg (29-30 Oct), eval 31 Oct, single-run
-  preliminary **3/8 DET + 2 PARTIAL** (§svc_mem_cap). Now 5 evaluable Sock Shop blueprints.
+- [x] **svc_mem_cap × Sock Shop** — re-collected w/ memcg (29-30 Oct), eval 31 Oct: v1 blueprint
+  3/8 → audit-fixed v2 blueprint **8/8 DETECTED** (§svc_mem_cap). Now 5 evaluable Sock Shop blueprints.
 - [x] re-collect **Sock Shop** with memory tracepoints → svc_mem_cap evaluable (DONE 29-30 Oct)
 - [ ] re-collect **Train Ticket** with memory tracepoints → svc_mem_cap still not-evaluable on TT
 - [ ] **Freeze the blueprints, then the N-seed run** (several seeds per cell, now incl. svc_mem_cap)

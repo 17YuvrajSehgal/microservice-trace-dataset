@@ -100,11 +100,14 @@ Same model, so these stand — re-run only if you want extra seeds for consisten
 
 ## 5. What to RE-RUN / RUN — and on which blueprint (priority order)
 
-### A0. Sock Shop svc_mem_cap — ✅ DONE 31 Oct 2026
+### A0. Sock Shop svc_mem_cap — ✅ DONE 31 Oct 2026 (3/8 → 8/8 after a blueprint fix)
 Ran blueprint **`4_svc_mem_cap`** on the 8 new memcg runs (direct OpenAI gpt-6-luna, matched arm).
-Result, by hand: **3/8 DETECTED + 2 PARTIAL + 3 MISS** (subtle 2/3 > aggressive 1/5). The memcg
-signal is present in all 8; misses are over-conservatism (`other`), not hallucination. Full writeup:
-`results/RESULTS.md` §svc_mem_cap + `results/sockshop/JUDGMENTS-svc_mem_cap.md`. Cost $0.97.
+v1 blueprint scored **3/8 DETECTED**; an audit of the misses showed the blueprint (not the agent) was
+the problem — it demanded a file-cache re-read storm a JVM heap cap can't produce and read the cap's
+collapse as a "teardown". After the fixes the **v2 blueprint scores 8/8 DETECTED** (aggr 5/5, subtle
+3/3), leakage-audited. Full writeup: `results/RESULTS.md` §svc_mem_cap +
+`results/sockshop/JUDGMENTS-svc_mem_cap.md`. Cost ~$2.1 (3 passes). v1 cells preserved at
+`results/sockshop/svc_mem_cap_v1blueprint/`.
 > `--runs-root` MUST be `.../sockshop/svc_mem_cap` (the family dir), NOT `.../sockshop` — `discover()`
 > uses recursive `os.walk`, so pointing at the app dir pulls in the parked
 > `_superseded_no_memcg_20261029/` old runs too. Also: delete any **stale** `result.json` cells first

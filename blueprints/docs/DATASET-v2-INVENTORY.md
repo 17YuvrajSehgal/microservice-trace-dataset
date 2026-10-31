@@ -374,10 +374,11 @@ unlimited; `svc_mem_cap` aggressive r1 re-verified honestly to `confirmed`.
 Trillium (8 runs + 8 index tsv + 8 index lines per family). No archive disk, no snapshot. GCP cost
 is zero again.
 
-**Eval done (31 Oct):** the agent eval ran on the 8 new Sock Shop `svc_mem_cap` runs —
-**3/8 DETECTED + 2 PARTIAL + 3 MISS** by hand (subtle 2/3 > aggressive 1/5; the memcg-reclaim signal
-is present in all 8 and the agent found it in carts every time; misses are over-conservative `other`,
-not hallucination). Writeup: `Blueprint/eval/results/RESULTS.md` §svc_mem_cap.
+**Eval done (31 Oct):** the agent eval ran on the 8 new Sock Shop `svc_mem_cap` runs. The original
+blueprint scored **3/8**; an audit showed the blueprint (not the agent) was the problem — it demanded
+a file-cache re-read storm a JVM heap cap cannot produce. After an audit-driven blueprint + tool fix
+it scores **8/8 DETECTED** (aggr 5/5, subtle 3/3), leakage-audited. Writeup:
+`Blueprint/eval/results/RESULTS.md` §svc_mem_cap.
 
 **Still open:** Train Ticket `svc_mem_cap` + `anomaly_mem` have the same memcg gap — **not yet
 re-collected**, so svc_mem_cap stays not-evaluable on TT.

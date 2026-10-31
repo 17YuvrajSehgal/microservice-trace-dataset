@@ -40,6 +40,33 @@ first, else the resumable harness skips re-running.
 new `results/sockshop/JUDGMENTS-svc_mem_cap.md`, `HANDOFF-RERUN.md` (A0 done + direct-OpenAI
 lessons), `RUNS-TRACKER.md`, `DATASET-v2-INVENTORY.md`.
 
+## Blueprint audit + fix — svc_mem_cap 3/8 → 8/8
+The 3/8 was a **blueprint flaw, not the agent**. Reading all 8 verdicts: the agent found memcg
+reclaim in carts in *every* run, including the misses, but retreated to `other`/`unconfirmed`
+because the blueprint:
+1. demanded a file-cache **re-read storm** that a JVM heap (anonymous memory) cap never produces —
+   carts reclaims hard but barely refaults, so "no repeated-read ratio → other" (r1, r2).
+2. had no guidance that the cap's **activity-collapse cascade** ≠ a "workload teardown" (r4,
+   subtle_r3 blamed the wrong cohort).
+3. gave no slice-selection help for **intermittent reclaim** (r1, subtle_r3 "no reclaim in sampled
+   slices").
+4. `mem_pressure.py` reported the reclaimer's pid but **not pid_ns**, so localization failed (r5
+   "couldn't map PID to pid_ns"; subtle_r3 sampled a slice where pid_ns read 0).
+5. Step 7 "one check doesn't fit → unconfirmed" actively told it to downgrade.
+
+**Fixes (committed, leakage-audited — no service/cap/pid_ns/count in the blueprint):** re-read ratio
+is the file-cache face only (optional, not a gate); memcg reclaim above baseline is decisive →
+commit; collapse is the cascade, trace it to the reclaiming container; sample where reclaim
+concentrates; `mem_pressure.py` now prints `VICTIM CONTAINER = pid_ns N` and never reports pid_ns 0
+(unreadable) as the victim; Step 10 "commit, don't hedge". The trigger is still real memcg reclaim,
+so abstention on a no-cap run is unchanged (no false-positive risk).
+
+**Re-ran the 8 cells: v1 3/8 → v2 8/8 DETECTED** (aggr 5/5, subtle 3/3, 0 PARTIAL, 0 MISS). 5 cells
+recovered (r1, r2, r4, r5, subtle_r3). v1 cells preserved at
+`results/sockshop/svc_mem_cap_v1blueprint/`. Writeups: `RESULTS.md` §svc_mem_cap,
+`JUDGMENTS-svc_mem_cap.md`. The pid_ns-0 tool guard was added after the first 7 v2 cells and only
+affects subtle_r3's edge, so 8/8 is on a consistent rule.
+
 ## Still open
-Train Ticket svc_mem_cap (same memcg gap, not re-collected); N-seed freeze run; control arm
-(`--arm none`); microservice normal-run controls.
+Train Ticket svc_mem_cap (same memcg gap, not re-collected); N-seed freeze run (now incl.
+svc_mem_cap); control arm (`--arm none`); microservice normal-run controls.
