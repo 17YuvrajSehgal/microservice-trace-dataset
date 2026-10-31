@@ -122,8 +122,21 @@ else:
         for pid, (n, tot, mx) in memcg.items():
             by_ns[pidns.get(pid, '?')] += n
         top = sorted(by_ns.items(), key=lambda kv: -kv[1])
-        vns, vn = top[0]
-        print(f"  -> VICTIM CONTAINER = pid_ns {vns}  ({vn} memcg reclaims by its processes here)")
+        # pid_ns 0 / '?' means the namespace could NOT be read for that event - it is not a real
+        # container. The victim is the container with the most reclaim among READABLE namespaces;
+        # never report 0 as the victim.
+        real = [(nsid, c) for nsid, c in top if nsid not in ('0', '?')]
+        if real:
+            vns, vn = real[0]
+            print(f"  -> VICTIM CONTAINER = pid_ns {vns}  ({vn} memcg reclaims by its processes here)")
+            if top[0][0] in ('0', '?'):
+                print(f"     (ignore the unreadable pid_ns {top[0][0]}:{top[0][1]} - 0 is not a "
+                      "container, it is a context that could not be read; the readable namespace "
+                      "above is the victim)")
+        else:
+            print("  -> reclaim IS present (a cap is biting) but every reclaimer's pid_ns is "
+                  "unreadable (0) in THIS slice - sample another slice where reclaim concentrates "
+                  "to read the victim container; do not give up on the cap")
         print("     reclaim by pid_ns: " + ", ".join(f"{nsid}:{c}" for nsid, c in top[:5]))
     if direct:
         tot = sum(direct.values())
