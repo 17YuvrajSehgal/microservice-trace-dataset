@@ -72,9 +72,18 @@ def read_idx(path):
 
 
 def clock_from_metadata(path):
-    """Return (frequency, offset_ns) from the clock-class record, or None."""
+    """Return (frequency, offset_ns) from the clock-class record, or None.
+
+    Handles both metadata dialects:
+      * CTF 2  - babeltrace/LTTng JSON 'clock-class' records (separated by RS 0x1e).
+      * CTF 1.8 - TSDL text 'clock { freq = ..; offset_s = ..; offset = ..; }'. Older LTTng
+                  (e.g. 2023 embedded-device traces) emit this form; the JSON path cannot read
+                  it, which was the 'could not read the clock offset' failure on those traces.
+    babeltrace reads both, so the count index is fine either way; only these direct metadata
+    parsers needed the second dialect."""
     with open(path, "rb") as f:
         data = f.read()
+    # CTF 2: JSON clock-class records.
     for rec in data.split(b"\x1e"):
         rec = rec.strip()
         if b'"clock-class"' not in rec[:200]:
@@ -89,6 +98,20 @@ def clock_from_metadata(path):
         off = obj.get("offset-from-origin", {})
         ns = off.get("seconds", 0) * 10**9 + off.get("cycles", 0) * 10**9 // freq
         return freq, ns
+    # CTF 1.8: TSDL 'clock { ... }' block. Metadata may be packet-framed binary, so decode
+    # loosely and regex the fields - they are short and sit within one packet in practice.
+    text = data.decode("latin-1", "replace")
+    m = re.search(r"clock\s*\{(.*?)\}", text, re.S)
+    if m:
+        body = m.group(1)
+        fm = re.search(r"\bfreq\s*=\s*(\d+)", body)
+        if fm:
+            freq = int(fm.group(1))
+            sm = re.search(r"\boffset_s\s*=\s*(\d+)", body)
+            cm = re.search(r"\boffset\s*=\s*(\d+)", body)
+            ns = (int(sm.group(1)) if sm else 0) * 10**9 \
+                + (int(cm.group(1)) if cm else 0) * 10**9 // freq
+            return freq, ns
     return None
 
 

@@ -21,6 +21,7 @@ BLUEPRINTS = {
     "slow_db":        "3_slow_db",
     "svc_mem_cap":    "4_svc_mem_cap",
     "svc_net":        "5_svc_net",
+    "packet_drop":    "7_packet_drop",   # host dropping packets (kfree_skb); for switch/router traces
     # agentic experiments map onto the same blueprints
     "io_cap":         None,          # no blueprint yet
     "threads":        None,          # no blueprint yet
