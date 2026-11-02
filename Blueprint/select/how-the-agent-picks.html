@@ -1,0 +1,253 @@
+<title>How the agent picks the right blueprint</title>
+<style>
+  :root{
+    --bg:#FFFFFF; --surface:#FFFFFF; --ink:#000000; --muted:#53697A; --line:#DBE5EA;
+    --accent:#0B7C86; --accent-soft:#E2F0F1;
+    --cpu:#9A5B0B; --cpu-bg:#F7ECDD;
+    --noisy:#B23D12; --noisy-bg:#F7E6DD;
+    --net:#5B2BC4; --net-bg:#ECE6FB;
+    --db:#1C52C9; --db-bg:#E2EAFB;
+    --mem:#A81457; --mem-bg:#F8E1EC;
+    --ok:#0B7C86; --ok-bg:#E2F0F1;
+    --shadow:0 1px 2px rgba(19,33,43,.05),0 8px 24px -16px rgba(19,33,43,.25);
+  }
+  /* single-theme: white ground, black text, in every viewer theme */
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    line-height:1.6; -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:760px; margin:0 auto; padding:56px 24px 80px}
+  .eyebrow{font:600 12px/1 ui-monospace,SFMono-Regular,Menlo,monospace; letter-spacing:.14em;
+    text-transform:uppercase; color:var(--accent); margin:0 0 14px}
+  h1{font-family:Georgia,"Times New Roman",ui-serif,serif; font-weight:600; font-size:clamp(30px,5vw,42px);
+    line-height:1.12; letter-spacing:-.01em; text-wrap:balance; margin:0 0 16px}
+  .lede{font-size:19px; color:var(--muted); max-width:62ch; margin:0 0 8px}
+  .lede b{color:var(--ink); font-weight:600}
+  h2{font-family:Georgia,ui-serif,serif; font-weight:600; font-size:22px; letter-spacing:-.01em;
+    margin:52px 0 6px}
+  .sub{color:var(--muted); margin:0 0 22px; font-size:15px}
+  /* tree */
+  .tree{display:flex; flex-direction:column; align-items:center; gap:0; margin:8px 0 8px}
+  .node{background:var(--surface); border:1px solid var(--line); border-radius:12px;
+    box-shadow:var(--shadow); padding:14px 18px; text-align:center; max-width:460px}
+  .node .q{font-weight:600; font-size:16px}
+  .node .hint{color:var(--muted); font-size:13.5px; margin-top:3px}
+  .stem{width:2px; height:22px; background:var(--line)}
+  .branchlabel{font:600 12px/1 ui-monospace,monospace; letter-spacing:.06em; text-transform:uppercase;
+    color:var(--muted); background:var(--bg); padding:3px 8px; border:1px solid var(--line);
+    border-radius:999px; position:relative; top:0}
+  .cols{display:flex; gap:18px; width:100%; margin-top:4px; flex-wrap:wrap; justify-content:center}
+  .col{flex:1 1 210px; min-width:210px; background:var(--surface); border:1px solid var(--line);
+    border-radius:12px; box-shadow:var(--shadow); overflow:hidden}
+  .col > .head{padding:13px 16px; border-bottom:1px solid var(--line)}
+  .col > .head .w{font:600 11px/1 ui-monospace,monospace; letter-spacing:.1em; text-transform:uppercase;
+    color:var(--muted)}
+  .col > .head .q{font-weight:600; font-size:15px; margin-top:5px}
+  .leaf{display:flex; gap:11px; align-items:flex-start; padding:13px 16px; border-top:1px dashed var(--line)}
+  .leaf:first-of-type{border-top:none}
+  .tag{flex:none; margin-top:1px; font:600 11px/1.5 ui-monospace,monospace; padding:2px 8px; border-radius:6px; white-space:nowrap}
+  .leaf .t{font-size:14px}
+  .leaf .t b{font-weight:600}
+  .leaf .t span{color:var(--muted); display:block; font-size:12.5px; margin-top:1px}
+  .c-cpu{color:var(--cpu); background:var(--cpu-bg)} .c-noisy{color:var(--noisy); background:var(--noisy-bg)}
+  .c-net{color:var(--net); background:var(--net-bg)} .c-db{color:var(--db); background:var(--db-bg)}
+  .c-mem{color:var(--mem); background:var(--mem-bg)} .c-ok{color:var(--ok); background:var(--ok-bg)}
+  .normal{display:inline-flex; gap:9px; align-items:center; background:var(--ok-bg); color:var(--ok);
+    border-radius:999px; padding:6px 14px; font-weight:600; font-size:14px; margin-top:4px}
+  .key{margin-top:10px; border-left:3px solid var(--accent); padding:4px 0 4px 16px; color:var(--muted); font-size:15px}
+  .key b{color:var(--ink)}
+  .foot{margin-top:46px; padding-top:18px; border-top:1px solid var(--line); color:var(--muted); font-size:13.5px}
+  code{font-family:ui-monospace,Menlo,monospace; font-size:.9em; background:var(--accent-soft); color:var(--accent);
+    padding:1px 6px; border-radius:5px}
+  /* results tables */
+  .cap{font:600 12px/1 ui-monospace,monospace; letter-spacing:.1em; text-transform:uppercase;
+    color:var(--muted); margin:26px 0 10px}
+  .tbl{width:100%; border-collapse:collapse; font-size:14.5px; background:var(--surface);
+    border:1px solid var(--line); border-radius:12px; overflow:hidden; box-shadow:var(--shadow)}
+  .tbl th,.tbl td{padding:11px 14px; text-align:left; border-top:1px solid var(--line)}
+  .tbl thead th{border-top:none; font:600 11px/1 ui-monospace,monospace; letter-spacing:.08em;
+    text-transform:uppercase; color:var(--muted); background:var(--bg)}
+  .tbl td.n{text-align:right; font-variant-numeric:tabular-nums; font-weight:600; white-space:nowrap}
+  .tbl td .s{color:var(--muted); font-weight:400}
+  .tbl tr td:first-child{display:flex; align-items:center; gap:9px}
+  .dot{flex:none; width:9px; height:9px; border-radius:50%}
+  .d-cpu{background:var(--cpu)} .d-noisy{background:var(--noisy)} .d-net{background:var(--net)}
+  .d-db{background:var(--db)} .d-mem{background:var(--mem)}
+  .tbl tfoot td{border-top:2px solid var(--line); font-weight:600; background:var(--bg)}
+  .subcap{font-size:14px; font-weight:600; margin:18px 0 8px; display:flex; align-items:center; gap:8px}
+  .subcap .num{font:600 12px/1 ui-monospace,monospace; color:var(--accent)}
+  /* "stayed quiet" group — tinted so these cases stand out */
+  .tbl.quiet{background:var(--accent-soft); border-color:var(--accent)}
+  .tbl.quiet thead th{background:transparent}
+  .tbl.quiet th,.tbl.quiet td{border-top-color:color-mix(in srgb,var(--accent) 22%,transparent)}
+  .tbl.quiet tfoot td{background:transparent; border-top-color:var(--accent)}
+  .tbl.quiet td.n{color:var(--ok)}
+  .chk{color:var(--ok); font-weight:700}
+  .d-plain{background:var(--muted)}
+  .note{color:var(--muted); font-size:13.5px; margin:12px 0 0}
+  @media (max-width:560px){ .cols{flex-direction:column} }
+</style>
+
+<div class="wrap">
+  <p class="eyebrow">RCA Agent &middot; how it decides</p>
+  <h1>Blueprints results and how to pick right blueprint</h1>
+  <h2>The one idea</h2>
+  <p class="sub">When one service breaks, everything that calls it slows down too — so the whole system
+  looks sick at once. Most of those services are just <b>stuck in line</b> behind one. The agent follows
+  the line back to the <b>one root</b> that is truly stuck, then reads what it is waiting for. That single
+  answer picks the blueprint.</p>
+
+  <h2>How each fault was staged</h2>
+  <table class="tbl">
+    <thead><tr><th>Fault</th><th>How we create it</th><th style="text-align:right">Dial (mild&rarr;hard)</th></tr></thead>
+    <tbody>
+      <tr><td><span class="dot d-cpu"></span>CPU cap</td>
+        <td>Tighten the container's own CPU quota <span class="s">(cgroup, via <code>docker update --cpus</code>)</span></td>
+        <td class="n">0.5 &rarr; 0.2 <span class="s">cores</span></td></tr>
+      <tr><td><span class="dot d-noisy"></span>Noisy neighbor</td>
+        <td>Start a CPU-hungry container beside the services to steal CPU <span class="s">(<code>stress-ng</code>)</span></td>
+        <td class="n">1 &rarr; 2 <span class="s">cores</span></td></tr>
+      <tr><td><span class="dot d-db"></span>Slow database</td>
+        <td>Add delay in the proxy that sits in front of the DB <span class="s">(Toxiproxy latency toxic)</span></td>
+        <td class="n">60 &rarr; 500 <span class="s">ms</span></td></tr>
+      <tr><td><span class="dot d-net"></span>Network path</td>
+        <td>Delay &amp; drop packets on that one container's network interface <span class="s">(<code>tc netem</code> in its netns)</span></td>
+        <td class="n">40ms/0.5% &rarr; 150ms/4%</td></tr>
+      <tr><td><span class="dot d-mem"></span>Memory cap</td>
+        <td>Tighten the container's memory limit, no swap <span class="s">(cgroup, via <code>docker update -m</code>)</span></td>
+        <td class="n">300 &rarr; 160 <span class="s">MB</span></td></tr>
+    </tbody>
+  </table>
+
+  <h2>What each blueprint reads from the trace</h2>
+  <p class="sub">The kernel recording logs every scheduling switch, every packet, every system call.
+  Each blueprint watches just the one kind of event that carries its fault's signature.</p>
+  <table class="tbl">
+    <thead><tr><th>blueprint</th><th>Kernel events it reads</th><th>The tell it's after</th></tr></thead>
+    <tbody>
+      <tr><td><span class="dot d-cpu"></span>CPU cap</td>
+        <td><code>sched_switch</code></td>
+        <td>victim is <b>ready but kept off the CPU</b>, while CPUs sit idle</td></tr>
+      <tr><td><span class="dot d-noisy"></span>Noisy neighbor</td>
+        <td><code>sched_switch</code></td>
+        <td><b>who holds the CPU</b> while the victim waits — a new hog</td></tr>
+      <tr><td><span class="dot d-db"></span>Slow database</td>
+        <td>socket <code>read</code> / <code>write</code> syscalls</td>
+        <td>the <b>gap from request to answer</b> stretches on one connection</td></tr>
+      <tr><td><span class="dot d-net"></span>Network path</td>
+        <td><code>net_dev_queue</code> <span class="s">(TCP seq #)</span></td>
+        <td>the <b>same packet sent twice</b> = a retransmission = loss</td></tr>
+      <tr><td><span class="dot d-mem"></span>Memory cap</td>
+        <td><code>mm_vmscan_*</code> reclaim, <code>oom</code> kill</td>
+        <td>the kernel <b>reclaiming memory over and over</b>, or killing the process</td></tr>
+    </tbody>
+  </table>
+  <p class="note">This is why the decision tree works: each branch is really a different <em>event stream</em>
+  in the same recording — "waiting for CPU" is <code>sched_switch</code>, "waiting for an answer" is socket
+  syscalls, "losing packets" is duplicate TCP sequence numbers, "short of memory" is reclaim. One recording,
+  five different signatures.</p>
+
+  <h2>Results</h2>
+  <p class="sub">The numbers below assume the <b>right blueprint was already picked</b> (we hand it over,
+  so we can measure the blueprint itself).
+
+  <p class="cap">Agentic runs &middot; given the correct blueprint</p>
+
+  <p class="subcap"><span class="num">1</span> Faults that actually bit — the agent should catch them</p>
+  <table class="tbl">
+    <thead><tr><th>Fault</th><th style="text-align:right">Caught</th></tr></thead>
+    <tbody>
+      <tr><td><span class="dot d-cpu"></span>CPU cap <span class="s">&mdash; 0.25 core (tightest)</span></td><td class="n">8 / 10</td></tr>
+      <tr><td><span class="dot d-cpu"></span>CPU cap <span class="s">&mdash; 0.5 core</span></td><td class="n">6 / 10</td></tr>
+      <tr><td><span class="dot d-mem"></span>Memory cap <span class="s">&mdash; that fired</span></td><td class="n">25 / 25</td></tr>
+    </tbody>
+    <tfoot><tr><td>Faults Caught</td><td class="n">39 / 45 &nbsp;(87%)</td></tr></tfoot>
+  </table>
+
+  <p class="subcap"><span class="num">2</span> No real slowdown — the agent should stay quiet</p>
+  <table class="tbl quiet">
+    <thead><tr><th>Situation</th><th style="text-align:right">Wrongly flagged</th></tr></thead>
+    <tbody>
+      <tr><td><span class="dot d-cpu"></span>CPU cap, 1.0 core <span class="s">&mdash; too loose to bite</span></td><td class="n">0 / 11 <span class="chk">&check;</span></td></tr>
+      <tr><td><span class="dot d-plain"></span>Uncapped <span class="s">&mdash; true control, nothing injected</span></td><td class="n">0 / 11 <span class="chk">&check;</span></td></tr>
+      <tr><td><span class="dot d-mem"></span>Memory cap <span class="s">&mdash; limit set above what the task used</span></td><td class="n">0 / 19 <span class="chk">&check;</span></td></tr>
+    </tbody>
+    <tfoot><tr><td>No real fault present</td><td class="n">0 / 41 &nbsp;false alarms</td></tr></tfoot>
+  </table>
+
+  <p class="cap">Sock Shop microservice &middot; given the correct blueprint</p>
+  <table class="tbl">
+    <thead><tr><th>blueprint</th><th style="text-align:right">Found &amp; located the fault</th></tr></thead>
+    <tbody>
+      <tr><td><span class="dot d-cpu"></span>CPU cap</td><td class="n">7 / 8</td></tr>
+      <tr><td><span class="dot d-noisy"></span>Noisy neighbor</td><td class="n">7 / 7</td></tr>
+      <tr><td><span class="dot d-db"></span>Slow database</td><td class="n">9 / 11</td></tr>
+      <tr><td><span class="dot d-net"></span>Network path</td><td class="n">4 / 5</td></tr>
+      <tr><td><span class="dot d-mem"></span>Memory cap</td><td class="n"><span class="s">not in these traces</span></td></tr>
+    </tbody>
+    <tfoot><tr><td>Across the four testable blueprints</td><td class="n">27 / 31 &nbsp;(87%)</td></tr></tfoot>
+  </table>
+
+  <p class="subcap"><span class="num">2</span> No real slowdown — the agent should stay quiet</p>
+  <table class="tbl quiet">
+    <thead><tr><th>Situation</th><th style="text-align:right">Wrongly flagged</th></tr></thead>
+    <tbody>
+      <tr><td><span class="dot d-cpu"></span>Normal Runs with no fault <span class="s"></span></td><td class="n">0 / 10 <span class="chk">&check;</span></td></tr>
+    </tbody>
+    <tfoot><tr><td>No real fault present</td><td class="n">0 / 10 &nbsp;false alarms</td></tr></tfoot>
+  </table>
+
+
+  <h2>The decision</h2>
+  <p class="sub">Top to bottom. Each box is a question the agent answers straight from the kernel recording</p>
+
+  <div class="tree">
+    <div class="node">
+      <div class="q">Did the system actually slow down?</div>
+      <div class="hint">A real, sustained dip in activity</div>
+    </div>
+    <div class="stem"></div>
+    <span class="branchlabel">no &rarr; <span style="color:var(--ok)">all normal</span>&nbsp;&nbsp;·&nbsp;&nbsp;yes &darr;</span>
+    <div class="stem"></div>
+    <div class="node">
+      <div class="q">Find the one <em>root</em> service</div>
+      <div class="hint">The one others are waiting on — not the crowd waiting behind it.</div>
+    </div>
+    <div class="stem"></div>
+    <div class="node" style="border-color:var(--accent); background:var(--accent-soft)">
+      <div class="q">What is the root waiting for?</div>
+    </div>
+    <div class="stem"></div>
+
+    <div class="cols">
+      <div class="col">
+        <div class="head"><div class="w">waiting for &rarr;</div><div class="q">CPU time it isn't being given</div></div>
+        <div class="leaf"><span class="tag c-cpu">CPU&nbsp;CAP</span>
+          <div class="t"><b>The CPUs sit idle.</b><span>It's allowed to run, but a limit holds it back.</span></div></div>
+        <div class="leaf"><span class="tag c-noisy">NOISY&nbsp;NBR</span>
+          <div class="t"><b>The CPUs are busy.</b><span>Someone else is eating the CPU it needs.</span></div></div>
+      </div>
+
+      <div class="col">
+        <div class="head"><div class="w">waiting for &rarr;</div><div class="q">An answer over the network</div></div>
+        <div class="leaf"><span class="tag c-net">NETWORK</span>
+          <div class="t"><b>Packets are being lost &amp; resent.</b><span>The network path itself is broken.</span></div></div>
+        <div class="leaf"><span class="tag c-db">SLOW&nbsp;DB</span>
+          <div class="t"><b>No losses, replies just come late.</b><span>A dependency (e.g. the database) is slow.</span></div></div>
+      </div>
+
+      <div class="col">
+        <div class="head"><div class="w">waiting for &rarr;</div><div class="q">Room in memory</div></div>
+        <div class="leaf"><span class="tag c-mem">MEM&nbsp;CAP</span>
+          <div class="t"><b>It keeps reclaiming &amp; re-reading.</b><span>A memory limit is squeezing it.</span></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="key">The trick is the <b>split into "starved" vs "just waiting."</b> The one service that is
+  <b>starved</b> — denied CPU, losing packets, or short of memory — is the cause. Every service that is
+  <b>merely sleeping</b>, waiting for a reply, is a symptom. Blame the starved one; follow the sleepers to it.</div>
+
+</div>

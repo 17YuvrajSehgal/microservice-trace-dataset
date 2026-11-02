@@ -84,3 +84,14 @@ demo/data/live.json
 Blueprint/eval/index-agentic/
 # keep the small result.json scoreboards in git; ignore only the large transcripts
 Blueprint/eval/results/**/transcript.json
+
+# NDA-derived Ciena results — never commit (verdicts derived from confidential traces)
+Blueprint/ciena_out/
+Blueprint/ciena_out_broken*/
+Blueprint/ciena_out*.zip
+# env backups (keep .env.example; ignore real .env backups)
+.env.*.bak
+# eval scratch / per-run work dirs (regenerable)
+Blueprint/eval/bp_work/
+# tectonic / build logs
+nier-2027/tectonic_log.txt
