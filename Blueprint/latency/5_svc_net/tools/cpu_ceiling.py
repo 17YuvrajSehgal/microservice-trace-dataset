@@ -34,13 +34,22 @@ import re
 import sys
 
 if len(sys.argv) < 3:
-    print("usage: cpu_ceiling.py <slice.txt> <victim_pid> [period_ms] [baseline_slice.txt]",
-          file=sys.stderr)
+    print("usage: cpu_ceiling.py <slice.txt> <victim_pid_or_procname> [period_ms] "
+          "[baseline_slice.txt]", file=sys.stderr)
     sys.exit(1)
 path, victim = sys.argv[1], sys.argv[2]
 period_ms = float(sys.argv[3]) if len(sys.argv) > 3 else 100.0
 baseline_path = sys.argv[4] if len(sys.argv) > 4 else None
 P = period_ms * 1e6                 # period in ns
+
+# The victim may be a PID or a PROCESS NAME (e.g. "java" - all its threads are credited
+# together, which is what a cgroup quota bounds anyway). A pid-namespace id (4026xxxxxx) is
+# NOT a pid - catch that mistake loudly instead of silently finding nothing.
+if victim.isdigit() and int(victim) >= 4026000000:
+    print(f"'{victim}' looks like a pid NAMESPACE id, not a pid. Pass the victim's PID "
+          f"(from sched_budget.py's pid column) or its process NAME (e.g. 'java').")
+    sys.exit(0)
+victim_is_name = not victim.isdigit()
 
 re_time = re.compile(r'^\[(\d+):(\d+):(\d+)\.(\d+)\]')
 re_ctx = re.compile(r'pid = (\d+), tid = \d+, procname = "([^"]*)"')
@@ -86,7 +95,9 @@ def busy_periods(path, victim):
                 continue
             prev_tid, next_tid = sw.groups()
             if prev_tid in on:
-                if c.group(1) == victim:
+                hit = (c.group(2).startswith(victim) if victim_is_name
+                       else c.group(1) == victim)
+                if hit:
                     credit(on[prev_tid], t)
                     name = c.group(2)
                 del on[prev_tid]
