@@ -283,6 +283,8 @@ pre{background:var(--surface-2);border:1px solid var(--rule);padding:13px 15px;o
     <span class="runid" id="runid">loading…</span>
     <span class="hint" id="loadstat"></span>
     <span class="spacer"></span>
+    <button id="llmpill" class="pill" title="Click to test the model connection"
+            style="cursor:pointer;border:none">LLM…</button>
     <button class="iconbtn" id="themebtn" title="Toggle light / dark" aria-label="Toggle theme">◐</button>
   </div>
   <p class="sub">Autonomous root-cause analysis for Linux kernel traces — investigate an
@@ -437,6 +439,34 @@ pre{background:var(--surface-2);border:1px solid var(--rule);padding:13px 15px;o
 <script>
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const api=p=>fetch(p).then(r=>r.json());
+
+/* LLM status pill — which model the agent will use, and whether it is answering.
+   Click to run a 1-token test (surfaces a dead endpoint or a credits-out cloud key). */
+function renderLlm(d, testing){
+  const pill=document.getElementById('llmpill'); if(!pill) return;
+  if(testing){ pill.innerHTML='<span class="spin"></span>testing…'; return; }
+  const host=(d.base_url||'').replace(/^https?:\/\//,'').replace(/\/v1.*$/,'');
+  const where=d.is_local?('local · '+host):(d.provider+' · '+host);
+  if(d.active===true)
+    pill.innerHTML='<span style="color:var(--good)">●</span> '+esc(d.model)+' <span class="hint">('+esc(where)+')</span>';
+  else if(d.active===false)
+    pill.innerHTML='<span style="color:var(--warn)">✕</span> '+esc(d.model)+' <span class="hint">not answering</span>';
+  else
+    pill.innerHTML=esc(d.model||'LLM')+' <span class="hint">('+esc(where)+')</span>';
+  pill.title=(d.active===false&&d.detail)?('Not answering — '+d.detail)
+            :('Model: '+d.model+'\nEndpoint: '+(d.base_url||'')
+              +'\nlocal-compat: '+(d.local_compat?'on':'off')+'\nClick to test');
+}
+async function checkLlm(deep){
+  renderLlm(null,true);
+  try{ renderLlm(await api('/api/llm'+(deep?'?deep=1':''))); }
+  catch(e){ const p=document.getElementById('llmpill'); if(p) p.textContent='LLM: unreachable'; }
+}
+document.addEventListener('DOMContentLoaded',()=>{
+  const p=document.getElementById('llmpill');
+  if(p) p.onclick=()=>checkLlm(true);
+  checkLlm(false);
+});
 
 /* theme toggle — remembers the choice; otherwise follows the OS */
 (function(){

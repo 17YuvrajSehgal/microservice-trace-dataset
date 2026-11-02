@@ -24,16 +24,24 @@ import argparse, glob, gzip, json, os, re, subprocess, sys, threading, time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse, parse_qs
 
-# Demo runs favour a bounded token cost over maximum depth; research runs use the agent's own
-# generous defaults. These are read by Blueprint/agent at import time. setdefault, so an explicit
-# environment override still wins. (Last full run cost 1.45M input tokens at 18 steps / 150k
-# budget, almost all in one worker re-sending its thread; 12 / 90k roughly halves that.)
-os.environ.setdefault("ABL_WORKER_STEPS", "12")
-os.environ.setdefault("ABL_THREAD_BUDGET", "90000")
-
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 DATA = os.path.join(HERE, "data")
+
+# Load .env FIRST so its settings (provider, model, and the ABL caps below) win. python-dotenv
+# does not override already-set env vars, so loading before the setdefault lets .env choose the
+# caps - a local 7B needs much tighter limits than the cloud default.
+try:
+    from dotenv import load_dotenv as _ld
+    _ld(os.path.join(ROOT, ".env"))
+except ImportError:
+    pass
+
+# Demo runs favour a bounded token cost over maximum depth; research runs use the agent's own
+# generous defaults. These are read by Blueprint/agent at import time. setdefault, so an explicit
+# environment override (or .env above) still wins.
+os.environ.setdefault("ABL_WORKER_STEPS", "12")
+os.environ.setdefault("ABL_THREAD_BUDGET", "90000")
 # The run catalog. A run appears in the app only once its index (<run_id>.tsv.gz) is present
 # in demo/data/ - see available_runs(). The app starts and serves an empty state with none,
 # so it never depends on data files existing. Add a run by building its index and adding an
@@ -1027,6 +1035,39 @@ def code_connect(path):
     return {"connected": sess["code_root"], "entries_seen": n}
 
 
+def llm_status(deep=False):
+    """Which LLM the demo will use, and whether it is actually answering. deep=True does a
+    1-token completion (reveals a dead/credits-out cloud key or an unloaded local model);
+    otherwise a fast reachability check. Nothing about a run; just the model connection."""
+    prov = (os.environ.get("RCA_PROVIDER") or "claude").lower()
+    model = os.environ.get("RCA_MODEL") or "(provider default)"
+    base = (os.environ.get("OPENAI_BASE_URL") or os.environ.get("OPEN_ROUTER_ENDPOINT")
+            or os.environ.get("AZURE_OPENAI_ENDPOINT") or
+            ("https://api.anthropic.com" if prov == "claude" else "(sdk default)"))
+    out = {"provider": prov, "model": model, "base_url": base,
+           "local_compat": os.environ.get("RCA_LOCAL_COMPAT") == "1",
+           "is_local": "localhost" in str(base) or "127.0.0.1" in str(base)}
+    try:
+        agent_v2 = import_agent()
+        import config
+        out["model"] = config.model_id()
+        client = config.make_client()
+        if config.sdk_kind() == "anthropic":
+            client.messages.create(model=config.model_id(), max_tokens=1,
+                                    messages=[{"role": "user", "content": "ping"}])
+        else:
+            kw = dict(config.openai_create_kwargs())
+            kw.pop("max_completion_tokens", None); kw.pop("max_tokens", None)
+            client.with_options(timeout=20).chat.completions.create(
+                model=config.model_id(), max_tokens=1,
+                messages=[{"role": "user", "content": "ping"}], **kw)
+        out["active"] = True
+    except Exception as e:                                              # noqa: BLE001
+        out["active"] = False
+        out["detail"] = ("%s: %s" % (type(e).__name__, e))[:220]
+    return out
+
+
 def sessions_list():
     out = []
     for f in sorted(glob.glob(os.path.join(SESS_DIR, "*.json")), reverse=True):
@@ -1281,6 +1322,8 @@ class H(BaseHTTPRequestHandler):
                 return self._json(live_start(bp[0] if bp is not None else None))
             if p == "/api/live/stop":
                 return self._json(live_stop())
+            if p == "/api/llm":
+                return self._json(llm_status(deep=(q.get("deep") or [""])[0] == "1"))
             if p == "/api/sessions":
                 return self._json(sessions_list())
             if p == "/api/code/browse":

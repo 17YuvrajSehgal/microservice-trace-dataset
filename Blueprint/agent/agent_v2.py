@@ -29,7 +29,7 @@ The agent needs only a RUN DIRECTORY (the folder that holds the kernel trace); t
 data-layer dependency. diagnose(run_dir) / Chat(run_dir) take the path directly.
 """
 from __future__ import annotations
-import json, operator, os, sys, threading, time
+import json, operator, os, re, sys, threading, time
 from types import SimpleNamespace
 from typing import Annotated, Any, TypedDict
 
@@ -443,6 +443,48 @@ def _anthropic_call(client, messages, tools, force):
         system=system, messages=amsgs, **kw))
 
 
+# Local-model compatibility, OFF by default (RCA_LOCAL_COMPAT=1 to enable). A small local
+# backend (e.g. Qwen on LM Studio) may not emit OpenAI structured tool_calls - it writes the
+# call as text - and may reject the forced-object tool_choice. When this is on, _call uses
+# tool_choice="required" instead of the object form and parses a tool call out of the text when
+# the SDK gives back no tool_calls. When off, the cloud path is byte-for-byte unchanged.
+LOCAL_COMPAT = os.environ.get("RCA_LOCAL_COMPAT", "0") == "1"
+
+
+def _coerce_tool_calls(m):
+    """When a backend returns tool calls as text, build the tool_calls the agent expects.
+
+    Recognises ```json {...}``` fences, <tool_call>...</tool_call> wrappers, and a bare JSON
+    object, each shaped {"name": ..., "arguments": {...}}. Returns the message unchanged when it
+    already has tool_calls or nothing parseable is found."""
+    if getattr(m, "tool_calls", None):
+        return m
+    content = m.content or ""
+    blobs = re.findall(r"```(?:json)?\s*(\{.*?\})\s*```", content, re.S)
+    blobs += re.findall(r"<tool_call>\s*(\{.*?\})\s*</tool_call>", content, re.S)
+    if not blobs:
+        s = content.strip()
+        if s.startswith("{") and '"name"' in s:
+            blobs = [s]
+    calls = []
+    for i, b in enumerate(blobs):
+        try:
+            o = json.loads(b)
+        except ValueError:
+            continue
+        name = o.get("name") or o.get("tool") or o.get("function")
+        if not name:
+            continue
+        args = o.get("arguments", o.get("args", {}))
+        args = args if isinstance(args, str) else json.dumps(args)
+        calls.append(SimpleNamespace(id="call_%d" % i, type="function",
+                                     function=SimpleNamespace(name=name, arguments=args)))
+    if not calls:
+        return m
+    return SimpleNamespace(content=content, tool_calls=calls,
+                           role=getattr(m, "role", "assistant"))
+
+
 def _call(messages, tools, node, step, force=None):
     """One model call. Recorded in the transcript exactly as v1 records it."""
     if CANCEL.is_set():
@@ -457,7 +499,10 @@ def _call(messages, tools, node, step, force=None):
         if schema:
             kw["tools"] = schema          # tools=[] is rejected by some providers; omit instead
         if force:
-            kw["tool_choice"] = {"type": "function", "function": {"name": force}}
+            # Cloud: force exactly this function. Local backends reject the object form and only
+            # accept none/auto/required - with a single-tool schema, "required" forces it too.
+            kw["tool_choice"] = "required" if LOCAL_COMPAT else \
+                {"type": "function", "function": {"name": force}}
         call = lambda: checked(client.chat.completions.create(
             model=config.model_id(), messages=messages, **kw))
     # checked() raises when the provider returns 200 with an error body - OpenRouter does that
@@ -467,7 +512,8 @@ def _call(messages, tools, node, step, force=None):
     CTX.event("api_response", node=node, step=step,
               latency_ms=int((time.time() - t0) * 1000), response=T.to_jsonable(r))
     CTX.add_tokens(r)
-    return r.choices[0].message
+    m = r.choices[0].message
+    return _coerce_tool_calls(m) if LOCAL_COMPAT else m
 
 
 def _exec_tool(name, args, node, step):
@@ -557,8 +603,8 @@ THREAD_BUDGET = int(os.environ.get("ABL_THREAD_BUDGET", "150000"))
 # half of what the workers produced - 57,852 chars in one run. Both are now set so that a real
 # run carries everything. Uncapped the synthesiser prompt reaches about 22k tokens, which is
 # 5.5% of the window; these are a backstop against a pathological run, not a routine trim.
-COMPUTED_OUT_CAP = 12000     # matches the largest run_python result measured
-COMPUTED_TOTAL_CAP = 240000  # about 60k tokens; observed worst case was 58k chars
+COMPUTED_OUT_CAP = int(os.environ.get("ABL_COMPUTED_OUT_CAP", "12000"))   # env-tunable for small local contexts
+COMPUTED_TOTAL_CAP = int(os.environ.get("ABL_COMPUTED_TOTAL_CAP", "240000"))  # ~60k tokens; shrink for local
 
 
 def _trim_thread(msgs, node=None, step=None):
