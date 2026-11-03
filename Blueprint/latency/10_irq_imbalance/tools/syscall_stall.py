@@ -26,7 +26,8 @@ What counts as a stall:
 
 Output:
     1. per-syscall table: class, count, p50 / p99 / max wall ms, sleep% (WORK rows), unmatched
-    2. the stalls, ranked by stall time = on-CPU + D inside the call (or by the longest
+    2. the stalls, ranked first by the longest D-state block they froze another thread in
+       (froze_ms), then by stall time = on-CPU + D inside the call (and never the longest
        D-state thread the call froze): wall, on-CPU, D, sleep%, who it froze, thread, args
        (clone_flags decoded)
     3. how often the top staller repeats

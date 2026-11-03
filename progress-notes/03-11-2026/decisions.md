@@ -78,6 +78,54 @@ kernel-visible cause - `packet_drop` correctly stays "normal" on them.
   is not a cgroup; the scheduling family is the usual suspect). Multi-namespace hosts get nothing.
 - `datasets.py` / `score.py` / `eval_one.py` know the four new families.
 
+## 6. Validation of the tools on the five partner traces (tool-only, no LLM; `sched_validate/`)
+Three rounds; each round's false positives became a rule (section 4). Final round:
+| trace | runq_wait | syscall_stall | irq_balance | futex_wait |
+|---|---|---|---|---|
+| case 1, card A | STARVED BY CROWD (66 same-prio threads, 93%, other cores idle 63%) | 24 ms D-state `write`, no freeze (minor) | SPREAD EVENLY | NO LOCK PROBLEM (event wait) |
+| case 1, card B | STARVED BY CROWD (84 threads, 92%; its core 86% busy, others 31-47%) | 364 ms D-state `write` x6 freezing systemd-journal (real, unrelated) | SPREAD EVENLY | NO LOCK PROBLEM |
+| case 2, card C | NOT STARVED (prio already 100; max 5.6 ms) | STALL: clone 0x100011 57-70 ms, 2x, 47 ms on-CPU, froze 3+ threads in D up to 49 ms | SPREAD EVENLY | NO LOCK PROBLEM |
+| case 3, no load | VICTIM NOT SEEN (name not in trace) | NO WORK-CLASS SYSCALL | SPREAD EVENLY | NO LOCK PROBLEM |
+| case 3, with load | VICTIM NOT SEEN | 31 ms execve by pgrep (minor) | RX CONCENTRATED ON CPU 0, 100% of NET_RX, ksoftirqd/0 42% | NO LOCK PROBLEM |
+So: 3 of 3 faults reproduced with the engineers' own numbers (crowd on the comms thread's core;
+the 53 ms clone; ksoftirqd/0 43%), 1 healthy control clean, 1 negative control correct. The
+leftovers are true-but-minor findings; the triage blueprint ranks them below the fault
+signatures ("who is affected decides between two hits"). The agent itself has not run on these
+yet - that needs the LLM re-hosted (`Blueprint/latency/CLUSTER-RUN.md`).
+
+## 7. The triage blueprint (autonomy for bare-metal hosts)
+`0_host_triage`: one slice over the whole capture, `thread_top` to name candidates, the four
+screens, a fixed decision table (Appendix A) and `culprit_thread` / `victim_thread` in the
+verdict. It is a blueprint like any other (`run_trace.sh "<trace>" Blueprint/latency/0_host_triage`),
+so the matrix scripts on Trillium list it first.
+
+## 8. Blueprint 11 on our own labelled runs (`futex_wait.py`, five rule rounds)
+What the real data forced into the rules, in order: timed-out waits are sleeps (ret -110);
+back-to-back short timed waits by one thread are ONE logical wait (a Python GIL loop does 5 ms
+pieces; the cap is 50 ms per piece so 1 s heartbeats stay sleeps); a single idle worker on one
+futex is not contention (>= 2 waiters); a releaser that slept the whole wait is an event
+signaller, unless it is itself a waiter on that futex (a HAND-OFF = a real lock, even when the
+holder sleeps while holding); a critical section has a bounded tail (p99/p50 <= 50; runtime
+parking futexes are 150+); tracer threads are left out; an inversion needs a wait >= 20 ms.
+Final readings:
+- lock_contention run: "LOCK CONTENTION on futex 0x59951ebb5c40: 202064 held lock waits by 16
+  threads, p50 4.20 ms, p99 7.1 ms, max 15.7 ms; top waiter 92% of its time; holders sleep while
+  holding" - the injected lock, with its mechanism (the recipe sleeps under the lock). The
+  Go-runtime parking futex and a Node.js idle worker in the same slice are correctly left out.
+- priority_inversion run: "PRIORITY INVERSION: the nice -5 waiter waited 34.3 ms (a run of 7
+  timed waits) on the interpreter lock; the releaser (a nice-0 middle thread) was
+  runnable-but-not-running 36% of it (908 such waits)". The application lock shows too: the
+  nice -5 thread waiting 445-730 ms on the nice-19 holder, which slept 97% of it while holding.
+  `runq_wait` on the holder: STARVED BY HIGHER PRIORITY by the six middle threads (2.1 s of 60 s
+  runnable-but-not-running). Honest reading: the kernel shows the inversion on the interpreter
+  lock and the long app-lock waits on a sleeping holder, not the textbook "holder preempted while
+  holding the app lock" - the recipe's holder sleeps while holding.
+- the five partner traces: three NO LOCK PROBLEM lines (10 ms inversion-class waits between
+  background threads on two healthy cards, below the bar; a 78 ms wait released by an
+  equal-priority preempted thread; a 306 ms held lock under the 5% bar) and NO LONG FUTEX WAITS -
+  true negatives.
+
 ## Open
 - Agent runs on the partner traces need the vLLM re-hosted on Trillium (no job running now).
-- A host-level triage blueprint / selector for embedded hosts is the autonomy step (not built yet).
+- The agent itself has not yet been scored with the new blueprints; the tool verdicts above are
+  the ceiling it should reach.
