@@ -229,7 +229,7 @@ sibling starvation above on 8). No cell contradicts its own tool output any more
 Card A / 8 once more with the required fields (17:27): `cpu_starvation` 0.9,
 `victim_thread` = the comms thread alone, `culprit_thread` = the crowd with its top four
 holders and their ms. That is the engineers' verdict, in their numbers, in the structured
-fields. `ciena_out_v3` (every pass, 44 verdicts) is mirrored to `Blueprint/ciena_out/v3/`.
+fields. `ciena_out_v3` (every pass, 43 verdicts) is mirrored to `Blueprint/ciena_out/v3/`.
 
 ## Open
 - Show the engineers the two secondary findings (card C / 8, card B / 9).
