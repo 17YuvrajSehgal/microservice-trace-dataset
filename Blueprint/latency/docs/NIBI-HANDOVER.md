@@ -3,6 +3,16 @@
 Written 2026-11-03. Counterpart of `LLM-HANDOVER.md` (Trillium). Owner: yuvraj17.
 Why Nibi: Trillium's GPU queue was too busy; Nibi has 348 nodes of 8x H100 80 GB.
 
+## Live on 2026-11-03 (afternoon)
+
+| | |
+|---|---|
+| Server | Qwen3.8-27B, served name `qwen3.8-27b`, `http://g1.nibi.sharcnet:8000/v1`, max-model-len 131072, prefix caching on, native tool calling verified |
+| Job | SLURM 26073466, interactive partition (`srun`, QoS `interac`), 1x H100 on **g1**, started 14:15 ET, ends ~22:15 ET; the server step was restarted inside the same allocation at 14:49 after the kernel-wheel race |
+| Reaching it | from the Nibi login node directly; from Trillium via the laptop bridge (`bridge.sh start`, Trillium then sees `http://localhost:8000/v1`); from the laptop `tunnel.sh` or the same forward on `localhost:8000` |
+| Queued servers | none - the 12 h batch Qwen job and both GLM jobs were cancelled on the user's say-so; `submit-qwen.sh` / `submit-glm.sh nvfp4\|fp8` re-queue them |
+| Staged models | `models/Qwen3.8-27B` (56 GB), `models/GLM-5.3-Flash-NVFP4` (169 GB), `models/GLM-5.3-Flash` (official FP8, 306 GB) |
+
 ## What Nibi has (checked 2026-11-03)
 
 | Resource | Detail |
