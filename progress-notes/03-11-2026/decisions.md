@@ -226,7 +226,11 @@ loaded card irq_imbalance on 0 and 10; card A cpu_starvation on 0 and 8; card B
 cpu_starvation on 0 and 8 (+ the stall above on 9); card C syscall_stall on 0 and 9 (+ the
 sibling starvation above on 8). No cell contradicts its own tool output any more.
 
+Card A / 8 once more with the required fields (17:27): `cpu_starvation` 0.9,
+`victim_thread` = the comms thread alone, `culprit_thread` = the crowd with its top four
+holders and their ms. That is the engineers' verdict, in their numbers, in the structured
+fields. `ciena_out_v3` (every pass, 44 verdicts) is mirrored to `Blueprint/ciena_out/v3/`.
+
 ## Open
-- Card A / 8 is running once more with the required thread fields (its 0.95 verdict above
-  still had them empty: that run started before the schema change landed).
-- Copy `ciena_out_v3` from Nibi to `Blueprint/ciena_out/v3/` (local, NDA) when it ends.
+- Show the engineers the two secondary findings (card C / 8, card B / 9).
+- The Nibi server (job 26073466) ends ~22:15 ET; nothing else is queued on either cluster.
