@@ -194,7 +194,8 @@ It prints three things:
 
 Read it:
 
-- **A candidate victim** is a `*` row with a **small `run`**, a `max_ms` of 10 ms or more, several `>=10ms` waits, and **one CPU** in `cpus`. A thread that waits a lot and runs a lot is a busy thread, not this fault.
+- **A candidate victim** is a row with a `max_ms` of 10 ms or more, several `>=10ms` waits, and **one CPU** in `cpus` — a `*` row, or one of the rows with the largest `>=10ms` count or the most `wakeups`. Do not require `wait > run`: measured on a line card, the comms thread ran more than it waited (run 3%, wait 2%) and still had the most waits of 10 ms or more of any thread (26). A thread that waits a lot and runs a lot is a busy thread, not this fault, only when its waits are short.
+- **Several candidates on one core are all victims.** A crowded core starves every latency-sensitive thread on it, and the trace cannot tell which one carries the business symptom (packet drops, late replies). Run `runq_wait.py` on each candidate on that core and name every one that comes back STARVED; the operator knows which one matters. Measured: the agent named the sibling with the larger wait share (26% of its time) and put the comms thread (9%, the one with the drops) in the crowd list - both were victims of the same crowd.
 - Go to that CPU's row in the per-CPU table. **The crowd** is the `=120` count (or the count in the victim's own priority class). Measured on the fault: 75–99 threads at `=120` on the victim's core, against 20–50 on the others.
 - Compare `busy%` across CPUs. The victim's core is usually the busiest; the others have room.
 - `kthr%` large on that core means interrupt work is part of the story: note it for `10_irq_imbalance`.
@@ -299,7 +300,7 @@ If a check does not fit, say which one in your report, and treat the starvation 
 
 Everything you need is already printed; collect it:
 
-- **The victim:** thread name (comm), tid, `prio` label, its core, from `runq_wait.py`'s identity line. With `pidmap.tsv`, its process (pid and process name): `grep -P "^$TID\t" $WORK/pidmap.tsv`.
+- **The victims:** every candidate on that core that `runq_wait.py` called STARVED — thread name (comm), tid, `prio` label, its core, wait share and longest wait, from each identity line. Put all of them in `victim_thread` (comma-separated), the one with the largest wait share first, and say in `what_is_wrong` that they share one crowd. With `pidmap.tsv`, their process (pid and process name): `grep -P "^$TID\t" $WORK/pidmap.tsv`.
 - **The crowd:** the top competitors from Step 4 (name, tid, prio, ms), the distinct count, and the per-CPU `=120` count from Step 3. Group them by process with the pid map; often most of the crowd are threads of the **same process** as the victim.
 - **The core:** `VCPU`, its `busy%` from Step 3 against the other cores, and `IDLE_ELSEWHERE`.
 

@@ -142,10 +142,10 @@ Read it:
 
 - **Header:** the `identity:` line, the snapshot note, the `trace holes:` line if any. Write them down.
 - **Per-CPU table** (`cpu busy% threads RT <120 =120 >120 kthr% top occupants`): write down each CPU's `busy%`, its `=120` count (the crowd at nice 0), and `kthr%`. A `kthr%` of tens of percent on one CPU means the interrupt screen will matter.
-- **Per-thread table:** rows marked `*` waited more than they ran and had waits of 10 ms or more. Those are the **candidate victims**. Write down up to three: `name tid prio cpu`. Also write down the three or four busiest application threads (large `run`); those go to `--watch` below.
+- **Per-thread table:** the **candidate victims** come from three columns, not one: (a) rows marked `*` (waited more than they ran, with waits of 10 ms or more); (b) the two or three rows with the **largest `>=10ms` count**; (c) the two rows with the **most `wakeups`** (a latency-sensitive thread wakes often and runs briefly). A thread that runs more than it waits can still be the starved one — measured on a line card: the comms thread had the most waits of 10 ms or more of any thread (26) and no `*`, and a screen that tested only `*` rows called the card normal. Write down up to four: `name tid prio cpu`. Also write down the three or four busiest application threads (large `run`); those go to `--watch` below.
 
 ```bash
-CANDIDATES="<tid or name> <tid or name> <tid or name>"   # up to three '*' rows
+CANDIDATES="<tid or name> <tid or name> <tid or name> <tid or name>"   # '*' rows + top >=10ms + top wakeups
 WATCH=<app threads, comma-separated>                      # the busiest application threads, or the ones the operator named
 ```
 

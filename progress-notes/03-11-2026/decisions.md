@@ -125,7 +125,20 @@ Final readings:
   equal-priority preempted thread; a 306 ms held lock under the 5% bar) and NO LONG FUTEX WAITS -
   true negatives.
 
+## 9. First agent runs with the new blueprints (Trillium, Qwen3.8-27B on trig0012, 65k ctx)
+Four cells, the right blueprint on the right trace, ~9 min and 0.8-1.6M input tokens each
+(`Blueprint/ciena_out/v3/`, local):
+| trace / blueprint | agent | vs engineers |
+|---|---|---|
+| loaded control card / 10 | `irq_imbalance`; culprit `ksoftirqd/0 tid 10`, victim an SDK thread; quotes "100% of NET_RX on cpu 0, ksoftirqd/0 42%"; conf 0.95 | exact |
+| card C / 9 | `syscall_stall`; culprit the status thread tid 7231, victim the comms thread; "clone 0x100011, 56.6 / 69.6 ms, froze siblings in D up to 49 ms" | exact |
+| card A / 8 | `cpu_starvation`; right core, right crowd (70 nice-0 threads, other cores idle 65%), right fix; victim named = a sibling on the same core with the larger wait share (26%), the comms thread listed among the crowd | mechanism right, victim pick ambiguous: the trace alone cannot say which starved thread carries the business symptom |
+| card B / 0_host_triage | `normal`; irq / stall / lock screens correctly negative; never ran `runq_wait` on the comms thread | miss: the candidate rule took only `*` rows (wait > run); the comms thread runs more than it waits yet has the most waits >= 10 ms (26) of any thread |
+From 0/4 (02-11) to 2 exact + 1 mechanism-right + 1 rule miss, with threads named in every
+verdict. Both misses are README rules, fixed the same day: candidates also come from the
+`>=10ms` and `wakeups` columns, and blueprint 8 names every thread on the crowded core with
+>= 3 waits of 10 ms as a victim (the operator knows which one carries the symptom).
+
 ## Open
-- Agent runs on the partner traces need the vLLM re-hosted on Trillium (no job running now).
-- The agent itself has not yet been scored with the new blueprints; the tool verdicts above are
-  the ceiling it should reach.
+- Nibi hosting in progress (`Blueprint/latency/docs/NIBI-HANDOVER.md`); the Trillium server is gone.
+- Re-run card B with 0_host_triage and card A with 8 after the rule fixes; then the full matrix.
