@@ -219,7 +219,7 @@ Read it:
 
 - **A STALL in `clone` with `0x100011`, from a thread of a big process, with `it froze K threads in D` and `siblings starved`:** this fault. The fix is in Step 7. Write down the staller, the call, the length, the period, the frozen threads.
 - **A STALL in `ioctl` / `write` / `mmap` with D-state time:** also a real stall, on that call. Report it. Read the `froze` clause to see who paid: it names who sat in D because of it. Measured on a second card: `STALL: a base thread spent 364.2 ms in write (0.1 ms on-CPU + 364.1 ms D; fd=36, count=4) - 6 times, every ~4.3 s; it froze 1 thread in D for up to 249.1 ms (systemd-journal)` — a 4-byte write to a device file blocking in D. That is a genuine finding to report, but a D-state stall whose frozen dependant is **not a latency-critical thread** does not by itself explain a comms-path symptom. Say what it froze, and keep looking for the symptom's cause if the frozen thread is not on that path.
-- **A STALL with `no sibling or freeze effect measured`:** a slow call that hurt only its own thread. Report it as a minor finding unless that thread is the one the operator complained about.
+- **A STALL with `no sibling or freeze effect measured`:** a slow call that hurt only its own thread. Report it as a minor finding unless that thread is the one the operator complained about. Measured: run stand-alone on a card whose only long call was a 24 ms D-state `write` with nobody frozen, the agent still answered `fault_type: syscall_stall` at confidence 0.55 - wrong. The rule for the verdict fields: no frozen dependant AND under 50 ms → `fault_type: normal`, the call described in `what_is_wrong` as a finding, `culprit_thread`/`victim_thread` empty.
 - **`NO WORK-CLASS SYSCALL >= 10 ms`:** not this fault. **Stop** and report what the longest call was. Say so plainly; do not write "no fault" — this blueprint looks for one cause only.
 - The `sleeping inside` line can be long (hundreds of `ioctl` sleeps). That is the box's normal life. Do not report those as stalls.
 
@@ -316,6 +316,8 @@ There is no container to name. Do not report a `pid_ns`. The number inside an en
 **Next:** Step 7.
 
 ### Step 7. Write the RCA statement
+
+**Before writing:** the verdict is `syscall_stall` only when Step 3 printed a `STALL:` line **with** an `it froze K threads in D` clause (or the frozen thread is the one the operator named). A long call that froze nobody and lasted under 50 ms is `fault_type: normal` with the call mentioned as a finding; do not promote it with a low confidence number.
 
 **Goal:** a short statement that another person can check.
 
