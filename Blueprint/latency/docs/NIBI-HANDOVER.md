@@ -13,6 +13,33 @@ Why Nibi: Trillium's GPU queue was too busy; Nibi has 348 nodes of 8x H100 80 GB
 | Queued servers | none - the 12 h batch Qwen job and both GLM jobs were cancelled on the user's say-so; `submit-qwen.sh` / `submit-glm.sh nvfp4\|fp8` re-queue them |
 | Staged models | `models/Qwen3.8-27B` (56 GB), `models/GLM-5.3-Flash-NVFP4` (169 GB), `models/GLM-5.3-Flash` (official FP8, 306 GB) |
 
+## The agent runs on Nibi too (since 2026-11-03, 17:00)
+
+The partner traces were copied Trillium -> Nibi on 03-11 (2.4 GB, 76 files, every one checked
+against Trillium's md5), so the agent no longer needs Trillium or the bridge. Same paths as
+Trillium, so every script runs unchanged:
+
+| path on Nibi | what |
+|---|---|
+| `/scratch/yuvraj17/Observability/` | the five line-card traces (NDA: never in git, never read by hand) |
+| `/scratch/yuvraj17/stratatrace/repo` | the git repo (`.env`: `OPENAI_BASE_URL=http://g1:8000/v1`, the local server) |
+| `stratatrace/run_trace.sh` | one trace x one blueprint -> `verdict.json` + `transcript.json` (ported from Trillium, unchanged) |
+| `stratatrace/rerun_cells.sh`, `run_new_bps.sh`, `run_all_parallel.sh`, `summarize.py` | the batch drivers and the tally |
+| `stratatrace/tools/bt21.sh` | wrapper -> `~/.local/bin/babeltrace2` (2.1.3) |
+| `stratatrace/agent_runs/_index` | the count index per trace, copied; run ids hash the CTF path, which is identical, so nothing is rebuilt |
+| `stratatrace/ciena_out_v3` | the matrix results (first pass from Trillium + the Nibi re-runs); mirrored to `Blueprint/ciena_out/v3/` locally |
+
+Not copied: Trillium's `stratatrace/sched_validate` (30 GB, the tool-only validation slices; the
+verdict lines it produced are in `03-11-2026/decisions.md` §6 and §8).
+
+How things got there, for the next time:
+- traces: inside one WSL shell, `ssh trillium 'tar c Observability ... | gzip -1' | ssh nibi 'tar xzf -'`.
+  Both hops ride the existing control sockets, so no MFA; ~15 min for 2.4 GB through the laptop.
+  Cluster-to-cluster `rsync` is faster but needs a Duo approval typed on Trillium.
+- repo updates (GitHub push is not authorised): `git bundle create x.bundle <nibi HEAD>..master`,
+  base64 over stdin, then on Nibi `git fetch ../x.bundle master && git merge --ff-only FETCH_HEAD`.
+- the agent runs on the login node (`~/agentv2venv`; load ~18 on 03-11, fine for five cells).
+
 ## What Nibi has (checked 2026-11-03)
 
 | Resource | Detail |
