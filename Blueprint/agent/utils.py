@@ -466,7 +466,7 @@ _SUBMIT_DEF = {
                                         "when one thread (comm + tid) is the cause."},
         # Thread naming. Measured on five switch/router traces: the culprit threads (the comms
         # thread, a status thread, ksoftirqd/0) were in the tool output every time and the verdict never
-        # carried them. Optional, so older transcripts and scorers stay valid.
+        # carried them. Required since 03-11 (see the required list below).
         "culprit_thread": {"type": "string", "description":
                            "the thread (or process) CAUSING it, as 'comm tid N (prio P)' exactly "
                            "as sched_switch names it; 'none' when the cause is host-wide or not a "
@@ -500,8 +500,12 @@ _SUBMIT_DEF = {
         "window_evidence": {"type": "string", "description":
                             "what made you choose that range: which event, which tool call, "
                             "what changed at the boundary"}},
+        # culprit_thread / victim_thread became required on 03-11: left optional, the model
+        # skipped them on a correct cpu_starvation verdict whose prose named every thread
+        # (card B, second pass). 'none' is always a valid value, so container runs lose nothing.
         "required": ["what_is_wrong", "root_cause_service", "culprit_kind", "fault_type",
-                     "evidence", "confidence", "incident_window", "window_evidence"]},
+                     "evidence", "confidence", "incident_window", "window_evidence",
+                     "culprit_thread", "victim_thread"]},
 }
 
 KERNEL_ONLY_TOOLS = ("ctf_timespan", "ctf_timeline", "query_ctf", "ctf_lines",
