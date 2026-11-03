@@ -268,6 +268,8 @@ TOP_COMPETITORS="<name tid prio> ; <name tid prio> ; <name tid prio>"
 
 ### Step 5. Rule out the lookalikes
 
+**This step is not optional.** Measured on the partner traces: run stand-alone, this blueprint called "starvation" on a thread whose long delays were really D-state freezes caused by a sibling's `clone` (blueprint 9's fault), and on the healthy control card's app thread (20 ms waits that nobody considered a fault). Two rules before any STARVED verdict: (a) run `wait_chain.py` on the victim - if its long blocks name a waker and `THE WAKER WAS STUCK IN <syscall>` prints, the waits are a consequence of that stall: hand to `9_syscall_stall` and say so; (b) if `runq_wait.py` printed `STARVATION PRESENT BUT MILD`, report the numbers but do not call it the fault unless the operator named this thread or its deadline is shorter than the longest wait.
+
 **Goal:** check the other causes in the table in 1.3, using what you already have, plus one call.
 
 | Check | Where to look | Starvation by a crowd looks like this |
@@ -301,7 +303,7 @@ If a check does not fit, say which one in your report, and treat the starvation 
 Everything you need is already printed; collect it:
 
 - **The victims:** every candidate on that core that `runq_wait.py` called STARVED — thread name (comm), tid, `prio` label, its core, wait share and longest wait, from each identity line. Put all of them in `victim_thread` (comma-separated), the one with the largest wait share first, and say in `what_is_wrong` that they share one crowd. With `pidmap.tsv`, their process (pid and process name): `grep -P "^$TID\t" $WORK/pidmap.tsv`.
-- **The crowd:** the top competitors from Step 4 (name, tid, prio, ms), the distinct count, and the per-CPU `=120` count from Step 3. Group them by process with the pid map; often most of the crowd are threads of the **same process** as the victim.
+- **The crowd:** the top competitors from Step 4 (name, tid, prio, ms), the distinct count, and the per-CPU `=120` count from Step 3. Group them by process with the pid map; often most of the crowd are threads of the **same process** as the victim. `culprit_thread` is the crowd - the top competitor(s) by name, or "the N nice-0 threads on cpu X" - and is **never one of the victims**; a verdict that names the same thread as culprit and victim is wrong by construction.
 - **The core:** `VCPU`, its `busy%` from Step 3 against the other cores, and `IDLE_ELSEWHERE`.
 
 How to name things in the report, most specific first:

@@ -472,8 +472,12 @@ _SUBMIT_DEF = {
                            "as sched_switch names it; 'none' when the cause is host-wide or not a "
                            "thread."},
         "victim_thread": {"type": "string", "description":
-                          "the thread that SUFFERS (waits, stalls, drops), same form; 'none' if "
-                          "there is no single victim."},
+                          "the thread(s) that SUFFER (wait, stall, drop), same form. When several "
+                          "threads suffer from the same cause (a crowded core starves every "
+                          "thread on it; a stall freezes several siblings), list ALL of them, "
+                          "comma-separated, the worst first - the operator knows which one carries "
+                          "the symptom. 'none' only if nothing identifiable suffers. Never the "
+                          "same thread as culprit_thread."},
         # "other" is allowed: the fixed list was written for a four-modality view and some of
         # its distinctions are not separable from a kernel trace alone. A wrong label hides a
         # correct understanding; what_is_wrong is what gets read.

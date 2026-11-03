@@ -54,16 +54,22 @@ from tracelib import (read_events, Sched, Cpus, prio_label, cpus_text, load_pidm
 SCHED = {'sched_switch', 'sched_waking', 'sched_wakeup', 'sched_wakeup_new',
          'sched_process_fork', 'lttng_statedump_process_state'}
 
-# Calibration (partner line-card traces, Nov 2026). STARVED needs a wait of STARVED_MAX_MS or more AND either a
-# wait share >= STARVED_SHARE or STARVED_COUNT10 waits >= 10 ms.
-#   card A  commsTx prio 120: share 9.4%, p99 1.19 ms, max 33.0 ms, 7 waits >= 10 ms  -> STARVED
-#   card B  commsTx prio 120: share 10.2%, max 29.8 ms, 26 waits >= 10 ms             -> STARVED
-#   card C  commsTx prio 100: share 4.6%, p99 0.32 ms, max 5.56 ms, 0 waits >= 10 ms  -> NOT
-# (the engineers' fix for the first two was prio 120 -> 110; on card C it had already been
-# raised and did not help - a false CROWD call there was the earlier bug).
-STARVED_MAX_MS = 10
-STARVED_SHARE = 0.02
-STARVED_COUNT10 = 3
+# Calibration (partner line-card traces, Nov 2026). Starvation is relative to a deadline the
+# trace does not know, so the bar for calling it THE fault is high: a wait of STARVED_MAX_MS
+# or more AND a wait share of STARVED_SHARE or more. Below that, a wait >= MILD_MAX_MS or
+# MILD_COUNT10 waits >= 10 ms is reported as PRESENT BUT MILD, for the operator to judge.
+#   card A  commsTx prio 120: share 9.4%, max 33.0 ms, 7 waits >= 10 ms    -> STARVED
+#           (engineers' fix: prio 120 -> 110)
+#   card B  commsTx prio 120: share 10.2%, max 29.8 ms, 26 waits >= 10 ms  -> STARVED (same)
+#   healthy control card, app thread: share ~5%, max 18-20 ms, 23 waits   -> MILD (no fault)
+#   card C  bbbFLPO-type thread: share 5%, max 50 ms, 18 waits             -> MILD; those waits
+#           were the consequence of a clone stall (its D-state blocks are bigger: D-state line)
+#   card C  commsTx prio 100: share 4.6%, max 5.56 ms, 0 waits >= 10 ms    -> NOT STARVED
+#           (already raised by the engineers; it did not help - the earlier false CROWD call)
+STARVED_MAX_MS = 25
+STARVED_SHARE = 0.06
+MILD_MAX_MS = 10
+MILD_COUNT10 = 3
 # a victim whose priority already beats the occupants holding OUTRANK_SHARE of its waiting
 # time is not held by a crowd: a higher priority cannot help it
 OUTRANK_SHARE = 0.8
@@ -96,6 +102,7 @@ def analyse(path, victim, pidmap=None):
     vtids = set([vt]) if vt is not None else set()
     open_w = {}                             # victim tid -> start of its open wait
     waits = []                              # dicts, one per closed victim wait
+    dstate = [0, 0]                         # victim D-state: [total ns, longest block ns]
 
     def overlap(dq, s, u):
         out = defaultdict(int)
@@ -117,6 +124,9 @@ def analyse(path, victim, pidmap=None):
             else:
                 while len(dq) > 1 and dq[0][1] < lo:
                     dq.popleft()
+        elif kind == 'D' and tid in vtids:
+            dstate[0] += u - s
+            dstate[1] = max(dstate[1], u - s)
         elif kind in ('rqW', 'rqP') and tid in vtids:
             open_w.pop(tid, None)
             occ = overlap(runs[cpu], s, u)
@@ -164,12 +174,13 @@ def analyse(path, victim, pidmap=None):
                 open_w.pop(t, None)
     sc.finish()
     return {'sc': sc, 'victim': victim, 'vtids': sorted(vtids), 'waits': waits,
-            'cpus': sorted(cpus), 'cpu_busy': cpu_busy, 'span': int(sc.span_s() * SEC)}
+            'cpus': sorted(cpus), 'cpu_busy': cpu_busy, 'span': int(sc.span_s() * SEC),
+            'dstate': dstate}
 
 
 def summarise(r):
     sc, waits, span = r['sc'], r['waits'], r['span']
-    out = {'lines': [], 'hint': None, 'note': None}
+    out = {'lines': [], 'hint': None, 'note': None, 'dline': None}
     if not r['vtids'] or span <= 0:
         out['lines'].append(f"VERDICT: VICTIM NOT SEEN - '{r['victim']}' never appears in this slice")
         return out
@@ -198,7 +209,14 @@ def summarise(r):
                by_cls=by_cls, hot_cpu=hot_cpu, idle_share=idle_share, host_sat=host_sat,
                vprio=vprio, same_tids=same_tids)
     L = out['lines']
-    starved = mx >= STARVED_MAX_MS * MS and (share >= STARVED_SHARE or count10 >= STARVED_COUNT10)
+    d_total, d_max = r['dstate']
+    if d_total > total or d_max > mx:
+        out['dline'] = (f"D-state: {100 * d_total / span:.1f}% of its time, longest block "
+                        f"{d_max / MS:.1f} ms - its biggest delays are D-state blocks, not "
+                        f"runnable waits - run wait_chain.py (9_syscall_stall) before blaming "
+                        f"the crowd")
+    starved = mx >= STARVED_MAX_MS * MS and share >= STARVED_SHARE
+    mild = not starved and (mx >= MILD_MAX_MS * MS or count10 >= MILD_COUNT10)
     outrank = bool(total) and by_cls['worse'] / total >= OUTRANK_SHARE
     if outrank:
         wp = max((t for t in comp if rel_class(vprio, sc.prio.get(t)) == 'worse'), key=comp.get)
@@ -206,7 +224,13 @@ def summarise(r):
                        f"{prio_label(vprio)} vs {prio_label(sc.prio.get(wp))}): raising its "
                        f"priority will not help; the remaining waits are CFS slice granularity "
                        f"(max {mx / MS:.2f} ms)")
-    if not starved:
+    if mild:
+        L.append(f"VERDICT: STARVATION PRESENT BUT MILD - waits are {100 * share:.1f}% of its "
+                 f"time, p99 {p99 / MS:.2f} ms, longest {mx / MS:.2f} ms, {count10} waits >= "
+                 f"10 ms; the crowd on cpu {hot_cpu} is {len(same_tids)} distinct same-prio "
+                 f"threads. Report it; call it the fault only if the operator named this "
+                 f"thread or its deadline is under {mx / MS:.0f} ms")
+    elif not starved:
         L.append(f"VERDICT: NOT STARVED - waits are {100 * share:.1f}% of the slice, p99 "
                  f"{p99 / MS:.2f} ms, longest {mx / MS:.2f} ms, {count10} waits >= 10 ms")
     elif not outrank and sw / total >= CROWD_SHARE:
@@ -256,6 +280,8 @@ def report(r, top=15, min_ms=1.0):
         print(f"  {x['name']} tid {t} prio {prio_label(x['prio'])}: {place}; "
               f"run {100 * x['run']:.1f}%, wait {100 * x['wait']:.1f}% of the "
               f"{span_s:.1f} s that hold events")
+    if s['dline']:
+        print(s['dline'])
     if sc.skipped_note():
         print(sc.skipped_note())
     print()
@@ -329,19 +355,27 @@ def _wk(ms, cpu, who, tc, shape):
 
 
 def _scenario(kind, shape):
-    """A: prio-120 victim behind 3 prio-120 threads (15 ms waits), cpu 0 idle.
-    B: the same waits behind one RT thread.
-    C: 0.2 ms waits over a 1 s slice.
-    D: prio-100 victim behind prio-120 threads, 5 ms waits (outranks them, below threshold).
-    E: prio-100 victim behind prio-120 threads, 15 ms waits (outranks them, above threshold)."""
+    """A: prio-120 victim behind 3 prio-120 threads (30 ms waits), cpu 0 idle -> CROWD.
+    B: the same waits behind one RT thread -> HIGHER PRIORITY.
+    C: 0.2 ms waits over a 1 s slice -> NOT STARVED.
+    D: prio-100 victim behind prio-120 threads, 5 ms waits -> NOT STARVED + outrank note.
+    E: prio-100 victim behind prio-120 threads, 15 ms waits -> MILD + outrank note.
+    F: tiny waits but 30 ms D-state blocks -> NOT STARVED + D-state line.
+    G: prio-120 victim behind the crowd, 15 ms waits -> MILD."""
     idle0, idle1 = (0, 'swapper/0', 20), (0, 'swapper/1', 20)
     victim = (7, 'victim', 0 if kind in 'DE' else 20)
     other = (50, 'other', 20)
     crowd = [(11, 'crowd0', 20), (12, 'crowd1', 20), (13, 'crowd2', 20)]
     rt = (99, 'rtthr', -64)
     L, t = [], 0.0
-    if kind in 'ABDE':
-        step = 5 if kind == 'D' else 15
+    if kind == 'F':
+        for _ in range(4):
+            L += [_wk(t, 1, victim, 1, shape), _sw(t + 0.1, 1, idle1, 0, victim, shape),
+                  _sw(t + 1, 1, victim, 2, idle1, shape)]
+            t += 31
+        L += [_sw(0, 0, idle0, 0, other, shape), _sw(0.5, 0, other, 1, idle0, shape)]
+    elif kind in 'ABDEG':
+        step = {'A': 30, 'B': 30, 'D': 5, 'E': 15, 'G': 15}[kind]
         for _ in range(4):
             L.append(_wk(t + 0.1, 1, victim, 1, shape))
             if kind == 'B':
@@ -352,7 +386,7 @@ def _scenario(kind, shape):
                       _sw(t + 2 * q, 1, crowd[1], 0, crowd[2], shape),
                       _sw(t + step, 1, crowd[2], 0, victim, shape)]
             L.append(_sw(t + step + 1, 1, victim, 1, idle1, shape))
-            t += 20
+            t += step + 5
         L += [_sw(0, 0, idle0, 0, other, shape), _sw(0.5, 0, other, 1, idle0, shape)]
     else:                                             # C: tiny waits, long quiet slice
         for _ in range(4):
@@ -367,13 +401,16 @@ def _scenario(kind, shape):
 def _selftest():
     import os
     import tempfile
-    want = {'A': ('STARVED BY CROWD', 'OTHER CPUS WERE IDLE'),
+    want = {'A': ('STARVED BY CROWD', '3 distinct threads at prio 120', 'OTHER CPUS WERE IDLE'),
             'B': ('STARVED BY HIGHER PRIORITY', 'rtthr tid 99 prio RT 63'),
             'C': ('NOT STARVED',),
             'D': ('NOT STARVED', 'OTHER CPUS WERE IDLE'),
-            'E': ('VERDICT: MIXED', 'OTHER CPUS WERE IDLE')}
+            'E': ('STARVATION PRESENT BUT MILD', 'OTHER CPUS WERE IDLE'),
+            'F': ('NOT STARVED',),
+            'G': ('STARVATION PRESENT BUT MILD', '4 waits >= 10 ms',
+                  'is 3 distinct same-prio threads', 'OTHER CPUS WERE IDLE')}
     for shape in ('ctx', 'noctx'):
-        for kind in 'ABCDE':
+        for kind in 'ABCDEFG':
             with tempfile.NamedTemporaryFile('w', delete=False, suffix='.txt') as tf:
                 tf.write(_scenario(kind, shape))
                 p = tf.name
@@ -397,7 +434,13 @@ def _selftest():
                             'prio 100 (nice -20) vs 120 (nice 0)' in s['note'], s['note']
                     if kind == 'D':
                         assert s['share'] >= STARVED_SHARE and s['max'] < 10 * MS
-                if kind in 'AD' and shape == 'noctx':
+                    if kind == 'F':
+                        assert s['dline'] and 'longest block 30.0 ms' in s['dline'], s['dline']
+                    else:
+                        assert s['dline'] is None, (kind, s['dline'])
+                    if kind == 'G':
+                        assert s['max'] < STARVED_MAX_MS * MS and s['count10'] == 4
+                if kind in 'AFG' and shape == 'noctx':
                     print(f"--- selftest report ({kind}, {shape}) ---")
                     report(analyse(p, 'victim'), top=4)
             finally:
