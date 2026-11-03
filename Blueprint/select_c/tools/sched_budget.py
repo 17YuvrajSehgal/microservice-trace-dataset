@@ -38,11 +38,28 @@ path, secs = sys.argv[1], float(sys.argv[2])
 mark = sys.argv[3] if len(sys.argv) > 3 else None   # a pid to always show
 
 re_time = re.compile(r'^\[(\d+):(\d+):(\d+)\.(\d+)\]')
-re_ctx  = re.compile(r'pid = (\d+), tid = \d+, procname = "([^"]*)"')
-re_sw   = re.compile(r'prev_tid = (\d+), prev_prio = \d+, prev_state = (\d+), next_comm = "[^"]*", next_tid = (\d+)')
+# Two trace shapes. A microservice host puts a context block `{ pid = P, tid = T, procname = "X" }`
+# (or `{ vtid = T, vpid = P, procname = "X" }`) before the payload. A switch/router trace has no
+# context block at all and prints prev_state as an enum `( "TASK_INTERRUPTIBLE" : container = 1 )`.
+# Without context one row = one thread (pid := tid) named by its comm. Both shapes parse here;
+# the old regexes matched only the first and printed an empty table on the second.
+re_ctx  = re.compile(r'\bv?pid = (\d+),[^}]*procname = "([^"]*)"')
+re_sw   = re.compile(r'prev_comm = "([^"]*)", prev_tid = (\d+), prev_prio = -?\d+, '
+                     r'prev_state = (?:\([^()]*?container = )?(\d+)\s*\)?, next_comm = "[^"]*", next_tid = (\d+)')
 re_wk   = re.compile(r'\{ comm = "[^"]*", tid = (\d+), prio')
+re_cpu  = re.compile(r'cpu_id = (\d+)')
+re_tcpu = re.compile(r'target_cpu = (\d+)')
+ctx_seen = False
+# A CPU with a runnable thread waiting for it cannot be silent. A wait that overlaps a period
+# where its CPU shows no event at all for >= 0.5 s is lost trace data (snapshot buffers,
+# discarded events) or a stalled CPU, not scheduling latency - measured: 1-9 s "waits" on
+# switch traces that were holes. Such waits are counted apart and reported, not in the table.
+GAP_NS = 500_000_000
+last_cpu_t = {}                        # cpu -> last event seen there
+gaps = defaultdict(list)               # cpu -> [(since, until)] silent periods
+skipped = [0, 0]                       # [count, ns] of waits that overlapped a hole
 
-state = {}   # tid -> (kind, since_ns). kinds: run, rqP, rqW, S, D, O
+state = {}   # tid -> (kind, since_ns, cpu). kinds: run, rqP, rqW, S, D, O
 who = {}     # tid -> (pid, procname)
 names = {}
 acc = defaultdict(lambda: defaultdict(int))   # pid -> kind -> ns
@@ -53,9 +70,14 @@ def close(tid, t):
     st, w = state.get(tid), who.get(tid)
     if st is None or w is None:
         return
-    kind, since = st
+    kind, since, cpu = st
     d = t - since
     pid = w[0]
+    if kind in ('rqP', 'rqW') and d >= GAP_NS and \
+            any(g0 < t and g1 > since for g0, g1 in gaps.get(cpu, ())):
+        skipped[0] += 1
+        skipped[1] += d
+        return
     acc[pid][kind] += d
     if kind in ('rqP', 'rqW'):
         b = big[pid]
@@ -71,12 +93,22 @@ with open(path) as f:
             continue
         h, mi, s, fr = m.groups()
         t = ((int(h) * 60 + int(mi)) * 60 + int(s)) * 1_000_000_000 + int(fr.ljust(9, '0'))
+        cm = re_cpu.search(line)
+        cpu = cm.group(1) if cm else '?'
+        lt = last_cpu_t.get(cpu)
+        if lt is not None and t - lt >= GAP_NS:
+            gaps[cpu].append((lt, t))
+        last_cpu_t[cpu] = t
         if ' sched_switch:' in line:
             c, sw = re_ctx.search(line), re_sw.search(line)
-            if not c or not sw:
+            if not sw:
                 continue
-            pid, pname = c.groups()
-            prev_tid, ps, next_tid = sw.groups()
+            prev_comm, prev_tid, ps, next_tid = sw.groups()
+            if c:
+                pid, pname = c.groups()
+                ctx_seen = True
+            else:
+                pid, pname = prev_tid, prev_comm
             if prev_tid != '0':
                 who[prev_tid] = (pid, pname)
                 names[pid] = pname
@@ -92,11 +124,11 @@ with open(path) as f:
                 # 'O' and all CFS-throttle wait was silently dropped.
                 base = code & 0xFF
                 kind = 'rqP' if (code & 0x100) or base == 0 else 'S' if base == 1 else 'D' if base == 2 else 'O'
-                state[prev_tid] = (kind, t)
+                state[prev_tid] = (kind, t, cpu)
             if next_tid != '0':
                 if state.get(next_tid, ('',))[0] != 'run':
                     close(next_tid, t)
-                state[next_tid] = ('run', t)
+                state[next_tid] = ('run', t, cpu)
         elif ' sched_waking:' in line:
             wk = re_wk.search(line)
             if not wk:
@@ -105,7 +137,8 @@ with open(path) as f:
             st = state.get(tid)
             if st and st[0] in ('S', 'D', 'O'):
                 close(tid, t)
-                state[tid] = ('rqW', t)
+                tc = re_tcpu.search(line)
+                state[tid] = ('rqW', t, tc.group(1) if tc else cpu)
 
 n = secs * 1e9
 def row(pid):
@@ -119,6 +152,13 @@ if mark and mark in acc and mark not in [r[0] for r in show]:
     show.append(row(mark))
 
 print("prev_state codes seen:", dict(codes))
+if skipped[0]:
+    print(f"trace holes: {skipped[0]} waits ({skipped[1] / 1e9:.1f} s in all) overlapped a period "
+          f"where their CPU showed no event for >= 0.5 s - lost trace data or a stalled CPU, not "
+          f"scheduling latency; they are left out of the table")
+if not ctx_seen:
+    print("identity: this trace has no pid context - one row = one THREAD (the pid column is its "
+          "tid), named by its comm. Pass that tid to the other tools where they ask for a pid.")
 print(f"{'pid':>8} {'name':<16}{'run':>7}{'wait':>7}{'preempt':>8}{'S':>8}{'D':>7}{'>=1ms':>8}{'>=10ms':>8}{'>=50ms':>8}{'max_ms':>9}")
 for r in show:
     print(f"{r[0]:>8} {r[1]:<16}{r[2]:>7.2f}{r[3]:>7.2f}{r[4]:>8.2f}{r[5]:>8.1f}{r[6]:>7.2f}{r[7]:>8}{r[8]:>8}{r[9]:>8}{r[10]:>9.1f}")

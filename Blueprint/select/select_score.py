@@ -17,13 +17,28 @@ import json
 import os
 import sys
 
-FAMILIES = ["svc_cpu_cap", "noisy_neighbor", "slow_db", "svc_net", "svc_mem_cap", "normal"]
+FAMILIES = ["svc_cpu_cap", "noisy_neighbor", "slow_db", "svc_net", "svc_mem_cap",
+            # bare-metal / scheduling families (blueprints 8-11), routed by select_d
+            "cpu_starvation", "syscall_stall", "irq_imbalance", "priority_inversion",
+            "lock_contention", "normal"]
 
 # order matters: specific/overlapping terms first (service_network has "net"; cpu competition is noisy)
 def to_family(fault_type):
     s = (fault_type or "").lower()
     if not s or "normal" in s or "no fault" in s or "no injected" in s or s == "none":
         return "normal"
+    # scheduling family first: "priority_inversion" contains "priority", "lock_contention"
+    # contains "contention" (which the noisy_neighbor rule would also claim)
+    if "inversion" in s:
+        return "priority_inversion"
+    if "lock" in s or "futex" in s or "deadlock" in s:
+        return "lock_contention"
+    if "starv" in s:
+        return "cpu_starvation"
+    if "stall" in s or "syscall" in s:
+        return "syscall_stall"
+    if "irq" in s or "softirq" in s or "interrupt" in s:
+        return "irq_imbalance"
     if "mem" in s or "reclaim" in s or "oom" in s:
         return "svc_mem_cap"
     if "retrans" in s or "packet" in s or "service_network" in s or "svc_net" in s or "netem" in s \

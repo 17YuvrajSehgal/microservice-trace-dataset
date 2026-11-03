@@ -24,9 +24,16 @@ import sys
 from collections import Counter, defaultdict
 
 re_time = re.compile(r'^\[(\d+):(\d+):(\d+)\.(\d+)\]')
-re_ctx = re.compile(r'\{ pid = (\d+), tid = (\d+), procname = "([^"]*)"([^}]*)\}')
+# The context block, in either layout (`{ pid, tid, procname, *_ns }` or `{ vtid, vpid, procname,
+# prio }`). Switch/router traces have none: then identity comes from the sched payload itself,
+# one "process" = one thread (its pid is its tid), and prev_state prints as an enum.
+re_ctx = re.compile(r'\{ ([^}]*procname = "[^"]*"[^}]*)\}')
+re_cpid = re.compile(r'\bv?pid = (\d+)')
+re_ctid = re.compile(r'\bv?tid = (\d+)')
+re_cname = re.compile(r'procname = "([^"]*)"')
 re_ns = re.compile(r'(\w+_ns) = (\d+)')
-re_sw = re.compile(r'prev_tid = (\d+), prev_prio = \d+, prev_state = (\d+), next_comm = "[^"]*", next_tid = (\d+)')
+re_sw = re.compile(r'prev_comm = "([^"]*)", prev_tid = (\d+), prev_prio = -?\d+, '
+                   r'prev_state = (?:\([^()]*?container = )?(\d+)\s*\)?, next_comm = "[^"]*", next_tid = (\d+)')
 re_wk = re.compile(r'\{ comm = "[^"]*", tid = (\d+), prio')
 
 
@@ -62,31 +69,37 @@ def main():
     with open(path) as f:
         for line in f:
             m = re_time.match(line)
-            c = re_ctx.search(line)
-            if not m or not c:
+            if not m:
                 continue
             h, mi, s, fr = m.groups()
             t = ((int(h) * 60 + int(mi)) * 60 + int(s)) * 10**9 + int(fr.ljust(9, '0'))
-            pid, tid, pname, rest = c.groups()
-            # A namespace number of 0 is never a real namespace: it means the tracer could
-            # not resolve that field for this event. Keeping it would make the process look
-            # like a different container than it is - drop it, and merge the real values
-            # across events instead of letting the last event win.
-            ns = {k: v for k, v in re_ns.findall(rest) if v != '0'}
-            if pid == '0':
-                if ns:
-                    host_ns[tuple(sorted(ns.items()))] += 1
-            else:
-                tid_pid[tid] = pid
-                tid_names[tid][pname] += 1
-                pid_names[pid][pname] += 1
-                if ns:
-                    pid_ns.setdefault(pid, {}).update(ns)
-            if ' sched_switch:' in line:
-                sw = re_sw.search(line)
-                if not sw:
-                    continue
-                prev_tid, ps, next_tid = sw.groups()
+            c = re_ctx.search(line)
+            sw = re_sw.search(line) if ' sched_switch:' in line else None
+            pid = None
+            if c:
+                blk = c.group(1)
+                cp, ct = re_cpid.search(blk), re_ctid.search(blk)
+                if cp and ct:
+                    pid, tid, pname, rest = cp.group(1), ct.group(1), re_cname.search(blk).group(1), blk
+            if pid is None and sw:
+                pid, tid, pname, rest = sw.group(2), sw.group(2), sw.group(1), ''
+            if pid is not None:
+                # A namespace number of 0 is never a real namespace: it means the tracer could
+                # not resolve that field for this event. Keeping it would make the process look
+                # like a different container than it is - drop it, and merge the real values
+                # across events instead of letting the last event win.
+                ns = {k: v for k, v in re_ns.findall(rest) if v != '0'}
+                if pid == '0':
+                    if ns:
+                        host_ns[tuple(sorted(ns.items()))] += 1
+                else:
+                    tid_pid[tid] = pid
+                    tid_names[tid][pname] += 1
+                    pid_names[pid][pname] += 1
+                    if ns:
+                        pid_ns.setdefault(pid, {}).update(ns)
+            if sw:
+                prev_comm, prev_tid, ps, next_tid = sw.groups()
                 if prev_tid != '0':
                     if state.get(prev_tid, ('',))[0] == 'run':
                         close(prev_tid, t)
@@ -109,7 +122,8 @@ def main():
 
     vtids = [t for t, p in tid_pid.items() if p == victim]
     if not vtids:
-        raise SystemExit(f"pid {victim} does not appear in {path}")
+        raise SystemExit(f"pid {victim} does not appear in {path} (on a trace without pid "
+                         f"context, give the thread id - the tid - instead)")
 
     # 1. identity
     names = pid_names[victim]
