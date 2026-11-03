@@ -49,6 +49,18 @@ mkdir -p $CACHE/vllm $CACHE/hf $CACHE/triton $CACHE/inductor $CACHE/xdg
 export VLLM_CACHE_ROOT=$CACHE/vllm HF_HOME=$CACHE/hf XDG_CACHE_HOME=$CACHE/xdg
 export TRITON_CACHE_DIR=$CACHE/triton TORCHINDUCTOR_CACHE_DIR=$CACHE/inductor
 
+# FlashInfer's prebuilt kernels (flashinfer-cubin = 85,498 files) cannot be unpacked onto Lustre in
+# any reasonable time (uv and unzip both crawled at a few files/min). Unpack the wheels onto the
+# node's local disk at job start instead and put them first on PYTHONPATH; vLLM finds the
+# packages by import, so site-packages never needs them.
+FI=${SLURM_TMPDIR:-/tmp}/flashinfer-wheels
+if ls $BASE/wheels/flashinfer_*.whl >/dev/null 2>&1; then
+  mkdir -p $FI
+  for w in $BASE/wheels/flashinfer_*.whl; do unzip -q -o "$w" -d $FI; done
+  export PYTHONPATH=$FI${PYTHONPATH:+:$PYTHONPATH}
+  echo "flashinfer wheels unpacked to $FI: $(ls $FI | tr '\n' ' ')"
+fi
+
 SERVE_ARGS=(serve "$MODEL_DIR"
     --served-model-name "$NAME"
     --tensor-parallel-size "$TP"
