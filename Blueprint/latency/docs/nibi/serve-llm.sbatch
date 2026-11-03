@@ -8,16 +8,16 @@
 #     /scratch is at quota; override with BASE=... if that changes.
 #
 # 1x H100, Qwen3.8-27B (fast per-GPU queue):
-#   sbatch -p gpubase_bygpu_b3 -t 24:00:00 --gpus-per-node=1 --cpus-per-task=12 --mem=120G \
+#   sbatch -p gpubase_bygpu_b3 -t 24:00:00 --gpus-per-node=h100:1 --cpus-per-task=12 --mem=120G \
 #     --export=ALL,MODEL_DIR=$BASE/models/Qwen3.8-27B,NAME=qwen3.8-27b,TP=1,MAXLEN=131072,MAXSEQS=32,EXTRA_ARGS="--enable-auto-tool-choice --tool-call-parser qwen3_xml --reasoning-parser qwen3 --enable-prefix-caching" \
 #     serve-llm.sbatch
 # 4x H100, GLM-5.3-Flash NVFP4 (TP=4):
-#   sbatch -p gpubase_bygpu_b3 -t 24:00:00 --gpus-per-node=4 --cpus-per-task=48 --mem=480G \
+#   sbatch -p gpubase_bygpu_b3 -t 24:00:00 --gpus-per-node=h100:4 --cpus-per-task=48 --mem=480G \
 #     --export=ALL,MODEL_DIR=$BASE/models/GLM-5.3-Flash-NVFP4,NAME=glm-5.3-flash,TP=4,MAXLEN=131072,MAXSEQS=32,EXTRA_ARGS="--enable-auto-tool-choice --tool-call-parser glm47 --reasoning-parser glm47 --enable-prefix-caching" \
 #     serve-llm.sbatch
 #SBATCH --account=def-naser2_gpu
 #SBATCH --nodes=1
-#SBATCH --gpus-per-node=1
+#SBATCH --gpus-per-node=h100:1
 #SBATCH --cpus-per-task=12
 #SBATCH --mem=120G
 #SBATCH --time=24:00:00

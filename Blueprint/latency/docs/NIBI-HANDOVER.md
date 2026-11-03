@@ -54,8 +54,13 @@ cat /scratch/yuvraj17/c7-llm/logs/smoke-tool-<jobid>.json   # must contain "tool
 bash bridge.sh start      # prints what trillium sees on localhost:8000
 ```
 
-## Quirks found on Nibi (add as they come)
+## Quirks found on Nibi (each cost one failed step on 03-11)
 
 1. The pip wheelhouse hijack (dummy opencv wheel) applies on Nibi exactly as on Trillium: use `uv`.
+   `uv pip install vllm==0.32.0` took 41 min on the login node (slow Lustre, 17 GB of wheels).
 2. `/home` is mounted on compute nodes (unlike Trillium's GPU nodes), so the uv-managed Python can live in `~/.local/share/uv`; caches still go to /scratch (`serve-llm.sbatch` sets every cache dir).
 3. Per-GPU partitions share nodes: ask for `--cpus-per-task` and `--mem` in proportion (14 cores and ~250 GB per GPU on an 8-GPU node); `--mem` is required here (Trillium forbade it).
+4. **GPU requests need the type:** `--gpus-per-node=h100:1`, not `=1` ("There is no 1 GPU-type on the system").
+5. **Never pass `-p`:** Nibi rejects an explicit partition ("submit without --partition, the scheduler redirects") and routes by walltime + resources itself (12 h -> `gpubase_bygpu_b2,gpubackfill`).
+6. **`vllm download-kernels` cannot run on the login node** (no GPU -> "Failed to infer device type"). The kernels are installed by hand with the commands FlashInfer's own CLI prints (`python -m flashinfer install-cubin-wheel --dry-run`): `flashinfer-cubin==0.7.0.post1` from `https://flashinfer.ai/whl`, and `flashinfer-jit-cache==0.7.0.post1+cu130` + `flashinfer-jit-cache-sm90a==0.7.0.post1+cu130` from `https://flashinfer.ai/whl/cu130/` (`install_kernels.sh`). PyPI's `flashinfer-cubin` stops at 0.6.13, which is why a plain install fails.
+7. Downloads are fast (Qwen's 55.6 GB in 2 min with `hf_transfer`); the login nodes are the slow part (loads 20-45 from other users' runaway processes - the web portal hangs for the same reason).

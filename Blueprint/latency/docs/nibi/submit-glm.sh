@@ -10,11 +10,11 @@ BASE=${BASE:-/scratch/yuvraj17/c7-llm}
 KIND=${1:-nvfp4}
 cd $BASE
 case $KIND in
-  nvfp4) sbatch -p gpubase_bygpu_b2,gpubackfill -t 12:00:00 --gpus-per-node=4 --cpus-per-task=48 --mem=480G \
+  nvfp4) sbatch -t 12:00:00 --gpus-per-node=h100:4 --cpus-per-task=48 --mem=480G \
            --job-name=vllm-serve \
            --export=ALL,BASE=$BASE,MODEL_DIR=$BASE/models/GLM-5.3-Flash-NVFP4,NAME=glm-5.3-flash,TP=4,MAXLEN=131072,MAXSEQS=32,EXTRA_ARGS="--enable-auto-tool-choice --tool-call-parser glm47 --reasoning-parser glm47 --enable-prefix-caching" \
            $BASE/serve-llm.sbatch ;;
-  fp8)   sbatch -p gpubase_bynode_b2,gpubackfill -t 12:00:00 --nodes=1 --gpus-per-node=8 --cpus-per-task=112 --mem=1500G \
+  fp8)   sbatch -t 12:00:00 --nodes=1 --gpus-per-node=h100:8 --cpus-per-task=112 --mem=1500G \
            --job-name=vllm-serve \
            --export=ALL,BASE=$BASE,MODEL_DIR=$BASE/models/GLM-5.3-Flash,NAME=glm-5.3-flash,TP=8,MAXLEN=131072,MAXSEQS=64,EXTRA_ARGS="--enable-auto-tool-choice --tool-call-parser glm47 --reasoning-parser glm47 --enable-prefix-caching" \
            $BASE/serve-llm.sbatch ;;
