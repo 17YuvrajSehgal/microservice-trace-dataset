@@ -190,11 +190,11 @@ It prints three things:
 
 1. **A header**: CPUs, slice seconds, the switch count, an `identity:` line (`comm from sched_switch; no pid context (one row = one thread)` or `pid context present`), the `prev_state` codes seen, the snapshot note and the `trace holes:` line when they apply.
 2. **A per-CPU table**: `cpu  busy%  threads  RT  <120  =120  >120  kthr%  top occupants`. `threads` is how many distinct threads ran on that CPU; the four columns after it say how many of them were real-time, better than nice 0, exactly nice 0 (prio 120), or worse. `kthr%` is the `ksoftirqd` + `kworker` share.
-3. **A per-thread table**, top N by waiting: `tid  pid  name  prio  cpus  run  wait  preempt  wakewait  S  D  >=10ms  >=50ms  max_ms  wakeups`. `run`, `wait`, `S`, `D` are average threads over the slice (1.00 = the whole time). `wait` is runnable time only; `preempt` and `wakewait` split it (switched out runnable vs woken and waiting). A `*` marks rows that **waited more than they ran and had waits of 10 ms or more** — the candidates.
+3. **A per-thread table**, top N by waiting: `tid  pid  name  prio  cpus  run  wait  preempt  wakewait  S  D  >=10ms  >=50ms  max_ms  wakeups`. `run`, `wait`, `S`, `D` are average threads over the slice (1.00 = the whole time). `wait` is runnable time only; `preempt` and `wakewait` split it (switched out runnable vs woken and waiting). A `*` marks a **candidate victim**: 3 or more waits of 10 ms, or one wait of 25 ms or more — the same bars `runq_wait.py` uses for MILD and STARVED. How much the row ran does not matter.
 
 Read it:
 
-- **A candidate victim** is a row with a `max_ms` of 10 ms or more, several `>=10ms` waits, and **one CPU** in `cpus` — a `*` row, or one of the rows with the largest `>=10ms` count or the most `wakeups`. Do not require `wait > run`: measured on a line card, the comms thread ran more than it waited (run 3%, wait 2%) and still had the most waits of 10 ms or more of any thread (26). A thread that waits a lot and runs a lot is a busy thread, not this fault, only when its waits are short.
+- **The candidates are every `*` row on the crowded core** — run the table once more with `--sort max` so a `*` row low in the wait order is not missed — plus the row with the most `wakeups` if it has any wait of 10 ms. Do not pick by `wait` share and do not stop at two. Measured twice on the same card: the agent tested the thread with the largest wait share (26%, longest 17 ms, MILD) and skipped the comms thread one row below it (9%, 7 waits ≥ 10 ms, longest 33 ms, STARVED BY CROWD) — the engineers' victim. A thread that runs a lot and waits a lot is a busy thread only when its waits are short.
 - **Several candidates on one core are all victims.** A crowded core starves every latency-sensitive thread on it, and the trace cannot tell which one carries the business symptom (packet drops, late replies). Run `runq_wait.py` on each candidate on that core and name every one that comes back STARVED; the operator knows which one matters. Measured: the agent named the sibling with the larger wait share (26% of its time) and put the comms thread (9%, the one with the drops) in the crowd list - both were victims of the same crowd.
 - Go to that CPU's row in the per-CPU table. **The crowd** is the `=120` count (or the count in the victim's own priority class). Measured on the fault: 75–99 threads at `=120` on the victim's core, against 20–50 on the others.
 - Compare `busy%` across CPUs. The victim's core is usually the busiest; the others have room.
@@ -209,7 +209,7 @@ VCPU=<cpu>                       # the core it sits on
 CROWD=<count>                    # threads at the victim's priority on that core, from the per-CPU table
 ```
 
-**Discipline.** Two or three candidates at most. The decisive step is one call each.
+**Discipline.** One `runq_wait.py` call per `*` row on that core (usually two to four). Never drop a `*` row because another candidate looked worse.
 
 **Next:** Step 4.
 

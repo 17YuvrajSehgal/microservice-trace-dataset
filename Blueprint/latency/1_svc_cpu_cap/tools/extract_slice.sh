@@ -27,13 +27,16 @@
 #   - The temporary trace is <out_file>.mini. It is deleted at the end.
 set -euo pipefail
 
-if [ "$#" -ne 5 ]; then
-  echo "usage: $0 <trace_dir> <YYYY-MM-DD> <HH:MM:SS> <seconds> <out_file>" >&2
+if [ "$#" -lt 5 ] || [ "$#" -gt 6 ]; then
+  echo "usage: $0 <trace_dir> <YYYY-MM-DD> <HH:MM:SS> <seconds> <out_file> [events_regex]" >&2
+  echo "  events_regex: which events to keep. Default: the scheduling trio." >&2
+  echo "  For memory work use: 'sched_switch|sched_waking|sched_wakeup|mm_vmscan_|block_rq_|sched_process_'" >&2
   exit 1
 fi
 
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 trace="$1"; day="$2"; start="$3"; secs="$4"; out="$5"
+events="${6:-sched_switch|sched_waking|sched_wakeup}"
 # "UTC" must be written out: without it, some versions of date read "+ N" as a time zone
 # Self-heal a missing/placeholder date (the agent sometimes calls this before idx_summary):
 # resolve the day from the trace itself - the same source idx_summary reads - so the slice
@@ -56,19 +59,28 @@ fi
 
 mkdir -p "$(dirname "$out")"
 
+# Temporary names carry this process id: two agent workers slicing the same window at the
+# same time must not share them (measured: both failed, one's cleanup removed the other's
+# mini trace under babeltrace2, with no error text because its stderr is muted below).
+tmp="$out.tmp.$$"
 if ls "$trace"/index/*.idx >/dev/null 2>&1; then
-  mini="$out.mini"
+  mini="$out.mini.$$"
   rm -rf "$mini"
-  trap 'rm -rf "$mini"' EXIT
+  trap 'rm -rf "$mini" "$tmp"' EXIT
   python3 "$here/idx_slice.py" "$trace" "$day $start" "$end" "$mini" > /dev/null
   src="$mini"
 else
+  trap 'rm -f "$tmp"' EXIT
   echo "note: no index/ folder, reading the whole trace (slow)" >&2
   src="$trace"
 fi
 
-"${BT2:-babeltrace2}" --clock-gmt --begin "$day $start" --end "$end" "$src" 2>/dev/null \
-  | { grep -E 'sched_switch|sched_waking|sched_wakeup' || true; } > "$out"
+if ! "${BT2:-babeltrace2}" --clock-gmt --begin "$day $start" --end "$end" "$src" 2>/dev/null \
+  | { grep -E "$events" || true; } > "$tmp"; then
+  echo "error: babeltrace2 failed reading $src (BT2=${BT2:-babeltrace2})" >&2
+  exit 1
+fi
+mv -f "$tmp" "$out"
 
 echo "slice $day $start to $end UTC -> $out"
 wc -l "$out"

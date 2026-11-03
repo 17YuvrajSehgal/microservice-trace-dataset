@@ -59,19 +59,28 @@ fi
 
 mkdir -p "$(dirname "$out")"
 
+# Temporary names carry this process id: two agent workers slicing the same window at the
+# same time must not share them (measured: both failed, one's cleanup removed the other's
+# mini trace under babeltrace2, with no error text because its stderr is muted below).
+tmp="$out.tmp.$$"
 if ls "$trace"/index/*.idx >/dev/null 2>&1; then
-  mini="$out.mini"
+  mini="$out.mini.$$"
   rm -rf "$mini"
-  trap 'rm -rf "$mini"' EXIT
+  trap 'rm -rf "$mini" "$tmp"' EXIT
   python3 "$here/idx_slice.py" "$trace" "$day $start" "$end" "$mini" > /dev/null
   src="$mini"
 else
+  trap 'rm -f "$tmp"' EXIT
   echo "note: no index/ folder, reading the whole trace (slow)" >&2
   src="$trace"
 fi
 
-"${BT2:-babeltrace2}" --clock-gmt --begin "$day $start" --end "$end" "$src" 2>/dev/null \
-  | { grep -E "$events" || true; } > "$out"
+if ! "${BT2:-babeltrace2}" --clock-gmt --begin "$day $start" --end "$end" "$src" 2>/dev/null \
+  | { grep -E "$events" || true; } > "$tmp"; then
+  echo "error: babeltrace2 failed reading $src (BT2=${BT2:-babeltrace2})" >&2
+  exit 1
+fi
+mv -f "$tmp" "$out"
 
 echo "slice $day $start to $end UTC -> $out"
 wc -l "$out"

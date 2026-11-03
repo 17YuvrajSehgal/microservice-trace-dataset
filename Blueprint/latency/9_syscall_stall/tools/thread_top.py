@@ -23,7 +23,8 @@ Output:
        units as sched_budget.py). wait = ready to run but no CPU; preempt = the part of
        wait after being switched out while runnable; wakewait = the part after a wakeup.
        >=10ms and >=50ms count single waits that long; max_ms is the longest one.
-       '*' marks a candidate victim: it waited more than it ran AND had a wait >= 10 ms.
+       '*' marks a candidate victim: 3 or more waits >= 10 ms, or one wait >= 25 ms (the
+       bars runq_wait.py uses). How much it ran does not matter. Test every '*' row.
        --cpu N keeps only threads that ran on CPU N.
 
 Read it:
@@ -40,6 +41,7 @@ from collections import Counter, defaultdict
 
 from tracelib import (read_events, Sched, prio_label, cpus_text, load_pidmap, effective_secs,
                       SEC, MS)
+from runq_wait import MILD_COUNT10, STARVED_MAX_MS
 
 SCHED = {'sched_switch', 'sched_waking', 'sched_wakeup', 'sched_wakeup_new',
          'sched_process_fork', 'lttng_statedump_process_state'}
@@ -97,7 +99,11 @@ def rows_for(r, sort='wait', cpu=None):
 
 
 def is_victim(x):
-    return x['wait'] > x['run'] and x['ge10ms'] > 0
+    # The same bars runq_wait.py uses (MILD needs MILD_COUNT10 waits of 10 ms, STARVED a wait of
+    # STARVED_MAX_MS), so every row that tool could call MILD or STARVED carries the star. The
+    # old rule (waited more than it ran) hid the comms thread on a line card: run 16%, wait 9%,
+    # 7 waits >= 10 ms, longest 33 ms - STARVED BY CROWD, and the agent never tested it.
+    return x['ge10ms'] >= MILD_COUNT10 or x['max_ms'] >= STARVED_MAX_MS
 
 
 def report(r, sort='wait', top=25, cpu=None):
@@ -131,7 +137,8 @@ def report(r, sort='wait', top=25, cpu=None):
     rows = rows_for(r, sort, cpu)
     where = f" that ran on cpu {cpu}" if cpu is not None else ""
     print(f"Threads{where}, top {min(top, len(rows))} of {len(rows)} by {sort} "
-          f"('*' = waited more than it ran, with waits >= 10 ms)")
+          f"('*' = candidate victim: >= {MILD_COUNT10} waits of 10 ms or a wait >= {STARVED_MAX_MS} ms; "
+          f"test every '*' row with runq_wait.py)")
     print(f"  {'tid':>7} {'pid':>7} {'name':<16}{'prio':<15}{'cpus':<6}{'run':>6}{'wait':>6}"
           f"{'preempt':>8}{'wakewait':>9}{'S':>6}{'D':>5}{'>=10ms':>7}{'>=50ms':>7}"
           f"{'max_ms':>8}{'wakeups':>8}")

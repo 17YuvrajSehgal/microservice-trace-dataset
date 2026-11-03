@@ -144,9 +144,10 @@ Served from Nibi (`NIBI-HANDOVER.md`): the Trillium queue was too busy, Nibi's i
 partition gave an H100 in ten minutes. Five partner traces x blueprints 0, 8, 9, 10, 11 (plus the
 microservice blueprints 1-5, 7 as off-family controls); results in `ciena_out_v3` on Trillium,
 copied to `Blueprint/ciena_out/v3/` (local, NDA). Tally of the first pass:
-- `0_host_triage`: 5/5. The healthy card and the raised-priority card come back `normal`; the
-  loaded control card `irq_imbalance`, card C `syscall_stall`, card A `cpu_starvation`, each
-  with the culprit and victim threads named. The 02-11 candidate-rule miss on card B is gone.
+- `0_host_triage`: 5/5. The healthy card comes back `normal`; the loaded control card
+  `irq_imbalance`; cards A and B (the two starvation cards of case 1) `cpu_starvation`; card C
+  (where the thread had already been raised) `syscall_stall`; each with the culprit and victim
+  threads named. The 02-11 candidate-rule miss on card B is gone.
 - matched cells (the blueprint built for that trace): loaded card / 10 and card C / 9 exact, as
   in §9. Card A / 8 second run was weak: `cpu_starvation` at 0.45 and no threads named, because
   the recalibrated `runq_wait` (25 ms / 6 %) put the comms thread in the MILD band and the README
