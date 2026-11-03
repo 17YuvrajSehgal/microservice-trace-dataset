@@ -1070,7 +1070,14 @@ def diagnose(run_dir, blueprint=None, blueprint_only=False, transcript_path=None
                      "signature with your own queries - if a discriminating check FAILS, say "
                      "so explicitly rather than forcing the blueprint's conclusion onto "
                      "contradicting evidence. If a check needs a quantity the fixed tools "
-                     "cannot compute, compute it with run_python rather than abstaining."
+                     "cannot compute, compute it with run_python rather than abstaining. "
+                     "Your fault_type is either the family this blueprint confirms or "
+                     "'normal': when its decisive check fails, answer 'normal' and put "
+                     "whatever else you saw in what_is_wrong as a finding - never pick a "
+                     "different fault family that this blueprint's tools did not confirm, and "
+                     "never promote a side note with a low confidence number. (Measured: a "
+                     "verdict whose own reasoning said 'signature ABSENT' still carried a "
+                     "fault label; that is a wrong answer.)"
                      "\n%s" % (sk.name, sk.body))
             if CTX.bp_def is not None:
                 extra += ("\n\nTHE BLUEPRINT'S OWN SCRIPTS are available through "

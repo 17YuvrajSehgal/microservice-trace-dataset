@@ -325,6 +325,8 @@ On a bare-metal box there is no container to name. Do not report a `pid_ns`. The
 
 ### Step 7. Write the RCA statement
 
+**Before writing:** this blueprint answers `priority_inversion`, `lock_contention` or `normal`, nothing else. A `NO LOCK PROBLEM` line whose text points elsewhere ("a CPU-starvation effect - see 8_cpu_starvation", "an event wait") means **`fault_type: normal` for this blueprint** with the pointer in `what_is_wrong`; do not switch to that other family from here. Measured: on one card the agent read "a CPU-starvation effect" and answered `cpu_starvation` from inside this blueprint, naming the thread the engineers had just promoted as the culprit - wrong on both counts.
+
 **Goal:** a short statement that another person can check.
 
 Template, inversion:

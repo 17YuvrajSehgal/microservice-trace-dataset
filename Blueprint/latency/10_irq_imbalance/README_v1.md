@@ -193,7 +193,7 @@ The verdict lines, exactly as the tool prints them:
 - `VERDICT: RX CONCENTRATED ON CPU N: P% of NET_RX time (expected E%), ksoftirqd/N at K% of a CPU, cpu busy B%`
   followed by `APP THREADS ON THAT CPU/ITS SIBLING: name, name, ...` and
   `FIX: spread RX with RSS/multi-queue IRQ affinity or RPS (/sys/class/net/<if>/queues/rx-*/rps_cpus), and pin latency-sensitive threads off that core and its SMT sibling`
-- `VERDICT: IRQ/SOFTIRQ SPREAD EVENLY` — sometimes with `(but <kind> on cpu N is concentrated - see above)` when a kind other than `NET_RX` is piled up.
+- `VERDICT: IRQ/SOFTIRQ SPREAD EVENLY` — sometimes with `(but <kind> on cpu N is concentrated - see above)` when a kind other than `NET_RX` is piled up. **That tail is a note, not a verdict.** Measured on the healthy control card: hardirq sat 89% on cpu 2 (765 ms of 859 over 62 s, ~1% of that CPU) and the agent answered `irq_imbalance` at 0.6 - wrong. With SPREAD EVENLY the verdict is `fault_type: normal`; mention the concentrated kind in `what_is_wrong` only if it reaches tens of percent of a CPU and an app thread on that CPU shows waits (`thread_top.py --cpu N`).
 - `VERDICT: NO IRQ EVENTS IN SLICE - re-cut it with the irq events regex ...` — the slice was cut without the interrupt events. Go back to Step 2.
 
 Read it:
@@ -291,6 +291,8 @@ If a check does not fit, say which, and treat the verdict as unconfirmed.
 **Next:** Step 7.
 
 ### Step 7. Write the RCA statement
+
+**Before writing:** this blueprint answers `irq_imbalance` or `normal`, nothing else. The verdict is `irq_imbalance` only on a `VERDICT: RX CONCENTRATED ON CPU N` line (or a non-RX kind that takes tens of percent of one CPU with app threads waiting on it). Anything else the screens showed belongs in `what_is_wrong` as a finding.
 
 Template:
 
