@@ -35,6 +35,12 @@ exec > $BASE/logs/serve-$SLURM_JOB_ID.out 2>&1
 
 echo "node: $(hostname)  serving $NAME (TP=$TP) from $MODEL_DIR"
 nvidia-smi -L
+# Nibi compute nodes have no /usr/local/cuda: give FlashInfer an nvcc for any kernel it still has
+# to JIT (the prebuilt flashinfer-cubin + jit-cache-sm90a wheels should make that rare). Without
+# this the first start died with "/usr/local/cuda/bin/nvcc: No such file or directory".
+module load cuda/13.2 2>/dev/null || module load cuda 2>/dev/null || true
+export CUDA_HOME=${CUDA_HOME:-${EBROOTCUDA:-/usr/local/cuda}}
+echo "CUDA_HOME=$CUDA_HOME  nvcc: $(command -v nvcc || echo none)"
 
 # compute nodes: assume no internet - everything comes from $BASE
 export HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 VLLM_NO_USAGE_STATS=1
