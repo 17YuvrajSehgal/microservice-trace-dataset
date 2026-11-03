@@ -178,8 +178,55 @@ Operational note: the Trillium SSH control socket died at 16:08 ET, after the co
 before the deploy, so the second pass over the nine over-call cells is still pending. The
 Nibi server (job 26073466) runs until ~22:15 ET; nothing else is queued on either cluster.
 
+## 11. Second pass on Nibi, and what it still found wrong
+The traces moved to Nibi (2.4 GB, md5-checked; `NIBI-HANDOVER.md`), so the agent now runs
+next to the model with no bridge. The nine over-call cells ran again with the §10 rules
+(previous results kept as `<cell>_runN`):
+| cell | first pass | second pass |
+|---|---|---|
+| healthy / 8, 9, 10 | cpu_starvation 0.95, lock_contention 0.8, irq_imbalance 0.6 | `normal` x3 |
+| card A / 9 | syscall_stall 0.55 | `normal` (the 24 ms write froze nobody: a finding) |
+| card C / 11 | cpu_starvation 0.85 | `normal` |
+| loaded card / 8 | cpu_starvation 0.9 | `normal`, but for a wrong reason (below) |
+| card A / 8 | cpu_starvation 0.45, no threads | `normal` 0.85 - a miss (below) |
+| card B / 8 | cpu_starvation, wrong victim | cpu_starvation, comms thread named in prose, thread fields empty |
+| card C / 8 | cpu_starvation, culprit = victim | cpu_starvation 0.9, three sibling victims, coherent (below) |
+Six of the seven over-calls are gone with rules only. The pass exposed three more defects,
+each fixed the same hour and verified on Nibi:
+- **`thread_top` hid the victim.** Its `*` marked rows that waited more than they ran. The
+  comms thread on card A runs 16% and waits 9% (7 waits >= 10 ms, longest 33 ms): no star, and
+  twice the agent tested the two starred siblings (MILD) and never it, although `runq_wait` on
+  it says STARVED BY CROWD with the engineers' numbers. The star now means what `runq_wait`
+  could call MILD or STARVED (>= 3 waits of 10 ms, or one of 25 ms), imported from the same
+  constants, and README 0/8 say "test every starred row". Measured after: card A / 8 =
+  cpu_starvation 0.95 with the comms thread as the victim and its numbers; the healthy card
+  gets 8 stars, all MILD, verdict `normal` at 0.85 (was 0.55).
+- **`extract_slice.sh` was not safe for parallel workers.** Two workers slicing the same
+  window shared `<out>.mini`; one's cleanup removed the other's mini trace under babeltrace2,
+  whose stderr is muted, so both failed with exit 1 and no text. Temp names now carry the pid
+  and the output is written to a temp file then moved. Tested: two parallel slices, both exit
+  0, identical 84k-line output, no leftovers. Loaded card / 8 then re-ran clean (`normal` 0.85
+  with the decisive check done).
+- **Optional thread fields get skipped.** Card B / 8 named every thread in `what_is_wrong`
+  and left `culprit_thread` / `victim_thread` out. Both are required now ('none' allowed).
+
+Two cells disagree with the engineers' tickets and are NOT counted as errors:
+- card C / 8 `cpu_starvation`: three nice-0 siblings on the crowded core wait 8-16% of their
+  time (up to 51 ms, other cores idle 71-78%), every long wait overlapping the comms thread
+  that had been raised to nice -20. The raise moved the starvation to its siblings. The
+  engineers' root cause (the clone stall, blueprint 9) stands; this is a real second effect
+  they did not look at. Worth showing them.
+- card B / 9 `syscall_stall`: a logging thread's 364 ms D-state `write` x6 froze the journal
+  daemon. Real, unrelated to the drops (§6 said so tool-side). Blueprint 9 stand-alone calls a
+  stall that froze someone the fault; only triage (`0_host_triage`) has the "who is affected
+  decides" rule, and triage on card B says cpu_starvation, which is right.
+
+Matrix now (blueprints 0, 8, 9, 10, 11; `normal` unless noted): healthy card all normal;
+loaded card irq_imbalance on 0 and 10; card A cpu_starvation on 0 and 8; card B
+cpu_starvation on 0 and 8 (+ the stall above on 9); card C syscall_stall on 0 and 9 (+ the
+sibling starvation above on 8). No cell contradicts its own tool output any more.
+
 ## Open
-- Deploy the 16:00 edits to Trillium (needs the user's Duo login), re-run AA/8, AA/9, AA/10,
-  nbi/8, C/8, C/11, A/8, A/9, B/8 against the Nibi server, tally the second pass.
-- Restore `Blueprint/ciena_out/v3/` from Trillium (the local copy was lost in the failed
-  transfer; the cluster copy is intact).
+- Card A / 8 is running once more with the required thread fields (its 0.95 verdict above
+  still had them empty: that run started before the schema change landed).
+- Copy `ciena_out_v3` from Nibi to `Blueprint/ciena_out/v3/` (local, NDA) when it ends.

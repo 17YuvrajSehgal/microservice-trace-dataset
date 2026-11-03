@@ -14,21 +14,23 @@ been raised. The whole `Blueprint/latency` tree is deployed on Trillium
 (`/scratch/yuvraj17/stratatrace/repo/Blueprint/latency`, checksums verified) and
 `run_all_parallel.sh` / `summarize.py` there already list blueprints 0 and 8-11.
 
-The first full agent matrix ran on 03-11 (`03-11-2026/decisions.md` §10): triage 5/5 with
-threads named, matched cells exact, 7 of 16 off-family cells over-called. The rule fixes are
-committed (c19ddde) but NOT deployed: the Trillium SSH session died before the deploy.
+The agent matrix on the five partner traces ran twice on 03-11 (`03-11-2026/decisions.md`
+§10-11). After the rule and tool fixes every cell of blueprints 0, 8, 9, 10, 11 is either the
+engineers' answer, `normal`, or one of two documented real-but-secondary findings (card C / 8,
+card B / 9). **Everything now runs on Nibi** (LLM + traces + runner; `NIBI-HANDOVER.md`).
+Trillium is not needed for the partner work.
 
 ## Next, in order
 
-### 1. Deploy and second pass (needs a Duo login to Trillium first)
-The LLM now lives on Nibi (`Blueprint/latency/docs/NIBI-HANDOVER.md`; `bridge.sh start` makes
-it `http://localhost:8000/v1` on the Trillium login node). Deploy `Blueprint/latency` +
-`Blueprint/agent/{utils.py,agent_v2.py}` to `/scratch/yuvraj17/stratatrace/repo` (tar over
-stdin, `md5sum -c`), then re-run the nine over-call cells (AA/8, AA/9, AA/10, nbi/8, C/8, C/11,
-A/8, A/9, B/8) with the previous results moved to `*_runN`. Copy `ciena_out_v3` back to
-`Blueprint/ciena_out/v3/` (local, NDA; the earlier local copy was lost). Compare
-`culprit_thread` / `victim_thread` against `Blueprint/ciena_out/COMPARISON-SUMMARY.md`. The tool
-verdicts are the ceiling; anything the agent adds must quote a tool line.
+### 1. Close the loop on the partner traces
+- Card A / 8 with the required thread fields (running at session end; result in
+  `ciena_out_v3/wlai-*/8_cpu_starvation/verdict.json` on Nibi). If the fields are still empty,
+  the schema change (`utils.py`, `622964a`) did not reach the model and needs a look at how
+  `_SUBMIT_DEF` is sent.
+- Show the engineers the two secondary findings (card C: siblings starved after the nice -20
+  raise; card B: the 364 ms journal-freezing write) and ask whether they are known.
+- Re-host when needed: `bash /scratch/yuvraj17/c7-llm/submit-qwen.sh` on Nibi (12 h batch) or
+  the `srun --qos=interac` line in `NIBI-HANDOVER.md` (8 h, fast lane); update `repo/.env` host.
 
 ### 2. Blueprint 11 — run it through the agent too
 `futex_wait.py` is validated tool-side (`03-11-2026/decisions.md` §8): the labelled
