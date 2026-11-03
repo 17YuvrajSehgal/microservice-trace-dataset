@@ -14,15 +14,21 @@ been raised. The whole `Blueprint/latency` tree is deployed on Trillium
 (`/scratch/yuvraj17/stratatrace/repo/Blueprint/latency`, checksums verified) and
 `run_all_parallel.sh` / `summarize.py` there already list blueprints 0 and 8-11.
 
-## Tomorrow, in order
+The first full agent matrix ran on 03-11 (`03-11-2026/decisions.md` §10): triage 5/5 with
+threads named, matched cells exact, 7 of 16 off-family cells over-called. The rule fixes are
+committed (c19ddde) but NOT deployed: the Trillium SSH session died before the deploy.
 
-### 1. Re-host the LLM and run the agent matrix on the partner traces
-No `vllm-serve` job is running. The sbatch line and the run commands are in
-`Blueprint/latency/CLUSTER-RUN.md`. Expect 5 traces x 11 blueprints; the cells that matter are
-`0_host_triage` (does the agent route and name the threads by itself?) and 8 / 9 / 10 on their
-own cases. Compare the agent's `culprit_thread` / `victim_thread` against
-`Blueprint/ciena_out/COMPARISON-SUMMARY.md` (local, NDA). The tool verdicts are the ceiling;
-anything the agent adds must quote a tool line.
+## Next, in order
+
+### 1. Deploy and second pass (needs a Duo login to Trillium first)
+The LLM now lives on Nibi (`Blueprint/latency/docs/NIBI-HANDOVER.md`; `bridge.sh start` makes
+it `http://localhost:8000/v1` on the Trillium login node). Deploy `Blueprint/latency` +
+`Blueprint/agent/{utils.py,agent_v2.py}` to `/scratch/yuvraj17/stratatrace/repo` (tar over
+stdin, `md5sum -c`), then re-run the nine over-call cells (AA/8, AA/9, AA/10, nbi/8, C/8, C/11,
+A/8, A/9, B/8) with the previous results moved to `*_runN`. Copy `ciena_out_v3` back to
+`Blueprint/ciena_out/v3/` (local, NDA; the earlier local copy was lost). Compare
+`culprit_thread` / `victim_thread` against `Blueprint/ciena_out/COMPARISON-SUMMARY.md`. The tool
+verdicts are the ceiling; anything the agent adds must quote a tool line.
 
 ### 2. Blueprint 11 — run it through the agent too
 `futex_wait.py` is validated tool-side (`03-11-2026/decisions.md` §8): the labelled

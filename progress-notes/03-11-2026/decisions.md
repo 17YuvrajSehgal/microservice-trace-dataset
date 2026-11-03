@@ -139,6 +139,46 @@ verdict. Both misses are README rules, fixed the same day: candidates also come 
 `>=10ms` and `wakeups` columns, and blueprint 8 names every thread on the crowded core with
 >= 3 waits of 10 ms as a victim (the operator knows which one carries the symptom).
 
+## 10. The full matrix (Trillium agents, Nibi Qwen3.8-27B through the laptop bridge)
+Served from Nibi (`NIBI-HANDOVER.md`): the Trillium queue was too busy, Nibi's interactive
+partition gave an H100 in ten minutes. Five partner traces x blueprints 0, 8, 9, 10, 11 (plus the
+microservice blueprints 1-5, 7 as off-family controls); results in `ciena_out_v3` on Trillium,
+copied to `Blueprint/ciena_out/v3/` (local, NDA). Tally of the first pass:
+- `0_host_triage`: 5/5. The healthy card and the raised-priority card come back `normal`; the
+  loaded control card `irq_imbalance`, card C `syscall_stall`, card A `cpu_starvation`, each
+  with the culprit and victim threads named. The 02-11 candidate-rule miss on card B is gone.
+- matched cells (the blueprint built for that trace): loaded card / 10 and card C / 9 exact, as
+  in §9. Card A / 8 second run was weak: `cpu_starvation` at 0.45 and no threads named, because
+  the recalibrated `runq_wait` (25 ms / 6 %) put the comms thread in the MILD band and the README
+  had no rule for what MILD means for the verdict.
+- off-family cells (a stand-alone blueprint on a trace from another family, correct answer
+  `normal`): 9 of 16 abstained, 7 over-called. Every over-call had the same shape: the
+  blueprint's own decisive check said ABSENT, the agent then promoted a side note to the verdict
+  (healthy card: 8 -> `cpu_starvation`, 9 -> `lock_contention`, 10 -> `irq_imbalance` at 0.6
+  from a "SPREAD EVENLY (but one type concentrated)" tail; loaded card: 8 -> `cpu_starvation`;
+  card C: 8 -> `cpu_starvation` with culprit == victim, 11 -> `cpu_starvation` from a
+  NO LOCK PROBLEM pointer; card A: 9 -> `syscall_stall` at 0.55 on a stall that froze nobody).
+
+Fixes, all rule-side, no tool logic changed except the starvation bar:
+- `runq_wait`: a thread is STARVED at >= 25 ms max wait and >= 6 % share (was 10 ms / 10 %); a
+  MILD band in between; a D-state guard so disk waits are not counted as runnable waits.
+- README 8: name every starved thread on the crowded core as a victim; the culprit is never a
+  victim; Step 5 (`wait_chain`) is mandatory.
+- README 9: a stall that froze nobody and lasted under 50 ms is a finding, the verdict is
+  `normal`.
+- README 10 / 11: a stand-alone blueprint answers its own family or `normal`, nothing else; the
+  SPREAD EVENLY tail and the NO LOCK PROBLEM pointer are notes.
+- `agent_v2.py` blueprint paragraph: same rule for every blueprint, with the measured failure
+  quoted ("a verdict whose own reasoning said 'signature ABSENT' still carried a fault label").
+Why rules and not a post-filter: the agent is supposed to carry the blueprint's logic itself;
+a filter outside it would hide exactly the behaviour we are measuring.
+
+Operational note: the Trillium SSH control socket died at 16:08 ET, after the commit and
+before the deploy, so the second pass over the nine over-call cells is still pending. The
+Nibi server (job 26073466) runs until ~22:15 ET; nothing else is queued on either cluster.
+
 ## Open
-- Nibi hosting in progress (`Blueprint/latency/docs/NIBI-HANDOVER.md`); the Trillium server is gone.
-- Re-run card B with 0_host_triage and card A with 8 after the rule fixes; then the full matrix.
+- Deploy the 16:00 edits to Trillium (needs the user's Duo login), re-run AA/8, AA/9, AA/10,
+  nbi/8, C/8, C/11, A/8, A/9, B/8 against the Nibi server, tally the second pass.
+- Restore `Blueprint/ciena_out/v3/` from Trillium (the local copy was lost in the failed
+  transfer; the cluster copy is intact).
