@@ -31,8 +31,12 @@ victim = sys.argv[3] if len(sys.argv) > 3 else None
 
 re_time = re.compile(r'^\[(\d+):(\d+):(\d+)\.(\d+)\]')
 re_cpu = re.compile(r'cpu_id = (\d+)')
-re_ctx = re.compile(r'pid = (\d+), tid = \d+, procname = "([^"]*)"')
-re_sw = re.compile(r'prev_tid = (\d+), prev_prio = \d+, prev_state = (\d+), next_comm = "([^"]*)", next_tid = (\d+)')
+# Both trace shapes: with a `{ pid/vpid .. procname }` context block, or without one and with
+# prev_state as an enum `( "TASK_X" : container = N )` (switch/router traces). Without context a
+# thread is its own "process", named by its comm.
+re_ctx = re.compile(r'\bv?pid = (\d+),[^}]*procname = "([^"]*)"')
+re_sw = re.compile(r'prev_comm = "([^"]*)", prev_tid = (\d+), prev_prio = -?\d+, '
+                   r'prev_state = (?:\([^()]*?container = )?(\d+)\s*\)?, next_comm = "([^"]*)", next_tid = (\d+)')
 re_wk = re.compile(r'\{ comm = "[^"]*", tid = (\d+), prio')
 
 occupant = {}            # cpu -> tid currently on it (0 = idle)
@@ -83,9 +87,9 @@ with open(path, errors="replace") as f:
             c, sw = re_ctx.search(line), re_sw.search(line)
             if not sw:
                 continue
-            prev_tid, ps, next_comm, next_tid = sw.groups()
-            if c and prev_tid != '0':
-                tid_info[prev_tid] = (c.group(1), c.group(2))
+            prev_comm, prev_tid, ps, next_comm, next_tid = sw.groups()
+            if prev_tid != '0':
+                tid_info[prev_tid] = (c.group(1), c.group(2)) if c else (prev_tid, prev_comm)
             if next_tid != '0':
                 next_name.setdefault(next_tid, next_comm)
             occupant[cpu] = next_tid

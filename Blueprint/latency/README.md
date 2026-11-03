@@ -41,3 +41,13 @@ The key idea is the time budget. A thread is in one of the three states:
     - Remote service: A database or API is slow.
     - Connection pool: All connections are in use.
     - DNS: The name lookup is slow.
+
+On a bare-metal box (a switch or router line card) there are no containers and no caps, so the
+same three states point at different causes:
+- Runnable: too many threads at the same priority share one core (`cpu_starvation`), or
+  interrupt work is piled on that core (`irq_imbalance`).
+- Blocked: a sibling thread is inside a long system call that holds a kernel lock, such as
+  `fork`/`clone` holding the memory lock (`syscall_stall`), or the lock holder cannot run
+  (`priority_inversion`).
+
+`FAMILIES.md` lists both families and the research the tools are built on.

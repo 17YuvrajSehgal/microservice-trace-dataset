@@ -31,6 +31,13 @@ FAULT_WORDS = {
     "svc_net":       ("net", "network", "packet", "latency", "retransm", "loss", "delay"),
     "io_cap":        ("io", "disk", "block", "writeback", "throttl"),
     "threads":       ("cpu", "runqueue", "run-queue", "wait", "contention", "schedul"),
+    "packet_drop":   ("drop", "packet", "loss", "kfree"),
+    # scheduling family (blueprints 8-11)
+    "cpu_starvation":     ("starv", "priority", "runqueue", "run-queue", "crowd", "schedul"),
+    "syscall_stall":      ("stall", "syscall", "system call", "clone", "fork", "blocked"),
+    "irq_imbalance":      ("irq", "softirq", "interrupt", "rx", "imbalance", "concentrat"),
+    "priority_inversion": ("inversion", "priority", "lock", "futex"),
+    "lock_contention":    ("contention", "lock", "futex"),
 }
 
 # a verdict's fault_type that means "nothing wrong" - used to score control/baseline runs

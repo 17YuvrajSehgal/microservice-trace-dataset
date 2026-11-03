@@ -53,10 +53,16 @@ for n in ("connect", "accept", "accept4"):
     BUCKET[n] = "connect"
 
 re_time = re.compile(r'^\[(\d+):(\d+):(\d+)\.(\d+)\]')
-re_ctx = re.compile(r'pid = (\d+), tid = (\d+), procname = "([^"]*)"')
-re_sw = re.compile(r'prev_tid = (\d+), prev_prio = \d+, prev_state = (\d+), next_comm = "[^"]*", next_tid = (\d+)')
+# Context block in either layout. Without one (switch/router traces) a syscall belongs to the
+# thread that was on that CPU, a thread is its own "process", and prev_state prints as an enum.
+re_ctx = re.compile(r'\bv?pid = (\d+),[^}]*procname = "([^"]*)"')
+re_ctid = re.compile(r'\bv?tid = (\d+)')
+re_cpu = re.compile(r'cpu_id = (\d+)')
+re_sw = re.compile(r'prev_comm = "([^"]*)", prev_tid = (\d+), prev_prio = -?\d+, '
+                   r'prev_state = (?:\([^()]*?container = )?(\d+)\s*\)?, next_comm = "[^"]*", next_tid = (\d+)')
 re_wk = re.compile(r'\{ comm = "[^"]*", tid = (\d+), prio')
-re_sys = re.compile(r' syscall_(entry|exit)_([a-z0-9_]+):')
+re_sys = re.compile(r' (?:compat_)?syscall_(entry|exit)_([a-z0-9_]+):')   # 32-bit userspace: compat_
+occupant = {}            # cpu -> tid on it (for traces without a context block)
 
 cur_sys = {}             # tid -> syscall name the thread is inside
 asleep = {}              # tid -> (kind, bucket, since)   kind: S or D
@@ -87,10 +93,17 @@ with open(path, errors="replace") as f:
         c = re_ctx.search(line)
         sm = re_sys.search(line)
         if sm:
+            tid = None
             if c:
-                tid = c.group(2)
-                tid_pid[tid] = c.group(1)
-                pid_name[c.group(1)] = c.group(3)
+                ct = re_ctid.search(line)
+                if ct:
+                    tid = ct.group(1)
+                    tid_pid[tid] = c.group(1)
+                    pid_name[c.group(1)] = c.group(2)
+            else:
+                cm = re_cpu.search(line)
+                tid = occupant.get(cm.group(1)) if cm else None
+            if tid:
                 if sm.group(1) == 'entry':
                     cur_sys[tid] = sm.group(2)
                 else:
@@ -100,10 +113,17 @@ with open(path, errors="replace") as f:
             sw = re_sw.search(line)
             if not sw:
                 continue
-            prev_tid, ps, next_tid = sw.groups()
-            if c and prev_tid != '0':
-                tid_pid[prev_tid] = c.group(1)
-                pid_name[c.group(1)] = c.group(3)
+            prev_comm, prev_tid, ps, next_tid = sw.groups()
+            cm = re_cpu.search(line)
+            if cm:
+                occupant[cm.group(1)] = next_tid
+            if prev_tid != '0':
+                if c:
+                    tid_pid[prev_tid] = c.group(1)
+                    pid_name[c.group(1)] = c.group(2)
+                else:
+                    tid_pid[prev_tid] = prev_tid
+                    pid_name[prev_tid] = prev_comm
             code = int(ps)
             base = code & 0xFF
             if prev_tid != '0':

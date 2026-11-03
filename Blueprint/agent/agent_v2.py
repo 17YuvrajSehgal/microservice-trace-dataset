@@ -943,6 +943,55 @@ def build_graph():
 
 
 # --------------------------------------------------------------------------------------
+def _host_profile(run_dir):
+    """A paragraph for single-namespace hosts, measured from the count index; "" otherwise.
+
+    Measured on five switch/router traces: every event carried pid_ns 0 (or none), and the
+    prompts' "one pid_ns is one container" rule sent the agent hunting for containers that do
+    not exist - it even read the `container = N` inside an enum value as a cgroup. A
+    multi-namespace host (Sock Shop, the agentic runs) gets nothing, so those prompts are
+    unchanged. The index says nothing about any fault; this is trace metadata, like the
+    timespan."""
+    try:
+        import gzip
+        import ctf_tool as _ct
+        p = _ct._index_for(run_dir)
+        if not p:
+            return ""
+        ns, named = set(), False
+        with gzip.open(p, "rt", errors="replace") as f:
+            for line in f:
+                if line.startswith("#"):
+                    continue
+                c = line.rstrip("\n").split("\t")
+                if len(c) < 4:
+                    continue
+                ns.add(c[3])
+                if len(ns) > 1:
+                    return ""
+                if c[2] not in ("?", ""):
+                    named = True
+        if not ns:
+            return ""
+    except Exception:                                                   # noqa: BLE001
+        return ""
+    return ("\n\nHOST PROFILE (measured from the index; it says nothing about any fault): every "
+            "event in this recording carries the same pid_ns"
+            + ("" if named else " and no event carries a process name")
+            + ". This is a SINGLE-NAMESPACE host - a bare-metal box such as a switch or router "
+            "line card - and there are NO containers on it. Do not look for one, do not report "
+            "a pid_ns, and never read the `container = N` number inside an enum value such as "
+            "prev_state = ( \"TASK_INTERRUPTIBLE\" : container = 1 ) as a container: it is only "
+            "the enum's integer. Name culprits and victims as THREADS - 'comm tid N (prio P) on "
+            "cpu C' - using the comm that sched_switch prints; put them in culprit_thread and "
+            "victim_thread. On such a host the usual faults are scheduling ones: a thread "
+            "starved of CPU by a same-priority crowd on its core (cpu_starvation), a thread "
+            "stuck inside one long system call such as fork/clone, ioctl or mmap that freezes "
+            "the threads depending on it (syscall_stall), interrupt or softirq work piled on "
+            "one CPU (irq_imbalance), or a lock held by a thread that cannot run "
+            "(priority_inversion).")
+
+
 def diagnose(run_dir, blueprint=None, blueprint_only=False, transcript_path=None,
              condition=None, meta=None, skills=None, skill_given=False, problem_hint=None,
              index_root=None, **_ignored) -> dict:
@@ -1040,6 +1089,11 @@ def diagnose(run_dir, blueprint=None, blueprint_only=False, transcript_path=None
         _WORKER = _WORKER + hint
         _SYNTH = _SYNTH + hint
         tr.meta["problem_hint"] = problem_hint
+    hp = _host_profile(run_dir)
+    if hp:
+        _WORKER = _WORKER + hp
+        _SYNTH = _SYNTH + hp
+        tr.meta["host_profile"] = "single_namespace"
 
     try:
         final = build_graph().invoke({"run_id": run_id, "shown_id": shown,

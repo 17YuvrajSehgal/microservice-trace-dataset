@@ -62,7 +62,10 @@ def main():
     span = float(sys.argv[4]) if len(sys.argv) > 4 else 1.0
 
     re_t = re.compile(r'^\[(\d+):(\d+):(\d+)\.(\d+)\]')
-    re_c = re.compile(r'pid = (\d+), tid = (\d+), procname')
+    # context block in either layout; or none at all (switch/router traces), where <pid> means
+    # the thread id and is matched against prev_tid
+    re_c = re.compile(r'\bpid = (\d+), tid = (\d+), procname|vtid = (\d+), vpid = (\d+), procname')
+    re_p = re.compile(r'prev_tid = (\d+)')
     re_n = re.compile(r'next_tid = (\d+)')
     h, m, s = map(int, start.split(':'))
     t0 = ((h * 60 + m) * 60 + s) * 10**9
@@ -78,8 +81,14 @@ def main():
             hh, mm, ss, fr = t.groups()
             ts = ((int(hh) * 60 + int(mm)) * 60 + int(ss)) * 10**9 + int(fr.ljust(9, '0'))
             c, n = re_c.search(line), re_n.search(line)
-            if c and c.group(1) == pid:
-                tids.add(c.group(2))
+            if c:
+                cpid, ctid = (c.group(1), c.group(2)) if c.group(1) else (c.group(4), c.group(3))
+                if cpid == pid:
+                    tids.add(ctid)
+            else:
+                p = re_p.search(line)
+                if p and p.group(1) == pid:
+                    tids.add(pid)
             if n:
                 ins.append((ts, n.group(1)))
 

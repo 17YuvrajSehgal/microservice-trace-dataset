@@ -26,7 +26,11 @@ import re
 import sys
 from collections import Counter, defaultdict
 
-re_ctx = re.compile(r'pid = (\d+), tid = (\d+), procname = "([^"]*)"')
+# Context block in either layout. Without one (switch/router traces) the waker is the thread
+# that was on that CPU when sched_waking fired, and a thread counts as its own process.
+re_ctx = re.compile(r'\bv?pid = (\d+),[^}]*procname = "([^"]*)"')
+re_sw = re.compile(r'cpu_id = (\d+) .*?prev_comm = "([^"]*)", prev_tid = (\d+), .*?next_tid = (\d+)')
+re_cpu = re.compile(r'cpu_id = (\d+)')
 re_wk = re.compile(r'\{ comm = "([^"]*)", tid = (\d+), prio')
 
 
@@ -38,22 +42,32 @@ def main():
 
     tid_pid = {}                          # tid -> pid
     pid_names = defaultdict(Counter)      # pid -> thread names seen
+    on_cpu = {}                           # cpu -> tid running there (traces without context)
     wakes = []                            # (waker_pid, wakee_tid, wakee_comm)
 
     with open(path) as f:
         for line in f:
             if " sched_switch:" in line:
-                c = re_ctx.search(line)
-                if c:
-                    pid, tid, name = c.groups()
-                    tid_pid[tid] = pid
-                    pid_names[pid][name] += 1
+                c, sw = re_ctx.search(line), re_sw.search(line)
+                if not sw:
+                    continue
+                cpu, prev_comm, prev_tid, next_tid = sw.groups()
+                on_cpu[cpu] = next_tid
+                pid, name = c.groups() if c else (prev_tid, prev_comm)
+                tid_pid[prev_tid] = pid
+                pid_names[pid][name] += 1
             elif " sched_waking:" in line:
                 c, w = re_ctx.search(line), re_wk.search(line)
-                if c and w:
-                    wpid, _, wname = c.groups()
+                if not w:
+                    continue
+                if c:
+                    wpid, wname = c.groups()
                     pid_names[wpid][wname] += 1
-                    wakes.append((wpid, w.group(2), w.group(1)))
+                else:
+                    cm = re_cpu.search(line)
+                    wtid = on_cpu.get(cm.group(1), "0") if cm else "0"
+                    wpid = tid_pid.get(wtid, wtid)
+                wakes.append((wpid, w.group(2), w.group(1)))
 
     def name(pid):
         if pid == "0":

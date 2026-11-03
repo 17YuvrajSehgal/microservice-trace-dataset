@@ -38,8 +38,14 @@ top = int(sys.argv[4]) if len(sys.argv) > 4 else 10
 READS = ("read", "readv", "recv", "recvfrom", "recvmsg")
 WRITES = ("write", "writev", "send", "sendto", "sendmsg")
 re_time = re.compile(r'^\[(\d+):(\d+):(\d+)\.(\d+)\]')
-re_ctx = re.compile(r'pid = (\d+), tid = (\d+), procname = "([^"]*)"')
-re_sys = re.compile(r' syscall_(entry|exit)_([a-z0-9_]+):')
+# Context block in either layout; without one (switch/router traces) the syscall belongs to the
+# thread that was on that CPU (tracked from sched_switch), and a thread is its own "process".
+re_ctx = re.compile(r'\bv?pid = (\d+),[^}]*procname = "([^"]*)"')
+re_ctid = re.compile(r'\bv?tid = (\d+)')
+re_cpu = re.compile(r'cpu_id = (\d+)')
+re_sw = re.compile(r'prev_comm = "([^"]*)", prev_tid = (\d+), .*?next_tid = (\d+)')
+re_sys = re.compile(r' (?:compat_)?syscall_(entry|exit)_([a-z0-9_]+):')   # 32-bit userspace: compat_
+occupant, tid_name = {}, {}
 re_fd = re.compile(r'\{ fd = (\d+)')
 re_ret = re.compile(r'\{ ret = (-?\d+)')
 
@@ -53,15 +59,28 @@ with open(path, errors="replace") as f:
     for line in f:
         sm = re_sys.search(line)
         if not sm:
+            if ' sched_switch:' in line:          # only needed for traces without a context block
+                sw, cm = re_sw.search(line), re_cpu.search(line)
+                if sw and cm:
+                    occupant[cm.group(1)] = sw.group(3)
+                    tid_name[sw.group(2)] = sw.group(1)
             continue
         name = sm.group(2)
         is_r, is_w = name in READS, name in WRITES
         if not (is_r or is_w):
             continue
         c = re_ctx.search(line)
-        if not c:
-            continue
-        pid, tid = c.group(1), c.group(2)
+        if c:
+            ct = re_ctid.search(line)
+            if not ct:
+                continue
+            pid, tid, pname = c.group(1), ct.group(1), c.group(2)
+        else:
+            cm = re_cpu.search(line)
+            tid = occupant.get(cm.group(1)) if cm else None
+            if not tid:
+                continue
+            pid, pname = tid, tid_name.get(tid, "tid " + tid)
         if target != "all" and pid != target:
             continue
         m = re_time.match(line)
@@ -69,7 +88,7 @@ with open(path, errors="replace") as f:
             continue
         h, mi, s, fr = m.groups()
         t = ((int(h) * 60 + int(mi)) * 60 + int(s)) * 1_000_000_000 + int(fr.ljust(9, '0'))
-        pid_name[pid] = c.group(3)
+        pid_name[pid] = pname
         if sm.group(1) == 'entry':
             fm = re_fd.search(line)
             if fm:

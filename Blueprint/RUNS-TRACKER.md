@@ -17,6 +17,15 @@ dataset). "indexed" = `<run_id>.tsv.gz` built and co-located (what the agent rea
 | 3 | slow_db | `3_slow_db` | 13 | Sock Shop, Train Ticket |
 | 4 | svc_mem_cap | `4_svc_mem_cap` | 11 | agentic, Sock Shop, Train Ticket |
 | 5 | svc_net | `5_svc_net` | 11 | Sock Shop, Train Ticket |
+| 7 | packet_drop | `7_packet_drop` | 12 | switch/router traces (uncalibrated) |
+| 8 | cpu_starvation | `8_cpu_starvation` | 18 | bare-metal hosts; calibrated on partner case 1 (two line-card traces) |
+| 9 | syscall_stall | `9_syscall_stall` | 18 | bare-metal hosts; calibrated on partner case 2 (one line-card trace) |
+| 10 | irq_imbalance | `10_irq_imbalance` | 18 | bare-metal hosts; calibrated on partner case 3 (with/without-load pair) |
+| 11 | priority_inversion | `11_priority_inversion` | 18 | Sock Shop `priority_inversion_*` / `lock_contention_*` runs |
+
+Blueprints 8-11 share one tool set (`tracelib.py` + `thread_top`, `runq_wait`, `syscall_stall`,
+`wait_chain`, `irq_balance`, `futex_wait`, `pidmap` + the standard slice tools). The partner
+calibration outputs live on Trillium in `stratatrace/sched_validate/` (NDA, not in git).
 
 Agentic only has CPU-cap and memory-cap faults, so only blueprints 1 and 4 apply there.
 

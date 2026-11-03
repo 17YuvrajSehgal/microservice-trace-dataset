@@ -22,6 +22,12 @@ BLUEPRINTS = {
     "svc_mem_cap":    "4_svc_mem_cap",
     "svc_net":        "5_svc_net",
     "packet_drop":    "7_packet_drop",   # host dropping packets (kfree_skb); for switch/router traces
+    # scheduling family (bare-metal / embedded hosts; built from the partner's solved cases)
+    "cpu_starvation":     "8_cpu_starvation",      # one thread starved behind a same-prio crowd
+    "syscall_stall":      "9_syscall_stall",       # one thread stuck in fork/clone, ioctl, mmap...
+    "irq_imbalance":      "10_irq_imbalance",      # softirq / RX piled on one CPU (+ SMT sibling)
+    "priority_inversion": "11_priority_inversion", # lock held by a thread that cannot run
+    "host_triage":        "0_host_triage",         # one-shot screen for a bare-metal host: routes to 8-11
     # agentic experiments map onto the same blueprints
     "io_cap":         None,          # no blueprint yet
     "threads":        None,          # no blueprint yet

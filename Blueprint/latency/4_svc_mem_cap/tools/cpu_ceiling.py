@@ -52,8 +52,10 @@ if victim.isdigit() and int(victim) >= 4026000000:
 victim_is_name = not victim.isdigit()
 
 re_time = re.compile(r'^\[(\d+):(\d+):(\d+)\.(\d+)\]')
-re_ctx = re.compile(r'pid = (\d+), tid = \d+, procname = "([^"]*)"')
-re_sw = re.compile(r'prev_tid = (\d+), .*?next_tid = (\d+)')
+# Both trace shapes: with a `{ pid/vpid .. procname }` context block, or without one (switch/router
+# traces), where a thread is its own "process" named by its comm.
+re_ctx = re.compile(r'\bv?pid = (\d+),[^}]*procname = "([^"]*)"')
+re_sw = re.compile(r'prev_comm = "([^"]*)", prev_tid = (\d+), .*?next_tid = (\d+)')
 
 
 def busy_periods(path, victim):
@@ -91,15 +93,16 @@ def busy_periods(path, victim):
             if t0 is None:
                 t0 = t
             c, sw = re_ctx.search(line), re_sw.search(line)
-            if not c or not sw:
+            if not sw:
                 continue
-            prev_tid, next_tid = sw.groups()
+            prev_comm, prev_tid, next_tid = sw.groups()
+            cpid, cname = c.groups() if c else (prev_tid, prev_comm)
             if prev_tid in on:
-                hit = (c.group(2).startswith(victim) if victim_is_name
-                       else c.group(1) == victim)
+                hit = (cname.startswith(victim) if victim_is_name
+                       else cpid == victim)
                 if hit:
                     credit(on[prev_tid], t)
-                    name = c.group(2)
+                    name = cname
                 del on[prev_tid]
             if next_tid != '0':
                 on[next_tid] = t

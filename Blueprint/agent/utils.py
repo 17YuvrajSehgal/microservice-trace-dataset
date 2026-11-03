@@ -294,6 +294,10 @@ FAULT_TYPES = [
     # agent said "other" 33 times and was marked wrong every time. A label the agent cannot
     # utter makes the tally meaningless.
     "conn_pool_exhaustion", "deadlock", "lock_contention", "priority_inversion",
+    # Added 03-11 for bare-metal / embedded hosts (switch and router line cards). The five
+    # partner line-card traces were CPU-scheduling faults with no word in this list, so every verdict was
+    # "normal" or a wrong microservice label. Blueprints 8-11 under latency/ carry these.
+    "cpu_starvation", "syscall_stall", "irq_imbalance",
 ]
 
 FAULT_VOCAB = (
@@ -322,6 +326,24 @@ FAULT_VOCAB = (
     "slow/lossy; host network fine).\n"
     "- queue_backlog: an async queue/consumer silently backs up (producer healthy, consumer "
     "idle/lagging, backlog grows; few user-visible errors).\n"
+    "- conn_pool_exhaustion: a caller's connection pool is used up - its threads queue for a "
+    "free connection while the server side sits idle.\n"
+    "- lock_contention: many threads fight over one lock - MANY SHORT futex waits on one "
+    "address; the holder keeps running while others queue.\n"
+    "- priority_inversion: a high-priority thread waits on a lock held by a LOW-priority thread "
+    "that cannot run because medium-priority threads take its CPU - FEW LONG futex waits, and "
+    "the holder is runnable-but-not-running during them.\n"
+    "- deadlock: threads wait on each other forever - futex waits that never return while the "
+    "process stays alive and goes silent.\n"
+    "- cpu_starvation: ONE latency-sensitive thread is runnable but keeps waiting for a CPU "
+    "behind a crowd of same-or-higher-priority threads on its core (long runqueue waits, low "
+    "run time), often while other cores sit idle. Bare-metal / embedded hosts; the fix is "
+    "priority or placement, not a cgroup.\n"
+    "- syscall_stall: ONE thread sits inside ONE system call (fork/clone, mmap, ioctl, open...) "
+    "for tens of milliseconds, repeatedly, and the threads that depend on it freeze meanwhile "
+    "(siblings of the same process, or threads it must wake).\n"
+    "- irq_imbalance: interrupt or softirq work (typically network RX) piles onto one CPU, "
+    "starving the threads placed on that CPU or on its SMT sibling.\n"
     "- normal: no injected fault evident.\n"
     "\n"
 )
@@ -406,7 +428,9 @@ KO_RULES = (
     "characters; report what you saw. Distinguish victims (processes waiting) from the culprit "
     "(the process consuming). incident_window must come from your own evidence: an invented "
     "window is worse than 'unknown'. Never guess a fault type before you have located a change "
-    "in time and attributed it to a process."
+    "in time and attributed it to a process. When the evidence names a THREAD - a comm with its "
+    "tid in sched_switch - put it in culprit_thread / victim_thread as 'comm tid N (prio P)': "
+    "a thread name is the most useful thing an engineer can read in your verdict."
 )
 
 _SUBMIT_DEF = {
@@ -432,11 +456,24 @@ _SUBMIT_DEF = {
                                "anything, because several different services run under each "
                                "of those names. Use 'host' only when the cause is host-wide "
                                "with no single culprit container. Kernel process names are cut "
-                               "to 15 characters - give what you saw."},
+                               "to 15 characters - give what you saw. On a host WITHOUT "
+                               "containers (one pid_ns everywhere) name the thread instead: "
+                               "'comm tid N'."},
         "culprit_kind": {"type": "string",
-                         "enum": ["process", "container", "service", "host", "unknown"],
+                         "enum": ["process", "thread", "container", "service", "host", "unknown"],
                          "description": "what kind of thing you just named. Use 'container' "
-                                        "only if root_cause_service carries a pid_ns."},
+                                        "only if root_cause_service carries a pid_ns; 'thread' "
+                                        "when one thread (comm + tid) is the cause."},
+        # Thread naming. Measured on five switch/router traces: the culprit threads (the comms
+        # thread, a status thread, ksoftirqd/0) were in the tool output every time and the verdict never
+        # carried them. Optional, so older transcripts and scorers stay valid.
+        "culprit_thread": {"type": "string", "description":
+                           "the thread (or process) CAUSING it, as 'comm tid N (prio P)' exactly "
+                           "as sched_switch names it; 'none' when the cause is host-wide or not a "
+                           "thread."},
+        "victim_thread": {"type": "string", "description":
+                          "the thread that SUFFERS (waits, stalls, drops), same form; 'none' if "
+                          "there is no single victim."},
         # "other" is allowed: the fixed list was written for a four-modality view and some of
         # its distinctions are not separable from a kernel trace alone. A wrong label hides a
         # correct understanding; what_is_wrong is what gets read.
