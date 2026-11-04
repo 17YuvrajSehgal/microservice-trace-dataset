@@ -339,8 +339,7 @@ FAULT_VOCAB = (
     "process stays alive and goes silent.\n"
     "- fd_exhaustion: ONE service's process hit its open-file limit (RLIMIT_NOFILE): accept4/"
     "socket/openat return EMFILE (ret = -24) for that process only, usually followed by its "
-    "restart loop; callers see refused connections. Not a peer refusing (that is conn_pool).
-"
+    "restart loop; callers see refused connections. Not a peer refusing (that is conn_pool).\n"
     "- cpu_starvation: ONE latency-sensitive thread is runnable but keeps waiting for a CPU "
     "behind a crowd of same-or-higher-priority threads on its core (long runqueue waits, low "
     "run time), often while other cores sit idle. Bare-metal / embedded hosts; the fix is "
