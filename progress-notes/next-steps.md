@@ -20,17 +20,37 @@ engineers' answer, `normal`, or one of two documented real-but-secondary finding
 card B / 9). **Everything now runs on Nibi** (LLM + traces + runner; `NIBI-HANDOVER.md`).
 Trillium is not needed for the partner work.
 
+The evening added the selector work (`03-11-2026/decisions.md` §12-13): selector C v7 ran on
+29/42 Sock Shop cells (slow_db 7/11, up from v6's 2/11), `select_d` (one router for container
+and bare-metal hosts) is 5/5 on the partner traces, blueprint 12 `fd_exhaustion` is built and
+4/4 in the matched arm. No model server is running.
+
 ## Next, in order
 
-### 1. Close the loop on the partner traces
-- Card A / 8 with the required thread fields (running at session end; result in
-  `ciena_out_v3/wlai-*/8_cpu_starvation/verdict.json` on Nibi). If the fields are still empty,
-  the schema change (`utils.py`, `622964a`) did not reach the model and needs a look at how
-  `_SUBMIT_DEF` is sent.
+### 1. Host a model and resume the three batches (Trillium, through the bridge)
+Host on Nibi (`NIBI-HANDOVER.md`: `submit-qwen.sh` or the interactive `srun --qos=interac`
+lane), then from WSL `ssh -O forward -L 8000:<node>:8000 nibi` and
+`ssh -O forward -R 8001:localhost:8000 trillium` (Trillium's `.env` points at `localhost:8001`).
+Keep total agents at or below ~8 per server (one H100 holds ~9 long contexts; 14 agents sat at
+9 running / 32 waiting and cells took 35 min). Then, on Trillium:
+- `bash /scratch/yuvraj17/stratatrace/run_select_c7_qwen.sh` - finishes C v7 (3 svc_net + the
+  10 normal controls; the controls decide whether v7's `normal` bar holds).
+- `SEL_ARM=sockshop_d_qwen SEL_PAR=4 bash Blueprint/select/run_select_d.sh` - the 42 Sock Shop
+  cells + the 10 lock-family runs through the unified router (env as in `run_select_c7_qwen.sh`).
+- `bash /scratch/yuvraj17/stratatrace/run_fd_test.sh` after deleting `bp_eval/fd12/select_d/.../r3`
+  - re-tests r3 through the fixed selector and runs the normal control; then r4/r5.
+Score: `Blueprint/select/select_score.py <arm dir> --data-root data/stratatrace-v2/sockshop`.
+
+### 2. Partner traces
 - Show the engineers the two secondary findings (card C: siblings starved after the nice -20
   raise; card B: the 364 ms journal-freezing write) and ask whether they are known.
-- Re-host when needed: `bash /scratch/yuvraj17/c7-llm/submit-qwen.sh` on Nibi (12 h batch) or
-  the `srun --qos=interac` line in `NIBI-HANDOVER.md` (8 h, fast lane); update `repo/.env` host.
+- Selector D results live in `Blueprint/ciena_out/v3/<trace>/select_d/` (local mirror).
+
+### 3. Scorer debt
+`nsmap` cannot map a container that restarts (several pid_ns generations): on the fd runs it
+assigns the front-end's namespace to `carts-db`, so a correct "node in pid_ns N" scores `where =
+wrong` unless the agent also names `front-end`. Fix the map (group generations by image/comm) or
+accept the comm+pid_ns form for restart-looping targets.
 
 ### 2. Blueprint 11 — run it through the agent too
 `futex_wait.py` is validated tool-side (`03-11-2026/decisions.md` §8): the labelled

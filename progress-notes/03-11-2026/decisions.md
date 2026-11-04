@@ -284,11 +284,24 @@ fields. `ciena_out_v3` (every pass, 43 verdicts) is mirrored to `Blueprint/ciena
   after the quota numbers were removed from the text, so v6's 5/8 was not a leak. slow_db,
   svc_net and normal were still in the queue.
 
+- **C v7 at the server's end (22:16, 29/42 cells):** svc_cpu_cap 5/8, noisy_neighbor 8/8,
+  **slow_db 7/11** (v6: 2/11), svc_net 2/2 of the 5; 22/29 = 76% of the faults run so far.
+  The 10 normal controls and 3 svc_net cells never started. Read: v7's mandatory Check 5 fixed
+  the slow_db hole as predicted; whether the controls hold at 10/10 is tomorrow's question
+  (the two slow_db `normal`s say the bar is not yet airtight). Model confound: v6 was gpt-6-luna,
+  v7 is Qwen3.8-27B.
+- **Blueprint 12 agent runs, final:** matched arm 4/4 `fd_exhaustion` (0.90-0.97); selector D
+  with the fixed text 2/3 - r3 fired `fd_pressure` (4 EMFILE, 6 restarts) and the verdict still
+  came back `dependency_outage` from a story about process churn in the host namespace. Fixed in
+  both the README and the agent prompt (`52cbd76`: for a selector, the first check whose
+  verdict printed decides; labels outside the list are wrong). Not re-run: no model.
+
 ## Open
-- Final C v7 tally (`select_score.py bp_eval/select/sockshop_c7_qwen --data-root
-  data/stratatrace-v2/sockshop`); the batch is resumable if the server ends first.
-- Re-run the 10 lock-family select_d cells and the 42-cell select_d arm when there is capacity.
-- Blueprint 12: r3 pair and the normal control (`run_fd_test.sh`); then the other two repeats.
+- Resume C v7 (13 cells: 3 svc_net + 10 normal) - `run_select_c7_qwen.sh` skips finished cells.
+- select_d: the 42-cell Sock Shop arm + the 10 lock-family cells (`run_select_d.sh`, Trillium);
+  re-run fd r3 through it; fd r4/r5 matched + the normal control (`run_fd_test.sh`).
+- A second model server (or fewer workers per agent): one H100 holds ~9 long contexts.
 - nsmap: map a restart-looping container (several pid_ns generations) to its service.
+- Show the engineers the two secondary findings (card C / 8, card B / 9).
 - Show the engineers the two secondary findings (card C / 8, card B / 9).
 - The Nibi server (job 26073466) ends ~22:15 ET; a second server is the user's call.
