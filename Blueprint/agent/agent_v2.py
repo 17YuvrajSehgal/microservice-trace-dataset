@@ -1065,20 +1065,33 @@ def diagnose(run_dir, blueprint=None, blueprint_only=False, transcript_path=None
                      "explicitly rather than forcing the blueprint's conclusion onto "
                      "contradicting evidence.\n%s" % (sk.name, sk.body))
         else:
+            # A selector lists several labels and commits to the first check that fires; a
+            # specialist blueprint confirms one family or says normal. Measured on a selector:
+            # fd_pressure printed its FD EXHAUSTION verdict and the answer still came back
+            # 'dependency_outage' (not even one of the selector's labels) from a story built
+            # with the generic tools. The commit rule has to be in the prompt, not only the text.
+            if "select" in os.path.basename(os.path.dirname(os.path.abspath(blueprint))):
+                commit = ("Your fault_type is one of the labels this selector lists and nothing "
+                          "else. The FIRST check whose verdict line printed decides it; what the "
+                          "generic tools show afterwards is context for what_is_wrong, never an "
+                          "override, and a label outside the selector's list is a wrong answer. "
+                          "(Measured: a check printed its VERDICT and the verdict still carried "
+                          "a label the selector does not have.)")
+            else:
+                commit = ("Your fault_type is either the family this blueprint confirms or "
+                          "'normal': when its decisive check fails, answer 'normal' and put "
+                          "whatever else you saw in what_is_wrong as a finding - never pick a "
+                          "different fault family that this blueprint's tools did not confirm, "
+                          "and never promote a side note with a low confidence number. "
+                          "(Measured: a verdict whose own reasoning said 'signature ABSENT' "
+                          "still carried a fault label; that is a wrong answer.)")
             extra = ("\n\nBLUEPRINT FOR THIS PROBLEM (given to you; it was not inferred from "
                      "the evidence): %s\nFollow its method. Still VERIFY its problem "
                      "signature with your own queries - if a discriminating check FAILS, say "
                      "so explicitly rather than forcing the blueprint's conclusion onto "
                      "contradicting evidence. If a check needs a quantity the fixed tools "
                      "cannot compute, compute it with run_python rather than abstaining. "
-                     "Your fault_type is either the family this blueprint confirms or "
-                     "'normal': when its decisive check fails, answer 'normal' and put "
-                     "whatever else you saw in what_is_wrong as a finding - never pick a "
-                     "different fault family that this blueprint's tools did not confirm, and "
-                     "never promote a side note with a low confidence number. (Measured: a "
-                     "verdict whose own reasoning said 'signature ABSENT' still carried a "
-                     "fault label; that is a wrong answer.)"
-                     "\n%s" % (sk.name, sk.body))
+                     "%s\n%s" % (sk.name, commit, sk.body))
             if CTX.bp_def is not None:
                 extra += ("\n\nTHE BLUEPRINT'S OWN SCRIPTS are available through "
                           "blueprint_tool: run the exact commands the blueprint's steps "

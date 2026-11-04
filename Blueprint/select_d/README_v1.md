@@ -284,6 +284,15 @@ the deepest one. "I did not find anything" is a report of your effort, not a fin
 
 ## Output
 
+**A fired check decides.** If any check or screen printed its `VERDICT:` / `STALL:` line, the
+`fault_type` IS that check's label, full stop. What the generic tools showed afterwards — exec
+storms, "a stack rebuild", "everything went quiet at once", a host-wide collapse — is context for
+`what_is_wrong`, never an override: those are what a dying front door or a starved thread look
+like from the outside. Measured: `fd_pressure` printed `VERDICT: FD EXHAUSTION: node ... 4 EMFILE
+... 6 restarts`, and the verdict still came back `dependency_outage` from a story about process
+churn in the host namespace. That is a wrong answer. Labels outside the table at the top
+(`dependency_outage`, `error_storm`, `other`, ...) are invalid for this selector.
+
 One `fault_type` from the table at the top, the branch you took and why (the `pid_ns` count), and
 in the evidence the check or screen that fired with its number (retransmission rate, futex verdict,
 reclaim count, ceiling vs baseline, idle%, runq_wait share and longest wait, sock_lag gap vs
