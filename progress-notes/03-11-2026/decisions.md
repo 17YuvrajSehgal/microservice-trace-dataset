@@ -231,6 +231,40 @@ Card A / 8 once more with the required fields (17:27): `cpu_starvation` 0.9,
 holders and their ms. That is the engineers' verdict, in their numbers, in the structured
 fields. `ciena_out_v3` (every pass, 43 verdicts) is mirrored to `Blueprint/ciena_out/v3/`.
 
+## 12. Selectors (evening): C v7 finally run, a unified router D, blueprint 12, conn_pool parked
+- **Selector C v7** (built 01-11, never run) is running over all 42 Sock Shop cells on Trillium
+  with Qwen3.8-27B through the laptop bridge (`bp_eval/select/sockshop_c7_qwen`). The model is a
+  confound against v6's gpt-6-luna numbers; the comparison that matters is whether v7 closes the
+  slow_db hole (2/11) and the normal regression (7/10) that FINDINGS.md traced to Check 5 being
+  optional.
+- **`select_d`** = one router for both host kinds. Step 0 counts distinct `pid_ns` values in a
+  probe slice (3+ = containers, else bare metal). Branch A is the `0_host_triage` ladder (four
+  screens, decision table); Branch B is C v7 with two additions: Check 0 `fd_pressure.py`
+  (EMFILE) and Check 2 `futex_wait.py` (the lock families, which C could not name). Its tools/ is
+  the union of both tool sets (23 scripts). Running on the five partner traces on Nibi; the
+  Sock Shop + lock-family runs on Trillium were started and then stopped (below).
+- **The model is the bottleneck, not the clusters.** With 14 agents on one H100 the server sat
+  at 9 requests running, 32 waiting (its KV cache holds ~9 long contexts), and no cell finished
+  in 25 min. The 10 lock-family select_d cells were killed (nothing lost; resumable). Lesson for
+  the next hosting: two servers or a smaller worker fan-out.
+- **Blueprint 12 `fd_exhaustion`** built evidence-first. The recipe lowers the front-end's
+  RLIMIT_NOFILE; measured on r1: 23 EMFILE returns by `node` on accept4/socket in the 120 s
+  window (all in its first 6 s), 9 execs of node in that namespace, 0 of either at baseline.
+  `fd_pressure.py` counts EMFILE/ENFILE/EADDRNOTAVAIL/ECONNREFUSED per process, the highest fd
+  seen, and restarts; verdict `FD EXHAUSTION: node (ns ..): 23 EMFILE ... 9 restarts` on the
+  fault slice, `NO FD PRESSURE` on the baseline. Agent test pending (the fd runs had no index;
+  building).
+- **conn_pool_exhaustion parked** with numbers: through toxiproxy `connect()` never fails (0
+  refused in both windows); the db connections just read 27 bytes instead of 52 and live 2.5 ms
+  instead of 4.3 ms at p90. Too weak to call a fault from the kernel. The earlier session's
+  `connect_census.py` is kept in the folder with a README saying so.
+- A broken string in `utils.py` (the new vocabulary line) was committed and shipped for four
+  minutes; caught by the import check, fixed in `ef4a1fc` before any new cell imported it.
+
 ## Open
+- Tally C v7 (`select_score.py bp_eval/select/sockshop_c7_qwen --data-root data/stratatrace-v2/sockshop`)
+  and select_d on the partner traces; re-run the 10 lock-family cells and the 42-cell select_d
+  arm when there is model capacity.
+- Blueprint 12 agent test (`run_fd_test.sh` on Trillium, staged): matched arm x3 + select_d x3 + 1 normal.
 - Show the engineers the two secondary findings (card C / 8, card B / 9).
-- The Nibi server (job 26073466) ends ~22:15 ET; nothing else is queued on either cluster.
+- The Nibi server (job 26073466) ends ~22:15 ET; a second server is the user's call.
