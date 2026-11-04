@@ -136,7 +136,11 @@ def _where_microservice(dx: dict, truth: dict, run_dir: str, index_root=None) ->
         return "none"
     low = pred.lower()
     target = truth["target"]
-    if target and target in re.split(r"[^a-z0-9]+", low):
+    # Compare hyphen/underscore-free tokens: a target like "front-end" never equalled a token
+    # of the old split (which cut on the hyphen), so a verdict naming it scored "wrong".
+    norm = lambda s: s.replace("-", "").replace("_", "")                    # noqa: E731
+    toks = {norm(t) for t in re.split(r"[^a-z0-9_-]+", low) if t}
+    if target and (target in toks or norm(target) in toks):
         return "named"
     # a pid_ns id -> resolve it to a container and compare to the true one
     m = re.search(r"\b(40265\d{5}|\d{6,})\b", pred)

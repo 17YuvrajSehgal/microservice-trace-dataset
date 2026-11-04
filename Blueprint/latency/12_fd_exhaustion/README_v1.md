@@ -76,11 +76,16 @@ before the first restart), so the window starts where the change starts.
 ### Step 2. Cut a fault slice and a baseline slice
 
 ```bash
-bash $TOOLS/extract_slice.sh $TRACE $DAY $WINDOW_START 60 $WORK/fd_fault.txt "$FDEV"
-bash $TOOLS/extract_slice.sh $TRACE $DAY $BASE_START   30 $WORK/fd_base.txt  "$FDEV"
+EARLY=$(date -u -d "$DAY $WINDOW_START UTC - 30 seconds" '+%H:%M:%S')     # 30 s BEFORE the rate change
+bash $TOOLS/extract_slice.sh $TRACE $DAY $EARLY      90 $WORK/fd_fault.txt "$FDEV"
+bash $TOOLS/extract_slice.sh $TRACE $DAY $BASE_START 30 $WORK/fd_base.txt  "$FDEV"
 ```
-`BASE_START` = a quiet stretch before the window. 60 s of the fault window is enough: measured,
-the 23 EMFILE returns all fell in the first 6 s and the restarts spread over the window.
+`BASE_START` = a quiet stretch well before `EARLY`. **Start the fault slice 30 s before the
+visible change, not at it.** The EMFILE burst comes first and the collapse follows it: measured,
+all 23 EMFILE returns fell in the first 6 s after the limit was applied, the front-end died on
+them, and the host-wide activity drop that the rate plot shows began ~4 s later. A slice cut at
+the drop misses the burst and reads `NO FD PRESSURE` on the fault (measured: an agent did exactly
+that, saw the EMFILE only in the slice it had meant as baseline, and called the run normal).
 
 ### Step 3. The decisive check
 
@@ -99,6 +104,7 @@ Read the verdict line of the fault slice against the baseline:
 | `NOTE: EPHEMERAL PORTS EXHAUSTED: ...` | A client-side port limit, not descriptors; report as `other` with the line |
 | `NOTE: RESTART LOOP: <comm> (ns N) exec'd R times` with 0 EMFILE | A crash loop with another cause; not this fault |
 | the baseline slice ALSO shows EMFILE from the same process | The limit was already hit before the window: still this fault, but say the recording has no clean baseline |
+| `FD EXHAUSTION` in **any** slice you cut, whichever you called it | **This fault.** The verdict does not depend on which slice you labelled "fault"; a burst of EMFILE from one service followed by the whole stack going quiet is the front door dying, not a host-wide outage of unknown cause |
 
 ### Step 4. Blast radius (one call)
 
@@ -112,7 +118,7 @@ whose sleep rose; they are the effect, not the cause.
 ### Step 5. Submit
 
 - `fault_type`: `fd_exhaustion`.
-- `root_cause_service`: the comm and pid_ns from the verdict line (the service whose limit was hit).
+- `root_cause_service`: the **service name** (the container the index annotations give for that pid_ns, e.g. `front-end`), then the comm and pid_ns from the verdict line: `front-end (node, pid_ns 4026532620)`. A pid_ns id alone is not a service name.
 - `culprit_kind`: `container` (the limit is set on the container/process), `culprit_thread`: `none`.
 - `victim_thread`: `none` on a container host; on a bare-metal host the comm/tid that returned EMFILE.
 - `incident_window`: from the first EMFILE (the `first at` time) to the end of the window.

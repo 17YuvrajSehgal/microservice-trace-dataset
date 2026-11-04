@@ -162,14 +162,9 @@ def main():
             print(f"NOTE: CONNECTS REFUSED: {comm} (ns {ns}, pid {pid}): {e['ECONNREFUSED']} ECONNREFUSED "
                   f"on connect() - a peer's limit, not this process's descriptors "
                   f"(see 6_conn_pool_exhaustion)")
-    # ponytail: a service restart loop is a handful of execs per minute (measured: 9 in 120 s);
-    # shell tools run by collection scripts exec hundreds of times. The 30 cap separates them;
-    # a per-generation lifetime would be the upgrade if a real loop ever exceeds it.
-    loops = [(k, n) for k, n in execs.items() if 3 <= n <= 30]
-    if loops:
-        for (ns, comm), n in sorted(loops, key=lambda kv: -kv[1])[:5]:
-            print(f"NOTE: RESTART LOOP: {comm} (ns {ns}) exec'd {n} times in {secs:.0f} s "
-                  f"({exits.get((ns, comm), 0)} exits)")
+    # No generic "restart loop" note: measured on a microservice host, every slice carried
+    # 12-30 execs of chronyc / iptables / sed / sleep from the host's own scripts, so the note
+    # was noise in every run. The restarts that matter are the EMFILE process's, in the verdict.
 
 
 def _selftest():

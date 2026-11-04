@@ -178,13 +178,18 @@ A service that ran out of file descriptors fails every `accept4`/`socket`/`opena
 (`ret = -24`) and usually crash-loops; nothing else in this ladder produces that return code.
 ```bash
 FDEV='sched_process_exec|sched_process_exit|syscall_exit_(accept4|accept|socket|socketpair|openat|open|creat|dup|dup2|dup3|pipe2|pipe|epoll_create1|epoll_create|eventfd2|memfd_create|timerfd_create|signalfd4|inotify_init1|connect)'
-bash $TOOLS/extract_slice.sh $TRACE $DAY $WINDOW_START 60 $WORK/fd.txt "$FDEV"
-python3 $TOOLS/fd_pressure.py $WORK/fd.txt 60
+EARLY=$(date -u -d "$DAY $WINDOW_START UTC - 30 seconds" '+%H:%M:%S')   # the burst comes BEFORE the collapse
+bash $TOOLS/extract_slice.sh $TRACE $DAY $EARLY 90 $WORK/fd.txt "$FDEV"
+python3 $TOOLS/fd_pressure.py $WORK/fd.txt 90
 ```
-FIRES on `VERDICT: FD EXHAUSTION: <comm> (ns N, pid P): K EMFILE returns ...` → **`fd_exhaustion`**
-(measured: 23 EMFILE by the front-end plus 9 restarts in the window, 0 at baseline). `NO FD
-PRESSURE` means move on. A `NOTE: CONNECTS REFUSED` or `NOTE: RESTART LOOP` line with no EMFILE is
-a finding to carry forward, not a verdict.
+FIRES on `VERDICT: FD EXHAUSTION: <comm> (ns N, pid P): K EMFILE returns ...` **in any slice you
+cut, including one you meant as baseline** → **`fd_exhaustion`**. Measured: 23 EMFILE by the
+front-end in the 6 s after the limit was applied, the stack-wide activity drop began ~4 s later,
+and a selector that sliced at the drop saw `NO FD PRESSURE` there, saw the verdict in its
+"baseline" slice, and still answered normal with "host-wide outage of unknown cause". A burst of
+EMFILE from one service followed by everything going quiet is that service dying, and that is the
+cause. `NO FD PRESSURE` in a slice that starts 30 s before the change means move on. A `NOTE:
+CONNECTS REFUSED` line with no EMFILE is a finding to carry forward, not a verdict.
 
 ### B1. Check 1 — svc_net (retransmissions)
 
