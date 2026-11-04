@@ -122,6 +122,23 @@ when its frozen or starved dependants include a candidate; otherwise the starvat
 stall is a second finding. **Explain one hit by the other when linked** — a thread starved on the
 RX CPU while `RX CONCENTRATED` fires is `irq_imbalance` with the starvation as its effect.
 
+### The bar for answering `normal` on a bare-metal host (read before you conclude)
+
+`normal` means *"all four screens ran on the whole-span slice and every one came back negative"*.
+It does NOT mean *"the rate plots and the per-second CPU series looked steady"* — a thread starved
+behind a crowd leaves every aggregate flat; only `runq_wait.py` on that thread sees it. Before you
+may output `normal`, ALL of these must be true:
+1. `irq_balance.py`, `syscall_stall.py` and `futex_wait.py` ran on `$WORK/all.txt` (or the slice
+   lacked the events and you said which).
+2. **`runq_wait.py` ran once for EVERY `*` row** of the `thread_top` tables (`--sort wait` and
+   `--sort max`), and each came back `NOT STARVED` or `MILD`. A `--help` call is not a run.
+3. You quoted the negative lines word for word.
+Measured: a selector that ran `thread_top`, then spent its steps on generic rate and per-second
+tools and never called `runq_wait` on the starred comms thread (26 waits >= 10 ms, longest
+30 ms) called a starved line card `normal`. The four screens are the investigation; the generic
+tools only orient. If you cannot satisfy (2), you do not have a `normal`: say which candidates
+were not tested and answer from the screens that did run.
+
 ---
 
 ## Branch B — container host: rule out the mechanism, never default to "slow"
@@ -266,5 +283,7 @@ One `fault_type` from the table at the top, the branch you took and why (the `pi
 in the evidence the check or screen that fired with its number (retransmission rate, futex verdict,
 reclaim count, ceiling vs baseline, idle%, runq_wait share and longest wait, sock_lag gap vs
 baseline). On Branch A name the culprit and victim threads as the tools print them
-(`comm tid N (prio P)`). State explicitly whether `sock_lag` ran (Branch B) or which screens were
+(`comm tid N (prio P)`); the culprit is what holds the victim back (the crowd's top competitors or
+"the N nice-0 threads on cpu X", the staller, `ksoftirqd/N`, the lock holder) and is **never the
+victim itself** (measured: a verdict put the starved comms thread in both fields). State explicitly whether `sock_lag` ran (Branch B) or which screens were
 skipped and why (Branch A). Do not output `other`.
