@@ -95,3 +95,6 @@ Blueprint/ciena_out*.zip
 Blueprint/eval/bp_work/
 # tectonic / build logs
 nier-2027/tectonic_log.txt
+
+# rca-studio is its own repository (shipped separately); never track it here
+rca-studio/
