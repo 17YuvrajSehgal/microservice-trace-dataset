@@ -261,10 +261,34 @@ fields. `ciena_out_v3` (every pass, 43 verdicts) is mirrored to `Blueprint/ciena
 - A broken string in `utils.py` (the new vocabulary line) was committed and shipped for four
   minutes; caught by the import check, fixed in `ef4a1fc` before any new cell imported it.
 
+## 13. Results of the evening runs (as they landed)
+- **select_d on the five partner traces: 5/5** after one rule. First pass 4/5: card B came back
+  `normal` because the worker ran `thread_top`, then spent its steps on generic rate and
+  per-second tools and never called `runq_wait` on the starred comms thread (its only
+  `runq_wait` call was `--help`). Same failure shape FINDINGS.md found for C v6's Check 5. The
+  README now has a "bar for answering normal on a bare-metal host" (runq_wait on every starred
+  row, a --help call is not a run); re-run: `cpu_starvation` 0.9, comms thread as victim, the
+  84-thread crowd as culprit, 24 runq_wait calls.
+- **Blueprint 12 agent test.** Matched arm: r1 `fd_exhaustion` 0.93, r2 0.95, r1 again with the
+  final text 0.97 with `where` = "node in pid_ns ... (front-end container)". Selector D on r1:
+  `normal` with the first text (it sliced at the activity collapse; the EMFILE burst comes ~4 s
+  before it and sat in the slice the agent had meant as baseline), `fd_exhaustion` 0.9 after the
+  README starts the slice 30 s earlier and says a verdict in any slice fires.
+- **Scorer caveats found.** (1) `front-end` could never score as "named": the old token split
+  cut on the hyphen; fixed (`14dedc2`). (2) The pid_ns -> container map (`nsmap`, built by
+  correlating CPU series) breaks on a container that restarts nine times: it assigns the
+  front-end's namespace to `carts-db` and has no front-end entry at all, so a correct
+  "node in pid_ns N" scores `where = wrong`. Read `fault_ok` for this family until nsmap handles
+  restart loops; the agent is not at fault.
+- **C v7 interim (14/42 at 20:50):** svc_cpu_cap 5/8, noisy_neighbor 6/6. cpu_cap held at 5/8
+  after the quota numbers were removed from the text, so v6's 5/8 was not a leak. slow_db,
+  svc_net and normal were still in the queue.
+
 ## Open
-- Tally C v7 (`select_score.py bp_eval/select/sockshop_c7_qwen --data-root data/stratatrace-v2/sockshop`)
-  and select_d on the partner traces; re-run the 10 lock-family cells and the 42-cell select_d
-  arm when there is model capacity.
-- Blueprint 12 agent test (`run_fd_test.sh` on Trillium, staged): matched arm x3 + select_d x3 + 1 normal.
+- Final C v7 tally (`select_score.py bp_eval/select/sockshop_c7_qwen --data-root
+  data/stratatrace-v2/sockshop`); the batch is resumable if the server ends first.
+- Re-run the 10 lock-family select_d cells and the 42-cell select_d arm when there is capacity.
+- Blueprint 12: r3 pair and the normal control (`run_fd_test.sh`); then the other two repeats.
+- nsmap: map a restart-looping container (several pid_ns generations) to its service.
 - Show the engineers the two secondary findings (card C / 8, card B / 9).
 - The Nibi server (job 26073466) ends ~22:15 ET; a second server is the user's call.
