@@ -28,6 +28,7 @@ BLUEPRINTS = {
     "irq_imbalance":      "10_irq_imbalance",      # softirq / RX piled on one CPU (+ SMT sibling)
     "priority_inversion": "11_priority_inversion", # lock held by a thread that cannot run
     "host_triage":        "0_host_triage",         # one-shot screen for a bare-metal host: routes to 8-11
+    "fd_exhaustion":      "12_fd_exhaustion",      # a service hit RLIMIT_NOFILE: EMFILE returns + restart loop
     # agentic experiments map onto the same blueprints
     "io_cap":         None,          # no blueprint yet
     "threads":        None,          # no blueprint yet

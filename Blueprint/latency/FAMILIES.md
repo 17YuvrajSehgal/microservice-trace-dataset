@@ -24,12 +24,14 @@ row names the blueprint folder under `Blueprint/latency/` and what it was calibr
 | Interrupt work piled on one core | `irq_imbalance` (10) | NET_RX softirq share on one CPU far above 1/ncpu; `ksoftirqd/N` busy; app threads on that CPU or its SMT sibling; baseline-vs-load diff | partner case 3 (with/without load pair): 100% of NET_RX on cpu 0, `ksoftirqd/0` 42% of a CPU (engineers measured 43.4%); fix: pin the SDK threads to other cores |
 | Lock held by a thread that cannot run | `priority_inversion` (11) | few LONG futex waits ending with a wake (ret 0); the releaser was runnable-but-not-running, its CPU taken by middle-priority threads | our `priority_inversion_*` runs (nice-based, 50 ms hold) |
 | Many threads on one lock | `lock_contention` (11, same tools) | MANY SHORT woken futex waits on one address; holders run while holding | our `lock_contention_*` runs |
+| A process out of file descriptors | `fd_exhaustion` (12, `fd_pressure.py`) | `ret = -24` (EMFILE) on `accept4`/`socket`/`openat` from ONE process, its highest fd at a flat ceiling, the same comm exec'd several times (restart loop) | our `fd_exhaustion_*` runs: 23 EMFILE + 9 restarts of the front-end in the window, 0 at baseline |
 
 ### Not built yet (needs a labelled trace first)
 
 | Cause | Signal to look for | Why it waits |
 |---|---|---|
 | Kernel hot path that scales with a table (partner case 4: a label-space scan on every link event) | a syscall (`sendmsg`) that is 10-30 ms on-CPU inside the kernel | needs ftrace `function_graph` / kprobe durations; a count index cannot see inside a syscall |
+| Connection-pool exhaustion on a datastore (`6_conn_pool_exhaustion`, parked with its `connect_census.py`) | `connect()` refused/timed out, or accepted then closed after a small error packet | measured on our `conn_pool_exhaustion_*` runs (03-11): the app connects through toxiproxy, so `connect()` always succeeds (0 refused in both windows); the only kernel difference is the db connections reading 27 bytes instead of 52 and living 2.5 ms instead of 4.3 ms at p90 - too weak to call a fault from. The fault lives in the MySQL error packet (logs), not in the kernel |
 | Periodic thread missing its period (timer jitter) | wakeup latency of a thread with a fixed period; period variance | partly covered by `runq_wait.py`; needs a thread with a known period to calibrate |
 | Interrupt storm (one IRQ line flooding) | `irq_handler_entry` rate and time per irq per CPU | `irq_balance.py` prints it; no labelled storm yet |
 | Uninterruptible I/O stall (D-state on a disk) | long D intervals + `block_rq_issue/complete` latency | the `anomaly_disk` family on microservice hosts; not seen on the line cards |

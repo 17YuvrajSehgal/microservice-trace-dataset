@@ -38,6 +38,7 @@ FAULT_WORDS = {
     "irq_imbalance":      ("irq", "softirq", "interrupt", "rx", "imbalance", "concentrat"),
     "priority_inversion": ("inversion", "priority", "lock", "futex"),
     "lock_contention":    ("contention", "lock", "futex"),
+    "fd_exhaustion":      ("fd", "descriptor", "emfile", "nofile", "ulimit", "too many open"),
 }
 
 # a verdict's fault_type that means "nothing wrong" - used to score control/baseline runs

@@ -298,6 +298,8 @@ FAULT_TYPES = [
     # partner line-card traces were CPU-scheduling faults with no word in this list, so every verdict was
     # "normal" or a wrong microservice label. Blueprints 8-11 under latency/ carry these.
     "cpu_starvation", "syscall_stall", "irq_imbalance",
+    # Added 03-11 with blueprint 12: a service out of file descriptors (EMFILE + restart loop).
+    "fd_exhaustion",
 ]
 
 FAULT_VOCAB = (
@@ -335,6 +337,10 @@ FAULT_VOCAB = (
     "the holder is runnable-but-not-running during them.\n"
     "- deadlock: threads wait on each other forever - futex waits that never return while the "
     "process stays alive and goes silent.\n"
+    "- fd_exhaustion: ONE service's process hit its open-file limit (RLIMIT_NOFILE): accept4/"
+    "socket/openat return EMFILE (ret = -24) for that process only, usually followed by its "
+    "restart loop; callers see refused connections. Not a peer refusing (that is conn_pool).
+"
     "- cpu_starvation: ONE latency-sensitive thread is runnable but keeps waiting for a CPU "
     "behind a crowd of same-or-higher-priority threads on its core (long runqueue waits, low "
     "run time), often while other cores sit idle. Bare-metal / embedded hosts; the fix is "

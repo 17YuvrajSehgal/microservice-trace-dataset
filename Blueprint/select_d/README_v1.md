@@ -5,7 +5,7 @@ solve the fault. Output exactly one `fault_type` from this list and nothing else
 
 | branch | labels |
 |---|---|
-| container host (microservices, cgroups) | `svc_cpu_cap`, `noisy_neighbor`, `slow_db`, `svc_net`, `svc_mem_cap`, `lock_contention`, `priority_inversion` |
+| container host (microservices, cgroups) | `svc_cpu_cap`, `noisy_neighbor`, `slow_db`, `svc_net`, `svc_mem_cap`, `lock_contention`, `priority_inversion`, `fd_exhaustion` |
 | bare-metal host (a line card, an embedded box) | `cpu_starvation`, `syscall_stall`, `irq_imbalance`, `priority_inversion`, `lock_contention` |
 | either | `normal` |
 
@@ -154,6 +154,20 @@ bash $TOOLS/extract_slice.sh $TRACE $DAY $BASE_START   10 $WORK/base.txt
 it. A flat rate plot does NOT license `normal` (a slow dependency barely moves the event rate):
 run the checks on a mid-recording slice. **A short dip is a window to investigate, never a reason
 to dismiss**: slice the deepest dip and run every check on it; repetition at a cadence is evidence.
+
+### B0b. Check 0 — resource errors (fd_exhaustion). Cheap; run it first.
+
+A service that ran out of file descriptors fails every `accept4`/`socket`/`openat` with EMFILE
+(`ret = -24`) and usually crash-loops; nothing else in this ladder produces that return code.
+```bash
+FDEV='sched_process_exec|sched_process_exit|syscall_exit_(accept4|accept|socket|socketpair|openat|open|creat|dup|dup2|dup3|pipe2|pipe|epoll_create1|epoll_create|eventfd2|memfd_create|timerfd_create|signalfd4|inotify_init1|connect)'
+bash $TOOLS/extract_slice.sh $TRACE $DAY $WINDOW_START 60 $WORK/fd.txt "$FDEV"
+python3 $TOOLS/fd_pressure.py $WORK/fd.txt 60
+```
+FIRES on `VERDICT: FD EXHAUSTION: <comm> (ns N, pid P): K EMFILE returns ...` → **`fd_exhaustion`**
+(measured: 23 EMFILE by the front-end plus 9 restarts in the window, 0 at baseline). `NO FD
+PRESSURE` means move on. A `NOTE: CONNECTS REFUSED` or `NOTE: RESTART LOOP` line with no EMFILE is
+a finding to carry forward, not a verdict.
 
 ### B1. Check 1 — svc_net (retransmissions)
 
