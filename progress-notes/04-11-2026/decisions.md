@@ -35,6 +35,18 @@ overflow "stop at limit".
 selector work knows well, now from a 1-bit 27B model instead of Qwen3.8-27B on an H100. The
 laptop run proves the plumbing, not the model; quality numbers stay with the cluster runs.
 
+## 3. Real data in the product (laptop, WSL server)
+The five partner traces and the six ticket PDFs were pulled from Nibi into WSL
+(`~/partner-data/Observability`, never in a repo). `scripts/import_jira_pdfs.py` turns a Jira
+PDF export into a local issue with the description and the first three comments only, so the
+tickets read as open (the fixes stay out; that is what the tool is for).
+`scripts/seed_traces.py` registers every trace under a folder and links by map;
+`scripts/import_runs.py` loads finished investigations (verdict + transcript) so the panel
+replays them: the 30 latest cluster cells (Qwen3.8-27B) are in, 6 per trace. Two API fixes came
+out of it: the host kind is read from a decoded sample (the metadata lists `pid_ns` even on bare
+metal, so every card showed "containers"), and a capture is named after its own folder, not
+`kernel`/`tmp`. Also added: list incidents, rename trace, unlink issue, delete run.
+
 ## Open
 - rca-studio: extension tests; MCP face of the server; access control for blueprint editing;
   show the edit history in the UI; the coordinator for log/metrics agents.
