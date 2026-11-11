@@ -29,6 +29,10 @@ BLUEPRINTS = {
     "priority_inversion": "11_priority_inversion", # lock held by a thread that cannot run
     "host_triage":        "0_host_triage",         # one-shot screen for a bare-metal host: routes to 8-11
     "fd_exhaustion":      "12_fd_exhaustion",      # a service hit RLIMIT_NOFILE: EMFILE returns + restart loop
+    "fork_storm":         "13_fork_storm",         # one namespace creates processes at a runaway rate
+    "deadlock":           "14_deadlock",           # new threads block forever in untimed futex waits
+    "dependency_outage":  "15_dependency_outage",  # one container goes silent (paused/stopped) or dies
+    "anomaly_disk":       "16_anomaly_disk",       # one process floods the disk; others wait in D state
     # agentic experiments map onto the same blueprints
     "io_cap":         None,          # no blueprint yet
     "threads":        None,          # no blueprint yet

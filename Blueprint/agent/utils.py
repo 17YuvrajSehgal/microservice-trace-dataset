@@ -300,6 +300,8 @@ FAULT_TYPES = [
     "cpu_starvation", "syscall_stall", "irq_imbalance",
     # Added 03-11 with blueprint 12: a service out of file descriptors (EMFILE + restart loop).
     "fd_exhaustion",
+    # Added 11-11 with blueprints 13 and 16 (deadlock / dependency_outage already listed).
+    "fork_storm", "anomaly_disk",
 ]
 
 FAULT_VOCAB = (
@@ -337,6 +339,10 @@ FAULT_VOCAB = (
     "the holder is runnable-but-not-running during them.\n"
     "- deadlock: threads wait on each other forever - futex waits that never return while the "
     "process stays alive and goes silent.\n"
+    "- fork_storm: ONE workload creates new PROCESSES (not threads) far faster than before - "
+    "sched_process_fork with child_pid == child_tid at tens per second from one namespace.\n"
+    "- anomaly_disk: ONE process floods the disk - most block_rq_issue requests are its own, other "
+    "writers' I/O latency rises and threads spend time in D state.\n"
     "- fd_exhaustion: ONE service's process hit its open-file limit (RLIMIT_NOFILE): accept4/"
     "socket/openat return EMFILE (ret = -24) for that process only, usually followed by its "
     "restart loop; callers see refused connections. Not a peer refusing (that is conn_pool).\n"

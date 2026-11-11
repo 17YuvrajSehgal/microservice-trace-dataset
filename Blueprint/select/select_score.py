@@ -20,7 +20,8 @@ import sys
 FAMILIES = ["svc_cpu_cap", "noisy_neighbor", "slow_db", "svc_net", "svc_mem_cap",
             # bare-metal / scheduling families (blueprints 8-11), routed by select_d
             "cpu_starvation", "syscall_stall", "irq_imbalance", "priority_inversion",
-            "lock_contention", "fd_exhaustion", "normal"]
+            "lock_contention", "fd_exhaustion", "fork_storm", "deadlock", "dependency_outage",
+            "anomaly_disk", "normal"]
 
 # order matters: specific/overlapping terms first (service_network has "net"; cpu competition is noisy)
 def to_family(fault_type):
@@ -31,6 +32,14 @@ def to_family(fault_type):
     # contains "contention" (which the noisy_neighbor rule would also claim)
     if "fd_" in s or "descriptor" in s or "emfile" in s or "file_desc" in s:
         return "fd_exhaustion"
+    if "fork" in s or "spawn" in s:
+        return "fork_storm"
+    if "deadlock" in s:
+        return "deadlock"
+    if "outage" in s or "frozen" in s or "paused" in s:
+        return "dependency_outage"
+    if "disk" in s or s in ("disk_io", "anomaly_io"):
+        return "anomaly_disk"
     if "inversion" in s:
         return "priority_inversion"
     if "lock" in s or "futex" in s or "deadlock" in s:

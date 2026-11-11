@@ -39,6 +39,10 @@ FAULT_WORDS = {
     "priority_inversion": ("inversion", "priority", "lock", "futex"),
     "lock_contention":    ("contention", "lock", "futex"),
     "fd_exhaustion":      ("fd", "descriptor", "emfile", "nofile", "ulimit", "too many open"),
+    "fork_storm":         ("fork", "process creation", "spawn", "process storm"),
+    "deadlock":           ("deadlock", "hung", "never return", "blocked forever"),
+    "dependency_outage":  ("outage", "frozen", "paused", "silent", "down", "stopped"),
+    "anomaly_disk":       ("disk", "block", "i/o", "io ", "d state", "d-state")
 }
 
 # a verdict's fault_type that means "nothing wrong" - used to score control/baseline runs

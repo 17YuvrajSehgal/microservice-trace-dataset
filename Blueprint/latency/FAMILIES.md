@@ -25,6 +25,10 @@ row names the blueprint folder under `Blueprint/latency/` and what it was calibr
 | Lock held by a thread that cannot run | `priority_inversion` (11) | few LONG futex waits ending with a wake (ret 0); the releaser was runnable-but-not-running, its CPU taken by middle-priority threads | our `priority_inversion_*` runs (nice-based, 50 ms hold) |
 | Many threads on one lock | `lock_contention` (11, same tools) | MANY SHORT woken futex waits on one address; holders run while holding | our `lock_contention_*` runs |
 | A process out of file descriptors | `fd_exhaustion` (12, `fd_pressure.py`) | `ret = -24` (EMFILE) on `accept4`/`socket`/`openat` from ONE process, its highest fd at a flat ceiling, the same comm exec'd several times (restart loop) | our `fd_exhaustion_*` runs: 23 EMFILE + 9 restarts of the front-end in the window, 0 at baseline |
+| A workload spawning processes at a runaway rate | `fork_storm` (13, `proc_spawn.py`) | one namespace's `sched_process_fork` with child_pid == child_tid at >= 20/s and >= 10x baseline (threads counted apart: a JVM makes 70-90 threads/s normally) | our `fork_storm_*` runs: 5/5, 0 false alarms in 20 other runs |
+| Threads deadlocked on each other's locks | `deadlock` (14, `futex_hang.py`) | threads CREATED in the slice enter an untimed futex wait within 1 s and never return, on >= 2 lock addresses (idle pool threads parked from before are excluded) | our `deadlock_*` runs: 5/5, 0 false alarms |
+| A dependency paused / frozen / dead | `dependency_outage` (15, `ns_silence.py`) | one namespace goes from >= 20 events/s to < 1% of that; exits present = died, none = paused | our `dependency_outage_*` runs: 5/5, 0 false alarms |
+| One process flooding the disk | `anomaly_disk` (16, `blk_pressure.py`) | one user-space issuer >= 50% of user-space block requests, >= 200 req/s, >= 10x baseline; others' latency and D state rise | our `anomaly_disk_*` runs: 5/5, 0 false alarms |
 
 ### Not built yet (needs a labelled trace first)
 
