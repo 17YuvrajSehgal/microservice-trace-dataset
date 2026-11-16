@@ -57,6 +57,7 @@ def run(run_dir, blueprint, problem, index_root, out_dir, transcript=None):
                     "when": diagnosis.get("incident_window"),
                     "fault": diagnosis.get("fault_type"),
                     "confidence": diagnosis.get("confidence"),
+                    "culprit_code": diagnosis.get("culprit_code"),
                     "culprit_thread": diagnosis.get("culprit_thread"),
                     "victim_thread": diagnosis.get("victim_thread")},
         "score": sc,

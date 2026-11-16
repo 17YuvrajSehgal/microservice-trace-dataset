@@ -42,8 +42,28 @@ FAULT_WORDS = {
     "fork_storm":         ("fork", "process creation", "spawn", "process storm"),
     "deadlock":           ("deadlock", "hung", "never return", "blocked forever"),
     "dependency_outage":  ("outage", "frozen", "paused", "silent", "down", "stopped"),
-    "anomaly_disk":       ("disk", "block", "i/o", "io ", "d state", "d-state")
+    "anomaly_disk":       ("disk", "block", "i/o", "io ", "d state", "d-state"),
+    # code_* families (16-11). The label must name the MECHANISM: the 5 defects sit in 2
+    # functions, so the function alone only says which service. lock_contention is accepted
+    # for the lock defect - from the kernel the two differ only in what the holder is doing.
+    "code_lock_across_io":   ("lock_held", "lock_contention", "mutex"),
+    "code_n_plus_one":       ("n_plus_one", "n+1"),
+    "code_event_loop_block": ("event_loop",),
+    "code_unbounded_cache":  ("unbounded", "memory_growth", "leak"),
+    "code_serial_awaits":    ("serial",),
 }
+
+
+def _code_loc(dx: dict, family: str) -> str:
+    """'function' / 'file' / 'miss' against the defect's known location; 'n/a' off code_*."""
+    if not (family or "").startswith("code_"):
+        return "n/a"
+    from make_code_root import BUGS
+    _svc, _c, rel, func, _e = BUGS[family[len("code_"):]]
+    said = ((dx.get("culprit_code") or "") + " " + (dx.get("what_is_wrong") or "")).lower()
+    if rel.rsplit("/", 1)[-1].lower() not in said:
+        return "miss"
+    return "function" if func.rsplit(".", 1)[-1].lower() in said else "file"
 
 # a verdict's fault_type that means "nothing wrong" - used to score control/baseline runs
 NORMAL_WORDS = ("normal", "no fault", "no incident", "healthy", "nothing", "no anomaly",
@@ -210,7 +230,7 @@ def score(dx: dict, run_dir: str, family: str, index_root=None) -> dict:
     detected = fault_ok and (where_ok if not agentic else True)
     return {"detected": bool(detected), "control": False, "present": True,
             "fault_ok": fault_ok, "where": where, "where_ok": bool(where_ok),
-            "window_iou": iou, "family": fam, "agentic": agentic}
+            "window_iou": iou, "family": fam, "agentic": agentic, "code": _code_loc(dx, fam)}
 
 
 def _secs(s: str):

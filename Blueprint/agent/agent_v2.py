@@ -722,6 +722,27 @@ def n_plan(state: S) -> dict:
                                    "and record each step's reading with note_finding - "
                                    "including checks that come back clean.")}
         subs = (subs[:MAX_SUBTASKS - 1] + [bp_task]) if len(subs) >= MAX_SUBTASKS             else subs + [bp_task]
+    if CTX is not None and CTX.logs is not None:
+        # Same defect, same fix. The planner's prompt describes the kernel tools only, so its
+        # subtasks never send anyone to the logs or the code. Measured on the first logs pilot:
+        # 0 log calls on one run, 0 code calls on both, both verdicts wrong.
+        ins = ("Start with log_overview, then log_events for the whole recording, then "
+               "log_latency. Report, with times: which container's messages or request "
+               "latency CHANGED mid-run, when the change began, and which containers stayed "
+               "the same. A container that complains is usually a caller of the slow one - "
+               "say which is which. Record each reading with note_finding, including 'no "
+               "change' ones.")
+        if CTX.repo is not None:
+            ins += (" Then go to the code: for the method or log line that changed, use "
+                    "log_to_code and code_read on its function and the functions it calls, "
+                    "and look for what would make it slow under load - a lock held across "
+                    "a query or a network call, a query inside a loop, synchronous CPU work "
+                    "or a busy wait in a request handler, a list that only grows. Quote "
+                    "path:line for anything you find, and say so plainly if the code looks "
+                    "clean.")
+        log_task = {"title": "logs" + (" and code" if CTX.repo is not None else ""),
+                    "instruction": ins}
+        subs = subs[:MAX_SUBTASKS - 1] + [log_task]
     CTX.event("plan", round=1, subtasks=subs)
     return {"plan": subs, "round": 1}
 
@@ -1009,8 +1030,8 @@ def _host_profile(run_dir):
 _LOGS_NOTE = (
     "\n\nCONTAINER LOGS ARE AVAILABLE TOO, through log_overview, log_events and log_search. "
     "They use the same UTC clock as the kernel tools. Use them for what they are good at: "
-    "WHEN a symptom began (the first_seen of a 'new' error template) and WHICH service "
-    "complained. The service that LOGS an error is often the victim, not the culprit - a "
+    "WHEN a symptom began (the first_seen of a 'new' error template, or the bucket where "
+    "log_latency's p50 jumps) and WHICH service complained. The service that LOGS an error is often the victim, not the culprit - a "
     "caller prints 'timeout' because something it depends on is slow. So take the onset time "
     "and the complaining service from the logs, then go to the kernel tools for the cause in "
     "that window. An error template that is present from the first second of the recording "
@@ -1022,7 +1043,8 @@ _CODE_NOTE = (
     "the evidence points at application code - a lock held across I/O, a query inside a loop, "
     "a blocked event loop - walk from that statement to its function and callers, and name "
     "the responsible file and function as path:line in what_is_wrong. The trace proves it "
-    "happened; the code explains the mechanism. Do not name code the trace does not implicate.")
+    "happened; the code explains the mechanism. Do not name code the trace does not implicate. "
+    "Put the location in culprit_code as 'path:line function'.")
 
 
 def diagnose(run_dir, blueprint=None, blueprint_only=False, transcript_path=None,

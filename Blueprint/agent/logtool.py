@@ -93,6 +93,25 @@ KEEP_KEYS = {"caller", "method", "level", "lvl", "component", "transport", "resu
 NULLISH = {"null", "nil", "<nil>", "none", "", '""', "true", "false"}
 SPRING_RE = re.compile(r"\[([\w-]+),([0-9a-f]{16,32}),([0-9a-f]{16}),\w*\]")
 MONGO_SEV_RE = re.compile(r"^\S+ ([FEWID]) [A-Z]+ +\[")
+TOOK_RE = re.compile(r"\btook=([\w.µ]+)")
+DUR_RE = re.compile(r"([\d.]+)(ns|µs|us|ms|s|m|h)")
+DUR_MS = {"ns": 1e-6, "µs": 1e-3, "us": 1e-3, "ms": 1.0, "s": 1e3, "m": 6e4, "h": 3.6e6}
+METHOD_RE = re.compile(r"\bmethod=(\w+)")
+
+
+def took_ms(msg: str):
+    """go-kit's took= (a Go duration: 1.27ms, 980.3µs, 694ns, 1m2.5s) in milliseconds."""
+    m = TOOK_RE.search(msg)
+    if not m:
+        return None
+    parts = DUR_RE.findall(m.group(1))
+    return sum(float(n) * DUR_MS[u] for n, u in parts) if parts else None
+
+
+def _pct(v, q):
+    return round(v[min(len(v) - 1, int(q * len(v)))], 3)
+
+
 WORDY_ERR_RE = re.compile(r"\b(error|failed|failure|refused|exception|panic|fatal|"
                           r"cannot|unable)\b", re.I)
 
@@ -202,7 +221,8 @@ class RunLogs:
                       default=None)
 
     def _read(self, path):
-        st = {"lines": 0, "relay": 0, "t0": None, "t1": None, "tpl": {}, "errors": 0}
+        st = {"lines": 0, "relay": 0, "t0": None, "t1": None, "tpl": {}, "errors": 0,
+              "took": defaultdict(lambda: defaultdict(list))}      # method -> bucket -> [ms]
         tpl = st["tpl"]
         with _open(path) as fh:
             for raw in fh:
@@ -216,6 +236,12 @@ class RunLogs:
                 if t is not None:
                     st["t0"] = t if st["t0"] is None else st["t0"]
                     st["t1"] = t
+                if t is not None and "took=" in msg:
+                    ms = took_ms(msg)
+                    if ms is not None:
+                        mm = METHOD_RE.search(msg)
+                        st["took"][mm.group(1) if mm else "?"][
+                            int(t // BUCKET_S) * BUCKET_S].append(ms)
                 key = template(msg)
                 g = tpl.get(key)
                 if g is None:
@@ -291,6 +317,29 @@ class RunLogs:
              "first_seen": _hms(c[2]["first"]), "last_seen": _hms(c[2]["last"]),
              "level": c[2]["level"], "new": c[4], "generic": c[2]["generic"], "score": s}
             for i, (s, c) in enumerate(top)]}
+
+    def latency(self, container=None, method=None) -> dict:
+        """Per container and method: requests and p50/p95/max of took= per 10 s. This is the
+        log signal for a fault that prints no error - the request simply takes longer."""
+        rows = []
+        for name, st in self.c.items():
+            if container and container != name:
+                continue
+            for meth, buckets in sorted(st["took"].items()):
+                if method and method != meth:
+                    continue
+                allv = sorted(v for b in buckets.values() for v in b)
+                rows.append({"container": name, "method": meth, "requests": len(allv),
+                             "p50_ms_whole_run": _pct(allv, 0.5),
+                             "per_10s": [{"t": _hms(b)[:8], "n": len(v),
+                                          "p50_ms": _pct(sorted(v), 0.5),
+                                          "p95_ms": _pct(sorted(v), 0.95),
+                                          "max_ms": round(max(v), 3)}
+                                         for b, v in sorted(buckets.items())]})
+        if not rows:
+            return {"rows": [], "note": "no took= field in these logs (only go-kit services "
+                                        "print one: catalogue, user, payment)"}
+        return {"rows": rows, "note": "took is the handler's own time as the service logged it"}
 
     def search(self, pattern, container=None, begin=None, end=None, limit=30) -> dict:
         """Regex over the raw lines: counts per 10 s bucket per container, and sample lines."""
@@ -480,6 +529,16 @@ TOOL_DEFS = [
          "limit": {"type": "integer", "description": "sample lines, default 30"}},
          "required": ["pattern"]}},
 ]
+TOOL_DEFS.append(
+    {"name": "log_latency",
+     "description": "Request latency as the services themselves logged it: go-kit services "
+                    "(catalogue, user, payment) print took=<duration> on every request line. "
+                    "Returns, per container and method, the request count and p50 / p95 / max "
+                    "in ms for every 10 s of the run. A fault that prints NO error still shows "
+                    "here as a jump in p50 or a drop in n. A method whose latency jumps while "
+                    "other methods of the SAME service stay flat points inside that method.",
+     "parameters": {"type": "object", "properties": {
+         "container": {"type": "string"}, "method": {"type": "string"}}, "required": []}})
 LOG_TO_CODE_DEF = {
     "name": "log_to_code",
     "description": "Find the source statement that printed a log line, in the connected code "
@@ -525,6 +584,8 @@ class LogTools:
                 self._logs = RunLogs(self.run_dir)
             if name == "log_overview":
                 return self._logs.overview()
+            if name == "log_latency":
+                return self._logs.latency(args.get("container"), args.get("method"))
             if name == "log_events":
                 return self._logs.events(args.get("container"), args.get("begin"),
                                          args.get("end"), int(args.get("k") or 12))
@@ -571,6 +632,10 @@ def _selfcheck() -> None:
         ev = lt.call("log_events", {"k": 1})["events"]
         assert ev[0]["level"] == 3 and ev[0]["new"] is True, ev       # the mid-run error wins
         assert lt.call("log_search", {"pattern": "refused"})["matches"] == 3
+        assert took_ms("took=1m2.5s") == 62500 and abs(took_ms("took=980.311µs") - 0.980311) < 1e-9
+        lat = lt.call("log_latency", {})["rows"][0]
+        assert lat["method"] == "Get" and lat["requests"] == 53, lat
+        assert lat["per_10s"][-1]["p50_ms"] == 3000.0, lat
         assert "secret" not in repr(lt.call("log_search", {"pattern": "fault"}))
         import coderepo
         lt.repo = coderepo.CodeRepo(os.path.join(td, "src"))

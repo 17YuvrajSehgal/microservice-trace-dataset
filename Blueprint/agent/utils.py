@@ -302,6 +302,10 @@ FAULT_TYPES = [
     "fd_exhaustion",
     # Added 11-11 with blueprints 13 and 16 (deadlock / dependency_outage already listed).
     "fork_storm", "anomaly_disk",
+    # Added 16-11 for the five code_* families. Without them the first logs+code pilot could
+    # not have been right: the nearest labels were lock_contention and fd_exhaustion.
+    "lock_held_across_io", "n_plus_one_query", "event_loop_block", "unbounded_memory_growth",
+    "serial_work",
 ]
 
 FAULT_VOCAB = (
@@ -355,6 +359,25 @@ FAULT_VOCAB = (
     "(siblings of the same process, or threads it must wake).\n"
     "- irq_imbalance: interrupt or softirq work (typically network RX) piles onto one CPU, "
     "starving the threads placed on that CPU or on its SMT sibling.\n"
+    "- lock_held_across_io: a defect in ONE service's code - a mutex is held across a blocking "
+    "call (a database query, a network call), so its requests run one at a time. Its threads "
+    "queue on ONE futex address for about one round trip each, its CPU stays LOW, and its "
+    "per-request latency grows with the number of concurrent requests. The datastore is "
+    "healthy. Unlike lock_contention, nobody is busy: the holder is asleep in I/O.\n"
+    "- n_plus_one_query: a defect in ONE service's code - one request issues one extra "
+    "datastore query per row. Round trips to the datastore per request multiply (many small "
+    "send/recv pairs on the same connection) while each query is fast and the datastore is "
+    "healthy.\n"
+    "- event_loop_block: a single-threaded runtime (Node.js) does long SYNCHRONOUS CPU work "
+    "inside a request handler. Its main thread sits on a CPU for long unbroken stretches and "
+    "the whole service stops answering, including requests that never touch that code; its "
+    "callers see timeouts, resets or their own resource limits.\n"
+    "- serial_work: a request handler does work one item at a time (or busy-waits) that could "
+    "run concurrently - short, repeated CPU stretches on the main thread per request, latency "
+    "that grows linearly with load, the service still answers.\n"
+    "- unbounded_memory_growth: ONE process keeps memory it never frees (a cache or list with "
+    "no eviction): its memory grows with every request - steady page faults / mmap / brk, GC "
+    "work rising - with no limit change on the container.\n"
     "- normal: no injected fault evident.\n"
     "\n"
 )
@@ -497,6 +520,9 @@ _SUBMIT_DEF = {
                                        "them fits what you actually saw - that is not a "
                                        "failure, and what_is_wrong is where you say what it "
                                        "was.")},
+        "culprit_code": {"type": "string", "description":
+                         "ONLY when a code repository is connected and the fault is in "
+                         "application code: 'path:line function'. Otherwise 'none'."},
         "evidence": {"type": "string", "description":
                      "How you found it: which tool calls, which ranges you compared, and what "
                      "the decisive numbers were. Someone should be able to repeat your steps."},
