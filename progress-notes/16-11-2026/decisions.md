@@ -160,3 +160,33 @@ Decisions:
 Testbed limits: 5 defects in 2 functions (score needs function + mechanism); source for 2 of ~8
 services only. Bonsai on the laptop loaded all layers on CPU again (6-11 tok/s): wiring smoke
 only, it did call log_events / log_to_code / code_grep.
+
+## Rerun after the three fixes (2 cells, 1.93M tokens in / 17K out; pilot total 3.5M in)
+
+Changes: a dedicated logs(+code) worker in the plan; `log_latency` (go-kit `took=`); five
+code-defect labels + `culprit_code` + scorer (`code`: function / file / miss).
+
+| run | verdict | log calls | code calls | window IoU | tokens in |
+|---|---|---|---|---|---|
+| code_lock_across_io r1 | normal (0.88) | 9 | 3 | - | 903K |
+| code_event_loop_block r1 | other, host-wide collapse (0.72) | 11 | 7 | 0.96 (was 0.57) | 1.03M |
+
+- The tools are used now. On the event-loop run the agent timed the onset from the logs and
+  wrote that edge-router's EMFILE came 55 s later, "a downstream symptom" - the earlier wrong
+  verdict is gone. It still did not find front-end.
+- **code_lock_across_io was the wrong run to pilot on.** Its verification says
+  `no_metric_signature`, and the inventory already says three of the five code families
+  (lock_across_io, n_plus_one, unbounded_cache) change nothing measurable: catalogue List p50
+  is 0.93 ms before, during and after. "normal" is the right reading of the runtime evidence.
+  Only `code_event_loop_block` and `code_serial_awaits` (10 runs) are a real testbed.
+- Why front-end was missed: no check looks for "one thread of one container on a CPU without a
+  break while its syscalls stop". That is a blueprint, not a prompt. And the code worker runs
+  in parallel with the kernel workers, so it reads code before anyone knows which service to
+  suspect; code reading belongs after localisation (the reviewer's second round).
+
+Decision: no more API cells on code_* until (1) an event_loop_block blueprint is validated
+tool-only on the 10 real runs + normals, as blueprints 13-16 were, and (2) the code step runs
+after the suspect service is known.
+
+Laptop: Bonsai cannot be tested right now - Windows lists only the Intel GPU (nvidia-smi fails,
+llama.cpp "no CUDA-capable device"), so every layer loads on CPU whatever the context size.
