@@ -50,9 +50,11 @@ line splits at 60 ms. That line is fitted to these two defects only.
 `prometheus` shows one 20 ms run in many slices (a scrape). It is why LONG_MS is not lower.
 
 ## How the bar was set (what failed first)
-Passed on the first try. The two conditions that keep the lookalikes out were in the first
-version: the thread must exist in the baseline (stress-ng does not), and must have made at least
-5x more system calls per second there (a batch job did not).
+All 57 were right on the first run. One bar was then loosened: the system-call drop was >= 5x,
+and `code_serial_awaits` falls only 5-7x, so r2 passed with no margin. It is now >= 3x. No quiet
+run depends on that bar: each fails earlier, on "under 40% in long runs" or "not in the baseline"
+(stress-ng). The 57 runs were not re-run after the change; it can only add verdicts, and the
+quiet runs cannot reach it.
 
 ## Not tested
 - A blocked thread in a multi-threaded service (Go, Java). No labelled run has one.

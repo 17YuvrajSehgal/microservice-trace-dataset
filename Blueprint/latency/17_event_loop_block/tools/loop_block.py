@@ -38,7 +38,9 @@ from collections import defaultdict
 LONG_MS = 20.0      # a syscall-free run this long is "long"
 SHARE_MIN = 0.40    # verdict: this share of the slice in long runs
 BASE_MAX = 0.05     # ... and at most this share in the baseline
-DROP_MIN = 5.0      # ... and system calls per second fell at least this many times
+DROP_MIN = 3.0      # ... and system calls per second fell at least this many times.
+                    # Was 5: code_serial_awaits falls only 5-7x, so one run passed by a hair.
+                    # None of the 47 quiet runs depends on this bar (they fail on the two above).
 SHAPE_MS = 60.0     # median long run: above = one long computation, below = short repeats.
                     # Set between the two labelled families (107 ms and 33 ms medians); it
                     # reflects those two injected defects, not a law. Report the numbers.
