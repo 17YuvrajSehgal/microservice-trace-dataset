@@ -36,7 +36,11 @@ are idle, not stuck. The difference that separates a deadlock in our data:
 | distinct lock addresses | one per thread, pairs | — |
 
 So the verdict needs threads that were **born inside the slice and hung within 1 s**, on at
-least **two** lock addresses (a deadlock needs two locks).
+least **two** lock addresses (a deadlock needs two locks), born in **two or more bursts** (births
+more than 1 s apart). One burst is a program starting up: a Go program that starts inside the
+slice creates about 10 runtime threads at once and parks them all (seen on a normal run, the
+`docker` CLI). The price: a deadlock that happens only once, in one burst, gets a NOTE and needs
+a second slice to confirm.
 
 | Lookalike | What the trace shows | How it differs |
 |---|---|---|
@@ -90,6 +94,7 @@ python3 $TOOLS/futex_hang.py $WORK/f.txt 60
 | Verdict line | Meaning |
 |---|---|
 | `VERDICT: DEADLOCK: <comm> (pid P, ns N): K threads blocked forever in futex (no timeout) on L distinct locks, longest X s; new hung threads per third a/b/c; K of them were created inside the slice and hung M ms after birth` | **This fault.** That process deadlocks; the per-third counts show it is ongoing |
+| `NOTE: ONE BURST OF NEW PARKED THREADS: ...` | all the new hung threads were born within 1 s of each other: a program that started inside the slice and parked its runtime threads (measured: the `docker` CLI, 10 threads, on a normal run). **Not this fault.** Only if that process is your suspect: cut the next 60 s and run Step 3 again; a real ongoing deadlock keeps adding hung threads |
 | `NOTE: HUNG ON ONE LOCK: ...` | threads stuck on one address: a lost wake-up or a holder that died. A finding, not a deadlock |
 | `NOTE: parked threads (existed before the slice; idle pool threads are normal): ...` | ignore for the verdict |
 | `NO HUNG LOCK WAITS AMONG NEW THREADS (...)` | Not this fault |
@@ -104,7 +109,10 @@ A `LOCK CONTENTION` or `PRIORITY INVERSION` verdict means the waits end: hand to
 - `fault_type`: `deadlock`.
 - `root_cause_service`: the container / process from the verdict line.
 - `culprit_thread`: `comm (pid P)`; `victim_thread`: the callers that time out, if known, else `none`.
-- `incident_window`: from the first hung thread's wait to the end of the slice (still ongoing).
+- `incident_window`: start = the `first hung at` time in the verdict line, NOT the start of your
+  slice; end = the end of the slice (still ongoing). If the first hung thread is in the first
+  10 s of the slice, the fault may have started earlier: cut a slice 60 s before and run Step 3
+  again to find the real start.
 - `evidence`: the verdict line word for word, with the per-third counts and the birth-to-hang time.
 - Fix: a thread dump of that process names the two locks; take them in one fixed order.
 

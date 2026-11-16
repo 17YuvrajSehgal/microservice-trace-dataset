@@ -53,11 +53,15 @@ def container_cpu(run_dir: str) -> dict:
                     break
         except OSError:
             continue
+    # Sum the steps, and count a drop as a restart (the counter starts again from 0). "Last minus
+    # first" dropped a container that restarted: measured on fd_exhaustion_aggressive_steady_r3,
+    # front-end crash-looped (restart count 43 -> 54), went negative and vanished from the map.
     out = {}
     for name, d in usage.items():
-        ks = sorted(d)
-        if len(ks) >= 2 and d[ks[-1]] > d[ks[0]]:
-            out[name] = (d[ks[-1]] - d[ks[0]]) / 1e6
+        vals = [d[k] for k in sorted(d)]
+        tot = sum(b - a if b >= a else b for a, b in zip(vals, vals[1:]))
+        if tot > 0:
+            out[name] = tot / 1e6
     return out
 
 
@@ -142,6 +146,38 @@ def ns_for_service(run_dir: str, service: str, index_root: str | None = None):
     d1 = abs(best[1] - want) or 1e-9
     d2 = abs(second[1] - want)
     return best[0] if d2 / d1 >= MARGIN else None
+
+
+def ns_comm_is_service(run_dir: str, ns: str, service: str, index_root: str | None = None) -> bool:
+    """True when the busiest process name in `ns` runs in the `service` container and in no other.
+
+    Process names do not change when a container restarts; CPU does. Measured on
+    fd_exhaustion_aggressive_steady_r3: front-end crash-looped, its CPU split over several
+    namespaces and ns_for_service picked the wrong one, while the agent's namespace ran only
+    `node`, which `docker top` (meta/top_*.txt) shows in front-end alone. Shared names (four
+    Sock Shop services run `java`) give False, never a guess.
+    """
+    run_id = os.path.basename(run_dir.rstrip("/"))
+    p = os.path.join(index_root or INDEX_ROOT, run_id + ".tsv.gz")
+    if not os.path.exists(p):
+        return False
+    n = collections.Counter()
+    with gzip.open(p, "rt", errors="replace") as fh:
+        for line in fh:
+            f = line.split(TAB)
+            if len(f) >= 5 and f[3] == ns:
+                n[f[2]] += int(f[4]) if f[4].isdigit() else 1
+    if not n:
+        return False
+    comm = n.most_common(1)[0][0]
+    owners = set()
+    for f in glob.glob(os.path.join(run_dir, "meta", "top_*.txt")):
+        name = re.sub(r"^top_|_(start|end|tick_\w+)\.txt$", "", os.path.basename(f))
+        for line in open(f, errors="replace").readlines()[1:]:
+            cols = line.split()
+            if len(cols) >= 6 and cols[5][:15] == comm[:15]:     # comm is cut to 15 chars
+                owners.add(name)
+    return len(owners) == 1 and _service_matches(owners.pop(), service)
 
 
 def _clock_s(s: str):

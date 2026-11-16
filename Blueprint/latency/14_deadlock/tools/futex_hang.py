@@ -49,8 +49,9 @@ re_ut = re.compile(r'\butime = (\d+)')
 re_ua = re.compile(r'\buaddr = (\d+)')
 re_ctid = re.compile(r'child_tid = (\d+)')
 
-FUTEX_WAIT_OPS = {0, 9}
-FRESH_S = 1.0                 # born and hung within this many seconds = a new thread that blocked at once       # FUTEX_WAIT, FUTEX_WAIT_BITSET (low bits of op, after PRIVATE/CLOCK flags)
+FUTEX_WAIT_OPS = {0, 9}       # FUTEX_WAIT, FUTEX_WAIT_BITSET (low bits of op, after PRIVATE/CLOCK flags)
+FRESH_S = 1.0                 # born and hung within this many seconds = a new thread that blocked at once
+BURST_GAP_S = 1.0             # births further apart than this are separate bursts
 
 
 def ts(line):
@@ -142,17 +143,31 @@ def main():
               "the slice began are idle pool threads, not a deadlock: %s)" % parked)
         return
     lst = fresh(lst)
+    # Births in bursts: a gap > BURST_GAP_S starts a new burst. A program starting up (a Go CLI
+    # spawning its runtime threads) parks all its new threads in ONE burst - measured: `docker`,
+    # 10 threads, 10/0/0 per third, on a normal run. The injected deadlock makes a new pair every
+    # 5 s (8/8/6), so many bursts.
+    births = sorted(born[tid] for tid, _ in lst)
+    bursts = 1 + sum(1 for a, b in zip(births, births[1:]) if b - a > BURST_GAP_S)
     locks = {w[1] for _, w in lst}
     longest = max(last - w[0] for _, w in lst)
     thirds = Counter(min(2, int((w[0] - first) / span * 3)) for _, w in lst)
     gaps = sorted(w[0] - born[tid] for tid, w in lst if tid in born)
     born_txt = ("; %d of them were created inside the slice and hung %.0f ms after birth (median)"
                 % (len(gaps), 1000 * gaps[len(gaps) // 2]) if gaps else "")
+    t0 = min(w[0] for _, w in lst)
+    born_txt += "; first hung at %02d:%02d:%06.3f (the fault starts here, not at the slice start)" % (
+        int(t0 // 3600) % 24, int(t0 // 60) % 60, t0 % 60)
     growing = thirds[2] > 0 and (thirds[1] > 0 or thirds[0] > 0)
     detail = ("%s (pid %s, ns %s): %d threads blocked forever in futex (no timeout) on %d distinct locks, "
               "longest %.1f s; new hung threads per third of the slice %d/%d/%d%s"
               % (comm, pid, ns, len(lst), len(locks), longest, thirds[0], thirds[1], thirds[2], born_txt))
-    if len(locks) >= 2:
+    if bursts < 2:
+        print("NOTE: ONE BURST OF NEW PARKED THREADS: %s - all born within %.1f s, as when a program starts "
+              "up and parks its runtime threads; not a deadlock verdict. A one-time deadlock looks the "
+              "same: if this process is the suspect, cut a later slice and see whether new ones keep hanging"
+              % (detail, births[-1] - births[0]))
+    elif len(locks) >= 2:
         print("VERDICT: DEADLOCK: %s. Threads that wait on each other's locks never wake: the process "
               "is alive but those threads do no work%s." % (detail, ", and the number keeps growing" if growing else ""))
     else:
@@ -187,6 +202,26 @@ def _selftest():
         hung = {k: v for k, v in ow.items() if last - v[0] >= 5}
         assert len(hung) == 8 and all(v[3] == "py" for v in hung.values()), hung   # all 4 pairs, never the timed java wait
         assert len({v[1] for v in hung.values()}) == 8
+        import contextlib
+        import io
+
+        def verdict(path):
+            out = io.StringIO()
+            sys.argv = ["futex_hang.py", path, "30"]
+            with contextlib.redirect_stdout(out):
+                main()
+            return out.getvalue()
+        v = verdict(p)
+        assert "VERDICT: DEADLOCK: py" in v and "first hung at 10:00:00.001" in v, v
+        # a program starting up: 10 new threads parked in one burst at t=0 (a Go CLI) - no verdict
+        go = [ln for ln in L if '"py"' not in ln]
+        for k in range(10):
+            go.append('%s sched_process_fork: %s, { parent_comm = "docker", child_tid = %d, child_pid = 70 }' % (at(0.01 * k), ctx % (70, 70, "docker"), 300 + k))
+            go.append('%s syscall_entry_futex: %s, { uaddr = %d, op = 128, val = 0, utime = 0 }' % (at(0.01 * k + 0.017), ctx % (70, 300 + k, "docker"), 500 + k))
+        with open(p, "w") as f:
+            f.write("\n".join(sorted(go)) + "\n")
+        v = verdict(p)
+        assert "VERDICT" not in v and "ONE BURST" in v, v
     finally:
         os.unlink(p)
     print("futex_hang selftest OK")

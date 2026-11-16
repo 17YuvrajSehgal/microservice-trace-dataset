@@ -155,6 +155,11 @@ def _where_microservice(dx: dict, truth: dict, run_dir: str, index_root=None) ->
             true_ns = None
         if true_ns and m.group(1) == str(true_ns):
             return "container"
+        try:
+            if nsmap.ns_comm_is_service(run_dir, m.group(1), target, index_root=index_root):
+                return "container"
+        except Exception:                                               # noqa: BLE001
+            pass
     if truth["scope"] == "host" and ("host" in low or "whole" in low or "every" in low):
         return "scope"
     return "wrong"
@@ -178,6 +183,12 @@ def score(dx: dict, run_dir: str, family: str, index_root=None) -> dict:
     said_normal = (not ft) or _says_normal(ft)
     fault_ok = (not said_normal) and _fault_match(ft or concl, fam)
 
+    if truth["present"] is None and fam == "normal":
+        # a normal run ships no ground_truth.json at all; it used to fall through to the fault
+        # path and score every correct "normal" verdict as a miss. Correct = the agent said normal.
+        return {"detected": bool(said_normal), "control": True, "present": False,
+                "fault_ok": False, "said_normal": said_normal, "where": "n/a",
+                "window_iou": None, "family": fam, "agentic": False}
     if truth["present"] is False:
         # control/baseline: correct = the agent did NOT claim this fault
         detected = said_normal or not fault_ok
@@ -258,4 +269,8 @@ if __name__ == "__main__":
         af = score({"fault_type": "memory_limit (cgroup reclaim)",
                     "root_cause_service": "ttmem"}, td, "svc_mem_cap")
         assert af["detected"] and af["agentic"], af
+        # a normal run has no ground truth file at all: "normal" is right, a fault claim is not
+        with tempfile.TemporaryDirectory() as nd:
+            assert score({"fault_type": "normal"}, nd, "normal")["detected"]
+            assert not score({"fault_type": "deadlock"}, nd, "normal")["detected"]
         print("score.py self-check OK")
