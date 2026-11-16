@@ -38,6 +38,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import config
 import codetool
 import blueprints
+import logtool
 import leakguard
 import transcript as T
 from utils import (KERNEL_ONLY_TOOLS, SENT_CAP, SENT_CAP_BY_TOOL, SAFE_PAGING, ABL_FLAT_CAP,
@@ -346,7 +347,8 @@ _REVIEW_DEF = {
 class Ctx:
     def __init__(self, run_dir, guard, tr, run_id, index_root=None):
         self.run_dir, self.guard, self.tr, self.run_id = run_dir, guard, tr, run_id
-        self.repo = None                      # set by Chat when a code repo is connected
+        self.repo = None                      # a connected code repo (Chat, or diagnose code_root)
+        self.logs = None                      # logtool.LogTools when the logs modality is on
         self.orientation = ""     # the recording's timespan, computed once, given to all workers
         self.bp = None                        # blueprints.Runner when a blueprint is given
         self.bp_def = None                    # the blueprint_tool schema for this run
@@ -557,6 +559,9 @@ def _exec_tool(name, args, node, step):
     elif name == "blueprint_tool" and CTX.bp is not None:
         res = CTX.bp.run(call_args.get("script") or "", call_args.get("args") or [])
         b = len(json.dumps(res, default=str))
+    elif name in logtool.TOOL_NAMES and CTX.logs is not None:
+        res = CTX.logs.call(name, call_args)
+        b = len(json.dumps(res, default=str))
     elif name.startswith("code_") and CTX.repo is not None:
         res = CTX.repo.call(name, call_args)
         b = len(json.dumps(res, default=str))
@@ -661,6 +666,11 @@ def _worker_tools():
     defs = [t for t in tool_defs()
             if t["name"] in KERNEL_ONLY_TOOLS and t["name"] != "submit_diagnosis"]
     defs = defs + [codetool.TOOL_DEF, _NOTE_DEF]
+    if CTX is not None and CTX.logs is not None:
+        defs = defs + logtool.TOOL_DEFS
+        if CTX.repo is not None:
+            import coderepo
+            defs = defs + coderepo.TOOL_DEFS + [logtool.LOG_TO_CODE_DEF]
     if CTX is not None and CTX.bp_def is not None:
         defs.append(CTX.bp_def)       # the blueprint's own scripts, when a blueprint is given
     return [add_paging(d) for d in defs]
@@ -992,10 +1002,38 @@ def _host_profile(run_dir):
             "(priority_inversion).")
 
 
+# The split of work between the two sources, stated once. The numbers behind it: on INQUEST
+# (26,544 issues) the file that PRINTED the error was rarely the file that was fixed, and on
+# our own sweeps logs alone never typed a resource fault. So logs say WHEN and WHO COMPLAINED;
+# the kernel says WHY.
+_LOGS_NOTE = (
+    "\n\nCONTAINER LOGS ARE AVAILABLE TOO, through log_overview, log_events and log_search. "
+    "They use the same UTC clock as the kernel tools. Use them for what they are good at: "
+    "WHEN a symptom began (the first_seen of a 'new' error template) and WHICH service "
+    "complained. The service that LOGS an error is often the victim, not the culprit - a "
+    "caller prints 'timeout' because something it depends on is slow. So take the onset time "
+    "and the complaining service from the logs, then go to the kernel tools for the cause in "
+    "that window. An error template that is present from the first second of the recording "
+    "is the baseline, not the fault. Quiet logs do not mean a healthy host: many resource "
+    "faults print nothing.")
+_CODE_NOTE = (
+    "\n\nTHE APPLICATION'S SOURCE IS CONNECTED (code_tree, code_grep, code_read, read-only). "
+    "log_to_code maps one log line to the statement that printed it and its function. When "
+    "the evidence points at application code - a lock held across I/O, a query inside a loop, "
+    "a blocked event loop - walk from that statement to its function and callers, and name "
+    "the responsible file and function as path:line in what_is_wrong. The trace proves it "
+    "happened; the code explains the mechanism. Do not name code the trace does not implicate.")
+
+
 def diagnose(run_dir, blueprint=None, blueprint_only=False, transcript_path=None,
              condition=None, meta=None, skills=None, skill_given=False, problem_hint=None,
-             index_root=None, **_ignored) -> dict:
+             index_root=None, logs=None, code_root=None, **_ignored) -> dict:
     """Investigate the kernel trace in run_dir and return the diagnosis + usage stats.
+
+    logs: also give the workers the run's container logs (logtool.py: log_overview,
+    log_events, log_search). Default off, or ABL_LOGS=1. code_root: with logs on, connect the
+    application's source too (code_tree/grep/read + log_to_code), so a verdict can name a
+    file and function. Default off, or ABL_CODE_ROOT=<dir>.
 
     blueprint: path to a blueprint markdown (e.g. latency/1_svc_cpu_cap/README_v1.md).
     Giving one does two things at once: the blueprint text is injected as the given skill,
@@ -1033,6 +1071,17 @@ def diagnose(run_dir, blueprint=None, blueprint_only=False, transcript_path=None
                                   _ts.get("duration_s") or 0))
     except Exception:                                                   # noqa: BLE001
         pass
+
+    if logs is None:
+        logs = os.environ.get("ABL_LOGS", "0") == "1"
+    code_root = code_root or os.environ.get("ABL_CODE_ROOT") or None
+    if logs:
+        if code_root:
+            import coderepo
+            CTX.repo = coderepo.CodeRepo(code_root)
+        CTX.logs = logtool.LogTools(run_dir, repo=CTX.repo)
+        tr.meta.update({"kernel_only": False, "logs": True,
+                        "code_root": bool(code_root)})
 
     if blueprint:
         sk, bp_tools = blueprints.load(blueprint)
@@ -1109,6 +1158,9 @@ def diagnose(run_dir, blueprint=None, blueprint_only=False, transcript_path=None
         _WORKER = _WORKER + hint
         _SYNTH = _SYNTH + hint
         tr.meta["problem_hint"] = problem_hint
+    if CTX.logs is not None and not CTX.bp_only:
+        _WORKER = _WORKER + _LOGS_NOTE + (_CODE_NOTE if CTX.repo is not None else "")
+        _SYNTH = _SYNTH + _LOGS_NOTE + (_CODE_NOTE if CTX.repo is not None else "")
     hp = _host_profile(run_dir)
     if hp:
         _WORKER = _WORKER + hp
@@ -1259,7 +1311,9 @@ class Chat:
         # _worker_tools() reads the module-global CTX, which is not this chat's ctx yet -
         # build the base list, then add this ctx's own blueprint tool explicitly.
         self.tools = [t for t in _worker_tools()
-                      if t["name"] not in ("note_finding", "blueprint_tool")]
+                      if t["name"] not in ("note_finding", "blueprint_tool")
+                      and t["name"] not in logtool.TOOL_NAMES
+                      and not t["name"].startswith("code_")]
         if self.ctx.bp_def is not None:
             self.tools.append(add_paging(self.ctx.bp_def))
         code_note = ""
@@ -1267,6 +1321,11 @@ class Chat:
             import coderepo
             self.ctx.repo = coderepo.CodeRepo(code_root)
             self.tools += [add_paging(t) for t in coderepo.TOOL_DEFS]
+        if os.path.isdir(os.path.join(run_dir, "logs")):
+            self.ctx.logs = logtool.LogTools(run_dir, repo=self.ctx.repo)
+            self.tools += [add_paging(t) for t in logtool.TOOL_DEFS
+                           + ([logtool.LOG_TO_CODE_DEF] if code_root else [])]
+            sysp += _LOGS_NOTE
             code_note = (
                 chr(10) * 2 +
                 "CODE REPOSITORY CONNECTED at %s. Explore it read-only with code_tree, "
