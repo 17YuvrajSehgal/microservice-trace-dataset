@@ -742,7 +742,12 @@ def n_plan(state: S) -> dict:
                     "clean.")
         log_task = {"title": "logs" + (" and code" if CTX.repo is not None else ""),
                     "instruction": ins}
-        subs = subs[:MAX_SUBTASKS - 1] + [log_task]
+        # Keep the blueprint worker. This line used to be subs[:MAX_SUBTASKS - 1] + [log_task],
+        # and when the planner returned a full plan the blueprint task sat in the last slot
+        # and was cut: on normal_none_burst_r1 blueprint_tool was called 0 times.
+        keep = [x for x in subs if x.get("title") == "execute the blueprint's procedure"]
+        rest = [x for x in subs if x not in keep]
+        subs = rest[:MAX_SUBTASKS - 1 - len(keep)] + keep + [log_task]
     CTX.event("plan", round=1, subtasks=subs)
     return {"plan": subs, "round": 1}
 

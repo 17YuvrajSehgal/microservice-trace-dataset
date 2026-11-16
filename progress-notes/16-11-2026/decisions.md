@@ -215,3 +215,25 @@ stated as such in the README.
 long runs) would be verdicts.
 
 Not done: no agent run with this blueprint yet; no multi-threaded (Go/Java) case in the data.
+
+## Agent with blueprint 17 + logs + code (3 cells, gpt-6-luna, 3.78M tokens in / 25K out)
+
+| run | verdict | where | window IoU | code | blueprint_tool calls | scored |
+|---|---|---|---|---|---|---|
+| code_event_loop_block r1 | event_loop_block (0.91) | front-end ns, node tid 518505 | 0.98 | helpers/index.js:94 simpleHttpRequest (function) | 7 | detected |
+| code_serial_awaits r1 | event_loop_block (0.94) | front-end ns, node tid 679773 | 0.98 | helpers/index.js:93-99 simpleHttpRequest (function) | 5 | fault label wrong |
+| normal_none_burst_r1 | normal (0.78) | - | - | - | **0** | correct, for the wrong reason |
+
+- First fully right verdict on a code defect: fault, container, thread, window and the function,
+  with the kernel proof (loop_block verdict) and the code location (`pbkdf2Sync` path) together.
+- serial_awaits: everything right except the label. The tool printed `SHAPE: ... (serial_work)`
+  and the agent wrote "serial-work-like ... the distinction noted rather than relabeling it".
+  Cause: agent_v2's commit rule says the fault_type is "the family this blueprint confirms or
+  normal", and this blueprint confirms two. Not fixed yet: either the rule reads the labels from
+  the blueprint's Submit step, or the two families share one label. The scorer was NOT loosened.
+- normal: **a bug of mine.** Adding the logs worker cut the blueprint worker when the planner
+  returned a full plan (`subs[:MAX-1] + [log_task]`). So the blueprint never ran on this cell and
+  "normal" came from the generic tools. Fixed (blueprint worker is kept); cell not re-run yet.
+  The evloop and serial cells were not affected (blueprint_tool ran 7 and 5 times).
+
+Session API total: about 7.3M tokens in.
