@@ -116,10 +116,18 @@ INVERSION_RUNNABLE_SHARE = 0.30  # releaser runnable-but-not-running for >= this
 INVERSION_MIN_MS = 20.0          # the PRIORITY INVERSION verdict needs 2+ such waits, max >= this
 # (the labelled fault's longest inversion-class wait is 34 ms; two healthy line cards show
 #  10.1 / 10.5 ms ones between background threads)
+# A chained inversion: the worse-priority holder is not runnable, it is itself blocked on a SECOND
+# lock that better-priority threads keep (measured on our three labelled priority_inversion runs:
+# a CPython program, the nice 19 holder needs the interpreter lock to finish its critical section
+# and six nice 0 threads keep it; the nice -5 waiter waits 445-730 ms, the holder sleeps 92-97%).
+CHAIN_MIN_MS = 100.0             # the waiter's wait on the first lock
+CHAIN_BLOCKED_SHARE = 0.50       # holder blocked on other futexes, freed by better-priority threads
 HOLDER_RUNNING_SHARE = 0.50      # releaser running >= this share of the wait -> held
 EVENT_SLEEP_SHARE = 0.50         # non-hand-off releaser sleeping >= this share -> an event wait
 RELEASER_SEEN_SHARE = 0.50       # releaser's measured state must cover >= this share, else unseen
-CONTENTION_TOTAL_SHARE = 0.05    # hand-off wait time on ONE futex >= this share of the slice ...
+CONTENTION_TOTAL_SHARE = 0.05    # hand-off wait time on ONE futex, PER WAITER on average, >= this share of the slice ...
+# (per waiter: summed over all waiters, a 153-thread load generator reached 57% with each thread
+#  waiting 0.4% of its time, and that fired on 3 of 3 slices before any injection)
 CONTENTION_WAITER_SHARE = 0.20   # ... or one waiter thread spends >= this share of its time in them
 CONTENTION_MIN_P50_MS = 0.2      # ... and the median such wait is at least this (30-40 us = signalling)
 CONTENTION_MIN_WAITERS = 2       # ... and at least this many threads wait on it (1 = an idle worker)
@@ -487,6 +495,45 @@ def report(r, top=10, min_ms=LONG_WAIT_MS):
         t_w = sum(w[0] for w in inv_all if w[2] == inv_all[0][2])
         inv_tot = (f"({len(inv_all)} such waits in all, {t_all / MS:.1f} ms = {pct(t_all, span):.0f}% "
                    f"of the slice; the waiter spends {pct(t_w, span):.0f}% of its time in them)")
+    # chained inversion first: it is the long wait, and the plain rule below would otherwise
+    # report a marginal wait on the second lock (32% and 45% on two runs, a miss on the third)
+    by_tid = None
+    chain = []
+    for w in allw:
+        dur, ua, tid, t0, t1, htid, ht, cls, pieces, run, rq, sl, ho = w
+        if dur < CHAIN_MIN_MS * MS:
+            break
+        if not (ho and worse(htid, tid) and sl >= EVENT_SLEEP_SHARE * dur):
+            continue
+        if by_tid is None:
+            by_tid = defaultdict(list)
+            for ua2, ws2 in waits.items():
+                for d2, tid2, a2, b2, ret2, _p, _u in ws2:
+                    by_tid[tid2].append((a2, b2, ua2, ret2))
+        blocked, mids = 0, Counter()
+        for a2, b2, ua2, ret2 in by_tid.get(htid, ()):
+            ov = min(b2, t1) - max(a2, t0)
+            if ua2 == ua or ov <= 0 or ret2 != 0:
+                continue
+            rel = releaser(r, ua2, a2, b2, exclude=htid)
+            if rel is not None and worse(htid, rel[0]):
+                blocked += ov
+                mids[rel[0]] += ov
+        if blocked >= CHAIN_BLOCKED_SHARE * dur:
+            chain.append((w, blocked, mids))
+    if len(chain) >= 2:
+        (dur, ua, tid, t0, t1, htid, ht, cls, pieces, run, rq, sl, ho), blocked, mids = chain[0]
+        by = ", ".join(f"{cp.name(t)} tid {t} (prio {prio_label(prio(t))})" for t, _ in mids.most_common(4) if t != tid)   # the waiter can hold the second lock too
+        t_all = sum(c[0][0] for c in chain)
+        print(f"VERDICT: PRIORITY INVERSION (chained): {cp.name(tid)} tid {tid} (prio {prio_label(prio(tid))}) "
+              f"waited {dur / MS:.1f} ms on futex {ua:#x} {hms(t0)} -> {hms(t1)}; its holder, "
+              f"{cp.name(htid)} tid {htid} (prio {prio_label(prio(htid))}), could not finish: it was "
+              f"itself blocked {blocked / MS:.1f} ms ({pct(blocked, dur):.0f}% of that wait) on a second "
+              f"lock kept by better-priority threads {by} ({len(chain)} such waits in all, "
+              f"{t_all / MS:.1f} ms = {pct(t_all, span):.0f}% of the slice)")
+        print("FIX: priority inheritance on the lock (PTHREAD_PRIO_INHERIT / FUTEX_LOCK_PI), "
+              "or raise the holder / do not hold the lock across a scheduling boundary")
+        return
     if len(inv_all) >= 2 and inv_all[0][0] >= INVERSION_MIN_MS * MS:
         dur, ua, tid, t0, t1, htid, ht, cls, pieces = inv_all[0][:9]
         _run, rq, _sl, occ = st.during(htid, t0, t1)
@@ -521,7 +568,7 @@ def report(r, top=10, min_ms=LONG_WAIT_MS):
     for ua, (hw, tot, wt, wns, nw, p50, p99) in cstat.items():
         if nw >= CONTENTION_MIN_WAITERS and p50 >= CONTENTION_MIN_P50_MS * MS \
                 and p99 <= TAIL_RATIO_MAX * p50 \
-                and (tot >= CONTENTION_TOTAL_SHARE * span or wns >= CONTENTION_WAITER_SHARE * span):
+                and (tot >= CONTENTION_TOTAL_SHARE * span * nw or wns >= CONTENTION_WAITER_SHARE * span):
             cands.append((max(tot / span, wns / span), ua))
     if cands:
         _, ua = max(cands)
@@ -577,8 +624,8 @@ def report(r, top=10, min_ms=LONG_WAIT_MS):
                   f"= {p99 / p50:.0f}, bar {TAIL_RATIO_MAX}): threads parked until there is work, "
                   f"not a critical section{tail}")
         else:
-            print(f"{head} was a held lock ({how}), but hand-off waits total only "
-                  f"{pct(tot, span):.1f}% of the slice (bar {pct(CONTENTION_TOTAL_SHARE, 1):.0f}%) "
+            print(f"{head} was a held lock ({how}), but its {nw} waiters each spend only "
+                  f"{pct(tot, span * nw):.1f}% of their time on it on average (bar {pct(CONTENTION_TOTAL_SHARE, 1):.0f}%) "
                   f"and the top waiter spends {pct(wns, span):.1f}% of its time on it (bar "
                   f"{pct(CONTENTION_WAITER_SHARE, 1):.0f}%){tail}")
         return
@@ -973,6 +1020,38 @@ def _selftest():
         assert "holders sleep while holding (a lock held across a sleep or I/O) (release by" in out, out
         assert "FIX: do not sleep or do I/O while holding the lock" in out, out
         assert "[held-asleep]" in out, out
+        # P: chained inversion, twice. hp_waiter (prio 110) waits 152 ms on 0xa000; its holder
+        # (prio 139) is asleep on a second lock 0xa900 that mid1 (prio 120) frees 148 ms later.
+        g = _Gen(ctx)
+        Hc = (33, 'lowholder', 39)
+        g.switch(0, 0, idle, Hc)
+        g.switch(0, 1, idle, W)
+        g.switch(0, 2, idle, M1)
+        fx = 'uaddr = %s, op = %d, val = 1, utime = 0, uaddr2 = 0, val3 = 0'
+        g.ev(500_000, 0, f'{sys_}_entry_futex', fx % ('0xa000', 128))      # holder took it once: a lock
+        g.ev(510_000, 0, f'{sys_}_exit_futex', 'ret = -11, uaddr = 0xa000, uaddr2 = 0')
+        for o in (0, 300 * MS):
+            g.ev(o + 2 * MS, 1, f'{sys_}_entry_futex', fx % ('0xa000', 128))
+            g.switch(o + 2 * MS + 10_000, 1, W, idle, 1)
+            g.ev(o + 3 * MS, 0, f'{sys_}_entry_futex', fx % ('0xa900', 128))
+            g.switch(o + 3 * MS + 10_000, 0, Hc, idle, 1)
+            g.ev(o + 151 * MS, 2, f'{sys_}_entry_futex', fx % ('0xa900', 129))
+            g.ev(o + 151 * MS + 5_000, 2, 'sched_waking', 'comm = "lowholder", tid = 33, prio = 39, target_cpu = 0')
+            g.ev(o + 151 * MS + 6_000, 2, f'{sys_}_exit_futex', 'ret = 1, uaddr = 0xa900, uaddr2 = 0')
+            g.switch(o + 151 * MS + 20_000, 0, idle, Hc)
+            g.ev(o + 151 * MS + 30_000, 0, f'{sys_}_exit_futex', 'ret = 0, uaddr = 0xa900, uaddr2 = 0')
+            g.ev(o + 153 * MS, 0, f'{sys_}_entry_futex', fx % ('0xa000', 129))
+            g.ev(o + 153 * MS + 5_000, 0, 'sched_waking', 'comm = "hp_waiter", tid = 20, prio = 10, target_cpu = 1')
+            g.ev(o + 153 * MS + 6_000, 0, f'{sys_}_exit_futex', 'ret = 1, uaddr = 0xa000, uaddr2 = 0')
+            g.switch(o + 153 * MS + 20_000, 1, idle, W)
+            g.ev(o + 154 * MS, 1, f'{sys_}_exit_futex', 'ret = 0, uaddr = 0xa000, uaddr2 = 0')
+        for c, th in ((0, Hc), (1, W), (2, M1)):
+            g.switch(600 * MS, c, th, idle, 1)
+        p = os.path.join(d, f'p{ctx}.txt'); g.write(p)
+        out = _capture(report, analyse(p, 0.6))
+        assert "VERDICT: PRIORITY INVERSION (chained): hp_waiter tid 20 (prio 110 (nice -10)) waited 152.0 ms on futex 0xa000" in out, out
+        assert "lowholder tid 33 (prio 139 (nice 19)), could not finish" in out and "mid1 tid 40 (prio 120 (nice 0))" in out, out
+        assert "(2 such waits in all" in out, out
         # N: the tracer's own waits are left out even when they are the longest.
         g = _Gen(ctx)
         L, Hl = (95, 'lttng-consumerd', 20), (96, 'lttng-sessiond', 20)
