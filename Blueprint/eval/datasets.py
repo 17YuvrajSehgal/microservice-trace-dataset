@@ -33,6 +33,9 @@ BLUEPRINTS = {
     "deadlock":           "14_deadlock",           # new threads block forever in untimed futex waits
     "dependency_outage":  "15_dependency_outage",  # one container goes silent (paused/stopped) or dies
     "anomaly_disk":       "16_anomaly_disk",       # one process floods the disk; others wait in D state
+    # a service's own thread computes without entering the kernel (both visible code defects)
+    "code_event_loop_block": "17_event_loop_block",
+    "code_serial_awaits":    "17_event_loop_block",
     # agentic experiments map onto the same blueprints
     "io_cap":         None,          # no blueprint yet
     "threads":        None,          # no blueprint yet

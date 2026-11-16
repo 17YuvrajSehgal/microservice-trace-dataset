@@ -190,3 +190,28 @@ after the suspect service is known.
 
 Laptop: Bonsai cannot be tested right now - Windows lists only the Intel GPU (nvidia-smi fails,
 llama.cpp "no CUDA-capable device"), so every layer loads on CPU whatever the context size.
+
+## Blueprint 17: event_loop_block (tool-only validation, no LLM)
+
+**Signature, measured.** The front-end Node main thread uses the same CPU before and during the
+fault (95% -> 98%). What changes: its system calls fall 6,755/s -> 243/s and it spends 95% of
+the time in CPU runs of >= 20 ms with no system call (median 107 ms). CPU tables cannot see
+this, which is why both agent pilots missed front-end.
+
+**Tool.** `loop_block.py`: per thread, CPU time between two system calls; preemption does not
+end a run. Verdict only when the SAME tid served system calls in a baseline slice and stopped
+(>= 40% of the slice in long runs, <= 5% in the baseline, system calls down >= 5x). A new
+CPU-bound process (stress-ng) gets a NOTE.
+
+**Result.** 57 runs: fires on 10/10 (`code_event_loop_block` 5, `code_serial_awaits` 5), quiet on
+47/47 (normal 10, svc_cpu_cap 8, noisy_neighbor 8, anomaly_cpu 5, resource_abuse 3,
+lock_contention 3, the three no-effect code families 10). Passed on the first try.
+
+**The two families separate** on the median run: 107-108 ms against 32-34 ms. The SHAPE line
+splits at 60 ms -> `event_loop_block` / `serial_work`. Fitted to two injected constants only;
+stated as such in the README.
+
+**Why a baseline is mandatory here.** Without it noisy_neighbor's stress-ng threads (49-51% in
+long runs) would be verdicts.
+
+Not done: no agent run with this blueprint yet; no multi-threaded (Go/Java) case in the data.
