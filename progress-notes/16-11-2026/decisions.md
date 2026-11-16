@@ -101,3 +101,62 @@ quiet at the anchor AND at trace start).**
   on the application lock, released by the nice 19 thread that slept 92-97% of that wait.
 - So the agent's "normal" on r1 followed the blueprint correctly; the blueprint rule is wrong
   for this recipe. Not fixed yet (needs a rule for the chained case + a GIL/base-rate guard).
+
+## Blueprint 11 fix: chained inversion rule + per-waiter contention bar (tool only)
+
+**Rule 1, chained inversion (checked first).** Two or more hand-off waits of >= 100 ms where the
+releaser has a worse priority than the waiter, slept >= 50% of the wait, and for >= 50% of the
+wait was itself in futex waits on other addresses released by threads with a better priority
+than its own. Verdict text starts `PRIORITY INVERSION (chained)`.
+**Why this and not a lower bar on the old rule:** the old rule reads "holder runnable but not
+running". In a CPython program the holder is never runnable, it is asleep on the interpreter
+lock. Lowering 30% would only make the marginal GIL verdict fire more often, also on healthy
+programs. The chain is the real mechanism and the numbers are far from any bar (94-100%).
+
+**Rule 2, contention bar per waiter.** "Held waits >= 5% of the slice" was a sum over waiters;
+now it is the average per waiter. The sum let the 153-thread load generator through.
+
+**Measured, 17 slices of 30 s, no API.**
+| slices | result |
+|---|---|
+| priority_inversion r1-r3, inside | 3/3 PRIORITY INVERSION (chained): 730 / 514 / 451 ms, holder blocked 100 / 100 / 94%, 67-81 such waits, 43-45% of the slice |
+| priority_inversion r1-r3, before | 3/3 NO LOCK PROBLEM (was 3/3 LOCK CONTENTION) |
+| lock_contention r1-r3, inside | 3/3 LOCK CONTENTION, same numbers as before |
+| lock_contention r1-r3, before | 3/3 NO LOCK PROBLEM |
+| normal r1-r5 | 5/5 NO LOCK PROBLEM |
+
+**Open.** (1) Not re-run on the five partner traces (they live on Nibi); their threads use many
+priorities, so the chained rule must be checked there before the partner matrix is trusted
+again. `futex_wait.py` is one file copied into 0, 8, 9, 10, 14 and select_d; all copies were
+updated together. (2) The agent has not run the new blueprint 11 or 14 yet (API credits).
+(3) fd r4/r5 still need their index (SLURM job).
+
+## Pilot: kernel + logs + code, no blueprint, gpt-6-luna (2 cells, 1.56M tokens in / 17K out)
+
+| run | verdict | truth | log calls | code calls | tokens in |
+|---|---|---|---|---|---|
+| code_lock_across_io r1 | normal | catalogue, lock held across the query | 0 | 0 | 364K |
+| code_event_loop_block r1 | fd_exhaustion on edge-router | front-end, blocked event loop | 15 | 0 | 1.20M |
+
+Both wrong. What it taught:
+- **The planner does not know the new tools exist.** Its prompt is unchanged, so no subtask sends
+  a worker to the logs or the code. On the lock run nobody opened a log. Same lesson as the
+  blueprint tool (called 8, 2, 0 times until one worker was dedicated to it).
+- **The agent blamed the service that complained.** edge-router logged EMFILE because front-end
+  stopped answering; the prompt rule "the logger is usually the victim" was not enough.
+- **Code tools were never called**, so log-to-code is untested with an LLM.
+- **Lock run: the logs hold no new error at all.** The signal there is go-kit's `took=` latency,
+  which templates mask.
+
+Decisions:
+- `new` is measured from the run's first log line, not the container's (edge-router's 458
+  warnings were hidden because its first line ever was the first warning).
+- The build tree cannot be the code root: it names every defect behind its gate.
+  `Blueprint/eval/make_code_root.py` writes a single-bug tree instead.
+- Next, before any more API spend: (1) a dedicated logs+code worker in the plan, as for
+  blueprints; (2) `log_latency` from `took=`; (3) a code_* blueprint or at least vocabulary
+  entries - today no fault label fits these families, so "right" is not even expressible.
+
+Testbed limits: 5 defects in 2 functions (score needs function + mechanism); source for 2 of ~8
+services only. Bonsai on the laptop loaded all layers on CPU again (6-11 tok/s): wiring smoke
+only, it did call log_events / log_to_code / code_grep.

@@ -39,7 +39,7 @@ from collections import Counter, defaultdict
 
 BUCKET_S = 10
 MAX_TEMPLATES = 4000           # per container; beyond it new templates fold into one row
-NEW_AFTER_S = 60               # "new" = first seen this long after the container's first line
+NEW_AFTER_S = 60               # "new" = first seen this long after the run's first log line
 LINE_CAP = 400
 
 # ---------------------------------------------------------------------------------------
@@ -195,6 +195,11 @@ class RunLogs:
         self.c = {}                     # container -> stats
         for name, p in self.files.items():
             self.c[name] = self._read(p)
+        # the RUN's first line, not the container's: a quiet container whose first line ever is
+        # an error mid-run (edge-router on code_event_loop_block: 458 warnings from 03:59:08)
+        # is the newest thing in the run, and measuring from its own start hid it
+        self.t0 = min((st["t0"] for st in self.c.values() if st["t0"] is not None),
+                      default=None)
 
     def _read(self, path):
         st = {"lines": 0, "relay": 0, "t0": None, "t1": None, "tpl": {}, "errors": 0}
@@ -263,8 +268,8 @@ class RunLogs:
                             if (b is None or t + BUCKET_S > b) and (e is None or t <= e))
                 if not n:
                     continue
-                new = (g["first"] is not None and st["t0"] is not None
-                       and g["first"] - st["t0"] > NEW_AFTER_S)
+                new = (g["first"] is not None and self.t0 is not None
+                       and g["first"] - self.t0 > NEW_AFTER_S)
                 cands.append((name, key, g, n, new))
         if not cands:
             return {"events": [], "note": "no log lines in that container/window"}
