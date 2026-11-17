@@ -221,3 +221,41 @@ front-end port (68-72% of traefik's connections refused), the same as the 5 `fd_
 runs. It agrees with the crash-loop finding of blueprint 21.
 
 Not done: agent runs; rca-studio vendored copies not synced.
+
+## `code_n_plus_one` (blueprint 23), `code_unbounded_cache` (blueprint 24), `code_lock_across_io` (no signal)
+
+Jobs: 2879871 (baseline before the fault, 21 min), 2880078 (reference after the fault, 22 min).
+One Trillium node each, all 304 runs.
+
+The 16-11 note said these three "change nothing measurable". That was true for metrics. Two
+of the three change the kernel trace.
+
+**code_unbounded_cache.** `mem_growth.py`: net memory asked from the kernel per process per
+second (`brk`, anonymous `mmap`, minus `munmap`). The front-end takes 413-431 MB in 30 s.
+- Two rules added after sweeps. (1) Keeps >= 10% of what it asked for: one JVM asks and
+  returns about 2 GB per 30 s and keeps 1%; it fired in 97 other Sock Shop runs. (2) Growth of up
+  to 2 MB per thread started is a pile-up, not a leak: in `dependency_outage` a JVM grows
+  312-344 MB while starting 1,470-1,616 threads. Rule (2) was applied to saved outputs only.
+- Result: 5/5, 0 false alarms in 297.
+
+**code_n_plus_one.** `call_fanout.py`: calls from a service to a dependency per request the
+service receives. Catalogue -> database: 3.15-3.83 against 2.10-2.65.
+- The baseline matters more than the rule. With a baseline before the fault (inside the load
+  ramp-up, issue 20) a healthy pair (a Java service -> its MongoDB) rises 1.58-1.65x in many runs. With
+  a reference after the fault (steady load) the 6 fault runs are at 1.45-1.57x and the next
+  pair at 1.28x.
+- Final rule: >= 1.35x, answers <= 1.1x slower, >= 200 calls and >= 200 received requests.
+  6/6, 0 in 175 judged runs, 123 not judged (104 Train Ticket runs have no qualifying
+  pair in the after-fault slice; cause not checked). Applied to saved tables, not rerun.
+- Stated as the weakest blueprint: fitted bar, thin margin, one service.
+
+**code_lock_across_io.** No blueprint. Four measurements, none moves: calls per request
+0.97-1.01x, answer time unchanged, 2 or more calls in flight 62-66% (66-68% before), `futex`
+calls by the catalogue 0.98-1.03x. Listed under "Not built yet" with these numbers; needs a
+run at a load where the lock is contended.
+
+Decision: did not spend a third sweep to re-run the final rules on slices. Both final rules
+are arithmetic on values the second sweep already printed for every run, and group LevelFS
+went from 71.7 to about 20 today.
+
+Not done: agent runs; rca-studio vendored copies not synced.
