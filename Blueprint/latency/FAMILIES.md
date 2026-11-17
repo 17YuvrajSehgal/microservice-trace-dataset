@@ -30,6 +30,8 @@ row names the blueprint folder under `Blueprint/latency/` and what it was calibr
 | A dependency paused / frozen / dead | `dependency_outage` (15, `ns_silence.py`) | one namespace goes from >= 20 events/s to < 1% of that; exits present = died, none = paused | our `dependency_outage_*` runs: 5/5, 0 false alarms |
 | One process flooding the disk | `anomaly_disk` (16, `blk_pressure.py`) | one user-space issuer >= 50% of user-space block requests, >= 200 req/s, >= 10x baseline; others' latency and D state rise | our `anomaly_disk_*` runs: 5/5, 0 false alarms |
 | A process that burns CPU and phones out on a timer | `resource_abuse` (18, `beacon.py`) | one pid with >= 0.5 cores AND >= 5 `connect()` calls to one destination at even gaps (>= 1 s, jitter <= 10%) | our `resource_abuse_*` runs on both applications: 10/10, 0 false alarms in 292 other runs |
+| One process pushing bulk data out one way | `data_exfiltration` (19, `egress.py`) | one stream (source -> destination:port) with >= 5 MB/s of TCP payload, <= 1% payload coming back, flowing in >= 90% of the seconds | our `data_exfiltration_*` runs on both applications: 10/10, 0 false alarms in 293 other runs |
+| Requests slow by one fixed timer, nothing busy | `nagle_delayed_ack` (20, `ack_stall.py`) | one connection with >= 10 stalls (data, >= 20 ms silence, bare ACK, data at once), >= 80% of them at one length, >= 20% of the slice spent waiting | our `nagle_delayed_ack_*` runs on both applications: 10/10, 0 false alarms in 293 other runs |
 
 ### Not built yet (needs a labelled trace first)
 

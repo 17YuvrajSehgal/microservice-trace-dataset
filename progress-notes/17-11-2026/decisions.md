@@ -85,3 +85,33 @@ Limits written in the README: the trace cannot tell "unauthorised" from a legiti
 with the same shape; a heartbeat on an open connection is invisible; only the aggressive
 setting exists (the 15 s / lighter variant was never collected).
 Not done: agent run; index for this family; `cpu_hogs.py` still groups by name.
+
+## Blueprints 19 `data_exfiltration` (`egress.py`) and 20 `nagle_delayed_ack` (`ack_stall.py`)
+
+Both read one 10 s `net_dev_queue` slice. Swept on all 304 v2 runs as SLURM jobs (2877411,
+then 2877421 with the final rule; one Trillium node, 4.5 min each).
+
+**19.** Rule: one stream (source address -> destination address:port) with >= 5 MB/s TCP
+payload, <= 1% payload coming back, flowing in >= 90% of the seconds. No baseline needed,
+unlike the old-tree blueprint (gain per process against a baseline window). 10/10, 0 false
+alarms in 293. Fault 41.9-42.0 MB/s; largest steady one-way stream elsewhere 2.96 MB/s
+(`toxiproxy` relaying database results on Train Ticket). Why all three conditions: telemetry
+export and database results are also one-way and steady, so direction alone does not separate.
+Limit: the recipe's 5 MB/s setting was never collected and would sit on the bar.
+
+**20.** Rule: per connection, count the pattern data / >= 20 ms silence / bare ACK / data
+from the same side within 2 ms. Verdict needs >= 10 of them, >= 80% within 10% of the median,
+and >= 20% of the slice spent waiting. 10/10, 0 false alarms in 293.
+- The third bar was added AFTER the first sweep: one healthy run (`svc_mem_cap` r3) had a
+  `node` telemetry connection with exactly 10 stalls of 40.6 ms (0.41 s of 10 s). It is the
+  real interaction, only too small to matter. Fault connections wait 46-82% of the time.
+- Lossy/delayed paths (`svc_net`, `anomaly_net`) make 10-22 such patterns per connection, but
+  at spread-out lengths (0-60% at one length). The one-length test is what separates them.
+- **Ground truth mismatch:** `expected_stall_ms` is 100 (from a smoke run). All 10 runs show
+  40.6-40.9 ms, the usual Linux delayed-ACK minimum. Not corrected in the dataset; noted here
+  and in the README.
+
+Bug caught by the self-test: `name = "..."` also matches `procname = "..."`, so the device
+was read as the process name. Fixed with a leading space.
+
+Not done: agent run on 18, 19, 20; `anomaly_mem_subtle_steady_r3` still cannot be sliced.
