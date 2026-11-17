@@ -186,3 +186,38 @@ used after the request (it is touching the pages).
   injection); its scheduling slices still fail.
 
 Not done: agent runs; rca-studio vendored copies not synced.
+
+## `error_storm` (blueprint 22) and `conn_pool_exhaustion` (blueprint 6, un-parked): `tcp_conns.py`
+
+Jobs: 2879216 (first rule, 304 runs, 6 min), 2879375 (final rule with a baseline slice, 13 min).
+One Trillium node each.
+
+Both families were listed as "logs only". Both have a kernel signal in the TCP flags of
+`net_dev_queue`, which no earlier tool read.
+
+**error_storm.** The proxy's `reset_peer` shows as SYN, SYN+ACK, RST from the server.
+- Result: 16/16 (10-50 connections, 100% reset, 0 kB back), 0 false alarms in 286.
+- Rule changes after the first sweep: (1) count per server over all clients (per client,
+  Train Ticket was 1/8: about 20 services share the resets); (2) split "refused" (RST with
+  no SYN+ACK) from "accepted, then reset". Before (2) every Train Ticket run fired: one
+  Spring service is refused on 127.0.0.1:5672 in all 134 runs (no broker deployed), and
+  killed or crash-looping services (`svc_mem_cap`, `fd_exhaustion`, `dns_delay` r1/r3) refuse.
+- The count bar went from a guessed 20 to 5 after the first pilot run, before the sweep: a
+  client that is always reset backs off (12 attempts per 20 s against 922 healthy).
+- Limit: only `reset_peer` was collected; the subtle `timeout` toxic is untested.
+
+**conn_pool_exhaustion.** Blueprint 6 was parked because the application's `connect()` never
+fails. Read from the holder's side it is direct: one new client with 149 (Sock Shop) or
+1,800 (Train Ticket) connections to :3306 that are open all slice with 33-40 bytes each.
+- Result: 10/10, 0 false alarms in 292.
+- Rule change after the first sweep: a baseline slice is required and the pair must be absent
+  from it. The Train Ticket database proxy holds 159-200 idle pooled connections in 91 runs
+  (and one `java` holds 83 to MongoDB on Sock Shop); a count bar cannot separate 149 from 200.
+- Limit: a held connection that sends nothing in the slice is not seen; the refusal of the
+  other clients is in the payload, not in the trace.
+
+Side finding: the "refused" verdict shows on its own that `dns_delay` r1 and r3 have a dead
+front-end port (68-72% of traefik's connections refused), the same as the 5 `fd_exhaustion`
+runs. It agrees with the crash-loop finding of blueprint 21.
+
+Not done: agent runs; rca-studio vendored copies not synced.
