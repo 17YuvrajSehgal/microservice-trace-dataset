@@ -29,6 +29,7 @@ row names the blueprint folder under `Blueprint/latency/` and what it was calibr
 | Threads deadlocked on each other's locks | `deadlock` (14, `futex_hang.py`) | threads CREATED in the slice enter an untimed futex wait within 1 s and never return, on >= 2 lock addresses (idle pool threads parked from before are excluded) | our `deadlock_*` runs: 5/5, 0 false alarms |
 | A dependency paused / frozen / dead | `dependency_outage` (15, `ns_silence.py`) | one namespace goes from >= 20 events/s to < 1% of that; exits present = died, none = paused | our `dependency_outage_*` runs: 5/5, 0 false alarms |
 | One process flooding the disk | `anomaly_disk` (16, `blk_pressure.py`) | one user-space issuer >= 50% of user-space block requests, >= 200 req/s, >= 10x baseline; others' latency and D state rise | our `anomaly_disk_*` runs: 5/5, 0 false alarms |
+| A process that burns CPU and phones out on a timer | `resource_abuse` (18, `beacon.py`) | one pid with >= 0.5 cores AND >= 5 `connect()` calls to one destination at even gaps (>= 1 s, jitter <= 10%) | our `resource_abuse_*` runs on both applications: 10/10, 0 false alarms in 292 other runs |
 
 ### Not built yet (needs a labelled trace first)
 

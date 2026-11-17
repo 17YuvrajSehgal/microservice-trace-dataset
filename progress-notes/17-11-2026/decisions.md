@@ -68,3 +68,20 @@ Reading:
 - The beacon, which is the recipe's whole point, is plainly in the trace (10/10) but no tool
   looks for it. On SS r1 only two other (process, port) pairs connect 6-20 times a minute.
 - On TT the group row (+16.5 s on-CPU per 10 s) and the per-pid row (run 1.01) disagree. Not chased.
+
+## Blueprint 18 `resource_abuse` built (`beacon.py`)
+
+Rule: one pid that is BOTH CPU-heavy (>= 0.5 cores in a 10 s scheduling slice) and a periodic
+connector (>= 5 `connect()` to one destination, gaps >= 1 s, jitter <= 10%, no gap more than
+35% off the median). Periodic alone is not enough: `prometheus` (5 s) and the Train Ticket
+database pool (10 s) are periodic. CPU alone is blueprint 2.
+
+Swept on all 304 v2 runs as a SLURM job (2875043, one Trillium node, 28 min; sweeps no longer
+go on the login node): 10/10 labelled runs, 0 false alarms in 292, 2 runs with a failed slice
+cut. Margin: smallest hog 0.93 cores, largest other periodic connector 0.15. The first-guess
+bars held, so none was tuned after seeing the sweep.
+
+Limits written in the README: the trace cannot tell "unauthorised" from a legitimate poller
+with the same shape; a heartbeat on an open connection is invisible; only the aggressive
+setting exists (the 15 s / lighter variant was never collected).
+Not done: agent run; index for this family; `cpu_hogs.py` still groups by name.
