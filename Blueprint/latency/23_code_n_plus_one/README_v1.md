@@ -94,8 +94,8 @@ changed), not at several defects.
 - Per-run lines: `RESULTS.md` next to this file.
 - **Against a slice after the fault (steady load): 6 of 6, 0 false alarms in the 175 other
   runs that could be judged.** 123 runs could not be judged: no client and server pair has
-  200 calls and 200 received requests in both slices (100 of them are Train Ticket fault
-  runs, 3 are failed slice cuts).
+  200 calls and 200 received requests in both slices (104 Train Ticket runs and 19
+  Sock Shop runs; 3 of them are failed slice cuts).
 - **Against a slice before the fault (in the load ramp-up): not usable.** The 6 fault runs
   are found, but a healthy pair rises 1.58 to 1.65 times in many runs of other families.
 - **The margin is thin.** Fault runs: 1.45 to 1.57. Highest healthy pair that passes the
