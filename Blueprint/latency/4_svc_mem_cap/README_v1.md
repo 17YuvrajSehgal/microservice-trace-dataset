@@ -304,6 +304,7 @@ You are done.
 
 - It confirms or rejects one cause: a cgroup memory limit on one container, in either face. It stops and says so when the evidence points at host pressure, plain disk, or the CPU.
 - It needs `mm_vmscan_memcg_*` events. Without them the verdict is much weaker — only re-reading and deaths remain, and both have innocent explanations.
+- On a trace with no `mm_vmscan_*` events at all (measured: every Train Ticket run), reclaim is invisible. `Large memory requests` still names a consumer (8 of 8 host-memory runs there, one request of 22.5 GB each), but nothing in the trace then shows that the host was actually short of memory. The `kswapd active` line is not proof either: it also appears on fault-free runs of that system (92-483 events per 30 s).
 - It cannot read the limit's value. The CPU blueprint can estimate its quota from the ceiling; there is no memory equivalent in the trace.
 - Swap changes the hard-limit face: with swap, anonymous memory is reclaimable and the kill becomes a slowdown. The measured numbers here come from machines with no swap.
 - The kill-gap rule (under ~1 ms = killed, 8 ms or more = finished) was measured on 8 runs of one workload on one machine. Treat the 1 ms line as a rule of thumb, not a law.

@@ -157,14 +157,26 @@ python3 $TOOLS/net_loss.py $WORK/n_f1.txt   10
 python3 $TOOLS/net_loss.py $WORK/n_f2.txt   10
 ```
 
-`net_loss.py` prints the overall retransmission rate, the worst flows with their senders and containers (`net_ns`), and a per-container summary. The sender of a flow is the process and container that **own the source address**, not whoever was on the CPU when the packet left (a delayed or retransmitted segment leaves from a timer, and would read as `swapper`). The line `Senders with 3+ retransmitted segments: K of N` answers the one-service or host-wide question directly.
+`net_loss.py` prints the overall retransmission rate, the worst flows with their senders and containers (`net_ns`), and a per-container summary. The sender of a flow is the process and container that **own the source address**, not whoever was on the CPU when the packet left (a delayed or retransmitted segment leaves from a timer, and would read as `swapper`).
+
+**Two kinds of retransmit (changed 17-11-2026, re-measured on 79 slices of two applications).** Every segment is seen at two devices on its way: the sender's own interface, then the receiver's side. `net_loss.py` uses that:
+
+| Kind | What the trace shows | Meaning |
+|---|---|---|
+| **DROPPED** | the segment appears more often at the first device than at the second | the sender's own queue threw a copy away. **This is the loss signal** |
+| sent twice | both copies reach the second device | nothing was lost on the way out; an ACK was late and the kernel sent a probe. **Healthy systems have these**: 50-110 per 10 s on one application, 3-22 on the other |
+
+Measured: **0 dropped in 36 healthy slices** (before a fault, or fault-free runs). The line `Senders whose own queue dropped segments: K of N` and the `->` line under it answer the one-service or host-wide question.
+
+> The numbers in 1.2, Step 4 and Appendix B (4 retransmits in 90,107; 1.4-3.2% per flow) were measured with the tool before this change. It missed most retransmits, because it matched two copies only when they left in the same context. Read them as "near zero when healthy, clearly above when degraded", not as exact values.
 
 Read it:
 
-- **Healthy looks like zero.** Measured baseline: 4 retransmits in 90,107 segments. A few scattered retransmits are normal background.
-- **One container's flows retransmit, in BOTH directions, while everyone else sits at 0:** that container's path is degraded. The rate per flow does not need to be large — 1–3% per flow against a zero baseline is loud. Write down the container (`net_ns`) and its addresses. Go to Step 4.
-- **Flows of many unrelated containers retransmit:** the problem is host-wide (the machine's own link or a shared bridge, or the same shaping rule on every container), not one service's path. Measured on 8 host-wide runs: 1.2-1.6% overall, 6 to 9 senders retransmitting, no single address at an end of more than 52-69% of the retransmits, total traffic 3 to 6 times lower. On 5 one-container runs: 2 senders (the victim and the peer that answers it), and the victim's address at an end of 100% of the retransmits. `net_loss.py` prints both numbers. Report it as a host-wide network problem, list the senders, and **stop**.
-- **No retransmission anywhere, in any slice:** no loss is visible. If a service is still slow and its callers sleep on sockets (check in Step 5), the path may be adding pure DELAY, or the peer may simply be slow — report "no loss shown; slow peer or added delay cannot be separated from the trace alone" and **stop** after Step 5's check.
+- **Healthy: 0 DROPPED.** `sent twice` alone is not a fault.
+- **(Nearly) all drops at ONE sender's queue** (the `-> ONE-PATH shape` line): that container's path is degraded. Measured on 10 one-container runs of two applications: 100% of the drops at the injected container, 236-283 drops per 10 s on one application and 5-19 on the other. Its peers show `sent twice` toward it. Write down the container (`net_ns`) and its addresses. Go to Step 4.
+- **Many unrelated senders drop** (the `-> HOST-WIDE shape` line): the problem is host-wide (the machine's own link, a shared bridge, or the same shaping rule on every container), not one service's path. Measured on 16 host-wide runs: 8-10 senders drop and the largest holds 21-28% (one application, 10 s); 7-13 senders (the other, 30 s). Report it as a host-wide network problem, list the senders, and **stop**.
+- **Under 20 drops:** the tool says the shares are too few to trust. That happens when traffic has collapsed (measured: about 1,000 segments per 10 s instead of 60,000 or more). Cut a 30 s slice and run it again.
+- **No drops anywhere, in any slice:** no loss is visible. If a service is still slow and its callers sleep on sockets (check in Step 5), the path may be adding pure DELAY, or the peer may simply be slow - report "no loss shown; slow peer or added delay cannot be separated from the trace alone" and **stop** after Step 5's check.
 
 ```bash
 VICTIM_NS=<net_ns>        # the container whose flows retransmit

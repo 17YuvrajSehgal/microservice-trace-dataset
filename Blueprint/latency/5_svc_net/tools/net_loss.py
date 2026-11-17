@@ -43,11 +43,23 @@ re_tcp = re.compile(r'source_port = (\d+), dest_port = (\d+), seq = (\d+), ack_s
                     r'data_offset = (\d+)')
 
 # A packet crossing a veth pair or a bridge fires net_dev_queue once per
-# device, so the SAME segment appears 2-3 times on different devices - which
-# reads as fake "50% retransmission" everywhere. A real retransmit repeats at
-# the SAME observation point. So we count per (device, context netns) combo,
-# and judge each flow at its busiest single vantage point.
-flows = defaultdict(lambda: defaultdict(lambda: {"segs": 0, "dup": 0, "seen": set(),
+# device, so the SAME segment appears on 2-3 devices - counted naively that
+# reads as a fake "50% retransmission" everywhere. So each flow is counted per
+# device NAME. For one flow direction the names are distinct: the sender's own
+# eth0 first, then the host-side veth of the receiver.
+#
+# The device must NOT be split by the context's net_ns (it was, until 17-11): the first
+# copy leaves in the sender's context and the retransmit leaves from a timer in another
+# one, so the two copies fell in different buckets and were never matched. Measured on
+# Train Ticket: 5 runs with 4% loss on one container read 0 retransmits.
+#
+# Two devices also tell two kinds of retransmit apart:
+#   DROPPED   - the segment is seen more often at the first device than at the next one:
+#               the sender's own queue (a shaping rule, a full queue) threw a copy away.
+#   SENT TWICE - both copies reached the next device: nothing was lost on the way out, the
+#               ACK was late or lost (a tail-loss probe). A healthy system has these too:
+#               measured 50-110 per 10 s, all toward one receiver that answers slowly.
+flows = defaultdict(lambda: defaultdict(lambda: {"segs": 0, "cnt": defaultdict(int),
                                                  "senders": defaultdict(int)}))
 drops = defaultdict(int)          # (procname, net_ns) -> skb_kfree count
 # Who OWNS a source address. The context of a transmit event is whoever is on the CPU, not
@@ -94,12 +106,10 @@ with open(path, errors="replace") as f:
         key = (sip, sport, dip, dport)
         c = re_ctx.search(line)
         dv = re.search(r'len = \d+, name = "([^"]+)"', line)
-        vantage = (dv.group(1) if dv else "?", c.group(3) if c else "?")
+        vantage = dv.group(1) if dv else "?"
         fl = flows[key][vantage]
         fl["segs"] += 1
-        if seq in fl["seen"]:
-            fl["dup"] += 1
-        fl["seen"].add(seq)
+        fl["cnt"][seq] += 1
         if c:
             fl["senders"][(c.group(2), c.group(3))] += 1
 
@@ -124,67 +134,83 @@ def sender_of(sip, f):
     return max(f["senders"].items(), key=lambda kv: kv[1])[0] if f["senders"] else ("?", "?")
 
 
-# one vantage point per flow: the busiest (device, netns) combo
+# per flow: judge at the busiest device, place each retransmit with the next busiest one
 best = {}
-for key, combos in flows.items():
-    v, fl = max(combos.items(), key=lambda kv: kv[1]["segs"])
-    best[key] = fl
+for key, devs in flows.items():
+    order = sorted(devs.values(), key=lambda d: -d["segs"])
+    d1 = order[0]
+    d2 = order[1]["cnt"] if len(order) > 1 else None
+    dup = dropped = 0
+    for seq, c1 in d1["cnt"].items():
+        if c1 < 2:
+            continue
+        dup += c1 - 1
+        if d2 is not None:
+            dropped += max(0, c1 - max(d2.get(seq, 0), 1))
+    best[key] = {"segs": d1["segs"], "dup": dup, "senders": d1["senders"],
+                 "dropped": dropped if d2 is not None else 0,
+                 "twice": dup - dropped if d2 is not None else 0,
+                 "unplaced": dup if d2 is None else 0}
 
 total_segs = sum(f["segs"] for f in best.values())
 total_re = sum(f["dup"] for f in best.values())
+total_drop = sum(f["dropped"] for f in best.values())
+total_twice = sum(f["twice"] for f in best.values())
+total_unpl = sum(f["unplaced"] for f in best.values())
 print(f"TCP data segments in this {secs:.0f} s slice: {total_segs} "
       f"({total_re} retransmitted, {total_re / total_segs:.1%} overall)")
+print(f"  of the retransmits: {total_drop} DROPPED at the sender's own queue, {total_twice} sent "
+      f"twice with both copies delivered (late or lost ACK), {total_unpl} on flows seen at one "
+      "device only")
 print()
 
 # ---- per flow ---------------------------------------------------------------
 print(f"Flows with the most retransmission (flows under {min_seg} segments hidden):")
-print(f"  {'flow':<44}{'segs':>6}{'rexmit':>8}{'rate':>7}  sender")
+print(f"  {'flow':<44}{'segs':>6}{'rexmit':>8}{'dropped':>9}{'rate':>7}  sender")
 rows = [(k, f) for k, f in best.items() if f["segs"] >= min_seg]
-rows.sort(key=lambda kv: -kv[1]["dup"])
+rows.sort(key=lambda kv: (-kv[1]["dropped"], -kv[1]["dup"]))
 for (sip, sp, dip, dp), f in rows[:10]:
     snd = sender_of(sip, f)
     print(f"  {sip + ':' + sp + ' -> ' + dip + ':' + dp:<44}"
-          f"{f['segs']:>6}{f['dup']:>8}{f['dup']/f['segs']:>7.1%}  "
+          f"{f['segs']:>6}{f['dup']:>8}{f['dropped']:>9}{f['dup']/f['segs']:>7.1%}  "
           f"{snd[0]} (net_ns {snd[1]})")
 
 # ---- per sender -------------------------------------------------------------
-by_sender = defaultdict(lambda: [0, 0])
+by_sender = defaultdict(lambda: [0, 0, 0])
 for (sip, sp, dip, dp), f in best.items():
     snd = sender_of(sip, f)
     by_sender[snd][0] += f["segs"]
     by_sender[snd][1] += f["dup"]
+    by_sender[snd][2] += f["dropped"]
 print()
 print("By sender (the process and container that own the source address):")
-print(f"  {'sender':<28}{'net_ns':<14}{'segs':>7}{'rexmit':>8}{'rate':>7}")
-for (nm, nsid), (segs, rx) in sorted(by_sender.items(), key=lambda kv: -kv[1][1])[:12]:
-    print(f"  {nm:<28}{nsid:<14}{segs:>7}{rx:>8}{(rx/segs if segs else 0):>7.1%}")
-# how many containers retransmit: the one-service vs host-wide question in one line
-MIN_RX = 3          # a container "retransmits" from this many repeated segments (background is 0-2)
-lossy = sorted(((rx, nm, nsid) for (nm, nsid), (segs, rx) in by_sender.items() if rx >= MIN_RX), reverse=True)
+print(f"  {'sender':<28}{'net_ns':<14}{'segs':>7}{'rexmit':>8}{'dropped':>9}{'drop rate':>11}")
+for (nm, nsid), (segs, rx, dr) in sorted(by_sender.items(), key=lambda kv: (-kv[1][2], -kv[1][1]))[:12]:
+    print(f"  {nm:<28}{nsid:<14}{segs:>7}{rx:>8}{dr:>9}{(dr/segs if segs else 0):>11.1%}")
+
+# who drops: the one-service vs host-wide question in one line
+MIN_TOTAL_DROP = 3        # healthy slices measured 0 dropped segments (36 slices, two applications)
+ONE_PATH_SHARE = 0.90     # one degraded path: (nearly) all drops are at one sender's queue
+FEW_DROPS = 20            # under this the shares are shaky: say so
+droppers = sorted(((dr, nm, nsid) for (nm, nsid), (segs, rx, dr) in by_sender.items() if dr >= 1), reverse=True)
 print()
-print(f"Senders with {MIN_RX}+ retransmitted segments: {len(lossy)} of {len(by_sender)}"
-      + (" - " + ", ".join(f"{nm} ({nsid})" for rx, nm, nsid in lossy[:8]) if lossy else ""))
-BACKGROUND_RX = 10  # healthy slices measured 0-6 retransmits in 40-69 thousand segments
-if total_re < BACKGROUND_RX:
-    print(f"  only {total_re} retransmits in the whole slice: background level (healthy slices "
-          "measured 0-6), not a fault by itself")
-elif lossy:
-    # the address that is an end (source or destination) of the most retransmits
-    ends = defaultdict(int)
-    for (sip, sp, dip, dp), f in best.items():
-        ends[sip] += f["dup"]
-        ends[dip] += f["dup"]
-    hub, hub_rx = max(ends.items(), key=lambda kv: kv[1])
-    print(f"  {hub} is one end of {hub_rx / total_re:.0%} of the retransmits")
-    # Measured: one container's degraded path = 2 senders (the victim and the peer answering
-    # it), 5 runs; the same fault on every container = 6 to 9 senders, 8 runs.
-    if len(lossy) <= 3:
-        print(f"  {len(lossy)} sender(s) retransmit: the ONE-PATH shape (a victim and the peers that "
-              "answer it) - check the flows above run in both directions of one container")
-    elif len(lossy) >= 5:
-        print(f"  {len(lossy)} senders retransmit: the HOST-WIDE shape, not one service's path")
+print(f"Senders whose own queue dropped segments: {len(droppers)} of {len(by_sender)}"
+      + (" - " + ", ".join(f"{nm} ({nsid}) {dr}" for dr, nm, nsid in droppers[:10]) if droppers else ""))
+if total_drop < MIN_TOTAL_DROP:
+    print(f"  no queue drops packets here ({total_drop} dropped in all). The {total_twice} segments "
+          "sent twice are not loss on the way out; a healthy system has them too")
+else:
+    top = droppers[0][0] / total_drop
+    if top >= ONE_PATH_SHARE:
+        print(f"  -> the ONE-PATH shape: {top:.0%} of all drops are at the queue of "
+              f"{droppers[0][1]} (net_ns {droppers[0][2]}). That container's path is degraded")
     else:
-        print(f"  {len(lossy)} senders retransmit: between the two shapes - read the flow table")
+        print(f"  -> the HOST-WIDE shape: {len(droppers)} senders drop at their own queues, the largest "
+              f"holds {top:.0%} of the drops. Not one service's path")
+    if total_drop < FEW_DROPS:
+        print(f"     (only {total_drop} drops in {total_segs} segments - too few to trust the shares. "
+              "Cut a 30 s slice and run this again; compare the segment count with the baseline, "
+              "a collapse of traffic is part of the picture)")
 
 # ---- drops ------------------------------------------------------------------
 if drops:
@@ -196,13 +222,15 @@ if drops:
 # ---- read it ----------------------------------------------------------------
 print()
 print("Read it:")
-print("- ONE SERVICE'S PATH IS DEGRADED: the flows to and from one container")
-print("  retransmit at a rate far above everyone else's, in both directions,")
-print("  and the other containers' flows sit near 0%. Name that container.")
-print("- HOST-WIDE network problem: flows of MANY unrelated containers all")
-print("  retransmit. That is not one service's path.")
-print("- NO retransmission but the victim sleeps on sockets (sched S high):")
-print("  the peer is SLOW, not lossy - a slow dependency or a pure-delay")
-print("  path. Retransmission proves loss; it cannot rule out added delay.")
-print("- A few retransmits everywhere is normal background. Compare with the")
-print("  baseline slice before calling anything a fault.")
+print("- DROPPED is the loss signal. A healthy system drops nothing at a sender's queue")
+print("  (measured: 0 in 36 healthy slices). 'Sent twice' is NOT loss on the way out: it is")
+print("  the kernel re-sending because an ACK was late, and healthy runs have 50-110 per 10 s.")
+print("- ONE SERVICE'S PATH IS DEGRADED: (nearly) all drops are at ONE sender's queue.")
+print("  Name that container (its net_ns). Its peers show 'sent twice' toward it, not drops.")
+print("- HOST-WIDE network problem: MANY unrelated senders drop at their own queues.")
+print("  That is not one service's path.")
+print("- NO drops but the victim sleeps on sockets (sched S high): the peer is SLOW, not")
+print("  lossy - a slow dependency or a pure-delay path. Drops prove loss; their absence")
+print("  cannot rule out added delay. 'Sent twice' far above the baseline slice hints at delay.")
+print("- Drops are placed by comparing two devices on the way; a flow seen at one device only")
+print("  (traffic leaving the host) cannot be placed and is listed apart.")
