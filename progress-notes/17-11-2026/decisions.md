@@ -115,3 +115,41 @@ Bug caught by the self-test: `name = "..."` also matches `procname = "..."`, so 
 was read as the process name. Fixed with a leading space.
 
 Not done: agent run on 18, 19, 20; `anomaly_mem_subtle_steady_r3` still cannot be sliced.
+
+## `dns_delay` (blueprint 21, `dns_retry.py`) and `queue_backlog` (covered by blueprint 15)
+
+Jobs: 2877661 (both tools on all 304 runs, 52 min), 2878136 (dns final rule, 3 min),
+2878132 and 2878303 (`freeze_moment.py` on 95 runs, 25 min each). One Trillium node each.
+
+**dns_delay.** The direct signal is the resolver's own retry: `sendto` with an address,
+`poll` returns 0 after 2.5 s, the same thread sends again on the same socket. Chosen over the
+old-tree signal (share of EMFILE among failing syscalls), which is a side effect.
+- r2, r4, r5: 76-88% of the front-end's lookups are resent. r4 is NOT a failed injection (the
+  campaign notes say it is, because no metric moved).
+- r1, r3: the front-end crash-loops (4-6 pids in 60 s), 10-11% resent. Same numbers as the 5
+  `fd_exhaustion` runs, where the resolver is healthy. So those two runs are not usable as
+  clean positives. Whether the DNS fault caused the first crash is not shown.
+- Rule change after the sweep: a program that ran as more than one pid in the slice gets
+  "LOOKUPS TIME OUT IN A RESTARTING PROGRAM" and not the fault verdict. Before that, 5 false
+  alarms (`fd_exhaustion`).
+- Limit: musl-style resolvers only (sendto + poll). One program, one application.
+- Also seen, not chased: during r1 `traefik` makes up to 8,000 lookups per 10 s through
+  dockerd to systemd-resolved, and it goes on after the injection ends.
+
+**queue_backlog.** Same mechanism as `dependency_outage` (`docker pause`), so no new
+blueprint: blueprint 15 covers it. But the full sweep showed that blueprint 15's
+`ns_silence.py` is not reliable alone: it finds 15/15 frozen containers and also fires on 80
+of 288 other runs (68 on Train Ticket: idle `openresty`/`toxiproxy`, helpers that ended
+between the slices, collapsed traffic). The earlier "0 false alarms" was on 18 runs.
+- Fix: `freeze_moment.py`. A freeze makes every thread of the container run once to park
+  itself, also the sleeping ones: 19-143 threads scheduled out within 0.1-1.7 ms, 13-133 of
+  them woken from >= 1 s of sleep. Idle services go quiet one thread at a time.
+- Rule change after the first pass: "3 threads woken from sleep" was added, because an idle
+  `toxiproxy` (small Go program, all threads park together) read as frozen in 3 runs.
+- Result of both steps: 15/15, 0 false alarms in 288 (75 rejected, 5 correctly "exited").
+  Run on every namespace without the Step 3 name it still has 3 false alarms (toxiproxy, 7
+  threads, 3-4 woken). Not tuned further: a count bar between 4 and 13 would be fitted.
+- The trace cannot tell `queue_backlog` from `dependency_outage`: accepted connections in the
+  baseline are 0-1 per 10 s for both. The label depends on what the container is.
+
+Not done: agent runs on 15 (new Step 3b), 18-21; rca-studio vendored copies not synced.

@@ -10,9 +10,12 @@
 **When to use this.** Requests fail or time out; several services slow at once; nothing burns
 CPU, disk or network. The question is: **who went quiet?**
 
-> **Honest status.** Calibrated on the 5 labelled Sock Shop v2 `dependency_outage` runs
-> (`payment` paused with `docker pause` for 120 s) and checked against 15 runs of other faults
-> and 3 normal runs.
+> **Honest status (updated 17-11-2026).** Calibrated on the 5 labelled Sock Shop v2
+> `dependency_outage` runs (`payment` paused with `docker pause` for 120 s). It also covers
+> `queue_backlog` (the queue consumer paused the same way). Checked on all 304 v2 runs of both
+> applications: the two steps together find 15 of 15 frozen containers with 0 false alarms.
+> **Step 3 alone is not enough**: silence alone fires on 80 other runs (Part 4), so Step 3b
+> is required.
 
 ---
 
@@ -44,6 +47,7 @@ first (and, if it restarts, new `exec`s).
 | `idx_summary.py` | Date, span; where the event rate changes | `idx_summary.py <trace_dir> [--rate SECONDS]` |
 | `extract_slice.sh` | Cuts one slice | `extract_slice.sh <trace_dir> <date> <time> <secs> <out> '<regex>'` |
 | `ns_silence.py` | Events per second per namespace, baseline vs fault; exits, forks, execs; the verdict | `ns_silence.py <base> <secs> <fault> <secs>` |
+| `freeze_moment.py` | Confirms a freeze: every thread of the namespace scheduled out at one moment | `freeze_moment.py <sched_slice> <secs> [--ns PID_NS]` |
 | `sched_budget.py` | The callers' sleep and wait (who is affected) | `sched_budget.py <slice> <secs>` |
 
 ```bash
@@ -78,8 +82,26 @@ python3 $TOOLS/ns_silence.py $WORK/b.txt 10 $WORK/f.txt 10
 | `VERDICT: SERVICE GONE: ... X of its processes exited` | the dependency died (and maybe restarted): still `dependency_outage`, say "crashed" |
 | `NO SILENT SERVICE (...)` | Not this fault |
 
+### Step 3b. Confirm the freeze (required)
+Silence is not proof. A service with no traffic is silent, and so is a helper that ended.
+A freeze has a moment: the kernel makes every thread of the container run once so that it
+can park itself, also the threads that had been asleep. Cut one scheduling slice that starts
+at the baseline slice and ends after the fault slice, so it contains that moment:
+```bash
+bash $TOOLS/extract_slice.sh $TRACE $DAY $BASE_START <secs from BASE_START to the end of the fault slice>      $WORK/s.txt 'sched_switch|sched_process_exit'
+python3 $TOOLS/freeze_moment.py $WORK/s.txt <secs> --ns <ns from the Step 3 verdict>
+```
+
+| Verdict line | Meaning |
+|---|---|
+| `VERDICT: FROZEN AT hh:mm:ss: ns N (<comm>): K of its T threads were scheduled out within X ms (D of them had been asleep for 1 s or more) and none ran again ...` | **Confirmed.** The time is the start of the incident window |
+| `VERDICT: EXITED AT ...: ... thread exits in its last second` | It ended or was killed (for example by the memory limit). Not a freeze; say "crashed" |
+| `VERDICT: NO FREEZE MOMENT (...)` | The namespace only went idle. **Not this fault**; drop the Step 3 verdict |
+
 ### Step 4. Submit
-- `fault_type`: `dependency_outage`.
+- `fault_type`: `dependency_outage` if other services call the frozen container; `queue_backlog`
+  if it is a queue consumer (nobody waits for it, work piles up in the broker). The trace
+  names the container; which of the two it is depends on what that container does.
 - `root_cause_service`: the silent container (its name, or comm + pid_ns).
 - `culprit_kind`: `container`; `victim_thread`: `none`; list the affected callers in `evidence`.
 - `incident_window`: from the drop to where the namespace's events return (or the end).
@@ -91,6 +113,17 @@ python3 $TOOLS/ns_silence.py $WORK/b.txt 10 $WORK/f.txt 10
 ## Part 4. Measured, and limits
 
 - Per-run lines on the labelled runs and the controls: `RESULTS.md` next to this file.
+- **Full check, 17-11-2026 (all 304 runs).** `ns_silence.py` finds the frozen container in
+  15 of 15 runs (`dependency_outage` on both applications, `queue_backlog`). It also reports a
+  frozen service on 80 other runs: 12 on Sock Shop and 68 on Train Ticket (idle `openresty`
+  and `toxiproxy`, helper processes that ended between the two slices, traffic that
+  collapsed). `freeze_moment.py` on the named namespace keeps the 15 (19-143 threads within
+  0.1-1.7 ms, 13-133 of them woken from sleep), calls 5 "exited" and rejects 75.
+- **`freeze_moment.py` must be given the namespace from Step 3.** Run on every namespace it
+  still calls an idle `toxiproxy` frozen in 3 Train Ticket runs (7 threads, 3-4 woken from
+  sleep): a small Go program wakes all its threads now and then by itself.
+- **The trace cannot tell `queue_backlog` from `dependency_outage`.** Accepted connections do
+  not help (0-1 in 10 s for both; connections are kept open).
 - Needs the container context (`pid_ns`). On a bare-metal box, run it per process name instead
   (not built yet).
 - A service that idles legitimately (no traffic at all) can look silent; the bar (>= 20
