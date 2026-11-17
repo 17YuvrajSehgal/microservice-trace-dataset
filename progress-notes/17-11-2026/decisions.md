@@ -43,3 +43,28 @@ Consequences:
 
 TT memory caveats: no `mm_vmscan_*` events at all, so reclaim is invisible and only the large
 request is seen; "kswapd active" also fires on normal TT runs (92-483 events), so it proves nothing.
+
+## `resource_abuse` with blueprint 2's tools (tool only, 5 Sock Shop + 5 Train Ticket runs)
+
+The recipe: a Python container, 4 hashing threads capped at 2 CPUs, plus a TCP connect to a
+local listener (port 18098) every 5 s. Outputs: Trillium `work/ra_check/`.
+
+| | before | inside the fault |
+|---|---|---|
+| SS CPU busy | 64-66% | 77-79% |
+| SS `python3` group (`cpu_hogs.py`) | 2 procs, 5% of all CPU | 4 procs, 12-13% |
+| TT CPU busy | 9-11% | 19-20% |
+| TT `python3` group | 2% | 12-13% |
+| the hog in `sched_budget.py` | absent | one new pid in a new pid_ns, run 0.95-1.01 (about one core: the 4 threads share the GIL) |
+| `connect()` to port 18098 from the hog's pid, 60 s | not cut | 11-12, every 5.1-5.5 s, 10/10 runs |
+
+Reading:
+- Blueprint 2's tools see the CPU user in 10/10, but `cpu_hogs.py` groups by NAME and the hog is
+  called `python3` like the load generator, so it shows as a bigger old group, not a new one. The
+  blueprint's "is it NEW" test then needs the per-pid table. Grouping by container (pid_ns) would
+  fix it. Not done.
+- The victims barely suffer (SS dockerd wait 0.70 -> 1.32 s per 10 s; TT nothing waits, the host
+  is 80% idle). On TT blueprint 2 would stop at Step 4 with "no CPU competition".
+- The beacon, which is the recipe's whole point, is plainly in the trace (10/10) but no tool
+  looks for it. On SS r1 only two other (process, port) pairs connect 6-20 times a minute.
+- On TT the group row (+16.5 s on-CPU per 10 s) and the per-pid row (run 1.01) disagree. Not chased.
