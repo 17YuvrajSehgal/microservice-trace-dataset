@@ -211,7 +211,7 @@ fails. Read from the holder's side it is direct: one new client with 149 (Sock S
 1,800 (Train Ticket) connections to :3306 that are open all slice with 33-40 bytes each.
 - Result: 10/10, 0 false alarms in 292.
 - Rule change after the first sweep: a baseline slice is required and the pair must be absent
-  from it. The Train Ticket database proxy holds 159-200 idle pooled connections in 91 runs
+  from it. The Train Ticket database proxy holds 159-200 idle pooled connections in 90 runs
   (and one `java` holds 83 to MongoDB on Sock Shop); a count bar cannot separate 149 from 200.
 - Limit: a held connection that sends nothing in the slice is not seen; the refusal of the
   other clients is in the payload, not in the trace.

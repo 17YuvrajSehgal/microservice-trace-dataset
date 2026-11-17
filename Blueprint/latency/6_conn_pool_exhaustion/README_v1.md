@@ -86,11 +86,11 @@ python3 $TOOLS/tcp_conns.py $WORK/net.txt 20 $WORK/base.txt
 ## Part 4. Measured, and limits
 
 - Per-run lines: `22_error_storm/RESULTS.md` (the same job checked both blueprints).
-- **10 of 10 fault runs, 0 false alarms in 292 other runs.** 91 Train Ticket runs and 1 Sock
+- **10 of 10 fault runs, 0 false alarms in 292 other runs.** 90 Train Ticket runs and 1 Sock
   Shop run have a standing pool of 83 to 200 idle connections; all are in the baseline too
   and get the NOTE line.
 - **The baseline rule was added after the first sweep.** Without it the standing pools read
-  as the fault (92 runs).
+  as the fault (91 runs).
 - **A connection that sends nothing in the slice is invisible.** The holder here pings every
   connection every 10 s, so a 20 s slice sees all of them. A holder that never sends would
   only show through TCP keepalives, if they are on.
