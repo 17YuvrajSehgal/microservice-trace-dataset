@@ -50,6 +50,15 @@ re_tcp = re.compile(r'source_port = (\d+), dest_port = (\d+), seq = (\d+), ack_s
 flows = defaultdict(lambda: defaultdict(lambda: {"segs": 0, "dup": 0, "seen": set(),
                                                  "senders": defaultdict(int)}))
 drops = defaultdict(int)          # (procname, net_ns) -> skb_kfree count
+# Who OWNS a source address. The context of a transmit event is whoever is on the CPU, not
+# the socket's owner: a delayed or retransmitted segment leaves from a timer or softirq, so
+# its context is swapper/N in the host namespace (measured: on a netem run every
+# retransmitting flow read "swapper", and the per-container table was empty). So we vote:
+# the owner of an address is the (process, net_ns) that most often sends FROM it in its own
+# context, outside the host namespace.
+ip_ctx = defaultdict(lambda: defaultdict(int))   # saddr -> (procname, net_ns) -> events
+host_ns = set()                                  # net_ns of swapper = the host's namespace
+KERNEL_CTX = ("swapper/", "ksoftirqd/", "kworker/")
 n_queue = 0
 
 with open(path, errors="replace") as f:
@@ -67,6 +76,12 @@ with open(path, errors="replace") as f:
             continue
         n_queue += 1
         sport, dport, seq, doff = t.groups()
+        c0 = re_ctx.search(line)
+        if c0:
+            if c0.group(2).startswith("swapper/"):
+                host_ns.add(c0.group(3))
+            if not c0.group(2).startswith(KERNEL_CTX):
+                ip_ctx[".".join(ip.groups()[0:4])][(c0.group(2), c0.group(3))] += 1
         # payload bytes = total length - IP header - TCP header; 0 = pure ACK
         lm = re.search(r'ihl = (\d+),', line)
         tm = re.search(r'tot_len = (\d+),', line)
@@ -93,6 +108,22 @@ if not flows:
           "slice has no net_dev_queue events - check how it was cut.")
     sys.exit(0)
 
+def owner(sip):
+    """(procname, net_ns) that owns this source address, or None."""
+    votes = ip_ctx.get(sip)
+    if not votes:
+        return None
+    own = {k: v for k, v in votes.items() if k[1] not in host_ns} or votes
+    return max(own.items(), key=lambda kv: kv[1])[0]
+
+
+def sender_of(sip, f):
+    o = owner(sip)
+    if o:
+        return o
+    return max(f["senders"].items(), key=lambda kv: kv[1])[0] if f["senders"] else ("?", "?")
+
+
 # one vantage point per flow: the busiest (device, netns) combo
 best = {}
 for key, combos in flows.items():
@@ -111,24 +142,49 @@ print(f"  {'flow':<44}{'segs':>6}{'rexmit':>8}{'rate':>7}  sender")
 rows = [(k, f) for k, f in best.items() if f["segs"] >= min_seg]
 rows.sort(key=lambda kv: -kv[1]["dup"])
 for (sip, sp, dip, dp), f in rows[:10]:
-    snd = max(f["senders"].items(), key=lambda kv: kv[1])[0] if f["senders"] else ("?", "?")
+    snd = sender_of(sip, f)
     print(f"  {sip + ':' + sp + ' -> ' + dip + ':' + dp:<44}"
           f"{f['segs']:>6}{f['dup']:>8}{f['dup']/f['segs']:>7.1%}  "
           f"{snd[0]} (net_ns {snd[1]})")
 
 # ---- per sender -------------------------------------------------------------
 by_sender = defaultdict(lambda: [0, 0])
-for f in best.values():
-    if not f["senders"]:
-        continue
-    snd = max(f["senders"].items(), key=lambda kv: kv[1])[0]
+for (sip, sp, dip, dp), f in best.items():
+    snd = sender_of(sip, f)
     by_sender[snd][0] += f["segs"]
     by_sender[snd][1] += f["dup"]
 print()
-print("By sender (process, container):")
+print("By sender (the process and container that own the source address):")
 print(f"  {'sender':<28}{'net_ns':<14}{'segs':>7}{'rexmit':>8}{'rate':>7}")
-for (nm, nsid), (segs, rx) in sorted(by_sender.items(), key=lambda kv: -kv[1][1])[:8]:
+for (nm, nsid), (segs, rx) in sorted(by_sender.items(), key=lambda kv: -kv[1][1])[:12]:
     print(f"  {nm:<28}{nsid:<14}{segs:>7}{rx:>8}{(rx/segs if segs else 0):>7.1%}")
+# how many containers retransmit: the one-service vs host-wide question in one line
+MIN_RX = 3          # a container "retransmits" from this many repeated segments (background is 0-2)
+lossy = sorted(((rx, nm, nsid) for (nm, nsid), (segs, rx) in by_sender.items() if rx >= MIN_RX), reverse=True)
+print()
+print(f"Senders with {MIN_RX}+ retransmitted segments: {len(lossy)} of {len(by_sender)}"
+      + (" - " + ", ".join(f"{nm} ({nsid})" for rx, nm, nsid in lossy[:8]) if lossy else ""))
+BACKGROUND_RX = 10  # healthy slices measured 0-6 retransmits in 40-69 thousand segments
+if total_re < BACKGROUND_RX:
+    print(f"  only {total_re} retransmits in the whole slice: background level (healthy slices "
+          "measured 0-6), not a fault by itself")
+elif lossy:
+    # the address that is an end (source or destination) of the most retransmits
+    ends = defaultdict(int)
+    for (sip, sp, dip, dp), f in best.items():
+        ends[sip] += f["dup"]
+        ends[dip] += f["dup"]
+    hub, hub_rx = max(ends.items(), key=lambda kv: kv[1])
+    print(f"  {hub} is one end of {hub_rx / total_re:.0%} of the retransmits")
+    # Measured: one container's degraded path = 2 senders (the victim and the peer answering
+    # it), 5 runs; the same fault on every container = 6 to 9 senders, 8 runs.
+    if len(lossy) <= 3:
+        print(f"  {len(lossy)} sender(s) retransmit: the ONE-PATH shape (a victim and the peers that "
+              "answer it) - check the flows above run in both directions of one container")
+    elif len(lossy) >= 5:
+        print(f"  {len(lossy)} senders retransmit: the HOST-WIDE shape, not one service's path")
+    else:
+        print(f"  {len(lossy)} senders retransmit: between the two shapes - read the flow table")
 
 # ---- drops ------------------------------------------------------------------
 if drops:

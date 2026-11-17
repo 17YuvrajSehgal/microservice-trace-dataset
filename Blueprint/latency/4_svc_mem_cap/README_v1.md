@@ -96,7 +96,7 @@ The scripts:
 The slice pattern this blueprint uses everywhere (scheduling + reclaim + disk + births/deaths):
 
 ```bash
-MEMEV='sched_switch|sched_waking|sched_wakeup|mm_vmscan_|block_rq_|sched_process_'
+MEMEV='sched_switch|sched_waking|sched_wakeup|mm_vmscan_|block_rq_|sched_process_|syscall_entry_mmap'
 ```
 
 ---
@@ -109,7 +109,7 @@ Run this block first, in every new terminal. Put your own paths in the first thr
 TRACE=/path/to/trace       # the folder that holds `metadata`, `index/` and the channel files
 TOOLS=/path/to/scripts     # the folder that holds the eleven scripts
 WORK=/path/to/scratch      # an empty folder for slices and notes
-MEMEV='sched_switch|sched_waking|sched_wakeup|mm_vmscan_|block_rq_|sched_process_'
+MEMEV='sched_switch|sched_waking|sched_wakeup|mm_vmscan_|block_rq_|sched_process_|syscall_entry_mmap'
 
 mkdir -p "$WORK"
 ls "$TRACE/metadata" "$TRACE/index" > /dev/null && echo "trace folder OK"
@@ -177,7 +177,13 @@ python3 $TOOLS/mem_pressure.py $WORK/m_f2.txt   10
 Decide:
 
 - **CONTAINER-LIMIT reclaim (memcg) on one container's processes, above the baseline:** this is the **decisive finding — a memory cap is confirmed.** You do NOT need any other signature to call it a cap; the remaining steps only tell you WHICH FACE (soft slowdown vs hard kill) and add supporting numbers. Commit to the memory-cap diagnosis now. `mem_pressure.py` prints a **`VICTIM CONTAINER = pid_ns N`** line — that pid_ns IS the capped container (memcg reclaim fires inside the cgroup that hit its own limit), so read the victim's container **straight off that line**, not from CPU-usage correlation. Write down the victim pid and its pid_ns. Go to Step 4.
-- **HOST-pressure reclaim (direct reclaim, kswapd) instead:** the machine is short of memory, not one container. That is a different fault (host memory pressure); report it and **stop**.
+- **HOST-pressure reclaim (direct reclaim, kswapd) instead:** the machine is short of memory, not one container. That is a different fault (host memory pressure). Before you report it, **name who took the memory** - one more slice:
+  ```bash
+  bash $TOOLS/extract_slice.sh $TRACE $DAY $WINDOW_START 30 $WORK/m_start.txt "$MEMEV"
+  python3 $TOOLS/mem_pressure.py $WORK/m_start.txt 30
+  ```
+  Read the section `Large memory requests`. A consumer asks for its memory **once, when it starts**, so the slice must begin at the start of the window (if it shows nothing, cut the 30 s before). One process with a single request of many GB there is the consumer: report it by name, pid and `pid_ns`. Measured on 8 host-memory runs: one `stress-ng-vm` request of 28.9 or 35.3 GB in each, and no request of 256 MB or more in any slice before the fault. The table `Who was allocating when the host ran short` lists who **suffers** (every process that allocates under pressure), not who took the memory. Then report host memory pressure with the consumer and **stop**.
+  **Host reclaim comes in bursts.** Measured on one run: reclaim at 15, 50 and 110 s into the fault, nothing at 5, 30, 70 and 90 s. One quiet slice does not clear the host - sample three or four slices across the window.
 - **No reclaim in the slices you sampled:** reclaim can be **intermittent** — a subtle cap reclaims in bursts, and a hard cap may burst once and then the victim stalls or dies. Before concluding anything, use Step 2's `--rate` view to find where the `mm_vmscan` events concentrate and **sample there**; reclaim above baseline in *any* in-window slice confirms the cap. Only after you have sampled where the events actually are, if there is still **no memcg reclaim anywhere**, report "no memory-limit pressure found" and **stop**. Do not write "no fault" — this blueprint does not look for other kinds of faults. If the victim you were asked about waits for the CPU instead, hand the case to the CPU-cap blueprint.
 
 ```bash

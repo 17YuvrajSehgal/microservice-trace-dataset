@@ -157,13 +157,13 @@ python3 $TOOLS/net_loss.py $WORK/n_f1.txt   10
 python3 $TOOLS/net_loss.py $WORK/n_f2.txt   10
 ```
 
-`net_loss.py` prints the overall retransmission rate, the worst flows with their senders and containers (`net_ns`), and a per-container summary.
+`net_loss.py` prints the overall retransmission rate, the worst flows with their senders and containers (`net_ns`), and a per-container summary. The sender of a flow is the process and container that **own the source address**, not whoever was on the CPU when the packet left (a delayed or retransmitted segment leaves from a timer, and would read as `swapper`). The line `Senders with 3+ retransmitted segments: K of N` answers the one-service or host-wide question directly.
 
 Read it:
 
 - **Healthy looks like zero.** Measured baseline: 4 retransmits in 90,107 segments. A few scattered retransmits are normal background.
 - **One container's flows retransmit, in BOTH directions, while everyone else sits at 0:** that container's path is degraded. The rate per flow does not need to be large — 1–3% per flow against a zero baseline is loud. Write down the container (`net_ns`) and its addresses. Go to Step 4.
-- **Flows of many unrelated containers retransmit:** the problem is host-wide (the machine's own link or a shared bridge), not one service's path. Report that and **stop**.
+- **Flows of many unrelated containers retransmit:** the problem is host-wide (the machine's own link or a shared bridge, or the same shaping rule on every container), not one service's path. Measured on 8 host-wide runs: 1.2-1.6% overall, 6 to 9 senders retransmitting, no single address at an end of more than 52-69% of the retransmits, total traffic 3 to 6 times lower. On 5 one-container runs: 2 senders (the victim and the peer that answers it), and the victim's address at an end of 100% of the retransmits. `net_loss.py` prints both numbers. Report it as a host-wide network problem, list the senders, and **stop**.
 - **No retransmission anywhere, in any slice:** no loss is visible. If a service is still slow and its callers sleep on sockets (check in Step 5), the path may be adding pure DELAY, or the peer may simply be slow — report "no loss shown; slow peer or added delay cannot be separated from the trace alone" and **stop** after Step 5's check.
 
 ```bash

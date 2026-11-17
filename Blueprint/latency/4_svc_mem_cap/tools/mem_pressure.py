@@ -24,7 +24,9 @@
 #
 #   <slice.txt>  a slice that KEEPS memory events - cut it with:
 #                extract_slice.sh TRACE DAY HH:MM:SS SECS out.txt \
-#                  'sched_switch|sched_waking|sched_wakeup|mm_vmscan_|block_rq_|sched_process_'
+#                  'sched_switch|sched_waking|sched_wakeup|mm_vmscan_|block_rq_|sched_process_|syscall_entry_mmap'
+#                (syscall_entry_mmap is optional: with it the tool also lists who ASKED for
+#                 a lot of memory in the slice - the way to name the consumer under host pressure)
 import re
 import sys
 from collections import defaultdict
@@ -43,7 +45,14 @@ re_pidns = re.compile(r'pid_ns = (\d+)')   # the container id - one number per c
 
 reclaim_open = {}                      # tid -> start ns of an open memcg reclaim
 memcg = defaultdict(lambda: [0, 0, 0])   # pid -> [count, total ns, max ns]
-direct = defaultdict(int)              # pid -> count of host direct reclaims
+direct = defaultdict(lambda: [0, 0, 0])  # pid -> [count, total ns, max ns] of host direct reclaims
+direct_open = {}                       # tid -> start ns of an open direct reclaim
+re_mmap = re.compile(r'len = (\d+), prot = (\d+), flags = (\d+), fd = (-?\d+)')
+BIG_ALLOC_MB = 256                     # a "large request" is ONE mmap of this size or more (a JVM or
+                                       # node makes thousands of 1 MB ones a second and frees them again)
+allocs = defaultdict(lambda: [0, 0, 0])  # pid -> [calls, total bytes, largest bytes], writable anonymous mmap
+mmap_seen = 0
+kswapd_wakers = defaultdict(int)       # pid -> times it woke kswapd (it asked for memory the host lacked)
 names = {}
 kswapd_seen = 0
 reads = defaultdict(lambda: [0, 0])    # pid -> [count, bytes]
@@ -82,7 +91,28 @@ with open(path, errors="replace") as f:
                 if d > r[2]:
                     r[2] = d
         elif ' mm_vmscan_direct_reclaim_begin:' in line:
-            direct[pid] += 1
+            direct_open[tid] = t
+            direct[pid][0] += 1
+        elif ' mm_vmscan_direct_reclaim_end:' in line:
+            st = direct_open.pop(tid, None)
+            if st is not None:
+                r = direct[pid]
+                r[1] += t - st
+                r[2] = max(r[2], t - st)
+        elif ' mm_vmscan_wakeup_kswapd:' in line:
+            kswapd_wakers[pid] += 1
+        elif ' syscall_entry_mmap:' in line:
+            mmap_seen += 1
+            mm = re_mmap.search(line)
+            # anonymous (MAP_ANONYMOUS = 0x20, no file) and writable (PROT_WRITE = 2). A
+            # PROT_NONE mapping is only an address-range reservation (Go and the JVM make
+            # hundreds of GB of those and never touch them), so it is not counted.
+            if mm and int(mm.group(3)) & 0x20 and int(mm.group(2)) & 2:
+                a = allocs[pid]
+                n = int(mm.group(1))
+                a[0] += 1
+                a[1] += n
+                a[2] = max(a[2], n)
         elif ' block_rq_issue:' in line:
             rw = re_rwbs.search(line)
             by = re_bytes.search(line)
@@ -139,11 +169,45 @@ else:
                   "to read the victim container; do not give up on the cap")
         print("     reclaim by pid_ns: " + ", ".join(f"{nsid}:{c}" for nsid, c in top[:5]))
     if direct:
-        tot = sum(direct.values())
+        tot = sum(r[0] for r in direct.values())
         print(f"  HOST-pressure reclaim (direct): {tot} events - the MACHINE is short of "
               f"memory, not one container")
     if kswapd_seen:
         print(f"  kswapd active ({kswapd_seen} events) - also a host-pressure sign")
+    # Who was asking for memory when the host ran out. The trace holds no per-process memory
+    # size, so this is the closest thing to "who took it": the processes that had to reclaim
+    # for themselves (direct reclaim) or that woke kswapd, grouped by name and container.
+    askers = defaultdict(lambda: [0, 0, 0, 0])   # (name, pid_ns) -> [direct n, stalled ns, max ns, kswapd wakes]
+    for pid, (n, tot_ns, mx) in direct.items():
+        a = askers[(names.get(pid, '?'), pidns.get(pid, '?'))]
+        a[0] += n
+        a[1] += tot_ns
+        a[2] = max(a[2], mx)
+    for pid, n in kswapd_wakers.items():
+        askers[(names.get(pid, '?'), pidns.get(pid, '?'))][3] += n
+    if askers:
+        print("  Who was allocating when the host ran short (direct reclaim / kswapd wake-ups):")
+        print(f"  {'name':<16} {'pid_ns':>12}{'direct':>8}{'stalled s':>11}{'max ms':>8}{'kswapd wakes':>14}")
+        for (nm, nsid), (n, tot_ns, mx, kw) in sorted(askers.items(), key=lambda kv: (-kv[1][1], -kv[1][3]))[:6]:
+            print(f"  {nm:<16} {nsid:>12}{n:>8}{tot_ns/ns:>11.2f}{mx/1e6:>8.1f}{kw:>14}")
+        print("  (every process that allocates under host pressure shows up here, victims too - this")
+        print("   table shows who SUFFERS. To name who TOOK the memory, read 'Large memory requests'")
+        print("   below on a slice cut at the START of the window, with syscall_entry_mmap kept)")
+
+# ---- 1b. who asked for memory ----------------------------------------------
+if mmap_seen:
+    print()
+    print(f"Large memory requests in the slice (one writable anonymous mmap of {BIG_ALLOC_MB} MB or more)")
+    big = sorted(((a[2], pid, a) for pid, a in allocs.items() if a[2] >= BIG_ALLOC_MB * 2**20), reverse=True)[:5]
+    if not big:
+        print(f"  none. No process asked for {BIG_ALLOC_MB} MB or more in one request here. A consumer asks ONCE, when it")
+        print("  starts - cut this slice at the START of the window to catch it.")
+    else:
+        print(f"  {'pid':>8} {'pid_ns':>12} {'name':<16}{'calls':>7}{'total MB':>10}{'largest MB':>12}")
+        for tot_b, pid, (n, b, mx) in big:
+            print(f"  {pid:>8} {pidns.get(pid, '?'):>12} {names.get(pid, '?'):<16}{n:>7}{b/2**20:>10.0f}{mx/2**20:>12.0f}")
+        print("  (a request is not yet use: it becomes pressure when the pages are touched. One process")
+        print("   asking for GBs right where host reclaim starts is the consumer - name it and its pid_ns)")
 
 # ---- 2. disk reads ---------------------------------------------------------
 print()
@@ -212,5 +276,7 @@ print("  low/zero reads as 'not a cap' - the memcg reclaim above baseline is the
 print("  re-read storm is the file-cache face only; its absence means the anonymous face.")
 print("- HOST pressure, not a container limit: direct reclaim / kswapd instead")
 print("  of memcg reclaim, and processes in DIFFERENT containers all stall.")
+print("  Host reclaim comes in BURSTS (seconds on, seconds off): one quiet slice does not")
+print("  clear the host - sample three or four slices across the window before saying 'none'.")
 print("- Reads with NO reclaim at all: cold cache or plain disk work - not a")
 print("  memory limit. Check the disk blueprint instead.")
