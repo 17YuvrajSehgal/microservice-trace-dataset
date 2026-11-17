@@ -153,3 +153,36 @@ between the slices, collapsed traffic). The earlier "0 false alarms" was on 18 r
   baseline are 0-1 per 10 s for both. The label depends on what the container is.
 
 Not done: agent runs on 15 (new Step 3b), 18-21; rca-studio vendored copies not synced.
+
+## `anomaly_cpu` and `anomaly_mem` (covered by blueprints 2 and 4, no new folders)
+
+Job 2879026 (both checks on all 304 runs, one Trillium node, 16 min).
+
+Both faults are one `stress-ng` container, the mechanism blueprints 2 and 4 already describe,
+and their tools had been tried on the Sock Shop runs on 16-11. Missing were a verdict line and
+a full-dataset check. So no new blueprint, two tool changes.
+
+**anomaly_cpu.** New `cpu_newcomer.py` in blueprint 2: CPU time per container (pid namespace;
+host programs by name) in a baseline slice and a fault slice. Chosen over extending
+`cpu_hogs.py`, which groups by process name only and has no baseline.
+- "FILLS THE MACHINE" (newcomer >= 25% of cores, machine < 5% idle): 10/10 `anomaly_cpu`, 0 in
+  294. Fault runs: 54-61% of cores, 0% idle. Closest other: 29% of cores, 42% idle.
+- "MACHINE NOT FULL": all 16 `noisy_neighbor` (exactly 1.0 or 2.0 cores), but also 66 other
+  runs (the injected workload of `anomaly_mem`, `lock_contention`, `priority_inversion`,
+  `nagle_delayed_ack`, `resource_abuse` uses about one core; restarted JVMs in `svc_mem_cap`).
+  So that verdict names a newcomer, not a family. The bars were set before the sweep and
+  not changed.
+- Limit: only the aggressive setting was collected. The subtle one (half the cores at 50%)
+  would not fill the machine.
+
+**anomaly_mem.** `mem_pressure.py` (blueprint 4) already listed large `mmap` requests; it now
+ends with a verdict (one writable anonymous request >= 4 GB) and the CPU time the process
+used after the request (it is touching the pages).
+- 16/16 (22.0-34.5 GB, 13-28 s of CPU in the 30 s slice), 0 in 288; no other run has a
+  request of 256 MB or more in the 30 s from the injection.
+- Train Ticket: 2-4 `stress-ng-vm` processes make the same 22 GB request within 30 s, so the
+  consumer is restarted there. Cause not shown (no reclaim or OOM events in those traces).
+- The memory slice of `anomaly_mem_subtle_steady_r3` could be cut this time (30 s from the
+  injection); its scheduling slices still fail.
+
+Not done: agent runs; rca-studio vendored copies not synced.

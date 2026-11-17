@@ -77,6 +77,7 @@ The scripts:
 | `extract_slice.sh` | Cuts one time slice (using `idx_slice.py`) and keeps only the scheduling events                                            |
 | `sched_budget.py`  | Time budget per process: running, waiting, sleeping, long waits                                                            |
 | `cpu_hogs.py`      | Who used the CPU in the slice, and who held it WHILE the victim waited. The decisive check                                 |
+| `cpu_newcomer.py`  | Baseline slice against fault slice: the container that used no CPU before and uses a lot now, and whether the machine is full. One verdict line |
 | `rhythm.py`        | How often a process gets the CPU, in 10 ms buckets, and whether it repeats. Used here to rule a cap OUT                    |
 | `cpu_ceiling.py`   | The victim's on-CPU time per period. Used here to rule a cap OUT                                                           |
 | `victim_info.py`   | Who a process is: PID, names, threads, container. Works on the aggressor too                                               |
@@ -220,6 +221,20 @@ Read it:
 - **Check that your baseline really is a baseline.** If the aggressor's name is busy in the baseline slice too, your baseline sits inside the fault window — the shares will look "identical" and prove nothing. Move the baseline earlier, or use a healthy trace of the same system.
 - If the busy share itself did not rise, and no name stands out, there is no aggressor to find — look at the Step 7 table for what else fits.
 
+### Step 5b. One verdict line: who is new, and is the machine full
+
+```bash
+python3 $TOOLS/cpu_newcomer.py $WORK/baseline_slice.txt $WORK/fault_slice.txt 10
+```
+
+It groups CPU time by container (pid namespace; host programs by name) and compares the two slices.
+
+| Verdict line | Meaning |
+|---|---|
+| `VERDICT: NEW CPU USER FILLS THE MACHINE: <comm> (pid_ns N), K processes, uses C of M cores ...; the machine is 0% idle` | **Host CPU saturation** (`anomaly_cpu`): an uncapped workload takes every core. Report it with this line; Step 6 then shows what the victim lost |
+| `VERDICT: NEW CPU USER, MACHINE NOT FULL: ...` | A new container uses CPU but cores are still free. This is what a capped neighbor looks like (`noisy_neighbor`: the cores used sit exactly on the cap, 1.0 or 2.0). **It is not proof by itself**: other faults also start a container that uses about one core (Part 5). Go on to Step 6 |
+| `VERDICT: NO NEW CPU USER (...)` | Nothing new took CPU. Check that the baseline slice is before the window |
+
 ### Step 6. The decisive check: who runs while the victim waits
 
 **Goal:** separate neighbor, cap, and overload with one measurement.
@@ -315,6 +330,15 @@ You are done.
 - It needs a normal stretch to compare with, in the same trace or a healthy one of the same system.
 - The shares printed by `cpu_hogs.py` depend on the slice you chose. Quote the slice with the number.
 - The worked cases behind this blueprint are one machine under heavy CPU over-subscription and one larger host with a subtle co-tenant. Their exact numbers are deliberately NOT printed as thresholds: judge each slice by comparison with its own baseline, not against memorized values.
+- **`cpu_newcomer.py`, measured on all 304 v2 runs of both applications** (17-11-2026, per-run
+  lines in `RESULTS.md`). FILLS THE MACHINE: 10 of 10 `anomaly_cpu` runs (24 or 32 `stress-ng-cpu`
+  processes, 54-61% of all cores, 0% idle) and 0 of the other 294. MACHINE NOT FULL: 16 of 16
+  `noisy_neighbor` runs (2 or 4 processes at exactly 1.0 or 2.0 cores), and also 66 runs of
+  other families whose injected workload uses about one core (`anomaly_mem`, `lock_contention`,
+  `priority_inversion`, `nagle_delayed_ack`, `resource_abuse`, a restarted JVM in `svc_mem_cap`).
+  So the second verdict names a newcomer; it does not name the family.
+- **Only the aggressive setting of `anomaly_cpu` was collected.** The recipe's subtle setting
+  (half the cores at 50% load) would leave idle cores and read as MACHINE NOT FULL.
 - **Arrival beats share.** A subtle neighbor's share can be small. The decisive questions are: is the group NEW, did the waits rise when it arrived, and is idle NOT the biggest share. Share size alone neither confirms nor rejects.
 
 ---

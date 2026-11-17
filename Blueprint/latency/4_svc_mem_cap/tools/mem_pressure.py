@@ -52,6 +52,13 @@ BIG_ALLOC_MB = 256                     # a "large request" is ONE mmap of this s
                                        # node makes thousands of 1 MB ones a second and frees them again)
 allocs = defaultdict(lambda: [0, 0, 0])  # pid -> [calls, total bytes, largest bytes], writable anonymous mmap
 mmap_seen = 0
+BIG_REQUEST_GB = 4                     # one request of this size or more gets a VERDICT line. Measured on all
+                                       # 304 v2 runs: the 16 host-memory runs ask for 22.0-34.5 GB, no other
+                                       # run has a request of 256 MB or more in its first 30 s
+re_cpu = re.compile(r'cpu_id = (\d+)')
+last_sw = {}                           # cpu -> ns of the last sched_switch on it
+big_t = {}                             # pid -> ns of its largest request
+cpu_after = defaultdict(int)           # pid -> ns on CPU after its largest request (it is touching the pages)
 kswapd_wakers = defaultdict(int)       # pid -> times it woke kswapd (it asked for memory the host lacked)
 names = {}
 kswapd_seen = 0
@@ -112,7 +119,17 @@ with open(path, errors="replace") as f:
                 n = int(mm.group(1))
                 a[0] += 1
                 a[1] += n
-                a[2] = max(a[2], n)
+                if n > a[2]:
+                    a[2] = n
+                    big_t[pid] = t
+        elif ' sched_switch:' in line:
+            # the context is the thread going out: the time since the last switch on this CPU is its
+            cm = re_cpu.search(line)
+            if cm:
+                st = last_sw.get(cm.group(1))
+                last_sw[cm.group(1)] = t
+                if st is not None and pid in big_t:
+                    cpu_after[pid] += t - max(st, big_t[pid])
         elif ' block_rq_issue:' in line:
             rw = re_rwbs.search(line)
             by = re_bytes.search(line)
@@ -208,6 +225,16 @@ if mmap_seen:
             print(f"  {pid:>8} {pidns.get(pid, '?'):>12} {names.get(pid, '?'):<16}{n:>7}{b/2**20:>10.0f}{mx/2**20:>12.0f}")
         print("  (a request is not yet use: it becomes pressure when the pages are touched. One process")
         print("   asking for GBs right where host reclaim starts is the consumer - name it and its pid_ns)")
+    tot_b, pid, _ = big[0] if big else (0, None, None)
+    if tot_b >= BIG_REQUEST_GB * 2**30:
+        # the same program asking again under a new pid = it was killed and started again
+        same = [p for p, al in allocs.items() if al[2] >= BIG_REQUEST_GB * 2**30
+                and names.get(p) == names.get(pid) and pidns.get(p) == pidns.get(pid)]
+        again = f"; {len(same)} processes of that name made such a request, so it was restarted" if len(same) > 1 else ""
+        print(f"VERDICT: ONE LARGE MEMORY REQUEST: {names.get(pid, '?')} (pid {pid}, pid_ns {pidns.get(pid, '?')}) asked for "
+              f"{tot_b/2**30:.1f} GB in one request, then used {sum(cpu_after[p] for p in same)/ns:.1f} s of CPU in the rest of the slice{again}")
+    else:
+        print(f"VERDICT: NO LARGE MEMORY REQUEST (largest: {tot_b/2**20:.0f} MB; the bar is {BIG_REQUEST_GB} GB in one request)")
 
 # ---- 2. disk reads ---------------------------------------------------------
 print()
