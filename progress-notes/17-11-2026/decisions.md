@@ -259,3 +259,28 @@ are arithmetic on values the second sweep already printed for every run, and gro
 went from 71.7 to about 20 today.
 
 Not done: agent runs; rca-studio vendored copies not synced.
+
+## Train Ticket check of blueprints 11, 12, 13, 14, 16
+
+Job 2881327 (one Trillium node, 53 min): the five decisive tools, unchanged, on all 134 Train
+Ticket runs.
+
+| blueprint | own family | false alarms in the other runs |
+|---|---|---|
+| 11 `futex_wait.py` | lock_contention 5/5, priority_inversion 5/5 (right verdict each) | 5 in 124: `tt_resource_abuse` reads LOCK CONTENTION |
+| 12 `fd_pressure.py` | 5/5 | 0 in 129 |
+| 13 `proc_spawn.py` | 5/5 | 0 in 129 |
+| 14 `futex_hang.py` | 5/5 | 0 in 129 |
+| 16 `blk_pressure.py` | 5/5 | 4 in 129: `tt_svc_mem_cap` reads DISK HOG |
+
+- Both false-alarm groups are real observations with the wrong family label: the injected
+  Python CPU burner queues on one lock (5 ms timed waits), and a memory-capped JVM reads its
+  own pages back from disk.
+- Decision: tools not changed. Each has an obvious separating number (the capped JVM is in
+  disk wait 0.11-0.14 thread-seconds per second against 11.8-15.9 for the true hog), but a bar
+  set after this result must be rerun on both applications before it is trusted.
+- New gap found: blueprint 11 was never run on all Sock Shop runs, and blueprint 16's Sock
+  Shop check (25 runs) did not include `svc_mem_cap`. So the same two false alarms on Sock
+  Shop are likely and unmeasured.
+- Train Ticket `fd_exhaustion` has 0 restarts (the service stays up at its limit), and three
+  verdict lines per run that are thread names of one pid.

@@ -22,3 +22,17 @@ Verdict line per labelled run:
 
 ## How the bar was set (what failed first)
 Passed on the first try. Threads (child_pid != child_tid) are counted apart from processes: a JVM makes 70-90 threads/s in every run, which is not a storm.
+
+## Train Ticket check (17-11-2026)
+
+Every Train Ticket v2 run (134), SLURM job 2881327 on Trillium (one node, 53 min, shared by
+blueprints 11, 12, 13, 14 and 16). The tool is unchanged from the Sock Shop check. Outputs:
+`work/dx_check/sweep_tt/`.
+Slices: 10 s 45 s before the injection and 10 s 50 s into it.
+
+| runs | verdict |
+|---|---|
+| `tt_fork_storm`, 5 | PROCESS STORM, 5 of 5: `python3` created 1000 processes in 10 s (100/s; baseline 0.0/s) |
+| all other Train Ticket runs, 129 | no verdict |
+
+5 of 5, 0 false alarms in 129. Same numbers as on Sock Shop.

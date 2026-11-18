@@ -22,3 +22,17 @@ Verdict line per labelled run:
 
 ## How the bar was set (what failed first)
 Version 1 fired on 20 of 20 fault runs: every JVM and Go service keeps 7-31 idle pool threads parked in an untimed futex wait. The verdict now needs >= 2 threads CREATED inside the slice that hung within 1 s of birth (the deadlock pairs hung ~50 ms after birth); parked threads are NOTE lines.
+
+## Train Ticket check (17-11-2026)
+
+Every Train Ticket v2 run (134), SLURM job 2881327 on Trillium (one node, 53 min, shared by
+blueprints 11, 12, 13, 14 and 16). The tool is unchanged from the Sock Shop check. Outputs:
+`work/dx_check/sweep_tt/`.
+Slice: 60 s from 5 s after the injection.
+
+| runs | verdict |
+|---|---|
+| `tt_deadlock`, 5 | DEADLOCK, 5 of 5: `python3`, 20 threads blocked forever on 20 distinct locks, longest 56.0-56.7 s, created inside the slice and hung 50 ms after birth |
+| all other Train Ticket runs, 129 | no verdict |
+
+5 of 5, 0 false alarms in 129. (Sock Shop: 22 threads on 22 locks.)
