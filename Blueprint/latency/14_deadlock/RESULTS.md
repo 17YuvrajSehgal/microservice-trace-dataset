@@ -36,3 +36,13 @@ Slice: 60 s from 5 s after the injection.
 | all other Train Ticket runs, 129 | no verdict |
 
 5 of 5, 0 false alarms in 129. (Sock Shop: 22 threads on 22 locks.)
+
+## All Sock Shop runs (17-11-2026)
+
+Every Sock Shop v2 run (170), SLURM job 2882127 on Trillium (one node, 27 min, shared by
+blueprints 12, 13 and 14). The tool is unchanged. Same slices as the Train Ticket check.
+Outputs: `work/dx_check/sweep_ss/`.
+
+`deadlock` 5 of 5 (22 threads on 22 locks); no verdict in 163 other runs; 2 runs had no
+result (the slice cut failed: `anomaly_mem_subtle_steady_r3`, `svc_mem_cap_aggressive_steady_r5`).
+With Train Ticket: 10 of 10, 0 false alarms in 292.

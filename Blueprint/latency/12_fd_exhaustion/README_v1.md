@@ -98,7 +98,7 @@ Read the verdict line of the fault slice against the baseline:
 
 | Verdict line | Meaning |
 |---|---|
-| `VERDICT: FD EXHAUSTION: <comm> (ns N, pid P): K EMFILE returns on <calls> in S s (first at T); highest fd seen F; R restarts of <comm> in that namespace` — and the baseline says `NO FD PRESSURE` | **This fault.** `<comm>` in namespace `N` is the victim and its own limit is the cause. `R >= 1` with `K >= 3` is the restart-loop shape |
+| (read the note under this table before reporting) `VERDICT: FD EXHAUSTION: <comm> (ns N, pid P): K EMFILE returns on <calls> in S s (first at T); highest fd seen F; R restarts of <comm> in that namespace` — and the baseline says `NO FD PRESSURE` | **This fault.** `<comm>` in namespace `N` is the victim and its own limit is the cause. `R >= 1` with `K >= 3` is the restart-loop shape |
 | `NO FD PRESSURE: 0 EMFILE/ENFILE returns ...` on both slices | Not this fault. Stop here; report the negative line word for word |
 | `NOTE: CONNECTS REFUSED: <comm> ...: K ECONNREFUSED on connect()` with no EMFILE | A peer refused: hand to `6_conn_pool_exhaustion` / `3_slow_db` |
 | `NOTE: EPHEMERAL PORTS EXHAUSTED: ...` | A client-side port limit, not descriptors; report as `other` with the line |
@@ -136,3 +136,16 @@ whose sleep rose; they are the effect, not the cause.
 - The trace shows the EMFILE returns, not the limit value. The highest fd seen is a lower bound on
   the limit (Docker's default 1024; the measured run sat far below it).
 - If the trace has no `syscall_exit_*` events the fault is invisible here; say so.
+
+## Measured on all runs (17-11-2026): a true verdict that is not the root cause
+
+On all 304 v2 runs the tool finds the 10 injected runs. It also gives FD EXHAUSTION for the
+edge router (`traefik`) in 11 Sock Shop runs of `anomaly_net`, `code_event_loop_block` and
+`dns_delay`. There the front-end is slow, connections pile up in the proxy in front of it,
+and the proxy reaches its own default limit (highest fd 1023, thousands of EMFILE, 0 restarts).
+
+**Before you report this fault, ask why the descriptors ran out.** If the process is a proxy
+or gateway, its highest fd sits at a default limit (1023), and the service behind it is slow
+or failing, the descriptor limit is a consequence. Report the fault of the service behind it
+and name the proxy as a victim. Per-run lines: `RESULTS.md`.
+

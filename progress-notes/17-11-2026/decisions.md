@@ -306,3 +306,23 @@ burner) and one `svc_mem_cap` run (`containerd-shim`, 2 waits of 5.9 s).
 
 Still open on Sock Shop: blueprints 13 and 14 were checked on 25 of the 170 runs (all 134 on
 Train Ticket), and no full Sock Shop check of blueprint 12 is recorded.
+
+## Blueprints 12, 13, 14 on all Sock Shop runs
+
+Job 2882127 (one Trillium node, 27 min; too large for the login node: about 17 core-hours).
+
+- 13 `proc_spawn.py`: 5/5, 0 in 165. With Train Ticket 10/10, 0 in 294.
+- 14 `futex_hang.py`: 5/5, 0 in 163 (2 slice failures). With Train Ticket 10/10, 0 in 292.
+- 12 `fd_pressure.py`: 5/5, and FD EXHAUSTION for `traefik` (the edge router) in 11 runs of
+  `anomaly_net` burst (3), `code_event_loop_block` (5) and `dns_delay` r2/r4/r5.
+  These are true: the proxy hits its default limit (highest fd 1023, 1,258-43,036 EMFILE)
+  because the front-end behind it is slow. It is a cascade, not the injected fault.
+- Decision: tool not changed. "Highest fd 1023" and "0 restarts" separate the cascade on Sock
+  Shop, but the injected Train Ticket fault also has 0 restarts and a highest fd above 1023,
+  so neither is a general rule. The README gets a "why did the descriptors run out" check.
+- This explains the 16-11 agent pilot that blamed edge-router EMFILE on `code_event_loop_block`.
+- `dns_delay`: the three clean runs (r2, r4, r5) show the proxy cascade; the two crash-loop
+  runs (r1, r3) do not. One more sign that r1 and r3 are a different situation.
+
+After today every decisive tool of blueprints 2 (new verdict), 4 (new verdict), 6, 11-16 and
+18-24 has been run on all 304 runs.
