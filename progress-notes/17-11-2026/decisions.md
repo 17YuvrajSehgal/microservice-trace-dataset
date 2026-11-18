@@ -326,3 +326,12 @@ Job 2882127 (one Trillium node, 27 min; too large for the login node: about 17 c
 
 After today every decisive tool of blueprints 2 (new verdict), 4 (new verdict), 6, 11-16 and
 18-24 has been run on all 304 runs.
+
+## Candidate list for the next collection
+
+`Blueprint/latency/CANDIDATE-PROBLEMS.md`: 70 candidate problems in 8 groups (target about 100
+in total), each with an injection idea, the expected signal, the expected best modality and
+the nearest existing family. All predictions, nothing measured. It also records 7 collection
+rules learned from the v2 blueprints (one mechanism per family, inject inside real services,
+a subtle setting, a steady baseline) and a first batch of 15. New families must go through
+the fault catalog's amendment log before collecting.
