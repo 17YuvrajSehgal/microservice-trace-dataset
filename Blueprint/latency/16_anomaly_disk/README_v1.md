@@ -81,6 +81,7 @@ python3 $TOOLS/blk_pressure.py $WORK/df.txt 10 --baseline $WORK/db.txt 10
 |---|---|
 | `VERDICT: DISK HOG: <comm> (ns N) issued P% of user-space block requests (R req/s, B MB/s; baseline r req/s); its D-state D s/s; other issuers' latency p50 a ms -> b ms; newly in D state: ...` | **This fault.** That process is the culprit; the latency change and the D-state list are the victims |
 | `NO DISK PRESSURE (top user-space issuer ...)` | Not this fault |
+| `NO DISK PRESSURE (... it issues most of the requests but hardly waits for the disk itself, bar 1.0 s/s)` and a `NOTE:` line | Not this fault. A new busy reader that does not wait is usually a process reading its own pages back under a memory limit: run blueprint 4 on that namespace |
 
 ### Step 4. Submit
 - `fault_type`: `anomaly_disk`.
@@ -94,6 +95,11 @@ python3 $TOOLS/blk_pressure.py $WORK/df.txt 10 --baseline $WORK/db.txt 10
 ## Part 4. Measured, and limits
 
 - Per-run lines on the labelled runs and the controls: `RESULTS.md` next to this file.
+- **All 304 v2 runs of both applications (17-11-2026): 10 of 10, 0 false alarms in 294.**
+- **The disk-wait bar was added after the Train Ticket check.** The hog's own threads must
+  wait on the disk for 1 thread-second per second or more. True hogs: 11.8 to 15.9. Without
+  the bar, 12 runs read DISK HOG: 11 memory-capped JVMs (0.07 to 0.14) and one host `grep`
+  that read 97 MB/s (0.35). The first check on 25 Sock Shop runs did not include those families.
 - One device in our data. On a host with several disks, run the tool per `dev` (not split yet).
 - A database that legitimately writes a lot (a bulk load) will also be named: the baseline
   ratio is what makes it an anomaly.

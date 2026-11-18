@@ -33,6 +33,9 @@ from collections import Counter, defaultdict
 SHARE_MIN = 0.5
 REQ_MIN = 200.0       # requests/s: measured, a Prometheus compaction (25/s) passed the share bar alone; the hog ran 1,800-2,200/s
 RATIO_MIN = 10.0
+D_MIN = 1.0           # the hog's own threads wait on the disk for this many thread-seconds per second. Added after
+                      # the Train Ticket check: a memory-capped JVM that reads its pages back issued 80-88% of the
+                      # requests at 357-493/s but waited 0.11-0.14 s/s; the true hogs wait 11.8-15.9 s/s
 KERNEL = ("kworker", "jbd2", "ksoftirqd", "lttng", "kswapd", "migration")
 
 re_ts = re.compile(r'^\[(\d+):(\d+):(\d+)\.(\d+)\]')
@@ -138,7 +141,13 @@ def main():
     if base is None:
         print("NOTE: no --baseline given; top user-space issuer %s. Cut a quiet slice and run again." % detail)
     elif share >= SHARE_MIN and rate >= REQ_MIN and (brate == 0 or rate / brate >= RATIO_MIN):
-        print("VERDICT: DISK HOG: %s. One process floods the disk; everyone else's I/O waits behind it." % detail)
+        if d_time.get(w[1], 0) / secs >= D_MIN:
+            print("VERDICT: DISK HOG: %s. One process floods the disk; everyone else's I/O waits behind it." % detail)
+        else:
+            print("NO DISK PRESSURE (top user-space issuer %s; it issues most of the requests but hardly waits for the disk "
+                  "itself, bar %.1f s/s)" % (detail, D_MIN))
+            print("NOTE: a NEW busy reader that does not wait is often a process reading its own pages back under a "
+                  "memory limit - check the memory blueprint (4) for this namespace.")
     else:
         print("NO DISK PRESSURE (top user-space issuer %s; bar: >= %.0f%% of user-space requests, >= %.0f req/s "
               "and >= %.0fx baseline)" % (detail, 100 * SHARE_MIN, REQ_MIN, RATIO_MIN))

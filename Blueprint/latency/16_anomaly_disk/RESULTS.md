@@ -42,6 +42,24 @@ The 4 false alarms are a memory-capped JVM that reads its own pages back from di
 load is real, but the cause is the memory limit (blueprint 4 warns that its victim looks like
 a disk problem). What separates them in these numbers: the true hog sits in disk wait for
 11.8-15.9 thread-seconds per second (Sock Shop and Train Ticket), the capped JVM for 0.11-0.14,
-and it moves 5-7 MB/s against 26-145 MB/s. The tool was NOT changed; a bar on the D-state
-would be set after seeing this result and needs a rerun on both applications first. The
-`svc_mem_cap` runs were not in the 25-run Sock Shop check either.
+and it moves 5-7 MB/s against 26-145 MB/s. The tool was not changed for this job. The bar was
+added afterwards and rerun on both applications: see the next section.
+
+## All runs of both applications, with the disk-wait bar (17-11-2026)
+
+`blk_pressure.py` with `D_MIN = 1.0` (the hog's own threads wait on the disk for 1
+thread-second per second or more) on all 304 v2 runs. SLURM job 2881657 on Trillium (one
+node, 17 min, shared with blueprint 11). Same slices as above. Outputs:
+`work/dx_check/sweep_1116/*.b16`.
+
+| runs | verdict | numbers |
+|---|---|---|
+| `anomaly_disk` Sock Shop, 5 | DISK HOG | `stress-ng-hdd`, 99-100%, 1,817-2,239 req/s, 118-145 MB/s, its D-state 11.80-11.85 s/s |
+| `anomaly_disk` Train Ticket, 5 | DISK HOG | `stress-ng-hdd`, 100%, 398-911 req/s, 26-59 MB/s, its D-state 15.84-15.94 s/s |
+| `svc_mem_cap` Sock Shop 7, Train Ticket 4 | NO DISK PRESSURE + NOTE (busy issuer that does not wait) | one `java`, 80-100% of the requests, 221-493 req/s, 2.8-7.4 MB/s, its D-state 0.07-0.14 s/s |
+| `anomaly_mem_subtle_steady_r2` | NO DISK PRESSURE + NOTE | a host `grep`, 93%, 744 req/s, 97.4 MB/s, its D-state 0.35 s/s |
+| all other runs, 282 | NO DISK PRESSURE | |
+
+10 of 10, 0 false alarms in 294. No slice failed.
+
+Without the bar the 12 rows in the middle read DISK HOG. The margin: 0.35 against 11.80.

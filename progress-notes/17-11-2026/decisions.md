@@ -284,3 +284,25 @@ Ticket runs.
   Shop are likely and unmeasured.
 - Train Ticket `fd_exhaustion` has 0 restarts (the service stays up at its limit), and three
   verdict lines per run that are thread names of one pid.
+
+## Blueprints 11 and 16 on all 304 runs (closing the gap the Train Ticket check exposed)
+
+Job 2881657 (one Trillium node, 17 min).
+
+**Blueprint 16.** Added `D_MIN = 1.0` to `blk_pressure.py`: the hog's own threads must wait on
+the disk for 1 thread-second per second or more. Result on all 304 runs: 10/10, 0 false alarms
+in 294. Without the bar 12 runs read DISK HOG (11 memory-capped JVMs at 0.07-0.14 s/s, one
+host `grep` at 0.35); true hogs are at 11.8-15.9. Chosen over a bar on MB/s because the
+`grep` reads 97 MB/s, more than the Train Ticket hog (26-59).
+- The bar was set after seeing the Train Ticket false alarms, then confirmed on both
+  applications. The earlier "0 false alarms" for blueprint 16 was on 25 Sock Shop runs.
+
+**Blueprint 11.** Tool unchanged. All 304: 20/20 with the right verdict, 11 false alarms in 282:
+the 10 `resource_abuse` runs (real interpreter-lock contention in the injected Python CPU
+burner) and one `svc_mem_cap` run (`containerd-shim`, 2 waits of 5.9 s).
+- Decision: no bar. The two groups are far apart (92-99 against 3,345-3,630 waits per second)
+  but that gap is between two injected workloads, not between a fault and health. The README
+  now says to check blueprint 18 before reporting LOCK CONTENTION.
+
+Still open on Sock Shop: blueprints 13 and 14 were checked on 25 of the 170 runs (all 134 on
+Train Ticket), and no full Sock Shop check of blueprint 12 is recorded.
