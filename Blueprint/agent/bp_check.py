@@ -74,6 +74,9 @@ def check(path):
             if o.get("verdict") and o["verdict"] not in VERDICTS:
                 err.append(ww + "verdict must be one of %s" % sorted(VERDICTS))
             confirmed |= o.get("verdict") == "confirmed"
+            err += [ww + "sets `%s` is not in facts" % f for f in o.get("sets", []) if f not in facts]
+            if o.get("fault_type") and o.get("verdict") != "confirmed":
+                err.append(ww + "fault_type belongs on a confirmed outcome")
             if o.get("line") and o["line"] not in source:
                 err.append(ww + "line `%s` is not printed by any tool in tools/" % o["line"])
             if o.get("handoff") and not os.path.isdir(os.path.join(os.path.dirname(folder), o["handoff"])):

@@ -83,6 +83,7 @@ class S(TypedDict, total=False):
     challenged: bool   # a rejecting outcome from one slice was sent back once in this step
     visits: int
     conclusion: str    # set when a stop outcome ends the investigation
+    fault_type: str    # set by a confirming outcome that stands for another family of the same blueprint
     handoff: str       # folder of the blueprint this one hands the case to
     verdict: str       # confirmed | unconfirmed | rejected | inconclusive, from the outcomes reached
     final: dict
@@ -354,7 +355,8 @@ class Investigation:
         if o and o.get("line") and not told and not reasoned:
             problems.append("outcome `%s` rests on the verdict line of the step's decisive tool, and no such "
                             "line was printed in this step. Run the tool, or give your reason" % outcome)
-        missing = [n for n in st.get("sets", []) if n not in facts] if (o and "next" in o and not jump) else []
+        # facts the next step needs; an outcome may name its own list (a branch that needs none)
+        missing = [n for n in o.get("sets", st.get("sets", [])) if n not in facts] if (o and "next" in o and not jump) else []
         if missing and s["rejects"] < 1:
             problems.append("this outcome goes on to the next step, which needs these facts: %s. "
                             "Give them, or if they cannot be found use `other` with your reason" % ", ".join(missing))
@@ -415,6 +417,8 @@ class Investigation:
             out["verdict"] = o.get("verdict", "rejected")
             if o.get("handoff"):
                 out["handoff"] = o["handoff"]
+            if o.get("fault_type"):
+                out["fault_type"] = o["fault_type"]
         return out
 
     def report(self, s: S):
@@ -439,6 +443,7 @@ class Investigation:
         if s.get("conclusion"):
             case.append("The investigation stopped with: " + s["conclusion"])
         verdict = s.get("verdict", "inconclusive")
+        case.append("Fault type this investigation is about: " + (s.get("fault_type") or self.spec["fault_type"]))
         case.append("VERDICT by the blueprint's rule over these outcomes: %s (confirmed = every check of the "
                     "blueprint was passed; unconfirmed = a look-alike stays open; rejected = a step showed "
                     "another cause or no fault; inconclusive = the investigation did not reach a deciding step)" % verdict.upper())
@@ -463,6 +468,7 @@ class Investigation:
         ev = [x for e in s["ledger"] for x in e.get("evidence", [])]
         return {"blueprint": self.spec["id"], "verdict": s.get("verdict", "inconclusive"), "final": s.get("final"), "conclusion": s.get("conclusion", ""),
                 "handoff": s.get("handoff", ""),
+                "fault_type": s.get("fault_type") or self.spec["fault_type"],
                 "facts": s["facts"], "ledger": s["ledger"],
                 "adherence": {"path": path, "steps_not_visited": [k for k in self.steps if k not in path],
                               "revisits": len(path) - len(set(path)), "deviations": devs,

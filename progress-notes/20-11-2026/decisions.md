@@ -189,3 +189,54 @@ the weak blueprint.
 
 Not done: 1 to 11 (older template, some tools without a verdict line), a rerun of the seven
 that passed under the final harness, any run on Train Ticket, any second model.
+
+## 6. Blueprints 2, 4, 6, 11 in the new form (18 of 25 now); a list of things to fix
+
+`Blueprint/latency/TO-FIX.md` now holds every open item (method, harness, single
+blueprints, data, housekeeping), with a Done table. New items go there first.
+
+Format additions these four needed:
+
+- **`fault_type:` on a confirming outcome.** Blueprints 2, 4 and 11 each cover two families
+  (`noisy_neighbor` + `anomaly_cpu`, `svc_mem_cap` + `anomaly_mem`, `priority_inversion` +
+  `lock_contention`). The outcome reached names the family.
+- **`sets:` on an outcome.** A branch can need other facts than the step's main path (a
+  "no reclaim" branch has no victim to name). Found in a run: the harness refused the right
+  outcome because the step's facts were missing, and the agent had to leave through `other`.
+
+Change against the README: in blueprint 4 a slice with no reclaim goes on to the
+large-request check (the README stops there). Reason: that check was measured alone,
+16 of 16, on a slice at the start of the window.
+
+The conversion again found READMEs that had drifted from their tools (11 most of all: a
+verdict the tool never prints, 70% where the tool has 50%, "one wait is enough" where the
+tool needs two). The yaml follows the tool, since the tool produced the measured results.
+All listed in TO-FIX (C16 to C20).
+
+Agent runs, one labelled Sock Shop run per family (gpt-6-luna, login node):
+
+| blueprint | family | result | why |
+|---|---|---|---|
+| 6 | `conn_pool_exhaustion` | confirmed: `python3` holds 149 idle connections | |
+| 11 | `priority_inversion` | confirmed: chained inversion, holder at nice 19 | |
+| 2 | `anomaly_cpu` | confirmed: `stress-ng-cpu`, machine 0% idle | |
+| 4 | `anomaly_mem` | confirmed: `stress-ng-vm` asked for 34.5 GB | |
+| 11 | `lock_contention` | inconclusive | tool read LOCK CONTENTION for the right process; the agent did not commit without a baseline |
+| 2 | `noisy_neighbor` | inconclusive | baseline at 13:13:30 and fault slice at 13:13:50; the fault was 13:11:54 to 13:13:55 |
+| 4 | `svc_mem_cap` | wrongly rejected | slices from 23:21:10; the fault was 23:18:48 to 23:20:49 |
+
+4 of 7. No rerun was made after the `sets:` fix.
+
+**Count over all first runs today (22 runs, 18 blueprints): 13 right on the first try, 9
+not. Of the 9, 6 are the slice time** (13, 16, 22, 23, 2 `noisy_neighbor`, 4
+`svc_mem_cap`), 2 are the harness (both blueprint 24 runs, fixed), 1 is the blueprint's
+wording (11 `lock_contention`). In no run did the agent misread a tool.
+
+In `noisy_neighbor` and `svc_mem_cap` the rate table did show a step, but at the END of
+the fault (load recovers), and the agent took it as the start. So "the rate table is a
+hint" is not enough; the hint can point the wrong way.
+
+Proposed, not built: a scan tool. It runs a step's check on slices spread over the whole
+trace and returns one verdict line per time. Then the time is found by the fault's own
+signal. Cost: more slices per run (about 8 for a 4 minute trace), which matters for the
+heavy futex slices.

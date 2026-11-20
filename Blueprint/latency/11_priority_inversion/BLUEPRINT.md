@@ -1,0 +1,275 @@
+<!-- Generated from blueprint.yaml by Blueprint/agent/bp_render.py. Edit the yaml, not this file. -->
+# Blueprint: a lock held by a thread that cannot run (priority inversion), or many threads fighting one lock (lock contention)
+
+| | |
+|---|---|
+| Problem class | Latency (locks) |
+| Root cause this blueprint confirms or rejects | Priority inversion: a high-priority thread waits on a user-space lock held by a low-priority thread that cannot run, because middle-priority threads take its CPU. Lock contention (its sibling): many threads queue on one lock, and every wait lasts as long as the holder's critical section. |
+| Evidence | An LTTng kernel trace only. It must hold the `futex` system call events (`syscall_entry_futex` / `syscall_exit_futex`, or `compat_syscall_*`) as well as the scheduling events |
+| Not used | Logs, metrics, application counters (late replies, timeouts), request traces, the program's source |
+
+**When to use this.** A thread is late because it is blocked in `futex`: it waits for a user-space lock or condition that another thread must release. The question is "which lock, who holds it, and why does the holder not let go?". Blueprint 8 is for a thread that is ready and waiting for a CPU. Blueprint 9 is for a thread held by a kernel lock inside another thread's system call.
+
+**Status.** Both branches are calibrated on our own labelled runs on a 12-CPU Sock Shop host. The bars are a first pass from those runs and five partner traces with no lock fault. The chained inversion rule was added 16-11 after an agent run ended in `normal`; it was not yet re-run on the five partner traces. Checked on all 304 v2 runs of both applications (17-11-2026), tool unchanged, slice 20 s from 30 s after the injection: 20 of 20 on the two lock families, each with the right one of the two verdicts; 11 false alarms in 282 (the 10 `resource_abuse` runs and one `svc_mem_cap` run); 2 runs gave no result because the slice cut failed. Agent (20-11-2026, graph harness, gpt-6-luna): one `priority_inversion` run confirmed; one `lock_contention` run inconclusive (the tool read LOCK CONTENTION for the right process, the agent did not commit to it without a baseline).
+
+## Part 1. Background
+
+**A futex is the kernel half of a user-space lock.** When a thread must wait for a mutex,
+a semaphore or a condition variable, the C library calls `futex(2)` and the kernel puts
+the thread to sleep on that address. When another thread releases the lock, it calls
+`futex` again to wake a sleeper. The trace records both calls.
+
+**Priority inversion.** Three threads: a high-priority one (H), a low-priority one (L) and
+one or more middle ones (M). L takes a lock. H wants the same lock and blocks. L must run
+to release it, but the scheduler keeps giving L's CPU to the M threads, because they
+outrank L. Nothing is saturated. L is runnable-but-not-running while it holds the lock.
+
+**Lock contention.** Many threads want one lock. Each gets it in turn, and each wait is
+about as long as the holder's critical section. Every waiter spends most of its life
+waiting.
+
+**What is not a lock problem.** The kernel cannot tell a lock from a condition variable
+from a worker waiting for its next job: all three are a thread asleep in `futex` until
+another thread wakes it. The difference is in the **releaser**, the thread that issued
+the wake on the same address inside the wait. Its scheduling state during the wait is
+the verdict:
+
+| the releaser during the wait | meaning |
+|---|---|
+| running most of the time | it was holding the lock and working: contention |
+| runnable-but-not-running for a large share, with a worse priority than the waiter | inversion. The threads that occupied its CPU are the middle-priority threads |
+| sleeping most of the time | an event wait (condition variable, a worker waiting for work). Not a lock problem |
+
+A wait that ended by timeout (`ret = -110`) is a timed sleep, not a lock wait. Some
+programs wait with a short timeout in a loop (a Python interpreter re-waits in 5 ms
+pieces until its lock is free). The tool joins the pieces into one logical wait and
+judges it by how it ended.
+
+**Chained inversion.** The holder is asleep, not runnable: it needs a second lock (an
+interpreter lock, an allocator lock, a logger lock) and the middle threads keep it. This
+is what every interpreted program (Python, Ruby) shows, and what all our labelled
+`priority_inversion` runs show.
+
+**Priorities.** The tools print `120 (nice 0)`, `139 (nice 19)`, `RT 63`. "Worse priority"
+means a larger number.
+
+Problems that look similar:
+
+- Event / condition-variable wait: a long woken wait whose releaser slept until it signalled. Idle, not blocked. The tool says NO LOCK PROBLEM.
+- Timed sleep: `ret = -110`; 100 ms / 1 s / 5 s pieces that never end with a wake. A timer. Counted under `timed sleeps`, never a lock wait.
+- Poll-run that ends by timeout: the thread polled until the lock was free. Listed under `poll-runs`, not a woken lock wait.
+- One idle worker on one futex: one thread waiting for work. One waiter is never contention.
+- Runtime parking futexes (Go, Java): many waiters on one address, the releaser asleep. Parked worker threads, set aside.
+- The holder is starved, no lock involved: the late thread is runnable, not in `futex`. That is `8_cpu_starvation`; `wait_chain.py` on it says NO LONG BLOCKS.
+- A kernel lock inside a system call: the late thread blocks in D-state, released by a thread inside `clone` / `ioctl`. That is `9_syscall_stall`.
+- Trace holes: "waits" of seconds that overlap a period with no events on that CPU. The tools drop them and print a `trace holes:` line.
+- resource_abuse (blueprint 18): a multi-threaded Python CPU burner; its threads queue on the interpreter lock in 5 ms timed waits and the tool reads LOCK CONTENTION. The contention is real; the fault family is not.
+- One `svc_mem_cap` run also read LOCK CONTENTION (2 waits of 5.9 s in `containerd-shim`).
+
+## Part 2. What you need
+
+| Script | What it does | Usage |
+|---|---|---|
+| `idx_summary.py` | Trace date, start, end, length, CPUs, health checks | `idx_summary.py <trace_dir> [--rate SECONDS]` |
+| `extract_slice.sh` | Cuts one time slice and keeps only the events you name | `extract_slice.sh <trace_dir> <YYYY-MM-DD> <HH:MM:SS> <seconds> <out_file> '<events regex>'` |
+| `pidmap.py` | Thread to process map from the trace's start-of-session state dump (tid, pid, ppid, name) | `pidmap.py <trace_dir> [--out FILE]` |
+| `futex_wait.py` | The decisive tool: pairs every futex wait per thread, finds the releaser of each wait and its scheduling state, classes the waits, and gives the verdict | `futex_wait.py <slice> <secs> [--top 10] [--min-ms 1] [--pidmap FILE]` |
+| `runq_wait.py` | One thread's runnable waits and who held its CPU meanwhile. Used on the releaser, then on the waiter | `runq_wait.py <slice> <victim tid|name> [--top N] [--min-ms X] [--pidmap FILE]` |
+| `wait_chain.py` | One thread's blocked time: who woke it, and what the waker was inside at that moment. Used on the waiter | `wait_chain.py <slice> <victim tid|name> [--top N] [--pidmap FILE]` |
+| `thread_top.py` | Every thread's time budget (run, runnable wait, S, D) with priority and CPUs | `thread_top.py <slice> <secs> [--sort wait|run|max|wakeups] [--top N] [--cpu N] [--pidmap FILE]` |
+
+`LOCKEV='sched_switch|sched_waking|sched_wakeup|sched_process_fork|lttng_statedump_process_state|syscall_entry_futex|syscall_exit_futex'`
+
+## Part 3. Procedure
+
+The commands are suggestions that worked on the labelled runs. Change them when the trace needs it.
+
+### Step 1. Know the date, when the trace starts and ends, and whether it is healthy. (`check_trace`)
+
+```
+idx_summary.py $TRACE
+```
+
+Read from the output: `day`, `trace_start`, `trace_end`, `duration_s`, `lost_events`. Next: `orient`.
+
+### Step 2. Choose the start of one 60 s slice over the suspect window, and of a baseline slice from a quiet time if there is one. (`orient`)
+
+```
+idx_summary.py $TRACE --rate 10
+```
+
+These faults are steady while they last: a lock that is contended, or a holder that
+cannot run, stays that way for as long as the load is on. So one slice over the
+suspect window (or over the whole capture, when it is short) is enough; you do not
+need to find an edge first. If no window is suspected, start at the trace start.
+A baseline from before the window is what separates the program's normal locking from
+the fault. Both slices must lie inside the trace.
+
+Write down: `window_start` (start of the 60 s slice over the suspect window, HH:MM:SS only (no date)), `base_time` (start of a 60 s slice from a quiet time before the window, HH:MM:SS only (no date); `none` if the trace has no quiet stretch).
+
+| The step ends with | When | Verdict line | Then |
+|---|---|---|---|
+| `time_chosen` | a slice time is chosen (and a baseline time, or `none`) |  | go to `locks` |
+
+### Step 3. Find the address threads wait on, measure the waits, name the releaser, and read the verdict. (`locks`)
+
+```
+extract_slice.sh $TRACE <day> <window_start> 60 $WORK/fault.txt $LOCKEV
+futex_wait.py $WORK/fault.txt 60 --top 10
+extract_slice.sh $TRACE <day> <base_time> 60 $WORK/base.txt $LOCKEV
+futex_wait.py $WORK/base.txt 60 --top 10
+```
+
+A busy host gives millions of lines; the tool reads them in a few minutes. The sweeps
+on all runs used a 20 s slice, because the `futex` events of a large application are
+very large. On a trace whose events carry no pid, run
+`pidmap.py $TRACE --out $WORK/pidmap.tsv` and add `--pidmap $WORK/pidmap.tsv`.
+
+futex_wait.py prints a header, a per-futex table (one row per address, sorted by total
+wait time), one line per kind of non-lock wait (`poll-runs`, `timed sleeps`, `other
+returns`), the `waiter shares` on the busiest address, the longest lock waits with
+the releaser's state under each, and one VERDICT line with a `FIX:` line when it is a
+fault. Quote the verdict line.
+
+- PRIORITY INVERSION (chained): this fault, through a second lock. The line names the
+  waiter, its holder with the worse priority, and the better-priority threads that
+  keep the second lock. fault_type is still `priority_inversion`.
+- PRIORITY INVERSION: this fault. The line names the waiter, the holder with the
+  worse priority, and after `its CPU taken by` the middle threads.
+- LOCK CONTENTION: this fault's sibling. One address, 2 or more waiters. `holders
+  preempted while holding` means fewer CPUs than threads wanting them; `holders sleep
+  while holding` means the critical section contains a sleep or an I/O. `lock-wait
+  time` can exceed 100%: it adds up every waiter's time. Compare with the baseline
+  slice: a lock that shows the same numbers in the baseline is the program's normal
+  life, not the incident; one that appears or grows with the window is the finding.
+- NO LOCK PROBLEM / NO LONG FUTEX WAITS: not this fault. Report what the longest wait
+  was and why it does not count (event wait, timer loop, below the bars).
+- NO FUTEX WAITS IN SLICE: the slice holds no `futex` calls. Re-cut it with $LOCKEV.
+
+Before you report LOCK CONTENTION, check whether the contended process is a new
+CPU-heavy process with periodic connections (blueprint 18). Measured: the 10
+`resource_abuse` runs also read LOCK CONTENTION. There it is `python3`, 7 threads,
+92-99 held waits per second, almost all runs of 5 ms timed waits, lock-wait time
+107-114% of the slice, top waiter 28-34% of its time. The labelled contention runs
+are `python3`, 16 threads, 3,345-3,630 held waits per second, 1,477-1,486%, top
+waiter 92-93%. No bar between the two groups is set in the tool.
+Interpreter locks (Python's GIL, Ruby's GVL) show as one hot futex among the
+interpreter's threads. The tool reports them as contention; whether that is the
+fault or the language's normal behaviour needs the baseline.
+
+The `poll-runs`, `timed sleeps` and `other returns` lines can be large. That is the
+box's normal life. Do not report them as lock waits.
+
+Write down: `lock_fault` (which verdict the tool gave, one of `inversion_chained`, `inversion`, `contention`), `futex_addr` (the futex address on the verdict line (0x...)), `waiter_tid` (tid of the waiter on the verdict line (for contention, the top waiter)), `holder_tid` (tid of the holder (the releaser), from the verdict line, or for contention from a `released by` line under the longest lock waits), `middle_threads` (for an inversion, the threads on the verdict line that kept the holder's CPU or its second lock; `none` for contention), `baseline_lock` (the lock's numbers in the baseline slice, or `no baseline`).
+
+| The step ends with | When | Verdict line | Then |
+|---|---|---|---|
+| `inversion_chained` | the tool reads PRIORITY INVERSION (chained) | `VERDICT: PRIORITY INVERSION (chained) ...` | go to `confirm` Root cause **confirmed**. |
+| `inversion` | the tool reads PRIORITY INVERSION (not chained) | `VERDICT: PRIORITY INVERSION: ...` | go to `confirm` Root cause **confirmed**. |
+| `contention` | the tool reads LOCK CONTENTION, the lock is absent or quieter in the baseline, and the contended process is not a new CPU-heavy process with periodic connections | `VERDICT: LOCK CONTENTION on futex ...` | go to `confirm` Root cause **confirmed** (`lock_contention`). |
+| `contention_cpu_heavy` | the tool reads LOCK CONTENTION, and the contended process is or may be a new CPU-heavy process with periodic connections (its numbers are like those of the `resource_abuse` runs) |  | **Stop.** The contention is real; the fault family may not be. Check blueprint 18 before reporting LOCK CONTENTION. Hand the case to blueprint `18_resource_abuse`. Root cause **rejected**. |
+| `contention_in_baseline` | the tool reads LOCK CONTENTION, and the same lock shows the same numbers in the baseline slice |  | **Stop.** A lock that shows the same numbers in the baseline is the program's normal life, not the incident. Root cause **rejected**. |
+| `no_lock_problem` | the tool reads NO LOCK PROBLEM (an event wait, a held lock below the bars, an idle worker, a CPU-starvation effect) | `VERDICT: NO LOCK PROBLEM ...` | **Stop.** Not this fault. Report what the longest wait was and why it does not count. This blueprint looks for one cause only: if the line points elsewhere ("a CPU-starvation effect", "an event wait"), do not switch to that other family from here. Root cause **rejected**. |
+| `no_long_waits` | the tool reads NO LONG FUTEX WAITS | `VERDICT: NO LONG FUTEX WAITS ...` | **Stop.** Nothing waited for a lock for 1 ms or more. Not this fault. Root cause **rejected**. |
+| `no_futex` | the tool still reads NO FUTEX WAITS IN SLICE after the slice was re-cut with $LOCKEV | `VERDICT: NO FUTEX WAITS IN SLICE ...` | **Stop.** The trace has no `futex` events and this blueprint cannot be applied. Say so; blueprints 8, 9 and 10 still can. Root cause **inconclusive**. |
+
+### Step 4. Show from the scheduler's side that the holder could not run (inversion) or was busy, preempted or asleep under the lock (contention), and that the waiter was woken by it. (`confirm`)
+
+```
+runq_wait.py $WORK/fault.txt <holder_tid> --top 8
+wait_chain.py $WORK/fault.txt <waiter_tid> --top 12
+```
+
+runq_wait.py on the HOLDER prints its runnable waits and a verdict:
+- STARVED BY CROWD or STARVED BY HIGHER PRIORITY: the holder was kept off its CPU. For
+  an inversion these are the middle threads; their names must match the verdict line.
+- NOT STARVED: the holder ran whenever it wanted. Then it was working under the lock:
+  contention, not inversion.
+- OTHER CPUS WERE IDLE: placement, not a full host.
+wait_chain.py on the WAITER prints its blocked time by waker and its longest blocks:
+- BLOCKED MOSTLY ON the holder, longest blocks in S with `woken by <holder> | futex`:
+  the waiter slept in `futex` and the holder's wake released it. The confirmation.
+  The share of all blocked time is often small: a waiter also sleeps on packets and
+  timers.
+- NO LONG BLOCKS: the waiter is never blocked for long.
+- BLOCKED MOSTLY ON another thread inside `clone` / `ioctl` / `write`, blocks in D: a
+  kernel lock in a system call.
+Decide:
+- Chained inversion: run only wait_chain.py on the waiter. runq_wait.py on the holder
+  will say NOT STARVED, and that is expected here (the holder is not on a run queue).
+- Inversion: runq_wait.py on the holder says STARVED (by the middle threads) and
+  wait_chain.py on the waiter is BLOCKED MOSTLY ON the holder in `futex`.
+- Contention: runq_wait.py on a holder says NOT STARVED (or STARVED only because the
+  box has fewer CPUs than waiting threads: `holders preempted while holding`), or the
+  verdict says `holders sleep while holding` and the holder's row in
+  `thread_top.py $WORK/fault.txt 60` shows mostly S time; the waiters are BLOCKED
+  MOSTLY ON the holders in `futex`; and the baseline shows the lock quieter.
+
+| The step ends with | When | Verdict line | Then |
+|---|---|---|---|
+| `mechanism_confirmed` | wait_chain.py on the waiter is BLOCKED MOSTLY ON the holder in `futex`, and the holder's state fits the verdict as the Decide list says | `BLOCKED MOSTLY ON ...` | go to `rule_out` |
+| `holder_slept` | the holder was neither starved nor busy (it slept), and the verdict was not the chained one and not `holders sleep while holding` |  | **Stop.** The wait was an event, whatever the futex verdict said. Treat the verdict as unconfirmed and say so. Root cause **unconfirmed**. |
+| `no_long_blocks` | wait_chain.py on the waiter reads NO LONG BLOCKS | `NO LONG BLOCKS ...` | **Stop.** The waiter is never blocked for long. Not this fault. Root cause **rejected**. |
+| `kernel_lock` | wait_chain.py on the waiter is BLOCKED MOSTLY ON another thread inside `clone` / `ioctl` / `write`, and the blocks are in D |  | **Stop.** A kernel lock in a system call: `9_syscall_stall`. Root cause **rejected**. |
+
+### Step 5. Check the other causes with what is already printed, plus one call on the waiter. (`rule_out`)
+
+```
+runq_wait.py $WORK/fault.txt <waiter_tid> --top 8
+```
+
+runq_wait.py on the WAITER should say NOT STARVED: it is blocked in `futex`, not
+waiting for a CPU. If it says STARVED with long waits, both faults are present;
+report both, each with its own numbers (`8_cpu_starvation` for that one).
+The other checks use the futex_wait.py output you already have:
+- The verdict wait is not an event wait; the releaser was not asleep (the chained
+  verdict and `holders sleep while holding` are the stated exceptions).
+- Timed sleeps and poll-runs are listed apart and never make the verdict.
+- The verdict address has 2 or more waiters (contention) or a named holder with a
+  worse priority (inversion).
+- The waker was inside `futex`, and the blocks are in S, not D.
+- The verdict address is absent or far quieter in the baseline.
+- A `trace holes:` line: note it; the tools already left those intervals out.
+If a check does not fit, say which one in your report, and treat the verdict as
+unconfirmed.
+
+| The step ends with | When | Verdict line | Then |
+|---|---|---|---|
+| `waiter_blocked` | runq_wait.py says NOT STARVED for the waiter (or its runnable waits are small next to the lock wait) and the other checks fit | `VERDICT: NOT STARVED ...` | go to `report` |
+| `also_starved` | runq_wait.py says STARVED for the waiter with long waits, and the other checks fit. Both faults are present | `VERDICT: STARVED BY ...` | go to `report` |
+| `check_fails` | one of the checks does not fit |  | **Stop.** A check does not fit. Say which one in your report, and treat the verdict as unconfirmed. Root cause **unconfirmed**. |
+
+### Report
+
+fault_type: `priority_inversion` (also for the chained verdict) or `lock_contention`, as
+the futex verdict says. Always name the waiter (name, tid, prio), the holder (name, tid,
+prio), the futex address, the wait length and the window. For an inversion name the
+middle threads by name and priority, and the holder's runnable-but-not-running share (for
+the chained verdict: the share it was blocked on the second lock). For contention give
+the waiter count, the number of lock waits, p50 and max, the top waiter's share, the
+lock-wait share of the slice, what the holders did while holding, and the lock's numbers
+in the baseline (or "no baseline"). Name the process (pid, name) when the output shows it.
+Evidence: at least two independent pieces. The futex verdict line word for word, and the
+scheduler's view of the holder and the waiter (the runq_wait.py and wait_chain.py lines).
+Mark each claim Measured or Inferred: the wait lengths, the releaser's state shares and
+the priorities are Measured; what the lock protects and the fix are Inferred.
+Fix, inversion: priority inheritance on the lock (`PTHREAD_PRIO_INHERIT` /
+`FUTEX_LOCK_PI`), or raise the holder, or do not hold the lock across a scheduling
+boundary. Fix, contention: shorten the critical section, split the lock, or batch the
+work done under it; when the holders sleep while holding, do not sleep or do I/O while
+holding the lock.
+Say what you ruled out, what you did not test, and what the trace cannot show: the
+symptom the operator reported (late replies, a timeout) lives in the application. The
+verdict is the lock cause, not the symptom. The trace does not record which mutex in the
+program the address is.
+
+## Part 4. Measured, and limits
+
+- It confirms or rejects two causes: a lock held by a thread that cannot run, and a lock many threads fight over. If a step points elsewhere, it stops and tells you so. It does not diagnose that other cause.
+- It needs the `futex` events. A trace recorded without `--syscall` (or without `futex` in the list) cannot be judged.
+- It sees the kernel half of the lock: the address, the waits, the wakes, the releaser's scheduling state. It does not see which mutex in the program that address is, nor what the critical section does. A user-space trace (LTTng-UST, `pthread` tracepoints) is the next instrument if that matters.
+- The releaser is "the thread that issued the wake inside the wait". For a condition variable with many waiters, the wake may come from a thread that did not hold any lock; the class rules (`event`) catch most of that, not all. Step 4 is the check.
+- Interpreter locks (Python's GIL, Ruby's GVL) show as one hot futex among the interpreter's threads. The tool reports them honestly as contention; whether that is the fault or the language's normal behaviour needs the baseline.
+- **Measured on all 304 v2 runs of both applications (17-11-2026, `RESULTS.md`): 20 of 20 on the two lock families, 11 other runs also read LOCK CONTENTION.** Ten are the `resource_abuse` runs: the injected workload is a multi-threaded Python CPU burner, and its threads queue on the interpreter lock in 5 ms timed waits (92-99 waits/s, lock-wait time 107-114% of the slice, top waiter 28-34% of its time; the labelled contention runs are at 3,345-3,630 waits/s, 1,477-1,486%, 92-93%). The contention is real; the fault family is not. **Before you report LOCK CONTENTION, check whether the contended process is a new CPU-heavy process with periodic connections (blueprint 18).** The eleventh is one `svc_mem_cap` run (2 waits of 5.9 s in `containerd-shim`).
+- The bars (5% / 20% / 0.2 ms, 30% / 50% / 70%) are first-pass numbers from one labelled contention run, synthetic inversion data and five negatives. Check the raw percentages the tool prints when a verdict looks borderline.
+- Trace holes (snapshot buffers, discarded events) are left out of every number, and the tools say so.

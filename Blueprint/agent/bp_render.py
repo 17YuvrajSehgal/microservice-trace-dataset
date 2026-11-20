@@ -47,7 +47,7 @@ def render(spec):
             if o.get("handoff"):
                 then += " Hand the case to blueprint `%s`." % o["handoff"]
             if o.get("verdict") or "stop" in o:
-                then += " Root cause **%s**." % o.get("verdict", "rejected")
+                then += " Root cause **%s**%s." % (o.get("verdict", "rejected"), " (`%s`)" % o["fault_type"] if o.get("fault_type") else "")
             L.append("| `%s` | %s | %s | %s |" % (name, " ".join(o["when"].split()),
                                                  "`%s ...`" % o["line"] if o.get("line") else "", then))
     L += ["", "### Report", "", spec["report"].rstrip()]
