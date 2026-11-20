@@ -78,6 +78,7 @@ class S(TypedDict, total=False):
     rejects: int
     visits: int
     conclusion: str    # set when a stop outcome ends the investigation
+    handoff: str       # folder of the blueprint this one hands the case to
     verdict: str       # confirmed | unconfirmed | rejected | inconclusive, from the outcomes reached
     final: dict
 
@@ -123,6 +124,8 @@ class Investigation:
         self.steps = spec["steps"]
         self.hide = [h for h in hide if h]       # strings the model must not see (run name, paths)
         self.outputs = []                        # every tool output, for the evidence check
+        self.step_out = []                       # tool output of the current step, for its verdict line
+        self.vars = spec.get("vars") or {}       # named event lists ($MEMSYS), expanded in tool arguments
         self.stats = {"model_calls": 0, "tool_calls": 0, "tokens_in": 0, "tokens_out": 0}
         self.events = []
         g = StateGraph(S)
@@ -138,14 +141,17 @@ class Investigation:
         g.add_edge("report", END)
         self.graph = g.compile()
 
-    def run(self):
+    def run(self, facts=None, ledger=None):
         t0 = time.time()
-        end = self.graph.invoke({"step": self.spec["start"], "facts": {}, "ledger": [], "visits": 0},
+        end = self.graph.invoke({"step": self.spec["start"], "facts": dict(facts or {}),
+                                 "ledger": list(ledger or []), "visits": 0},
                                 {"recursion_limit": 500})
         return self.result(end, time.time() - t0)
 
     # ---------------------------------------------------------------- tools
     def tool(self, script, args):
+        for k, v in self.vars.items():
+            args = [str(a).replace("$" + k, v) for a in args]
         res = self.runner.run(script, args)
         self.stats["tool_calls"] += 1
         out = res.get("stdout") or ""
@@ -156,6 +162,7 @@ class Investigation:
         for h in self.hide:
             out = out.replace(h, "RUN")
         self.outputs.append(out)
+        self.step_out.append(out)
         self.events.append({"t": time.time(), "tool": script, "args": args, "chars": len(out)})
         if len(out) > OUT_CAP:
             out = out[:OUT_CAP * 3 // 4] + "\n[... %d characters cut ...]\n" % (len(out) - OUT_CAP) \
@@ -194,6 +201,7 @@ class Investigation:
         if s["visits"] >= MAX_VISITS:
             return {"go": "report", "conclusion": "Stopped by the harness: %d step visits." % MAX_VISITS}
         st = self.steps[step]
+        self.step_out = []
         self.log("== step %s (%s)" % (step, st["kind"]))
         if st["kind"] == "fixed":
             out = "\n".join(self.tool(c[0], c[1:]) for c in st["run"])
@@ -222,6 +230,10 @@ class Investigation:
         for name, o in st["outcomes"].items():
             nx = o.get("next")
             then = "STOP: " + o["stop"] if nx is None else "write the report" if nx == "report"                 else "go to step %s (%s)" % (nx, self.steps[nx]["goal"])
+            if o.get("handoff"):
+                then += " The case goes to blueprint %s." % o["handoff"]
+            if o.get("line"):
+                then += "  [the tool's verdict line for this: `%s ...`]" % o["line"]
             ways.append("  %s: %s -> %s" % (name, _norm(o["when"]), then))
         meanings = self.spec.get("facts", {})
         need = ["  %s: %s" % (n, meanings.get(n, "")) for n in st.get("sets", [])]
@@ -229,7 +241,8 @@ class Investigation:
         return "\n".join([
             "STEP %s" % step, "Goal: " + st["goal"], "",
             "Suggested commands (change them if this trace needs it):",
-            *["  " + c for c in st.get("suggested", [])], "",
+            *["  " + c for c in st.get("suggested", [])],
+            *["  ($%s is expanded to the event list `%s`)" % kv for kv in self.vars.items()], "",
             "How to read the output:", st.get("read", "").rstrip(), "",
             "Facts this step should establish:", *(need or ["  (none)"]), "",
             "Ways this step can end:", *ways,
@@ -310,6 +323,8 @@ class Investigation:
         outcome, jump = fin.get("outcome"), fin.get("next_step")
         facts = {**s["facts"], **{k: v for k, v in (fin.get("facts") or {}).items() if v not in (None, "")}}
         o = st["outcomes"].get(outcome)
+        if o and jump == o.get("next", "report"):
+            jump = None                  # naming the place the outcome goes to anyway is not a jump
         problems = []
         if o is None and outcome != "other":
             problems.append("outcome must be one of: %s, other" % ", ".join(st["outcomes"]))
@@ -317,6 +332,18 @@ class Investigation:
             problems.append("give a reason when you use `other` or next_step")
         if outcome == "other" and not jump:
             problems.append("with `other`, name next_step (a step id, or report)")
+        told = told_line = None          # the outcome the decisive tool's verdict line stands for
+        for line in "\n".join(self.step_out).splitlines():
+            for name, oo in st["outcomes"].items():
+                if oo.get("line") and oo["line"] in line:
+                    told, told_line = name, line.strip()
+        reasoned = bool((fin.get("reason") or "").strip())
+        if told and outcome != told and not reasoned:
+            problems.append("the tool's verdict line stands for outcome `%s`. To choose another outcome, "
+                            "give your reason" % told)
+        if o and o.get("line") and not told and not reasoned:
+            problems.append("outcome `%s` rests on the verdict line of the step's decisive tool, and no such "
+                            "line was printed in this step. Run the tool, or give your reason" % outcome)
         missing = [n for n in st.get("sets", []) if n not in facts] if (o and "next" in o and not jump) else []
         if missing and s["rejects"] < 1:
             problems.append("this outcome goes on to the next step, which needs these facts: %s. "
@@ -329,6 +356,8 @@ class Investigation:
 
         seen = _norm("\n".join(self.outputs))
         evidence = [{"text": e, "verified": _norm(e) in seen} for e in (fin.get("evidence") or [])]
+        if told == outcome and _norm(told_line) not in [_norm(e["text"]) for e in evidence]:
+            evidence.insert(0, {"text": told_line, "verified": True, "by": "harness"})   # copied by code
         suggested = {c.split()[0] for c in st.get("suggested", [])}
         dev = []
         if outcome == "other":
@@ -338,6 +367,10 @@ class Investigation:
         extra = sorted({u for u in used if u not in suggested})
         if extra:
             dev.append("other_tools:%s" % ",".join(extra))
+        if told and outcome != told:
+            dev.append("against_tool_verdict:%s" % told)
+        if o and o.get("line") and not told:
+            dev.append("no_verdict_line")
         if missing:
             dev.append("facts_missing:%s" % ",".join(missing))
         if any(not e["verified"] for e in evidence):
@@ -345,7 +378,7 @@ class Investigation:
         nxt = jump or o.get("next") or "report"
         entry = {"step": step, "kind": "guided", "outcome": outcome, "summary": fin.get("summary", ""),
                  "reason": fin.get("reason", ""), "evidence": evidence, "turns": s["turns"],
-                 "tools": used, "deviation": dev, "next": nxt}
+                 "tools": used, "deviation": dev, "next": nxt, "tool_verdict": told_line}
         self.log("   -> %s%s  next: %s" % (outcome, ("  [left the guidance: %s | %s]" % (", ".join(dev), fin.get("reason", "")) if dev else ""), nxt))
         out = {"go": "enter" if nxt != "report" else "report", "step": nxt, "facts": facts,
                "ledger": s["ledger"] + [entry], "used": []}
@@ -355,6 +388,8 @@ class Investigation:
             # the verdict is a rule of the blueprint over the outcomes the agent chose, not a
             # second free decision at the end
             out["verdict"] = o.get("verdict", "rejected")
+            if o.get("handoff"):
+                out["handoff"] = o["handoff"]
         return out
 
     def report(self, s: S):
@@ -397,10 +432,11 @@ class Investigation:
         return {"final": {"verdict": verdict, **final}, "verdict": verdict}
 
     def result(self, s, wall):
-        path = [e["step"] for e in s["ledger"]]
+        path = [e["step"] for e in s["ledger"] if e.get("kind") != "carried"]
         devs = [(e["step"], d) for e in s["ledger"] for d in e.get("deviation", [])]
         ev = [x for e in s["ledger"] for x in e.get("evidence", [])]
         return {"blueprint": self.spec["id"], "verdict": s.get("verdict", "inconclusive"), "final": s.get("final"), "conclusion": s.get("conclusion", ""),
+                "handoff": s.get("handoff", ""),
                 "facts": s["facts"], "ledger": s["ledger"],
                 "adherence": {"path": path, "steps_not_visited": [k for k in self.steps if k not in path],
                               "revisits": len(path) - len(set(path)), "deviations": devs,
@@ -465,7 +501,7 @@ def selftest():
         "find_victim": [lambda i: run(i, "wake_graph.py"),
                         lambda i: fin(i, outcome="other", summary="s"),                                         # rejected: no reason, no next_step
                         lambda i: fin(i, outcome="other", summary="s", next_step="rule_out", reason="one pid is clear already", facts={"victim_pid": 7})],
-        "rule_out": [lambda i: fin(i, outcome="neighbor", summary="s")],
+        "rule_out": [lambda i: fin(i, outcome="neighbor", summary="s", next_step="report", reason="r")],   # not a jump
     }
     r = Investigation(spec, FakeRunner(), scripted(plan), log=lambda *_: None).run()
     a = r["adherence"]
@@ -497,17 +533,29 @@ def main():
     sys.path.insert(0, here)
     import blueprints
     import tempfile
-    spec = yaml.safe_load(open(a.blueprint, encoding="utf-8"))
-    tools = os.path.join(os.path.dirname(os.path.abspath(a.blueprint)), "tools")
     work = a.work or os.path.join(tempfile.gettempdir(), "bp_graph_work", "run_%d" % int(time.time()))
-    runner = blueprints.Runner(tools, a.run_dir, work)
-    run_abs = os.path.abspath(a.run_dir)
+    remote = ":" in a.run_dir and len(a.run_dir.split(":", 1)[0]) > 1     # "<host>:/path", see blueprints.Runner
+    run_abs = a.run_dir.split(":", 1)[1] if remote else os.path.abspath(a.run_dir)
     # the model must not see the run's name: it names the fault
-    hide = [blueprints._wsl_path(run_abs), run_abs, run_abs.replace("\\", "/"), os.path.basename(run_abs)]
-    res = Investigation(spec, runner, openai_llm(), hide=hide).run()
+    hide = [blueprints._wsl_path(run_abs), run_abs, run_abs.replace("\\", "/"), os.path.basename(run_abs.rstrip("/"))]
+    llm, bp, facts, ledger, results = openai_llm(), os.path.abspath(a.blueprint), {}, [], []
+    while True:                       # one blueprint, then the one it hands the case to, if any
+        spec = yaml.safe_load(open(bp, encoding="utf-8"))
+        print("#### blueprint %s" % spec["id"])
+        runner = blueprints.Runner(os.path.join(os.path.dirname(bp), "tools"), a.run_dir, work)
+        res = Investigation(spec, runner, llm, hide=hide).run(facts, ledger)
+        results.append(res)
+        nxt = os.path.join(os.path.dirname(os.path.dirname(bp)), res["handoff"] or "-", "blueprint.yaml")
+        if not res["handoff"] or not os.path.exists(nxt) or len(results) >= 3:
+            break
+        facts = res["facts"]
+        ledger = [{"step": "(handed over by blueprint %s)" % spec["id"], "kind": "carried", "outcome": res["verdict"],
+                   "summary": res["conclusion"] + " " + (res["final"] or {}).get("statement", ""), "deviation": []}]
+        bp = nxt
     out = a.out or os.path.join(work, "result.json")
-    json.dump(res, open(out, "w", encoding="utf-8"), indent=1)
-    print(json.dumps({k: res[k] for k in ("verdict", "final", "conclusion", "adherence", "stats")}, indent=1))
+    json.dump(results, open(out, "w", encoding="utf-8"), indent=1)
+    for res in results:
+        print(json.dumps({k: res[k] for k in ("blueprint", "verdict", "handoff", "final", "conclusion", "adherence", "stats")}, indent=1))
     print("saved:", out)
 
 

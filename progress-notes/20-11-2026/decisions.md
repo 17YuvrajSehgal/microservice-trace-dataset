@@ -90,3 +90,47 @@ step budget.
 
 Limits of this result: one trace, one model, one blueprint, and the fix for (2) was tested
 by writing the report of run 2 again, not by a third full run.
+
+## 4. Blueprints 24 and 15 in the new form; the format after three blueprints
+
+Converted `24_code_unbounded_cache` (3 steps) and `15_dependency_outage` (4 steps). Three
+things were added to the format and the harness because these two needed them:
+
+- **`line:` on an outcome.** The start of the tool's verdict line that stands for this
+  outcome. The harness finds it in the step's tool output by text match, compares it with
+  the outcome the agent chose, asks for a reason when they differ (logged as
+  `against_tool_verdict`), and copies the line into the evidence itself.
+- **`handoff:` on an outcome.** The folder of the blueprint that takes the case next; the
+  harness starts it with the facts already found. Written for 24 -> 15 ("memory grows with
+  new threads"). Not seen in a run yet.
+- **`vars:`** named event lists (`$MEMSYS`, `$SEV`), expanded in tool arguments.
+
+One source: `bp_render.py` writes `BLUEPRINT.md` from the yaml (header, background, tools,
+steps with an outcome table, measured and limits). `README_v1.md` stays for now because
+`agent_v2.py` and RCA Studio read it; it goes when all blueprints are converted.
+
+Runs (gpt-6-luna; tools on the laptop through WSL, or on the Trillium login node):
+
+| blueprint | run | tool verdict line | agent's outcome | verdict | truth |
+|---|---|---|---|---|---|
+| 15 | `dependency_outage_aggressive_steady_r1` | SERVICE FROZEN, then FROZEN AT 11:16:29.156 | frozen, frozen_at | confirmed: `app`, pid_ns 4026532822 | `payment` paused at 11:16:29 |
+| 24 | `code_unbounded_cache_aggressive_steady_r1` | MEMORY ONLY GROWS: `node`, 421 MB in 30 s | leak | confirmed (see below) | front-end, 05:19:40 to 05:21:43 |
+| 15 | `svc_cpu_cap_aggressive_steady_r1` | NO SILENT SERVICE (quietest kept 7%) | none | rejected | a CPU cap |
+| 24 | `svc_cpu_cap_aggressive_steady_r1` | NO STEADY MEMORY GROWTH | no_growth | rejected (see below) | a CPU cap |
+
+Cost per run: 8 to 12 model calls, 18k to 29k tokens in, 1.4k to 1.7k out, 2 to 6 minutes.
+The short blueprints cost about a fifth of blueprint 1 (111k tokens in).
+
+Harness bug found: both blueprint 24 runs came out "inconclusive" although the agent chose
+the right outcome. The agent had also filled `next_step` with the place that outcome goes
+to anyway, and the harness counted that as a jump and did not apply the verdict. Fixed
+(naming the outcome's own destination is not a jump; in the self-check). The verdicts in
+the table for 24 are the rule applied to the saved ledger; for the labelled run the report
+was written again and reads "confirmed". Neither run was repeated in full.
+
+Agent behaviour seen: in every one of the four runs the agent's outcome agreed with the
+tool's verdict line. On the labelled leak run it lost four calls on wrong arguments
+(`extract_slice.sh` without the trace folder) before the right call.
+
+Still one run per case. Not yet seen: an agent that goes against a verdict line, a
+hand-off, a trace where the suggested slice time is wrong.
