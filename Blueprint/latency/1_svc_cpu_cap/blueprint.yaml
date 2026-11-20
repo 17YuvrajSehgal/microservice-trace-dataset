@@ -1,0 +1,254 @@
+# Blueprint 1 as a structure the agent harness reads (prototype, 20-11-2026).
+# The wording is taken from README_v1.md; no rule or number is new.
+# Read by Blueprint/agent/bp_graph.py. See Blueprint/latency/METHOD.md for the idea.
+#
+# kind: fixed   the harness runs the commands itself and reads the values. No model call.
+# kind: guided  the agent works the step with the tools. The commands are suggestions.
+# An outcome either names the next step or stops the investigation with a conclusion.
+# verdict: what reaching this outcome means for the root cause. A stop without one = rejected.
+
+id: svc_cpu_cap
+fault_type: svc_cpu_cap
+confirms: One service (container) has a CPU limit that is too small for its work.
+
+background: |
+  Linux enforces a CPU limit with a quota and a period (cgroup v2 `cpu.max`, for example
+  20000 100000 = 20 ms of CPU in every 100 ms = 0.2 cores). The container's threads use up
+  the quota, the kernel stops them (throttling), and they stay stopped until the next
+  period. A throttled thread is ready to run but not allowed to: in a kernel trace it
+  counts as WAITING FOR THE CPU. The trace does not record the quota. You find it from its
+  effects on the victim: long waits for the CPU, low and flat CPU use, a burst-and-freeze
+  rhythm once per period, no disk wait, while other processes are fine and the CPUs are
+  idle during the victim's waits.
+
+lookalikes: |
+  Whole machine overloaded: processes in DIFFERENT containers wait at once, no idle CPUs.
+  Noisy neighbor: the victim waits while one busy process holds the CPU; waits irregular.
+  Too much work or garbage collection: the victim's `run` goes UP, its waits stay low.
+  Slow disk: disk-type sleep (`D`) goes up. In a cap `D` stays near 0.
+  Lock, network or slow dependency: threads sleep (`S`), waits for the CPU stay low.
+  CPU pinning: the victim runs only on some CPUs while other CPUs are idle.
+  A cgroup limit covers a whole process tree: several waiting processes in ONE container
+  are one cap, not host overload.
+
+facts:
+  day: trace date, YYYY-MM-DD (UTC)
+  trace_start: first packet time, HH:MM:SS
+  trace_end: last packet time, HH:MM:SS
+  window_start: where the data rate changed, HH:MM:SS (trace_start if no clear change)
+  window_end: where it was back to normal, HH:MM:SS (trace_end if it never came back)
+  victim_pid: pid of the process that suffers
+  base_start: start time of a 10 s slice where everything was normal, HH:MM:SS only (no date)
+  fault_start: start time of a 10 s slice inside the window, HH:MM:SS only (no date)
+  period_ms: the quota period (from the rhythm, or 100 if none was found)
+  ceiling_ms: the victim's busy-period on-CPU time per period in the fault slice
+  cap_cores: ceiling_ms / period_ms. Always an estimate (Inferred)
+  idle_share: share of the CPU time that was idle while the victim waited
+  victim_name: program name of the victim
+  pid_ns: the victim's pid namespace number (its container), if the trace has it
+
+start: check_trace
+
+steps:
+  check_trace:
+    kind: fixed
+    goal: Know the date, when the trace starts and ends, and whether it is healthy.
+    run:
+      - [idx_summary.py, $TRACE]
+    extract:
+      day: '^date \(UTC\)\s*:\s*(\S+)'
+      trace_start: '^trace start\s*:\s*(\d\d:\d\d:\d\d)'
+      trace_end: '^trace end\s*:\s*(\d\d:\d\d:\d\d)'
+      duration_s: '^duration\s*:\s*([\d.]+)'
+      lost_events: '^lost events\s*:\s*(.+)$'
+      seq_gaps: '^seq gaps\s*:\s*(.+)$'
+      file_sizes: '^file sizes\s*:\s*(.+)$'
+    next: find_window
+
+  find_window:
+    kind: guided
+    goal: Find the stretch of time where the system behaved differently (the candidate window).
+    suggested:
+      - idx_summary.py $TRACE --rate 10
+    read: |
+      The last table is the trace data all CPUs wrote per 10 s. More work means more events.
+      Look for a long stretch where the rate moves to a clearly different level, and often
+      comes back. The first and last rows are only partly covered: ignore them. Edges look
+      a few seconds wide. A change in the rate does not prove a fault: the workload can also
+      start, stop or change. If there is no clear change, the fault may cover the whole
+      trace or be too small to show here.
+    sets: [window_start, window_end]
+    budget: 3
+    outcomes:
+      window_found:
+        when: the rate moved to a different level for a long stretch
+        next: find_victim
+      no_clear_change:
+        when: no clear change. Set window_start = trace_start and window_end = trace_end
+        next: find_victim
+
+  find_victim:
+    kind: guided
+    goal: Find the process that suffers inside the window, and decide whether there is a fault.
+    suggested:
+      - extract_slice.sh $TRACE <day> <HH:MM:SS> 10 $WORK/s_<HHMMSS>.txt
+      - sched_budget.py $WORK/s_<HHMMSS>.txt 10
+    read: |
+      Cut 10 s slices: one or two before the window, three inside, one or two after. With no
+      clear window, spread them over the trace. You may cut several in one turn. Six to
+      eight slices are enough: stop slicing when one slice shows a clear victim.
+      sched_budget.py is sorted by waiting time. Columns: `run` = cores in use, `wait` =
+      threads ready with no CPU, `S` = asleep, `D` = disk-type sleep, `>=10ms` `>=50ms` =
+      how many single waits lasted that long, `max_ms` = the longest wait.
+      Normal slice: no process has waits of 50 ms or more; the longest is a few ms.
+      Victim: one process that jumps to the top inside the window with many waits of 10 ms
+      and 50 ms or more, and few or none outside it. Rule of thumb, not a fixed bar: waits
+      of 50 ms or more that are absent in normal slices and appear hundreds of times per
+      10 s are a clear sign.
+      Several processes suffer at once: do NOT conclude host overload yet. Run
+      victim_info.py on each and compare their namespaces. Same container: treat them as
+      one victim group and take the busiest member as the victim.
+    sets: [victim_pid, base_start, fault_start]
+    budget: 8
+    outcomes:
+      one_victim:
+        when: one process has many long waits inside the window and few or none outside
+        next: compare_budget
+      victim_group:
+        when: several processes suffer and they are in the same container
+        next: compare_budget
+      weak_candidate:
+        when: >-
+          the waits look small but one process is a candidate. A mild cap throttles only
+          a few dozen times, so the ceiling check must decide. Give the candidate as victim_pid
+        next: ceiling
+      no_starvation_rate_changed:
+        when: the rate changed but no process has long waits
+        stop: No CPU starvation found. The rate change is probably a change in the workload.
+      no_starvation:
+        when: nothing changed and no slice shows long waits
+        stop: No CPU starvation found. This blueprint does not look for other kinds of faults.
+      machine_overloaded:
+        when: processes in different containers wait at once and there are no idle CPUs
+        stop: The whole machine is short of CPU. That is not a cap on one service.
+
+  compare_budget:
+    kind: guided
+    goal: Show what the victim's threads were doing before and during the fault, and rule out the common other causes.
+    suggested:
+      - extract_slice.sh $TRACE <day> <base_start> 10 $WORK/baseline_slice.txt
+      - extract_slice.sh $TRACE <day> <fault_start> 10 $WORK/fault_slice.txt
+      - sched_budget.py $WORK/baseline_slice.txt 10 <victim_pid>
+      - sched_budget.py $WORK/fault_slice.txt 10 <victim_pid>
+    read: |
+      Compare the victim's row in the two slices. If slices for these two times already
+      exist in $WORK from an earlier step you may use them.
+    sets: []
+    budget: 5
+    outcomes:
+      starved:
+        when: "`wait` and the long-wait counts jump, while `run` stays low or falls"
+        next: ceiling
+      small_waits:
+        when: the waits look small but the candidate remains; only the ceiling check can decide
+        next: ceiling
+      busier:
+        when: "`run` goes up a lot and `wait` stays small"
+        stop: The victim is busy, not starved. This is not a cap.
+      disk:
+        when: "`D` goes up a lot"
+        stop: The victim waits on the disk. This is not a cap.
+      sleeping:
+        when: "`S` goes up a lot while `wait` stays low"
+        stop: The victim waits on locks, the network or another service. This is not a cap.
+      competition:
+        when: the waits are many but short (a few ms, no 50 ms freezes) while the machine is busy
+        stop: Slowed by CPU competition, not a quota. Hand the case to the noisy-neighbor blueprint.
+
+  ceiling:
+    kind: guided
+    goal: Tell a CPU cap apart from other CPU starvation. A cap makes the victim run in short bursts at a fixed period, under a per-period ceiling.
+    suggested:
+      - rhythm.py $WORK/fault_slice.txt <victim_pid> <fault_start> 1.0
+      - rhythm.py $WORK/baseline_slice.txt <victim_pid> <base_start> 1.0
+      - cpu_ceiling.py $WORK/fault_slice.txt <victim_pid> <period_ms> $WORK/baseline_slice.txt
+    read: |
+      rhythm.py: `quiet buckets` and the `repeat` period with a score from -1 to 1. Cap, as
+      a rule of thumb: quiet buckets above 50% and a repeat score above 0.5 in the fault
+      slice, low in the baseline. The repeat period is the quota period; do not assume
+      100 ms. No beat does not reject a cap: a victim that idles between spells of work
+      shows little beat. Use 100 for the period then.
+      cpu_ceiling.py is the decisive check: the victim's on-CPU ms per period, the
+      busy-period ceiling, how far it sits below the period, and how far it collapsed from
+      the baseline. Do not require a flat line: a multi-threaded or bursty victim shows a
+      low but variable ceiling. cap_cores = ceiling / period, an estimate.
+    sets: [period_ms, ceiling_ms, cap_cores]
+    budget: 5
+    outcomes:
+      ceiling_below_period:
+        when: the busy-period ceiling sits well below the period and collapsed against the baseline, and the victim was waiting
+        next: rule_out
+      full_period:
+        when: the ceiling is at the full period
+        verdict: inconclusive
+        stop: The victim saturates one core. A cap of one full core cannot be told apart from this.
+      not_waiting:
+        when: per-period use is low but the victim is not waiting runnable
+        stop: The victim simply had little work. Not a cap.
+      no_signature:
+        when: starved, but no sub-period ceiling and no beat
+        verdict: inconclusive
+        stop: Starved of CPU, but no quota signature. See the look-alikes for a likely cause.
+
+  rule_out:
+    kind: guided
+    goal: Check the look-alike causes. The check that settles it is who held the CPUs while the victim waited.
+    suggested:
+      - cpu_hogs.py $WORK/fault_slice.txt 10 <victim_pid>
+    read: |
+      cpu_hogs.py says where every CPU-second went while the victim had a thread ready and
+      waiting. Cap: idle is a large share; nobody took the CPU, the kernel refused the
+      victim. One name or one group takes most of it and idle is small: a noisy neighbor.
+      Also check, from what you already have: other processes have no long waits; the
+      victim's `D` is near 0; its `run` is lower or flat in the fault slice; its `run` is
+      about the same in every slice inside the window.
+    sets: [idle_share]
+    budget: 4
+    outcomes:
+      cpus_idle:
+        when: idle is a large share while the victim waits and the other checks look like a cap
+        verdict: confirmed
+        next: identify
+      lookalike_open:
+        when: idle is large but one of the other checks does not look like a cap. Say which one; the cap is unconfirmed
+        verdict: unconfirmed
+        next: identify
+      neighbor:
+        when: one name or one group takes most of the CPU and idle is small
+        stop: A noisy neighbor, not a cap. Hand the case to the noisy-neighbor blueprint.
+
+  identify:
+    kind: guided
+    goal: Describe the victim as precisely as the trace allows.
+    suggested:
+      - victim_info.py $WORK/fault_slice.txt 10 <victim_pid>
+      - wake_graph.py $WORK/fault_slice.txt <victim_pid>
+    read: |
+      victim_info.py: pid, program name, thread names, namespace numbers (a container when
+      they differ from the host's), and the threads that waited longest. wake_graph.py: who
+      wakes the victim and whom it wakes; a hint about who talks to whom, not proof. The
+      kernel trace never holds service or container names.
+    sets: [victim_name]
+    budget: 4
+    outcomes:
+      identified:
+        when: the victim is named
+        next: report
+
+report: |
+  Name the victim, the time window and the mechanism. Give at least two independent pieces
+  of evidence. Mark each claim Measured (seen in the trace) or Inferred (reasoned from what
+  was seen). The size of the cap is always Inferred. Say what was not tested.
+  The kernel trace never holds the configured quota, so the cap is always found from its
+  effects; that alone is not a reason to doubt the verdict. A tool call that failed because
+  of wrong arguments is not evidence for or against anything.
