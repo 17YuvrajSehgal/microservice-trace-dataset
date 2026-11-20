@@ -94,6 +94,37 @@ Every blueprint's Part 3 follows the same order.
 4. **Report.** Fault type, the process on the verdict line, and the verdict line word for
    word as evidence. State what the trace cannot tell (for example which line of code).
 
+Two rules hold for every blueprint. Both come from agent runs on labelled traces
+(20-11-2026), where the slice time was not taken from the label:
+
+- **The rate table is a hint, not a test.** It shows the volume of trace data. Many faults
+  do not change it (4 of 11 in the first agent runs). No clear window is not a reason to
+  stop.
+- **A "no" holds only for the slice it was measured on.** Three of those four runs cut the
+  slice 1 to 20 s after the fault had ended, read "nothing here", and rejected a fault that
+  was in the trace. A rejection needs slices spread over the trace, unless the window was
+  clear. Our tool-only sweeps never met this, because they took the time from the label.
+
+### How the agent harness applies this (`Blueprint/agent/bp_graph.py`)
+
+A blueprint is also a structured file, `blueprint.yaml`, and `BLUEPRINT.md` is generated
+from it (`bp_render.py`), so the text and the steps the agent runs have one source.
+`bp_check.py` checks a file: step links, scripts, that every verdict line in the file is
+printed by a tool, and that every number in the text is in the README, the results file or
+a tool.
+
+The harness gives the agent one step at a time, with the step's guidance and a short case
+file. It does not paste the blueprint into the prompt. The split:
+
+| The harness (code) | The agent (model) |
+|---|---|
+| one step at a time; only that step's tool output is in context | which commands, arguments and slices |
+| reads the tool's verdict lines by text match and copies the chosen one into the evidence | which outcome fits; `other` when none does |
+| asks for a reason when the outcome goes against the verdict lines | may go against them, with a reason |
+| sends a rejection that rests on one slice back once | whether the time was certain or more slices are needed |
+| the verdict is a rule over the outcomes reached | may dispute the verdict in the report, with a reason |
+| logs every leave from the guidance | may jump, skip a step or stop early |
+
 ## 4. Where the existing blueprints stand (scan of 20-11-2026)
 
 | Blueprints | State |

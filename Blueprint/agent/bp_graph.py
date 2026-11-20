@@ -57,6 +57,10 @@ RULES
   folder that keeps your slices for the whole investigation.
 - Decide from numbers in tool output, by comparing with a normal slice of the same trace.
   Never state something a tool output did not show.
+- The rate table of idx_summary.py is the volume of trace data per interval. It is a hint for
+  where to look, nothing more, and many faults do not change it. When it shows no clear
+  window, do not stop: take a baseline time early in the trace and a fault time later, or
+  run the step's check on slices at several times. The check decides, not the table.
 - Closing a step moves the investigation on; it does not end it. A check that belongs to a
   later step is done in that step, not here.
 - Close every step with finish_step. Evidence lines must be copied word for word from tool
@@ -76,6 +80,7 @@ class S(TypedDict, total=False):
     used: list         # scripts run in the current step
     nudges: int
     rejects: int
+    challenged: bool   # a rejecting outcome from one slice was sent back once in this step
     visits: int
     conclusion: str    # set when a stop outcome ends the investigation
     handoff: str       # folder of the blueprint this one hands the case to
@@ -220,7 +225,7 @@ class Investigation:
         sys_msg = SYSTEM.format(confirms=self.spec["confirms"], background=self.spec["background"],
                                 lookalikes=self.spec["lookalikes"],
                                 step_map=" -> ".join(self.steps) + " -> report")
-        return {"go": "think", "turns": 0, "nudges": 0, "rejects": 0, "used": [], "visits": s["visits"] + 1,
+        return {"go": "think", "turns": 0, "nudges": 0, "rejects": 0, "challenged": False, "used": [], "visits": s["visits"] + 1,
                 "msgs": [{"role": "system", "content": sys_msg},
                          {"role": "user", "content": self.brief(step, s)}]}
 
@@ -332,14 +337,19 @@ class Investigation:
             problems.append("give a reason when you use `other` or next_step")
         if outcome == "other" and not jump:
             problems.append("with `other`, name next_step (a step id, or report)")
-        told = told_line = None          # the outcome the decisive tool's verdict line stands for
+        # The outcomes the tool's verdict lines stand for. A tool may print several verdict lines
+        # (one per server, say), so this is a set and the agent chooses among them. Within one
+        # output line the longest matching text wins (a "not judged" note inside a verdict line).
+        said = {}
         for line in "\n".join(self.step_out).splitlines():
-            for name, oo in st["outcomes"].items():
-                if oo.get("line") and oo["line"] in line:
-                    told, told_line = name, line.strip()
+            hits = [(len(oo["line"]), name) for name, oo in st["outcomes"].items() if oo.get("line") and oo["line"] in line]
+            if hits:
+                said[max(hits)[1]] = line.strip()
+        told = outcome if outcome in said else (", ".join(said) or None)
+        told_line = said.get(outcome)
         reasoned = bool((fin.get("reason") or "").strip())
         if told and outcome != told and not reasoned:
-            problems.append("the tool's verdict line stands for outcome `%s`. To choose another outcome, "
+            problems.append("the tool's verdict lines stand for: %s. To choose another outcome, "
                             "give your reason" % told)
         if o and o.get("line") and not told and not reasoned:
             problems.append("outcome `%s` rests on the verdict line of the step's decisive tool, and no such "
@@ -351,6 +361,20 @@ class Investigation:
         if problems and s["rejects"] < 2:
             msgs.append({"role": "tool", "tool_call_id": fid, "content": "NOT ACCEPTED: " + "; ".join(problems)})
             return {**upd, "go": "think", "rejects": s["rejects"] + 1}
+        # A "no" holds only for the slices it was measured on. A rejection that rests on at most
+        # one measured slice is sent back once; the agent decides whether the time was certain.
+        nlines = sum(1 for line in "\n".join(self.step_out).splitlines()
+                     if any(oo.get("line") and oo["line"] in line for oo in st["outcomes"].values()))
+        if o and "stop" in o and o.get("verdict", "rejected") == "rejected" and not jump \
+                and nlines <= 1 and not s.get("challenged"):
+            msgs.append({"role": "tool", "tool_call_id": fid, "content":
+                         "CHECK BEFORE REJECTING: this outcome rejects the root cause, and it rests on one measured "
+                         "slice. A fault often covers only a part of a trace, and a slice a few seconds outside it "
+                         "reads as healthy. If the rate table gave a clear window and your slice lies inside it, "
+                         "send finish_step again. If the time was a guess, first run this step's check on slices at "
+                         "other times spread over the trace (for example near one quarter, one half and three "
+                         "quarters of its length), then close the step."})
+            return {**upd, "go": "think", "challenged": True, "turns": 0}
         if o is None and not jump:                       # still invalid after two tries
             return forced("invalid_finish", "; ".join(problems))
 
@@ -378,7 +402,8 @@ class Investigation:
         nxt = jump or o.get("next") or "report"
         entry = {"step": step, "kind": "guided", "outcome": outcome, "summary": fin.get("summary", ""),
                  "reason": fin.get("reason", ""), "evidence": evidence, "turns": s["turns"],
-                 "tools": used, "deviation": dev, "next": nxt, "tool_verdict": told_line}
+                 "tools": used, "deviation": dev, "next": nxt, "tool_verdict": list(said.values()),
+                 "verdict_lines_seen": nlines}
         self.log("   -> %s%s  next: %s" % (outcome, ("  [left the guidance: %s | %s]" % (", ".join(dev), fin.get("reason", "")) if dev else ""), nxt))
         out = {"go": "enter" if nxt != "report" else "report", "step": nxt, "facts": facts,
                "ledger": s["ledger"] + [entry], "used": []}
@@ -395,9 +420,9 @@ class Investigation:
     def report(self, s: S):
         self.log("== report")
         submit = {"name": "submit", "description": "The final RCA statement.",
-                  "parameters": {"type": "object", "required": ["agree", "statement", "confidence"], "properties": {
-                      "agree": {"type": "boolean", "description": "false only if you think the verdict in the case file is wrong for this trace"},
-                      "disagreement": {"type": "string", "description": "with agree=false: what in the case file speaks against the verdict"},
+                  "parameters": {"type": "object", "required": ["verdict_is_wrong", "statement", "confidence"], "properties": {
+                      "verdict_is_wrong": {"type": "boolean", "description": "Normally false. True only if the case file shows that the VERDICT line at its end is a mistake for this trace. Repeating or explaining the verdict is NOT a reason for true"},
+                      "disagreement": {"type": "string", "description": "only with verdict_is_wrong=true: what in the case file speaks against the verdict"},
                       "root_cause_process": {"type": "string", "description": "program name, pid, and container (pid_ns) if known"},
                       "window": {"type": "string", "description": "start and end of the fault, UTC, as far as the trace shows"},
                       "statement": {"type": "string"},
@@ -428,7 +453,8 @@ class Investigation:
             final = json.loads(r["tool_calls"][0]["args"]) if isinstance(r["tool_calls"][0]["args"], str) \
                 else r["tool_calls"][0]["args"]
         except (IndexError, json.JSONDecodeError):
-            final = {"agree": True, "statement": r["content"], "confidence": "low", "parse_error": True}
+            final = {"statement": r["content"], "confidence": "low", "parse_error": True}
+        final["agree"] = not final.pop("verdict_is_wrong", False)
         return {"final": {"verdict": verdict, **final}, "verdict": verdict}
 
     def result(self, s, wall):
@@ -468,7 +494,7 @@ def selftest():
 
         def llm(msgs, tools, force=None):
             if force:
-                return {"content": "", "in": 1, "out": 1, "tool_calls": [{"id": "s", "name": "submit", "args": json.dumps({"agree": True, "statement": "ok", "confidence": "high"})}]}
+                return {"content": "", "in": 1, "out": 1, "tool_calls": [{"id": "s", "name": "submit", "args": json.dumps({"verdict_is_wrong": False, "statement": "ok", "confidence": "high"})}]}
             n[0] += 1
             step = msgs[1]["content"].split()[1]
             return plan[step].pop(0)(n[0])
@@ -501,7 +527,8 @@ def selftest():
         "find_victim": [lambda i: run(i, "wake_graph.py"),
                         lambda i: fin(i, outcome="other", summary="s"),                                         # rejected: no reason, no next_step
                         lambda i: fin(i, outcome="other", summary="s", next_step="rule_out", reason="one pid is clear already", facts={"victim_pid": 7})],
-        "rule_out": [lambda i: fin(i, outcome="neighbor", summary="s", next_step="report", reason="r")],   # not a jump
+        "rule_out": [lambda i: fin(i, outcome="neighbor", summary="s", next_step="report", reason="r"),   # not a jump; sent back once
+                     lambda i: fin(i, outcome="neighbor", summary="s")],
     }
     r = Investigation(spec, FakeRunner(), scripted(plan), log=lambda *_: None).run()
     a = r["adherence"]
@@ -509,7 +536,21 @@ def selftest():
     assert ("find_victim", "outcome_other") in a["deviations"] and ("find_victim", "jump:rule_out") in a["deviations"]
     assert ("find_victim", "other_tools:wake_graph.py") in a["deviations"]
     assert a["steps_not_visited"] == ["compare_budget", "ceiling", "identify"]
-    assert r["conclusion"].startswith("A noisy neighbor") and r["verdict"] == "rejected"
+    assert r["conclusion"].startswith("A noisy neighbor") and r["verdict"] == "rejected" and r["final"]["agree"] is True
+    assert r["stats"]["model_calls"] == 1 + 3 + 2 + 1, r["stats"]      # find_window 1, find_victim 3, rule_out 2 (one sent back), report 1
+
+    # 2b. a tool output that matches two outcomes: either is accepted without a reason
+    spec2 = yaml.safe_load(yaml.safe_dump(spec))
+    oc = spec2["steps"]["find_window"]["outcomes"]
+    oc["window_found"]["line"], oc["no_clear_change"]["line"] = "said: pid 42", "ZZZ never printed"
+    oc["extra"] = {"when": "w", "next": "find_victim", "line": "sched_budget.py said: pid 42 waits"}   # longer text, same line
+    plan = {"find_window": [lambda i: run(i, "sched_budget.py"),
+                            lambda i: fin(i, outcome="window_found", summary="s", facts={"window_start": "a", "window_end": "b"}),   # shorter match lost: rejected
+                            lambda i: fin(i, outcome="extra", summary="s", facts={"window_start": "a", "window_end": "b"})],
+            "find_victim": [lambda i: fin(i, outcome="no_starvation", summary="s")] * 2}
+    r = Investigation(spec2, FakeRunner(), scripted(plan), log=lambda *_: None).run()
+    e = r["ledger"][1]
+    assert e["outcome"] == "extra" and e["deviation"] == ["other_tools:sched_budget.py"] and e["turns"] == 3 and e["evidence"][0]["by"] == "harness", e
 
     # 3. a model that never closes the step is stopped by the harness
     plan = {"find_window": [lambda i: run(i, "idx_summary.py")] * 10}

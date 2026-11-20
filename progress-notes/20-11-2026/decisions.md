@@ -134,3 +134,58 @@ tool's verdict line. On the labelled leak run it lost four calls on wrong argume
 
 Still one run per case. Not yet seen: an agent that goes against a verdict line, a
 hand-off, a trace where the suggested slice time is wrong.
+
+## 5. Blueprints 12 to 23 in the new form (11 more; 14 of 25 now)
+
+Converted 12, 13, 14, 16, 17, 18, 19, 20, 21, 22, 23 with three helper agents, under a
+checker written first (`Blueprint/agent/bp_check.py`): step links, scripts exist, every
+`line:` is really printed by a tool, every number in the text is in the README, the results
+file or a tool. All 13 files of 12 to 24 pass with no warnings. `BLUEPRINT.md` is generated
+for each.
+
+Changes I made to the helpers' files: blueprint 14's last step no longer rejects a deadlock
+because of a contention verdict about another process (the README is silent on that case;
+now "unconfirmed", and only for the same process); blueprint 17's optional host check can
+no longer reject.
+
+Stale or missing things in the old READMEs that the conversion exposed (not fixed in the
+READMEs): 12 lists a message the tool no longer prints, its status says four runs are
+unchecked although RESULTS.md has 10 of 10, and it cuts 90 s but passes 60 to the tool;
+16, 19, 20 give no rule for the slice time.
+
+Agent runs, one labelled Sock Shop run each (gpt-6-luna, tools on the Trillium login node):
+
+| blueprint | first try | after the fix below |
+|---|---|---|
+| 12, 14, 17, 18, 19, 20, 21 | confirmed, right process | |
+| 13 `fork_storm` | rejected: slice 1 s after the fault ended | confirmed |
+| 16 `anomaly_disk` | rejected: slice 20 s after the fault ended | confirmed |
+| 22 `error_storm` | rejected: slice 14 s after the fault ended | confirmed |
+| 23 `code_n_plus_one` | rejected: fault and baseline slices both inside the fault | rejected again |
+
+Cost: 6 to 17 model calls, 13k to 60k tokens in per run.
+
+**Finding: choosing the time is the weak step, not reading the tool.** In every run the
+agent's outcome agreed with the tool's verdict line. The four failures came from the slice
+time. For these faults the rate table shows no window, the agent guessed a late time, and
+one "no" was taken as a rejection. The tool-only sweeps could not show this: they took the
+time from the label.
+
+Decisions:
+
+1. General rule in the agent's instructions: the rate table is a hint; with no clear window
+   take several times; the check decides.
+2. The harness sends a rejecting outcome that rests on at most one measured slice back
+   once. The agent then either confirms that the window was clear or cuts slices spread
+   over the trace. Why a challenge and not a forced scan: on a trace with a clear window a
+   scan is waste, and whether the window was clear is a judgment.
+3. The harness takes all verdict lines of a step as a set (a tool can print one per server
+   or per process); the agent chooses among them. Inside one line the longest match wins.
+4. Both rules are in METHOD.md, section 3, as rules of use for every blueprint.
+
+Open: blueprint 23 needs a rule for a baseline outside the fault at steady load. In this
+run the only such stretch is after 03:17:00, and nothing tells the agent that. It stays
+the weak blueprint.
+
+Not done: 1 to 11 (older template, some tools without a verdict line), a rerun of the seven
+that passed under the final harness, any run on Train Ticket, any second model.
