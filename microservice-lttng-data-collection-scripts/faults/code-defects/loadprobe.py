@@ -15,7 +15,12 @@ tuned or dropped, so the measurement has to be trustworthy before its verdict me
 
 One process, real threads, keep-alive connections, and only summary numbers on stdout.
 
-    python3 loadprobe.py <url> [requests] [concurrency]
+    python3 loadprobe.py <url> [requests] [concurrency] [interval_ms]
+
+interval_ms (default 0 = as fast as possible): each thread starts a request at most once per
+interval, so the load is a steady rate (concurrency / interval) and not "as much as the
+service can take". An unpaced probe as a background load stressed the whole machine in the
+baseline and was itself slowed by the fault, so the fault made the host LESS busy.
 """
 from __future__ import annotations
 import http.client
@@ -29,6 +34,7 @@ import urllib.parse
 URL = sys.argv[1]
 N = int(sys.argv[2]) if len(sys.argv) > 2 else 400
 CONC = int(sys.argv[3]) if len(sys.argv) > 3 else 60
+INTERVAL = (float(sys.argv[4]) / 1000.0) if len(sys.argv) > 4 else 0.0
 
 lat: list[float] = []
 errors = [0]
@@ -64,6 +70,8 @@ def worker():
                 break
             idx[0] += 1
         t0 = time.perf_counter()
+        if INTERVAL:
+            nxt = t0 + INTERVAL
         try:
             conn.request("GET", _PATH)
             conn.getresponse().read()
@@ -78,6 +86,10 @@ def worker():
                 conn = http.client.HTTPConnection(_HOST, _PORT, timeout=20)
             except Exception:                                          # noqa: BLE001
                 return
+        if INTERVAL:
+            rest = nxt - time.perf_counter()
+            if rest > 0:
+                time.sleep(rest)
     conn.close()
 
 
