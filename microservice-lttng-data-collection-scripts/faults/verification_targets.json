@@ -432,5 +432,17 @@
    "canonical": false,
    "note": "Recorded, not decisive. The defect never frees, so memory is its only signal - but over a 120 s window the growth is small against a 40 GB host, which is why it cannot carry the verdict."
   }
+ ],
+ "code_lock_contended": [
+  {
+   "canonical": true,
+   "name": "catalogue_p95_latency",
+   "promql": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"catalogue\"}[1m])) by (le))",
+   "direction": "increase",
+   "threshold_sigma": 4,
+   "abs_threshold": 0.05,
+   "min_fraction": 0.7,
+   "note": "v3, 2026-11-24. Same defect as code_lock_across_io, collected with a second load directly on the catalogue so the lock is contended. PREDICTED, to be confirmed on the first runs: every list request queues behind one mutex, so catalogue p95 latency rises at injection and falls back at recovery."
+  }
  ]
 }

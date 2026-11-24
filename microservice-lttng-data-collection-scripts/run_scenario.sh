@@ -112,10 +112,6 @@ if [[ "$NORMAL" -eq 0 ]] && grep -q 'code_defect_dispatch' "$RECIPE_SH" 2>/dev/n
     sleep "${ARM_SETTLE_S:-20}"
 fi
 
-# 1) continuous tracing for the whole window (scenario dir = recipe name)
-( cd "$SD" && ./collect_trace.sh "$RECIPE" "$RUN" "$DURATION" ) &
-TRACE_PID=$!
-
 # ALWAYS undo, however this script ends.
 #
 # The load generator used to be killed only on the happy path, and the recipe's cleanup only ran
@@ -134,6 +130,10 @@ _run_cleanup() {
         kill "$LOAD_PID" 2>/dev/null || true
         wait "$LOAD_PID" 2>/dev/null || true
     fi
+    if [[ -n "${EXTRA_PID:-}" ]]; then
+        kill "$EXTRA_PID" 2>/dev/null || true
+        wait "$EXTRA_PID" 2>/dev/null || true
+    fi
     if [[ "$INJECTED" -eq 1 ]]; then
         echo "[$RUN] EXITING WITH $RECIPE STILL INJECTED - running its cleanup"
         bash "$RECIPE_SH" cleanup >/dev/null 2>&1 || true
@@ -142,11 +142,43 @@ _run_cleanup() {
 }
 trap _run_cleanup EXIT INT TERM
 
-# 2) continuous load for the whole window
-python3 "$LOAD_GEN" --host "$FRONTEND" --users "$USERS" \
-    --duration "$DURATION" --profile "$PROFILE" --think-min 0.1 --think-max 0.3 \
-    --output "$HOME/${RUN}_load.csv" > "$HOME/${RUN}_load.log" 2>&1 &
-LOAD_PID=$!
+# LOAD_SETTLE_S (default 0 = the v2 order: tracing first, then load).
+#
+# v2 started the load generator and the baseline window together, so the first ~25 s of every
+# baseline was the load ramping up (CAMPAIGN-ISSUES 20; accepted for v2, to be fixed in a
+# later collection). With LOAD_SETTLE_S > 0 the load starts FIRST, runs that long, and only
+# then does tracing open, so the baseline window is at steady load. Runs collected this way
+# are not comparable window-for-window with the v2 runs; the value is recorded in the bundle.
+#
+# EXTRA_LOAD_CMD (default empty): a second load command that runs for the whole run, started
+# with the main load and killed with it. Used where the fault needs traffic the front-end
+# cannot deliver (the Node front-end saturates one core long before the Go services do).
+LOAD_SETTLE_S="${LOAD_SETTLE_S:-0}"
+EXTRA_PID=""
+_start_load() {
+    python3 "$LOAD_GEN" --host "$FRONTEND" --users "$USERS"         --duration "$((DURATION + LOAD_SETTLE_S))" --profile "$PROFILE" --think-min 0.1 --think-max 0.3         --output "$HOME/${RUN}_load.csv" > "$HOME/${RUN}_load.log" 2>&1 &
+    LOAD_PID=$!
+    if [[ -n "${EXTRA_LOAD_CMD:-}" ]]; then
+        bash -c "exec $EXTRA_LOAD_CMD" > "$HOME/${RUN}_extra_load.log" 2>&1 &
+        EXTRA_PID=$!
+        echo "[$RUN] extra load: $EXTRA_LOAD_CMD"
+    fi
+}
+
+if [[ "$LOAD_SETTLE_S" -gt 0 ]]; then
+    # load first, settle, then 1) continuous tracing for the whole window
+    _start_load
+    echo "[$RUN] load settling for ${LOAD_SETTLE_S}s before tracing opens"
+    sleep "$LOAD_SETTLE_S"
+    ( cd "$SD" && ./collect_trace.sh "$RECIPE" "$RUN" "$DURATION" ) &
+    TRACE_PID=$!
+else
+    # 1) continuous tracing for the whole window (scenario dir = recipe name)
+    ( cd "$SD" && ./collect_trace.sh "$RECIPE" "$RUN" "$DURATION" ) &
+    TRACE_PID=$!
+    # 2) continuous load for the whole window
+    _start_load
+fi
 
 # 3) baseline -> inject -> hold -> cleanup -> recovery (the recipe stamps the
 #    exact injection window into ground_truth.json via gt_begin/gt_end).
@@ -175,9 +207,21 @@ fi
 kill "$LOAD_PID" 2>/dev/null || true
 wait "$LOAD_PID" 2>/dev/null || true
 LOAD_PID=""
+if [[ -n "$EXTRA_PID" ]]; then
+    kill "$EXTRA_PID" 2>/dev/null || true
+    wait "$EXTRA_PID" 2>/dev/null || true
+    EXTRA_PID=""
+fi
 
 # 4) metrics for the exact run window (clock-anchored runinfo)
 RUN_DIR="$HOME/traces/$RECIPE/$RUN"
+# how the load was driven, kept inside the bundle (not in v2 bundles)
+printf 'users=%s
+profile=%s
+load_settle_s=%s
+extra_load_cmd=%s
+'     "$USERS" "$PROFILE" "$LOAD_SETTLE_S" "${EXTRA_LOAD_CMD:-}" > "$RUN_DIR/meta/load_setup.txt" 2>/dev/null || true
+[[ -f "$HOME/${RUN}_extra_load.log" ]] && cp "$HOME/${RUN}_extra_load.log" "$RUN_DIR/meta/extra_load.log" 2>/dev/null || true
 S=$(grep timestamp_utc "$RUN_DIR/meta/runinfo_start.txt" 2>/dev/null | cut -d= -f2)
 E=$(grep timestamp_utc "$RUN_DIR/meta/runinfo_end.txt" 2>/dev/null | cut -d= -f2)
 PROMETHEUS="$PROM" STEP=5s "$SD/download_metrics_full.sh" "$S" "$E" "$HOME/${RUN}_metrics" || true
