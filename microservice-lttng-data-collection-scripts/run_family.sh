@@ -107,6 +107,14 @@ for r in $(seq 1 "$REPEATS"); do
     for d in "$RUN_DIR" "$ARCHIVED"; do
         [[ -f "$d/run_quality.json" ]] || continue
         python3 -c "import json,sys; sys.exit(0 if json.load(open('$d/run_quality.json')).get('usable') else 1)"             || bad="run_quality.json says NOT USABLE"
+        # disk_full has no metric signature (measured), so the proof that the fault happened
+        # is the database's own log inside the bundle.
+        if [[ "$RECIPE" == "disk_full" ]]; then
+            nospace=$(cat "$d"/logs/*carts-db*.log 2>/dev/null | grep -c 'No space left on device')
+            aborts=$(cat "$d"/logs/*carts-db*.log 2>/dev/null | grep -c 'aborting after')
+            echo "[$r/$REPEATS] database log: $nospace lines 'No space left on device', $aborts aborts"
+            [[ "$nospace" -gt 0 && "$aborts" -gt 0 ]] || bad="${bad:+$bad; }the database log shows no out-of-space abort"
+        fi
         if [[ -n "${EXTRA_LOAD_CMD:-}" ]]; then
             n=$(grep -o 'n=[0-9]*' "$d/meta/extra_load.log" 2>/dev/null | tail -1 | cut -d= -f2)
             [[ "${n:-0}" -gt 0 ]] || bad="${bad:+$bad; }the extra load reported no completed requests"

@@ -456,5 +456,18 @@
    "min_fraction": 0.5,
    "why": "v3, 2026-11-24. All threads of the service share one core and wait for each other. Calibrated on the VM under the 150-user load: carts p95 23.8 ms with all 12 cores, 153.7 ms on one core, 23.8 ms after the restore (two cores: 39.8 ms, below this threshold - the subtle setting is expected to read borderline)."
   }
+ ],
+ "disk_full_carts-db": [
+  {
+   "canonical": true,
+   "name": "carts_p95_latency_flat_expected",
+   "promql": "histogram_quantile(0.95, sum(rate(request_duration_seconds_bucket{job=\"cart\"}[1m])) by (le))",
+   "direction": "increase",
+   "threshold_sigma": 3,
+   "abs_threshold": 0.05,
+   "min_fraction": 0.5,
+   "expected_to_fail": true,
+   "note": "v3, MEASURED 2026-11-24 in calibration: no metric sees this fault. With its volume full the database (MongoDB 3.4) keeps serving, aborts about once a minute (Invariant failure ... No space left on device, signal 6) and is restarted by docker in about 2 s. Over a 1-minute rate window carts p95 stays at 22-23 ms (20-second windows show 1.1 s spikes at each crash); carts 5xx has no series; the database's memory, threads, write rate and CPU do not move; container_start_time does not change on a restart; node-exporter does not see the loop-mounted volume. Marked expected_to_fail so the run reads no_metric_signature. THE CHECK THAT THE FAULT HAPPENED IS IN run_family.sh: the database's own log in the bundle must contain 'No space left on device' and at least one abort inside the injection window."
+  }
  ]
 }
