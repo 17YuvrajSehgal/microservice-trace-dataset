@@ -23,7 +23,7 @@ status: >-
   jitter) was injected for two minutes into the path between one service and its SQL
   database. There is no sweep on all labelled runs and no `RESULTS.md`, so this blueprint
   has no found and no false-alarm counts. Its tools print tables and no `VERDICT:` line.
-  Agent: not run in the new form yet.
+  Agent (23-11-2026, graph harness, gpt-6-luna): one labelled `slow_db` run. The agent found the right window, the 500 ms gaps, the proxy and the database, but the verdict is inconclusive: two steps had no outcome that fits a Go victim (it sleeps in locks, and its connections change between slices).
 
 background: |
   A service asks a dependency for something over a network connection: it writes a

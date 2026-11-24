@@ -10,7 +10,7 @@
 
 **When to use this.** A service is slow and its callers are slow too: the slowness spreads up the chain (load generator, gateway, front-end, service). The victim does not wait for the CPU, and it does not wait for its own disk. `sched_budget.py`'s wait table stays near zero for it. The trace often writes less data per second during the fault.
 
-**Status.** The worked numbers come from ONE solved case (Appendix B of `README_v1.md`): a multi-CPU host running a web application, where a delay of several hundred milliseconds (with jitter) was injected for two minutes into the path between one service and its SQL database. There is no sweep on all labelled runs and no `RESULTS.md`, so this blueprint has no found and no false-alarm counts. Its tools print tables and no `VERDICT:` line. Agent: not run in the new form yet.
+**Status.** The worked numbers come from ONE solved case (Appendix B of `README_v1.md`): a multi-CPU host running a web application, where a delay of several hundred milliseconds (with jitter) was injected for two minutes into the path between one service and its SQL database. There is no sweep on all labelled runs and no `RESULTS.md`, so this blueprint has no found and no false-alarm counts. Its tools print tables and no `VERDICT:` line. Agent (23-11-2026, graph harness, gpt-6-luna): one labelled `slow_db` run. The agent found the right window, the 500 ms gaps, the proxy and the database, but the verdict is inconclusive: two steps had no outcome that fits a Go victim (it sleeps in locks, and its connections change between slices).
 
 ## Part 1. Background
 

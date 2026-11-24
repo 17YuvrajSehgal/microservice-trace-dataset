@@ -26,7 +26,7 @@ status: >-
   before the change; read them as "near zero when healthy, clearly above when degraded".
   The README does not use the family names: it says "degraded path of one service" and
   "host-wide network problem". The scheduler step and the lookalike checks were written on
-  one solved case. Agent: not run in the new form yet.
+  one solved case. Agent (23-11-2026, graph harness, gpt-6-luna): one `svc_net` run and one `anomaly_net` run, both confirmed.
 
 background: |
   One service's network path goes bad. The machine's network is fine, the other services
