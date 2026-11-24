@@ -35,6 +35,7 @@ from langgraph.graph import END, START, StateGraph
 OUT_CAP = 8000        # characters of one tool output the model sees
 MAX_VISITS = 16       # step visits in one run; stops a back-and-forth between two steps
 GRACE = 2             # extra turns after a step's budget before the harness closes it
+SCAN_MAX, SCAN_EDGE = 12, 5   # one scan: most slices, seconds kept clear of both trace ends
 
 SYSTEM = """You investigate a Linux kernel trace (LTTng) to confirm or reject ONE root cause:
 {confirms}
@@ -58,9 +59,13 @@ RULES
 - Decide from numbers in tool output, by comparing with a normal slice of the same trace.
   Never state something a tool output did not show.
 - The rate table of idx_summary.py is the volume of trace data per interval. It is a hint for
-  where to look, nothing more, and many faults do not change it. When it shows no clear
-  window, do not stop: take a baseline time early in the trace and a fault time later, or
-  run the step's check on slices at several times. The check decides, not the table.
+  where to look, nothing more. Many faults do not change it, and a step in it can be the
+  END of a fault (the load coming back), not its start. The check decides, not the table.
+- scan_times finds WHEN. It cuts short slices spread over the whole trace, runs one check
+  on each, and returns the check's verdict per time. Use it whenever the time is not
+  certain: before you choose the slice times of a step whose check has a verdict line, and
+  always before you reject. Then work on the times it shows; the slices it cut stay in
+  $WORK under the names it prints.
 - Closing a step moves the investigation on; it does not end it. A check that belongs to a
   later step is done in that step, not here.
 - Close every step with finish_step. Evidence lines must be copied word for word from tool
@@ -78,6 +83,7 @@ class S(TypedDict, total=False):
     msgs: list         # messages of the current step only
     turns: int         # model turns in the current step
     used: list         # scripts run in the current step
+    scanned: bool      # scan_times was used in the current step
     nudges: int
     rejects: int
     challenged: bool   # a rejecting outcome from one slice was sent back once in this step
@@ -131,6 +137,7 @@ class Investigation:
         self.hide = [h for h in hide if h]       # strings the model must not see (run name, paths)
         self.outputs = []                        # every tool output, for the evidence check
         self.step_out = []                       # tool output of the current step, for its verdict line
+        self.scan_failed = False
         self.vars = spec.get("vars") or {}       # named event lists ($MEMSYS), expanded in tool arguments
         self.stats = {"model_calls": 0, "tool_calls": 0, "tokens_in": 0, "tokens_out": 0}
         self.events = []
@@ -175,6 +182,72 @@ class Investigation:
                 + out[-OUT_CAP // 4:]
         return out or "(no output)"
 
+    def scan(self, a, step, facts):
+        """One check on slices spread over the trace: finds the time by the fault's own signal."""
+        import datetime as dt
+        try:
+            t0 = dt.datetime.strptime("%s %s" % (facts["day"], facts["trace_start"]), "%Y-%m-%d %H:%M:%S")
+            dur, secs = float(facts["duration_s"]), int(a.get("seconds", 10))
+            n = int(a.get("n") or 0)
+        except (KeyError, ValueError, TypeError) as e:
+            return "ERROR: scan_times needs the facts day, trace_start, duration_s and whole numbers (%r)" % e
+        span = dur - 2 * SCAN_EDGE - secs
+        if span <= 0 or not 1 <= secs <= 60:
+            return "ERROR: seconds must be 1 to 60 and shorter than the trace"
+        # default: slices end to end over the whole trace, as far as SCAN_MAX allows
+        n = max(2, min(n or -(-int(dur - 2 * SCAN_EDGE) // secs), SCAN_MAX))
+        cut = a.get("slice_script") or "extract_slice.sh"
+        ev = [a["events"]] if a.get("events") else []
+
+        def at(x):          # "HH:MM:SS" or seconds from the trace start -> datetime
+            return t0 + dt.timedelta(seconds=float(x)) if not isinstance(x, str) or ":" not in x \
+                else dt.datetime.strptime("%s %s" % (facts["day"], x), "%Y-%m-%d %H:%M:%S")
+        times = [t0 + dt.timedelta(seconds=SCAN_EDGE + span * i / (n - 1)) for i in range(n)]
+        name = lambda t: "$WORK/scan_%s_%d.txt" % (t.strftime("%H%M%S"), secs)
+        wants_base = any("{base}" in str(x) for x in a.get("check_args", []))
+        # Baselines the agent does not choose: the first and the last slice of the trace. A fault
+        # in the middle is then seen against at least one healthy slice. The agent's own is added.
+        bases = ([times[0], times[-1]] + ([at(a["baseline_time"])] if a.get("baseline_time") else [])) if wants_base else [None]
+        need = times + [b for b in bases if b is not None and b not in times]
+        with ThreadPoolExecutor(3) as ex:
+            list(ex.map(lambda t: self.tool(cut, ["$TRACE", t.strftime("%Y-%m-%d"), t.strftime("%H:%M:%S"),
+                                                   str(secs), name(t)] + ev), need))
+        marks = [o["line"] for o in self.steps[step]["outcomes"].values() if o.get("line")]
+
+        def check(tb):
+            t, b = tb
+            args = [str(x).replace("{slice}", name(t)).replace("{base}", name(b) if b else "") for x in a.get("check_args", [])]
+            out = self.tool(a.get("check_script", ""), args)
+            keep = [l.strip() for l in out.splitlines() if any(m in l for m in marks) or "VERDICT" in l or "ERROR" in l]
+            return keep or [l.strip() for l in out.splitlines() if l.strip()][-1:]
+        jobs = [(t, b) for t in times for b in bases if t != b]
+        with ThreadPoolExecutor(3) as ex:
+            res = dict(zip(jobs, ex.map(check, jobs)))
+        if all(any("Error" in l or "ERROR" in l or l.startswith("usage") for l in r) for r in res.values()):
+            self.scan_failed = True
+            return ("THE CHECK FAILED ON EVERY SLICE, so nothing was scanned. The slices are cut and stay in $WORK. "
+                    "Send scan_times again with check_args in the exact order of the step's suggested command "
+                    "(only {slice} and {base} in place of the file names; add no flag the command does not have).\n"
+                    "What the check printed: " + " | ".join(next(iter(res.values()))[:2])[:600])
+        covered = min(100, round(100 * n * secs / dur))
+        rows = ["%d slices of %d s, check %s. They cover %d%% of the trace%s." % (
+            n, secs, a.get("check_script"), covered,
+            "" if covered >= 95 else "; a signal that comes in short bursts can fall in the %d s between two slices "
+            "(longer slices or more of them close the gaps)" % round(span / (n - 1) - secs))]
+        for t in times:
+            rows.append("%s  (%s)" % (t.strftime("%H:%M:%S"), name(t)))
+            per = [(b, res[(t, b)][:4]) for b in bases if t != b]
+            if len({tuple(l) for _, l in per}) == 1:            # the same against every baseline: print it once
+                rows += ["    " + l[:700] for l in per[0][1]]
+            else:
+                rows += ["    against the slice at %s: %s" % (b.strftime("%H:%M:%S"), l[:700]) for b, ls in per for l in ls]
+        rows.append("A time whose line differs from the others is where to look. The same line at every time means "
+                    "this check sees nothing in the slices it was given%s." % (
+                        ". A slice that is itself inside the fault is a bad baseline: trust the baseline against "
+                        "which the other times differ" if wants_base else ""))
+        self.outputs.append(chr(10).join(rows))        # so that lines quoted from the scan table verify
+        return chr(10).join(rows)
+
     def tool_defs(self, step):
         st = self.steps[step]
         scripts = sorted(f for f in os.listdir(self.runner.tools_dir) if f.endswith((".py", ".sh")))
@@ -186,6 +259,24 @@ class Investigation:
                  "script": {"type": "string", "enum": scripts},
                  "args": {"type": "array", "items": {"type": "string"}},
                  "why": {"type": "string", "description": "one line: what you expect to learn"}}}},
+            {"name": "scan_times",
+             "description": "Find WHEN something happens: cut slices spread evenly over the whole trace, run one "
+                            "check script on each, and get that script's verdict line per time. One call. "
+                            "The slices stay in $WORK and can be used afterwards.",
+             "parameters": {"type": "object", "required": ["check_script", "check_args", "seconds"], "properties": {
+                 "check_script": {"type": "string", "enum": [x for x in scripts if x.endswith(".py")],
+                                  "description": "the step's decisive tool"},
+                 "check_args": {"type": "array", "items": {"type": "string"},
+                                "description": "its arguments in the exact order of the step's suggested command, with {slice} in "
+                                               "place of the slice file and {base} in place of the baseline file. Example: the step "
+                                               "suggests `tool.py $WORK/f.txt 10 $WORK/b.txt`, so check_args is "
+                                               "[\"{slice}\", \"10\", \"{base}\"]. Add no flag the suggested command does not have"},
+                 "seconds": {"type": "integer", "description": "length of each slice (1 to 60). The step's own length, or longer so that the slices cover the whole trace: 12 slices of 20 s cover 4 minutes"},
+                 "events": {"type": "string", "description": "the event list the step's slice command uses ($NAME or a regex); leave out for scheduling events only"},
+                 "slice_script": {"type": "string", "enum": [x for x in scripts if x.endswith(".sh")],
+                                  "description": "the script that cuts the slice (default extract_slice.sh)"},
+                 "n": {"type": "integer", "description": "how many slices; leave out to cover the trace end to end (at most %d)" % SCAN_MAX},
+                 "baseline_time": {"type": "string", "description": "HH:MM:SS of one more baseline slice for {base}. The first and the last slice of the trace are always used as baselines"}}}},
             {"name": "finish_step",
              "description": "Close the current step. Call it alone, after you have read the tool results.",
              "parameters": {"type": "object", "required": ["outcome", "summary"], "properties": {
@@ -226,7 +317,7 @@ class Investigation:
         sys_msg = SYSTEM.format(confirms=self.spec["confirms"], background=self.spec["background"],
                                 lookalikes=self.spec["lookalikes"],
                                 step_map=" -> ".join(self.steps) + " -> report")
-        return {"go": "think", "turns": 0, "nudges": 0, "rejects": 0, "challenged": False, "used": [], "visits": s["visits"] + 1,
+        return {"go": "think", "turns": 0, "nudges": 0, "rejects": 0, "challenged": False, "scanned": False, "used": [], "visits": s["visits"] + 1,
                 "msgs": [{"role": "system", "content": sys_msg},
                          {"role": "user", "content": self.brief(step, s)}]}
 
@@ -293,19 +384,31 @@ class Investigation:
                 parsed.append((c, json.loads(c["function"]["arguments"] or "{}")))
             except json.JSONDecodeError:
                 parsed.append((c, None))
-        runs = [(c, a) for c, a in parsed if c["function"]["name"] == "run_tool" and a is not None]
+        runs = [(c, a) for c, a in parsed if c["function"]["name"] in ("run_tool", "scan_times") and a is not None]
+
+        def do(ca):
+            c, a = ca
+            if c["function"]["name"] == "scan_times":
+                self.scan_failed = False
+                return self.scan(a, step, s["facts"])
+            return self.tool(a.get("script", ""), a.get("args", []))
         with ThreadPoolExecutor(3) as ex:       # slices are 0.2-0.9 GB of text while they are cut
-            outs = dict(zip([c["id"] for c, _ in runs],
-                            ex.map(lambda ca: self.tool(ca[1].get("script", ""), ca[1].get("args", [])), runs)))
+            outs = dict(zip([c["id"] for c, _ in runs], ex.map(do, runs)))
         for c, a in runs:
-            self.log("   run_tool %s %s" % (a.get("script"), " ".join(map(str, a.get("args", [])))))
-        used = s.get("used", []) + [a.get("script") for _, a in runs]
+            if c["function"]["name"] == "scan_times":
+                self.log("   scan_times %s %s (%s s, n=%s)" % (a.get("check_script"), " ".join(map(str, a.get("check_args", []))), a.get("seconds"), a.get("n", "auto")))
+                self.log("\n".join("      " + l[:200] for l in outs[c["id"]].splitlines()))
+            else:
+                self.log("   run_tool %s %s" % (a.get("script"), " ".join(map(str, a.get("args", [])))))
+        scanned = s.get("scanned", False) or (any(c["function"]["name"] == "scan_times" for c, _ in runs)
+                                              and not self.scan_failed)
+        used = s.get("used", []) + [a.get("script") or a.get("check_script") for _, a in runs]
         fin = None
         for c, a in parsed:
             name = c["function"]["name"]
             if a is None:
                 content = "ERROR: the arguments were not valid JSON. Send the call again."
-            elif name == "run_tool":
+            elif name in ("run_tool", "scan_times"):
                 content = outs[c["id"]]
             elif name == "finish_step" and runs:
                 content = "ERROR: finish_step came with run_tool calls. Read the results first, then call finish_step alone."
@@ -315,7 +418,7 @@ class Investigation:
                 content = "ERROR: unknown tool %s" % name
             if content is not None:
                 msgs.append({"role": "tool", "tool_call_id": c["id"], "content": content})
-        upd = {"msgs": msgs, "used": used}
+        upd = {"msgs": msgs, "used": used, "scanned": scanned}
 
         if fin is None:
             if s["turns"] >= budget + GRACE:
@@ -368,21 +471,23 @@ class Investigation:
         nlines = sum(1 for line in "\n".join(self.step_out).splitlines()
                      if any(oo.get("line") and oo["line"] in line for oo in st["outcomes"].values()))
         if o and "stop" in o and o.get("verdict", "rejected") == "rejected" and not jump \
-                and nlines <= 1 and not s.get("challenged"):
+                and nlines <= 1 and not scanned and not s.get("challenged"):
             msgs.append({"role": "tool", "tool_call_id": fid, "content":
                          "CHECK BEFORE REJECTING: this outcome rejects the root cause, and it rests on one measured "
                          "slice. A fault often covers only a part of a trace, and a slice a few seconds outside it "
                          "reads as healthy. If the rate table gave a clear window and your slice lies inside it, "
-                         "send finish_step again. If the time was a guess, first run this step's check on slices at "
-                         "other times spread over the trace (for example near one quarter, one half and three "
-                         "quarters of its length), then close the step."})
+                         "send finish_step again. If the time was a guess, first use scan_times with this step's check, "
+                         "then close the step with what it shows."})
             return {**upd, "go": "think", "challenged": True, "turns": 0}
         if o is None and not jump:                       # still invalid after two tries
             return forced("invalid_finish", "; ".join(problems))
 
         seen = _norm("\n".join(self.outputs))
         evidence = [{"text": e, "verified": _norm(e) in seen} for e in (fin.get("evidence") or [])]
-        if told == outcome and _norm(told_line) not in [_norm(e["text"]) for e in evidence]:
+        mark = (o or {}).get("line")
+        # copy the verdict line in by code, unless the agent already quoted one for this outcome: a
+        # scan prints one per time and per process, and the agent's choice among them is the finding
+        if told == outcome and not any(e["verified"] and mark and mark in e["text"] for e in evidence):
             evidence.insert(0, {"text": told_line, "verified": True, "by": "harness"})   # copied by code
         suggested = {c.split()[0] for c in st.get("suggested", [])}
         dev = []
@@ -405,7 +510,7 @@ class Investigation:
         entry = {"step": step, "kind": "guided", "outcome": outcome, "summary": fin.get("summary", ""),
                  "reason": fin.get("reason", ""), "evidence": evidence, "turns": s["turns"],
                  "tools": used, "deviation": dev, "next": nxt, "tool_verdict": list(said.values()),
-                 "verdict_lines_seen": nlines}
+                 "verdict_lines_seen": nlines, "scanned": scanned}
         self.log("   -> %s%s  next: %s" % (outcome, ("  [left the guidance: %s | %s]" % (", ".join(dev), fin.get("reason", "")) if dev else ""), nxt))
         out = {"go": "enter" if nxt != "report" else "report", "step": nxt, "facts": facts,
                "ledger": s["ledger"] + [entry], "used": []}
@@ -557,6 +662,40 @@ def selftest():
     r = Investigation(spec2, FakeRunner(), scripted(plan), log=lambda *_: None).run()
     e = r["ledger"][1]
     assert e["outcome"] == "extra" and e["deviation"] == ["other_tools:sched_budget.py"] and e["turns"] == 3 and e["evidence"][0]["by"] == "harness", e
+
+    # 2c. scan_times: 4 slices over the 240 s fake trace, one verdict line per time, baseline = first time
+    def scan_call(i):
+        return {"content": "", "in": 1, "out": 1, "tool_calls": [{"id": "c%d" % i, "name": "scan_times", "args": json.dumps(
+            {"check_script": "sched_budget.py", "check_args": ["{slice}", "10", "--baseline", "{base}"], "seconds": 10, "n": 4})}]}
+    seen = []
+
+    class ScanRunner(FakeRunner):
+        def run(self, script, args):
+            seen.append((script, list(args)))
+            if script == "idx_summary.py":
+                return {"exit": 0, "stdout": "date (UTC)    : 2026-01-02\ntrace start   : 23:58:00.1\ntrace end     : 00:02:00.2\nduration      : 240.0 s\n"}
+            return {"exit": 0, "stdout": "table\nVERDICT: X for %s\n" % args[0]}
+    spec3 = yaml.safe_load(yaml.safe_dump(spec))
+    spec3["steps"]["check_trace"]["extract"]["duration_s"] = r"^duration\s*:\s*([\d.]+)"
+    plan = {"find_window": [scan_call, lambda i: fin(i, outcome="no_clear_change", summary="s", facts={"window_start": "a", "window_end": "b"})],
+            "find_victim": [lambda i: fin(i, outcome="no_starvation", summary="s")] * 2}
+    r = Investigation(spec3, ScanRunner(), scripted(plan), log=lambda *_: None).run()
+    cuts = sorted((a[1], a[2]) for sc, a in seen if sc == "extract_slice.sh")      # threads: order not fixed
+    assert cuts == [("2026-01-02", "23:58:05"), ("2026-01-02", "23:59:18"), ("2026-01-03", "00:00:31"),
+                    ("2026-01-03", "00:01:45")], cuts                                  # 5 s clear of both ends; crosses midnight
+    checks = [a for sc, a in seen if sc == "sched_budget.py"]
+    assert sorted(a[3] for a in checks) == ["$WORK/scan_000145_10.txt"] * 3 + ["$WORK/scan_235805_10.txt"] * 3, checks   # first and last slice as baselines, never against itself
+    assert r["ledger"][1]["scanned"] is True
+
+    class BadRunner(ScanRunner):
+        def run(self, script, args):
+            if script == "sched_budget.py":
+                return {"exit": 1, "stdout": "", "stderr": "FileNotFoundError: x"}
+            return ScanRunner.run(self, script, args)
+    plan = {"find_window": [scan_call, lambda i: fin(i, outcome="no_clear_change", summary="s", facts={"window_start": "a", "window_end": "b"})],
+            "find_victim": [lambda i: fin(i, outcome="no_starvation", summary="s")] * 2}
+    r = Investigation(spec3, BadRunner(), scripted(plan), log=lambda *_: None).run()
+    assert r["ledger"][1]["scanned"] is False
 
     # 3. a model that never closes the step is stopped by the harness
     plan = {"find_window": [lambda i: run(i, "idx_summary.py")] * 10}

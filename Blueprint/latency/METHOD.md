@@ -105,6 +105,13 @@ Two rules hold for every blueprint. Both come from agent runs on labelled traces
   was in the trace. A rejection needs slices spread over the trace, unless the window was
   clear. Our tool-only sweeps never met this, because they took the time from the label.
 
+- **Find the time with the fault's own check** (24-11-2026). The harness has a scan: it
+  cuts slices end to end over the whole trace, runs the step's check on each, and returns
+  the verdict per time. A check that needs a baseline is run against the first and the last
+  slice of the trace, which the agent does not choose. Two things were learned from it:
+  a signal can come in bursts (`error_storm`: about every 30 s, so slices with gaps between
+  them missed it), and a baseline chosen by hand was inside the fault in two runs.
+
 ### How the agent harness applies this (`Blueprint/agent/bp_graph.py`)
 
 A blueprint is also a structured file, `blueprint.yaml`, and `BLUEPRINT.md` is generated

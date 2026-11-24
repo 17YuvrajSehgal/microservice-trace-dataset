@@ -20,7 +20,8 @@ A running list so nothing is forgotten. Started 20-11-2026. When an item is done
 
 | # | What |
 |---|---|
-| **B0** | **Finding the fault time is the main cause of failure: 6 of the 9 failed first runs so far.** The rate table shows no window for many faults, and twice a step in the rate at the END of the fault was taken as its start (`noisy_neighbor`, `svc_mem_cap`). The "check before rejecting" rule only covers a rejecting outcome on one slice. Proposed: a scan tool that runs a step's check on slices spread over the whole trace and returns one verdict line per time, so the time is found by the fault's own signal and not by data volume. Not built yet |
+| B0 | Scan tool built (24-11, see Done). Still open: (1) tested on 6 runs that had failed, one model, with the tool changed between tries, so this is not an independent test; rerun all families. (2) A scan cuts about 12 slices where 2 were cut before: too heavy on the login node for the lock blueprints (futex slices). (3) The last `code_n_plus_one` run was not repeated after the two harness fixes that followed it (evidence check of scan lines; which verdict line the harness copies) |
+| B13 | A scan with a baseline uses the first and the last slice of the trace. Both can be bad: the first is in the load ramp-up (it made two healthy JVMs read CALL AMPLIFICATION in `code_n_plus_one`), and a fault that runs to the end of the trace spoils the last. The agent must judge which baseline to trust; nothing checks that |
 | B11 | The "check before rejecting" rule does not fire when the agent leaves through `other`, or when the baseline slice prints the same "nothing" line (then two lines are counted) |
 | B12 | Slices with all futex events are heavy: the blueprint 11 runs took 12 and 18 minutes on the login node. Use the 20 s slice of the sweeps, not the README's 60 s |
 | B1 | Rerun the seven blueprints that passed on the first try (12, 14, 17, 18, 19, 20, 21) under the final harness; they ran before the "check before rejecting" change |
@@ -38,7 +39,7 @@ A running list so nothing is forgotten. Started 20-11-2026. When an item is done
 
 | # | Blueprint | What |
 |---|---|---|
-| C1 | 23 `code_n_plus_one` | The agent run fails twice: no rule for a baseline outside the fault at steady load. Also the known thin margin (bar 1.35x, nearest healthy pair 1.28x) and 123 runs not judged |
+| C1 | 23 `code_n_plus_one` | Confirmed on 24-11 with the scan tool (right service, 1.5-1.6x against the last slice). The ramp-up trap is real: against the first slice two healthy JVMs also read CALL AMPLIFICATION. Earlier: the agent run failed twice, no rule for a baseline outside the fault at steady load. Also the known thin margin (bar 1.35x, nearest healthy pair 1.28x) and 123 runs not judged |
 | C2 | 12 `fd_exhaustion` | README is stale: lists a NOTE the tool no longer prints; status says four runs unchecked but `RESULTS.md` has 10 of 10; cuts 90 s but passes 60 to the tool (the yaml uses 90) |
 | C3 | 16, 19, 20 | README gives no rule for choosing the slice time |
 | C4 | 19 `data_exfiltration` | `net_loss.py` is run on a slice with fewer event types than its own header asks for. Check that its drop count is right on such a slice |
@@ -57,7 +58,6 @@ A running list so nothing is forgotten. Started 20-11-2026. When an item is done
 | C19 | 2 `noisy_neighbor` | `cpu_hogs.py` has no verdict line, so the `noisy_neighbor` verdict rests on the agent reading a table. No sweep measures whether that step separates `noisy_neighbor` from the 66 other-family runs that also read "machine not full". README says "ten scripts", the table has eleven. The "stop if `sched_switch` is missing" check is a `grep`, not a tool, so it is not in the steps (same in 4 and 11) |
 | C20 | 4 `svc_mem_cap` | Request sizes disagree: README says 28.9 or 35.3 GB and 22.5 GB on Train Ticket; `RESULTS.md` says 28.2, 34.5 and 22.0. README tells to use the rate view to find reclaim events, which it cannot show. `mem_pressure.py` has no verdict line for reclaim (the yaml matches plain output lines), takes a `victim_pid` argument it never uses, and counts every event of a process named kswapd. The yaml sends "no reclaim" on to the large-request check; the README does not |
 | C21 | 11 `lock_contention` | Agent run inconclusive: the tool read LOCK CONTENTION for the right process, but the agent would not commit because it found no room for a 60 s baseline before the fault (the trace has about 60 s there). Say that a shorter baseline is enough, or that the baseline is optional for this verdict |
-| C22 | 2 `noisy_neighbor`, 4 `svc_mem_cap` | Agent runs failed on the slice time (see B0): both took the rate step at the end of the fault as its start |
 | C23 | the triage chain 0 -> 8/9/10/11 | Converted but not run with the agent. These can only run on a local model: their traces are the partner's and must not go to a cloud API. (3 and 5 were run on 23-11) |
 | C31 | 3 `slow_db` | Open after the 23-11 fix: (1) the new wording was measured on the fault's own runs only, not checked on other families; (2) naming the dependency is weak: one run named `mongod` where the truth is `mysqld` behind the proxy, and one took `mysqld` as the victim; (3) that run had 3 steps with evidence lines not found in tool output; (4) subtle r2 and r3 were not measured (the 60 ms victim is not in the top-10 table), and `sock_lag.py` shows only 10 rows |
 | C24 | 1 `svc_cpu_cap`, 3 `slow_db` | No sweep on all runs and no `RESULTS.md`: no found and no false-alarm counts. 3 rests on one solved case. Every decisive step is a table reading. 1's evaluation file describes an older README and an older `sched_budget.py` |
@@ -67,6 +67,7 @@ A running list so nothing is forgotten. Started 20-11-2026. When an item is done
 | C28 | 8 `cpu_starvation` | README runs `wait_chain.py` on a slice without the events it needs (the yaml cuts again with the tool's own event list). Unclear whether "starved by higher priority" is this fault (yaml: confirmed). No rule for combining the verdicts of several candidate threads |
 | C29 | 9, 10 | 9: a stall verdict with no "it froze" clause is not covered by the README (yaml: unconfirmed). 10: the README contradicts itself on a non-RX concentration (note, different fault, or this fault); the yaml rejects it. 10 needs a second trace as baseline, which the harness cannot pass yet |
 | C30 | 0 `host_triage` | The yaml hands off after the first two screens, so a second finding from the starvation screen is not in the triage report. README lists a verdict the tool no longer prints and misses three it does print |
+| C32 | 22 `error_storm` | The reset signal comes in bursts, about every 30 s, not all the time: inside the fault 1 of 4 end-to-end 20 s slices shows no reset, and 8 slices with 10 s gaps missed all of them. The sweep's 16 of 16 used one slice at a fixed offset from the injection. State this in the blueprint, and check the other "found N of N" results for the same dependence on where the slice falls |
 | C15 | all converted | The rule history is written in the folder for 15 and 24 only; for the rest it is in the decisions files and git |
 
 ## D. Data
@@ -91,5 +92,6 @@ A running list so nothing is forgotten. Started 20-11-2026. When an item is done
 |---|---|---|
 | 20-11-2026 | Method written down (`METHOD.md`); graph harness; blueprints 12 to 24 converted, checked and run once | `84e1c83`, `d108a81`, `ab0041e` |
 | 20-11-2026 | Blueprints 2, 4, 6, 11 converted, checked and run once per family (18 of 25 converted) | `b185eaf` |
+| 24-11-2026 | Scan tool (`scan_times`) in the harness: one check on slices end to end over the trace, against baselines the agent does not choose. The 6 runs that had failed on the slice time are all confirmed (closes C22) | see git log |
 | 23-11-2026 | Blueprint 3: two reading rules measured on 6 `slow_db` runs and changed (connections compared as sets; sleep in locks counts only if it rises); first `RESULTS.md`; agent confirmed 2 of 2 unseen runs | see git log |
 | 23-11-2026 | Blueprints 0, 1, 3, 5, 7, 8, 9, 10 converted and checked: all 25 have `blueprint.yaml` and a generated `BLUEPRINT.md`. Closes C10; C11 stays (tools still need a verdict line) | see git log |
