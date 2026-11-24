@@ -237,3 +237,58 @@ Not done: no agent run with this blueprint yet; no multi-threaded (Go/Java) case
   The evloop and serial cells were not affected (blueprint_tool ran 7 and 5 times).
 
 Session API total: about 7.3M tokens in.
+
+## Blueprints 2, 5, 4 on the anomaly_* runs (tool only, 21 Sock Shop runs)
+
+Asked: do the existing tools work on `anomaly_cpu` / `anomaly_net` / `anomaly_mem`, which have no
+own blueprint in `Blueprint/latency/`? One 10 s slice 60 s before the injection, one 30 s after
+(memory also 90 s after). Outputs: Trillium `work/anom_check/` (slices deleted).
+
+| family | tool | before | inside the fault |
+|---|---|---|---|
+| `anomaly_cpu` 5/5 | `cpu_hogs.py` | busy 40-50%, no `stress-ng` | busy 100%, `stress-ng-cpu` x24 = 54-55% of all CPU |
+| `anomaly_net` 8/8 | `net_loss.py` | 0-6 retransmits in 40-69k segments | 132-197 retransmits (1.2-1.6%), 5-7 source addresses, traffic 3-6x lower |
+| `anomaly_mem` 8/8 | `mem_pressure.py` | no reclaim, 8/8 | host reclaim (direct / kswapd) in at least one slice, 8/8; never memcg |
+
+So the signal is there in 21/21 and the baseline is clean in 21/21. Three gaps, none fixed yet:
+
+- `net_loss.py` names the sender as `swapper/N` in the host namespace on the fault slices (netem
+  delays the packet, so it is sent from softirq context). The per-container table is then useless;
+  only the flow addresses show that many containers are hit.
+- `mem_pressure.py` says the host is short of memory but does not name who took it (`stress-ng-vm`
+  appears only in the exits list). Blueprint 4 says "report host pressure and stop", so the agent
+  would end with no culprit.
+- Host reclaim is bursty: `anomaly_mem` aggressive r4 shows nothing at +5, +30, +70, +90 and
+  reclaim at +15, +50, +110. One slice can miss it. Also `extract_slice.sh` fails on subtle r3
+  at +30 (babeltrace2 cannot read that mini trace; +20 and +45 work).
+
+Not tested: Train Ticket, and whether the agent reaches the right family label from these outputs.
+
+### Fixes for the three gaps (17-11, tool only, 68 + 15 slices on Trillium)
+
+- **`net_loss.py`: the sender is the owner of the source address.** The context of a transmit
+  event is whoever is on the CPU; a delayed or retransmitted segment leaves from a timer, so it
+  read `swapper` in the host namespace. Now each address is given to the (process, net_ns) that
+  most often sends from it in its own context. Two new lines: how many senders retransmit, and
+  which address is an end of most retransmits. Rule from the data, not from a guess (my first
+  rule, "largest sender >= 60%", was wrong on 2 of 13 slices):
+
+  | | senders with 3+ retransmits | top address is an end of |
+  |---|---|---|
+  | `anomaly_net` inside, 8 runs | 6 to 9 | 52-69% |
+  | `svc_net` inside, 5 runs | 2 | 100% |
+  | before the fault / normal, 18 slices | 0 or 1, total 0-6 retransmits ("background") | n/a |
+
+- **`mem_pressure.py`: who took the memory.** Reclaim cannot name it: direct reclaim hits every
+  process that allocates (`lttng-consumerd` ties with `stress-ng-vm`). What names it is the
+  request: one writable anonymous `mmap` of 256 MB or more (`syscall_entry_mmap` added to the
+  slice pattern; PROT_NONE reservations are skipped, Go and the JVM make hundreds of GB of
+  those). 8/8 `anomaly_mem` runs: one `stress-ng-vm` request of 35,289 or 28,873 MB, equal to the
+  ground truth. 0 such requests in 8 before-slices, 5 normal runs and 16 `svc_mem_cap` slices.
+  Limit: it needs a slice at the START of the window, and a consumer that grows in small steps
+  (a leak) would not show.
+- **Blueprint 4 README:** the host-pressure branch now names the consumer before stopping, and
+  says to sample 3-4 slices because host reclaim is bursty.
+- `svc_mem_cap` (8 runs) still reads CONTAINER-LIMIT; `svc_net` (5 runs) still reads one path.
+- Not done: the agent on these; Train Ticket; no `anomaly_net` / `anomaly_mem` label in a
+  blueprint's submit step yet (the blueprints say "report host-wide and stop").
