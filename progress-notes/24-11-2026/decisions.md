@@ -181,3 +181,41 @@ the JVMs compile): `run_family.sh` got `WARMUP_S`, used after every VM start.
 
 **User decision:** the false-alarm check for blueprint 25 (and a cpuset tool) waits; no SLURM
 job until asked.
+
+## v3 family 3: `disk_full` (5 runs collected, all accepted; still on the VM)
+
+**What it is.** carts-db (MongoDB 3.4) is moved onto its own 1 GB loop-mounted ext4 volume
+before tracing (`arm`), a filler file takes every free byte at injection, and is removed at
+cleanup. Its own volume because every container shares the boot disk that LTTng writes to.
+`run_scenario.sh` now arms any recipe marked `STRATA_NEEDS_ARM`.
+
+**What a full disk really does (measured).** The database keeps serving; it aborts about once a
+minute ("Invariant failure ... No space left on device", signal 6) and docker restarts it in
+about 2 s. In all 5 runs the aborts are at 8-9 s and 70-71 s after the injection. Carts shows
+3-10 failed requests and one 2.8-3.0 s request per run in the fault window, 0 errors and a
+27-41 ms maximum in baseline and recovery; its median does not move (3.8-4.4 ms).
+
+**Two recipe bugs found by the calibration, before any run.**
+1. Mounting the volume root: the mongo entrypoint cannot enter the root-owned `lost+found`
+   (the container drops DAC_OVERRIDE) and exits 1, so after its first crash the database never
+   came back. The first calibration therefore showed a total outage that was NOT the fault.
+   Fix: the database gets a subdirectory owned by uid 999.
+2. `disarm` used force-recreate, but compose carries the old container's mount for an
+   image-declared volume over to the new container, so the database kept the bind to a volume
+   that was then unmounted, and was left "Exited (1)". Fix: `compose rm -sf` then `up`, and a
+   check that it is running without the small volume.
+
+**No metric signature (measured).** carts p95 over 1 m stays at 22-24 ms (17 ms in the
+baseline); no 5xx series; the database's memory, threads, write rate and CPU do not move;
+`container_start_time_seconds` does not change on a restart; node-exporter does not see the
+loop mount. Target marked `expected_to_fail` -> `no_metric_signature`. The proof per run is in
+`run_family.sh`: the database log in the bundle must hold "No space left on device" and an
+abort, else the family stops.
+
+**The 5 runs.** Six audit lines OK, no kernel loss, quality usable, `verification.png` present,
+442 metric series, database back on its normal volume after each run.
+
+**Open.** Kernel check of run 1 (ENOSPC returns, mongod exits) was started on the VM; its
+result is in `~/kc_df.log` there. The family is NOT on Trillium: the connection dropped. The
+local monitor was also stopped once by Claude Code for low laptop memory; the runs on the VM
+were not affected.
