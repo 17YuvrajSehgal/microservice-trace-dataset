@@ -89,3 +89,25 @@ trace_id` in the audit (the gate run had 11): not looked into yet.
 
 **State.** 5 bundles in `~/archive/runs/code_lock_contended/` on `stratatrace-ss-v3` (about 28 GB),
 plus `gate01`. Not on Trillium yet. VM stopped.
+
+## `code_lock_contended` moved to Trillium and verified
+
+- Pull, not push: Trillium's existing key `~/.ssh/ss_vm` is in the VM's `~/.ssh/authorized_keys2`
+  (not `authorized_keys`, which the GCP guest agent rewrites), bound to `~/bin/export_recipe.sh`,
+  so it can only `list`, `sizes`, or stream one family. `/mnt/archive/runs` on the VM is a
+  symlink to `~/archive/runs`, because the export command has that path fixed. Nothing has to
+  be registered with the Alliance.
+- Archive: `/scratch/yuvraj17/stratatrace/v3/sockshop/code_lock_contended.tar.gz`, 19.64 GB,
+  683 s. `pull_from_vm.sh --verify`: 5 runs.
+- Working copy: `/scratch/yuvraj17/stratatrace/data/stratatrace-v3/sockshop/code_lock_contended/`
+  (28 GB, kernel channels still gzipped). Every file of every run checked against the bundle's
+  own `SHA256SUMS` (1,386 files per run): 0 mismatches in all 5.
+- v3 is kept apart from v2 (`v3/`, `data/stratatrace-v3/`): its baselines are collected at
+  settled load and must not be mixed with v2 baselines.
+- Only after that check were the 5 runs deleted from the VM. Kept on the VM for the provenance
+  archive at the end: `gate01`, the driver logs, `campaign_manifest.csv`, `fault-state/`.
+- Lesson for the next transfer: over `ssh ... 'bash -s'`, any inner `ssh` without `-n` eats the
+  rest of the script, and `cat > f && nohup ... &` backgrounds the `cat` too (empty file). Upload
+  the script in one command, start it in a second.
+- The "0 log lines contain trace_id" audit line is not a regression: it counts lines with the id
+  of the single trace the audit picked.
