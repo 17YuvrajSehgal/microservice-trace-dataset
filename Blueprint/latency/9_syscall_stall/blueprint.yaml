@@ -1,0 +1,380 @@
+# Blueprint 9 as a structure (23-11-2026). The source of BLUEPRINT.md (bp_render.py) and
+# of the agent's steps (bp_graph.py). Wording and numbers are those of README_v1.md.
+# Bare-metal host: no containers, one pid namespace. The thread is the unit of blame.
+
+id: syscall_stall
+fault_type: syscall_stall
+title: a thread stuck inside one long system call on a bare-metal host
+problem_class: Latency (kernel path / blocking)
+confirms: >-
+  One thread sits inside one system call (`fork`/`clone`, `ioctl`, `mmap`, a `write` to a
+  device...) for tens of milliseconds at a time, repeatedly. While it is in there, the
+  threads that depend on it freeze: siblings of the same process block in D-state on a
+  kernel lock the call holds, or threads it must wake stay asleep until it comes out.
+evidence: >-
+  An LTTng kernel trace only. The trace must hold the system call events
+  (`syscall_entry_*` / `syscall_exit_*`, or `compat_syscall_*`) as well as the scheduling
+  events
+not_used: Logs, metrics, application counters (packet drops, late replies), request traces
+when_to_use: >-
+  A thread is late because it is blocked: it sleeps in D-state until another thread
+  finishes a system call. Use it on a bare-metal box (one `pid_ns` everywhere, or none)
+  when the question is "what is this thread waiting for?". Blueprint 8 is for a thread
+  that is ready to run and waiting for a CPU. The two look alike from the outside (a late
+  thread, dropped packets) and `wait_chain.py` tells them apart in one call: if the late
+  thread's long blocks are released by one other thread coming out of one call, it is this
+  blueprint.
+status: >-
+  Calibrated on the partner traces, whose evidence is not public: one labelled trace of
+  one real fault (partner case 2), plus four other cards where the tool correctly found no
+  stall of this kind (only drivers sleeping inside `ioctl`, and the tracer's own disk
+  flushes). None of our own labelled runs were used. The thresholds are a first pass from
+  those five traces. Agent: not run in the new form yet.
+
+background: |
+  A system call is the kernel doing work for a thread. Two kinds matter here:
+
+  - **WAIT-class calls** exist to wait: `poll`, `select`, `epoll_wait`, `futex`,
+    `nanosleep`, `read` on a socket, `recvfrom`, `wait4`... A thread that sits in one of
+    these for a second is simply idle. That is normal.
+  - **WORK-class calls** exist to do something: `clone`/`fork`, `execve`, `mmap`/`munmap`,
+    `ioctl`, `write`, `sync`... They are expected to return quickly. When one of them
+    takes tens of milliseconds, the thread is stuck, and often it is not the only one
+    that pays.
+
+  The classic case is **`fork` in a big multithreaded process.** `fork` (the `clone` call
+  without the `CLONE_VM` flag) copies the parent's whole address space. For a process with
+  hundreds of threads and a large heap that copy takes tens of milliseconds of pure CPU
+  work. While it runs, the kernel holds the process's memory lock (`mmap_lock`) for
+  writing. Every sibling thread that needs that lock (a page fault, an `mmap`, a `brk`)
+  stops in **D-state** (uninterruptible sleep) until the copy ends. The usual trigger is a
+  line like `system("ping ...")` or `popen()` in a helper thread.
+
+  | `clone_flags` | What it is | Cost |
+  |---|---|---|
+  | `0x100011` (no `CLONE_VM`) | A full `fork`: copy the whole address space | Tens of ms in a big process, and it holds the memory lock |
+  | `0x4111` (`CLONE_VM` + `CLONE_VFORK`) | `vfork`-style, what `posix_spawn` does: no copy | About 1–2 ms |
+  | `0x3d0f00` (`CLONE_THREAD` + `CLONE_VM`) | A new thread of the same process | Well under 1 ms |
+
+  The tools decode the flags for you.
+
+  Other WORK-class calls can stall the same way: an `ioctl` that makes a driver do slow
+  work, a `write` to a device file that blocks in D until hardware answers, a large
+  `mmap`/`munmap`, a `sync`. The question is always the same: was the thread working
+  (on-CPU) or held (D-state) inside the call, and who froze meanwhile?
+
+  **What is not a stall.** Many drivers on embedded boxes use `ioctl` as a wait primitive:
+  the driver puts the thread to sleep in **S-state** until an event arrives, for seconds
+  at a time. The tools measure the sleep share inside every call and leave such calls out.
+  D-state is the tell: S means "waiting for something to happen", D means "held by the
+  kernel".
+
+  **What it looks like.** The staller is on the CPU and/or in D-state inside the call,
+  with little or no S-sleep, and it repeats: every few seconds, the same thread, the same
+  call, the same length. Its siblings go to D-state during the window and are woken by the
+  staller at or just before its `syscall_exit`. For the rest of the box: nothing.
+
+  There is no container to name. Do not report a `pid_ns`. The number inside an enum such
+  as `prev_state = ( "TASK_UNINTERRUPTIBLE" : container = 2 )` is the enum's integer, not
+  a cgroup.
+
+lookalikes: |
+  Sleeping inside `ioctl` or `poll`: a long call that is ~100% S-state sleep. A wait, not a stall. The tool lists it under "sleeping inside" and leaves it out.
+  The tracer's own disk flush: `lttng-consumerd` in `sync_file_range2` / `splice` with D-state time. Instrumentation, not the system under test. The tool leaves `lttng*` threads out and says so.
+  A thread starved of CPU: the late thread is runnable and waiting (`runq_wait.py`), not blocked. That is `8_cpu_starvation`. `wait_chain.py` on it says NO LONG BLOCKS.
+  A lock held by a thread that cannot run: the late thread blocks in `futex`; the thread that releases it was runnable-but-not-running. That is `11_priority_inversion`. The waker's call is `futex` (WAIT-class), not a WORK-class call.
+  Disk I/O stall of the caller itself: a thread in D inside `write` / `fsync` with no dependants frozen. Real, but it hurts only that thread. The verdict says `no sibling or freeze effect measured`.
+  Trace holes: "blocks" or "calls" of seconds that overlap a period with no events on that CPU. The tools drop them and print a `trace holes:` line.
+
+tools:
+  idx_summary.py: {does: "Trace date, start, end, length, CPUs, health checks", usage: "idx_summary.py <trace_dir> [--rate SECONDS]"}
+  extract_slice.sh: {does: "Cuts one time slice and keeps only the events you name", usage: "extract_slice.sh <trace_dir> <YYYY-MM-DD> <HH:MM:SS> <seconds> <out_file> '<events regex>'"}
+  pidmap.py: {does: "Thread to process map from the trace's start-of-session state dump (tid, pid, ppid, name)", usage: "pidmap.py <trace_dir> [--out FILE]"}
+  syscall_stall.py: {does: "The decisive tool: pairs every system call per thread, measures on-CPU / D / sleep inside each call, ranks the stalls, lists who was frozen and who was starved, and gives the verdict", usage: "syscall_stall.py <slice> [--min-ms 10] [--top 20] [--only name,name] [--pidmap FILE]"}
+  wait_chain.py: {does: "One thread's blocked time: who woke it, and what the waker was inside at that moment. Confirms the stall from the victim's side", usage: "wait_chain.py <slice> <victim tid|name> [--top N] [--pidmap FILE]"}
+  thread_top.py: {does: "Every thread's time budget (run, runnable wait, S, D) with priority and CPUs", usage: "thread_top.py <slice> <secs> [--sort wait|run|max|wakeups] [--top N] [--cpu N] [--pidmap FILE]"}
+  runq_wait.py: {does: "One thread's runnable waits (blueprint 8's decisive tool). Used here to rule starvation out", usage: "runq_wait.py <slice> <victim tid|name> [--top N] [--min-ms X] [--pidmap FILE]"}
+
+vars:
+  STALLEV: sched_switch|sched_waking|sched_wakeup|sched_process_fork|lttng_statedump_process_state|syscall_|irq_handler_|irq_softirq_
+
+facts:
+  day: trace date, YYYY-MM-DD (UTC)
+  trace_start: first packet time, HH:MM:SS
+  trace_end: last packet time, HH:MM:SS
+  secs: length of the one slice over the whole trace, in whole seconds (the whole seconds of the trace duration, plus 2)
+  staller: the thread in the top row of the stall table, as `name tid`
+  call: the system call and its flags decode (for example `clone, 0x100011 = full fork`)
+  stall_ms: the call's wall, on-CPU and D time in ms, from the verdict line
+  repeat: the period on the verdict line (`n times, every ~Z s`, `2 times, Z s apart`, or `once`)
+  frozen: the threads in the `it froze` clause, each as `name tid ms`, or `none`
+  starved: the siblings marked STARVED, by name, or `none`
+  victim: the frozen thread the operator cares about (tid or name)
+  block: the victim's longest block (ms), its state (S or D), the waker (`name tid prio`) and the waker's call (`<call> for <ms>`)
+
+start: check_trace
+
+steps:
+  check_trace:
+    kind: fixed
+    goal: Know the date, when the trace starts and ends, and whether it is healthy.
+    run:
+      - [idx_summary.py, $TRACE]
+    extract:
+      day: '^date \(UTC\)\s*:\s*(\S+)'
+      trace_start: '^trace start\s*:\s*(\d\d:\d\d:\d\d)'
+      trace_end: '^trace end\s*:\s*(\d\d:\d\d:\d\d)'
+      duration_s: '^duration\s*:\s*([\d.]+)'
+      lost_events: '^lost events\s*:\s*(.+)$'
+    next: stall
+
+  stall:
+    kind: guided
+    goal: Cut one slice over the whole trace, find the thread stuck inside one call, measure the call, and see who paid for it.
+    suggested:
+      - extract_slice.sh $TRACE <day> <trace_start> <secs> $WORK/all.txt $STALLEV
+      - pidmap.py $TRACE --out $WORK/pidmap.tsv
+      - syscall_stall.py $WORK/all.txt --min-ms 10 --top 20 --pidmap $WORK/pidmap.tsv
+    read: |
+      Do not hunt for a window first. A stall of this kind repeats (every few seconds,
+      every time the helper runs), so one slice over the whole span catches several
+      instances and shows the period. <secs> is the whole seconds of the trace duration,
+      plus 2. `syscall_` matches both `syscall_entry_x` and `compat_syscall_entry_x`.
+      `lost events` and `time gaps` tell you where data is missing; write them down for
+      the report. Snapshot captures: the trace can span 30–180 s but hold events for only
+      the last 6–30 s. The tools print `note: events cover only X s of the Y s slice
+      (snapshot-style trace)` and use the real span.
+      The pid map is what makes "siblings of the same process" answerable on a trace whose
+      events carry no pid. If `pidmap.py` maps none, the tools still work; the siblings
+      line is simply absent. Then leave `--pidmap` out.
+
+      syscall_stall.py prints, in order:
+      1. A per-syscall table: `syscall  class  count  p50_ms  p99_ms  max_ms  sleep%
+         unmatched`. `class` is WAIT or WORK. A WORK row with `sleep%` near 100 is a driver
+         waiting, not a stall.
+      2. Two lines of things left out: `WORK-class calls >= 10 ms that were sleeping (>=
+         90% S-state, left out as waits): ...` and `tracer's own activity (left out): ...`.
+      3. The stall table, ranked by `froze_ms` (the longest D-state block of a thread the
+         call froze) first, then by on-CPU + D. For `clone` the args column decodes the
+         flags.
+      4. `repeat:` how often the top staller's call recurs.
+      5. The impact of each top stall: `sibling <name> tid N: X ms on-CPU during the stall
+         vs Y ms expected  <- STARVED` (STARVED = under 25% of expected, when expected is
+         ≥ 1 ms), then `frozen in D and released by the caller: ...`, then `also woken by
+         the caller (S-state: their own timers / condvars, not freezes): ...`.
+      6. The verdict, plus a line about the long WAIT-class calls. Quote the verdict line.
+
+      The rule. A call is a stall when its on-CPU + D time inside the call is ≥ 10 ms
+      (`--min-ms`), or when the call is ≥ 10 ms long and held a dependant in D-state for
+      ≥ 10 ms that it then woke. Time asleep in S inside the call never counts. `lttng*`
+      threads never count.
+
+      - `STALL: ... - n times, every ~Z s; it froze K threads in D for up to X ms (names);
+        siblings starved: names; released at exit: name (X ms blocked)`: this fault. A
+        STALL in `clone` with `0x100011`, from a thread of a big process, with `it froze K
+        threads in D` and `siblings starved`, is the classic case. A STALL in `ioctl` /
+        `write` / `mmap` with D-state time is also a real stall, on that call. Read the
+        `froze` clause to see who paid.
+      - `STALL: ... (A ms on-CPU + B ms D, P% sleeping; ...) - ...; it froze K threads in D
+        ...`: the staller itself mostly slept inside the call, but a thread sat in D
+        during it and was woken by it. The memory-lock signature still holds. Report both
+        facts.
+      - A D-state stall whose frozen dependant is not a latency-critical thread does not
+        by itself explain a comms-path symptom. Say what it froze, and keep looking for
+        the symptom's cause if the frozen thread is not on that path. Measured on a second
+        card: a 4-byte `write` to a device file spent 364.2 ms in the call (0.1 ms on-CPU
+        + 364.1 ms D), 6 times, every ~4.3 s, and froze 1 thread in D for up to 249.1 ms.
+      - `STALL: ... - once; during it: no sibling or freeze effect measured`: a real long
+        call, but nobody else paid. Report it as a minor finding unless that thread is the
+        one the operator complained about. Measured: on a card whose only long call was a
+        24 ms D-state `write` with nobody frozen, answering `syscall_stall` was wrong.
+      - `NO WORK-CLASS SYSCALL >= 10 ms (longest on-CPU+D inside one call: ...)`: no stall.
+        The longest call is named so you can say what you checked.
+      - `long waits are in WAIT-class calls (poll/futex/...) = normal sleeping, not a
+        stall` and `long waits are in sleeping inside WORK-class calls (ioctl) = normal
+        sleeping, not a stall`: the long calls are waits.
+      - The `sleeping inside` line can be long (hundreds of `ioctl` sleeps). That is the
+        box's normal life. Do not report those as stalls.
+      - `trace holes: ...`: intervals over lost data were left out. Say so in the report.
+
+      Calibration (partner case 2): a `clone` with flags `0x100011`, twice, 2.3 s apart:
+      56.6 ms and 69.6 ms wall, 47 ms on-CPU each, 0 ms D, 0% sleep. Each call froze 3
+      threads in D for up to 49.4 ms (the latency-critical thread 46.8 and 48.5 ms in D);
+      3–5 siblings were marked STARVED (0–0.3 ms on-CPU against 2–7 ms expected). On four
+      other cards the only long WORK-class calls were `ioctl` sleeps of 1–30 s (100%
+      S-state) and the tracer's own flushes.
+    sets: [secs, staller, call, stall_ms, repeat, frozen, starved, victim]
+    budget: 5
+    outcomes:
+      stall_froze:
+        when: the tool prints a `STALL:` line with an `it froze K threads in D` clause
+        line: "it froze"
+        verdict: confirmed
+        next: victim_side
+      stall_no_freeze_clause:
+        when: the tool prints a `STALL:` line with neither an `it froze` clause nor `no sibling or freeze effect measured` (for example only `siblings starved`)
+        line: "STALL:"
+        verdict: unconfirmed
+        sets: [secs, staller, call, stall_ms, repeat, victim]
+        next: victim_side
+      stall_alone:
+        when: the `STALL:` line ends with `no sibling or freeze effect measured`
+        line: "no sibling or freeze effect measured"
+        stop: >-
+          A slow call that hurt only its own thread. Report it as a minor finding unless
+          that thread is the one the operator complained about. No frozen dependant and
+          under 50 ms: the fault type is `normal`, with the call described as a finding.
+          Do not promote it with a low confidence number.
+      no_stall:
+        when: the tool reads NO WORK-CLASS SYSCALL >= 10 ms and names the longest call
+        line: "NO WORK-CLASS SYSCALL >="
+        stop: Not this fault. Report what the longest call was. Do not write "no fault". This blueprint looks for one cause only.
+      no_syscalls:
+        when: the trace has no system-call events (the tool pairs no calls and reads `no WORK-class call seen at all`)
+        line: "(no WORK-class call seen at all)"
+        verdict: inconclusive
+        stop: The trace has no system-call events and this blueprint cannot be applied. Say so; `8_cpu_starvation` and `10_irq_imbalance` still can.
+
+  victim_side:
+    kind: guided
+    goal: Show that the victim's long blocks end exactly when the staller comes out of that call.
+    suggested:
+      - wait_chain.py $WORK/all.txt <victim> --top 12 --pidmap $WORK/pidmap.tsv
+    read: |
+      wait_chain.py prints the victim's blocked time (total, share, count, p50, max) and
+      the calls it was blocked in; the blocked time by waker, over all blocks and over the
+      long blocks (≥ 10 ms); the longest blocks one by one (`start  ms  state  woken by |
+      waker was inside`); and verdict lines. Routine packet and timer waits dominate the
+      total and would hide the stall.
+
+      - `BLOCKED MOSTLY ON <waker> (P% of long-block time; Q% of all blocked time)`: the
+        thread that released the victim from its long blocks. `Q%` is usually small.
+      - `THE WAKER WAS STUCK IN <syscall> FOR MOST OF THE LONGEST BLOCKS (...)`: the
+        confirmation. The victim's longest blocks sit inside the waker's call, and that
+        call was on-CPU or in D (a sleeping call never earns this line).
+      - `BLOCKED ON INTERRUPTS/SOFTIRQ (network or timer driven): ...`: the victim's
+        ordinary wakeups are packets and timers. On its own, this means a normal packet
+        path, not a fault.
+      - `NO LONG BLOCKS (max X ms; ...)`: the victim is never blocked for long. If it is
+        late, it is waiting for a CPU (`8_cpu_starvation`) or simply busy.
+
+      Decide:
+      - `BLOCKED MOSTLY ON <staller>` + `THE WAKER WAS STUCK IN <call>`, with the longest
+        blocks in D and the same length as the stall: confirmed.
+      - `NO LONG BLOCKS` on every candidate victim, while the stall step did print a
+        STALL: the stall is real but it did not block that thread. Report the stall with
+        the threads it did freeze, and say the operator's thread was not among them.
+      - `BLOCKED MOSTLY ON <other thread>` in a WAIT-class call (`futex`, `poll`): the
+        victim waits for a message or a lock from that thread, not for a stuck call. Hand
+        to `11_priority_inversion` if the waker was runnable-but-not-running, otherwise
+        run wait_chain.py on the waker.
+
+      Calibration (partner case 2): 100% of the victim's long-block time was released by
+      the staller, and the longest blocks (48.5 ms and 46.8 ms, both in D) sat inside that
+      thread's `clone` call of 49–53 ms, 94% overlap.
+    sets: [block]
+    budget: 4
+    outcomes:
+      released_by_staller:
+        when: wait_chain.py reads BLOCKED MOSTLY ON the staller and THE WAKER WAS STUCK IN the call, with the longest blocks in D and the same length as the stall
+        line: "THE WAKER WAS STUCK IN"
+        next: rule_out
+      not_blocked:
+        when: wait_chain.py reads NO LONG BLOCKS on every candidate victim, while the stall step did print a STALL (the stall is real but it did not block that thread)
+        line: "NO LONG BLOCKS"
+        sets: []
+        next: rule_out
+      lock_wait:
+        when: wait_chain.py reads BLOCKED MOSTLY ON another thread in a WAIT-class call (`futex`, `poll`), and the waker was runnable-but-not-running
+        line: "BLOCKED MOSTLY ON"
+        stop: The victim waits for a message or a lock from that thread, not for a stuck call.
+        handoff: 11_priority_inversion
+
+  rule_out:
+    kind: guided
+    goal: Check the other causes with what is already printed, plus two calls.
+    suggested:
+      - runq_wait.py $WORK/all.txt <victim> --top 8 --pidmap $WORK/pidmap.tsv
+      - thread_top.py $WORK/all.txt <secs> --sort max --top 30 --pidmap $WORK/pidmap.tsv
+    read: |
+      runq_wait.py on the victim should say NOT STARVED (or a NOTE that it outranks
+      everything around it), or its runnable waits are small next to the longest block. If
+      it says STARVED BY CROWD with long waits, both faults are present: report both, each
+      with its own numbers (`8_cpu_starvation` for that one).
+      In thread_top.py, the frozen threads show time in the `D` column and a `max_ms` of
+      blocked time near the stall length. They are not `*` rows (they did not wait for a
+      CPU; they were held).
+      The other checks use what you already have:
+      - Was the long call a driver sleeping? The STALL row has `sleep%` low and on-CPU or
+        D high. A row with `sleep%` ~100 never reaches the verdict.
+      - Was it the tracer? The STALL thread is not `lttng-*`. The tracer's flushes are
+        listed apart.
+      - Is it a lock, not a call? The waker was inside a WORK-class call (`clone`,
+        `ioctl`, `write`), not `futex`.
+      - Did only the caller suffer? At least one other thread frozen or starved. If none,
+        report a minor finding on the caller only.
+      - Trace holes? Note the `trace holes:` line; the tools already left those intervals
+        out.
+      If a check does not fit, say which one in your report, and treat the stall as
+      unconfirmed.
+    sets: []
+    budget: 4
+    outcomes:
+      checks_fit:
+        when: runq_wait.py says NOT STARVED for the victim (or its runnable waits are small next to the longest block) and the other checks fit
+        line: "VERDICT: NOT STARVED"
+        next: report
+      also_starved:
+        when: runq_wait.py says STARVED BY CROWD for the victim with long waits, and the other checks fit. Both faults are present
+        line: "VERDICT: STARVED BY CROWD"
+        next: report
+      check_fails:
+        when: one of the checks does not fit
+        verdict: unconfirmed
+        stop: A check does not fit. Say which one in your report, and treat the stall as unconfirmed.
+
+report: |
+  The verdict is `syscall_stall` only when the stall step printed a `STALL:` line with an
+  `it froze K threads in D` clause (or the frozen thread is the one the operator named). A
+  long call that froze nobody and lasted under 50 ms is `normal` with the call mentioned
+  as a finding.
+  Name the staller thread (name, tid), the call, its flags decode, its length (wall,
+  on-CPU, D) and period, the frozen threads (name, tid, ms in D), the starved siblings,
+  and the span. With the pid map, name the process (pid, process name) and say that the
+  frozen threads are its siblings: that is what makes the memory-lock explanation hold.
+  Name the victim the operator cares about: its name, tid, prio, longest block and state,
+  and the fact that its block ended at the staller's exit.
+  Evidence: at least two independent pieces: the stall table and impact block, and the
+  victim's longest blocks ending at the staller's exit. Quote the verdict line word for
+  word.
+  Mark each claim Measured or Inferred. "It holds the memory lock" is Inferred from the
+  flags and the D-state siblings; the ms values are Measured. What the staller does
+  (from the child it spawned, or from its name) is Inferred. The fix is Inferred.
+  Fix, `clone` without `CLONE_VM` (a `fork`) from a big multithreaded process: replace
+  `fork()`+`exec` (`system()`, `popen()`) with `posix_spawn()` or `vfork()` (measured:
+  53 ms → 1.9 ms), or move the spawning out of the latency-critical process into a small
+  helper process. Fix, `ioctl` / `write` / `mmap` stalls: shorten the call (smaller
+  buffers, fewer pages, a non-blocking variant) or move it off the critical path to a
+  thread nobody waits for.
+  Say what you ruled out (a driver sleeping, the tracer, CPU starvation, a lock) and why.
+  Say what you did not test.
+  Say what the trace cannot show. The symptom the operator reported (packet drops, late
+  replies, a counter in the application) usually lives in an application-layer counter the
+  kernel trace does not record. Your verdict is the blocking cause, not the drop itself.
+  There is no container to name. Do not report a `pid_ns`.
+
+measured:
+  - >-
+    It confirms or rejects one cause: one thread stuck inside one WORK-class system call, and the threads that froze because of it. If a step points elsewhere, it stops and tells you so. It does not diagnose that other cause.
+  - >-
+    It needs the system-call events. A trace recorded without `--syscall` cannot be judged.
+  - >-
+    It sees the call's boundaries and the scheduler's view inside it (on-CPU, D, S). It does not see *which* kernel lock was held or *which* function was slow; "the memory lock" is inferred from `clone` flags plus siblings in D. A kernel function profile (ftrace `function_graph`, kprobes) is the next instrument if that matters.
+  - >-
+    The `sleep% ≥ 90%` rule that sets driver waits aside is a first-pass number from five traces of one box family. A driver that spins briefly between sleeps could slip under it; check the `sleep%` column yourself when a call looks suspicious.
+  - >-
+    The impact block needs a pid map or pid context to say "siblings"; without one it still says who was frozen and released.
+  - >-
+    Trace holes (snapshot buffers, discarded events) are left out of every number, and the tools say so. A trace that is mostly holes gives weak numbers; say so.
+  - >-
+    It does not see the application symptom. A line card counts its drops in its own software; the kernel trace holds the cause (the blocks), not the drop.

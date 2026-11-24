@@ -47,7 +47,6 @@ A running list so nothing is forgotten. Started 20-11-2026. When an item is done
 | C7 | 22 `error_storm` | One command in the yaml (run the tool on the baseline alone) is not in the README. "Refused" names three possible blueprints and no single one |
 | C8 | 17 `event_loop_block` | The `serial_work` label comes from the SHAPE line and is not read by code. `code_serial_awaits` label question is still open |
 | C9 | 15 `dependency_outage` | The "service gone" outcome was never calibrated on a labelled run. The trace cannot tell `queue_backlog` from `dependency_outage` |
-| C10 | 1 `svc_cpu_cap` | `blueprint.yaml` has no document fields (title, status, tools, measured), so `bp_check.py` fails and there is no `BLUEPRINT.md`. Tools print tables, no verdict line |
 | C11 | 1, 3, 5, 7 | Tools have no `VERDICT:` line and there is no `RESULTS.md`. They need tool work before conversion |
 | C12 | 0, 8, 9, 10 | Calibrated on partner traces; the evidence is off git, so build Steps 4 and 5 cannot be shown publicly |
 | C13 | 2 `noisy_neighbor` | The "new CPU user, machine not full" verdict is not specific: it fits all 16 `noisy_neighbor` runs and 66 runs of other families |
@@ -59,6 +58,14 @@ A running list so nothing is forgotten. Started 20-11-2026. When an item is done
 | C20 | 4 `svc_mem_cap` | Request sizes disagree: README says 28.9 or 35.3 GB and 22.5 GB on Train Ticket; `RESULTS.md` says 28.2, 34.5 and 22.0. README tells to use the rate view to find reclaim events, which it cannot show. `mem_pressure.py` has no verdict line for reclaim (the yaml matches plain output lines), takes a `victim_pid` argument it never uses, and counts every event of a process named kswapd. The yaml sends "no reclaim" on to the large-request check; the README does not |
 | C21 | 11 `lock_contention` | Agent run inconclusive: the tool read LOCK CONTENTION for the right process, but the agent would not commit because it found no room for a 60 s baseline before the fault (the trace has about 60 s there). Say that a shorter baseline is enough, or that the baseline is optional for this verdict |
 | C22 | 2 `noisy_neighbor`, 4 `svc_mem_cap` | Agent runs failed on the slice time (see B0): both took the rate step at the end of the fault as its start |
+| C23 | 3, 5, 7 and the triage chain 0 -> 8/9/10/11 | Converted on 23-11 but NOT run with the agent (the Trillium connection was closed). Run 3 on `slow_db`, 5 on `svc_net` and `anomaly_net`. 0, 8, 9, 10 can only run on a local model: their traces are the partner's and must not go to a cloud API |
+| C24 | 1 `svc_cpu_cap`, 3 `slow_db` | No sweep on all runs and no `RESULTS.md`: no found and no false-alarm counts. 3 rests on one solved case. Every decisive step is a table reading. 1's evaluation file describes an older README and an older `sched_budget.py` |
+| C25 | 3 `slow_db` | `sleep_where.py` prints a hint ("piles up in sock_read") that is wrong for a Go or Node victim. `dep_slice.sh` is an old copy of the slice script (no events argument). No rule for "every fd is slow" or "gaps jumped outside the window". Its hand-off to 15 on "no answers" is my reading; the README names no blueprint |
+| C26 | 5 `svc_net` | README never uses the family names; the yaml puts `anomaly_net` on the host-wide shape from the run counts (16 and 10). README still speaks of retransmissions in two places where the tool now counts drops only. Confirmation rests on a `sched_budget.py` table |
+| C27 | 7 `packet_drop` | Never calibrated (its README says so), no labelled family of this name, so no positive test is possible. README reads drop rates from a table that shows only data volume. `net_drops.py` has two fixed bars (3x, 0.5x) the README denies |
+| C28 | 8 `cpu_starvation` | README runs `wait_chain.py` on a slice without the events it needs (the yaml cuts again with the tool's own event list). Unclear whether "starved by higher priority" is this fault (yaml: confirmed). No rule for combining the verdicts of several candidate threads |
+| C29 | 9, 10 | 9: a stall verdict with no "it froze" clause is not covered by the README (yaml: unconfirmed). 10: the README contradicts itself on a non-RX concentration (note, different fault, or this fault); the yaml rejects it. 10 needs a second trace as baseline, which the harness cannot pass yet |
+| C30 | 0 `host_triage` | The yaml hands off after the first two screens, so a second finding from the starvation screen is not in the triage report. README lists a verdict the tool no longer prints and misses three it does print |
 | C15 | all converted | The rule history is written in the folder for 15 and 24 only; for the rest it is in the decisions files and git |
 
 ## D. Data
@@ -82,4 +89,5 @@ A running list so nothing is forgotten. Started 20-11-2026. When an item is done
 | Date | What | Commit |
 |---|---|---|
 | 20-11-2026 | Method written down (`METHOD.md`); graph harness; blueprints 12 to 24 converted, checked and run once | `84e1c83`, `d108a81`, `ab0041e` |
-| 20-11-2026 | Blueprints 2, 4, 6, 11 converted, checked and run once per family (18 of 25 converted) | see git log |
+| 20-11-2026 | Blueprints 2, 4, 6, 11 converted, checked and run once per family (18 of 25 converted) | `b185eaf` |
+| 23-11-2026 | Blueprints 0, 1, 3, 5, 7, 8, 9, 10 converted and checked: all 25 have `blueprint.yaml` and a generated `BLUEPRINT.md`. Closes C10; C11 stays (tools still need a verdict line) | see git log |

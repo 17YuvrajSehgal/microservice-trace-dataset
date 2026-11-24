@@ -81,7 +81,7 @@ def check(path):
                 err.append(ww + "line `%s` is not printed by any tool in tools/" % o["line"])
             if o.get("handoff") and not os.path.isdir(os.path.join(os.path.dirname(folder), o["handoff"])):
                 err.append(ww + "handoff folder does not exist: " + o["handoff"])
-    if not confirmed:
+    if not confirmed and spec["fault_type"] != "triage":       # a triage blueprint only hands the case on
         err.append("no outcome has verdict: confirmed")
     # every number in the yaml's prose should come from the README, the results file or a tool
     known = source

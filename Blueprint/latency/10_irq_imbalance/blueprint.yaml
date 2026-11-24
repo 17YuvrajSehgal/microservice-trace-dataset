@@ -1,0 +1,333 @@
+# Blueprint 10 as a structure (23-11-2026). The source of BLUEPRINT.md (bp_render.py) and
+# of the agent's steps (bp_graph.py). Wording and numbers are those of README_v1.md.
+# Bare-metal host: no containers, one pid namespace. The thread is the unit of blame.
+
+id: irq_imbalance
+fault_type: irq_imbalance
+title: interrupt work piled on one CPU
+problem_class: Latency (bare-metal host, any box with no containers)
+confirms: >-
+  Network receive work (the `NET_RX` softirq) runs on one CPU instead of being spread, and
+  the threads placed on that CPU, or on its hyper-thread sibling, are slowed by it.
+evidence: >-
+  An LTTng kernel trace only. Best of all: two traces of the same box, one with the load
+  and one without. Also allowed: the box's own SMT pairing, read from `/sys`
+not_used: Logs, request traces (spans), metrics, NIC counters from outside the trace
+when_to_use: >-
+  The box has no containers (every event carries the same `pid_ns`, or none). Something
+  that lives on one CPU got slow while the machine as a whole was not busy. The symptom is
+  often application-level and slow to see (management requests that take minutes, polls
+  that come late), and nothing in the scheduler says "starved". The question here is not
+  "who hogs the CPU" but "did the kernel's own network work land on one core, and who sits
+  on that core".
+status: >-
+  Calibrated on the partner traces, whose evidence is not public: one labelled pair of
+  traces (partner case 3). The numbers in the steps come from it, and the baseline half of
+  the pair was read as a true negative. None of our own labelled runs were used. The trace
+  does not know which logical CPUs share a physical core; that pairing must come from the
+  box. Treat the thresholds as a first calibration, not a law. Agent: not run in the new
+  form yet.
+
+background: |
+  When a packet arrives, the network card raises a **hardware interrupt** (hardirq). The
+  kernel does the bare minimum there and hands the real work to a **softirq**, a piece of
+  deferred kernel work. Receive work is softirq number 3, `NET_RX`.
+
+  A softirq runs **on the CPU that raised it**. Under steady load the kernel moves the
+  backlog to a per-CPU helper thread, `ksoftirqd/N` (one per CPU). That thread cannot be
+  re-pinned: `ksoftirqd/0` will only ever run on CPU 0.
+
+  Which CPU does the receive work is decided by two things: where the NIC's interrupt
+  lands (`/proc/irq/<n>/smp_affinity_list`), and RPS
+  (`/sys/class/net/<if>/queues/rx-*/rps_cpus`), which can spread the softirq work to other
+  CPUs in software. When neither is set, or set badly, every packet is processed on one
+  CPU. Two kinds of thread suffer:
+
+  1. Threads placed on that CPU. They wait behind the softirq, which runs before any
+     thread.
+  2. Threads on the CPU's SMT sibling, the other logical CPU of the same physical core.
+     The two share the core's execution units.
+
+  The slowdown is not a long wait of one thread. It is a steady tax.
+
+  **What it looks like in a kernel trace.**
+  - `irq_softirq_entry` / `irq_softirq_exit` with `vec = 3` (`NET_RX`). Summed per CPU,
+    this is how much of each second each CPU spent in receive work.
+  - `irq_softirq_raise`: when the work was queued. The gap raise → entry is the softirq
+    latency. A large p99 on one CPU means the handler was being delayed there.
+  - `irq_handler_entry` / `irq_handler_exit`: the hardware interrupts, with the device
+    name.
+  - `sched_switch`: how much `ksoftirqd/N` ran, and which application threads ran on that
+    CPU.
+
+  The signature: on an N-CPU box the fair share of `NET_RX` time is 1/N per CPU, and in
+  the fault one CPU carries most or all of it. `ksoftirqd/N` is busy (on the labelled pair
+  it used 42% of a CPU with the load and 0% without). Application threads sit on that CPU
+  or its sibling. The rest of the box is calm. The best evidence is a pair: the same box
+  with and without the load.
+
+lookalikes: |
+  A genuinely busy application thread on that CPU: the CPU is busy, but with a user thread; `NET_RX` on it is small. That is a CPU-hog question: blueprint 8 / noisy neighbor.
+  An interrupt storm from one device: hardirq time concentrated on one CPU, from one `irq` name, while `NET_RX` is small. Name the device from the `top irq` column; the fix is that device's interrupt rate or affinity, not RX steering.
+  A timer / RCU softirq surge: `TIMER` or `RCU` softirq concentrated, not `NET_RX`. Usually a short burst. The tool says which kind is concentrated.
+  Host saturation: every CPU busy, many threads waiting. Not one CPU; hand to the saturation / noisy-neighbor blueprint.
+  A thread pinned to a busy core with no RX on it: the thread waits, the CPU is busy with other threads, `NET_RX` normal. That is CPU starvation by a crowd: blueprint 8.
+  Packet drops: `skb_kfree` rises. Blueprint 7. Drops can be a symptom of a saturated RX CPU; check this family first when `ksoftirqd` is busy.
+
+tools:
+  idx_summary.py: {does: "Trace date, start, end, length, CPUs, health checks", usage: "idx_summary.py <trace_dir> [--rate SECONDS]"}
+  extract_slice.sh: {does: "Cuts one time slice and keeps only the events you name", usage: "extract_slice.sh <trace_dir> <YYYY-MM-DD> <HH:MM:SS> <seconds> <out_file> '<events regex>'"}
+  irq_balance.py: {does: "The decisive tool: per-CPU hardirq and softirq time by kind, raise to entry latency, `ksoftirqd/N` time, the top threads on each CPU, the concentration check, the SMT-sibling check, and the with/without-load diff", usage: "irq_balance.py <slice> <secs> [--baseline <slice2> <secs2>] [--siblings \"0,1 2,3 4,5\"] [--watch name[,name]] [--top 8]"}
+  thread_top.py: {does: "Every thread's run / wait / sleep, per CPU crowd counts; `--cpu N` shows who lives on the hot CPU", usage: "thread_top.py <slice> <secs> [--sort wait|run|max|wakeups] [--top N] [--cpu N] [--pidmap FILE]"}
+  runq_wait.py: {does: "For one thread: how long it waited for its CPU and who held the CPU meanwhile", usage: "runq_wait.py <slice> <victim tid|name> [--top N] [--min-ms X] [--pidmap FILE]"}
+
+vars:
+  IRQEV: sched_switch|sched_waking|sched_wakeup|irq_handler_entry|irq_handler_exit|irq_softirq_entry|irq_softirq_exit|irq_softirq_raise
+
+facts:
+  day: trace date, YYYY-MM-DD (UTC)
+  trace_start: first packet time, HH:MM:SS
+  trace_end: last packet time, HH:MM:SS
+  secs: length of the slice, in whole seconds (for the whole trace, the whole seconds of the trace duration, plus 2)
+  hot_cpu: the CPU on the verdict line
+  rx_share: the share of `NET_RX` time on the hot CPU, and the expected share, from the verdict line
+  ksoft: the share of one CPU that `ksoftirqd/N` used, from the verdict line
+  base_start: start of a slice outside the loaded stretch, HH:MM:SS only (no date); `none` if there is no quiet stretch and no quiet trace
+  pair_diff: the hot CPU's diff line (`cpu N, NET_RX a -> b ms/s, ...`) and the verdict of the quiet slice alone, or `no pair`
+  siblings: the SMT pairs read on the box, or `unknown`
+  app_threads: the application threads on the hot CPU and its sibling (the threads to move)
+
+start: check_trace
+
+steps:
+  check_trace:
+    kind: fixed
+    goal: Know the date, when the trace starts and ends, and whether it is healthy.
+    run:
+      - [idx_summary.py, $TRACE]
+    extract:
+      day: '^date \(UTC\)\s*:\s*(\S+)'
+      trace_start: '^trace start\s*:\s*(\d\d:\d\d:\d\d)'
+      trace_end: '^trace end\s*:\s*(\d\d:\d\d:\d\d)'
+      duration_s: '^duration\s*:\s*([\d.]+)'
+      lost_events: '^lost events\s*:\s*(.+)$'
+    next: balance
+
+  balance:
+    kind: guided
+    goal: Cut one slice over the whole span and measure where the interrupt work lands.
+    suggested:
+      - extract_slice.sh $TRACE <day> <trace_start> <secs> $WORK/irq.txt $IRQEV
+      - irq_balance.py $WORK/irq.txt <secs> --watch <thread names you care about, comma-separated>
+    read: |
+      This fault is steady under load, so you need no window hunt: take the whole
+      recording. <secs> is the whole seconds of the trace duration, plus 2. If the
+      recording is long (minutes) and the load was only on for part of it, cut a slice
+      inside the loaded stretch instead.
+      Read the health checks (lost events, time gaps). The tools skip waits that span a
+      hole and say so, but note it in your report.
+      `--watch` is optional: give the names of the latency-sensitive threads. The tool
+      reports where they ran.
+
+      irq_balance.py prints:
+      1. A header. If the events cover only part of the span (a snapshot-style trace) it
+         says so and uses the covered seconds for every share.
+      2. A per-CPU table: `busy%`, `hardirq ms` and its top device, softirq ms by kind
+         (`NET_RX`, `NET_TX`, `TIMER`, `SCHED`, `RCU`, other), `ksoftirqd ms`, and the
+         three threads that ran most on that CPU.
+      3. Concentration: for every kind that reaches at least 1% of a CPU, the hottest CPU
+         and its share of that kind's total, against the fair share 1/N. It is marked
+         CONCENTRATED when the hottest CPU carries at least `max(50%, 2/N)`. For `NET_RX`
+         it also prints the raise → entry latency on the hot CPU (p50 / p99 / max).
+      4. The SMT line and the watched threads.
+      5. The verdict. Quote it.
+
+      - `VERDICT: RX CONCENTRATED ON CPU N: P% of NET_RX time (expected E%), ksoftirqd/N at
+        K% of a CPU, cpu busy B%`, followed by `APP THREADS ON THAT CPU/ITS SIBLING: ...`
+        and a `FIX:` line. The verdict names the CPU, the share, and `ksoftirqd/N`'s share
+        of a CPU. Check the per-CPU row: `busy%` on that CPU well above the others,
+        `NET_RX ms` large there and near zero elsewhere. A raise → entry p99 in the
+        milliseconds on that CPU says the handler itself was being delayed.
+      - `VERDICT: IRQ/SOFTIRQ SPREAD EVENLY`: every kind is near its fair share,
+        `ksoftirqd/*` are small. This family is rejected, unless the trace was recorded
+        without the load (then it is a baseline, not a verdict).
+      - `VERDICT: IRQ/SOFTIRQ SPREAD EVENLY (but <kind> on cpu N is concentrated - see
+        above)`: a kind other than `NET_RX` is piled up (`hardirq`, `TIMER`, `RCU`). That
+        tail is a note, not a verdict. Measured on the healthy control card: hardirq sat
+        89% on cpu 2 (765 ms of 859 over 62 s, ~1% of that CPU), and answering
+        `irq_imbalance` was wrong. Name the kind and, for hardirq, the device in the
+        `top irq` column. Mention the concentrated kind as a finding only if it reaches
+        tens of percent of a CPU and an app thread on that CPU shows waits
+        (`thread_top.py $WORK/irq.txt <secs> --cpu N`).
+      - `VERDICT: NO IRQ EVENTS IN SLICE - re-cut it with the irq events regex ...`: the
+        slice was cut without the interrupt events. Cut it again with $IRQEV. Without
+        `irq_handler_*` you lose the hardirq half; the softirq check still works.
+
+      What the labelled pair looked like (partner case 3, 6 CPUs, fair share 17%): with
+      the load on, 100% of `NET_RX` time was on cpu 0, `ksoftirqd/0` used 42% of a CPU,
+      cpu 0 was 48% busy against 18–36% elsewhere, and the raise → entry p99 on cpu 0 was
+      2.8 ms (max 16.6 ms). The hardware receive interrupt was also 64% on cpu 0.
+    sets: [secs, hot_cpu, rx_share, ksoft]
+    budget: 5
+    outcomes:
+      rx_concentrated:
+        when: the tool reads RX CONCENTRATED ON CPU N
+        line: "VERDICT: RX CONCENTRATED ON CPU"
+        verdict: confirmed
+        next: pair
+      spread:
+        when: the tool reads IRQ/SOFTIRQ SPREAD EVENLY with no tail, and the trace was recorded with the load
+        line: "VERDICT: IRQ/SOFTIRQ SPREAD"
+        stop: This family is rejected. Report "interrupt work is spread; not RX concentration".
+      spread_no_load:
+        when: the tool reads IRQ/SOFTIRQ SPREAD EVENLY, and the trace was recorded without the load
+        verdict: inconclusive
+        stop: It is a baseline, not a verdict. Get a loaded capture.
+      other_kind:
+        when: the tool reads SPREAD EVENLY with the tail `(but <kind> on cpu N is concentrated - see above)`
+        line: " is concentrated - see above)"
+        stop: >-
+          That tail is a note, not a verdict. Another kind is concentrated (`hardirq`,
+          `TIMER`, `RCU`): name the kind and, for hardirq, the device in the `top irq`
+          column. That is a different fault; report it. Mention it as a finding only if
+          it reaches tens of percent of a CPU and an app thread on that CPU shows waits.
+      no_irq_events:
+        when: the tool still reads NO IRQ EVENTS IN SLICE after the slice was re-cut with $IRQEV (the trace has no `irq_softirq_entry`/`exit`)
+        line: "VERDICT: NO IRQ EVENTS IN SLICE"
+        verdict: inconclusive
+        stop: 'Report "interrupt balance cannot be judged: the trace holds no softirq events". The fault is not observable in this recording.'
+
+  pair:
+    kind: guided
+    goal: Show that the receive work appeared on that CPU with the load, and was not there before (the strongest evidence).
+    suggested:
+      - extract_slice.sh $TRACE <day> <base_start> <seconds of the quiet slice> $WORK/irq_base.txt $IRQEV
+      - irq_balance.py $WORK/irq.txt <secs> --baseline $WORK/irq_base.txt <seconds of the quiet slice>
+      - irq_balance.py $WORK/irq_base.txt <seconds of the quiet slice>
+    read: |
+      The baseline is a second trace of the same box without the load, cut over its whole
+      span, if the case gives one. If the recording is long and the load was only on for
+      part of it, cut a slice outside the loaded stretch and treat it as the baseline. If
+      there is neither, there is no pair: go on.
+
+      With `--baseline`, after the normal output the tool prints a per-CPU diff, per
+      second of each slice:
+        cpu 0: NET_RX a -> b ms/s, hardirq a -> b ms/s, ksoftirqd a -> b ms/s, busy a% -> b%
+        on cpu N, new or >= 3x busier than baseline: ksoftirqd/N 0 -> 420 ms/s, ...
+      - The fault: on the hot CPU, `NET_RX` and `ksoftirqd` go from near zero to hundreds
+        of ms per second, and `busy` jumps; every other CPU barely moves. The "new or ≥ 3x
+        busier" line names `ksoftirqd/N` and whatever else grew on that CPU.
+      - Also run the tool on the quiet slice alone. It must say `SPREAD EVENLY`. If the
+        quiet trace is also concentrated, the imbalance is permanent and the load only
+        made it visible. Still this fault, but say so.
+
+      On the labelled pair: cpu 0 went `NET_RX 6 -> 486 ms/s, ksoftirqd 0 -> 420 ms/s,
+      busy 19% -> 48%`; cpus 1–5 stayed within a few ms/s; the quiet trace alone read
+      `SPREAD EVENLY`, a true negative.
+    sets: [base_start, pair_diff]
+    budget: 5
+    outcomes:
+      appeared_with_load:
+        when: on the hot CPU `NET_RX` and `ksoftirqd` go from near zero to hundreds of ms per second while every other CPU barely moves, and the quiet slice alone reads SPREAD EVENLY
+        line: "x busier than baseline"
+        next: who
+      permanent:
+        when: the quiet slice alone is also concentrated (the imbalance is permanent and the load only made it visible; still this fault, but say so)
+        next: who
+      no_pair:
+        when: there is no quiet trace and no quiet stretch in the recording
+        next: who
+
+  who:
+    kind: guided
+    goal: Name the threads that pay for the receive work (the threads to move), and rule out the lookalikes.
+    suggested:
+      - irq_balance.py $WORK/irq.txt <secs> --siblings <the SMT pairs, like "0,1 2,3 4,5"> --watch <names>
+      - thread_top.py $WORK/irq.txt <secs> --cpu <hot_cpu> --top 20
+      - runq_wait.py $WORK/irq.txt <a suspected victim thread name or tid>
+    read: |
+      The trace cannot tell which logical CPUs share a physical core. The pairing is read
+      on the box (`/sys/devices/system/cpu/cpu*/topology/thread_siblings_list`, or
+      `lscpu -e`), not from the trace. If the case gives it, pass the pairs with
+      `--siblings` (space-separated pairs, comma inside a pair). The tool then names the
+      hot CPU's sibling and the top three threads on it, and any watched thread found on
+      the hot CPU or its sibling is flagged `SHARES THE PHYSICAL CORE WITH THE RX LOAD`.
+      Without `--siblings` it prints `SMT pairing unknown: ...` and judges the hot CPU
+      only.
+
+      - `thread_top.py --cpu N` lists the threads that ran on the hot CPU with their run /
+        wait / max wait. The application or SDK threads in that list (not `ksoftirqd`,
+        `kworker`, `swapper`) are the candidates.
+      - `runq_wait.py` on one of them shows its waits and who held the CPU meanwhile. On
+        this fault the occupant is `ksoftirqd/N` or the softirq itself; the waits are many
+        and short, not one long freeze. A `STARVED BY CROWD` verdict with application
+        threads as the occupants points to blueprint 8 instead.
+
+      Rule out the lookalikes with what is already printed:
+      - Is one application thread simply busy on that CPU? `NET_RX` + `ksoftirqd` is the
+        large part of the per-CPU row. If a user thread is the large part and `NET_RX` is
+        small, it is a hog or a crowd (blueprint 8 / noisy neighbor).
+      - Is it an interrupt storm? Both the hardirq and `NET_RX` are on the same CPU,
+        `NET_RX` the larger. hardirq alone from one device is a storm; name the device.
+      - Is it a timer / RCU surge? `NET_RX` is the concentrated kind.
+      - Is the whole box busy? Only the hot CPU is high; the rest are moderate. If all
+        CPUs are ≥ 90% busy, it is saturation.
+      - Did the load change the picture? `NET_RX` / `ksoftirqd` appear on one CPU with the
+        load; nothing else grows across the box.
+      If a check does not fit, say which, and treat the verdict as unconfirmed.
+    sets: [siblings, app_threads]
+    budget: 6
+    outcomes:
+      threads_named:
+        when: the application threads on the hot CPU (and on its sibling, if the pairing is known) are named, and the lookalike checks fit
+        next: report
+      crowd_instead:
+        when: runq_wait.py reads STARVED BY CROWD for the suspected victim, with application threads as the occupants
+        line: "VERDICT: STARVED BY CROWD"
+        verdict: unconfirmed
+        stop: A STARVED BY CROWD verdict with application threads as the occupants points to blueprint 8 instead.
+        handoff: 8_cpu_starvation
+      check_fails:
+        when: one of the lookalike checks does not fit
+        verdict: unconfirmed
+        stop: A check does not fit. Say which, and treat the verdict as unconfirmed.
+
+report: |
+  This blueprint answers `irq_imbalance` or `normal`, nothing else. The verdict is
+  `irq_imbalance` only on a `VERDICT: RX CONCENTRATED ON CPU N` line. Anything else the
+  screens showed is a finding.
+  Give the concentration against the fair share, and `ksoftirqd/N`'s share of a CPU: those
+  two numbers are the finding. Give the hot CPU's `busy%` against the other CPUs, and the
+  span. Quote the verdict line word for word.
+  Name the threads on the hot CPU and its sibling: that is what the operator will move.
+  With a pair, give the hot CPU's `NET_RX` and `ksoftirqd` in ms/s without and with the
+  load.
+  Mark each claim Measured or Inferred. The placement is measured; the slowdown of the
+  threads is inferred unless runq_wait.py showed their waits.
+  Fix: spread RX across CPUs (RSS multi-queue IRQ affinity, or RPS via
+  `/sys/class/net/<if>/queues/rx-*/rps_cpus`), and keep the latency-sensitive threads off
+  that core and its sibling.
+  Say what you ruled out (a busy user thread, an interrupt storm, saturation) and why.
+  Be honest about the symptom: the user-visible problem (slow management replies, late
+  polls) is application-level and takes minutes to show, so a 60 s kernel trace shows the
+  mechanism, not the symptom. The with/without-load diff is what makes the case
+  convincing. Say so if you had no pair.
+  Say what you did not test (for example, the SMT pairing if it was not read from the
+  box). The trace cannot tell which NIC queue or which `smp_affinity` setting is wrong,
+  only which CPU ends up with the work. The device name in `top irq` is the lead.
+
+measured:
+  - >-
+    It confirms or rejects one cause: interrupt / softirq work piled on one CPU. A hardirq storm, a timer surge or a plain CPU hog are reported as "not this" and handed on.
+  - >-
+    It needs the softirq events. A trace recorded without `irq_softirq_*` cannot answer the question.
+  - >-
+    **SMT pairing is not in the trace.** Without `--siblings` the tool can only judge the hot CPU itself; the sibling half of the story needs `/sys` from the box.
+  - >-
+    It shows the mechanism, not the application symptom. A slow management reply that takes minutes is not visible in a 60 s trace; the link is inferred.
+  - >-
+    **Calibrated on one labelled pair.** The CONCENTRATED rule (hottest CPU ≥ `max(50%, 2/N)` of a kind that reaches ≥ 1% of a CPU) read that pair correctly — 100% with the load, spread without. It has not yet seen a partial concentration (say 60% on one CPU) with ground truth; treat such cases as "likely" and lean on the pair diff.
+  - >-
+    Snapshot-style traces hold events for only part of the span they were cut over; the tool detects that and divides by the covered seconds, and skips waits that span a hole. Read its note under the header.
+  - >-
+    It cannot tell you which NIC queue or which `smp_affinity` setting is wrong, only which CPU ends up with the work. The device name in `top irq` is the lead.

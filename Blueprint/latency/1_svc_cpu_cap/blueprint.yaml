@@ -9,7 +9,27 @@
 
 id: svc_cpu_cap
 fault_type: svc_cpu_cap
+title: a CPU cap on one service (svc_cpu_cap)
+problem_class: Latency
 confirms: One service (container) has a CPU limit that is too small for its work.
+evidence: "An LTTng kernel trace only: the `metadata` file, the channel data files, and the `index/` folder. It needs `sched_switch` and `sched_waking` (or `sched_wakeup`) events"
+not_used: Logs, request traces (spans), metrics, container settings
+when_to_use: >-
+  One service is slow because its threads wait for the CPU: waits of 10 ms and 50 ms or
+  more appear, many times per second, while its CPU use stays low and flat. Other
+  processes are fine. The trace writes less data per second while the fault lasts.
+status: >-
+  No sweep on all labelled runs and no `RESULTS.md`, so this blueprint has no found and no
+  false-alarm counts. Its tools print tables and no `VERDICT:` line. The rhythm rules of
+  thumb come from one solved case. The ceiling check was validated on runs with known
+  limits and read each one correctly; the README does not list those runs.
+  The evidence in this folder is `EVALUATION-on-agentic-runs.md`: one capped agentic run
+  (0.25 core) against one uncapped baseline. As written, `sched_budget.py` showed no
+  victim there, because it counted a thread as waiting only when `prev_state` was 0 and
+  that kernel reports a preempted thread as 256. After the one-line fix the victim
+  (`python3`) showed 126 waits of 50 ms or more, the longest 89 ms, and the baseline
+  showed none. `tools/sched_budget.py` now counts 256 as waiting.
+  Agent (20-11-2026, graph harness, gpt-6-luna): one labelled run confirmed (java pid 52884, cap inferred about 0.285 cores against 0.2 set).
 
 background: |
   Linux enforces a CPU limit with a quota and a period (cgroup v2 `cpu.max`, for example
@@ -30,6 +50,16 @@ lookalikes: |
   CPU pinning: the victim runs only on some CPUs while other CPUs are idle.
   A cgroup limit covers a whole process tree: several waiting processes in ONE container
   are one cap, not host overload.
+
+tools:
+  idx_summary.py: {does: "Trace date, start, end, length, CPUs, health checks, and data written over time. Reads only the index, so it takes seconds", usage: "idx_summary.py <trace_dir> [--rate SECONDS]"}
+  extract_slice.sh: {does: "Cuts one time slice (using `idx_slice.py`) and keeps only the scheduling events", usage: "extract_slice.sh <trace_dir> <YYYY-MM-DD> <HH:MM:SS> <seconds> <out_file>"}
+  sched_budget.py: {does: "Time budget per process: running, waiting, sleeping, long waits", usage: "sched_budget.py <sched_events.txt> <slice_seconds> [pid_to_always_show]"}
+  rhythm.py: {does: "How often a process gets the CPU, in 10 ms buckets, and whether it repeats", usage: "rhythm.py <sched_events.txt> <pid> <slice_start HH:MM:SS> [seconds]"}
+  cpu_ceiling.py: {does: "The victim's on-CPU time per period: a flat ceiling below the period is the direct signature of a quota", usage: "cpu_ceiling.py <slice.txt> <victim_pid> [period_ms] [baseline_slice.txt]"}
+  cpu_hogs.py: {does: "Who used the CPU, and who held it WHILE the victim waited. A cap leaves the CPUs idle during the waits; this proves it", usage: "cpu_hogs.py <slice.txt> <slice_seconds> [victim_pid]"}
+  victim_info.py: {does: "Who the victim is: PID, names, threads, container", usage: "victim_info.py <sched_events.txt> <slice_seconds> <pid> [rows]"}
+  wake_graph.py: {does: "Which processes wake the victim, and which ones it wakes", usage: "wake_graph.py <sched_events.txt> <pid> [rows]"}
 
 facts:
   day: trace date, YYYY-MM-DD (UTC)
@@ -252,3 +282,16 @@ report: |
   The kernel trace never holds the configured quota, so the cap is always found from its
   effects; that alone is not a reason to doubt the verdict. A tool call that failed because
   of wrong arguments is not evidence for or against anything.
+
+measured:
+  - "It confirms or rejects one cause: a CPU cap on one service. If a step points to another cause, it stops and tells you so. It does not diagnose that other cause."
+  - "It cannot read the quota or the period settings. It infers them from their effects."
+  - "It cannot give the service name. That needs a list from the platform that ran the system."
+  - "It needs scheduling events. A trace without `sched_switch` cannot be used."
+  - "It needs a normal stretch to compare with: in the same trace, or a healthy trace of the same system."
+  - "It samples 10-second slices, so a fault shorter than a few seconds can be missed."
+  - "If tracing was limited to some processes, you cannot rule out a busy machine."
+  - "The rhythm rules of thumb (quiet buckets above 50%, repeat score above 0.5) come from one solved case and are weak for bursty victims that idle between spells of work - that is why Step 6b exists. The ceiling check was validated on runs with known limits and read each one correctly."
+  - "A cgroup cap covers a process tree, so several suffering processes in one container are one victim group (Step 4), not host overload."
+  - "On agentic runs (`EVALUATION-on-agentic-runs.md`): the agent is idle about 84% of the run (blocked on the model), so the whole-run average of `run` (0.09) is diluted and does not read near the quota. Slice to the active burst, where `run` approaches the cap."
+  - "On the same run `cpu.stat` (not used by this blueprint) gave `nr_throttled = 208` and `throttled_usec = 20.1 s`. The preempt-coded waits recover about half of the 20 s as visible per-thread wait: enough to diagnose, but `cpu.stat` is the only exact total."
