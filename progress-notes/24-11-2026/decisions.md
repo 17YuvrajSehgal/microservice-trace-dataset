@@ -53,3 +53,12 @@ if the agent quoted none.
 
 Cost: a scan is about 12 slices and 12 to 36 check runs. Runs took 3 to 7 minutes on the
 login node. Too heavy there for the lock blueprints.
+
+## 2. Evaluation plan written
+
+`Blueprint/latency/EVALUATION-PLAN.md`: a proposal, nothing run. Five arms (tools only, agent,
+ablation, second model, repeats), scoring by script with rules fixed in advance, and two
+levels of held-out testing. Honest point: a clean held-out test is not possible with the
+runs we have, because several rules were set with both applications in view; it needs runs
+collected after a freeze tag. Estimated 22 to 35 node-hours and about 60M input tokens for
+everything; arm A alone about 27M. Open decisions are listed in its section 9.
