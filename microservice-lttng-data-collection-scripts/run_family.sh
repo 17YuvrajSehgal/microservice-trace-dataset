@@ -71,5 +71,25 @@ for r in $(seq 1 "$REPEATS"); do
     done
     echo "${RUN},${RECIPE},${INTENSITY},${WORKLOAD},${r},${verdict},${loss},$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$MANIFEST"
     echo "[$r/$REPEATS] DONE $RUN -> verification=$verdict event_loss=$loss"
+
+    # STOP AT THE FIRST BAD RUN. A family is collected unattended; if the quality gate says a
+    # bundle is not usable, or the extra load never sent a request, the next four runs would
+    # be bad in the same way. Stop, keep the evidence, and let a person look.
+    bad=""
+    for d in "$RUN_DIR" "$ARCHIVED"; do
+        [[ -f "$d/run_quality.json" ]] || continue
+        python3 -c "import json,sys; sys.exit(0 if json.load(open('$d/run_quality.json')).get('usable') else 1)"             || bad="run_quality.json says NOT USABLE"
+        if [[ -n "${EXTRA_LOAD_CMD:-}" ]]; then
+            n=$(grep -o 'n=[0-9]*' "$d/meta/extra_load.log" 2>/dev/null | tail -1 | cut -d= -f2)
+            [[ "${n:-0}" -gt 0 ]] || bad="${bad:+$bad; }the extra load reported no completed requests"
+            echo "[$r/$REPEATS] extra load: $(tail -1 "$d/meta/extra_load.log" 2>/dev/null)"
+        fi
+        break
+    done
+    if [[ -n "$bad" && "${STOP_ON_BAD:-1}" == "1" ]]; then
+        echo "*** STOPPING family $RECIPE after $RUN: $bad"
+        echo "*** Fix the cause and re-run; finished runs are skipped. STOP_ON_BAD=0 to continue anyway."
+        exit 2
+    fi
 done
 echo "=== family $RECIPE done; bundles in $ARCHIVE_DIR/$RECIPE ==="

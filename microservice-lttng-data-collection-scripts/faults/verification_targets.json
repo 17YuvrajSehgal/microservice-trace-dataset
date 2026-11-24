@@ -440,9 +440,9 @@
    "promql": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"catalogue\"}[1m])) by (le))",
    "direction": "increase",
    "threshold_sigma": 4,
-   "abs_threshold": 0.05,
+   "abs_threshold": 0.005,
    "min_fraction": 0.7,
-   "note": "v3, 2026-11-24. Same defect as code_lock_across_io, collected with a second load directly on the catalogue so the lock is contended. PREDICTED, to be confirmed on the first runs: every list request queues behind one mutex, so catalogue p95 latency rises at injection and falls back at recovery."
+   "note": "v3, 2026-11-24. Same defect as code_lock_across_io, collected with a second load directly on the catalogue so the lock is contended. PREDICTED, to be confirmed on the first runs: every list request queues behind one mutex, so catalogue p95 latency rises at injection and falls back at recovery. abs_threshold is 5 ms (one histogram bucket: the buckets are 5, 10, 25, 50 ms ...); the calibration measured a median of 3.9 ms off and 14.6 ms on."
   }
  ]
 }

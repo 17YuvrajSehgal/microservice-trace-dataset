@@ -19,6 +19,7 @@ One process, real threads, keep-alive connections, and only summary numbers on s
 """
 from __future__ import annotations
 import http.client
+import signal
 import statistics
 import sys
 import threading
@@ -32,8 +33,19 @@ CONC = int(sys.argv[3]) if len(sys.argv) > 3 else 60
 lat: list[float] = []
 errors = [0]
 lock = threading.Lock()
-work = list(range(N))
 idx = [0]
+# Stop on SIGTERM/SIGINT and still print the summary. A long background load is started with
+# a huge request count and killed at the end of the run; without this it printed nothing, so a
+# probe that never sent a request looked the same as one that sent a million.
+stop = [False]
+
+
+def _stop(*_):
+    stop[0] = True
+
+
+signal.signal(signal.SIGTERM, _stop)
+signal.signal(signal.SIGINT, _stop)
 
 
 # KEEP-ALIVE MATTERS. Opening a fresh connection per request costs ~25 ms, which is more than
@@ -48,7 +60,7 @@ def worker():
     conn = http.client.HTTPConnection(_HOST, _PORT, timeout=20)
     while True:
         with lock:
-            if idx[0] >= N:
+            if idx[0] >= N or stop[0]:
                 break
             idx[0] += 1
         t0 = time.perf_counter()
