@@ -111,3 +111,35 @@ plus `gate01`. Not on Trillium yet. VM stopped.
   the script in one command, start it in a second.
 - The "0 log lines contain trace_id" audit line is not a regression: it counts lines with the id
   of the single trace the audit picked.
+
+## Blueprint 25 (`code_lock_contended`): `inside_wait.py`, first results on the 5 runs
+
+Login node only, low priority; one 20 s baseline slice (injection - 40 s) and one 20 s fault
+slice (injection + 30 s) per run, kept in `work/v3bp/` so tool changes need no new cut.
+
+**Measure.** Per service: requests in flight (received, not answered), minus its own calls
+waiting on a dependency, minus the cores its container uses, minus its threads waiting for a
+core. What is left is requests waiting inside the service for something the trace cannot name.
+Chosen over call overlap (blueprint 23's column), which moved only 99% -> 84% on this fault.
+
+**Result (final tool).** The catalogue: 0.00 in every baseline, 2.07-2.65 in every fault slice
+(in flight 4.0-4.2 -> 6.2-6.7, calls waiting on the database 3.8-3.9 -> 3.56-3.61, CPU flat at
+0.3 cores). One verdict line per run, naming the catalogue; the reversed comparison (baseline
+judged against fault) gives none in 5 of 5.
+
+**Two artifacts found and fixed on the way.**
+1. A command that gets no answer (a MySQL statement close) looked like a call in flight until
+   the next query. A call is now timed from the client's LAST data segment.
+2. A reused client port joined two connections: a "quit" with no answer, then 12 s later the
+   greeting of a new connection on the same port, read as one 12 s call (50 such calls in one
+   slice, 27 requests "inside" the database). SYN, FIN and RST now end a pending call.
+After (2) the database reads 0.00, and the proxy reads 2.8-3.0 in baseline AND fault: that is
+the constant 5 ms background delay, seen as requests held in the proxy. The Node front-end
+reads 6-12 in both windows (one thread, requests queue behind it).
+
+**Bars.** Guessed at 2.0 requests and 50% of those in flight; lowered to 1.0 and 25% after the
+5 runs (the catalogue is at 34-39%). Fitted to one defect in one service. A baseline is
+required: without it the proxy and the front-end are named.
+
+**Not done.** No check on other families yet (v2 `slow_db`, `svc_cpu_cap`, `normal`, and the
+new `svc_cpuset` runs). That needs a SLURM job. No README or RESULTS file until then.
