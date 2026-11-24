@@ -143,3 +143,41 @@ required: without it the proxy and the front-end are named.
 
 **Not done.** No check on other families yet (v2 `slow_db`, `svc_cpu_cap`, `normal`, and the
 new `svc_cpuset` runs). That needs a SLURM job. No README or RESULTS file until then.
+
+## v3 family 2: `svc_cpuset` (5 runs collected, all accepted, on Trillium)
+
+**What it is.** `docker update --cpuset-cpus` restricts carts to one core (aggressive; subtle =
+two cores, not collected). The look-alike of `svc_cpu_cap` on the same victim: no quota, no
+period, the service just only runs on the cores it was given. Recipe `faults/svc_cpuset.sh`;
+cleanup writes the full range and reads back `cpuset.cpus.effective` (an empty cpuset string is
+"no change" to docker). No background conditions needed.
+
+**Calibration (150 users, warm VM).** carts p95 23.8 ms on 12 cores, 153.7 ms on one, 23.8 ms
+restored; two cores 39.8 ms; front-end on one core barely moves (Node is one thread).
+A freshly started VM is not usable for the first minute (host 81% busy, carts 3.4 cores while
+the JVMs compile): `run_family.sh` got `WARMUP_S`, used after every VM start.
+
+**The 5 runs.** All: six audit lines OK, no kernel loss, verification confirmed, quality usable,
+`verification.png` present, cores back to 0-11 after the run.
+
+| run | carts p95 ms (base / fault / recovery) | carts span median ms | host busy |
+|---|---|---|---|
+| r1 | 34 / 70 / 46 | 7.6 / 15.3 / 7.8 | 54-60% |
+| r2 | 33 / 71 / 45 | 7.5 / 14.4 / 7.4 | 50-54% |
+| r3 | 34 / 64 / 46 | 7.5 / 13.0 / 7.6 | 54-60% |
+| r4 | 34 / 71 / 47 | 8.2 / 13.7 / 8.0 | 55-60% |
+| r5 | 38 / 71 / 48 | 8.6 / 15.1 / 8.7 | 56-59% |
+
+- The effect in the runs (about 2x) is smaller than in the calibration (6x): carts used about
+  0.65 of its one core, so the core was not full. Accepted because all 5 pass and agree.
+- Kernel, r1, on the VM: the carts container (114 threads) runs on 12 CPUs in the baseline and
+  on 1 CPU in the fault; every other container stays on 12. `cpu_newcomer.py` (blueprint 2)
+  correctly says NO NEW CPU USER, so this family needs its own check.
+- 439 metric series per run against 441 in family 1; which two differ is not checked.
+
+**On Trillium.** `v3/sockshop/svc_cpuset.tar.gz` (15.04 GB, 263 s), 5 runs counted; working copy
+`data/stratatrace-v3/sockshop/svc_cpuset/` (22 GB); every file checked against `SHA256SUMS`
+(1,313-1,325 per run), 0 mismatches. Then deleted from the VM; VM stopped.
+
+**User decision:** the false-alarm check for blueprint 25 (and a cpuset tool) waits; no SLURM
+job until asked.
