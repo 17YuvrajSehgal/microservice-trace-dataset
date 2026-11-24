@@ -220,7 +220,8 @@ printf 'users=%s
 profile=%s
 load_settle_s=%s
 extra_load_cmd=%s
-'     "$USERS" "$PROFILE" "$LOAD_SETTLE_S" "${EXTRA_LOAD_CMD:-}" > "$RUN_DIR/meta/load_setup.txt" 2>/dev/null || true
+note=%s
+'     "$USERS" "$PROFILE" "$LOAD_SETTLE_S" "${EXTRA_LOAD_CMD:-}" "${RUN_NOTE:-}" > "$RUN_DIR/meta/load_setup.txt" 2>/dev/null || true
 [[ -f "$HOME/${RUN}_extra_load.log" ]] && cp "$HOME/${RUN}_extra_load.log" "$RUN_DIR/meta/extra_load.log" 2>/dev/null || true
 S=$(grep timestamp_utc "$RUN_DIR/meta/runinfo_start.txt" 2>/dev/null | cut -d= -f2)
 E=$(grep timestamp_utc "$RUN_DIR/meta/runinfo_end.txt" 2>/dev/null | cut -d= -f2)

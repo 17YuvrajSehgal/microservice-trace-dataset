@@ -36,18 +36,36 @@ mkdir -p "$ARCHIVE_DIR"
 # without it by mistake.
 case "$RECIPE" in
     code_lock_contended)
-        # 20 clients directly on the catalogue list endpoint for the whole run. Calibrated
-        # 24-11-2026 under the normal 150-user load: median 3.9 ms with the defect off,
-        # 14.6 ms with it on (5 clients: 1.5 -> 3.4 ms; 60 clients: 3.2 -> 43.3 ms).
+        # Two background conditions, the SAME in baseline, injection and recovery, so the only
+        # thing that changes at injection is the lock. Calibrated on the VM, 24-11-2026, under
+        # the normal 150-user load (progress-notes/24-11-2026/decisions.md):
+        #
+        #  1. a constant 5 ms delay on the catalogue's database (toxiproxy). Our local database
+        #     answers in 0.4 ms, so a list request holds the lock for about 1 ms and never
+        #     queues. With 5 ms it holds it for about 12 ms, like a database over a network.
+        #  2. 4 clients that each ask the catalogue for the list every 100 ms (40 requests/s).
+        #
+        # With both: those clients see a median of 24 ms with the defect off and 80 ms with it
+        # on, and the host is 41% busy either way. What did NOT work: 20 clients as fast as
+        # they can (host 81% busy in the baseline, and the fault made the host LESS busy), and
+        # the delay alone without extra clients (p95 34 -> 40 ms at 5 ms: too weak).
+        LOCK_DB_DELAY_MS="${LOCK_DB_DELAY_MS:-5}"
+        LOCK_CLIENTS="${LOCK_CLIENTS:-4}"
+        LOCK_INTERVAL_MS="${LOCK_INTERVAL_MS:-100}"
+        source "$SD/faults/fault_lib.sh"
+        toxic_del catalogue-db bg_latency
+        toxic_add catalogue-db "{\"name\":\"bg_latency\",\"type\":\"latency\",\"stream\":\"downstream\",\"attributes\":{\"latency\":$LOCK_DB_DELAY_MS,\"jitter\":0}}"             || { echo "FATAL: could not add the background database delay"; exit 1; }
+        trap 'toxic_del catalogue-db bg_latency; echo "background database delay removed"' EXIT
+        export RUN_NOTE="background: ${LOCK_DB_DELAY_MS} ms delay on catalogue-db (toxiproxy bg_latency) for the whole run; extra load ${LOCK_CLIENTS} clients every ${LOCK_INTERVAL_MS} ms on the catalogue list endpoint"
         # The address is resolved when the load starts, AFTER `arm` recreated the container.
-        LOCK_CONC="${LOCK_CONC:-20}"
-        export EXTRA_LOAD_CMD="python3 $SD/faults/code-defects/loadprobe.py http://\$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' \$(docker ps --format '{{.Names}}' | grep -m1 'catalogue_1'))/catalogue 1000000000 $LOCK_CONC"
+        export EXTRA_LOAD_CMD="python3 $SD/faults/code-defects/loadprobe.py http://\$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' \$(docker ps --format '{{.Names}}' | grep -m1 'catalogue_1'))/catalogue 1000000000 $LOCK_CLIENTS $LOCK_INTERVAL_MS"
         ;;
 esac
 
 if [[ "$WORKLOAD" == "burst" ]]; then USERS="$USERS_BURST"; else USERS="$USERS_STEADY"; fi
 echo "=== v3 family $RECIPE: $REPEATS runs, $INTENSITY/$WORKLOAD, users=$USERS, settle=${LOAD_SETTLE_S}s ==="
 [[ -n "${EXTRA_LOAD_CMD:-}" ]] && echo "    extra load: $EXTRA_LOAD_CMD"
+[[ -n "${RUN_NOTE:-}" ]] && echo "    $RUN_NOTE"
 
 for r in $(seq 1 "$REPEATS"); do
     RUN="${RECIPE}_${INTENSITY}_${WORKLOAD}_r${r}"
