@@ -14,6 +14,7 @@
 #                      load (v2 baselines contain the ramp-up, CAMPAIGN-ISSUES 20)
 #   ARCHIVE_DIR        ~/archive/runs on the boot disk (no separate archive disk in v3)
 #   EXTRA_LOAD_CMD     passed through if the family sets it below
+#   WARMUP_S           seconds of normal load before the first run (use after a VM start)
 #
 # Resumable: a run whose bundle already has meta/runinfo_end.txt is skipped.
 # Long unattended run:  nohup ./run_family.sh code_lock_contended aggressive 5 > ~/family.out 2>&1 &
@@ -66,6 +67,15 @@ if [[ "$WORKLOAD" == "burst" ]]; then USERS="$USERS_BURST"; else USERS="$USERS_S
 echo "=== v3 family $RECIPE: $REPEATS runs, $INTENSITY/$WORKLOAD, users=$USERS, settle=${LOAD_SETTLE_S}s ==="
 [[ -n "${EXTRA_LOAD_CMD:-}" ]] && echo "    extra load: $EXTRA_LOAD_CMD"
 [[ -n "${RUN_NOTE:-}" ]] && echo "    $RUN_NOTE"
+
+# WARMUP_S (default 0): drive the normal load this long before the first run. Needed after a
+# VM start: measured 24-11-2026, the first minute of load on a freshly started VM had the host
+# 81% busy and carts at 3.4 cores (the JVMs compiling), against 45% and 0.7 cores once warm.
+if [[ "${WARMUP_S:-0}" -gt 0 ]]; then
+    echo "warming up for ${WARMUP_S}s"
+    python3 "$SD/load_generator.py" --host "${FRONTEND_HOST:-http://localhost:80}" --users "$USERS"         --duration "$WARMUP_S" --profile steady --think-min 0.1 --think-max 0.3         --output /tmp/warmup_load.csv > /tmp/warmup_load.log 2>&1 || true
+    rm -f /tmp/warmup_load.csv
+fi
 
 for r in $(seq 1 "$REPEATS"); do
     RUN="${RECIPE}_${INTENSITY}_${WORKLOAD}_r${r}"

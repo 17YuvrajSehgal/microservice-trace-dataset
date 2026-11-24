@@ -444,5 +444,17 @@
    "min_fraction": 0.7,
    "note": "v3, 2026-11-24. Same defect as code_lock_across_io, collected with a constant 5 ms database delay and 40 list requests/s directly on the catalogue, so the lock is contended (run_family.sh). PREDICTED from the calibration, to be confirmed on the first run: list requests queue behind one mutex (the extra clients measured a median of 24 ms off and 80 ms on), so catalogue p95 rises by at least 20 ms at injection and falls back at recovery. An earlier setup with 20 unpaced clients made p95 FALL at injection, because the lock throttled the load itself."
   }
+ ],
+ "svc_cpuset_carts": [
+  {
+   "canonical": true,
+   "name": "carts_p95_latency",
+   "promql": "histogram_quantile(0.95, sum(rate(request_duration_seconds_bucket{job=\"cart\"}[1m])) by (le))",
+   "direction": "increase",
+   "threshold_sigma": 3,
+   "abs_threshold": 0.05,
+   "min_fraction": 0.5,
+   "why": "v3, 2026-11-24. All threads of the service share one core and wait for each other. Calibrated on the VM under the 150-user load: carts p95 23.8 ms with all 12 cores, 153.7 ms on one core, 23.8 ms after the restore (two cores: 39.8 ms, below this threshold - the subtle setting is expected to read borderline)."
+  }
  ]
 }
