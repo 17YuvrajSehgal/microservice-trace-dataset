@@ -100,11 +100,11 @@ echo "[$RUN] scenario=$RECIPE intensity=$INTENSITY workload=$PROFILE duration=${
 # Arming here means the baseline is recorded on exactly the bytes that will serve the incident -
 # same image, same container, same process - and injection is then a one-word file write.
 #
-# Only recipes built on code_defect_lib.sh need this; the rest have no `arm` verb and are
-# skipped. `inject` refuses to run un-armed, so a missed arm fails loudly rather than quietly
+# Only recipes built on code_defect_lib.sh, or that carry the marker STRATA_NEEDS_ARM (v3:
+# disk_full.sh), need this; the rest have no `arm` verb and are skipped. `inject` refuses to run un-armed, so a missed arm fails loudly rather than quietly
 # producing another 25 contaminated runs.
 ARMED=0
-if [[ "$NORMAL" -eq 0 ]] && grep -q 'code_defect_dispatch' "$RECIPE_SH" 2>/dev/null; then
+if [[ "$NORMAL" -eq 0 ]] && grep -qE 'code_defect_dispatch|STRATA_NEEDS_ARM' "$RECIPE_SH" 2>/dev/null; then
     echo "[$RUN] arming $RECIPE before tracing starts (restart happens now, not mid-run)"
     bash "$RECIPE_SH" arm || { echo "[$RUN] FATAL: arm failed"; exit 1; }
     ARMED=1
