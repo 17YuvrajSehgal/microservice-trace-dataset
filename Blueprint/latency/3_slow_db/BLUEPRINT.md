@@ -10,7 +10,7 @@
 
 **When to use this.** A service is slow and its callers are slow too: the slowness spreads up the chain (load generator, gateway, front-end, service). The victim does not wait for the CPU, and it does not wait for its own disk. `sched_budget.py`'s wait table stays near zero for it. The trace often writes less data per second during the fault.
 
-**Status.** The worked numbers come from ONE solved case (Appendix B of `README_v1.md`): a multi-CPU host running a web application, where a delay of several hundred milliseconds (with jitter) was injected for two minutes into the path between one service and its SQL database. There is no sweep on all labelled runs and no `RESULTS.md`, so this blueprint has no found and no false-alarm counts. Its tools print tables and no `VERDICT:` line. Agent (23-11-2026, graph harness, gpt-6-luna): one labelled `slow_db` run. The agent found the right window, the 500 ms gaps, the proxy and the database, but the verdict is inconclusive: two steps had no outcome that fits a Go victim (it sleeps in locks, and its connections change between slices).
+**Status.** The worked numbers come from ONE solved case (Appendix B of `README_v1.md`): a multi-CPU host running a web application, where a delay of several hundred milliseconds (with jitter) was injected for two minutes into the path between one service and its SQL database. There is no sweep on all labelled runs and no `RESULTS.md`, so this blueprint has no found and no false-alarm counts. Its tools print tables and no `VERDICT:` line. Two reading rules were measured on 6 labelled `slow_db` runs on 23-11-2026 (`RESULTS.md`): the connections are compared as two sets, and sleep in `locks` counts only if it rises. Agent (23-11-2026, graph harness, gpt-6-luna), before that change: one labelled `slow_db` run. The agent found the right window, the 500 ms gaps, the proxy and the database, but the verdict is inconclusive: two steps had no outcome that fits a Go victim (it sleeps in locks, and its connections change between slices). After the change: two other labelled runs, both confirmed with the right delay (about 500 ms and about 60 ms); one of them named the wrong database process as the dependency.
 
 ## Part 1. Background
 
@@ -138,6 +138,9 @@ Read the two sock_lag.py tables against each other, never alone:
   generator from 50 to 591 ms; the gateway from 114 to 367 ms.
 - Several processes jumping at once is normal: slowness spreads up the call chain.
   Note all of them. victim_pid is the deepest jumped process you can see so far.
+- The `all` table lists only the 10 processes with the highest p50. A victim that
+  is fast at baseline is NOT in the baseline table. That is not a missing baseline:
+  run `sock_lag.py $WORK/base.txt 10 <pid>` on it to read its own baseline.
 - Ignore processes whose gaps are large in BOTH slices. Monitoring tools long-poll
   (gaps of seconds, baseline and fault alike); that is their normal shape.
 Then answer three questions. Did the gaps jump (clearly above their own baseline:
@@ -174,12 +177,19 @@ solved case this read about 500 ms against an injected 500 ms. The p90 minus p50
 spread hints at jitter on top of the base delay. Both are Inferred: the trace shows
 the victim's experience of the delay, not the dependency's own clock.
 A single slow fd with few answers is weak evidence.
+Do not look for the same fd numbers in both slices. A service opens new connections
+to its database while the old ones wait. Measured on the labelled runs (RESULTS.md):
+0 or 1 of the 10 busiest fds was the same in both slices; at baseline the 10 busiest
+fds read p50 0.5-15.3 ms; in the fault all 10 read 467-553 ms for an added 500 ms,
+and 59.6-65.5 ms for an added 60 ms. Compare the two SETS: every busy connection
+fast before, a group in one band during. The table lists only the 10 connections
+with the most waiting time; the `ALL` row covers the rest.
 
 Write down: `pool_fds` (the slow fds of the victim (one fd, or a pool of fds with the same numbers)), `delay_ms` (the added delay, fault p50 minus baseline p50 on the slow pool. Always an estimate (Inferred)).
 
 | The step ends with | When | Verdict line | Then |
 |---|---|---|---|
-| `pool_slow` | one fd, or a pool of fds with the same numbers, is slow against its own baseline, and the victim's other fds stay fast |  | go to `dependency` |
+| `pool_slow` | in the fault slice a group of the victim's connections sits in one narrow band of p50, far above the p50 of every connection in the baseline slice. The fd numbers do not have to be the same in the two slices |  | go to `dependency` |
 | `host_network` | every fd of the victim is slow, and other processes' unrelated connections are slow too |  | **Stop.** Host-wide network trouble, not one slow dependency. Root cause **rejected**. |
 
 ### Step 5. Name the process on the other end, then decide whether the dependency itself is struggling or the path to it is slow. (`dependency`)
@@ -224,13 +234,18 @@ Write down: `dep_pid` (pid of the dependency process, if it is on this host; `no
 
 ```
 sleep_where.py $WORK/fault.txt 10 <victim_pid>
+sleep_where.py $WORK/base.txt 10 <victim_pid>
 sched_budget.py $WORK/fault.txt 10 <victim_pid>
 sock_lag.py $WORK/base.txt 10 <victim_pid>
 ```
 
 A slow dependency looks like this:
-- Locks inside the victim (sleep_where.py on the victim, fault slice): the victim's
-  sleep is not piling up in `locks`; the gaps on real connections carry the delay.
+- Locks inside the victim (sleep_where.py on the victim, fault slice AND baseline
+  slice): the victim's sleep in `locks` does not RISE against its own baseline; the
+  gaps on real connections carry the delay. A Go service keeps its idle threads in
+  `locks` all the time. Measured on the labelled runs (RESULTS.md): 9.2-10.2
+  threads in `locks` at baseline, 8.6-10.5 in the fault, and 0.00 in `sock_read` in
+  both. So the number alone says nothing; only a rise does.
 - The victim's CPU (sched_budget.py, the victim's `wait`): near zero.
 - The victim's disk (sched_budget.py, the victim's `D`): near zero.
 - An outage (`answers` count in sock_lag.py): answers keep arriving, late.
@@ -247,8 +262,8 @@ not all invent the same pause.
 
 | The step ends with | When | Verdict line | Then |
 |---|---|---|---|
-| `slow_dependency` | all six checks look like a slow dependency. The gap jump on a pool, answers flowing and the chain inflating all held |  | go to `identify` Root cause **confirmed**. |
-| `check_does_not_fit` | one of the checks does not look like a slow dependency (the victim's sleep piles up in `locks`, or its `D` is up, or unrelated processes' gaps changed too, or the gaps were already slow before the window). Say which one |  | go to `identify` Root cause **unconfirmed**. |
+| `slow_dependency` | all six checks look like a slow dependency. The gap jump on a group of connections, answers flowing and the chain inflating all held |  | go to `identify` Root cause **confirmed**. |
+| `check_does_not_fit` | one of the checks does not look like a slow dependency (the victim's sleep in `locks` rises clearly against its own baseline, or its `D` is up, or unrelated processes' gaps changed too, or the gaps were already slow before the window). Say which one |  | go to `identify` Root cause **unconfirmed**. |
 | `victim_cpu` | the victim's `wait` for the CPU is high. The connection gaps grow only as a consequence |  | **Stop.** The victim waits for the CPU, not for answers. Use the CPU-cap blueprint. Hand the case to blueprint `1_svc_cpu_cap`. Root cause **rejected**. |
 
 ### Step 7. Name the victim and the dependency as precisely as the trace allows. (`identify`)

@@ -60,3 +60,35 @@ Not changed: the two steps of blueprint 3. A fix needs a rule that is checked on
 `slow_db` runs, not written from this one run. Listed as TO-FIX C31.
 
 Count so far over first runs in the new form: 25 runs on 20 blueprints, 15 right.
+
+## 3. Blueprint 3 fixed from a measurement, not from the failed run
+
+The first agent run left two steps through `other`. Before changing them I measured both
+points on the labelled `slow_db` runs (tool only, login node; numbers in
+`Blueprint/latency/3_slow_db/RESULTS.md`, 6 usable runs):
+
+- The victim's connection numbers change between baseline and fault (0 to 3 of the 10
+  busiest are the same). At baseline every busy connection is fast (p50 0.5 to 18.5 ms); in
+  the fault all 10 sit in one band that equals the added delay (467 to 553 ms for 500,
+  59.6 to 65.5 ms for 60).
+- A Go victim has about 10 threads asleep in `locks` in both slices (9.2 to 10.2, then 8.6
+  to 10.5), and 0.00 in `sock_read`.
+
+Changes: connections are compared as two sets; sleep in `locks` counts against the fault
+only if it rises against the victim's own baseline; a note that the census table has only
+10 rows.
+
+Why measure first: this is build Step 5 of METHOD.md (a rule changes only because of named
+runs). The failed run gave the question, the six runs gave the rule.
+
+Test on two runs the agent had not seen (gpt-6-luna):
+
+| run | verdict | delay found | truth | dependency named |
+|---|---|---|---|---|
+| `slow_db_aggressive_steady_r2` | confirmed | 452 to 525 ms | 500 ms, 14:46:05 to 14:48:05 | wrong: `mongod` (truth: `mysqld` behind the proxy) |
+| `slow_db_subtle_steady_r1` | confirmed | about 60 ms | 60 ms, 04:10:09 to 04:12:09 | `mysqld` and the proxy; it took `mysqld` as the victim |
+
+So the fault and its size are found; who is on the other end is still weak. The first of
+these runs also had three steps with evidence lines that were not in the tool output (the
+harness marked them). Limits: the new wording was not checked on other families; subtle r2
+and r3 were not measured. Listed in TO-FIX C31.
