@@ -219,3 +219,29 @@ abort, else the family stops.
 result is in `~/kc_df.log` there. The family is NOT on Trillium: the connection dropped. The
 local monitor was also stopped once by Claude Code for low laptop memory; the runs on the VM
 were not affected.
+
+## Blueprint 26 (`svc_cpuset`): `cpu_confine.py`, first results on the 5 runs
+
+Login node only; one 10 s baseline slice (injection - 40 s) and one 10 s fault slice
+(injection + 30 s) per run, scheduling events, kept in `work/v3bp26/`.
+
+**Measure.** Per container, in both slices: the fewest CPUs that carry 99% of its CPU time, the
+cores it used, and the thread-seconds per second its threads were ready and waiting for a core.
+Verdict: it ran on 4 or more CPUs before and runs on at most half of them now (judged only if
+it has 8+ threads and uses 0.2+ cores in both slices).
+
+**Result.** 5 of 5, one verdict line per run, naming the carts container only: 12 (once 11)
+CPUs -> 1 CPU (cpu 11, the one the recipe sets); cores used 0.59-0.65 -> 0.63-0.67; CPU wait
+0.10-0.15 -> 1.23-1.50 thread-seconds per second; the other CPUs 47-54% idle. The reversed
+comparison is quiet in 5 of 5. Every other container stays on 11-12 CPUs.
+
+**Bars.** Set before the first run on data and not changed. This is the first v3 tool that
+passed on the first try.
+
+**What the numbers say about the fault.** The service uses the same CPU as before; what changes
+is where it runs and that its threads now queue: about 1.3 threads are always waiting for the
+one core. That is why metrics and spans see only a 2x slowdown while the kernel view is exact.
+
+**Not done.** No check on other families (deferred by the user); the subtle setting (two
+cores) was not collected, so "at most half" is untested near its edge; a service with fewer
+than 8 threads is not judged.

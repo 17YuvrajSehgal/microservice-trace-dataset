@@ -15,7 +15,7 @@ Rules given by the user, in force while unattended:
 | 1 | `code_lock_contended` | `faults/code_lock_contended.sh` | done, on Trillium, checksums verified |
 | 2 | `svc_cpuset` (A1) | `faults/svc_cpuset.sh` | done, on Trillium, checksums verified |
 | 3 | `disk_full` (C1) | `faults/disk_full.sh` | 5 of 5 accepted (23:36 UTC). **Still on the VM**: `~/archive/runs/disk_full/`. Not on Trillium - the Trillium connection dropped at about 23:00 UTC |
-| 4 | `port_exhaustion` (D1) | `faults/port_exhaustion.sh` | recipe written; calibration running on the VM |
+| 4 | `port_exhaustion` (D1) | `faults/port_exhaustion.sh` | run 1 accepted (confirmed, 2,575 error lines, connect() = -99 in the kernel); runs 2-5 being collected |
 | 5 | `thread_pool_exhaustion` (E3) | to write | after 4 |
 
 Steps for each family, in order:
@@ -31,7 +31,7 @@ Steps for each family, in order:
 | # | family | tool | state |
 |---|---|---|---|
 | 25 | `code_lock_contended` | `inside_wait.py` | finds 5 of 5; false-alarm check deferred by the user |
-| 26 | `svc_cpuset` | `cpu_confine.py` | tool written, self-test passes. NOT tested on data: the upload to Trillium broke with the connection. Needs the user's Trillium login |
+| 26 | `svc_cpuset` | `cpu_confine.py` | finds 5 of 5 on the first try, reversed comparison quiet; false-alarm check deferred by the user |
 | 27 | `disk_full` | to write (ENOSPC returns + abort + restart) | when family 3 is on Trillium |
 | 28 | `port_exhaustion` | to write | when family 4 is on Trillium |
 
@@ -57,3 +57,7 @@ quiet. No README or RESULTS file until the false-alarm check has run.
   VM's current IP, verify, checksum, delete on the VM; (2) upload `26_svc_cpuset/tools` and run
   `work/v3bp26_all.sh` (script is in the session scratchpad as tr10.sh; it cuts 10 s
   sched slices per run and runs `cpu_confine.py` both ways).
+
+## State at 00:45 UTC, 25-11
+
+- Trillium is back (user logged in). `disk_full` and `port_exhaustion` move to Trillium together once run 5 of `port_exhaustion` is done - not during a traced run, the pull would load the VM.
