@@ -1,0 +1,170 @@
+# Blueprint 25 as a structure (25-11-2026). The source of BLUEPRINT.md (bp_render.py) and of the agent's steps.
+
+id: code_lock_contended
+fault_type: code_lock_contended
+title: requests wait inside one service, and nothing else explains it (a lock held too long)
+problem_class: Concurrency (a lock or a pool)
+confirms: Requests queue inside one service for a lock (or a pool) that is held while it does slow work, so they
+  finish one after another.
+evidence: An LTTng kernel trace only, with `net_dev_queue` and the scheduling events
+not_used: Logs, metrics, spans, source code
+when_to_use: A service is slow, uses little CPU, its own dependencies answer quickly, and nothing is lost on the
+  network.
+status: Calibrated on the 5 v3 `code_lock_contended` runs (catalogue). Checked on all 347 runs. The first step is
+  not specific (see Measured); the second step is. Not run by an agent yet.
+background: 'Every request a service receives is, at each moment, in one of four states: on a CPU, waiting for a
+
+  core, waiting for a call it made to another service, or waiting inside the service for something the
+
+  trace cannot name (a lock, a pool, an internal queue). `inside_wait.py` counts the last one from the
+
+  transmit events (a call is timed at the server) and the scheduling events.
+
+
+  That count says WHERE requests wait, not WHY. On the sweep it named a service in 13 other fault
+
+  families: a CPU cap, a network delay, a blocked event loop, a slow dependency all leave requests waiting
+
+  somewhere. So `wait_cause.py` rules out the causes the other tools can see, on the same two slices.
+
+
+  | | this fault | `db_table_lock` | a CPU cap | a fixed network delay |
+
+  |---|---|---|---|---|
+
+  | requests waiting inside | **4.5-5.4** (catalogue) | 67.4-69.1 (`mysqld`) | named | named |
+
+  | threads waiting for a core | 0.17-0.25 | 0.01 | 7.1-15.6 | low |
+
+  | interface queue | none | none | none | yes |
+
+  '
+lookalikes: 'A delay injected inside a proxy (`slow_db`): the proxy holds every query the same time. Same picture;
+  not separated.
+
+  A CPU limit or a busy host: the threads wait for a core (`wait_cause.py` explains it).
+
+  A network delay or a rate limit: packets wait at an interface (`dev_delay.py`, blueprint 32).
+
+  A blocked or overloaded single-threaded service: it uses about one whole core.
+
+  A service that stopped answering: `unanswered.py`, blueprint 31.'
+tools:
+  idx_summary.py:
+    does: Date, span, health
+    usage: idx_summary.py <trace_dir> [--rate SECONDS]
+  extract_slice.sh:
+    does: Cuts one slice with the events you name
+    usage: extract_slice.sh <trace_dir> <date> <time> <secs> <out> '<regex>'
+  inside_wait.py:
+    does: Where requests wait, per service; the first verdict
+    usage: inside_wait.py <fault_slice> <secs> <baseline_slice>
+  dev_delay.py:
+    does: Packets waiting at the sender's interface
+    usage: dev_delay.py <fault_slice> <secs> <baseline_slice>
+  unanswered.py:
+    does: Connections with a request and no answer
+    usage: unanswered.py <fault_slice> <secs> <baseline_slice>
+  wait_cause.py:
+    does: Rules out the other causes; the final verdict
+    usage: wait_cause.py <inside_wait.out> <dev_delay.out> <unanswered.out>
+vars:
+  EV: net_dev_queue|sched_switch|sched_waking|sched_wakeup
+facts:
+  day: trace date, YYYY-MM-DD (UTC)
+  trace_start: first packet time, HH:MM:SS
+  trace_end: last packet time, HH:MM:SS
+  fault_time: start of the 20 s suspect slice, HH:MM:SS
+  base_time: start of the 20 s baseline slice, HH:MM:SS
+  culprit: the container on the verdict line
+start: check_trace
+steps:
+  check_trace:
+    kind: fixed
+    goal: Know the date, when the trace starts and ends, and whether it is healthy.
+    run:
+    - - idx_summary.py
+      - $TRACE
+    extract:
+      day: ^date \(UTC\)\s*:\s*(\S+)
+      trace_start: ^trace start\s*:\s*(\d\d:\d\d:\d\d)
+      trace_end: ^trace end\s*:\s*(\d\d:\d\d:\d\d)
+      duration_s: ^duration\s*:\s*([\d.]+)
+      lost_events: ^lost events\s*:\s*(.+)$
+    next: orient
+  orient:
+    kind: guided
+    goal: Pick a suspect time and a baseline time, 20 s each.
+    suggested:
+    - idx_summary.py $TRACE --rate 10
+    read: 'The last table is the trace data written per 10 s. If you were given a suspect time, take a slice that
+
+      starts 30 s after it, and a baseline slice that ends 20 s before it. If not, take the stretch where the rate
+
+      changes and a stretch before it with the same traffic. Both slices are 20 s and must lie inside the trace.
+
+      '
+    sets:
+    - fault_time
+    - base_time
+    budget: 3
+    outcomes:
+      times_chosen:
+        when: both times are chosen
+        next: measure
+  measure:
+    kind: guided
+    goal: Find where requests wait, then rule out the other causes.
+    suggested:
+    - extract_slice.sh $TRACE <day> <base_time> 20 $WORK/b.txt $EV
+    - extract_slice.sh $TRACE <day> <fault_time> 20 $WORK/f.txt $EV
+    - inside_wait.py $WORK/f.txt 20 $WORK/b.txt > $WORK/iw.out
+    - dev_delay.py $WORK/f.txt 20 $WORK/b.txt > $WORK/dd.out
+    - unanswered.py $WORK/f.txt 20 $WORK/b.txt > $WORK/un.out
+    - wait_cause.py $WORK/iw.out $WORK/dd.out $WORK/un.out
+    read: 'inside_wait.py must get a baseline slice with about the same traffic: a single-threaded service always
+      has a
+
+      standing queue, and a service with much less traffic in the baseline is NOT JUDGED. Read the last line of
+
+      wait_cause.py. If it says EXPLAINED, follow the cause it names, not this blueprint.
+
+      '
+    sets: []
+    budget: 5
+    outcomes:
+      inside:
+        when: wait_cause.py reads REQUESTS WAIT INSIDE THE SERVICE AND NOTHING ELSE EXPLAINS IT
+        line: 'VERDICT: REQUESTS WAIT INSIDE THE SERVICE AND NOTHING ELSE EXPLAINS IT'
+        verdict: confirmed
+        fault_type: code_lock_contended
+        next: report
+      explained:
+        when: wait_cause.py reads THE WAIT IS EXPLAINED BY ANOTHER CAUSE
+        line: 'VERDICT: THE WAIT IS EXPLAINED BY ANOTHER CAUSE'
+        stop: Requests wait, but for a reason another blueprint covers (see the EXPLAINED line).
+      nothing:
+        when: inside_wait.py names no service (NO REQUESTS WAITING INSIDE A SERVICE)
+        line: 'VERDICT: NO REQUESTS WAITING INSIDE A SERVICE'
+        stop: No service holds requests inside. Not this fault.
+report: 'fault_type: code_lock_contended. The service on the verdict line holds the requests. Evidence: the verdict
+  line of
+
+  wait_cause.py and the inside_wait.py row of that service. The trace cannot name the lock; read the service''s
+  code for a
+
+  lock held across a call. Fix: release the lock before the slow call.
+
+  '
+measured:
+- 'Per-run lines: `RESULTS.md` next to this file.'
+- '**Own runs: 5 of 5**, reversed comparison quiet in 5.'
+- '**The first step is a locator.** `inside_wait.py` alone gave a positive verdict in 68 runs of 13 other families.'
+- '**With the second step: 10 of 10 lock runs, 12 lookalike runs, 0 of 20 normal.** The 12 are `slow_db` (11, a
+  delay injected inside the database proxy) and `anomaly_mem` (1).'
+- '**A delay inside a proxy reads the same as a lock in it.** The tool cannot tell them apart; the program it names
+  (a proxy) is the hint.'
+- '**A request that never gets an answer is not counted** (see blueprint 31).'
+- '**Bars were fitted after seeing data**: the first step''s bars once after the 5 runs, the second step''s after
+  the sweep.'
+- '**One defect in one service** (Go catalogue).'

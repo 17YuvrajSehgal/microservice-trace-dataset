@@ -284,3 +284,27 @@ blueprint tools. Organisation decisions and why:
 First real check (sample svc_cpu_cap r1, label read afterwards): onset 15:19:47 in edge-router,
 injection 15:19:46; the culprit (carts) is silent, the victims complain. One run; the first-set
 sweep is next.
+
+## Steps 1-3 asked by the user (25-11, evening): second step, new tools, write-ups
+
+**1. Second step for blueprints 25 and 30: `wait_cause.py`.** Reads the outputs of
+`inside_wait.py`, `dev_delay.py` and `unanswered.py` on the same two slices and rules out what
+those tools can see: a silent service, an interface queue, threads waiting for a core (0.5
+thread-seconds per second), one busy thread (0.9-1.2 cores). Run on the saved outputs of all
+347 sweep runs: 10 of 10 lock runs, 0 of 20 normal, 12 lookalikes left (`slow_db` 11, a delay
+injected inside the database proxy; `anomaly_mem` 1). Bars set after seeing the sweep numbers.
+
+**1b. `dev_delay.py` tells a rate limit from a fixed delay** by p95/median of the wait: 4.5-5.3
+for the 5 rate-limit runs, 1.4-1.6 for all 21 netem runs. Bars 3.0 and 2.0, set after seeing.
+
+**2. New tools.** `33_cpu_weight/tools/cpu_starved.py` (wait for a core per second of work, per
+container): 5 of 5 `cpu_weight` (10.6-19.8, 4.5-8.9 times; others 0.7-0.8 times), reversed quiet,
+quiet on 15 other v3 slices. Bars from the sweep's `cpu_confine` tables; a CPU quota would fire
+too (stated). `34_port_scan/tools/scan_fanout.py` (different targets per source address): 5 of 5
+(3,904-3,910 pairs on 262 ports, 100% refused, 4 before), reversed quiet, quiet on 15 other v3
+slices; bars set before the first run. Neither new tool has been run on the 347 sweep runs (the
+sweep kept no slices) - that needs a SLURM job.
+
+**3. Write-ups.** `blueprint.yaml`, `BLUEPRINT.md` (rendered) and `RESULTS.md` for blueprints
+25-34; all ten pass `bp_check.py`. Every number comes from these notes. Blueprints 27-29 share
+`new_errors.py`; 25 and 30 share `inside_wait.py` + `wait_cause.py`.
