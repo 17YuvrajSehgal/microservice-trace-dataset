@@ -509,13 +509,23 @@
  "slow_client_carts": [
   {
    "canonical": true,
-   "name": "cart_request_rate",
-   "promql": "sum(rate(request_duration_seconds_count{job=\"cart\"}[20s]))",
+   "name": "frontend_request_rate",
+   "promql": "sum(rate(http_request_duration_seconds_count{job=\"frontend\"}[20s]))",
    "direction": "decrease",
    "threshold_sigma": 4,
-   "abs_threshold": 50,
+   "abs_threshold": 100,
    "min_fraction": 0.6,
-   "why": "v3, calibrated 2026-11-25 on the VM under the 150-user load: with 205 or 400 slow connections holding the carts service's 200 worker threads it completes 0 requests/s (120/s before), logs nothing, and the front-end's rate falls to 0 within a minute because every simulated user is stuck in a cart call; back to 117/s within 20 s of the cleanup. With 150-195 connections: rate 110/s, p95 23 -> 44 ms. Check run 25-11: with a 1-minute rate window the drop is smeared over half of the 2-minute fault and the run scored 'borderline' (mean 41/s against 99/s) although the spans show 884 carts requests in the fault against 6,504 in the baseline minute; the window is now 20 s."
+   "why": "v3, calibrated 2026-11-25: with the carts service's 200 worker threads held, every simulated user ends up stuck in a cart call and the front-end's rate falls from about 290/s to under 20/s within 20 s and to 0 within a minute; back within 20 s of the cleanup. The carts service's OWN metrics cannot be the target: its /metrics endpoint is served by the same stuck threads, so Prometheus gets no samples from it during the fault (second check run: 0 finite samples, scored 'unconfirmed'). That gap in the carts series is itself a sign of the fault."
+  },
+  {
+   "canonical": false,
+   "name": "cart_scrape_up",
+   "promql": "min(up{job=\"cart\"})",
+   "direction": "decrease",
+   "threshold_sigma": 3,
+   "abs_threshold": 0.5,
+   "min_fraction": 0.6,
+   "why": "the carts service stops answering its metrics scrape while its worker threads are held"
   }
  ]
 }

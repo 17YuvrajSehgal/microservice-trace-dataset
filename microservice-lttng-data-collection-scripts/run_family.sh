@@ -61,6 +61,14 @@ case "$RECIPE" in
         # The address is resolved when the load starts, AFTER `arm` recreated the container.
         export EXTRA_LOAD_CMD="python3 $SD/faults/code-defects/loadprobe.py http://\$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' \$(docker ps --format '{{.Names}}' | grep -m1 'catalogue_1'))/catalogue 1000000000 $LOCK_CLIENTS $LOCK_INTERVAL_MS"
         ;;
+    slow_client)
+        # While the slow clients hold its threads the carts JVM polls its sockets in a tight
+        # loop (measured 25-11-2026: 170,000 read and 340,000 futex calls per second), which
+        # doubles the kernel event rate. With the default 32 sub-buffers per CPU the second
+        # check run lost 1,096,369 events (the first lost none). Three times the buffer.
+        export KERNEL_NUM_SUBBUF="${KERNEL_NUM_SUBBUF:-96}"
+        export RUN_NOTE="kernel ring buffers raised to ${KERNEL_NUM_SUBBUF} sub-buffers per CPU for this family (the fault doubles the event rate)"
+        ;;
 esac
 
 if [[ "$WORKLOAD" == "burst" ]]; then USERS="$USERS_BURST"; else USERS="$USERS_STEADY"; fi
