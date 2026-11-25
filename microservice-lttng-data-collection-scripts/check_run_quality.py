@@ -134,6 +134,27 @@ def check_baseline(run_dir, out):
                           "measurement in this run is against a broken reference.")})
 
 
+UST_MIN_BYTES = 1024 * 1024     # an empty user-space trace is about 65-130 KB of metadata
+
+
+def check_ust(run_dir, out):
+    """Did the user-space relay record anything? Nothing looked at this until 25-11-2026, and
+    the stream was empty in 37 of 40 v3 runs and 271 of 304 v2 runs (the relay followed
+    `docker logs -f`, which goes silent after the between-run log truncation)."""
+    d = os.path.join(run_dir, "ust")
+    if not os.path.isdir(d):
+        out["checks"].append({"name": "ust_has_events", "ok": False,
+                              "detail": "no ust/ directory: the user-space trace is missing"})
+        return
+    size = sum(os.path.getsize(os.path.join(r, n)) for r, _d, names in os.walk(d) for n in names)
+    ok = size >= UST_MIN_BYTES
+    out["checks"].append({
+        "name": "ust_has_events", "ok": ok,
+        "detail": "user-space trace is %.1f MB%s" % (
+            size / 1048576.0, "" if ok else " - EMPTY (only metadata). The relay recorded no "
+                                            "spans; the cross-layer span stream is missing from this run.")})
+
+
 HOST_RETRANS_MAX_PCT = 1.0      # host-wide, so far stricter than the per-interface bar
 
 
@@ -264,6 +285,7 @@ def main():
     check_windows(a.run_dir, out)
     check_injection(a.run_dir, out)
     check_baseline(a.run_dir, out)
+    check_ust(a.run_dir, out)
 
     failed = [c for c in out["checks"] if c["ok"] is False]
     unknown = [c for c in out["checks"] if c["ok"] is None]

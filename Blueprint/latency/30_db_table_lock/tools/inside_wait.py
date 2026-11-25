@@ -19,6 +19,22 @@
 # It reads the transmit events (net_dev_queue: a call runs from the client's last data segment
 # to the server's first answering segment, on one connection) and the scheduling events.
 #
+# WHERE A CALL IS TIMED. A packet is queued once on the sender's interface and once on the next
+# interface. A call is timed AT THE SERVER: from the request's arrival on the server's side to
+# the answer's queueing on the server's own interface. So a wait on the CLIENT's interface (a
+# rate limit there) is not counted as time in the server; it shows as "inside" of the client,
+# which is where it is. (Until 25-11-2026 the tool used whichever sighting it met first, and on
+# the 5 net_bandwidth runs it named the database proxy for a limit on the catalogue.)
+#
+# WHAT IT CANNOT SEE.
+# - A request that never gets an answer has no end and is not counted at all. A service that
+#   has stopped answering is missing from the table (measured on the 5 slow_client runs). Use
+#   unanswered.py for that.
+# - A single-threaded service has a standing queue: the Node front-end here shows about 10
+#   requests "inside" in every normal slice. So ALWAYS give a baseline slice with about the
+#   same traffic. Without one the tool names the front-end. With a comparison slice that has
+#   much less traffic for a service, that service is not judged (and the tool says so).
+#
 # Usage:
 #   python3 inside_wait.py <slice.txt> <slice_seconds> [baseline_slice.txt]
 #   python3 inside_wait.py --selftest
@@ -34,6 +50,8 @@ MIN_CALLS = 200        # a service is judged only if it received this many reque
 MIN_INSIDE = 1.0       # requests waiting inside, averaged over the slice
 MIN_SHARE = 0.25       # ... and this share of its requests in flight
 MIN_RISE = 3.0         # ... and this many times the baseline (when a baseline is given)
+MIN_BASE_RATE = 0.25   # the baseline must have at least this share of the slice's request rate for
+                       # that service, or the two slices are not like for like and it is not judged
 # The first two bars were guessed at 2.0 and 50% and then LOWERED after the 5 labelled runs
 # (24-11-2026): the locked service is at 2.07-2.65 requests and 34-39% of its requests in
 # flight, with 0.00 in every baseline. Fitted to one defect in one service; the check on
@@ -128,7 +146,7 @@ def read(lines):
     calls = defaultdict(list)                             # (client ip, server ip, port) -> [(t0, t1)]
     for (cip, cport, sip, sport), devs in segs.items():
         t0 = None
-        for t, fc in sorted(max(devs.values(), key=len)):
+        for t, fc in at_server(devs):
             if fc is None:
                 # a connection opened or closed here. A client port is reused by a later
                 # connection: measured, a MySQL "quit" (no answer) followed 12 s later by the
@@ -145,6 +163,27 @@ def read(lines):
                 t0 = None
     who = {ip: max(v, key=v.get) for ip, v in votes.items()}
     return calls, who, oncpu, cpuwait
+
+
+def at_server(devs):
+    # One connection, seen on several interfaces. Take the client's segments where they are
+    # LATEST (arriving at the server) and the server's segments where they are EARLIEST (leaving
+    # the server), so that a queue on either sender's interface is not counted in the call.
+    def pick(want, latest):
+        best, key = [], None
+        full = max((sum(1 for _, fc in v if fc is want) for v in devs.values()), default=0)
+        for v in devs.values():
+            x = [t for t, fc in v if fc is want]
+            # a device that saw only part of the connection (cut by the slice) is not compared
+            if not x or len(x) < 0.9 * full:
+                continue
+            k = sum(x) / len(x)
+            if key is None or (k > key if latest else k < key):
+                best, key = x, k
+        return best
+    edges = max(([t for t, fc in v if fc is None] for v in devs.values()), key=len, default=[])
+    return sorted([(t, True) for t in pick(True, True)] + [(t, False) for t in pick(False, False)]
+                  + [(t, None) for t in edges])
 
 
 def table(data, secs):
@@ -185,8 +224,12 @@ def report(cur, secs, base=None):
     hits = 0
     for ip, r in sorted(rows.items(), key=lambda kv: -kv[1]["inside"]):
         b = brow.get(ip)
+        if base and r["inside"] >= MIN_INSIDE and r["inside"] >= MIN_SHARE * r["lin"] and (not b or b["rate"] < MIN_BASE_RATE * r["rate"]):
+            out.append(f"NOT JUDGED: {name(ip)} at {ip} has {r['inside']:.1f} requests waiting inside it, but the baseline slice has "
+                       f"{b['rate'] if b else 0:.0f} requests/s for it against {r['rate']:.0f} here: the two slices are not like for like")
+            continue
         if r["inside"] >= MIN_INSIDE and r["inside"] >= MIN_SHARE * r["lin"] and (not base or (b and r["inside"] >= MIN_RISE * b["inside"])):
-            was = f", {b['inside']:.2f} in the baseline" if b else " (no baseline given)"
+            was = f", {b['inside']:.2f} in the baseline" if b else " (NO BASELINE GIVEN: a single-threaded service always has a standing queue)"
             out.append(f"VERDICT: REQUESTS WAIT INSIDE THE SERVICE: {name(ip)} at {ip} has {r['lin']:.1f} requests in flight, "
                        f"{r['inside']:.1f} of them wait inside it{was}: it uses {r['cpu']:.2f} cores, {r['cw']:.2f} threads wait "
                        f"for a core, {r['lout']:.2f} of its calls are waiting for a dependency; answers take {r['ms']:.1f} ms")
@@ -203,9 +246,9 @@ def selftest():
     def addr(a):
         return ", ".join(f"[{i}] = {x}" for i, x in enumerate(a.split(".")))
 
-    def q(t, nm, ns, src, sport, dst, dport):
+    def q(t, nm, ns, src, sport, dst, dport, dev="eth0"):
         return (f'[10:00:{t:012.9f}] (+0.0) h net_dev_queue: {{ cpu_id = 1 }}, {{ pid = 7, tid = 7, procname = "{nm}", '
-                f'pid_ns = {ns} }}, {{ skbaddr = 0x1, len = 90, name = "eth0", network_header_type = 1, '
+                f'pid_ns = {ns} }}, {{ skbaddr = 0x1, len = 90, name = "{dev}", network_header_type = 1, '
                 f'network_header = {{ ipv4 = {{ version = 4, ihl = 5, tos = 0, tot_len = 90, id = 0x1, frag_off = 0, '
                 f'ttl = 64, protocol = 6, checksum = 0x0, saddr = [ {addr(src)} ], daddr = [ {addr(dst)} ], '
                 f'transport_header_type = 1, transport_header = {{ tcp = {{ source_port = {sport}, dest_port = {dport}, '
@@ -229,6 +272,30 @@ def selftest():
     assert "REQUESTS WAIT INSIDE THE SERVICE: app (pid_ns 5) at 10.0.0.5 has 9.0 requests in flight, 8.8 of them wait inside it, 0.20 in the baseline" in out, out
     out = "\n".join(report(base, 10, base))
     assert "NO REQUESTS WAITING INSIDE A SERVICE (most: 0.20 of 0.40 in flight at 10.0.0.5" in out, out
+
+    def capped(wait):
+        # the same service with a rate limit on its OWN interface: each query to the database
+        # waits `wait` seconds there before it reaches the database's side (second sighting)
+        ls = []
+        for i in range(100):
+            for c in range(10):
+                t = i * 0.1 + c * 0.001
+                ls += [q(t, "web", 4, "10.0.0.4", 40000 + c, "10.0.0.5", 80),
+                       q(t + 0.000005, "swapper/1", 0, "10.0.0.4", 40000 + c, "10.0.0.5", 80, "vethapp"),
+                       q(t + 0.001, "app", 5, "10.0.0.5", 41000 + c, "10.0.0.6", 3306),
+                       q(t + 0.001 + wait, "swapper/1", 0, "10.0.0.5", 41000 + c, "10.0.0.6", 3306, "vethdb"),
+                       q(t + 0.003 + wait, "mysqld", 6, "10.0.0.6", 3306, "10.0.0.5", 41000 + c),
+                       q(t + 0.003005 + wait, "swapper/1", 0, "10.0.0.6", 3306, "10.0.0.5", 41000 + c, "vethapp"),
+                       q(t + 0.004 + wait, "app", 5, "10.0.0.5", 80, "10.0.0.4", 40000 + c)]
+        return sorted(ls, key=tsec)
+
+    out = "\n".join(report(read(capped(0.060)), 10, read(capped(0.0))))
+    assert out.count("VERDICT") == 1 and "REQUESTS WAIT INSIDE THE SERVICE: app (pid_ns 5) at 10.0.0.5" in out, out
+    assert "  10.0.0.6            100       2.00       0.20" in out, out          # the database: 2 ms, not 62 ms
+    # a comparison slice with almost no traffic is not a baseline
+    thin = [l for l in slice_(0.004) if int(tsec(l) * 10) % 10 == 0 and tsec(l) < 36002.5]
+    out = "\n".join(report(read(slice_(0.090)), 10, read(thin)))
+    assert "NOT JUDGED: app (pid_ns 5) at 10.0.0.5" in out and "NO REQUESTS WAITING INSIDE A SERVICE" in out, out
     print("selftest OK")
 
 

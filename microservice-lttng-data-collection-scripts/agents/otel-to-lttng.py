@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import argparse
+import json
 import subprocess
 import re
 import lttngust.loghandler
@@ -35,15 +36,40 @@ containers = {f"docker-compose_{s}_1": s for s in services}
 procs = {}
 stream_to_meta = {}
 
+# HOW THE LOG IS READ. Until 25-11-2026 this followed `docker logs -f --tail=0`. That returns
+# NOTHING once the container's log file has been truncated from outside, and
+# campaign_finish_run.sh truncates every container log between runs (the files would fill the
+# disk otherwise). Measured on the VM: 12,280 span lines in 6 s after a container restart, 0
+# right after `truncate -s 0`, still 0 fifteen seconds later, while `docker logs --since` kept
+# returning 20,000 lines. So the relay only worked in the first run after a container start:
+# the user-space trace is empty in 37 of 40 v3 runs and in 137 of 170 v2 Sock Shop runs.
+#
+# `tail -F` on the json log file itself notices a truncation and carries on, so that is used.
+# The file belongs to root, hence sudo. If that is not possible the old way is the fallback,
+# and the relay says so.
+def log_path(container):
+    try:
+        cid = subprocess.check_output(["docker", "inspect", "-f", "{{.Id}}", container],
+                                      stderr=subprocess.DEVNULL).decode().strip()
+    except Exception:
+        return None
+    path = f"/var/lib/docker/containers/{cid}/{cid}-json.log"
+    ok = subprocess.call(["sudo", "-n", "test", "-r", path],
+                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL) == 0
+    return path if ok else None
+
+
 for container, service in containers.items():
-    p = subprocess.Popen(
-        ["docker", "logs", "-f", "--tail=0", "--timestamps", container],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        bufsize=1,
-    )
+    path = log_path(container)
+    if path:
+        cmd, from_file = ["sudo", "-n", "tail", "-n", "0", "-F", path], True
+    else:
+        cmd, from_file = ["docker", "logs", "-f", "--tail=0", "--timestamps", container], False
+        print(f"[relay] WARN: cannot read the log file of {container}; following `docker logs`, "
+              f"which goes silent after a log truncation", file=sys.stderr, flush=True)
+    p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL if from_file else subprocess.STDOUT)
     procs[container] = p
-    stream_to_meta[p.stdout] = {"container": container, "service": service}
+    stream_to_meta[p.stdout] = {"container": container, "service": service, "from_file": from_file}
 
 if not args.quiet:
     print("Relaying OTel spans to LTTng... (Ctrl+C to stop)")
@@ -58,6 +84,13 @@ try:
 
             line = raw.decode("utf-8", errors="replace").strip()
             meta = stream_to_meta[stream]
+            if meta["from_file"]:
+                # one JSON object per line: {"log": "...\n", "stream": "stderr", "time": "...Z"}
+                try:
+                    rec = json.loads(line)
+                    line = f'{rec.get("time", "")} {rec.get("log", "").strip()}'.strip()
+                except ValueError:
+                    continue
             service = meta["service"]
             container = meta["container"]
 
