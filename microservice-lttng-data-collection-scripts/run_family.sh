@@ -141,6 +141,12 @@ for r in $(seq 1 "$REPEATS"); do
             echo "[$r/$REPEATS] database log: $nospace lines 'No space left on device', $aborts aborts"
             [[ "$nospace" -gt 0 && "$aborts" -gt 0 ]] || bad="${bad:+$bad; }the database log shows no out-of-space abort"
         fi
+        # port_scan has no metric signature either (measured): the proof is the scanner's count.
+        if [[ "$RECIPE" == "port_scan" ]]; then
+            tried=$(grep -a -o 'scanner stopped: stopped: sweeps [0-9]*, tried [0-9]*' "$HOME/${RUN}.log" 2>/dev/null | grep -o '[0-9]*$' | tail -1)
+            echo "[$r/$REPEATS] scanner: ${tried:-0} connection attempts"
+            [[ "${tried:-0}" -ge 10000 ]] || bad="${bad:+$bad; }the scanner reported fewer than 10000 attempts"
+        fi
         if [[ -n "${EXTRA_LOAD_CMD:-}" ]]; then
             n=$(grep -o 'n=[0-9]*' "$d/meta/extra_load.log" 2>/dev/null | tail -1 | cut -d= -f2)
             [[ "${n:-0}" -gt 0 ]] || bad="${bad:+$bad; }the extra load reported no completed requests"

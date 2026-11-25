@@ -551,5 +551,18 @@
    "min_fraction": 0.6,
    "why": "v3, calibrated 2026-11-25 on the VM, 150 users, with a neighbour of 12 busy processes for the whole run: carts at cpu.weight 10 goes from p95 88 ms to 3.0-4.2 s and from 91 to 66 requests/s, no 5xx; back to 85 ms within 40 s of restoring weight 100."
   }
+ ],
+ "port_scan_front-end": [
+  {
+   "canonical": true,
+   "name": "frontend_p95_latency_flat_expected",
+   "promql": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"frontend\"}[1m])) by (le))",
+   "direction": "increase",
+   "threshold_sigma": 3,
+   "abs_threshold": 0.1,
+   "min_fraction": 0.5,
+   "expected_to_fail": true,
+   "note": "v3, MEASURED 2026-11-25 in calibration: no metric and no log line sees this fault. 200 connection attempts per second from the front-end's address to ports 1-1024 of the 15 other containers (19,253 tried in 96 s, 16 open, 19,237 refused): catalogue and front-end rate, errors and answer times unchanged, host 48% -> 50% busy, 0 log lines about refused or reset connections in any service. Marked expected_to_fail so the run reads no_metric_signature; the proof that the scan ran is the scanner's own count in the run log, checked by run_family.sh, and the refused connects in the kernel trace."
+  }
  ]
 }
