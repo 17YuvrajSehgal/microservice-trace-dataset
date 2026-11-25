@@ -450,3 +450,18 @@ for the user.
   (9 GB of the 28 GB free). This is a tracing setting that differs from the other families; it
   is written to `meta/load_setup.txt` of each run.
 - Check run 3 started 06:00 UTC. The monitor also refuses to go on if run 1 loses events.
+
+## `slow_client` (family 7): collected and on Trillium; VM stopped (25-11, 09:15 UTC)
+
+- Check run 3 passed; runs 2-5 followed. 5 of 5 accepted: verification confirmed, front-end
+  rate 265-280/s in the baseline, 16-22/s in the fault, 242-261/s in recovery; no kernel events
+  lost in any run with the larger buffers; the client opened 220 connections and the server
+  closed none; no client process left and carts back at 74 threads after each run.
+- Spans in every run: 6,160-6,580 carts server spans in the baseline minute, 771-901 in the two
+  fault minutes with p95 122 s, 0 errors. Run 5 has 24 spans over 1 s in recovery (runs 1-4: 0-5).
+- On Trillium: `v3/sockshop/slow_client.tar.gz` (23.12 GB), 0 checksum errors. Run 5 has 1,325
+  files against 1,385: one periodic snapshot fewer (19 ticks instead of 20, no gap in between).
+- Deleted from the VM. The VM `stratatrace-ss-v3` is STOPPED (disk kept): no family is ready
+  that works without an image or start-up change.
+- My monitor stopped once by mistake after check run 3 (its test for lost events matched the
+  text "no events discarded"). No data was affected; runs 2-5 started about 5 minutes late.

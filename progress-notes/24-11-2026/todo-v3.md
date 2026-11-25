@@ -19,7 +19,7 @@ Rules given by the user, in force while unattended:
 | 5 | `pid_limit` (H2) | `faults/pid_limit.sh` | done, on Trillium, checksums verified |
 | 6 | `db_table_lock` (E6) | `faults/db_table_lock.sh` | done, on Trillium, checksums verified |
 | - | `io_cap` (C4) | `faults/io_cap.sh` | NOT collected: measured to have no effect on any service here (no request waits for the disk) |
-| 7 | `slow_client` (E3 without a restart, D3) | `faults/slow_client.sh` | calibrated (220 connections on carts); first check run borderline on a 1-minute rate window, target fixed, check run repeated from 05:24 UTC, 25-11; about 45 min per run |
+| 7 | `slow_client` (E3 without a restart, D3) | `faults/slow_client.sh` | done, on Trillium, checksums verified (220 connections on carts; kernel buffers x3 for this family) |
 | - | `thread_pool_exhaustion` (E3) | - | postponed: the pool size of the Java services can only be set at start-up, so the fault would also be on in the baseline. Needs a runtime switch (JMX) first |
 
 Steps for each family, in order:
@@ -77,3 +77,10 @@ quiet. No README or RESULTS file until the false-alarm check has run.
   retry storm). Those wait for the user. Stop the VM when `slow_client` is done and moved, or
   done and the Trillium login has expired (then the family stays on the VM disk).
 - The Trillium login expires about 08:35 UTC.
+
+## State at 09:15 UTC, 25-11
+
+- On Trillium, verified: families 1-7 (35 runs, about 126 GB packed).
+- The VM is STOPPED. Start: `gcloud compute instances start stratatrace-ss-v3 --zone=us-east1-d --project=project-ba99825a-df02-4405-af4` (new IP each start; `WARMUP_S=60` on the first run).
+- Blueprint 31 (`inside_wait.py` on `slow_client`) is running on the Trillium login node (`work/tr21.log`, slices in `work/v3bp31`).
+- Waiting for the user: the next families (all need an image or start-up change), the false-alarm SLURM check for blueprints 25-31, READMEs, agent runs.
