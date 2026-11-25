@@ -505,5 +505,17 @@
    "min_fraction": 0.7,
    "why": "v3, calibrated 2026-11-25 on the VM under the 150-user load: with the catalogue's three tables write-locked 2 s out of every 3 s, catalogue p95 goes 4.8 ms -> 2,290 ms and its request rate 262 -> 122/s; no 5xx anywhere; back to 4.8 ms within 20 s of the cleanup. The database reached its 151-connection limit but refused no connection. Subtle (0.3 s of every 3 s): p95 about 165 ms, rate unchanged."
   }
+ ],
+ "slow_client_carts": [
+  {
+   "canonical": true,
+   "name": "cart_request_rate",
+   "promql": "sum(rate(request_duration_seconds_count{job=\"cart\"}[1m]))",
+   "direction": "decrease",
+   "threshold_sigma": 4,
+   "abs_threshold": 50,
+   "min_fraction": 0.6,
+   "why": "v3, calibrated 2026-11-25 on the VM under the 150-user load: with 205 or 400 slow connections holding the carts service's 200 worker threads it completes 0 requests/s (120/s before), logs nothing, and the front-end's rate falls to 0 within a minute because every simulated user is stuck in a cart call; back to 117/s within 20 s of the cleanup. With 150-195 connections: rate 110/s, p95 23 -> 44 ms."
+  }
  ]
 }

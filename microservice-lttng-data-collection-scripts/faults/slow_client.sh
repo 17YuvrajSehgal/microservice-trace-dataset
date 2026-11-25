@@ -46,8 +46,11 @@ case "${1:-}" in
   inject)
     INTENSITY="${2:-aggressive}"
     case "$INTENSITY" in
-      aggressive) CONNS="${CONNS:-400}" ;;
-      subtle)     CONNS="${CONNS:-150}" ;;
+      # Calibrated 25-11-2026 on carts (200 worker threads). It is a cliff, not a slope: up to 195
+      # connections the service only slows a little (p95 23 -> 44 ms, 5 threads are enough for
+      # this load); at 205 and above it answers nothing.
+      aggressive) CONNS="${CONNS:-220}" ;;
+      subtle)     CONNS="${CONNS:-190}" ;;
       *) echo "unknown intensity: $INTENSITY"; exit 1 ;;
     esac
     INTERVAL_S="${INTERVAL_S:-1.0}"
