@@ -437,3 +437,16 @@ for the user.
 - The audit took 35 minutes instead of about 3: its sample window follows one trace, and a
   trace here lasts 122 s (332 million kernel events in the window). Expected for this family;
   each run will take about 45 minutes.
+
+**Check run 2 (05:25 UTC): also rejected and deleted, two causes.**
+- Verification "unconfirmed" with the 20 s window. Cause: the carts `/metrics` endpoint is
+  served by the same stuck threads, so Prometheus gets no samples from carts during the fault.
+  (The 1-minute window in run 1 only looked better because it carried old samples forward.)
+  The target is now the front-end's request rate (290/s -> under 20/s), with the carts scrape
+  going down as a second, non-canonical check. The gap in the carts series is a real sign of
+  this fault and stays in the data.
+- 1,096,369 kernel events discarded (run 1 lost none). The fault doubles the kernel event rate.
+  Kernel buffers for this family raised from 32 to 96 sub-buffers per CPU in `run_family.sh`
+  (9 GB of the 28 GB free). This is a tracing setting that differs from the other families; it
+  is written to `meta/load_setup.txt` of each run.
+- Check run 3 started 06:00 UTC. The monitor also refuses to go on if run 1 loses events.
