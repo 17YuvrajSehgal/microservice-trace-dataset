@@ -87,10 +87,15 @@ def read(lines):
     srv = defaultdict(lambda: {"silent": 0, "trickle": 0, "answered": 0, "peers": defaultdict(int), "gaps": []})
     waiting = defaultdict(int)                       # ip -> its own requests to others that got no answer
     for (cip, cport, sip, sport), devs in segs.items():
-        s = sorted(max(devs.values(), key=len))
-        c = [(t, n) for t, fc, n in s if fc]
+        # One connection is seen on several interfaces, and an interface can carry only ONE
+        # direction of it. The first version looked at the interface with the most segments
+        # only: when that one carried just the client's side, an answered connection was
+        # counted as silent (measured 25-11-2026: 30-51 "silent" connections at the edge router
+        # in every normal slice; with all interfaces together, 0 of 151). So: answered if ANY
+        # interface shows server data; the client's segments from the interface with most of them.
+        c = sorted(max(([(t, n) for t, fc, n in v if fc] for v in devs.values()), key=len))
         r = srv[(sip, sport)]
-        if any(not fc for _, fc, _ in s):
+        if any(not fc for v in devs.values() for _, fc, _ in v):
             r["answered"] += 1
             continue
         if not c or end - c[0][0] < MIN_SILENT_S:

@@ -54,7 +54,17 @@ case "${1:-}" in
       subtle)     HEADROOM="${HEADROOM:-8}" ;;
       *) echo "unknown intensity: $INTENSITY"; exit 1 ;;
     esac
-    CUR="$(cg pids.current)"; BEFORE="$(cg pids.max)"
+    # The LOWEST of 10 readings over one second, not one reading. The count flickers by one
+    # when a short-lived thread exists. Measured on the 5 collected runs (25-11-2026): runs 1-3
+    # read 67 and got a limit of 67; runs 4 and 5 read 68 at that instant, got 68, and so had
+    # one thread of headroom - about half as many refused thread creations (267-314 per 20 s
+    # against 441-610) with the same user-visible errors.
+    CUR=""; for _ in 1 2 3 4 5 6 7 8 9 10; do
+        c="$(cg pids.current)"
+        if [[ -n "$c" ]] && [[ -z "$CUR" || "$c" -lt "$CUR" ]]; then CUR="$c"; fi
+        sleep 0.1
+    done
+    BEFORE="$(cg pids.max)"
     [[ -n "$CUR" ]] || { echo "[$FAULT_NAME] cannot read pids.current of $CONTAINER"; exit 1; }
     LIMIT=$(( CUR + HEADROOM ))
     # gt_begin FIRST: it stamps the start of the incident window.
