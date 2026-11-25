@@ -148,6 +148,11 @@ for r in $(seq 1 "$REPEATS"); do
         fi
         break
     done
+    # A run that lost kernel events is not usable for a kernel blueprint, and the next runs of
+    # the same family would lose them too (measured on slow_client, 25-11-2026: the fault
+    # doubles the event rate and the second check run lost 1,096,369 events). Until that day
+    # the driver went on after such a run.
+    [[ "$loss" == "clean" ]] || bad="${bad:+$bad; }kernel events were lost ($loss)"
     if [[ -n "$bad" && "${STOP_ON_BAD:-1}" == "1" ]]; then
         echo "*** STOPPING family $RECIPE after $RUN: $bad"
         echo "*** Fix the cause and re-run; finished runs are skipped. STOP_ON_BAD=0 to continue anyway."

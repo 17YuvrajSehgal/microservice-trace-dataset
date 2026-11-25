@@ -114,10 +114,12 @@ def check_baseline(run_dir, out):
         if nl:
             break
     if not nl:
-        out["checks"].append({
-            "name": "baseline_quiet", "ok": None,
-            "detail": "no per-interface baseline counters in the bundle; run the pack builder "
-                      "and re-check, or accept that this gate did not run"})
+        # The per-interface counters come from the analysis pack, which does not exist at
+        # collection time. Until 25-11-2026 this gate then did not run AT ALL: 45 v3 runs were
+        # collected with "baseline_quiet: could not run". Two things every bundle does carry
+        # answer the same question, so use them: did a container restart in the baseline, and
+        # did the host retransmit.
+        baseline_from_bundle(run_dir, out)
         return
     worst = 0.0
     for row in (nl.get("worst") or []):
@@ -130,6 +132,78 @@ def check_baseline(run_dir, out):
             "" if ok else " - something disruptive happened INSIDE the baseline window. A "
                           "container restart does exactly this. Every baseline-relative "
                           "measurement in this run is against a broken reference.")})
+
+
+HOST_RETRANS_MAX_PCT = 1.0      # host-wide, so far stricter than the per-interface bar
+
+
+def _stamp(name):
+    m = re.search(r"_(\d{8})T(\d{6})Z", name)
+    return (m.group(1) + m.group(2)) if m else None
+
+
+def baseline_from_bundle(run_dir, out):
+    """Baseline check from the bundle alone: container restarts and host TCP retransmissions."""
+    gt = read_json(os.path.join(run_dir, "ground_truth.json")) or {}
+    inj = ((gt.get("fault") or gt).get("injection_start_utc") or "")
+    inj_stamp = re.sub(r"[^0-9]", "", inj)[:14]
+    meta = os.path.join(run_dir, "meta")
+    restarted, seen = [], 0
+    if inj_stamp and os.path.isdir(meta):
+        first = {}
+        for name in sorted(os.listdir(meta)):
+            if not (name.startswith("inspect_") and name.endswith(".json")):
+                continue
+            cont = re.sub(r"_(start|end|tick_\d{8}T\d{6}Z)\.json$", "", name[len("inspect_"):])
+            st = _stamp(name)
+            if name.endswith("_end.json") or (st and st > inj_stamp):
+                continue                                   # after the injection: not baseline
+            d = read_json(os.path.join(meta, name))
+            d = d[0] if isinstance(d, list) and d else d
+            if not isinstance(d, dict):
+                continue
+            key = ((d.get("State") or {}).get("StartedAt"), d.get("RestartCount"))
+            seen += 1
+            if cont not in first:
+                first[cont] = key
+            elif key != first[cont] and cont not in restarted:
+                restarted.append(cont)
+    # host-wide TCP retransmissions in the baseline, from the metrics export next to the bundle
+    pct = None
+    run = os.path.basename(run_dir.rstrip("/"))
+    for mdir in (run_dir.rstrip("/") + "_metrics", os.path.join(os.path.expanduser("~"), run + "_metrics")):
+        try:
+            import calendar
+            import gzip
+            import time
+            t_inj = calendar.timegm(time.strptime(inj[:19], "%Y-%m-%dT%H:%M:%S"))
+
+            def delta(metric):
+                with gzip.open(os.path.join(mdir, metric + ".json.gz"), "rt") as fh:
+                    v = [(float(a), float(b)) for a, b in json.load(fh)["data"]["result"][0]["values"] if float(a) <= t_inj]
+                return v[-1][1] - v[0][1] if len(v) >= 2 else None
+            r, o = delta("node_netstat_Tcp_RetransSegs"), delta("node_netstat_Tcp_OutSegs")
+            if r is not None and o:
+                pct = 100.0 * r / o
+                break
+        except Exception:
+            continue
+    if not seen and pct is None:
+        out["checks"].append({
+            "name": "baseline_quiet", "ok": None,
+            "detail": "no container snapshots before the injection and no metrics export next "
+                      "to the bundle: this gate did not run"})
+        return
+    ok = not restarted and (pct is None or pct <= HOST_RETRANS_MAX_PCT)
+    out["checks"].append({
+        "name": "baseline_quiet", "ok": ok, "source": "bundle (container snapshots, host metrics)",
+        "detail": "%d container snapshots before the injection, restarted in the baseline: %s; "
+                  "host TCP retransmissions in the baseline: %s (bar %.3g%%)%s" % (
+                      seen, ", ".join(restarted) if restarted else "none",
+                      ("%.3g%%" % pct) if pct is not None else "not available", HOST_RETRANS_MAX_PCT,
+                      "" if ok else " - something disruptive happened INSIDE the baseline window. "
+                                    "Every baseline-relative measurement in this run is against a "
+                                    "broken reference.")})
 
 
 def check_windows(run_dir, out):

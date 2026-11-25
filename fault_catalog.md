@@ -262,5 +262,31 @@ rate-window ramp-up. Campaign requirement: **INJECTION_S ≥ 120s**.
 
 ## 7. Amendment log
 
-*(empty — predictions above are as originally registered; any post-freeze
-change appears here as a dated entry with rationale, never as an edit above)*
+*(Predictions above are as originally registered; any post-freeze change appears here as a
+dated entry with rationale, never as an edit above.)*
+
+### 2026-11-25: v3 families added (Sock Shop, 5 aggressive runs each)
+
+**Honest status of these entries.** The rule is to register a family here BEFORE collecting
+it. That was not done: the nine families below were collected on 24 and 25 November and are
+entered here afterwards. The prediction of each family was written in the header of its recipe
+before its first run, and those headers are in git with their dates, so the "predicted" column
+is copied from there and was not changed after seeing data. Where the measurement disagreed, the
+last column says so. No H1-H4 claim may count these as pre-registered in the strict sense.
+
+| family | recipe | mechanism | predicted best modality | what was measured |
+|---|---|---|---|---|
+| `code_lock_contended` | `faults/code_lock_contended.sh` | a lock held across a database call in the catalogue, with enough load for it to queue | kernel | as predicted; needed a 5 ms database delay and 40 extra requests/s to show at all |
+| `svc_cpuset` | `faults/svc_cpuset.sh` | carts confined to one core | kernel | as predicted; metrics see about 2x on answer time |
+| `disk_full` | `faults/disk_full.sh` | the carts database's volume is full | logs, kernel | NO metric signature (the database aborts at about 8 s and 70 s); logs name the cause at once |
+| `port_exhaustion` | `faults/port_exhaustion.sh` | 200 local ports for the catalogue | kernel, logs | as predicted; a circuit-breaker tail runs into the recovery window |
+| `pid_limit` | `faults/pid_limit.sh` | task limit at the current count on orders | kernel | as predicted on orders only; on every other service the limit does nothing (fixed thread pools) |
+| `db_table_lock` | `faults/db_table_lock.sh` | a session write-locks the catalogue's tables 2 s of every 3 s | trace | as predicted; no errors, only waiting |
+| `slow_client` | `faults/slow_client.sh` | 220 slow request bodies hold carts' 200 worker threads | kernel | the prediction "service idle, almost no CPU" was WRONG: the JVM polls the sockets in a tight loop; carts' own metrics vanish during the fault |
+| `net_bandwidth` | `faults/net_bandwidth.sh` | 2 Mbit/s cap on what the catalogue sends | kernel | as predicted; the cap is readable from the trace |
+| `cpu_weight` | `faults/cpu_weight.sh` | CPU weight 10 on carts on a host kept busy for the whole run | kernel | collection in progress on 25-11; its baseline is a busy host, not comparable with other families |
+
+Calibrated and NOT collected, with the reason: `io_cap` (no service waits for the disk),
+`oom_restart_loop` (v2 `svc_mem_cap` is already a restart loop), inode exhaustion (nothing
+creates files at steady load). Details: `progress-notes/24-11-2026` and `25-11-2026`,
+`Blueprint/latency/CANDIDATE-PROBLEMS.md` section "Removed".

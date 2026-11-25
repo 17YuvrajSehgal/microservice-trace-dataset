@@ -19,6 +19,14 @@
 # flight with no CPU use and no calls to a dependency; METRICS show the service's answer time
 # up or its rate down; what users see is measured in the calibration, not assumed.
 #
+# MEASURED, 25-11-2026 (the prediction above is kept as written):
+# - "The service is idle: almost no CPU" was WRONG. The carts JVM does not sleep on the slow
+#   sockets; it polls them in a tight loop, about 170,000 read and 340,000 futex calls per
+#   second. The kernel event rate doubles; run_family.sh raises the trace buffers for this family.
+# - The service's own metrics vanish during the fault: its /metrics endpoint is served by the
+#   same held threads. Verification therefore uses the front-end's request rate.
+# - It is a cliff: up to 195 connections carts only slows a little, at 205 it answers nothing.
+#
 # Usage:
 #   TARGET_SVC=carts ./slow_client.sh inject [subtle|aggressive] | cleanup | status
 #   env: CONNS (connections), INTERVAL_S (seconds between body bytes), SLOW_PATH
