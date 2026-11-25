@@ -66,3 +66,38 @@ loop", not "killed once" - to check against its README.
   1,373 files against 1,385 (12 periodic snapshot files fewer; not looked into). Deleted on the VM.
 - The local monitor was stopped by Claude Code for low laptop memory during run 4. The driver
   on the VM finished runs 4 and 5 alone; I checked both by hand afterwards.
+
+### Blueprint 32 (`net_bandwidth`): `inside_wait.py` gives a WRONG answer, new tool `dev_delay.py`
+
+**`inside_wait.py` names the wrong service, 5 of 5.** It says requests wait inside toxiproxy
+(34-36 "inside") and, second, inside the catalogue (16). Cause: the cap is on everything the
+catalogue sends, also its own queries to the database. The tool times a call from the moment
+the client's packet is queued on the client's interface. With a cap, the packet then waits
+there, and that wait is counted as time inside the server it is going to. So a queue on the
+SENDER's interface is read as slowness of the RECEIVER. This is a real limit of that tool, not
+only of this family: it must be stated in blueprints 25 and 30, or the tool must time a call
+at the receiver's interface.
+
+**`dev_delay.py` (new).** A packet is queued on the sender's interface and then on the next
+interface. The tool measures the time between the two sightings, per sender. Bars set before
+the first run and not changed: 500 packets, median 5 ms, p95 20 ms, 10 times the baseline.
+
+**Result, 5 of 5 on the first try, one verdict line per run:** the catalogue's packets wait
+62-76 ms (median) and 328-347 ms (p95) at its interface; 0.01 ms in every baseline and for
+every other sender (11 others in the table). It also reads the cap: the catalogue sent
+2,053-2,093 kbit/s in the fault slice (limit 2,000). Reversed comparison quiet in 5 of 5.
+No check on other families yet.
+
+### `cpu_weight` (A2): calibration
+
+Lowest CPU weight on carts while a neighbour keeps the host busy. The neighbour runs for the
+whole run, so only the weight changes at injection.
+- Neighbour alone, 12 busy processes: host 50% -> 100% busy; the BASELINE already suffers (cart
+  rate 120 -> 91/s, p95 23 -> 88 ms; front-end p95 50 -> 240 ms). 6 and 8 processes slow the
+  baseline about as much (host 90% and 96% busy).
+- 12 processes + weight 1: carts completes nothing. Not used (an outage).
+- 12 processes + weight 10: p50 22 -> 590 ms, p95 -> 3.0-4.2 s, rate 91 -> 66/s, no errors,
+  back to normal within 40 s. **Chosen for aggressive.**
+- 8 processes + weight 10: p95 72 -> 240 ms. 6 processes + weight 10: no change.
+Consequence to state in the dataset: this family's baseline is a busy host and is not
+comparable with the baselines of the other families. Check run started 18:35 UTC.
