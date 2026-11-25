@@ -510,12 +510,12 @@
   {
    "canonical": true,
    "name": "cart_request_rate",
-   "promql": "sum(rate(request_duration_seconds_count{job=\"cart\"}[1m]))",
+   "promql": "sum(rate(request_duration_seconds_count{job=\"cart\"}[20s]))",
    "direction": "decrease",
    "threshold_sigma": 4,
    "abs_threshold": 50,
    "min_fraction": 0.6,
-   "why": "v3, calibrated 2026-11-25 on the VM under the 150-user load: with 205 or 400 slow connections holding the carts service's 200 worker threads it completes 0 requests/s (120/s before), logs nothing, and the front-end's rate falls to 0 within a minute because every simulated user is stuck in a cart call; back to 117/s within 20 s of the cleanup. With 150-195 connections: rate 110/s, p95 23 -> 44 ms."
+   "why": "v3, calibrated 2026-11-25 on the VM under the 150-user load: with 205 or 400 slow connections holding the carts service's 200 worker threads it completes 0 requests/s (120/s before), logs nothing, and the front-end's rate falls to 0 within a minute because every simulated user is stuck in a cart call; back to 117/s within 20 s of the cleanup. With 150-195 connections: rate 110/s, p95 23 -> 44 ms. Check run 25-11: with a 1-minute rate window the drop is smeared over half of the 2-minute fault and the run scored 'borderline' (mean 41/s against 99/s) although the spans show 884 carts requests in the fault against 6,504 in the baseline minute; the window is now 20 s."
   }
  ]
 }
