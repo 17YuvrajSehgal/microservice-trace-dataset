@@ -287,3 +287,34 @@ option, so the "fault" would already be on in the baseline; a runtime switch (JM
 to be built first. `pid_limit` is restart-free (`docker update --pids-limit`) and adds a third
 "limit reached" error next to EMFILE and EADDRNOTAVAIL (clone returning EAGAIN). After it:
 a table lock held on the catalogue's database (E6).
+
+## Blueprints 27 (`disk_full`) and 28 (`port_exhaustion`): one tool, `new_errors.py`
+
+Login node only; per run a 20 s baseline slice (injection - 40 s), a fault slice of the first
+20 s and one from 30 to 50 s, system-call exits of about 20 calls. Kept in `work/v3bp27/`.
+
+**Why one tool.** Both faults are a limit reached, and the kernel says so in the return value of
+one system call in one container. Chosen over two special tools: the same check should cover
+`pid_limit` (clone -11) and overlaps blueprint 12 (EMFILE). The tool does not look for errors
+(programs get them all the time); it looks for an error that is NEW: 10 or more failing calls
+of one kind in one container, with at most 10% of that count in the baseline.
+
+**Result (final tool), 10 runs.**
+- `port_exhaustion`: 5 of 5 in both fault slices, one verdict line each, naming the catalogue:
+  927-1,902 `connect` calls returned -99 (EADDRNOTAVAIL) in the first 20 s (46-56% of its
+  connects), 1,353-2,154 in the later slice (65-67%); 0 in every baseline.
+- `disk_full`: 5 of 5 in the first 20 s, one verdict line each, naming the database: 30
+  `fallocate` calls returned -28 (ENOSPC), 94% of its fallocate calls, 0 in the baseline.
+  NO verdict in the 30-50 s slice of any run, as expected: the database only hits the error
+  when it tries to grow a file, at start-up after each crash (aborts at 8 s and 70 s).
+- The reversed comparison is quiet in 10 of 10.
+
+**One change after the first pass.** In all 5 disk-full runs a second verdict named the carts
+service: 111-124 `connect` calls returning -115 (EINPROGRESS), 0 in the baseline. That is its
+driver reconnecting after the database crashed - a consequence, and -115 is not a failure.
+Returns that are not failures are now left out: connect -115 and "would block" (-11) on
+accept, write and send. clone -11 is kept: there it is a limit.
+
+**Limits.** For `disk_full` the slice must contain a crash; a blueprint has to scan the window
+(or use the logs, which name the cause at once). Bars (10 calls, 10%) were set before the
+first pass and not changed. No check on other families (deferred by the user).

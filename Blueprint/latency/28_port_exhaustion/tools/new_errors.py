@@ -26,6 +26,13 @@ from collections import defaultdict
 
 MIN_NEW = 10           # failing calls of one kind, in one container, in the suspect slice
 MAX_BASE = 0.1         # ... and at most this share of that count in the baseline slice
+# Returns that are negative and are NOT failures: a non-blocking connect that is still in
+# progress, and a non-blocking call that would have had to wait. They are left out. Measured on
+# the disk-full runs: after the database crashed, its client reconnected with 111-124
+# non-blocking connects (-115) that the baseline did not have, and the tool named the client.
+# clone returning EAGAIN is NOT in this list: that one is a limit.
+NOT_FAILURES = {("connect", 115), ("accept", 11), ("accept4", 11), ("write", 11), ("writev", 11),
+                ("sendto", 11), ("sendmsg", 11), ("pwrite64", 11)}
 NAMES = {28: ("ENOSPC", "no space left on the device"), 99: ("EADDRNOTAVAIL", "no local address or port is free"),
          11: ("EAGAIN", "a limit was reached or the call would block"), 24: ("EMFILE", "the process has too many open files"),
          23: ("ENFILE", "the system has too many open files"), 12: ("ENOMEM", "out of memory within the limit"),
@@ -54,7 +61,7 @@ def read(lines):
             continue
         ns, sc, ret = pn.group(1), ev.group(1), int(r.group(1))
         calls[(ns, sc)] += 1
-        if -4096 < ret < 0:                  # an errno; other negative values are addresses
+        if -4096 < ret < 0 and (sc, -ret) not in NOT_FAILURES:   # an errno; other negative values are addresses
             fails[(ns, sc, -ret)] += 1
             cx = re_ctx.search(line)
             if cx:
@@ -109,7 +116,7 @@ def selftest():
     assert "NEW ERROR RETURNS: app (pid_ns 4): 150 calls to connect returned -99 (EADDRNOTAVAIL: no local address or port is free) in 20 s, 0 in the baseline; that is 43% of its connect calls" in out, out
     assert out.count("VERDICT") == 1, out
     out = "\n".join(report(base, base, 20))
-    assert "NO NEW ERROR RETURNS (largest rise: 300 against 300 for connect -115" in out, out
+    assert "NO NEW ERROR RETURNS (no failing call in the suspect slice" in out, out
     print("selftest OK")
 
 

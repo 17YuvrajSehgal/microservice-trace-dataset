@@ -14,9 +14,9 @@ Rules given by the user, in force while unattended:
 |---|---|---|---|
 | 1 | `code_lock_contended` | `faults/code_lock_contended.sh` | done, on Trillium, checksums verified |
 | 2 | `svc_cpuset` (A1) | `faults/svc_cpuset.sh` | done, on Trillium, checksums verified |
-| 3 | `disk_full` (C1) | `faults/disk_full.sh` | 5 of 5 accepted (23:36 UTC). **Still on the VM**: `~/archive/runs/disk_full/`. Not on Trillium - the Trillium connection dropped at about 23:00 UTC |
-| 4 | `port_exhaustion` (D1) | `faults/port_exhaustion.sh` | 5 of 5 accepted (01:12 UTC, 25-11); being pulled to Trillium together with `disk_full` |
-| 5 | `pid_limit` (H2) | `faults/pid_limit.sh` | recipe written; calibrate when the pull is finished |
+| 3 | `disk_full` (C1) | `faults/disk_full.sh` | done, on Trillium, checksums verified |
+| 4 | `port_exhaustion` (D1) | `faults/port_exhaustion.sh` | done, on Trillium, checksums verified |
+| 5 | `pid_limit` (H2) | `faults/pid_limit.sh` | calibrated on orders (the only service that starts threads at steady load); check run started 02:00 UTC, 25-11 |
 | 6 | `db_table_lock` (E6) | to write | after 5 |
 | - | `thread_pool_exhaustion` (E3) | - | postponed: the pool size of the Java services can only be set at start-up, so the fault would also be on in the baseline. Needs a runtime switch (JMX) first |
 
@@ -34,8 +34,9 @@ Steps for each family, in order:
 |---|---|---|---|
 | 25 | `code_lock_contended` | `inside_wait.py` | finds 5 of 5; false-alarm check deferred by the user |
 | 26 | `svc_cpuset` | `cpu_confine.py` | finds 5 of 5 on the first try, reversed comparison quiet; false-alarm check deferred by the user |
-| 27 | `disk_full` | to write (ENOSPC returns + abort + restart) | when family 3 is on Trillium |
-| 28 | `port_exhaustion` | to write | when family 4 is on Trillium |
+| 27 | `disk_full` | `new_errors.py` | finds 5 of 5 in the slice that contains a crash (30 fallocate calls returning ENOSPC); quiet between crashes; false-alarm check deferred |
+| 28 | `port_exhaustion` | `new_errors.py` (same tool) | finds 5 of 5 in both fault slices (connect returning EADDRNOTAVAIL, 46-67% of the catalogue's connects); false-alarm check deferred |
+| 29 | `pid_limit` | `new_errors.py` should cover it (clone returning EAGAIN) | when family 5 is on Trillium |
 
 For each: one baseline slice and one fault slice per run from a temporary decompressed copy;
 the tool must find 5 of 5 and name only the faulty container; the reversed comparison must be
