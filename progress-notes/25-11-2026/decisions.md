@@ -308,3 +308,18 @@ sweep kept no slices) - that needs a SLURM job.
 **3. Write-ups.** `blueprint.yaml`, `BLUEPRINT.md` (rendered) and `RESULTS.md` for blueprints
 25-34; all ten pass `bp_check.py`. Every number comes from these notes. Blueprints 27-29 share
 `new_errors.py`; 25 and 30 share `inside_wait.py` + `wait_cause.py`.
+
+## Step 4: subtle runs (from 21:40 UTC)
+
+Started with the two families whose subtle setting was calibrated with a clear effect:
+`db_table_lock` (0.3 s of every 3 s) and `net_bandwidth` (4 Mbit/s), 3 runs each.
+
+**Subtle run 1 of `db_table_lock` read "unconfirmed" and the driver stopped.** The fault was
+there (catalogue spans: p95 3.9 -> 176 ms, 0 errors), but the verification target's absolute
+bar was 0.5 s, taken from the aggressive calibration, and the subtle p95 was 0.145 s: 0 of 19
+samples above it. Bar lowered to 0.05 s for `db_table_lock` and `net_bandwidth` (same problem
+at 0.3 s); the catalogue's baseline p95 is 4.8 ms. Run 1 was RE-SCORED from the VM's
+Prometheus instead of re-collected: confirmed, 89.5% of samples above the bar. Its
+`verification.json` carries a `rescored` entry with the first status and the reason; quality
+gate re-run (usable, all gates ok), run re-packaged, manifest line marked "(rescored)".
+Lesson: a verification target's absolute bar must be set for the weakest intensity collected.
