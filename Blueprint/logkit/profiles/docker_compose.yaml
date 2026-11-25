@@ -1,0 +1,20 @@
+# Docker container logs as collect_trace.sh saves them: one file per container under logs/,
+# every line prefixed by docker's own UTC timestamp. Same host clock as the kernel trace
+# (the Phase-0 audit measured 0.001 ms drift), so the offset is 0.
+id: docker_compose
+files: ["logs/*.log", "logs/*.log.gz"]
+line: '^(?P<ts>\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d+)?Z) (?P<msg>.*)$'
+ts_format: iso_utc
+entity:
+  from: filename
+  strip: ['\.log(\.gz)?$', '^docker-compose[_-]', '[_-]\d+$']   # docker-compose_front-end_1.log -> front-end
+kind: container
+# The OTel Java agent writes every span to stdout and repeats every log line with [scopeInfo:].
+# Those are the span relay, not application logs: on carts they were 321,836 of 321,866 lines.
+skip: ["LoggingSpanExporter", "[scopeInfo:"]
+# go-kit services (catalogue, user, payment) print the handler's own time on every request line.
+latency:
+  regex: '\btook=([0-9][\w.µ]*)'
+  method: '\bmethod=(\w+)'
+clock:
+  offset_s: 0

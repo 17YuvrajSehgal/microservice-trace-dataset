@@ -59,6 +59,7 @@ Logs are always optional. A trace with no logs runs every blueprint exactly as t
 | `Blueprint/agent/logtool.py` | Parsing, templates, levels, per-10 s counts, `took=`, log-to-code. Self-test passes. Wired into `agent_v2.py` only, as free tools. Assumes docker log files |
 | `Blueprint/eval/nsmap.py` | Container name to pid_ns from CPU totals. Scorer-side: the agent may not import it |
 | `Blueprint/eval/make_code_root.py` | Single-bug source tree for `code_*` runs |
+| `Blueprint/logkit/` | **Built 25-11 (build steps 1 and 3).** Record, profile loader, `docker_compose` profile, index builder, `log_onset.py`, `log_window.py`; 29 pytest tests, ruff clean. See its README |
 
 ### 2.4 A first look at where logs help (probe, 25-11-2026)
 

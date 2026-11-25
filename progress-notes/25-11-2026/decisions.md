@@ -263,3 +263,24 @@ generator stops. Not worth more VM time before the user decides.
 - **Checked: the graph blueprints do not use our count index** (tsv.gz), only LTTng's
   `index/*.idx`. The count index is left with agent_v2, nsmap/score and the selector scripts.
   The log-to-kernel join in LOGS-PLAN was corrected to work from a slice.
+
+## logkit built (LOGS-PLAN build steps 1 and 3)
+
+`Blueprint/logkit/`: record, source profiles (YAML per log format), index builder, and two
+blueprint tools. Organisation decisions and why:
+
+- **Tools are standard-library only** (`logkit/tools/`), with the index format defined once in
+  `logidx.py` and "what is a change" defined once in `logsig.py`. Why: the harness runs a
+  blueprint's tools with a bare `python3`; the builder needs PyYAML and runs in the venv.
+- **The tools read an index, never a log file.** One build per run (3.3 s for the 250 MB sample;
+  73 KB index), then each tool call is ~0.1 s.
+- **Warning SHARE, not warning rate.** A healthy front-end logs ~1 error per second ("payment
+  declined"); under a load burst the count rises with the load, the share does not.
+- **Latency as a histogram, 20 bins per decade** (~12%): a p50 over any window, exact to one bin,
+  without storing 30,000 samples per method.
+- **A test found a template flaw:** go-kit `result=` is a row count in catalogue (result=7) but an
+  outcome in payment (result=false). Numbers in kept keys are now masked.
+
+First real check (sample svc_cpu_cap r1, label read afterwards): onset 15:19:47 in edge-router,
+injection 15:19:46; the culprit (carts) is silent, the victims complain. One run; the first-set
+sweep is next.

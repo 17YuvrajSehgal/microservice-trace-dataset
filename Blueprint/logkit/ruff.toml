@@ -1,0 +1,10 @@
+# Lint settings for logkit:  ruff check Blueprint/logkit
+line-length = 110
+target-version = "py311"          # the Trillium python
+
+[lint]
+select = ["E", "F", "W", "I", "B", "UP"]
+ignore = ["UP031"]                # the blueprint tools print with % formats, like their neighbours
+
+[lint.isort]
+known-first-party = ["logkit", "conftest"]
