@@ -20,12 +20,17 @@
 # under this load - measured in the calibration, not assumed.
 #
 # Usage:
-#   TARGET_SVC=carts ./pid_limit.sh inject [subtle|aggressive] | cleanup | status
+#   TARGET_SVC=orders ./pid_limit.sh inject [subtle|aggressive] | cleanup | status
 #   env: HEADROOM  tasks allowed above the current count (default 0 aggressive, 8 subtle)
 set -euo pipefail
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/fault_lib.sh"
 
-TARGET_SVC="${TARGET_SVC:-carts}"
+# orders, not carts. Measured 25-11-2026 by limiting each service to its current task count for
+# 15 s under the 150-user load: orders had 282 thread creations refused (about 19 per second, it
+# starts a thread per request); rabbitmq 2; carts, shipping, queue-master, user, payment,
+# catalogue, front-end, edge-router and both databases 0. A service with a warm, fixed thread
+# pool never asks for a new thread, so this limit cannot touch it.
+TARGET_SVC="${TARGET_SVC:-orders}"
 FAULT_FAMILY="B_service_resource"
 FAULT_NAME="pid_limit_${TARGET_SVC}"
 FAULT_SCOPE="service"
@@ -36,7 +41,10 @@ TARGET_TRACE_VISIBILITY="${TARGET_TRACE_VISIBILITY:-covered}"
 REMEDIATION="raise or remove the task limit (docker update --pids-limit -1)"
 
 CONTAINER="$(resolve_container "$TARGET_SVC")"
-cg() { docker exec "$CONTAINER" cat "/sys/fs/cgroup/$1" 2>/dev/null | tr -d '\n'; }
+# Read the cgroup from the HOST. `docker exec` needs a new process inside the container, which
+# is exactly what the limit refuses: with the limit on, the read itself failed with EAGAIN.
+CG="/sys/fs/cgroup/system.slice/docker-$(docker inspect -f '{{.Id}}' "$CONTAINER" 2>/dev/null).scope"
+cg() { cat "$CG/$1" 2>/dev/null | tr -d '\n'; }
 
 case "${1:-}" in
   inject)

@@ -481,5 +481,17 @@
    "min_fraction": 0.6,
    "why": "v3, calibrated 2026-11-25 on the VM under the 150-user load: with 200 local ports left the catalogue's new database connections fail with 'cannot assign requested address' (1,835 log lines in 80 s) and its 5xx rate goes 0.0 -> 7-12/s of 257 requests/s, back to 0.0 within 20 s of the restore. Normal use: about 1,700 sockets in TIME_WAIT. The front-end shows no 5xx and no latency change. (1,500 ports: nothing for a minute, then a burst of 125/s - the subtle setting is late and uneven.)"
   }
+ ],
+ "pid_limit_orders": [
+  {
+   "canonical": true,
+   "name": "frontend_5xx_rate",
+   "promql": "sum(rate(http_request_duration_seconds_count{job=\"frontend\",status_code=~\"5..\"}[1m]))",
+   "direction": "increase",
+   "threshold_sigma": 4,
+   "abs_threshold": 1.0,
+   "min_fraction": 0.6,
+   "why": "v3, calibrated 2026-11-25 on the VM under the 150-user load: with orders limited to its current task count the kernel refuses about 16 thread creations per second, orders logs 6,372 'unable to create new native thread' lines in 100 s, and the front-end's 5xx rate goes 0.0 -> 15-16/s (placing an order fails), back to 0.0 within 20 s of the restore. The orders service's own request metric shows no non-2xx at all, so the front-end series is the target. Headroom 8 (subtle): no effect."
+  }
  ]
 }
