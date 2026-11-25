@@ -361,3 +361,51 @@ database reached its limit of 151. A lock client that reconnects each cycle coul
 **Calibration (150 users):** catalogue p95 4.8 ms -> 2,290 ms, request rate 262 -> 122/s,
 no 5xx on catalogue or front-end, 0 refused connections, back to 4.8 ms within 20 s. Subtle
 (0.3 s of every 3 s): p95 about 165 ms, rate unchanged. Verification target: catalogue p95.
+
+## `db_table_lock` (family 6): collected and on Trillium (25-11, 04:10 UTC)
+
+- 5 of 5 runs accepted: verification confirmed, catalogue p95 4.8 ms -> 2.2 s, no kernel
+  events lost, no table locked and no lock client left after any run.
+- Spans agree in every run: about 14,400 catalogue server spans in the fault window, 5,130-5,170
+  of them over 1 s (0 in baseline and recovery), 0 errors, p95 1.95 s.
+- The verification metric reads 1.4-1.6 s in "recovery". The spans show recovery is clean
+  (p95 4 ms), so that is the 1-minute rate window carrying the fault forward, as in `pid_limit`.
+- On Trillium: `v3/sockshop/db_table_lock.tar.gz` (14.64 GB), 1,385 files per run, 0 checksum
+  errors. Deleted from the VM after that.
+
+**Blueprint 30: `inside_wait.py` unchanged (the tool of blueprint 25).** One 20 s baseline slice
+and one fault slice (30-50 s) per run. It names the database in every run tested: mysqld has
+67.5-69.2 requests in flight and 67.4-69.1 of them wait inside it, 0.00 in the baseline, using
+0.09 cores. The table shows the chain: catalogue 69.6 in flight with 69.3 downstream, toxiproxy
+69.3 with 69.2 downstream, mysqld 69.2 with 0 downstream. So the tool puts the wait in the
+database and not in the catalogue, which is what separates this from `code_lock_contended`
+(there the catalogue itself holds the requests). Reversed comparison quiet. Bars not changed.
+
+One thing the table shows that needs care: the front-end has 6.5 "inside" in the fault slice
+and 9.8 in the BASELINE. It never reaches the bars (share below 25%), but a Node service
+answering over keep-alive connections seems to carry a constant offset in this measure.
+
+## `io_cap` (C4): recipe written, NOT collected - it does nothing to this application
+
+cgroup `io.max` on a database container, written on the host. Measured first what each
+database writes at the 150-user load: carts-db 60 KB/s and 19 operations/s; orders-db and
+user-db 2 KB/s; catalogue-db nothing. Then limited carts-db to 64 KB/s and 20 ops/s, then
+carts-db, orders-db and user-db to 16 KB/s and 5 ops/s, 80 s each: no change in any service's
+rate, errors or answer time (cart p95 23.0-23.3 ms throughout).
+
+Why (my reading, not measured): these databases acknowledge a write before it reaches the
+disk, so no request waits for the disk. A limit on disk writes then delays only background
+flushing. I did not check whether the kernel actually held the writes back.
+
+Decision: no runs. Collecting it would add a second family with no signal, like
+`code_lock_across_io` in v2. It needs a service that waits for its disk writes (a database set
+to sync every commit). Recipe kept in `faults/io_cap.sh` for that.
+
+## Next family: `slow_client` (thread pool exhaustion without a restart)
+
+E3 was postponed because the pool size is a start-up option. A different way to the same
+fault needs no restart: clients that send a POST body one byte per second each hold one worker
+thread of the service. Enough of them hold the whole pool. Recipe `faults/slow_client.sh`,
+client `faults/workloads/slow_client.py`. Whether it works on the carts service is being
+calibrated; if it does not, the next candidates all need an image or start-up change and wait
+for the user.
