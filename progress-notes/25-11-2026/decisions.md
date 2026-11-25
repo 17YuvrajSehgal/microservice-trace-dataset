@@ -101,3 +101,44 @@ whole run, so only the weight changes at injection.
 - 8 processes + weight 10: p95 72 -> 240 ms. 6 processes + weight 10: no change.
 Consequence to state in the dataset: this family's baseline is a busy host and is not
 comparable with the baselines of the other families. Check run started 18:35 UTC.
+
+## Review pass: weaknesses and bugs fixed before going on (25-11, 18:40-19:40 UTC)
+
+The user asked for all known weaknesses and bugs to be fixed before the next blueprint or
+collection. `cpu_weight`, already running, finished (5 of 5, on Trillium, 9.31 GB).
+
+**Tools**
+- `inside_wait.py`: (1) a call is now timed AT THE SERVER (client segments where they arrive,
+  server segments where they leave). Before, a queue on the sender's interface was counted as
+  time in the receiver. (2) A service is not judged when the comparison slice has under 25% of
+  its request rate. (3) The header says what it cannot see. Re-test, 20 runs, both directions:
+  `code_lock_contended` 5/5 (5.0-5.4 inside the catalogue, 0.50-0.59 baseline; the numbers
+  changed because calls from the host are now counted - before, a connection seen on one
+  interface per direction produced no calls at all), `db_table_lock` 5/5 unchanged,
+  `net_bandwidth` 5/5 now names the catalogue and nothing else, `slow_client` reversed says
+  "not judged" in 5/5. Reversed quiet everywhere.
+- `unanswered.py`: a connection is answered if ANY interface shows server data. The 30-51
+  silent connections at the edge router in every baseline were this bug (0 of 151 with all
+  interfaces). Fault runs unchanged, 5/5.
+- Not changed, stated as limits: `new_errors.py` needs a slice that contains a crash for
+  `disk_full`; `inside_wait.py` bars were lowered once after seeing 5 runs.
+
+**Collection**
+- `run_family.sh` stops a family when a run loses kernel events.
+- `check_run_quality.py`: `baseline_quiet` runs from the bundle; new gate `ust_has_events`.
+- `otel-to-lttng.py` tails the log file (CAMPAIGN-ISSUES issue 26).
+- `pid_limit.sh` takes the lowest of 10 task-count readings.
+- `slow_client.sh` carries the measured notes next to its prediction.
+
+**Process**: v3 families entered in the `fault_catalog.md` amendment log, said to be late.
+
+**The two "not collected" decisions, re-checked properly**
+- `io_cap`: the limit DOES hold the writes back. carts-db: 68.6 KB/s -> 16.0 KB/s, and its
+  tasks wait for I/O 500-650 ms per second (2 ms before). No service notices. So it is a fault
+  the kernel sees and users do not, like the subtle noisy neighbour. Still not collected; it
+  could be collected as a kernel-only family if the user wants one.
+- Inode exhaustion: every call that can create a file, 30 s under load, whole host: 3 calls
+  (a database diagnostic thread, runc, sshd). No service creates files. Decision stands.
+
+**Open, for the user**: re-collect the 37 v3 runs without a user-space trace or accept the gap
+(issue 26); Train Ticket relay; whether `cpu_weight` with its busy baseline stays in the dataset.

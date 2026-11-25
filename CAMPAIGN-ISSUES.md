@@ -921,3 +921,63 @@ crash, 25 restarts) **never start**. Their per-run logs show 0 app-start lines i
 on both 16 and 17 Sept, so this is long-standing rather than restart damage. Neither is on the
 load generator's journey, so the runs are sound - but a blueprint that assumes a complete
 topology would be wrong about it.
+
+## Issue 26 - the user-space trace (UST relay stream) is EMPTY in most runs of v2 and v3
+
+Found 25-11-2026 while checking why one v3 run had fewer files. Nothing had ever looked at the
+size or the content of `ust/`.
+
+| dataset | runs with a user-space trace above 1 MB |
+|---|---|
+| v3 Sock Shop (first 8 families) | 3 of 40 (run 1 of `svc_cpuset`, `disk_full`, `net_bandwidth`) |
+| v2 Sock Shop | 33 of 170 (`normal` 10/10, `anomaly_mem` 8/8, `svc_mem_cap` 8/8, `anomaly_cpu` 5/5, 2 others) |
+| v2 Train Ticket | 0 of 134 |
+
+**Cause on Sock Shop, proven on the VM.** The relay followed `docker logs -f --tail=0`.
+`campaign_finish_run.sh` truncates every container log between runs. After a truncation that
+command returns nothing: 12,280 span lines in 6 s after a container restart, 0 right after
+`truncate -s 0`, still 0 fifteen seconds later, while `docker logs --since` kept returning
+20,000 lines. So the relay recorded only in the first run after a container (re)start. That is
+why the families that restart containers (`svc_mem_cap`, `anomaly_mem`) are complete.
+
+**Cause on Train Ticket (not tested, read from the code).** The relay lists four Sock Shop
+container names; none exists on Train Ticket.
+
+**Fixed for new runs.** The relay now tails the json log file itself (`tail -F` survives a
+truncation): 59,603-79,094 events in 25 s in three tests, one with a truncation in the middle.
+`check_run_quality.py` has a new gate `ust_has_events` that FAILS a run whose `ust/` is under
+1 MB. Train Ticket still needs its own container list in the relay.
+
+**What is lost and what is not.** The spans themselves are complete in `otlp/spans.jsonl` in
+every run. What is missing is their copy on the LTTng clock. The clock anchors in every meta
+snapshot (realtime, monotonic, boottime; drift 0.000-0.003 ms per run) still let span times be
+placed on the kernel trace's clock. No blueprint tool uses `ust/`. **Not decided:** whether to
+re-collect; the paper must not claim a user-space span stream for these runs.
+
+## Issue 27 - v3 caveats a reader of the runs must know (found in the 25-11 review)
+
+1. **`recovery_mean` in `verification.json` is not a recovery measure.** Targets use a
+   1-minute rate window and the recovery window is 1 minute, so the fault is carried into it:
+   `pid_limit` shows 7 errors/s "in recovery" (half of the fault's 13-14), `db_table_lock`
+   1.4 s, `net_bandwidth` 1.0 s, `cpu_weight` 3.3 s. Spans and logs show recovery is clean
+   within seconds in all of them. Use spans for recovery, not this number.
+2. **`pid_limit` runs 4 and 5 are a slightly weaker fault.** The limit was read as 68 at an
+   instant with one short-lived extra thread (67 in runs 1-3), so there was one thread of
+   headroom: 267-314 refused thread creations per 20 s against 441-610, same errors for users.
+   The recipe now takes the lowest of 10 readings.
+3. **The `baseline_quiet` gate did not run on any v3 run as collected** (it needed a file from
+   the analysis pack). It now runs from the bundle (container restarts and host TCP
+   retransmissions before the injection). Run afterwards on the 40 runs on Trillium: all
+   quiet, 0 restarts, 0% retransmissions. The `run_quality.json` inside those bundles still
+   says "could not run".
+4. **`cpu_weight` has a busy-host baseline** (a 12-process neighbour for the whole run): cart
+   rate 91/s and p95 88 ms in its baseline against 120/s and 23 ms elsewhere. Compare it only
+   with itself. It also has 17 periodic snapshots per run instead of 20.
+5. **`slow_client` was traced with 3 times the kernel buffer** (96 sub-buffers per CPU).
+6. **Metric names differ between families** (439-443 per run): Spring creates a counter such as
+   `counter_status_500_carts_customerId_items` only after that status has occurred once since
+   the service started. Not missing data.
+7. **`SHA256SUMS` covers small files only**, by design (`package_run.sh`: files under 8 MB plus
+   ground truth, meta, logs, spans). The large CTF streams are protected by the gzip check of
+   the archive during the pull, not by a per-file checksum.
+8. **The fault families were entered in `fault_catalog.md` after collection**, not before.
