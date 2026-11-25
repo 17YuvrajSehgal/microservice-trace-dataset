@@ -323,3 +323,16 @@ Prometheus instead of re-collected: confirmed, 89.5% of samples above the bar. I
 `verification.json` carries a `rescored` entry with the first status and the reason; quality
 gate re-run (usable, all gates ok), run re-packaged, manifest line marked "(rescored)".
 Lesson: a verification target's absolute bar must be set for the weakest intensity collected.
+
+### Subtle runs: 6 of 6 collected, waiting on the VM (25-11, 23:00 UTC)
+
+- `db_table_lock` subtle r1-r3: confirmed (r1 re-scored), catalogue p95 4.8 ms -> 143-146 ms
+  (spans 176 ms), 0 errors, no events lost.
+- `net_bandwidth` subtle r1-r3: confirmed, catalogue p95 4.8 ms -> 382-388 ms (spans 367-372
+  ms), 0 errors, no events lost, rate limit removed after each run.
+- The local monitor was stopped by Claude Code for low laptop memory; the VM finished alone and
+  I checked all runs by hand.
+- **Not moved yet: Trillium stopped answering** (the connection is up but every command hangs).
+  The runs stay in `~/archive/runs/{db_table_lock,net_bandwidth}` on the stopped VM disk.
+- When moving them: use `DEST=.../v3/sockshop/subtle` (script `tr90.sh`). The pull script names
+  the archive after the family, so the default DEST would OVERWRITE the aggressive archives.
