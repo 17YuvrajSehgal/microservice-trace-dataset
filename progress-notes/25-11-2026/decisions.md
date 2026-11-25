@@ -44,3 +44,25 @@ Counted `openat` calls with O_CREAT and `mkdirat` calls on the whole host for 20
 150-user load with bpftrace: none, from any program. A volume with no free inodes then changes
 nothing for a service that only writes to files it already has open. Same kind of result as
 `io_cap`. One check only, 20 s; `creat` and `openat2` were not counted.
+
+### B3 settled: it is a duplicate of v2 `svc_mem_cap` (checked on the v2 logs, 18:00 UTC)
+
+Carts log of the 8 v2 Sock Shop `svc_mem_cap` runs: the 3 subtle runs (300 MB) have 8-9 JVM
+start banners each; the 5 aggressive runs (160 MB) have 1 (the JVM is killed before it prints
+one, and one prints after the limit is lifted). With the calibration (9 restarts in 2 minutes
+at 160 MB) this says `svc_mem_cap` is a restart loop at both settings. B3 removed from the
+candidate list. Consequence for blueprint 4: its text should say "killed and restarted in a
+loop", not "killed once" - to check against its README.
+
+### `net_bandwidth` (D4): collected, on Trillium (17:50 UTC)
+
+- Calibration on the catalogue (it sends a little over 4 Mbit/s): cap 4 Mbit/s p95 4.8 -> 415 ms;
+  2 Mbit/s p50 240 ms, p95 2.0 s, rate 260 -> 140/s; 1 Mbit/s p50 1.2 s. No errors anywhere,
+  recovery within 20 s. Aggressive = 2 Mbit/s, subtle = 4 Mbit/s.
+- 5 of 5 runs accepted: verification confirmed (catalogue p95 4.8 ms -> 1.83-1.88 s), no kernel
+  events lost, 2,544-2,645 catalogue server spans over 1 s in the fault and 0 in the baseline,
+  0 errors, the rate limit gone after every run.
+- On Trillium: `v3/sockshop/net_bandwidth.tar.gz` (14.97 GB), 0 checksum errors. Run 1 has
+  1,373 files against 1,385 (12 periodic snapshot files fewer; not looked into). Deleted on the VM.
+- The local monitor was stopped by Claude Code for low laptop memory during run 4. The driver
+  on the VM finished runs 4 and 5 alone; I checked both by hand afterwards.

@@ -4,7 +4,8 @@
 `code_lock_contended` (F1), `svc_cpuset` (A1), `disk_full` (C1), `port_exhaustion` (D1),
 `pid_limit` (H2), `db_table_lock` (E6) and `slow_client` (new, not in the first list: slow
 request bodies hold a service's worker threads). They are marked in the tables. Six candidates
-were removed; the reasons are in "Removed" at the end. 58 candidates remain open.
+were removed on 25-11 and two more the same evening (B3, C2); the reasons are in "Removed" at
+the end. `net_bandwidth` (D4) was collected the same evening. 55 candidates remain open.
 
 Written 17-11-2026. **Everything in the tables below is a prediction, not a measurement.**
 Nothing here has been injected or traced. The "expected signal" and "best modality" columns
@@ -51,24 +52,22 @@ Column "best": K = kernel trace, L = logs, M = metrics, T = distributed traces (
 | A7 | CPU frequency drop | cap `scaling_max_freq` on the host | `power_cpu_frequency` falls; same work takes longer on CPU | K, M | `anomaly_cpu` | power events (now in the profile) |
 | A8 | real-time thread hog | one `SCHED_FIFO` thread that never sleeps | one CPU never schedules normal threads | K | `cpu_starvation` | - |
 
-## B. Memory (7)
+## B. Memory (6)
 
 | # | Problem | How to inject | Expected kernel signal | Best | Nearest existing family | Needs |
 |---|---|---|---|---|---|---|
 | B1 | slow memory leak (parked as `memory_leak`) | leak 1 MB/s in a Go or Java service for 10 minutes | steady `brk`/`mmap` growth below today's 0.5 MB/s bar | M, K | `code_unbounded_cache` (14 MB/s) | long runs |
 | B2 | swap thrash | lower `memory.high` on a JVM with swap on | swap-in faults, D-state on swap device | K | `svc_mem_cap` | swap + `mm_vmscan_*` |
-| B3 | kill-and-restart loop | `memory.max` below a service's start-up size | kills inside reclaim, same name exec'd repeatedly | K, L | `svc_mem_cap` (hard face) | `oom_*` if available |
 | B4 | garbage-collection pauses | small `-Xmx` on a JVM service | all application threads stopped together for 100 ms+, GC threads busy | K, L | `dependency_outage` (freeze) | - |
 | B5 | page cache stolen by a neighbour | a container reading a huge file repeatedly | others' file reads go to disk again | K | `anomaly_disk` | - |
 | B6 | cold start (parked as `cold_start`) | restart one service under load | exec, burst of page faults and file reads, JIT threads busy | K, T | `svc_mem_cap` restart | page-fault events |
 | B7 | kernel slab growth | create millions of files or sockets | host reclaim with small process memory | K, M | `anomaly_mem` | `mm_vmscan_*` |
 
-## C. Disk and filesystem (7)
+## C. Disk and filesystem (6)
 
 | # | Problem | How to inject | Expected kernel signal | Best | Nearest existing family | Needs |
 |---|---|---|---|---|---|---|
 | C1 | disk full **(collected: `disk_full`, blueprint 27)** | fill the volume of one database | `write` returns -28 (ENOSPC) | L, K | `fd_exhaustion` (error-return pattern) | - |
-| C2 | inode exhaustion | create files until none are left | `openat` with O_CREAT returns -28 while space is free | K, L | C1 | - |
 | C3 | `fsync` storm | a service that syncs after every write | very many `fsync` calls, journal thread in D-state | K | `anomaly_disk` | fsync syscalls |
 | C5 | slow device | `dm-delay` under one database volume | block latency up for everyone on the device, few requests | K | `anomaly_disk` | - |
 | C6 | blocking log writes | synchronous logging to a slow volume | request threads in D-state inside `write` to a log file | K, T | `slow_db` | - |
@@ -82,7 +81,7 @@ Column "best": K = kernel trace, L = logs, M = metrics, T = distributed traces (
 | D1 | ephemeral port exhaustion **(collected: `port_exhaustion`, blueprint 28)** | shrink `ip_local_port_range` in one netns | `connect` returns -99 (EADDRNOTAVAIL) | K, L | `fd_exhaustion` | - |
 | D2 | listen queue overflow | `somaxconn` 1 on a busy service | SYN retransmits to one port, slow accepts | K | `svc_net` (loss) | - |
 | D3 | slow reader (zero window) | a client that reads slowly | zero-window advertisements, sender blocked in `sendmsg` | K | `nagle_delayed_ack` | - |
-| D4 | bandwidth cap | `tc tbf` on one container | steady low throughput, queue drops at one device | K, M | `svc_net` | - |
+| D4 | bandwidth cap **(collected: `net_bandwidth`)** | `tc tbf` on one container | steady low throughput, queue drops at one device | K, M | `svc_net` | - |
 | D5 | MTU blackhole | lower MTU on a path and drop ICMP | small packets pass, large ones retransmit forever | K | `svc_net` | - |
 | D6 | connection churn | disable keep-alive in one client | one SYN per request, many short connections | K, T | `error_storm` (opens then resets) | - |
 | D7 | conntrack table full | tiny `nf_conntrack_max` | new connections dropped, old ones fine | K, L | `conn_pool_exhaustion` | - |
@@ -146,7 +145,7 @@ Column "best": K = kernel trace, L = logs, M = metrics, T = distributed traces (
 
 Done (7): A1, C1, D1, E6 (as a table lock), F1, H2, and `slow_client` in place of E3.
 
-Left from the first batch: A4 spin loop, B3 kill-and-restart loop, B4 GC pauses, D2 listen
+Left from the first batch: A4 spin loop, B4 GC pauses, D2 listen
 queue overflow, D3 slow reader, E1 retry storm, E10 crash loop.
 
 ## Suggested next batch
@@ -155,9 +154,6 @@ queue overflow, D3 slow reader, E1 retry storm, E10 crash loop.
 
 | # | Problem | Why now |
 |---|---|---|
-| B3 | kill-and-restart loop | `docker update -m` on a running service; the only first-batch family left that needs no restart |
-| C2 | inode exhaustion | reuses the `disk_full` volume set-up with few inodes; a check that `new_errors.py` tells "no space" from "no inodes" |
-| D4 | bandwidth cap | `tc tbf` on one container; a network limit with no loss and no fixed delay |
 | A2 | low CPU weight | `docker update --cpu-shares` plus a busy neighbour; the third CPU limit next to quota and cpuset |
 | D7 | conntrack table full | one sysctl; new connections dropped while old ones work |
 | G1 | port scan | one helper container; the first new security family |
@@ -179,6 +175,8 @@ Train Ticket runs.
 | E3 | thread pool exhaustion by a small pool | the pool size is a start-up option, so the fault would also be in the baseline. `slow_client` gives the same exhaustion at run time |
 | G4 | slow-request flood | the same mechanism as `slow_client`, already collected |
 | B8 | huge-page compaction stalls | the compaction tracepoints are absent on the GCP kernel |
+| B3 | kill-and-restart loop | already in v2. Calibrated 25-11-2026: at 160 MB (the v2 `svc_mem_cap` aggressive limit) carts is killed and restarted 9 times in 2 minutes and serves nothing. The v2 logs agree: the subtle runs (300 MB) show 8-9 JVM start banners per run and the aggressive runs none until the limit is lifted. So `svc_mem_cap` IS a restart loop at both settings. Recipe kept in `faults/oom_restart_loop.sh` |
+| C2 | inode exhaustion | measured 25-11-2026 with bpftrace: no program on the host created a file or a directory in 20 s of the 150-user load, so a volume with no free inodes changes nothing |
 | D12 | TLS handshake storm | neither application uses TLS between services |
 | E13 | certificate expiry | neither application uses TLS between services |
 
