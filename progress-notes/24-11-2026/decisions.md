@@ -318,3 +318,46 @@ accept, write and send. clone -11 is kept: there it is a limit.
 **Limits.** For `disk_full` the slice must contain a crash; a blueprint has to scan the window
 (or use the logs, which name the cause at once). Bars (10 calls, 10%) were set before the
 first pass and not changed. No check on other families (deferred by the user).
+
+## `pid_limit` (family 5): collected, on Trillium, and blueprint 29 tested (25-11, 03:30 UTC)
+
+- 5 of 5 runs accepted: verification confirmed, front-end 5xx 0.00 -> 13.1-14.5/s, 5,178-5,694
+  "unable to create new native thread" lines in the orders log during the fault and 0 before,
+  no kernel events lost, limit removed and orders running after every run.
+- Recovery is not clean in the metric: front-end 5xx averages about 7/s in the recovery window
+  of every run. The log lines stop at the cleanup and orders server spans show only 5-18 errors
+  there, so this looks like the 1-minute rate window carrying the fault forward plus a short
+  tail. Not checked further. A reader who needs a clean recovery should skip its first minute.
+- On Trillium: `v3/sockshop/pid_limit.tar.gz` (18.45 GB), extracted, 1,385 files per run,
+  0 checksum errors. Deleted from the VM after that.
+- **A second session repeated the pull and the test by mistake** (its own report): it pulled
+  the same family at the same time and started the tool test in the same work directory, which
+  damaged the temporary kernel copy. I stopped the test, deleted `work/v3bp29`, checksummed the
+  five runs again (0 errors) and re-ran the test from the start. The numbers below are from the
+  clean re-run.
+
+**Blueprint 29, `new_errors.py` unchanged (same file as 27 and 28).** 5 of 5 in both fault
+slices, one verdict line each, naming the orders JVM: 269-471 `clone` calls returned -11
+(EAGAIN) in the first 20 s (27-56% of its clone calls) and 267-610 in the 30-50 s slice
+(34-51%); 0 in every baseline. Reversed comparison quiet in 5 of 5. Runs 4 and 5 have about
+half the refused calls of runs 1-3; the log line counts are the same in all five, so the
+service retried less, not failed less. Cause not looked into.
+
+So one tool now covers three "limit reached" families (15 runs, 15 found, no change to the
+bars). Still open, deferred by the user: the check on other families.
+
+## `db_table_lock` (family 6, E6): recipe and calibration
+
+**What it is.** One database session takes a WRITE lock on the catalogue's three tables for
+2 s, lets go for 1 s, and repeats. Queries wait inside the database and finish together.
+
+**Why a table lock and not a row lock** (the candidate list says "row lock wait"): the
+catalogue only reads, and InnoDB reads do not wait for row locks. A row lock would do nothing
+here. A table lock blocks reads too.
+
+**Why one long session.** While the lock is held the waiting queries pile up connections; the
+database reached its limit of 151. A lock client that reconnects each cycle could be refused.
+
+**Calibration (150 users):** catalogue p95 4.8 ms -> 2,290 ms, request rate 262 -> 122/s,
+no 5xx on catalogue or front-end, 0 refused connections, back to 4.8 ms within 20 s. Subtle
+(0.3 s of every 3 s): p95 about 165 ms, rate unchanged. Verification target: catalogue p95.
