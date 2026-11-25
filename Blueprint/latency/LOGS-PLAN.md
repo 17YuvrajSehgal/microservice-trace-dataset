@@ -1,8 +1,9 @@
 # Plan for the logs component
 
-Status: **proposal, 25-11-2026. Nothing in sections 4 to 9 is built or run.** What exists today
-is listed in section 2. The pass bars in section 8 are proposals and must be agreed before the
-sweep starts; after that they change only with a dated note at the end of this file.
+Status: **plan, 25-11-2026. Nothing in sections 4 to 9 is built.** What exists today is listed
+in section 2. The decisions taken so far are in section 11; what is still open is in section 12.
+After the first sweep starts, the scoring rules of section 8 change only with a dated note at
+the end of this file.
 
 Read with: `METHOD.md` (how a blueprint is built), `EVALUATION-PLAN.md` (arms and splits),
 `Blueprint/agent/bp_graph.py` (the harness).
@@ -59,6 +60,40 @@ Logs are always optional. A trace with no logs runs every blueprint exactly as t
 | `Blueprint/eval/nsmap.py` | Container name to pid_ns from CPU totals. Scorer-side: the agent may not import it |
 | `Blueprint/eval/make_code_root.py` | Single-bug source tree for `code_*` runs |
 
+### 2.4 A first look at where logs help (probe, 25-11-2026)
+
+One run per fault family, Sock Shop v2 and v3: 37 fault runs and 3 normal runs. Script and
+output on Trillium: `work/logs_plan/log_probe.py`, `probe.jsonl`. **A first look, not a result:**
+one run per family, the window taken from the label, rough thresholds (errors 3x up, rate 3x
+down, p50 3x up and above 5 ms).
+
+| Group | Families | What the logs show |
+|---|---|---|
+| Clear and fast (13) | `error_storm`, `slow_db`, `conn_pool_exhaustion`, `pid_limit`, `disk_full`, `port_exhaustion`, `dependency_outage`, `svc_mem_cap`, `fd_exhaustion`, `dns_delay`, `db_table_lock`, `net_bandwidth`, `code_lock_contended` | new errors or a latency jump within about 0 to 12 s, in the culprit or its direct caller |
+| Victims only, or late (10) | `code_event_loop_block`, `code_serial_awaits`, `svc_cpu_cap`, `slow_client`, `svc_net`, `anomaly_net`, `anomaly_cpu`, `anomaly_mem`, `cpu_weight`, `lock_contention` | other services complain 15 to 120 s later; the culprit is quiet |
+| Silent (14) | `noisy_neighbor`, `deadlock`, `fork_storm`, `priority_inversion`, `queue_backlog`, `port_scan`, `svc_cpuset`, `resource_abuse`, `data_exfiltration`, `nagle_delayed_ack`, `anomaly_disk`, `code_lock_across_io`, `code_n_plus_one`, `code_unbounded_cache` | nothing |
+
+Four things from single runs, each to be checked on all runs of the family:
+
+- **Logs can fill a gap the kernel admits.** `dependency_outage` r1: 1,228 `TimeoutException`
+  errors in orders (the caller of the frozen service) from +5.2 s. `queue_backlog` r1: nothing.
+  Blueprint 15 says the trace cannot tell the two apart.
+- **Sometimes the culprit states the reason.** `disk_full` r1: carts-db logs "Failed to write to
+  interim file" at +2.0 s, then aborts at +9.0 s.
+- **Some faults show as latency only, with no error line.** `db_table_lock` r1: catalogue `List`
+  p50 1.2 ms to 965 ms. `net_bandwidth` r1: 1.2 ms to 212 ms. Only services that print a
+  duration can show this.
+- **Log text can mislead.** `pid_limit` r1 reads `OutOfMemoryError` in orders; a database
+  connection failure reads "not found" in catalogue (`error_storm`, `port_exhaustion`).
+
+One false-alarm source: `user` stops logging `Register`, `PostAddress` and `PostCard` in almost
+every run, normal ones too. That is the load generator ending its warm-up, not a fault. A
+method that stops is not a signal unless it is absent from the normal runs' pattern.
+
+Three kinds of signal were seen, and a tool must report them apart: a new error template, a
+latency change, and a drop in a service's line rate (`code_event_loop_block`: front-end 765 to
+41 lines/s).
+
 ## 3. Design for sources we do not have yet (partner logs)
 
 Partner traces have no logs today. They may come later, and they will not look like ours: no
@@ -114,9 +149,16 @@ join is a table in the index, `entity -> trace identity`, with how it was made:
 
 | Host kind | Join | Confidence |
 |---|---|---|
-| containers | agent-side copy of the `nsmap` method: `meta/cgroup_*` CPU totals against the index's per-namespace CPU | measured (ratio 1.09 to 1.10 on one run; must be swept) |
+| containers | CPU ranking: `meta/cgroup_*` CPU totals per container against CPU time per pid_ns, summed from a scheduling slice the blueprint already cut | the `nsmap` method was measured against the count index (ratio 1.09 to 1.10 on one run); from a slice it is not measured yet |
 | bare metal, one namespace | entity name equals the kernel `comm` (cut to 15 characters) | by name |
 | no join possible | the tools still work per entity; `log_role` prints `NOT JOINED` | none |
+
+**Correction, 25-11-2026.** The first version of this table used our count index
+(`<run>.tsv.gz`). The graph harness does not have it: `bp_graph.py` and the blueprint tools read
+only LTTng's own packet index (`index/*.idx`, through `idx_summary.py` and `extract_slice.sh`).
+The count index is used only by the old agent (`agent_v2.py`), the scorer (`nsmap.py`) and the
+selector scripts. So the join must work from a slice, or the log steps would bring back a
+10-minute build per run.
 
 ### 3.5 Rules for partner logs
 
@@ -223,9 +265,10 @@ Follows the seven steps of `METHOD.md`, with "tool" meaning a log tool.
 | # | Work | Output | Needs |
 |---|---|---|---|
 | 1 | Record model, profile loader, `docker_compose` profile, index builder (from `logtool.py`) | `build_log_index.py`, self-test on a synthetic file | laptop |
-| 2 | Agent-side join (container to pid_ns) | join table in the index; checked against `nsmap.py` on every Sock Shop run | Trillium, CPU only |
+| 2 | Agent-side join (container to pid_ns) from a scheduling slice | join table; checked against `nsmap.py` on the first-set runs | Trillium, CPU only |
 | 3 | `log_onset.py`, `log_window.py` with self-tests | the two tools | laptop |
-| 4 | **Sweep**: both tools on all 349 runs (v2 both applications, v3), times from the label for `log_window.py`, no label for `log_onset.py` | one line per run; the table of section 8.1 | Trillium, tools only |
+| 4a | **First set** (section 11, decision 3): both tools on every run of 8 families plus the normal runs | one line per run; the four numbers of section 8 | Trillium, tools only |
+| 4b | **Full sweep**: the same on all 349 runs (v2 both applications, v3), only after 4a is read | the table of section 8.1 | Trillium, tools only |
 | 5 | Read every false alarm and every miss; fix a rule only with the run named; re-sweep | rule history in this folder | - |
 | 6 | Add `needs`, `$LOGS`, `log_orient` and `log_role` to the harness and to 3 blueprints chosen by the sweep (expected: 17, 22, 15) | yaml, `bp_check.py` passes | laptop |
 | 7 | Agent check on the with-logs arm (section 8.2) | evaluation file | API or cluster; cost stated first |
@@ -235,6 +278,31 @@ Follows the seven steps of `METHOD.md`, with "tool" meaning a log tool.
 Steps 1 to 5 and 8 need no model.
 
 ## 8. How it is evaluated
+
+**A log tool is a watchdog, not a judge** (decision 1). No error in the logs does not mean no
+fault: 14 of 37 families in the probe are silent. So a log tool is never scored with one
+accuracy figure, and its "quiet" is never read as "healthy".
+
+| | Kernel tool | Log tool |
+|---|---|---|
+| Job | confirms or rejects one fault | watches for any change |
+| "Quiet" means | not this fault | unknown |
+| Scored on | found, and false alarms | false alarms, coverage, timing and role, added value |
+
+The four numbers, always reported apart:
+
+| Number | Question | Data |
+|---|---|---|
+| False alarms | does it bark when nothing is wrong? | the normal runs, plus the time before the injection in every fault run (healthy data in every labelled run) |
+| Coverage | for which faults do logs show anything? | per family: culprit logs it / only victims log it / silent |
+| Quality when it barks | is the time right, is the role right? | seconds from the injection; culprit or victim against the label |
+| Added value | does the blueprint do better with it? | the same agent with and without logs (8.2) |
+
+- **Only a false alarm is an error.** A silent family is a blind spot and is listed as one.
+- The tool's own line says "the logs show nothing", never "healthy" or "normal".
+- The kernel tools are tested as `METHOD.md` section 2 says: one contrast, every run of the
+  own family (all found), every other run (all quiet), each false alarm read. The log tools
+  follow the same steps; what differs is the score, as in the table above.
 
 ### 8.1 The sweep table (tools only)
 
@@ -300,8 +368,33 @@ commit as arm A.
 - A log-only blueprint. Wait for the sweep to show a fault that only logs see.
 - Metrics and request traces. Same shape as this plan if they follow, a separate file.
 
-## 11. Decisions needed before step 4
+## 11. Decisions taken (25-11-2026)
 
-1. The pass bars of section 8.3.
-2. Whether v3 runs are in the sweep from the start (they are in the 349) or added after v2.
-3. The window for "onset is right": 30 s is a proposal.
+1. **A log tool is a watchdog.** It helps to detect a problem and to find its time. No error in
+   the logs does not mean there is no fault, so "quiet" means "unknown". (User.)
+2. **Scored on four numbers, not one**: false alarms, coverage, quality when it barks, added
+   value (section 8). Only a false alarm is an error.
+3. **Start small, where logs help** (user), not all 349 runs at once. First set, chosen from the
+   probe (section 2.4), every run of each family plus the normal runs:
+
+   | Case | Families | Why |
+   |---|---|---|
+   | fills a gap the kernel admits | `dependency_outage`, `queue_backlog`, `svc_mem_cap` | caller errors against silence; timeout against connection refused |
+   | the culprit explains itself | `disk_full` | the reason is in its own log |
+   | latency only | `db_table_lock`, `net_bandwidth` | no error line; tests the duration signal |
+   | fast, misleading text | `error_storm` | onset at +0.4 s, the text says "not found" |
+   | victims only | `code_event_loop_block` | the culprit is quiet, a caller complains |
+
+   The full sweep (step 4b) follows only after these are read.
+4. **Prepared for partner logs** (section 3), though they have none today. (User.)
+5. **Logs never change a kernel verdict** (section 1).
+6. **No count index in the log path.** The join is computed from a slice (section 3.4).
+
+## 12. Still open
+
+1. The pass bars of section 8.3 (proposal: quiet on every normal run; a time hint only where
+   the onset is right in at least 4 of 5 runs of the family).
+2. The window for "onset is right": 30 s is a proposal. The probe saw 0 to 12 s in the clear
+   group, so 30 s may be loose.
+3. Whether a line-rate drop is a signal of its own or only a note: it showed the culprit in
+   `code_event_loop_block`, and it is also what the load pattern does.

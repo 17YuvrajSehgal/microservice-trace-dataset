@@ -247,3 +247,19 @@ generator stops. Not worth more VM time before the user decides.
 - v3 on Trillium: 10 families, 50 runs: the first 7, `net_bandwidth`, `cpu_weight`, `port_scan`.
 - Group 1 is finished: 3 collected (D4, A2, G1), 2 removed with evidence (B3, C2), 1 parked (D7).
 - VM stopped.
+
+## Logs: evaluation and a small start (decisions with the user)
+
+- **A log tool is a watchdog, not a judge.** Quiet means unknown, never healthy. Why: a probe on
+  one run per family (37 fault runs, Sock Shop v2+v3) found 14 families with nothing in the logs.
+- **Four numbers, never one accuracy**: false alarms (normal runs + the time before every
+  injection), coverage per family, timing and role when it barks, added value with the agent.
+- **Start with 8 families where the probe showed logs help**, not all 349 runs: dependency_outage
+  / queue_backlog / svc_mem_cap, disk_full, db_table_lock / net_bandwidth, error_storm,
+  code_event_loop_block. Probe: Trillium `work/logs_plan/`.
+- **Probe findings worth keeping**: 13 families clear within 12 s, 10 victims-only or late;
+  latency-only faults exist (db_table_lock 1.2 -> 965 ms); log text misleads (pid_limit reads
+  OutOfMemoryError); the load generator's warm-up end looks like a change in every run.
+- **Checked: the graph blueprints do not use our count index** (tsv.gz), only LTTng's
+  `index/*.idx`. The count index is left with agent_v2, nsmap/score and the selector scripts.
+  The log-to-kernel join in LOGS-PLAN was corrected to work from a slice.
