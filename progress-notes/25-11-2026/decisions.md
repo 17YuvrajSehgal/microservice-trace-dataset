@@ -210,3 +210,40 @@ the logs component for the graph blueprints from them.
   `expected_winning_modality`. It doubles as the two tests the INQUEST paper lists as missing.
 
 Open: the pass bars (section 8.3) and the 30 s onset window need the user's agreement.
+
+## `port_scan` (G1): collected, on Trillium (25-11, 20:45 UTC)
+
+- The scanner runs inside the front-end's network namespace (no new container): 200 connection
+  attempts per second to ports 1-1024 of the 15 other containers.
+- 5 of 5 runs: 23,781-23,840 attempts per run, no kernel events lost, no scanner process left.
+  **First family collected with all the fixes:** user-space trace 212-216 MB in every run,
+  `baseline_quiet` ran and passed in every run.
+- Verification reads `no_metric_signature` in runs 1, 3, 4, 5 as calibrated. **Run 2 reads
+  `confirmed`**: the front-end p95 used as the (expected flat) target moved by chance
+  (0.099 -> 0.115 s; today's baseline wanders between 0.10 and 0.17 s). The run is fine - the
+  scan ran - but its verification label is a false positive of the metric check. A reader must
+  not take run 2 as "metrics see the scan".
+- On Trillium: `v3/sockshop/port_scan.tar.gz` (17.34 GB), small files checksummed, 0 errors.
+
+## `conntrack_full` (D7): calibrated, NOT collected - parked
+
+Recipe `faults/conntrack_full.sh` (host `nf_conntrack_max` set to the current entry count).
+- Steady load uses 380-470 entries. With the maximum at 472: 400 "table full, dropping packet"
+  kernel lines in 80 s and a TOTAL outage - the front-end completes nothing, Prometheus cannot
+  scrape or answer, even host name resolution fails.
+- After the setting was restored the stack was healthy (checked: all containers up, pages
+  answer, a fresh 150-user load gives normal numbers), but **the load generator of that test
+  never recovered** (51% of its requests failed and it stopped sending). So a run would have an
+  empty recovery window.
+- The second setting (50 entries of headroom) was not measured properly: it ran on the dead
+  load, and the safety timer restored the limit in the middle.
+Why parked: as calibrated it is a host-wide outage of everything, including the metrics
+pipeline, and the load generator does not survive it. To be useful it needs (1) a setting
+that drops some new connections and not all, if one exists, and (2) a look at why the load
+generator stops. Not worth more VM time before the user decides.
+
+## State at 20:55 UTC, 25-11
+
+- v3 on Trillium: 10 families, 50 runs: the first 7, `net_bandwidth`, `cpu_weight`, `port_scan`.
+- Group 1 is finished: 3 collected (D4, A2, G1), 2 removed with evidence (B3, C2), 1 parked (D7).
+- VM stopped.
