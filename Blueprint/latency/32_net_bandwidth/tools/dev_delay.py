@@ -29,6 +29,16 @@ MIN_P50_MS = 5.0       # half of them waited at least this long
 MIN_P95_MS = 20.0      # and one in twenty this long
 MIN_RISE = 10.0        # ... and this many times the baseline's p95 (when a baseline is given)
 # Bars set before the first run on labelled data (25-11-2026) and not fitted to it.
+#
+# RATE LIMIT OR FIXED DELAY. Both make packets wait at the sender's interface. They differ in
+# how the wait is spread:
+#   a fixed delay (netem) holds every packet about the same time: p95 is 1.4-1.6 times the median
+#   a rate limit (tbf) holds a packet only while the queue is busy: p95 is 4.5-5.3 times the median
+# Measured on the verdict lines of the sweep of 25-11-2026 (job 2931081): 102 senders in the 21
+# runs of svc_net and anomaly_net (both applications) against the 5 net_bandwidth runs. The two
+# bars below sit between those groups and were chosen AFTER seeing them.
+SPREAD_LIMIT = 3.0     # p95 / median at or above this: the wait depends on load
+SPREAD_DELAY = 2.0     # below this: about the same wait for every packet
 KERNEL_CTX = ("swapper/", "ksoftirqd/", "kworker/")
 
 re_time = re.compile(r'^\[(\d+):(\d+):(\d+)\.(\d+)\]')
@@ -104,9 +114,18 @@ def report(data, secs, base=None):
         if len(g) < MIN_PKTS or pct(g, .5) < MIN_P50_MS or pct(g, .95) < MIN_P95_MS or (base and pct(g, .95) < MIN_RISE * b):
             continue
         nm = who.get(ip, ("?", "?"))
+        spread = pct(g, .95) / max(pct(g, .5), 0.001)
+        if spread >= SPREAD_LIMIT:
+            kind = (f"KIND: A RATE LIMIT OR A FULL QUEUE (the wait depends on load: p95 is {spread:.1f} times the median; "
+                    f"the limit is about what it sent, {sent[ip] * 8 / secs / 1000:.0f} kbit/s)")
+        elif spread < SPREAD_DELAY:
+            kind = (f"KIND: A FIXED DELAY (about the same for every packet: p95 is {spread:.1f} times the median; "
+                    f"the delay is about {pct(g, .5):.0f} ms)")
+        else:
+            kind = f"KIND: UNCLEAR (p95 is {spread:.1f} times the median, between a fixed delay and a rate limit)"
         out.append(f"VERDICT: PACKETS WAIT AT THE SENDER'S INTERFACE: {nm[0]} (pid_ns {nm[1]}) at {ip}: {len(g)} packets waited "
                    f"{pct(g, .5):.0f} ms (median) and {pct(g, .95):.0f} ms (p95) before leaving its interface"
-                   + (f", {b:.2f} ms in the baseline" if base else "") + f"; it sent {sent[ip] * 8 / secs / 1000:.0f} kbit/s - a rate limit or a full queue on that interface")
+                   + (f", {b:.2f} ms in the baseline" if base else "") + f"; it sent {sent[ip] * 8 / secs / 1000:.0f} kbit/s; {kind}")
         hits += 1
     if not hits:
         top = next(((ip, g) for ip, g in rows if len(g) >= MIN_PKTS), None)
@@ -137,10 +156,15 @@ def selftest():
 
     quick = lambda i: 0.000005
     normal = flow("10.0.0.9", "srv", 9, quick) + flow("10.0.0.8", "other", 8, quick)
-    capped = flow("10.0.0.9", "srv", 9, lambda i: 0.05 + (i % 10) * 0.03) + flow("10.0.0.8", "other", 8, quick)
+    # a rate limit: most packets wait a little, the ones behind a burst wait long
+    capped = flow("10.0.0.9", "srv", 9, lambda i: 0.02 if i % 10 < 7 else 0.30) + flow("10.0.0.8", "other", 8, quick)
     out = "\n".join(report(read(sorted(capped, key=tsec)), 20, read(normal)))
-    assert "PACKETS WAIT AT THE SENDER'S INTERFACE: srv (pid_ns 9) at 10.0.0.9: 1000 packets waited 200 ms (median) and 320 ms (p95)" in out, out
-    assert "it sent 416 kbit/s" in out and out.count("VERDICT") == 1, out
+    assert "PACKETS WAIT AT THE SENDER'S INTERFACE: srv (pid_ns 9) at 10.0.0.9: 1000 packets waited 20 ms (median) and 300 ms (p95)" in out, out
+    assert "it sent 416 kbit/s; KIND: A RATE LIMIT OR A FULL QUEUE" in out and out.count("VERDICT") == 1, out
+    # a fixed delay: every packet waits 150 ms, give or take
+    delayed = flow("10.0.0.9", "srv", 9, lambda i: 0.13 + (i % 10) * 0.004) + flow("10.0.0.8", "other", 8, quick)
+    out = "\n".join(report(read(sorted(delayed, key=tsec)), 20, read(normal)))
+    assert "KIND: A FIXED DELAY (about the same for every packet: p95 is 1.1 times the median; the delay is about 150 ms)" in out, out
     out = "\n".join(report(read(normal), 20, read(normal)))
     assert "NO PACKETS WAITING AT A SENDER'S INTERFACE (longest: p95 0.01 ms" in out, out
     print("selftest OK")
