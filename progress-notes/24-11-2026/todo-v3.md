@@ -15,8 +15,10 @@ Rules given by the user, in force while unattended:
 | 1 | `code_lock_contended` | `faults/code_lock_contended.sh` | done, on Trillium, checksums verified |
 | 2 | `svc_cpuset` (A1) | `faults/svc_cpuset.sh` | done, on Trillium, checksums verified |
 | 3 | `disk_full` (C1) | `faults/disk_full.sh` | 5 of 5 accepted (23:36 UTC). **Still on the VM**: `~/archive/runs/disk_full/`. Not on Trillium - the Trillium connection dropped at about 23:00 UTC |
-| 4 | `port_exhaustion` (D1) | `faults/port_exhaustion.sh` | run 1 accepted (confirmed, 2,575 error lines, connect() = -99 in the kernel); runs 2-5 being collected |
-| 5 | `thread_pool_exhaustion` (E3) | to write | after 4 |
+| 4 | `port_exhaustion` (D1) | `faults/port_exhaustion.sh` | 5 of 5 accepted (01:12 UTC, 25-11); being pulled to Trillium together with `disk_full` |
+| 5 | `pid_limit` (H2) | `faults/pid_limit.sh` | recipe written; calibrate when the pull is finished |
+| 6 | `db_table_lock` (E6) | to write | after 5 |
+| - | `thread_pool_exhaustion` (E3) | - | postponed: the pool size of the Java services can only be set at start-up, so the fault would also be on in the baseline. Needs a runtime switch (JMX) first |
 
 Steps for each family, in order:
 1. Write the recipe; calibrate on the VM (what really happens, does it recover, which metric sees it).

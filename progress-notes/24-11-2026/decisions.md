@@ -245,3 +245,45 @@ one core. That is why metrics and spans see only a 2x slowdown while the kernel 
 **Not done.** No check on other families (deferred by the user); the subtle setting (two
 cores) was not collected, so "at most half" is untested near its edge; a service with fewer
 than 8 threads is not judged.
+
+## v3 family 4: `port_exhaustion` (5 runs collected, all accepted)
+
+**What it is.** The catalogue's `net.ipv4.ip_local_port_range` is shrunk from 28,232 ports to
+200, written into its network namespace with `nsenter` (no restart), and written back at
+cleanup. Normal use is about 1,700 sockets in TIME_WAIT, so new connections to the database
+fail with EADDRNOTAVAIL.
+
+**Calibration.** 200 ports: catalogue 5xx 0.0 -> 7-12/s, 1,835 "cannot assign requested
+address" lines in 80 s, 0.0 again within 20 s of the restore. 1,500 ports: nothing for a
+minute, then a burst of 125/s (late and uneven; not collected). The front-end shows no 5xx
+and no latency change in either.
+
+**The 5 runs.** Six audit lines OK, no kernel loss, verification confirmed, quality usable,
+`verification.png` present, 442 metric series, port range back to 32768-60999 after each run.
+
+| run | catalogue 5xx/s (base / fault / recovery) | "cannot assign" log lines (base / fault / recovery) | failed catalogue spans (fault) |
+|---|---|---|---|
+| r1 | 0.00 / 74.9 / 22.8 | 0 / 2,575 / 0 | 8,639 of 29,686 |
+| r2 | 0.00 / 14.6 / 56.8 | 0 / 2,276 / 0 | 4,156 of 31,111 |
+| r3 | 0.00 / 14.7 / 61.9 | 0 / 3,308 / 0 | 3,309 of 30,564 |
+| r4 | 0.00 / 44.2 / 11.6 | 0 / 2,711 / 0 | 4,932 of 30,264 |
+| r5 | 0.00 / 13.4 / 58.0 | 0 / 4,122 / 0 | 1,726 of 30,250 |
+
+- Kernel, r1, on the VM: in a 20 s fault slice 1,353 of the catalogue's 2,065 `connect()` calls
+  return -99; 0 of 2,002 in the baseline slice. No other program has a -99.
+- **The 5xx rate is uneven between runs, and in r2, r3, r5 it is higher in the recovery window
+  than in the injection.** Cause, read from the catalogue log in 20 s buckets: the catalogue has
+  a circuit breaker. Besides the dial error it logs "circuit breaker is open" (3,785-7,396 lines
+  per run), in bursts of 20-40 s. In r2 and r5 a burst starts at the end of the injection and
+  runs 20-40 s into the recovery window, after the ports are back (the dial error stops at
+  cleanup in every run). So the tail is the application's own protection, not a failed cleanup.
+  Blueprints must not read the recovery window of this family as healthy.
+- The calibration under-read the effect (4% of requests failing, against 6-29% in the runs).
+
+## Next family changed: `pid_limit` (H2) before thread pool exhaustion (E3)
+
+E3 needs a small worker pool in one service. For the Java services here that is a start-up
+option, so the "fault" would already be on in the baseline; a runtime switch (JMX) would have
+to be built first. `pid_limit` is restart-free (`docker update --pids-limit`) and adds a third
+"limit reached" error next to EMFILE and EADDRNOTAVAIL (clone returning EAGAIN). After it:
+a table lock held on the catalogue's database (E6).
