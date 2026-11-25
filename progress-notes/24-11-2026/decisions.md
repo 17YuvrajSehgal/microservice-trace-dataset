@@ -409,3 +409,31 @@ thread of the service. Enough of them hold the whole pool. Recipe `faults/slow_c
 client `faults/workloads/slow_client.py`. Whether it works on the carts service is being
 calibrated; if it does not, the next candidates all need an image or start-up change and wait
 for the user.
+
+## `slow_client` (family 7): calibration and first check run (25-11, 04:20-05:25 UTC)
+
+**Calibration on carts, 150 users.** It is a cliff, not a slope. Carts has 200 worker threads.
+- 150, 185, 195 slow connections: cart p95 23 -> 41-45 ms, rate 120 -> 110/s. Five free
+  threads are enough for this load.
+- 205 and 400: carts completes 0 requests/s and logs nothing. The front-end's rate falls to 0
+  within a minute, because every simulated user ends up stuck in a cart call. Back to normal
+  within 20 s of stopping the client.
+- Aggressive is set to 220 connections, subtle to 190.
+
+**Blueprint 30 final:** `inside_wait.py` names the database in 5 of 5 `db_table_lock` runs
+(67.4-69.1 requests waiting inside mysqld, 0.00 in the baseline); reversed quiet in 5 of 5.
+
+**Check run 1: data good, verification "borderline". Deleted and repeated.**
+- Spans: 6,504 carts server spans in the baseline minute, 884 in the two fault minutes, with
+  p95 122 s (requests that waited until the client was stopped); 6,335 in recovery.
+- The verification target used a 1-minute rate window. The drop is then smeared over half of
+  the fault window: mean 41/s against 99/s, scored borderline. Window changed to 20 s. This is
+  a change to the target after seeing a run; the fault and the recipe did not change.
+- **The pre-registered "almost no CPU" was wrong.** In a 2 s kernel slice of the fault the
+  carts JVM makes about 170,000 `read` calls and 340,000 `futex` calls per second (baseline:
+  not in the top 12). Its threads do not sleep on the slow sockets; they poll them in a tight
+  loop. So this fault looks like a busy service that completes nothing. Not yet checked how
+  many cores that is.
+- The audit took 35 minutes instead of about 3: its sample window follows one trace, and a
+  trace here lasts 122 s (332 million kernel events in the window). Expected for this family;
+  each run will take about 45 minutes.

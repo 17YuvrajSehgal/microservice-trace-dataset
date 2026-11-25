@@ -17,7 +17,9 @@ Rules given by the user, in force while unattended:
 | 3 | `disk_full` (C1) | `faults/disk_full.sh` | done, on Trillium, checksums verified |
 | 4 | `port_exhaustion` (D1) | `faults/port_exhaustion.sh` | done, on Trillium, checksums verified |
 | 5 | `pid_limit` (H2) | `faults/pid_limit.sh` | done, on Trillium, checksums verified |
-| 6 | `db_table_lock` (E6) | `faults/db_table_lock.sh` | calibrated; check run started 03:15 UTC, 25-11 |
+| 6 | `db_table_lock` (E6) | `faults/db_table_lock.sh` | done, on Trillium, checksums verified |
+| - | `io_cap` (C4) | `faults/io_cap.sh` | NOT collected: measured to have no effect on any service here (no request waits for the disk) |
+| 7 | `slow_client` (E3 without a restart, D3) | `faults/slow_client.sh` | calibrated (220 connections on carts); first check run borderline on a 1-minute rate window, target fixed, check run repeated from 05:24 UTC, 25-11; about 45 min per run |
 | - | `thread_pool_exhaustion` (E3) | - | postponed: the pool size of the Java services can only be set at start-up, so the fault would also be on in the baseline. Needs a runtime switch (JMX) first |
 
 Steps for each family, in order:
@@ -37,7 +39,8 @@ Steps for each family, in order:
 | 27 | `disk_full` | `new_errors.py` | finds 5 of 5 in the slice that contains a crash (30 fallocate calls returning ENOSPC); quiet between crashes; false-alarm check deferred |
 | 28 | `port_exhaustion` | `new_errors.py` (same tool) | finds 5 of 5 in both fault slices (connect returning EADDRNOTAVAIL, 46-67% of the catalogue's connects); false-alarm check deferred |
 | 29 | `pid_limit` | `new_errors.py` (same tool, unchanged) | finds 5 of 5 in both fault slices (clone returning EAGAIN, 27-56% of the orders JVM's clone calls); reversed quiet; false-alarm check deferred |
-| 30 | `db_table_lock` | to write: database threads waiting on a lock while the client waits on the socket | when family 6 is on Trillium |
+| 30 | `db_table_lock` | `inside_wait.py` (the tool of 25, unchanged) | finds 5 of 5 and names the database, not the catalogue; reversed quiet; false-alarm check deferred |
+| 31 | `slow_client` | try `inside_wait.py` first; the service polls its sockets in a tight loop (170,000 reads/s), so a second sign is available | when family 7 is on Trillium |
 
 For each: one baseline slice and one fault slice per run from a temporary decompressed copy;
 the tool must find 5 of 5 and name only the faulty container; the reversed comparison must be
@@ -65,3 +68,12 @@ quiet. No README or RESULTS file until the false-alarm check has run.
 ## State at 00:45 UTC, 25-11
 
 - Trillium is back (user logged in). `disk_full` and `port_exhaustion` move to Trillium together once run 5 of `port_exhaustion` is done - not during a traced run, the pull would load the VM.
+
+## State at 05:30 UTC, 25-11
+
+- On Trillium, verified: families 1-6 (30 runs). Blueprints 25-30 tested on their own 5 runs each.
+- VM: collecting `slow_client`. After it: no further family is ready that works without an
+  image or start-up change (B4 GC pauses, D2 listen queue, A4 spin loop, E10 crash loop, E1
+  retry storm). Those wait for the user. Stop the VM when `slow_client` is done and moved, or
+  done and the Trillium login has expired (then the family stays on the VM disk).
+- The Trillium login expires about 08:35 UTC.
