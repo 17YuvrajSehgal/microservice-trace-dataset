@@ -501,9 +501,9 @@
    "promql": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"catalogue\"}[1m])) by (le))",
    "direction": "increase",
    "threshold_sigma": 4,
-   "abs_threshold": 0.5,
+   "abs_threshold": 0.05,
    "min_fraction": 0.7,
-   "why": "v3, calibrated 2026-11-25 on the VM under the 150-user load: with the catalogue's three tables write-locked 2 s out of every 3 s, catalogue p95 goes 4.8 ms -> 2,290 ms and its request rate 262 -> 122/s; no 5xx anywhere; back to 4.8 ms within 20 s of the cleanup. The database reached its 151-connection limit but refused no connection. Subtle (0.3 s of every 3 s): p95 about 165 ms, rate unchanged."
+   "why": "v3, calibrated 2026-11-25 on the VM under the 150-user load: with the catalogue's three tables write-locked 2 s out of every 3 s, catalogue p95 goes 4.8 ms -> 2,290 ms and its request rate 262 -> 122/s; no 5xx anywhere; back to 4.8 ms within 20 s of the cleanup. The database reached its 151-connection limit but refused no connection. Subtle (0.3 s of every 3 s): p95 about 165 ms, rate unchanged. CHANGED 2026-11-25: abs_threshold 0.5 -> 0.05 s, because subtle run 1 (25-11-2026, 0.3 s of every 3 s): catalogue p95 0.145 s mean over the fault, never above the old bar of 0.5 s, so it read 'unconfirmed' although the spans show p95 3.9 -> 176 ms. The catalogue's baseline p95 is 4.8 ms, so 0.05 s is still 10 times it."
   }
  ],
  "slow_client_carts": [
@@ -535,9 +535,9 @@
    "promql": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"catalogue\"}[1m])) by (le))",
    "direction": "increase",
    "threshold_sigma": 4,
-   "abs_threshold": 0.3,
+   "abs_threshold": 0.05,
    "min_fraction": 0.7,
-   "why": "v3, calibrated 2026-11-25 on the VM under the 150-user load. The catalogue sends a little over 4 Mbit/s. Cap 4 Mbit/s: p95 4.8 -> 415 ms, rate 260 -> 231/s. Cap 2 Mbit/s (aggressive): p50 2.5 -> 240 ms, p95 -> 2.0 s, rate -> 140/s. Cap 1 Mbit/s: p50 1.2 s, rate 70/s, 34 packets dropped in 80 s. No 5xx at any setting; back to 4.8 ms within 20 s of removing the cap."
+   "why": "v3, calibrated 2026-11-25 on the VM under the 150-user load. The catalogue sends a little over 4 Mbit/s. Cap 4 Mbit/s: p95 4.8 -> 415 ms, rate 260 -> 231/s. Cap 2 Mbit/s (aggressive): p50 2.5 -> 240 ms, p95 -> 2.0 s, rate -> 140/s. Cap 1 Mbit/s: p50 1.2 s, rate 70/s, 34 packets dropped in 80 s. No 5xx at any setting; back to 4.8 ms within 20 s of removing the cap. CHANGED 2026-11-25: abs_threshold 0.3 -> 0.05 s, because the subtle setting (4 Mbit/s) gave p95 about 0.4 s in calibration, too close to the old bar of 0.3 s. The catalogue's baseline p95 is 4.8 ms, so 0.05 s is still 10 times it."
   }
  ],
  "cpu_weight_carts": [
