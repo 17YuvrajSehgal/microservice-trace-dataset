@@ -150,3 +150,43 @@ collection. `cpu_weight`, already running, finished (5 of 5, on Trillium, 9.31 G
   four Sock Shop names; the Train Ticket path is not tested on a Train Ticket VM yet).
 - **`cpu_weight` stays** for now; **`io_cap` stays as it is** (recipe, no runs). Both to be
   looked at again later.
+
+## False-alarm sweep of the five new tools (job 2931081, 25-11, 20:00 UTC)
+
+Approved by the user. One Trillium node, 34 minutes (about 110 core-hours). `LevelFS` before:
+`def-naser2` 27.3. Script `Blueprint/latency/sweeps/v3_tools_sweep.sbatch`; outputs
+`work/dx_check/sweep_v3tools/` on Trillium. All 349 runs: v2 Sock Shop 170, v2 Train Ticket
+134, v3 45 (8 families plus `cpu_weight`). One baseline slice (20 s ending 20 s before the
+injection) and one fault slice (20 s from +30 s) per run feed all five tools. 347 judged; 2
+slices failed (`anomaly_mem_subtle_steady_r3`, `svc_mem_cap_aggressive_steady_r5`: babeltrace
+could not read the trace - not looked into). **All 20 normal runs: no positive verdict from any
+tool** (after the `new_errors.py` change below).
+
+| tool | own families | positive elsewhere | reading |
+|---|---|---|---|
+| `cpu_confine.py` | `svc_cpuset` 5/5 | 1 of 342 (`code_event_loop_block`, one run: the blocked Node process) | specific |
+| `unanswered.py`, with its slow-clients clause | `slow_client` 5/5 | 0 of 342 | specific |
+| `unanswered.py`, "service does not answer" alone | `slow_client` 5/5 | 17: `dependency_outage` 5/5, `code_event_loop_block` 5/5, `fd_exhaustion` 5/5, `dns_delay` 2/5 | true in all of them: these services do stop answering. A symptom, not a cause |
+| `dev_delay.py` | `net_bandwidth` 5/5 | 21: `svc_net` 5/5 on both applications, `anomaly_net` 8/8 Sock Shop and 3/8 Train Ticket | true: those faults are a delay queue (netem) on an interface. The tool cannot tell a rate limit from a delay yet. Quiet in the 316 runs without an interface queue |
+| `new_errors.py`, limit errors only | `port_exhaustion` 5/5, `pid_limit` 5/5 (`disk_full` 0/5 in this slice, as known: it needs the crash slice) | 16: Train Ticket `fd_exhaustion` 5/5 (EMFILE, the real fault), and the edge router out of file descriptors in `slow_client` 5/5, `anomaly_net` 3/8, `dns_delay` 3/5 | all real limits. The edge router ones are a second effect: connections pile up there when requests hang |
+| `inside_wait.py` | `code_lock_contended` 5/5, `db_table_lock` 5/5 | 68 runs in 13 other family groups: `slow_db` 11/11 (names the proxy that holds the delay), `anomaly_net` 8/8, `svc_cpu_cap` 6/8 (names the capped service), `anomaly_cpu` 5/5, `code_event_loop_block` 5/5, `code_serial_awaits` 5/5, `dependency_outage` 5/5, `fd_exhaustion` 5/5, `svc_net` 5/5, `cpu_weight` 5/5, `net_bandwidth` 5/5, `error_storm` 3/8, `dns_delay` 2/5, `anomaly_mem` 1/7, Train Ticket `slow_db` 2/11 | NOT specific to a lock. It answers "in which service do requests wait", and that is true for many faults. Quiet in 239 runs |
+
+**What this means.**
+- `cpu_confine.py`, the slow-clients clause and (with one more rule) `dev_delay.py` identify
+  their fault.
+- `inside_wait.py` and the plain "does not answer" verdict are LOCATORS: they name the service
+  where requests wait, for any cause. Blueprints 25 and 30 cannot rest on `inside_wait.py`
+  alone. They need a second step that rules out the other causes (CPU cap, network delay,
+  blocked event loop, a slow dependency) with the tools that already exist for those.
+  Whether its named service is the right one in each of the 68 other runs has been checked only
+  where the table says so.
+- `new_errors.py` was CHANGED because of this sweep: before, every new error gave a verdict and
+  it fired in 4 of 10 normal Train Ticket runs (`openat` returning "no such file" in node and
+  python, and `docker exec` helpers) and in 22 other groups. Now only errors that mean a limit
+  was reached give a verdict (no space, no port, too many files or tasks, no memory, quota, no
+  buffers); other new errors are listed without one. The numbers in the table apply that rule
+  to the sweep's own output lines (same result as re-running; the tool's self-test covers it).
+  Consequence: a port scan (refused connects) will NOT get a verdict from this tool.
+
+**Next for the tools:** a rule in `dev_delay.py` to separate a rate limit from a fixed delay; a
+second step for blueprints 25 and 30; a tool for the port scan and one for `cpu_weight`.

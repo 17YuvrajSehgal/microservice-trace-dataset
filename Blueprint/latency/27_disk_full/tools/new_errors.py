@@ -33,7 +33,15 @@ MAX_BASE = 0.1         # ... and at most this share of that count in the baselin
 # clone returning EAGAIN is NOT in this list: that one is a limit.
 NOT_FAILURES = {("connect", 115), ("accept", 11), ("accept4", 11), ("write", 11), ("writev", 11),
                 ("sendto", 11), ("sendmsg", 11), ("pwrite64", 11)}
-NAMES = {28: ("ENOSPC", "no space left on the device"), 99: ("EADDRNOTAVAIL", "no local address or port is free"),
+# A VERDICT is given only for errors that mean A LIMIT WAS REACHED. Other new errors are real
+# but are consequences or noise, and are listed without a verdict:
+#   -2 ENOENT on open (a program looked for a file that is not there), -111 ECONNREFUSED and
+#   -32 EPIPE (the PEER is down or closed: the fault is at the peer), -513 (a restarted call).
+# Why: the sweep of 25-11-2026 over all 347 runs. With every new error as a verdict the tool
+# fired in 4 of 10 NORMAL Train Ticket runs (node and python `openat` returning -2, and
+# `docker exec` helpers) and in 22 other family groups for the same reason.
+LIMITS = {28, 99, 24, 23, 12, 122, 105, 11}
+NAMES = {105: ("ENOBUFS", "no buffer space"), 2: ("ENOENT", "no such file"), 28: ("ENOSPC", "no space left on the device"), 99: ("EADDRNOTAVAIL", "no local address or port is free"),
          11: ("EAGAIN", "a limit was reached or the call would block"), 24: ("EMFILE", "the process has too many open files"),
          23: ("ENFILE", "the system has too many open files"), 12: ("ENOMEM", "out of memory within the limit"),
          111: ("ECONNREFUSED", "nothing listens at the peer"), 110: ("ETIMEDOUT", "the peer did not answer"),
@@ -90,6 +98,10 @@ def report(base, fault, secs):
             continue
         nm = max(fcomm[(ns, sc, e)], key=fcomm[(ns, sc, e)].get) if fcomm[(ns, sc, e)] else "?"
         name, meaning = NAMES.get(e, ("?", "see errno(3)"))
+        if e not in LIMITS:
+            out.append(f"OTHER NEW ERROR (not a limit, no verdict): {nm} (pid_ns {ns}): {n} calls to {sc} returned -{e} ({name}: {meaning}) "
+                       f"in {secs:.0f} s, {b} in the baseline")
+            continue
         out.append(f"VERDICT: NEW ERROR RETURNS: {nm} (pid_ns {ns}): {n} calls to {sc} returned -{e} ({name}: {meaning}) in "
                    f"{secs:.0f} s, {b} in the baseline; that is {n / max(1, fc[(ns, sc)]):.0%} of its {sc} calls")
         hits += 1
@@ -117,6 +129,10 @@ def selftest():
     assert out.count("VERDICT") == 1, out
     out = "\n".join(report(base, base, 20))
     assert "NO NEW ERROR RETURNS (no failing call in the suspect slice" in out, out
+    # a new error that is not a limit: listed, no verdict
+    out = "\n".join(report(base, read(common + [ex(5 + i * 0.01, "node", 5, "openat", -2) for i in range(80)]), 20))
+    assert "OTHER NEW ERROR (not a limit, no verdict): node (pid_ns 5): 80 calls to openat returned -2 (ENOENT: no such file)" in out, out
+    assert "VERDICT: NO NEW ERROR RETURNS" in out and out.count("VERDICT") == 1, out
     print("selftest OK")
 
 
