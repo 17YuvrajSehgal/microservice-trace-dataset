@@ -69,6 +69,24 @@ case "$RECIPE" in
         export KERNEL_NUM_SUBBUF="${KERNEL_NUM_SUBBUF:-96}"
         export RUN_NOTE="kernel ring buffers raised to ${KERNEL_NUM_SUBBUF} sub-buffers per CPU for this family (the fault doubles the event rate)"
         ;;
+    cpu_weight)
+        # A CPU weight only matters on a busy host, so a neighbour keeps every core busy for the
+        # WHOLE run (baseline, injection and recovery alike); the only thing that changes at
+        # injection is the weight. Calibrated 25-11-2026: 12 busy processes at the default
+        # weight take the host from 50% to 100% busy and already slow the baseline (cart rate
+        # 120 -> 91/s, p95 23 -> 88 ms, front-end p95 50 -> 240 ms). That is the price of this
+        # family; its baseline is NOT comparable with the other families' baselines.
+        NEIGHBOUR_PROCS="${NEIGHBOUR_PROCS:-12}"
+        docker rm -f cpu-neighbour >/dev/null 2>&1 || true
+        docker run -d --name cpu-neighbour stratatrace-workload:v1 python3 -c "
+import os
+for i in range($NEIGHBOUR_PROCS - 1):
+    if os.fork() == 0: break
+while True: pass" >/dev/null || { echo "FATAL: could not start the busy neighbour"; exit 1; }
+        trap 'docker rm -f cpu-neighbour >/dev/null 2>&1; echo "busy neighbour removed"' EXIT
+        export RUN_NOTE="background: container cpu-neighbour with ${NEIGHBOUR_PROCS} busy processes at the default CPU weight for the whole run (host about 100% busy in the baseline too)"
+        sleep 20
+        ;;
 esac
 
 if [[ "$WORKLOAD" == "burst" ]]; then USERS="$USERS_BURST"; else USERS="$USERS_STEADY"; fi

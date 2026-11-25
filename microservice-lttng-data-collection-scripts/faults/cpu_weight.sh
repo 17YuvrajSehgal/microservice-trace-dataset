@@ -47,8 +47,12 @@ case "${1:-}" in
   inject)
     INTENSITY="${2:-aggressive}"
     case "$INTENSITY" in
-      aggressive) WEIGHT="${WEIGHT:-1}" ;;
-      subtle)     WEIGHT="${WEIGHT:-10}" ;;
+      # Calibrated 25-11-2026 on carts with a neighbour of 12 busy processes (host 100% busy):
+      # weight 10: p50 22 -> 590 ms, p95 88 ms -> 3.6 s, rate 91 -> 66/s, no errors.
+      # weight 1: carts completes nothing (an outage, not used).
+      # With a neighbour of 6 processes (host 90% busy) weight 10 changes nothing; with 8, p95 x3.
+      aggressive) WEIGHT="${WEIGHT:-10}" ;;
+      subtle)     WEIGHT="${WEIGHT:-30}" ;;      # not calibrated
       *) echo "unknown intensity: $INTENSITY"; exit 1 ;;
     esac
     BEFORE="$(weight)"
