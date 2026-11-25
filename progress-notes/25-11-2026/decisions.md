@@ -190,3 +190,23 @@ tool** (after the `new_errors.py` change below).
 
 **Next for the tools:** a rule in `dev_delay.py` to separate a rate limit from a fixed delay; a
 second step for blueprints 25 and 30; a tool for the port scan and one for `cpu_weight`.
+
+## Logs component: plan written (`Blueprint/latency/LOGS-PLAN.md`), nothing built
+
+Read the INQUEST paper, its workflow code and its stored results again, in full, and designed
+the logs component for the graph blueprints from them.
+
+- **Logs are a witness, the kernel check is the judge.** A log step proposes a time, explains a
+  confirmed verdict or points at code; it never confirms or rejects. Why: in INQUEST the
+  printing file was a fixed file in 0-40% of matched cases, and our 16-11 pilot blamed the
+  service that complained.
+- **Fixed steps, not free tools.** Why: INQUEST's staged procedure ties the free loop on files
+  and gains 14.1 points on functions; our free log tools were called 0 times on one run.
+- **Source-neutral from the start.** Partner traces have no logs today but may get them. So:
+  one record shape, a declared profile per log format, a clock offset and a join table in the
+  index, and tools that say `LOG CLOCK NOT ALIGNED` / `NOT JOINED` instead of guessing. A
+  synthetic syslog profile is in the build order to prove it without partner data.
+- **First real work is a tool-only sweep on the 349 runs**, compared with the pre-registered
+  `expected_winning_modality`. It doubles as the two tests the INQUEST paper lists as missing.
+
+Open: the pass bars (section 8.3) and the 30 s onset window need the user's agreement.
