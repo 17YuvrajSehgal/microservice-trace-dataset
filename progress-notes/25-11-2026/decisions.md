@@ -142,3 +142,11 @@ collection. `cpu_weight`, already running, finished (5 of 5, on Trillium, 9.31 G
 
 **Open, for the user**: re-collect the 37 v3 runs without a user-space trace or accept the gap
 (issue 26); Train Ticket relay; whether `cpu_weight` with its busy baseline stays in the dataset.
+
+## User decisions on the review (25-11, about 19:50 UTC)
+
+- **User-space trace gap: no re-collection.** Fix it for future runs and report the gap in the
+  paper. The relay fix is in; the relay now also follows Train Ticket containers (it knew only
+  four Sock Shop names; the Train Ticket path is not tested on a Train Ticket VM yet).
+- **`cpu_weight` stays** for now; **`io_cap` stays as it is** (recipe, no runs). Both to be
+  looked at again later.

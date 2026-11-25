@@ -30,8 +30,35 @@ docker_ts_pattern = re.compile(
     r"^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z)\s+(.*)$"
 )
 
-services = ["carts", "orders", "shipping", "queue-master"]
-containers = {f"docker-compose_{s}_1": s for s in services}
+# WHICH CONTAINERS. Until 25-11-2026 this was a fixed list of four Sock Shop names, so on Train
+# Ticket the relay followed nothing (0 of 134 v2 runs have a user-space trace). Now:
+#   1. RELAY_CONTAINERS="name1,name2" if set;
+#   2. else the four Sock Shop Java services, when they are running (unchanged behaviour there);
+#   3. else every running container (Train Ticket and anything else). A container that prints
+#      no span lines costs one idle `tail`.
+# Path 3 has NOT been run on a Train Ticket VM yet.
+import os
+
+
+def running_containers():
+    try:
+        return subprocess.check_output(["docker", "ps", "--format", "{{.Names}}"],
+                                       stderr=subprocess.DEVNULL).decode().split()
+    except Exception:
+        return []
+
+
+_up = running_containers()
+_sock = {f"docker-compose_{s}_1": s for s in ["carts", "orders", "shipping", "queue-master"]}
+if os.environ.get("RELAY_CONTAINERS"):
+    containers = {c: c for c in os.environ["RELAY_CONTAINERS"].split(",") if c}
+elif all(c in _up for c in _sock):
+    containers = _sock
+else:
+    containers = {c: c for c in _up}
+if not containers:
+    print("[relay] WARN: no container to follow - the user-space trace will be empty",
+          file=sys.stderr, flush=True)
 
 procs = {}
 stream_to_meta = {}

@@ -951,8 +951,9 @@ truncation): 59,603-79,094 events in 25 s in three tests, one with a truncation 
 **What is lost and what is not.** The spans themselves are complete in `otlp/spans.jsonl` in
 every run. What is missing is their copy on the LTTng clock. The clock anchors in every meta
 snapshot (realtime, monotonic, boottime; drift 0.000-0.003 ms per run) still let span times be
-placed on the kernel trace's clock. No blueprint tool uses `ust/`. **Not decided:** whether to
-re-collect; the paper must not claim a user-space span stream for these runs.
+placed on the kernel trace's clock. No blueprint tool uses `ust/`. **Decided by the user, 25-11-2026:** no
+re-collection; the gap is reported in the paper, which must not claim a user-space span stream
+for these runs. The relay now also follows Train Ticket containers (not tested on that VM yet).
 
 ## Issue 27 - v3 caveats a reader of the runs must know (found in the 25-11 review)
 
