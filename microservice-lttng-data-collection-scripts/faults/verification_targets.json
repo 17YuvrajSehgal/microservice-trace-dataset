@@ -527,5 +527,17 @@
    "min_fraction": 0.6,
    "why": "the carts service stops answering its metrics scrape while its worker threads are held"
   }
+ ],
+ "net_bandwidth_catalogue": [
+  {
+   "canonical": true,
+   "name": "catalogue_p95_latency",
+   "promql": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"catalogue\"}[1m])) by (le))",
+   "direction": "increase",
+   "threshold_sigma": 4,
+   "abs_threshold": 0.3,
+   "min_fraction": 0.7,
+   "why": "v3, calibrated 2026-11-25 on the VM under the 150-user load. The catalogue sends a little over 4 Mbit/s. Cap 4 Mbit/s: p95 4.8 -> 415 ms, rate 260 -> 231/s. Cap 2 Mbit/s (aggressive): p50 2.5 -> 240 ms, p95 -> 2.0 s, rate -> 140/s. Cap 1 Mbit/s: p50 1.2 s, rate 70/s, 34 packets dropped in 80 s. No 5xx at any setting; back to 4.8 ms within 20 s of removing the cap."
+  }
  ]
 }
