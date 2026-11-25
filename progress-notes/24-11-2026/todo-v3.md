@@ -40,7 +40,7 @@ Steps for each family, in order:
 | 28 | `port_exhaustion` | `new_errors.py` (same tool) | finds 5 of 5 in both fault slices (connect returning EADDRNOTAVAIL, 46-67% of the catalogue's connects); false-alarm check deferred |
 | 29 | `pid_limit` | `new_errors.py` (same tool, unchanged) | finds 5 of 5 in both fault slices (clone returning EAGAIN, 27-56% of the orders JVM's clone calls); reversed quiet; false-alarm check deferred |
 | 30 | `db_table_lock` | `inside_wait.py` (the tool of 25, unchanged) | finds 5 of 5 and names the database, not the catalogue; reversed quiet; false-alarm check deferred |
-| 31 | `slow_client` | try `inside_wait.py` first; the service polls its sockets in a tight loop (170,000 reads/s), so a second sign is available | when family 7 is on Trillium |
+| 31 | `slow_client` | `unanswered.py` (new). `inside_wait.py` finds 0 of 5: it cannot see a request that is never answered | finds 5 of 5, one verdict each, names carts and the 220 slow connections; reversed quiet; false-alarm check deferred |
 
 For each: one baseline slice and one fault slice per run from a temporary decompressed copy;
 the tool must find 5 of 5 and name only the faulty container; the reversed comparison must be
@@ -82,5 +82,6 @@ quiet. No README or RESULTS file until the false-alarm check has run.
 
 - On Trillium, verified: families 1-7 (35 runs, about 126 GB packed).
 - The VM is STOPPED. Start: `gcloud compute instances start stratatrace-ss-v3 --zone=us-east1-d --project=project-ba99825a-df02-4405-af4` (new IP each start; `WARMUP_S=60` on the first run).
-- Blueprint 31 (`inside_wait.py` on `slow_client`) is running on the Trillium login node (`work/tr21.log`, slices in `work/v3bp31`).
+- Blueprints 25-31 are all tested on their own 5 runs. Slices kept on Trillium in `work/v3bp*` (v3bp31 is 35 GB).
+- To fix before the false-alarm check: `inside_wait.py` names the front-end when the comparison slice has no traffic (seen in the reversed `slow_client` test).
 - Waiting for the user: the next families (all need an image or start-up change), the false-alarm SLURM check for blueprints 25-31, READMEs, agent runs.

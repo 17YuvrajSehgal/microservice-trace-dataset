@@ -465,3 +465,33 @@ for the user.
   that works without an image or start-up change.
 - My monitor stopped once by mistake after check run 3 (its test for lost events matched the
   text "no events discarded"). No data was affected; runs 2-5 started about 5 minutes late.
+
+## Blueprint 31 (`slow_client`): `inside_wait.py` fails, new tool `unanswered.py` (25-11, 09:35 UTC)
+
+**`inside_wait.py`: 0 of 5.** It times a request from the client's last data segment to the
+server's first answer. A request that is never answered has no end, so the stuck service is
+not even in its table. Worse, the REVERSED comparison named the front-end in 4 of 5 runs
+(12-19 "inside" in the baseline against 0.00 in the fault slice, where the front-end has no
+traffic). That is the constant front-end offset already noted under blueprint 30. So
+`inside_wait.py` has a known false alarm when the comparison slice has no traffic.
+
+**`unanswered.py` (new).** Per server address and port it counts connections on which the
+client sent data and the server sent none for 5 s or more, to the end of the slice. It also
+counts how many of those keep sending segments of 16 bytes or less (a body sent a byte at a
+time). Bars set before the first run on data and not changed: 20 silent connections, 50% of
+the server's connections with client data, 5 times the baseline.
+
+**Result, 5 of 5, one verdict line per run:** the carts JVM at port 80 has 301-310 connections
+with a request and no answer, 0 answered, 0 in the baseline; 220 of them send one small segment
+about every 1.0 s, all from 172.18.0.1 (the host, where the client ran). The other 81-90 are
+the front-end's real requests. Reversed comparison quiet in 5 of 5.
+
+**One change after the first pass.** The first version gave 2-3 verdicts per run: also the edge
+router and the host's port forward, which do not answer because they wait for carts. A service
+that has unanswered requests of its own is now reported as "also not answering, as a caller"
+and not as a verdict; the host port forward (127.0.0.1) is recognised by address. This rule
+came from seeing the 5 runs.
+
+**Limits.** The edge router has 30-51 silent connections in every BASELINE slice (its share is
+below the bar). Not explained yet. The slow clients come from the host here; from another
+container the address would differ but the count would not. No check on other families.
