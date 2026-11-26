@@ -350,3 +350,12 @@ same function. Carts numbers were read back from Prometheus for the same windows
 Also no subtle runs, for the reasons given to the user: `pid_limit` (no effect), `slow_client`
 (a cliff; below the pool size only p95 23 -> 44 ms), `port_scan` at 10/s (exactly at the tool's
 bar), `disk_full` and `code_lock_contended` (need a separate design).
+
+### Subtle `cpu_weight`: 3 of 3, on Trillium (26-11, 01:45 UTC)
+
+Confirmed, no events lost, neighbour removed after the family. Carts p95 in the busy-host
+baseline 0.16-0.21 s (aggressive runs: 0.08-0.10 s) and 1.06-1.26 s in the fault (spans), 0 errors.
+The baseline was slower than in the aggressive runs and in calibration; not looked into. The
+effect is about 6 times in every run, but the 0.2 s bar is close to this baseline.
+All 9 subtle runs are now in `v3/sockshop/subtle/` (db_table_lock 3, net_bandwidth 3,
+cpu_weight 3), 0 checksum errors. VM stopped.
