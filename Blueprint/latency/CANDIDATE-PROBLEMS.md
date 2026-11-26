@@ -51,7 +51,7 @@ Column "best": K = kernel trace, L = logs, M = metrics, T = distributed traces (
 | A1 | cpuset too small **(collected: `svc_cpuset`, blueprint 26)** | `docker update --cpuset-cpus` to 1 core on a busy service | service runs on one CPU only while others idle; run-queue waits | K | `svc_cpu_cap` (quota, has a period; this has none) | - |
 | A2 | low CPU weight **(collected: `cpu_weight`, blueprint 33; also 3 subtle runs)** | `--cpu-shares 2` on one service plus a busy neighbour | waits only when the neighbour runs; no fixed period | K | `noisy_neighbor` | - |
 | A3 | context-switch storm | thread pool of 2,000 in one service | very high `sched_switch` rate for one pid, short runs | K | `lock_contention` | - |
-| A4 | spin loop **(collected: `code_spin_loop`, 5 runs; tool not built yet)** | a busy-wait in a handler (code flag) | one thread 100% on CPU with no system calls, requests still served | K | `event_loop_block` (there requests stop) | - |
+| A4 | spin loop **(collected: `code_spin_loop`, blueprint 36)** | a busy-wait in a handler (code flag) | one thread 100% on CPU with no system calls, requests still served | K | `event_loop_block` (there requests stop) | - |
 | A5 | interrupt storm | flood one NIC queue with small packets from outside the stack | `irq_handler_entry` rate, softirq time on one CPU | K | `irq_imbalance` | irq events on the VM |
 | A6 | timer jitter | a periodic thread plus CPU pressure on its core | wake-up latency of one periodic thread grows | K | `cpu_starvation` | - |
 | A7 | CPU frequency drop | cap `scaling_max_freq` on the host | `power_cpu_frequency` falls; same work takes longer on CPU | K, M | `anomaly_cpu` | power events (now in the profile) |
@@ -117,10 +117,10 @@ Column "best": K = kernel trace, L = logs, M = metrics, T = distributed traces (
 | # | Problem | How to inject | Expected kernel signal | Best | Nearest existing family | Needs |
 |---|---|---|---|---|---|---|
 | F1 | lock across I/O at real load **(collected: `code_lock_contended`, blueprint 25)** | rerun `code_lock_across_io` at 4-8 times the load | calls to the dependency stop overlapping | K, T | `lock_contention` | higher load |
-| F2 | thread leak **(collected: `code_thread_leak`, 5 runs; tool not built yet)** | a thread per request that never ends | thread count of one pid only grows | K, M | `dependency_outage` pile-up (blueprint 24 note) | - |
+| F2 | thread leak **(collected: `code_thread_leak`, blueprint 35)** | a thread per request that never ends | thread count of one pid only grows | K, M | `dependency_outage` pile-up (blueprint 24 note) | - |
 | F3 | slow descriptor leak | never close one file or socket per N requests | highest fd climbs for minutes, then EMFILE | K, M | `fd_exhaustion` (step) | long runs |
-| F4 | regex backtracking **(collected: `code_regex_backtrack`, 5 runs; tool not built yet)** | a bad pattern on user input | one thread on CPU for seconds on some requests only | K, T | `event_loop_block` | - |
-| F5 | large payloads **(collected: `code_large_payload`, 5 runs; tool not built yet)** | return the whole table | bytes per answer up, calls unchanged | K, T | `data_exfiltration` | - |
+| F4 | regex backtracking **(collected: `code_regex_backtrack`, blueprint 38)** | a bad pattern on user input | one thread on CPU for seconds on some requests only | K, T | `event_loop_block` | - |
+| F5 | large payloads **(collected: `code_large_payload`, blueprint 37)** | return the whole table | bytes per answer up, calls unchanged | K, T | `data_exfiltration` | - |
 | F6 | chatty calls | N small calls where one would do, between services | calls per request up between two services | T, K | `code_n_plus_one` | - |
 | F7 | unbounded queue | producer faster than an in-process worker | memory grows, latency grows with it | M, K | `code_unbounded_cache` | - |
 | F8 | blocking call in async code | a sync file read in a Node or async Java handler | event thread in D-state or long syscall, requests stall | K | `event_loop_block` (on CPU) | - |
@@ -160,10 +160,10 @@ Column "best": K = kernel trace, L = logs, M = metrics, T = distributed traces (
 | D4 | `net_bandwidth` | 5 + 3 subtle | `dev_delay.py`, 32 | |
 | A2 | `cpu_weight` | 5 + 3 subtle | `cpu_starved.py`, 33 | its baseline is a busy host; kept for now, to look at again |
 | G1 | `port_scan` | 5 | `scan_fanout.py`, 34 | no metric signature |
-| A4 | `code_spin_loop` | 5 | to build | catalogue p95 3.4 -> 17.5 ms (spans), 0 errors |
-| F5 | `code_large_payload` | 5 | to build | catalogue sends about 7 times more bytes; answer times barely change |
-| F4 | `code_regex_backtrack` | 5 | to build | front-end p95 about 0.09 -> 0.21 s, p50 barely moves |
-| F2 | `code_thread_leak` | 5 | to build | catalogue threads 16 -> about 300 in the fault, about 520 after (by design) |
+| A4 | `code_spin_loop` | 5 | `cpu_runs.py`, 36 | catalogue p95 3.4 -> 17.5 ms (spans), 0 errors |
+| F5 | `code_large_payload` | 5 | `bytes_per_call.py`, 37 | catalogue sends about 7 times more bytes; answer times barely change |
+| F4 | `code_regex_backtrack` | 5 | `cpu_runs.py`, 38 | front-end p95 about 0.09 -> 0.21 s, p50 barely moves |
+| F2 | `code_thread_leak` | 5 | `thread_growth.py`, 35 | catalogue threads 16 -> about 300 in the fault, about 520 after (by design) |
 
 Group 2 (code defects, images `catalogue-bugs:v3` and `frontend-bugs:v3`) collected 26-11-2026.
 
