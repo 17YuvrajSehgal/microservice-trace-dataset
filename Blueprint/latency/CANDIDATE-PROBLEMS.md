@@ -160,7 +160,6 @@ Column "best": K = kernel trace, L = logs, M = metrics, T = distributed traces (
 | D4 | `net_bandwidth` | 5 + 3 subtle | `dev_delay.py`, 32 | |
 | A2 | `cpu_weight` | 5 + 3 subtle | `cpu_starved.py`, 33 | its baseline is a busy host; kept for now, to look at again |
 | G1 | `port_scan` | 5 | `scan_fanout.py`, 34 | no metric signature |
-
 | A4 | `code_spin_loop` | 5 | to build | catalogue p95 3.4 -> 17.5 ms (spans), 0 errors |
 | F5 | `code_large_payload` | 5 | to build | catalogue sends about 7 times more bytes; answer times barely change |
 | F4 | `code_regex_backtrack` | 5 | to build | front-end p95 about 0.09 -> 0.21 s, p50 barely moves |
