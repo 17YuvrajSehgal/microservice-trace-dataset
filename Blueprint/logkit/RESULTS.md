@@ -154,3 +154,28 @@ drops at the same moment, 245 s into the run: a load phase ends. On Sock Shop th
 and clean (`code_event_loop_block`, `anomaly_net`, `fd_exhaustion`, `slow_client`, `dns_delay`,
 5 of 5 or 8 of 8 each). It is a useful hint where the load is steady and a false alarm where it is
 not, so it stays a NOTE and never decides an onset.
+
+## Narrowing with the call graph from spans (26-11-2026)
+
+LOGS-PLAN.md section 6.5. The shortlist is the entities `log_onset` finds changing while the fault
+is on, plus the services they call in the run's OWN call graph (`Blueprint/spankit`, built from
+`otlp/spans.jsonl`; 363 of 363 graphs, largest 52 s on the login node). Runs whose fault has one
+target service. Output on Trillium: `work/logs_plan/sweep_graph.jsonl`, `sweep_graph.md`.
+
+| application | runs | logs flag something | target among the flagged | **target in the shortlist** | median shortlist / entities |
+|---|---|---|---|---|---|
+| Sock Shop | 150 | 102 | 44 | **67** | 5 / 15 |
+| Train Ticket | 55 | 26 | 5 | **21** | 6 / 46 |
+
+- **Sock Shop: all 35 misses are blind spots of the spans, none a wrong edge.** catalogue writes no
+  span for its database calls (24 misses: `slow_db`, `db_table_lock`, `conn_pool_exhaustion`, target
+  catalogue-db), and edge-router writes no spans at all (11 misses: it is the only service that
+  complains when front-end blocks). With Sock Shop's wiring filled in by hand the count was 98 of
+  102 (section 6.5); the 31-run gap is exactly these two services.
+- **Train Ticket: 5 -> 21 of 26**, from 6 of 46 entities, through span links (its services call
+  each other by IP) and the database behind toxiproxy. The 5 misses: `tt_svc_mem_cap` (4), where
+  the target ts-order-service is not a callee of any flagged service in the graph, and one
+  `tt_svc_cpu_cap`.
+- So the shortlist needs edges the spans do not have. Candidates, in order of cost: (1) the kernel's
+  own TCP connections (which container connects to which; also the only source on partner hosts),
+  (2) peers named in log lines (edge-router writes "Error forwarding to http://front-end:8079").

@@ -280,8 +280,13 @@ flagged), with the call graph taken from Sock Shop's wiring, not yet from spans:
 | services whose logs changed | 44 of 102 | median 2 |
 | those, plus the services they call | **98 of 102** | median 6 |
 
-Not covered: the 48 single-service runs where the logs flag nothing, the 69 host-level faults,
-and Train Ticket (5 of 26 flagged runs held the culprit; its graph is larger and not measured).
+**Measured with each run's own call graph from spans (26-11, `Blueprint/spankit`):** Sock Shop
+67 of 102 (median 5 of 15), Train Ticket 21 of 26 (median 6 of 46). Every Sock Shop miss is a
+blind spot of the spans (catalogue's database calls and edge-router are not traced), so the
+graph needs a second source of edges: the kernel's TCP connections (also the only one on partner
+hosts), or peers named in log lines. Details: `Blueprint/logkit/RESULTS.md`.
+
+Not covered: the single-service runs where the logs flag nothing, and the host-level faults.
 
 To evaluate, against a no-log start (every service, every blueprint): culprit inside the
 shortlist, shortlist size, and whether the right blueprint is among the first three suggested.

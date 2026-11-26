@@ -23,3 +23,15 @@
   (or the kernel's TCP connections where there are no spans).
 - Silent logs are also a hint: they point to the resource and scheduling faults. A priority,
   never a reason to rule a blueprint out.
+
+## Call graph from spans (`Blueprint/spankit`) and the measured shortlist
+
+- Edges by **span link first** (the callee's span names the caller's span as parent), then the
+  peer name in the caller's span, then the IP. Why: Train Ticket calls by IP through its
+  registry; only the link names those callees. Each edge also keeps the db.system its spans name,
+  so a proxy (toxiproxy) still points at its database (mysql).
+- Blind spots are written into the graph (services with no spans; traced services with no
+  outgoing span) and printed as "unknown", never "none".
+- Shortlist (flagged + what they call): Sock Shop **67 of 102** (estimate with hand wiring was
+  98), Train Ticket **21 of 26** from 46 entities. All 35 Sock Shop misses are the two blind
+  spots (catalogue -> catalogue-db, edge-router). Next source of edges: kernel TCP connections.
