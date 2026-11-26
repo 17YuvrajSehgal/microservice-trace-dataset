@@ -33,3 +33,25 @@ The check had finished before Trillium dropped: all 20 runs extracted, 1,373 fil
 checksum errors; `code_regex_backtrack` included (its archive extracted completely; only the
 pull's OK line was missing). Runs deleted on the VM, VM stopped. v3 now: 14 families, 70
 aggressive runs + 9 subtle, all on Trillium.
+
+## Blueprints 35-38 for group 2 (26-11, 16:10-17:15 UTC, login node only)
+
+Three new tools, written after looking at real lines of the run-1 slices, bars set before the
+first run unless said:
+- `35_code_thread_leak/tools/thread_growth.py`: threads started and ended per process. The
+  baseline already has about 1,600 thread starts per 10 s (the orders JVM starts and ends
+  749-854), so the tool looks at threads that stay, not at starts.
+- `36_code_spin_loop/tools/cpu_runs.py` (also blueprint 38): on-CPU stretches of 5 ms or more
+  with no system call, per container, with a KIND: many threads and short, or one thread and long.
+- `37_code_large_payload/tools/bytes_per_call.py`: bytes per answer and answers per second per server.
+
+Result on the 20 group-2 runs (10 s slices, each tool on every run, both directions): each tool
+5 of 5 on its own family, quiet on the other families, 0 of 60 reversed comparisons fired, KIND
+right in all 10 CPU runs.
+
+Two rules changed after run 1, said in the blueprints: `cpu_runs.py` got a second rule (3 stalls
+of 100 ms with none before; run 1 of regex had 0.09 cores, under the 0.1 bar; 2 of 5 regex runs
+sit exactly at 3 stalls); `bytes_per_call.py` gives a verdict only to the largest rise (the 3
+services in front of the source rose about 4 times and got verdicts too).
+
+Not done yet: the four tools on the earlier 349 runs (needs a SLURM job, as for 25-32).
