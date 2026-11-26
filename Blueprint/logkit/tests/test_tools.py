@@ -92,3 +92,44 @@ def test_tools_run_as_copied_scripts_with_the_standard_library_only(indexes, tmp
                                                        "log_window.py"))
     imports = re.findall(r"^\s*(?:import|from)\s+([\w.]+)", src, re.M)
     assert not {"yaml", "logkit"} & {m.split(".")[0] for m in imports}, imports
+
+
+def test_a_burst_of_different_new_errors_is_one_change(tmp_path, capsys):
+    """A crashing database writes many DIFFERENT error lines, each once. Counted per template that
+    was nothing (disk_full_aggressive_steady_r2); counted together it is one change."""
+    from conftest import write_run
+    from logkit.index import build_index, write_index
+    from logkit.profile import load_profile
+
+    run = write_run(tmp_path, "burst_r1", False)
+    words = ["disk", "write", "abort", "journal", "flush", "checkpoint"]
+    with open(run / "logs" / "docker-compose_carts-db_1.log", "w") as fh:
+        fh.write("2026-09-05T15:18:41.000000000Z 2026-09-05T15:18:41.000+0000 I NETWORK  [conn1] up\n")
+        for k, sev in enumerate("WEFEWE"):   # six different templates, one line each, over 2 s
+            fh.write("2026-09-05T15:20:1%d.%03d000000Z 2026-09-05T15:20:10.448+0000 %s STORAGE  "
+                     "[thread2] %s failed\n" % (k // 3, 448 + k, sev, words[k]))
+    p = tmp_path / "burst.logidx.json.gz"
+    write_index(build_index(run, load_profile("docker_compose")), p)
+    log_onset.main([str(p)])
+    v = verdicts(capsys.readouterr().out)
+    assert v[0].startswith("LOG ONSET: carts-db (container) first change at 15:20:10"), v
+    assert "6 new warning/error lines" in v[0], v
+
+
+def test_a_one_second_hiccup_is_not_a_change(tmp_path, capsys):
+    """edge-router wrote 7 warnings in one second of a healthy run and never again
+    (normal_none_burst_r1). New lines must span MIN_SECONDS different seconds."""
+    from conftest import write_run
+    from logkit.index import build_index, write_index
+    from logkit.profile import load_profile
+
+    run = write_run(tmp_path, "hiccup_r1", False)
+    with open(run / "logs" / "docker-compose_edge-router_1.log", "w") as fh:
+        fh.write('2026-09-05T15:18:41.000000000Z time="x" level=info msg="started"\n')
+        for k in range(7):
+            fh.write('2026-09-05T15:20:10.%03d000000Z time="x" level=warning msg="Error forwarding '
+                     'to http://front-end:8079, err: read: connection reset by peer"\n' % (100 + k))
+    p = tmp_path / "hiccup.logidx.json.gz"
+    write_index(build_index(run, load_profile("docker_compose")), p)
+    log_onset.main([str(p)])
+    assert verdicts(capsys.readouterr().out)[0].startswith("NO LOG CHANGE")

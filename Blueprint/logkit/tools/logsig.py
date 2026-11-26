@@ -7,8 +7,13 @@ Standard library only; copied next to the log tools. Both log_onset.py and log_w
 
 Three signals count as a change (LOGS-PLAN.md section 2.4 saw all three):
 
-    new        a warning-or-worse template that never appeared up to the end of the baseline,
-               and appears at least MIN_NEW times in the window
+    new        warning-or-worse templates that never appeared up to the end of the baseline,
+               with at least MIN_NEW lines in the window TOGETHER. Rule history: per template,
+               a crashing carts-db (15 different new error lines, 1 to 5 each) counted as
+               nothing (disk_full_aggressive_steady_r2, 25-11-2026). The lines must also fall
+               in at least MIN_SECONDS different seconds: edge-router wrote 7 "Error forwarding"
+               lines in ONE second of a healthy run and never again (normal_none_burst_r1,
+               25-11-2026); every real case went on for several seconds
     warnings   the SHARE of warning-or-worse lines among all lines rose SHARE_RATIO times. A share,
                not a rate: under a load burst a healthy service logs more of everything, and
                Sock Shop's front-end logs ~13 "payment declined" errors per second when healthy
@@ -32,7 +37,8 @@ try:
 except ImportError:                      # run as a copied script, next to logidx.py
     import logidx as L
 
-MIN_NEW = 3              # a new template must appear this often in the window
+MIN_NEW = 3              # new warning/error lines needed in the window, all new templates together
+MIN_SECONDS = 2          # ... spread over at least this many different seconds
 SHARE_RATIO = 3.0        # warning share must rise this many times ...
 MIN_WARN_RATE = 1.0      # ... and by at least this many warning lines per second
 LAT_RATIO = 3.0          # median latency must rise this many times ...
@@ -101,12 +107,20 @@ def _quote(text: str, n: int = 100) -> str:
     return '"%s"' % (text if len(text) <= n else text[:n - 3] + "...")
 
 
+def is_burst(templates: list, a: float, b: float) -> bool:
+    """Enough new warning lines in [a, b), over enough different seconds, to count as a change."""
+    lines = sum(t.count_in(a, b) for t in templates)
+    seconds = {s for t in templates for s in t.series if L.in_window(s, a, b)}
+    return lines >= MIN_NEW and len(seconds) >= MIN_SECONDS
+
+
 def diff(e: L.Entity, base: tuple, win: tuple) -> Diff:
     """Compare window `win` = (a, b) with window `base` = (a, b), epoch seconds."""
     (ba, bb), (wa, wb) = base, win
     bsec, wsec = max(1.0, bb - ba), max(1.0, wb - wa)
-    new = [t for t in e.templates
-           if t.level >= L.WARN and t.first >= bb and t.count_in(wa, wb) >= MIN_NEW]
+    new = [t for t in e.templates if t.level >= L.WARN and t.first >= bb and t.count_in(wa, wb)]
+    if not is_burst(new, wa, wb):
+        new = []
     new_keys = {t.key for t in new}
     old_keys = {t.key for t in e.templates if t.key not in new_keys}
     base_lines, win_lines = e.lines_in(ba, bb) / bsec, e.lines_in(wa, wb) / wsec

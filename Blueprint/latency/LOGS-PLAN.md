@@ -268,7 +268,7 @@ Follows the seven steps of `METHOD.md`, with "tool" meaning a log tool.
 | 1 | Record model, profile loader, `docker_compose` profile, index builder (from `logtool.py`) | `build_log_index.py`, self-test on a synthetic file | laptop |
 | 2 | Agent-side join (container to pid_ns) from a scheduling slice | join table; checked against `nsmap.py` on the first-set runs | Trillium, CPU only |
 | 3 | `log_onset.py`, `log_window.py` with self-tests | the two tools | laptop |
-| 4a | **First set** (section 11, decision 3): both tools on every run of 8 families plus the normal runs | one line per run; the four numbers of section 8 | Trillium, tools only |
+| 4a | **First set** (section 11, decision 3): both tools on every run of 8 families plus the normal runs. **Done 25-11: 0 false alarms in 62 runs; `logkit/RESULTS.md`** | one line per run; the four numbers of section 8 | Trillium, tools only |
 | 4b | **Full sweep**: the same on all 349 runs (v2 both applications, v3), only after 4a is read | the table of section 8.1 | Trillium, tools only |
 | 5 | Read every false alarm and every miss; fix a rule only with the run named; re-sweep | rule history in this folder | - |
 | 6 | Add `needs`, `$LOGS`, `log_orient` and `log_role` to the harness and to 3 blueprints chosen by the sweep (expected: 17, 22, 15) | yaml, `bp_check.py` passes | laptop |
@@ -397,5 +397,7 @@ commit as arm A.
    the onset is right in at least 4 of 5 runs of the family).
 2. The window for "onset is right": 30 s is a proposal. The probe saw 0 to 12 s in the clear
    group, so 30 s may be loose.
-3. Whether a line-rate drop is a signal of its own or only a note: it showed the culprit in
-   `code_event_loop_block`, and it is also what the load pattern does.
+3. Whether a line-rate drop is a signal of its own or only a note. First set (25-11): in
+   entities logging at least 20 lines/s, a drop came 4 to 5 s after the injection in all 5
+   `code_event_loop_block` runs (the first error 22 to 63 s after it), never before an
+   injection and never on a normal run. Decide after the full sweep.

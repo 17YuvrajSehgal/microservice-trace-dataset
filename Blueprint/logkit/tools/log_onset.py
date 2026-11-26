@@ -79,13 +79,21 @@ def find_changes(idx: L.Index) -> tuple[list[Change], tuple[float, float]]:
     for e in idx.entities.values():
         if not e.lines:
             continue
-        # new templates: their own first line is the onset
-        for t in e.templates:
-            if (t.level >= L.WARN and t.first >= base[1] and t.first < end
-                    and t.count_in(t.first, t.first + WIN_S) >= G.MIN_NEW):
+        # new templates: the first line of the first burst of MIN_NEW new warning/error lines
+        # within WIN_S, all new templates of the entity together (logsig.py, rule history)
+        fresh = sorted((t for t in e.templates
+                        if t.level >= L.WARN and base[1] <= t.first < end), key=lambda t: t.first)
+        for i, t in enumerate(fresh):
+            burst = [u for u in fresh[i:] if u.first < t.first + WIN_S]
+            if G.is_burst(burst, t.first, t.first + WIN_S):
+                n = sum(u.count_in(t.first, t.first + WIN_S) for u in burst)
+                top = max(burst, key=lambda u: (u.level, u.count))
                 changes.append(Change(t.first, e.name, e.kind, "new",
-                                      "new template x%d: %s" % (t.count, G._quote(t.example)),
-                                      t.level, t.generic))
+                                      "%d new warning/error lines in %d s (%d template%s), e.g. %s"
+                                      % (n, WIN_S, len(burst), "" if len(burst) == 1 else "s",
+                                         G._quote(top.example)),
+                                      top.level, all(u.generic for u in burst)))
+                break
         # windowed signals: the first window of a run of HOLD changed windows
         run_w = {"warnings": [], "latency": [], "drop": []}
         seen = set()

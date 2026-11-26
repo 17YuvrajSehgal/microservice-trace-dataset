@@ -406,3 +406,20 @@ family, then runs 2-5, checks every run (verification confirmed, all gates, site
 images and a running front-end afterwards) and stops at the first failure. Order: spin_loop,
 large_payload, regex_backtrack, thread_leak (last, because its threads persist until disarm).
 Started 03:28 UTC.
+
+## Log tools on the first set (62 runs, no model): `Blueprint/logkit/RESULTS.md`
+
+- **0 false alarms**: 10 normal runs, and the healthy time before 52 injections.
+- Found within 30 s in 6 families; `code_event_loop_block` late (median +54 s); `queue_backlog`
+  silent 5 of 5 (as the probe said). The culprit itself changes in 2 families only, so the
+  "witness, not judge" rule holds.
+- **Three rule changes, each with the run named** (rule history in RESULTS.md): a rounding bug in
+  the window sum; new warnings counted over all new templates together (a crashing carts-db
+  writes 15 different lines); new warnings must span 2 seconds (a 1-second edge-router hiccup on
+  `normal_none_burst_r1`). The bug had hidden the false alarm the third change removes.
+- **Set on these runs**, so not a held-out result. The full sweep (other families, Train Ticket)
+  is the test.
+- Line-rate drop in busy entities: early and clean on this set (event loop +4-5 s, 5 of 5; no
+  drop before injections or on normal runs). Still a NOTE; decide after the full sweep.
+- A log slice at a fixed offset missed `disk_full` 5 of 5 (the crash burst ends at +9 s): a
+  blueprint should cut log slices where log_onset points.

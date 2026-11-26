@@ -55,7 +55,10 @@ def write_run(root: Path, name: str, fault: bool) -> Path:
     with gzip.open(logs / "docker-compose_orders_1.log.gz", "wt") as fh:
         fh.write("\n".join(orders) + "\n")
     (logs / "docker-compose_orders-db_1.log").write_text("")
-    (run / "ground_truth.json").write_text('{"fault": {"name": "SECRET_FAULT"}}')
+    if fault:   # the label, for the scorer test only; no tool may read it
+        (run / "ground_truth.json").write_text(
+            '{"fault": {"name": "SECRET_FAULT", "target_service": "front-end", '
+            '"injection_start_utc": "%sZ"}}' % _ts(T0 + FAULT_NEW_AT)[:19])
     (run / "verification.json").write_text('{"verdict": "SECRET"}')
     return run
 

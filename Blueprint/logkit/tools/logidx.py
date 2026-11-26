@@ -81,8 +81,17 @@ def resolve_time(text: str, ref: float) -> float:
 
 
 def window_sum(series: dict[int, int], a: float, b: float) -> int:
-    """Sum of the counts of the seconds s with a <= s < b."""
-    return sum(n for s, n in series.items() if a <= s < b)
+    """Sum of the counts of the whole seconds s with floor(a) <= s < b.
+
+    Counts are kept per whole second, so a window that starts at a line's own time (22:54:07.448)
+    must include the second 22:54:07. Rule history: `a <= s` dropped it, and every new template
+    counted 0 lines in its first window (disk_full_aggressive_steady_r2, 25-11-2026)."""
+    return sum(n for s, n in series.items() if in_window(s, a, b))
+
+
+def in_window(second: int, a: float, b: float) -> bool:
+    """Whether the whole second `second` counts for the window [a, b) (see window_sum)."""
+    return math.floor(a) <= second < b
 
 
 # -- the index ------------------------------------------------------------------------------
