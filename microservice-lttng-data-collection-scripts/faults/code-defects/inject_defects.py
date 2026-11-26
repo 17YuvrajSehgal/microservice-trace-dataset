@@ -38,8 +38,8 @@ CATALOGUE = [
     (
         "service.go",
         'import (\n\t"errors"\n\t"strings"\n\t"time"\n',
-        'import (\n\t"errors"\n\t"io/ioutil"\n\t"os"\n\t"strings"\n\t"sync"\n\t"time"\n',
-        "add os, io/ioutil and sync for the defect gate",
+        'import (\n\t"errors"\n\t"io/ioutil"\n\t"os"\n\t"runtime"\n\t"strings"\n\t"sync"\n\t"sync/atomic"\n\t"time"\n',
+        "add os, io/ioutil, runtime, sync and sync/atomic for the defect gate",
     ),
     (
         "service.go",
@@ -50,6 +50,7 @@ CATALOGUE = [
         "// Behaviour is selected at RUNTIME by STRATA_BUG so one build serves every defect and\n"
         "// the control. With STRATA_BUG unset or \"none\" this file behaves exactly as upstream.\n"
         "var strataMu sync.Mutex\n"
+        "var strataLeaks int64\n"
         "\n"
         "// TOGGLED THROUGH A FILE, NOT THE ENVIRONMENT. An environment variable cannot\n"
         "// change without recreating the container, and a restart inside the measured\n"
@@ -109,6 +110,35 @@ CATALOGUE = [
         "\t}",
         "lock_across_io and n_plus_one, both on the List query path",
     ),
+    (
+        "service.go",
+        "\t// DEMO: Change 0 to 850\n\ttime.Sleep(0 * time.Millisecond)\n",
+        "\t// DEMO: Change 0 to 850\n\ttime.Sleep(0 * time.Millisecond)\n"
+        "\tswitch strataBug() {\n"
+        # v3 DEFECT spin_loop: a busy-wait inside the handler. time.Since reads the clock through
+        # the vDSO, so the loop makes no system call. Go serves other requests on other threads,
+        # so requests are slower but still served - unlike event_loop_block in Node.
+        "\tcase \"spin_loop\":\n"
+        "\t\tt0 := time.Now()\n"
+        "\t\tfor time.Since(t0) < 15*time.Millisecond {\n"
+        "\t\t}\n"
+        # v3 DEFECT thread_leak: every 10th List request starts a goroutine that locks itself to
+        # an OS thread and blocks forever, so the thread is never given back. The process's thread
+        # count only grows. (A plain goroutine would not do: it holds no OS thread while blocked.)
+        "\tcase \"thread_leak\":\n"
+        "\t\tif atomic.AddInt64(&strataLeaks, 1)%10 == 0 {\n"
+        "\t\t\tgo func() { runtime.LockOSThread(); select {} }()\n"
+        "\t\t}\n"
+        # v3 DEFECT large_payload: the answer carries far more data than the caller needs (16 kB
+        # of padding per item), with the same number of calls.
+        "\tcase \"large_payload\":\n"
+        "\t\tpad := strings.Repeat(\"x\", 16384)\n"
+        "\t\tfor i := range socks {\n"
+        "\t\t\tsocks[i].Description += pad\n"
+        "\t\t}\n"
+        "\t}\n",
+        "v3: spin_loop, thread_leak and large_payload on the List path",
+    ),
 ]
 
 FRONTEND = [
@@ -165,6 +195,17 @@ FRONTEND = [
         # the container limit is reached - the code version of svc_mem_cap.
         "      strataCache.push({ url: url, at: Date.now(), pad: Buffer.alloc(65536) });\n"
         "    }\n"
+        "    if (_bug.indexOf('regex_backtrack') === 0) {\n"
+        # v3 DEFECT regex_backtrack: a nested quantifier on input that almost matches. V8's
+        # backtracking engine takes exponential time on it. Only a small share of requests takes
+        # this path, so the service stalls now and then, not always - unlike event_loop_block.
+        # The flag may carry the input length and the share of requests: regex_backtrack:N:P
+        # (default 26 and 0.002), so the fault can be calibrated without a rebuild.
+        "      var _rp = _bug.split(':');\n"
+        "      if (Math.random() < parseFloat(_rp[2] || '0.002')) {\n"
+        "        /^(a+)+$/.test(new Array(parseInt(_rp[1] || '26', 10) + 1).join('a') + '!');\n"
+        "      }\n"
+        "    }\n"
         "    if (_bug === 'serial_awaits') {\n"
         # DEFECT 5: work that should be parallel done one at a time. Latency grows linearly
         # with the number of items, which looks exactly like a slow dependency.
@@ -179,8 +220,8 @@ FRONTEND = [
 SERVICES = {"catalogue": CATALOGUE, "front-end": FRONTEND}
 
 BUGS = {
-    "catalogue": ["lock_across_io", "n_plus_one"],
-    "front-end": ["event_loop_block", "unbounded_cache", "serial_awaits"],
+    "catalogue": ["lock_across_io", "n_plus_one", "spin_loop", "thread_leak", "large_payload"],
+    "front-end": ["event_loop_block", "unbounded_cache", "serial_awaits", "regex_backtrack"],
 }
 
 
