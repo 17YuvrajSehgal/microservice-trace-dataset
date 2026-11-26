@@ -88,3 +88,6 @@ cannot sit idle again. Started 19:22 UTC.
 
 All runs: no kernel events lost, all gates pass. The chain's own `shutdown` worked: the VM
 stopped at 22:42 with nothing idle. Transfer to Trillium started 23:05.
+- Transfer done 23:40: 20 runs, 0 checksum errors (`mtu_blackhole` again without the pull's OK
+  line, extracted completely). Deleted on the VM; VM stopped. v3: 18 families, 90 aggressive
+  runs + 9 subtle.

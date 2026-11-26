@@ -4,12 +4,12 @@
 
 | status | count | which |
 |---|---|---|
-| collected in v3 | 14 | A1, A2, A4, C1, D1, D4, E6, F1, F2, F4, F5, G1, H2, and `slow_client` (new, in place of E3) |
+| collected in v3 | 18 | A1, A2, A4, A8, C1, D1, D4, D5, E6, F1, F2, F4, F5, G1, G2, G3, H2, and `slow_client` (new, in place of E3) |
 | parked | 7 | D7, and B1, B6, E1, E2, H5, H6 (reasons in "Parked") |
 | removed (cancelled) | 8 | B3, B8, C2, C4, D12, E3, E13, G4 (reasons in "Removed") |
-| left, not started | 42 | see "Left" below |
+| left, not started | 38 | see "Left" below |
 
-The 14 collected families have 5 aggressive runs each (Sock Shop, on Trillium) and three of
+The 18 collected families have 5 aggressive runs each (Sock Shop, on Trillium) and three of
 them also 3 subtle runs. Rows in the tables are marked with their status.
 
 Written 17-11-2026. **Everything in the tables below is a prediction, not a measurement.**
@@ -55,7 +55,7 @@ Column "best": K = kernel trace, L = logs, M = metrics, T = distributed traces (
 | A5 | interrupt storm | flood one NIC queue with small packets from outside the stack | `irq_handler_entry` rate, softirq time on one CPU | K | `irq_imbalance` | irq events on the VM |
 | A6 | timer jitter | a periodic thread plus CPU pressure on its core | wake-up latency of one periodic thread grows | K | `cpu_starvation` | - |
 | A7 | CPU frequency drop | cap `scaling_max_freq` on the host | `power_cpu_frequency` falls; same work takes longer on CPU | K, M | `anomaly_cpu` | power events (now in the profile) |
-| A8 | real-time thread hog | one `SCHED_FIFO` thread that never sleeps | one CPU never schedules normal threads | K | `cpu_starvation` | - |
+| A8 | real-time thread hog **(collected: `rt_hog`, 5 runs; tool not built yet)** | one `SCHED_FIFO` thread that never sleeps | one CPU never schedules normal threads | K | `cpu_starvation` | - |
 
 ## B. Memory (6)
 
@@ -87,7 +87,7 @@ Column "best": K = kernel trace, L = logs, M = metrics, T = distributed traces (
 | D2 | listen queue overflow | `somaxconn` 1 on a busy service | SYN retransmits to one port, slow accepts | K | `svc_net` (loss) | - |
 | D3 | slow reader (zero window) | a client that reads slowly | zero-window advertisements, sender blocked in `sendmsg` | K | `nagle_delayed_ack` | - |
 | D4 | bandwidth cap **(collected: `net_bandwidth`)** | `tc tbf` on one container | steady low throughput, queue drops at one device | K, M | `svc_net` | - |
-| D5 | MTU blackhole | lower MTU on a path and drop ICMP | small packets pass, large ones retransmit forever | K | `svc_net` | - |
+| D5 | MTU blackhole **(collected: `mtu_blackhole`, 5 runs; tool not built yet)** | lower MTU on a path and drop ICMP | small packets pass, large ones retransmit forever | K | `svc_net` | - |
 | D6 | connection churn | disable keep-alive in one client | one SYN per request, many short connections | K, T | `error_storm` (opens then resets) | - |
 | D7 | conntrack table full **(PARKED: calibrated, a host-wide outage; see "Parked")** | tiny `nf_conntrack_max` | new connections dropped, old ones fine | K, L | `conn_pool_exhaustion` | - |
 | D8 | pure latency | `netem delay` on one service | no loss, every exchange slower by one constant | T, K | `anomaly_net`, `nagle_delayed_ack` | - |
@@ -130,8 +130,8 @@ Column "best": K = kernel trace, L = logs, M = metrics, T = distributed traces (
 | # | Problem | How to inject | Expected kernel signal | Best | Nearest existing family | Needs |
 |---|---|---|---|---|---|---|
 | G1 | port scan **(collected: `port_scan`, blueprint 34)** | one container connects to every port of every peer | many refused connects from one source to many ports | K | `resource_abuse` | - |
-| G2 | login brute force | repeated failing logins at one endpoint | steady stream of fast error answers from one client | L, T | `error_storm` | - |
-| G3 | unexpected program start | a service spawns a shell | `exec` of a program never seen in that container | K | `fork_storm` (rate; here once) | - |
+| G2 | login brute force **(collected: `login_bruteforce`, 5 runs; tool not built yet)** | repeated failing logins at one endpoint | steady stream of fast error answers from one client | L, T | `error_storm` | - |
+| G3 | unexpected program start **(collected: `unexpected_exec`, 5 runs; tool not built yet)** | a service spawns a shell | `exec` of a program never seen in that container | K | `fork_storm` (rate; here once) | - |
 | G5 | SYN flood | half-open connections from outside | SYNs with no third packet, listen queue full | K | D2 | - |
 | G6 | unusual file access | read many files outside the service's normal set | `openat` on paths never seen before | K | `data_exfiltration` | `openat` with file names |
 
@@ -164,6 +164,10 @@ Column "best": K = kernel trace, L = logs, M = metrics, T = distributed traces (
 | F5 | `code_large_payload` | 5 | `bytes_per_call.py`, 37 | catalogue sends about 7 times more bytes; answer times barely change |
 | F4 | `code_regex_backtrack` | 5 | `cpu_runs.py`, 38 | front-end p95 about 0.09 -> 0.21 s, p50 barely moves |
 | F2 | `code_thread_leak` | 5 | `thread_growth.py`, 35 | catalogue threads 16 -> about 300 in the fault, about 520 after (by design) |
+| A8 | `rt_hog` | 5 | to build | last CPU idle 0.35-0.40 -> about 0.03; no service moves |
+| D5 | `mtu_blackhole` | 5 | to build | every catalogue request fails (not only large answers); errors last through the recovery window |
+| G2 | `login_bruteforce` | 5 | to build | user service 500/s 0 -> 12-17; the front-end has no 401 series |
+| G3 | `unexpected_exec` | 5 | to build | no metric signature; shell rounds in the front-end |
 
 Group 2 (code defects, images `catalogue-bugs:v3` and `frontend-bugs:v3`) collected 26-11-2026.
 
@@ -180,16 +184,16 @@ Group 2 (code defects, images `catalogue-bugs:v3` and `frontend-bugs:v3`) collec
 | H6 | compound fault | needs a wrapper that runs two recipes |
 | - | `io_cap` (C4) | kept as a possible kernel-only family: the limit holds the database's writes back (68.6 -> 16.0 KB/s) but no service notices. User decision 25-11: leave for now |
 
-## Left, not started (42)
+## Left, not started (38)
 
 | group | candidates | what they need |
 |---|---|---|
-| ready with what we have | A3, A6, A8, B5, C3, C6, D3, D5, D6, D8, D9, D10, D11, E4, E5, E7, E8, E9, E11, E12, F3, F6, F7, F8, G2, G3, G5, H3, H4 | a recipe and a calibration; some need a code defect (F3, F6, F7, F8) or a new load pattern |
+| ready with what we have | A3, A6, B5, C3, C6, D3, D6, D8, D9, D10, D11, E4, E5, E7, E8, E9, E11, E12, F3, F6, F7, F8, G5, H3, H4 | a recipe and a calibration; some need a code defect (F3, F6, F7, F8) or a new load pattern |
 | need a start-up change | B4, D2, E10 | a design that keeps the baseline clean |
 | need events we do not record yet | A5 (interrupts), A7 (CPU frequency, now in the profile: to check), B2 and B7 (memory reclaim, swap), C5 and C8 (a device mapper target on the VM), C7 (writeback), G6 (file names on `openat`), H1 (kernel function timing) | a tracing profile change, checked on a recorded trace |
 | need a change to the application or load | E14 (a correctness check in the load generator) | |
 
-Counted in "ready" are 29; "start-up change" 3; "events" 9; "application" 1.
+Counted in "ready" are 25; "start-up change" 3; "events" 9; "application" 1.
 
 ## Removed (cancelled)
 
