@@ -269,7 +269,7 @@ Follows the seven steps of `METHOD.md`, with "tool" meaning a log tool.
 | 2 | Agent-side join (container to pid_ns) from a scheduling slice | join table; checked against `nsmap.py` on the first-set runs | Trillium, CPU only |
 | 3 | `log_onset.py`, `log_window.py` with self-tests | the two tools | laptop |
 | 4a | **First set** (section 11, decision 3): both tools on every run of 8 families plus the normal runs. **Done 25-11: 0 false alarms in 62 runs; `logkit/RESULTS.md`** | one line per run; the four numbers of section 8 | Trillium, tools only |
-| 4b | **Full sweep**: the same on all 349 runs (v2 both applications, v3), only after 4a is read | the table of section 8.1 | Trillium, tools only |
+| 4b | **Full sweep**: the same on all labelled runs (v2 both applications, v3), only after 4a is read. **Done 26-11: 363 runs; held-out false alarms 0 on Sock Shop, 2 on Train Ticket; `logkit/RESULTS.md`** | the table of section 8.1 | Trillium, tools only |
 | 5 | Read every false alarm and every miss; fix a rule only with the run named; re-sweep | rule history in this folder | - |
 | 6 | Add `needs`, `$LOGS`, `log_orient` and `log_role` to the harness and to 3 blueprints chosen by the sweep (expected: 17, 22, 15) | yaml, `bp_check.py` passes | laptop |
 | 7 | Agent check on the with-logs arm (section 8.2) | evaluation file | API or cluster; cost stated first |
@@ -400,4 +400,8 @@ commit as arm A.
 3. Whether a line-rate drop is a signal of its own or only a note. First set (25-11): in
    entities logging at least 20 lines/s, a drop came 4 to 5 s after the injection in all 5
    `code_event_loop_block` runs (the first error 22 to 63 s after it), never before an
-   injection and never on a normal run. Decide after the full sweep.
+   injection and never on a normal run. **Decided 26-11: stays a NOTE.** On all 10 healthy
+   Train Ticket runs a busy service drops when a load phase ends (`logkit/RESULTS.md`).
+4. `log_window`'s baseline (found 26-11 on held-out Train Ticket runs): a 20 s baseline misses a
+   warning that comes every 30 s and reports a false rise. Fix proposed in `logkit/RESULTS.md`;
+   applying it needs runs it was not set on.

@@ -7,7 +7,9 @@ line: '^(?P<ts>\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d+)?Z) (?P<msg>.*)$'
 ts_format: iso_utc
 entity:
   from: filename
-  strip: ['\.log(\.gz)?$', '^docker-compose[_-]', '[_-]\d+$']   # docker-compose_front-end_1.log -> front-end
+  # docker-compose_front-end_1.log -> front-end; trainticket_ts-order-service_1.log -> ts-order-service;
+  # mysql.log -> mysql. The prefix is the compose PROJECT name of each application.
+  strip: ['\.log(\.gz)?$', '^(docker-compose|trainticket)[_-]', '[_-]\d+$']
 kind: container
 # The OTel Java agent writes every span to stdout and repeats every log line with [scopeInfo:].
 # Those are the span relay, not application logs: on carts they were 321,836 of 321,866 lines.

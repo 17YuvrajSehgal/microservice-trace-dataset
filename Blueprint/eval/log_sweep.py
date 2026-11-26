@@ -118,7 +118,7 @@ def base_win(idx, inj):
     return (inj - BASE_GAP_S - BASE_S, inj - BASE_GAP_S)
 
 
-def summarise(rows: list[dict]) -> str:
+def summarise(rows: list[dict], set_on: frozenset | set = frozenset()) -> str:
     out = []
     normal = [r for r in rows if r["normal"]]
     if normal:
@@ -152,7 +152,7 @@ def summarise(rows: list[dict]) -> str:
             roles[r.get("role", "no logs")] += 1
         bd = [r.get("drop_busy") or {} for r in rs]
         out.append("| %s | %d | %d | %d | %d | %s | %d | %d / %d / %d | %d | %d / %d |" % (
-            fam, len(rs), len(ons), len(early), len(ontime),
+            fam + (" (set on)" if fam in set_on else ""), len(rs), len(ons), len(early), len(ontime),
             "%.1f" % statistics.median(dts) if dts else "-",
             sum(1 for o in ons if o["is_target"]),
             roles["culprit_logs"], roles["others_only"], roles["silent"],
@@ -171,7 +171,10 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--runs", required=True, help="file with one run directory per line")
     ap.add_argument("--index-dir", required=True)
     ap.add_argument("--out", required=True, help="one JSON line per run")
+    ap.add_argument("--set-on", help="file of run directories the rules were set on; their families "
+                                     "are marked in the table, so held-out rows can be read apart")
     a = ap.parse_args(argv)
+    set_on = {family(Path(x).name) for x in Path(a.set_on).read_text().split()} if a.set_on else set()
     rows = []
     for line in Path(a.runs).read_text().split():
         run = Path(line)
@@ -183,7 +186,7 @@ def main(argv: list[str] | None = None) -> int:
     with open(a.out, "w", encoding="utf-8") as fh:
         for r in rows:
             fh.write(json.dumps(r) + "\n")
-    print(summarise(rows))
+    print(summarise(rows, set_on))
     return 0
 
 

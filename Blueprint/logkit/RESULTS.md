@@ -1,4 +1,8 @@
-# Results: the log tools on the first set (25-11-2026)
+# Results: the log tools on labelled runs
+
+Two sweeps, tools only, no model, Trillium login node. The full sweep (26-11) is below the first set (25-11).
+
+## First set (25-11-2026)
 
 LOGS-PLAN.md build step 4a. Tools only, no model. Tools: `tools/log_onset.py` and
 `tools/log_window.py` through their shared rules (`tools/logsig.py`). Scorer:
@@ -90,3 +94,63 @@ one second were never counted.
 
 A template rule found by a unit test: go-kit's `result=` is a row count in catalogue
 (`result=7`) and an outcome in payment (`result=false`); numbers in kept keys are now masked.
+
+## Full sweep: all 363 labelled runs (26-11-2026)
+
+LOGS-PLAN.md step 4b. The tools exactly as committed after the first set; the only change
+before this run was in the profile (Train Ticket's file names) and the safety check (below).
+Scorer output on Trillium: `work/logs_plan/sweep_full.jsonl`, `sweep_full.md` (one row per
+family, the 8 first-set families marked "set on").
+
+| Runs | fault runs (families) | onset within 30 s | onset later | onset before the injection | no onset | the culprit itself changes |
+|---|---|---|---|---|---|---|
+| Sock Shop, set on | 52 (8) | 39 | 5 | 0 | 8 | 18 |
+| **Sock Shop, held out** | 167 (30) | 67 | 4 | **0** | 96 | 26 |
+| **Train Ticket, held out** | 124 (20) | 21 | 9 | **1** | 93 | 5 |
+
+| Normal runs | `log_onset` alarms | `log_window` alarms |
+|---|---|---|
+| Sock Shop (10) | 0 | 0 |
+| Train Ticket (10) | **1** | 0 |
+
+### What it says
+
+- **On held-out Sock Shop runs the false-alarm count stays 0** (167 fault runs, 10 normal runs).
+  The on-time onsets are in 13 of the 30 held-out families: `slow_db`, `fd_exhaustion`,
+  `pid_limit`, `port_exhaustion`, `conn_pool_exhaustion`, `code_lock_contended`, `dns_delay`,
+  `slow_client`, `anomaly_net`, `anomaly_cpu`, `svc_net`, `svc_cpu_cap` (3 of 8),
+  `code_serial_awaits` (1 of 5). Silent in 17, as the probe said.
+- **Train Ticket's logs say much less.** An on-time onset in 6 of 20 families (`tt_svc_mem_cap`
+  8 of 8, `tt_fd_exhaustion` 5 of 5, `tt_error_storm` 5 of 8, and single runs of three others).
+  `tt_dependency_outage` is found only 120 s after the injection, `tt_slow_db` at a median of 44 s.
+  Its services are Java behind a registry and a gateway, and their logs carry no request duration.
+- **Two false alarms on Train Ticket, both read:**
+  - `tt_normal_none_burst_r5`: `ts-order-other-service` warnings 0.1/s -> 1.2/s, 115 s into a
+    healthy run (the "known warnings" share rule). A real false alarm.
+  - `tt_anomaly_mem_aggressive_steady_r1`: `ts-travel-service` SQL errors 8.3 s BEFORE the
+    labelled injection. Counted as a false alarm. Two Sock Shop families also change slightly
+    before their label (`conn_pool_exhaustion` median -1.3 s), so the label may lag the start of
+    the fault by a few seconds; this is not checked.
+
+### Problems found on held-out data (not fixed: fixing them here would tune on the test runs)
+
+1. **`log_window`'s baseline is too short for a periodic warning.** In every Train Ticket fault
+   run, `ts-travel-service` writes 13 to 20 SQL warnings every 30 s, starting before the injection.
+   A 20 s baseline can fall between two bursts, and `log_window` then reports "known warnings
+   0.0/s -> 4/s" in families that have nothing to do with it (`tt_noisy_neighbor` 8 of 8,
+   `tt_svc_cpu_cap` 8 of 8, `tt_anomaly_mem` 7 of 8). `log_onset` is not fooled: its baseline is
+   the first 40 s of the run, which holds a burst. Candidate fix: a "known" template only counts
+   as risen when its rate in the window is above its highest rate in any equal window earlier in
+   the run.
+2. **The safety check refused all 134 Train Ticket runs** on the first try: it searched for
+   "verification" anywhere in a file name, and Train Ticket has `ts-verification-code-service`.
+   It now matches the dataset's label files at the start of a name only (fixed before the counted
+   run; a test covers both cases).
+
+### Line-rate drops (LOGS-PLAN.md section 12, item 3): stays a NOTE
+
+On all 10 healthy Train Ticket runs a busy service (`ts-basic-service`, once `ts-travel-service`)
+drops at the same moment, 245 s into the run: a load phase ends. On Sock Shop the drop was early
+and clean (`code_event_loop_block`, `anomaly_net`, `fd_exhaustion`, `slow_client`, `dns_delay`,
+5 of 5 or 8 of 8 each). It is a useful hint where the load is steady and a false alarm where it is
+not, so it stays a NOTE and never decides an onset.

@@ -37,7 +37,10 @@ PROFILE_DIR = Path(__file__).resolve().parent / "profiles"
 KINDS = frozenset({"container", "process", "thread", "host"})
 TS_FORMATS = frozenset({"iso_utc", "epoch"})
 # Files that hold the answer, never readable through a profile (see ctf_tool.py, codetool.py).
-FORBIDDEN = re.compile(r"ground_?truth|verification|MANIFEST|SHA256SUMS|fault[_-]?state", re.I)
+# Matched at the START of a file or folder name: Train Ticket has a service called
+# ts-verification-code-service, and a plain search refused every one of its 134 runs (26-11-2026).
+FORBIDDEN = re.compile(r"(?:^|[\\/])(?:ground_?truth|verification|MANIFEST|SHA256SUMS|fault[_-]?state)",
+                       re.I)
 
 
 class ProfileError(ValueError):
