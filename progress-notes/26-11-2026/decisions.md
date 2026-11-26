@@ -76,3 +76,15 @@ Calibration (150 users), also entered in the catalog log as a later entry:
 Chain on the VM (`~/chain_g4.sh`): rt_hog, login_bruteforce, unexpected_exec, mtu_blackhole
 (last: slow recovery). It ends with `sudo shutdown -h now`, also after a failure, so the VM
 cannot sit idle again. Started 19:22 UTC.
+
+### Group 4 collected: 20 of 20 pass (19:22-22:42 UTC); the VM stopped itself
+
+| family | runs | numbers |
+|---|---|---|
+| `rt_hog` | 5 | last CPU idle 0.35-0.40 -> 0.026-0.029 (metric), front-end 0 errors |
+| `login_bruteforce` | 5 | user service 500/s 0 -> 11.8-17.2, front-end 0 errors |
+| `unexpected_exec` | 5 | no_metric_signature as designed; shell rounds checked; front-end 0 errors |
+| `mtu_blackhole` | 5 | catalogue 22,152-25,180 errors in the fault (about 99% of its requests, 0.1 ms each); the errors go on through the WHOLE recovery window (226.8-235.8/s), longer than the 60-90 s seen in calibration |
+
+All runs: no kernel events lost, all gates pass. The chain's own `shutdown` worked: the VM
+stopped at 22:42 with nothing idle. Transfer to Trillium started 23:05.
