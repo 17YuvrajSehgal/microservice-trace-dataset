@@ -55,3 +55,24 @@ sit exactly at 3 stalls); `bytes_per_call.py` gives a verdict only to the larges
 services in front of the source rose about 4 times and got verdicts too).
 
 Not done yet: the four tools on the earlier 349 runs (needs a SLURM job, as for 25-32).
+
+## Group 4: four families, registered first, calibrated, collecting (26-11, 18:30-19:25 UTC)
+
+Picked from the 29 "ready" candidates for needing no image rebuild and each adding a mechanism
+nothing covers: `rt_hog` (A8), `mtu_blackhole` (D5), `login_bruteforce` (G2), `unexpected_exec` (G3).
+**Predictions were entered in `fault_catalog.md` section 7 BEFORE calibration** (the first v3
+families were entered after collection).
+
+Calibration (150 users), also entered in the catalog log as a later entry:
+- `rt_hog`: last CPU 57% -> 100% busy, no service moves. As predicted.
+- `mtu_blackhole` (576): EVERY catalogue request fails with 5xx (100-255/s), not only large
+  answers - the database's answers to the catalogue are dropped too. Errors last 60-90 s after
+  the restore. Not as predicted.
+- `login_bruteforce` (50/s requested, about 18/s achieved, sequential): all refused; the user
+  service answers 500 (0 -> 20-24/s) and logs `err=Unauthorized`; the front-end has no 401
+  series in its metrics.
+- `unexpected_exec`: 4 shell rounds in 90 s, nothing outside the kernel. Run check counts rounds.
+
+Chain on the VM (`~/chain_g4.sh`): rt_hog, login_bruteforce, unexpected_exec, mtu_blackhole
+(last: slow recovery). It ends with `sudo shutdown -h now`, also after a failure, so the VM
+cannot sit idle again. Started 19:22 UTC.
