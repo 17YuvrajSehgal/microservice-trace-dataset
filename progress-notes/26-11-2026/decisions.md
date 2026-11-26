@@ -17,3 +17,12 @@ Running the chain on the VM itself worked: no laptop monitor was needed.
 collection day) because nobody was watching and the Trillium login had expired. Stopped at
 15:12. Runs are on the VM disk in `~/archive/runs/code_*`. Lesson: the on-VM chain should end
 with a step that stops the VM itself, or move the runs out first.
+
+### Transfer of group 2 (26-11, 15:20-15:45 UTC): half done, Trillium dropped again
+
+- Pull finished: 4 archives on Trillium, 16.0-17.6 GB. The pull log printed OK for 3 of them;
+  `code_regex_backtrack.tar.gz` is there (16.0 GB) with no OK line - to be checked.
+- Then Trillium stopped answering during verification and extraction, so the checksum result
+  is unknown. Runs NOT deleted from the VM. VM stopped at about 15:45.
+- To resume after login: read `work/tr95.log`; if `code_regex_backtrack` or any run fails,
+  start the VM and re-pull that family; only then delete on the VM.
