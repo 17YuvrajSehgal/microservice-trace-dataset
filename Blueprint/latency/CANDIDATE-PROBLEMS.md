@@ -1,11 +1,17 @@
 # Candidate problems for the next collection (towards about 100)
 
-**Updated 25-11-2026.** Seven v3 families are collected (5 runs each, Sock Shop, on Trillium):
-`code_lock_contended` (F1), `svc_cpuset` (A1), `disk_full` (C1), `port_exhaustion` (D1),
-`pid_limit` (H2), `db_table_lock` (E6) and `slow_client` (new, not in the first list: slow
-request bodies hold a service's worker threads). They are marked in the tables. Six candidates
-were removed on 25-11 and two more the same evening (B3, C2); the reasons are in "Removed" at
-the end. `net_bandwidth` (D4) was collected the same evening. 55 candidates remain open.
+**Updated 26-11-2026.** Status of every candidate, in one place:
+
+| status | count | which |
+|---|---|---|
+| collected in v3 | 10 | A1, A2, C1, D1, D4, E6, F1, G1, H2, and `slow_client` (new, in place of E3) |
+| in progress (group 2) | 4 | A4, F2, F4, F5 - images built, calibration running |
+| parked | 7 | D7, and B1, B6, E1, E2, H5, H6 (reasons in "Parked") |
+| removed (cancelled) | 8 | B3, B8, C2, C4, D12, E3, E13, G4 (reasons in "Removed") |
+| left, not started | 42 | see "Left" below |
+
+The 10 collected families have 5 aggressive runs each (Sock Shop, on Trillium) and three of
+them also 3 subtle runs. Rows in the tables are marked with their status.
 
 Written 17-11-2026. **Everything in the tables below is a prediction, not a measurement.**
 Nothing here has been injected or traced. The "expected signal" and "best modality" columns
@@ -44,9 +50,9 @@ Column "best": K = kernel trace, L = logs, M = metrics, T = distributed traces (
 | # | Problem | How to inject | Expected kernel signal | Best | Nearest existing family | Needs |
 |---|---|---|---|---|---|---|
 | A1 | cpuset too small **(collected: `svc_cpuset`, blueprint 26)** | `docker update --cpuset-cpus` to 1 core on a busy service | service runs on one CPU only while others idle; run-queue waits | K | `svc_cpu_cap` (quota, has a period; this has none) | - |
-| A2 | low CPU weight | `--cpu-shares 2` on one service plus a busy neighbour | waits only when the neighbour runs; no fixed period | K | `noisy_neighbor` | - |
+| A2 | low CPU weight **(collected: `cpu_weight`, blueprint 33; also 3 subtle runs)** | `--cpu-shares 2` on one service plus a busy neighbour | waits only when the neighbour runs; no fixed period | K | `noisy_neighbor` | - |
 | A3 | context-switch storm | thread pool of 2,000 in one service | very high `sched_switch` rate for one pid, short runs | K | `lock_contention` | - |
-| A4 | spin loop | a busy-wait in a handler (code flag) | one thread 100% on CPU with no system calls, requests still served | K | `event_loop_block` (there requests stop) | - |
+| A4 | spin loop **(IN PROGRESS: group 2, `code_spin_loop`)** | a busy-wait in a handler (code flag) | one thread 100% on CPU with no system calls, requests still served | K | `event_loop_block` (there requests stop) | - |
 | A5 | interrupt storm | flood one NIC queue with small packets from outside the stack | `irq_handler_entry` rate, softirq time on one CPU | K | `irq_imbalance` | irq events on the VM |
 | A6 | timer jitter | a periodic thread plus CPU pressure on its core | wake-up latency of one periodic thread grows | K | `cpu_starvation` | - |
 | A7 | CPU frequency drop | cap `scaling_max_freq` on the host | `power_cpu_frequency` falls; same work takes longer on CPU | K, M | `anomaly_cpu` | power events (now in the profile) |
@@ -84,7 +90,7 @@ Column "best": K = kernel trace, L = logs, M = metrics, T = distributed traces (
 | D4 | bandwidth cap **(collected: `net_bandwidth`)** | `tc tbf` on one container | steady low throughput, queue drops at one device | K, M | `svc_net` | - |
 | D5 | MTU blackhole | lower MTU on a path and drop ICMP | small packets pass, large ones retransmit forever | K | `svc_net` | - |
 | D6 | connection churn | disable keep-alive in one client | one SYN per request, many short connections | K, T | `error_storm` (opens then resets) | - |
-| D7 | conntrack table full | tiny `nf_conntrack_max` | new connections dropped, old ones fine | K, L | `conn_pool_exhaustion` | - |
+| D7 | conntrack table full **(PARKED: calibrated, a host-wide outage; see "Parked")** | tiny `nf_conntrack_max` | new connections dropped, old ones fine | K, L | `conn_pool_exhaustion` | - |
 | D8 | pure latency | `netem delay` on one service | no loss, every exchange slower by one constant | T, K | `anomaly_net`, `nagle_delayed_ack` | - |
 | D9 | packet reordering | `netem reorder` | duplicate ACKs without loss | K | `svc_net` | - |
 | D10 | wrong DNS answer | resolver returns a dead address | connects to an address nothing answers on | L, T | `dependency_outage` | - |
@@ -112,10 +118,10 @@ Column "best": K = kernel trace, L = logs, M = metrics, T = distributed traces (
 | # | Problem | How to inject | Expected kernel signal | Best | Nearest existing family | Needs |
 |---|---|---|---|---|---|---|
 | F1 | lock across I/O at real load **(collected: `code_lock_contended`, blueprint 25)** | rerun `code_lock_across_io` at 4-8 times the load | calls to the dependency stop overlapping | K, T | `lock_contention` | higher load |
-| F2 | thread leak | a thread per request that never ends | thread count of one pid only grows | K, M | `dependency_outage` pile-up (blueprint 24 note) | - |
+| F2 | thread leak **(IN PROGRESS: group 2, `code_thread_leak`)** | a thread per request that never ends | thread count of one pid only grows | K, M | `dependency_outage` pile-up (blueprint 24 note) | - |
 | F3 | slow descriptor leak | never close one file or socket per N requests | highest fd climbs for minutes, then EMFILE | K, M | `fd_exhaustion` (step) | long runs |
-| F4 | regex backtracking | a bad pattern on user input | one thread on CPU for seconds on some requests only | K, T | `event_loop_block` | - |
-| F5 | large payloads | return the whole table | bytes per answer up, calls unchanged | K, T | `data_exfiltration` | - |
+| F4 | regex backtracking **(IN PROGRESS: group 2, `code_regex_backtrack`)** | a bad pattern on user input | one thread on CPU for seconds on some requests only | K, T | `event_loop_block` | - |
+| F5 | large payloads **(IN PROGRESS: group 2, `code_large_payload`)** | return the whole table | bytes per answer up, calls unchanged | K, T | `data_exfiltration` | - |
 | F6 | chatty calls | N small calls where one would do, between services | calls per request up between two services | T, K | `code_n_plus_one` | - |
 | F7 | unbounded queue | producer faster than an in-process worker | memory grows, latency grows with it | M, K | `code_unbounded_cache` | - |
 | F8 | blocking call in async code | a sync file read in a Node or async Java handler | event thread in D-state or long syscall, requests stall | K | `event_loop_block` (on CPU) | - |
@@ -124,7 +130,7 @@ Column "best": K = kernel trace, L = logs, M = metrics, T = distributed traces (
 
 | # | Problem | How to inject | Expected kernel signal | Best | Nearest existing family | Needs |
 |---|---|---|---|---|---|---|
-| G1 | port scan | one container connects to every port of every peer | many refused connects from one source to many ports | K | `resource_abuse` | - |
+| G1 | port scan **(collected: `port_scan`, blueprint 34)** | one container connects to every port of every peer | many refused connects from one source to many ports | K | `resource_abuse` | - |
 | G2 | login brute force | repeated failing logins at one endpoint | steady stream of fast error answers from one client | L, T | `error_storm` | - |
 | G3 | unexpected program start | a service spawns a shell | `exec` of a program never seen in that container | K | `fork_storm` (rate; here once) | - |
 | G5 | SYN flood | half-open connections from outside | SYNs with no third packet, listen queue full | K | D2 | - |
@@ -141,37 +147,55 @@ Column "best": K = kernel trace, L = logs, M = metrics, T = distributed traces (
 | H5 | clock step (parked as `clock_skew`) | step the clock on one container's host view | timers fire early or late; span times inconsistent | T | none | risky: can corrupt run timestamps |
 | H6 | compound fault (parked) | two existing recipes at once | both signatures present | all | each of its parts | a wrapper that runs two recipes |
 
-## First batch: state on 25-11-2026
+## Collected in v3 (Sock Shop)
 
-Done (7): A1, C1, D1, E6 (as a table lock), F1, H2, and `slow_client` in place of E3.
+| # | family | runs | tool, blueprint | note |
+|---|---|---|---|---|
+| F1 | `code_lock_contended` | 5 | `inside_wait.py` + `wait_cause.py`, 25 | needs a 5 ms database delay and extra load to show |
+| A1 | `svc_cpuset` | 5 | `cpu_confine.py`, 26 | subtle (2 cores) had no effect, not collected |
+| C1 | `disk_full` | 5 | `new_errors.py`, 27 | no metric signature; the tool needs a slice with a crash |
+| D1 | `port_exhaustion` | 5 | `new_errors.py`, 28 | subtle (1,500 ports) had no effect, not collected |
+| H2 | `pid_limit` | 5 | `new_errors.py`, 29 | subtle (8 tasks of headroom) had no effect |
+| E6 | `db_table_lock` | 5 + 3 subtle | `inside_wait.py` + `wait_cause.py`, 30 | a table lock, not a row lock |
+| (E3) | `slow_client` | 5 | `unanswered.py`, 31 | thread pool exhaustion without a restart |
+| D4 | `net_bandwidth` | 5 + 3 subtle | `dev_delay.py`, 32 | |
+| A2 | `cpu_weight` | 5 + 3 subtle | `cpu_starved.py`, 33 | its baseline is a busy host; kept for now, to look at again |
+| G1 | `port_scan` | 5 | `scan_fanout.py`, 34 | no metric signature |
 
-Left from the first batch: A4 spin loop, B4 GC pauses, D2 listen
-queue overflow, D3 slow reader, E1 retry storm, E10 crash loop.
+## In progress (group 2: code defects, images `catalogue-bugs:v3` and `frontend-bugs:v3`)
 
-## Suggested next batch
+A4 `code_spin_loop` (calibrated: catalogue p95 4.8 -> 21 ms), F2 `code_thread_leak`,
+F4 `code_regex_backtrack`, F5 `code_large_payload` (calibration running on 26-11).
 
-**Group 1: no restart and no new image (can start at once).**
+## Parked (may come back; not cancelled)
 
-| # | Problem | Why now |
+| # | Problem | Why parked |
 |---|---|---|
-| A2 | low CPU weight | `docker update --cpu-shares` plus a busy neighbour; the third CPU limit next to quota and cpuset |
-| D7 | conntrack table full | one sysctl; new connections dropped while old ones work |
-| G1 | port scan | one helper container; the first new security family |
+| D7 | conntrack table full | calibrated 25-11-2026: at the current entry count the whole host stops (site, metrics, name resolution) and the load generator does not recover; very likely the front-end crash loop after a restart under load (progress-notes 25-11). Needs a milder setting first. Recipe `faults/conntrack_full.sh` |
+| B1 | slow memory leak | needs runs of 10 minutes or more |
+| B6 | cold start | needs page-fault events and a restart that does not crash-loop the front-end |
+| E1 | retry storm | needs a design that keeps the baseline clean (a start-up change) |
+| E2 | wrong timeout | same |
+| H5 | clock step | can corrupt the run's own timestamps |
+| H6 | compound fault | needs a wrapper that runs two recipes |
+| - | `io_cap` (C4) | kept as a possible kernel-only family: the limit holds the database's writes back (68.6 -> 16.0 KB/s) but no service notices. User decision 25-11: leave for now |
 
-**Group 2: one new build of the defect image (`catalogue-bugs`), then switched at run time.**
-A4 spin loop, F2 thread leak, F4 regex backtracking, F5 large payloads.
+## Left, not started (42)
 
-**Group 3: need a start-up change, so the design has to keep the baseline clean first.**
-B4 GC pauses, D2 listen queue overflow, E10 crash loop, E1 retry storm.
+| group | candidates | what they need |
+|---|---|---|
+| ready with what we have | A3, A6, A8, B5, C3, C6, D3, D5, D6, D8, D9, D10, D11, E4, E5, E7, E8, E9, E11, E12, F3, F6, F7, F8, G2, G3, G5, H3, H4 | a recipe and a calibration; some need a code defect (F3, F6, F7, F8) or a new load pattern |
+| need a start-up change | B4, D2, E10 | a design that keeps the baseline clean |
+| need events we do not record yet | A5 (interrupts), A7 (CPU frequency, now in the profile: to check), B2 and B7 (memory reclaim, swap), C5 and C8 (a device mapper target on the VM), C7 (writeback), G6 (file names on `openat`), H1 (kernel function timing) | a tracing profile change, checked on a recorded trace |
+| need a change to the application or load | E14 (a correctness check in the load generator) | |
 
-**Also open for the 7 collected families:** subtle runs (rule 3 above; none collected yet) and
-Train Ticket runs.
+Counted in "ready" are 29; "start-up change" 3; "events" 9; "application" 1.
 
-## Removed (not planned)
+## Removed (cancelled)
 
 | # | Problem | Why removed |
 |---|---|---|
-| C4 | I/O cap on one container | measured 25-11-2026: `io.max` at 16 KB/s and 5 operations/s on carts-db, orders-db and user-db changed no service's rate, errors or answer time. These databases acknowledge a write before it reaches the disk. Recipe kept in `faults/io_cap.sh` |
+| C4 | I/O cap on one container (kept as `io_cap`, see "Parked") | measured 25-11-2026: `io.max` at 16 KB/s and 5 operations/s on carts-db, orders-db and user-db changed no service's rate, errors or answer time. These databases acknowledge a write before it reaches the disk. Recipe kept in `faults/io_cap.sh` |
 | E3 | thread pool exhaustion by a small pool | the pool size is a start-up option, so the fault would also be in the baseline. `slow_client` gives the same exhaustion at run time |
 | G4 | slow-request flood | the same mechanism as `slow_client`, already collected |
 | B8 | huge-page compaction stalls | the compaction tracepoints are absent on the GCP kernel |
