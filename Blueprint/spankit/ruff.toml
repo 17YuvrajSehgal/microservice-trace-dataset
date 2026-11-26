@@ -1,0 +1,10 @@
+# Lint settings for spankit:  ruff check Blueprint/spankit
+line-length = 110
+target-version = "py311"          # the Trillium python
+
+[lint]
+select = ["E", "F", "W", "I", "B", "UP"]
+ignore = ["UP031"]                # the blueprint tools print with % formats, like their neighbours
+
+[lint.isort]
+known-first-party = ["spankit", "logkit", "logkit_synth", "conftest"]

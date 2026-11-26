@@ -4,9 +4,9 @@ import subprocess
 import sys
 from pathlib import Path
 
-from conftest import FAULT_LAT_AT, FAULT_NEW_AT, T0
 from logkit.tools import log_onset, log_window
 from logkit.tools import logidx as L
+from logkit_synth import FAULT_LAT_AT, FAULT_NEW_AT, T0
 
 TOOLS = Path(log_onset.__file__).parent
 
@@ -97,9 +97,9 @@ def test_tools_run_as_copied_scripts_with_the_standard_library_only(indexes, tmp
 def test_a_burst_of_different_new_errors_is_one_change(tmp_path, capsys):
     """A crashing database writes many DIFFERENT error lines, each once. Counted per template that
     was nothing (disk_full_aggressive_steady_r2); counted together it is one change."""
-    from conftest import write_run
     from logkit.index import build_index, write_index
     from logkit.profile import load_profile
+    from logkit_synth import write_run
 
     run = write_run(tmp_path, "burst_r1", False)
     words = ["disk", "write", "abort", "journal", "flush", "checkpoint"]
@@ -119,9 +119,9 @@ def test_a_burst_of_different_new_errors_is_one_change(tmp_path, capsys):
 def test_a_one_second_hiccup_is_not_a_change(tmp_path, capsys):
     """edge-router wrote 7 warnings in one second of a healthy run and never again
     (normal_none_burst_r1). New lines must span MIN_SECONDS different seconds."""
-    from conftest import write_run
     from logkit.index import build_index, write_index
     from logkit.profile import load_profile
+    from logkit_synth import write_run
 
     run = write_run(tmp_path, "hiccup_r1", False)
     with open(run / "logs" / "docker-compose_edge-router_1.log", "w") as fh:

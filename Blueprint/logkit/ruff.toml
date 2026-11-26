@@ -7,4 +7,4 @@ select = ["E", "F", "W", "I", "B", "UP"]
 ignore = ["UP031"]                # the blueprint tools print with % formats, like their neighbours
 
 [lint.isort]
-known-first-party = ["logkit", "conftest"]
+known-first-party = ["logkit", "logkit_synth", "conftest"]

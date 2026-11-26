@@ -44,7 +44,7 @@ def test_unsafe_file_patterns_are_refused(runs, pattern):
 
 def test_a_service_named_verification_is_readable(tmp_path):
     """Train Ticket's ts-verification-code-service is a service, not the label file."""
-    from conftest import write_run
+    from logkit_synth import write_run
     run = write_run(tmp_path, "tt_r1", False)
     (run / "logs" / "trainticket_ts-verification-code-service_1.log").write_text(
         "2026-09-05T15:18:41.000000000Z started\n")

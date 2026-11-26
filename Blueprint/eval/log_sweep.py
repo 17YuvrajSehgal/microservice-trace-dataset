@@ -19,6 +19,10 @@ Per run (one JSON line), using the tools' own code (logkit.tools):
     drops      line-rate drops (not counted as changes; open decision 12.3): the first one after
                the injection, and how many came before it. Reported for entities of any rate and
                of at least DROP_BUSY lines per second
+    shortlist  with --graph-dir: the entities that changed while the fault is on, plus the
+               services they CALL in this run's own call graph (spankit, from its spans). Scored
+               on runs whose fault has one target service: is the target in it, and how big is
+               it (LOGS-PLAN.md section 6.5)
 Normal runs have no injection; the anchor is NORMAL_ANCHOR_S after the first log line, and any
 LOG ONSET or LOG DIFF on them is a false alarm.
 
@@ -37,6 +41,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))          # Blueprin
 
 from logkit.tools import log_onset, logsig  # noqa: E402
 from logkit.tools import logidx as L  # noqa: E402
+from spankit.tools import callgraph  # noqa: E402
+
+HOST_LEVEL = {None, "", "host"}      # faults with no single target service
 
 WIN_AFTER_S = 30          # the fault slice starts this long after the injection
 WIN_S = 20
@@ -68,7 +75,7 @@ def family(run_id: str) -> str:
     return run_id.rsplit("_r", 1)[0]
 
 
-def score_run(run: Path, index: Path) -> dict:
+def score_run(run: Path, index: Path, graph: Path | None = None) -> dict:
     t = truth(run)
     idx = L.load(str(index))
     row = {"run": run.name, "family": family(run.name), "normal": t["normal"], "target": t["target"],
@@ -90,6 +97,15 @@ def score_run(run: Path, index: Path) -> dict:
     end = t["end"] or inj + FAULT_S
     during = {c.entity for c in real if inj - EARLY_S <= c.t <= end}
     row["onset_entities"] = sorted(during)
+    if graph is not None and graph.exists():
+        g = callgraph.load(str(graph))
+        names = set(idx.entities) | set(g.services) | g.silent
+        short = (set(during) | {c for e in during for c in g.callees(e)}
+                 # through a proxy: the database its spans name, when it is a known container
+                 | {d for e in during for d in g.databases(e) if d in names})
+        row["shortlist"] = sorted(short)
+        row["shortlist_unknown"] = sorted(e for e in during if not g.known_callees(e))
+        row["entities_total"] = len(names)
     if t["normal"]:
         row["role"] = "n/a"
     elif t["target"] in during:
@@ -116,6 +132,41 @@ def score_run(run: Path, index: Path) -> dict:
 
 def base_win(idx, inj):
     return (inj - BASE_GAP_S - BASE_S, inj - BASE_GAP_S)
+
+
+def narrowing(rows: list[dict]) -> list[str]:
+    """LOGS-PLAN.md 6.5: does the shortlist hold the culprit, and how much does it cut?"""
+    scored = [r for r in rows if "shortlist" in r and not r["normal"] and r["target"] not in HOST_LEVEL]
+    if not scored:
+        return []
+    out = ["", "**Narrowing** (runs with one target service; shortlist = changed entities + what "
+           "they call, from the run's own spans):", "",
+           "| application | runs | logs flag something | target among the flagged | target in the "
+           "shortlist | median shortlist / entities | misses where a flagged entity's callees are unknown |",
+           "|---|---|---|---|---|---|---|"]
+    for app, pred in (("Sock Shop", lambda r: not r["run"].startswith("tt_")),
+                      ("Train Ticket", lambda r: r["run"].startswith("tt_"))):
+        rs = [r for r in scored if pred(r)]
+        fl = [r for r in rs if r["onset_entities"]]
+        if not rs:
+            continue
+        miss = [r for r in fl if r["target"] not in r["shortlist"]]
+        out.append("| %s | %d | %d | %d | %d | %s / %s | %d of %d |" % (
+            app, len(rs), len(fl), sum(1 for r in fl if r["target"] in r["onset_entities"]),
+            len(fl) - len(miss),
+            statistics.median(len(r["shortlist"]) for r in fl) if fl else "-",
+            statistics.median(r["entities_total"] for r in fl) if fl else "-",
+            sum(1 for r in miss if r["shortlist_unknown"]), len(miss)))
+    misses = defaultdict(int)
+    for r in scored:
+        if r["onset_entities"] and r["target"] not in r["shortlist"]:
+            misses[(r["family"], r["target"], ", ".join(r["onset_entities"]),
+                    ", ".join(r["shortlist_unknown"]) or "-")] += 1
+    if misses:
+        out += ["", "Misses (family, target, flagged, flagged with unknown callees):"]
+        out += ["- x%d %s: target %s; flagged %s; unknown callees %s" % (n, *k)
+                for k, n in sorted(misses.items(), key=lambda kv: -kv[1])]
+    return out
 
 
 def summarise(rows: list[dict], set_on: frozenset | set = frozenset()) -> str:
@@ -159,6 +210,7 @@ def summarise(rows: list[dict], set_on: frozenset | set = frozenset()) -> str:
             sum(1 for r in rs if r.get("window")),
             sum(1 for d in bd if d.get("first_dt") is not None and d["first_dt"] <= ON_TIME_S),
             sum(1 for d in bd if d.get("before_injection"))))
+    out.extend(narrowing(rows))
     inb = [r["run"] for r in rows if r.get("inj_in_baseline") and not r["normal"]]
     if inb:
         out.append("")
@@ -171,6 +223,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--runs", required=True, help="file with one run directory per line")
     ap.add_argument("--index-dir", required=True)
     ap.add_argument("--out", required=True, help="one JSON line per run")
+    ap.add_argument("--graph-dir", help="call graphs from spankit.build, for the shortlist")
     ap.add_argument("--set-on", help="file of run directories the rules were set on; their families "
                                      "are marked in the table, so held-out rows can be read apart")
     a = ap.parse_args(argv)
@@ -182,7 +235,8 @@ def main(argv: list[str] | None = None) -> int:
         if not index.exists():
             print(f"no index for {run.name}", file=sys.stderr)
             continue
-        rows.append(score_run(run, index))
+        graph = Path(a.graph_dir) / f"{run.name}.callgraph.json" if a.graph_dir else None
+        rows.append(score_run(run, index, graph))
     with open(a.out, "w", encoding="utf-8") as fh:
         for r in rows:
             fh.write(json.dumps(r) + "\n")

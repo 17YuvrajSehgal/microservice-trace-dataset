@@ -22,3 +22,19 @@ def test_normal_run_has_no_false_alarm(runs, indexes):
     table = S.summarise([row, S.score_run(runs["fault"], indexes["fault"])])
     assert "False alarms: log_onset 0, log_window 0" in table
     assert "| synthetic_fault | 1 | 1 | 0 | 1 |" in table
+
+
+def test_shortlist_adds_what_the_flagged_services_call(runs, indexes, tmp_path):
+    """front-end is flagged; with a graph that says front-end calls catalogue and carts, the
+    shortlist is the three of them, and a target among them is found."""
+    import json
+    g = {"schema": 2, "run": "x", "source": "otlp/spans.jsonl", "services": {"front-end": {},
+         "catalogue": {}}, "edges": [{"caller": "front-end", "callee": "catalogue", "calls": 9},
+                                     {"caller": "front-end", "callee": "carts", "calls": 3}],
+         "silent_callees": ["carts"], "no_outgoing": ["catalogue"], "unresolved_ips": []}
+    p = tmp_path / "g.callgraph.json"
+    p.write_text(json.dumps(g))
+    row = S.score_run(runs["fault"], indexes["fault"], p)
+    assert row["shortlist"] == ["carts", "catalogue", "front-end"]
+    assert row["shortlist_unknown"] == ["catalogue"]
+    assert any("target in the shortlist" in line for line in S.narrowing([row]))

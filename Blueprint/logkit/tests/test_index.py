@@ -1,8 +1,8 @@
 import pytest
 
-from conftest import FAULT_LAT_AT, SPAN, T0
 from logkit.index import duration_ms
 from logkit.tools import logidx as L
+from logkit_synth import FAULT_LAT_AT, SPAN, T0
 
 
 def test_duration_ms():
