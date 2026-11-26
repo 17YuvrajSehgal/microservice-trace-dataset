@@ -302,3 +302,13 @@ measured result is added below it as a later entry, never by editing this one.
 | `mtu_blackhole` (D5) | `faults/mtu_blackhole.sh` | MTU 576 on the host side of the catalogue's link, 1500 inside | kernel, spans | large segments from the catalogue sent again and again, small ones normal; requests with large answers time out |
 | `login_bruteforce` (G2) | `faults/login_bruteforce.sh` | 50 wrong-password logins per second for one account, from the host | logs, metrics | 401s at the front-end and in the user service; kernel only more short requests |
 | `unexpected_exec` (G3) | `faults/unexpected_exec.sh` | a shell with read-only reconnaissance commands inside the front-end container, every 20 s | kernel | exec of sh, id, uname, ls, cat, ps in the front-end's namespaces, never seen there before; metrics, logs, spans nothing |
+
+### 2026-11-26: calibration of the four families above (measured, after the registration)
+
+- `rt_hog`: as predicted. Last CPU 57% -> 100% busy; no service moves.
+- `mtu_blackhole`: NOT as predicted. Every catalogue request fails with 5xx (100-255/s), not only
+  large answers: the database's answers to the catalogue are dropped too. Errors last 60-90 s
+  after the restore. Best modality is metrics (catalogue 5xx) as much as kernel.
+- `login_bruteforce`: as predicted for logs (2,206 lines); the front-end's metrics have no 401
+  series at all, the user service's 500 rate is what moves (0 -> 20-24/s).
+- `unexpected_exec`: as predicted; nothing outside the kernel.

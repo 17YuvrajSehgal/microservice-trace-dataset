@@ -612,5 +612,54 @@
    "min_fraction": 0.6,
    "why": "v3, calibrated 2026-11-26 on the VM under the 150-user load, image swapped before the load started. regex_backtrack:26:0.002: front-end p95 66-76 -> 187-204 ms, p50 unchanged, rate 291 -> 153-238/s; back at once after cleanup. 27:0.005 grew to 764 ms within 90 s and still rising (an outage in the making), not used."
   }
+ ],
+ "rt_hog": [
+  {
+   "canonical": true,
+   "name": "last_cpu_idle",
+   "promql": "rate(node_cpu_seconds_total{cpu=\"11\",mode=\"idle\"}[1m])",
+   "direction": "decrease",
+   "threshold_sigma": 3,
+   "abs_threshold": 0.3,
+   "min_fraction": 0.6,
+   "why": "v3, calibrated 2026-11-26 on the VM under the 150-user load. rt_hog: the last CPU (11 on this 12-CPU VM) goes from about 57% to 100% busy; no service's rate, errors or answer time move (front-end p95 even lower, noise). A host-metric and kernel family. The target assumes the recipe's default RT_CPU = nproc - 1 = 11."
+  }
+ ],
+ "mtu_blackhole_catalogue": [
+  {
+   "canonical": true,
+   "name": "catalogue_5xx_rate",
+   "promql": "sum(rate(http_request_duration_seconds_count{job=\"catalogue\",status_code=~\"5..\"}[1m]))",
+   "direction": "increase",
+   "threshold_sigma": 4,
+   "abs_threshold": 10,
+   "min_fraction": 0.6,
+   "why": "v3, calibrated 2026-11-26 on the VM under the 150-user load. mtu_blackhole (576 on the host side): the catalogue answers EVERY request with 5xx (100-255 per second, 0 before), not only large ones as predicted: the database's answers TO the catalogue are large too and are dropped, so its queries fail. Retransmitted segments of the catalogue 9 -> 160. The errors last about 60-90 s after the MTU is restored, so the recovery window still shows them."
+  }
+ ],
+ "login_bruteforce": [
+  {
+   "canonical": true,
+   "name": "user_500_rate",
+   "promql": "sum(rate(request_duration_seconds_count{job=\"user\",status_code=\"500\"}[1m]))",
+   "direction": "increase",
+   "threshold_sigma": 4,
+   "abs_threshold": 5,
+   "min_fraction": 0.6,
+   "why": "v3, calibrated 2026-11-26 on the VM under the 150-user load. login_bruteforce: 2,134 wrong-password logins in 120 s, all refused; the user service answers each with 500 (0 -> 20-24 per second) and logs 'err=Unauthorized'; the front-end returns 401 to the client but has no 401 series in its metrics. No other service moves."
+  }
+ ],
+ "unexpected_exec_front-end": [
+  {
+   "canonical": true,
+   "name": "frontend_p95_latency_flat_expected",
+   "promql": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"frontend\"}[1m])) by (le))",
+   "direction": "increase",
+   "threshold_sigma": 3,
+   "abs_threshold": 0.2,
+   "min_fraction": 0.5,
+   "expected_to_fail": true,
+   "note": "v3, calibrated 2026-11-26 on the VM under the 150-user load. unexpected_exec: 4 rounds of a read-only shell in the front-end in 90 s; no metric moves. Marked expected_to_fail so the run reads no_metric_signature; the proof is the round count in the run log (run_family.sh checks it) and the exec events in the kernel trace."
+  }
  ]
 }

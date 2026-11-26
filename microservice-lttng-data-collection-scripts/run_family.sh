@@ -142,6 +142,11 @@ for r in $(seq 1 "$REPEATS"); do
             [[ "$nospace" -gt 0 && "$aborts" -gt 0 ]] || bad="${bad:+$bad; }the database log shows no out-of-space abort"
         fi
         # port_scan has no metric signature either (measured): the proof is the scanner's count.
+        if [[ "$RECIPE" == "unexpected_exec" ]]; then
+            rounds=$(grep -a -o 'stopped after [0-9]* rounds' "$HOME/${RUN}.log" 2>/dev/null | grep -o '[0-9]*' | tail -1)
+            echo "[$r/$REPEATS] shell rounds: ${rounds:-0}"
+            [[ "${rounds:-0}" -ge 4 ]] || bad="${bad:+$bad; }the shell ran fewer than 4 rounds"
+        fi
         if [[ "$RECIPE" == "port_scan" ]]; then
             tried=$(grep -a -o 'scanner stopped: stopped: sweeps [0-9]*, tried [0-9]*' "$HOME/${RUN}.log" 2>/dev/null | grep -o '[0-9]*$' | tail -1)
             echo "[$r/$REPEATS] scanner: ${tried:-0} connection attempts"
