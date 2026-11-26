@@ -26,3 +26,10 @@ with a step that stops the VM itself, or move the runs out first.
   is unknown. Runs NOT deleted from the VM. VM stopped at about 15:45.
 - To resume after login: read `work/tr95.log`; if `code_regex_backtrack` or any run fails,
   start the VM and re-pull that family; only then delete on the VM.
+
+### Group 2 transfer completed (26-11, 16:05 UTC)
+
+The check had finished before Trillium dropped: all 20 runs extracted, 1,373 files each, 0
+checksum errors; `code_regex_backtrack` included (its archive extracted completely; only the
+pull's OK line was missing). Runs deleted on the VM, VM stopped. v3 now: 14 families, 70
+aggressive runs + 9 subtle, all on Trillium.
