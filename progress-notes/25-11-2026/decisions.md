@@ -336,3 +336,17 @@ Lesson: a verification target's absolute bar must be set for the weakest intensi
   The runs stay in `~/archive/runs/{db_table_lock,net_bandwidth}` on the stopped VM disk.
 - When moving them: use `DEST=.../v3/sockshop/subtle` (script `tr90.sh`). The pull script names
   the archive after the family, so the default DEST would OVERWRITE the aggressive archives.
+
+### Subtle calibration of three more settings (26-11, 00:05-00:17 UTC)
+
+| setting | carts p95 before | in the fault | decision |
+|---|---|---|---|
+| `svc_cpuset` subtle (2 cores) | 46 ms | 46-48 ms | no subtle runs: two cores are enough for carts at this load |
+| `port_exhaustion` subtle (1,500 ports) | 47 ms (catalogue 4.8 ms, 0 errors) | unchanged, 0 errors | no subtle runs |
+| `cpu_weight` subtle (weight 30) | about 90 ms with the neighbour | 250-640 ms | collect 3; target bar 0.5 -> 0.2 s first |
+
+(The calibration script printed the catalogue twice instead of carts - two helper files define the
+same function. Carts numbers were read back from Prometheus for the same windows.)
+Also no subtle runs, for the reasons given to the user: `pid_limit` (no effect), `slow_client`
+(a cliff; below the pool size only p95 23 -> 44 ms), `port_scan` at 10/s (exactly at the tool's
+bar), `disk_full` and `code_lock_contended` (need a separate design).

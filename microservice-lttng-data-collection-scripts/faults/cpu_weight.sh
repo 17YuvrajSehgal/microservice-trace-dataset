@@ -52,7 +52,7 @@ case "${1:-}" in
       # weight 1: carts completes nothing (an outage, not used).
       # With a neighbour of 6 processes (host 90% busy) weight 10 changes nothing; with 8, p95 x3.
       aggressive) WEIGHT="${WEIGHT:-10}" ;;
-      subtle)     WEIGHT="${WEIGHT:-30}" ;;      # not calibrated
+      subtle)     WEIGHT="${WEIGHT:-30}" ;;      # calibrated 26-11-2026: carts p95 about 90 -> 250-640 ms
       *) echo "unknown intensity: $INTENSITY"; exit 1 ;;
     esac
     BEFORE="$(weight)"

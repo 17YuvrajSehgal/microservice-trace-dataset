@@ -547,9 +547,9 @@
    "promql": "histogram_quantile(0.95, sum(rate(request_duration_seconds_bucket{job=\"cart\"}[1m])) by (le))",
    "direction": "increase",
    "threshold_sigma": 4,
-   "abs_threshold": 0.5,
+   "abs_threshold": 0.2,
    "min_fraction": 0.6,
-   "why": "v3, calibrated 2026-11-25 on the VM, 150 users, with a neighbour of 12 busy processes for the whole run: carts at cpu.weight 10 goes from p95 88 ms to 3.0-4.2 s and from 91 to 66 requests/s, no 5xx; back to 85 ms within 40 s of restoring weight 100."
+   "why": "v3, calibrated 2026-11-25 on the VM, 150 users, with a neighbour of 12 busy processes for the whole run: carts at cpu.weight 10 goes from p95 88 ms to 3.0-4.2 s and from 91 to 66 requests/s, no 5xx; back to 85 ms within 40 s of restoring weight 100. CHANGED 2026-11-26 before the subtle runs: abs_threshold 0.5 -> 0.2 s. Subtle (weight 30) measured: carts p95 about 90 ms with the neighbour alone, 250-640 ms at weight 30 (30 s windows), so 0.5 s would miss part of it. 0.2 s is about twice the busy baseline."
   }
  ],
  "port_scan_front-end": [
