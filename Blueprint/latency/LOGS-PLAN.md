@@ -13,8 +13,10 @@ Read with: `METHOD.md` (how a blueprint is built), `EVALUATION-PLAN.md` (arms an
 Add application logs to the blueprints so that an investigation can:
 
 1. find the time of a fault faster,
-2. say more than the kernel can ("who resets" becomes "who resets, and what it logged"),
-3. point at the code that printed a message, where the source is connected.
+2. **narrow where to look** when nobody knows where to start: a shortlist of services, and the
+   kinds of fault their messages suggest (section 6.5; added 26-11 at the user's request),
+3. say more than the kernel can ("who resets" becomes "who resets, and what it logged"),
+4. point at the code that printed a message, where the source is connected.
 
 **The rule: logs are a witness, the kernel check is the judge.** A log step may propose a time,
 explain a confirmed verdict, or point at code. It never confirms a fault and never rejects one.
@@ -252,6 +254,38 @@ For a blueprint that says "the trace cannot tell". Candidates, each to be confir
 
 Outcomes are matched on the log tool's verdict line, as for kernel tools.
 
+### 6.5 `log_triage`: narrow where to look (proposal, 26-11-2026)
+
+When the agent starts with no blueprint and no suspect, the logs can shorten its search. Two
+outputs, both a PRIORITY for the agent, never an exclusion:
+
+1. **A shortlist of services**: the entities whose logs changed, plus the services they CALL. The
+   flagged service is usually a caller of the faulty one (it logs the timeouts), so the culprit
+   is most often one hop downstream. INQUEST does the same walk at file level ("detects" -> its
+   callers). The call graph comes from the run's request traces (`otlp/spans.jsonl`, parent and
+   child service names); where there are none (partner hosts), from the kernel's own TCP
+   connections (who connects to whom, as `tcp_conns.py` reads them).
+2. **Which kinds of fault to check first**, from the symptom class of the flagged lines: refused
+   connections or too many open files (an outage, `fd_exhaustion`, a memory kill), latency with no
+   error (a slow dependency or path), disk or storage errors (`disk_full`), resets (`error_storm`).
+   Silence is a hint too: in the full sweep, 17 of 30 held-out Sock Shop families leave nothing in
+   the logs, and they are the resource and scheduling faults the kernel blueprints are built for.
+   So silent logs move those blueprints up the list; they do not rule anything out.
+
+Measured on the full sweep (Sock Shop, the 102 fault runs with one target service and something
+flagged), with the call graph taken from Sock Shop's wiring, not yet from spans:
+
+| shortlist | culprit inside | size (of ~15 containers) |
+|---|---|---|
+| services whose logs changed | 44 of 102 | median 2 |
+| those, plus the services they call | **98 of 102** | median 6 |
+
+Not covered: the 48 single-service runs where the logs flag nothing, the 69 host-level faults,
+and Train Ticket (5 of 26 flagged runs held the culprit; its graph is larger and not measured).
+
+To evaluate, against a no-log start (every service, every blueprint): culprit inside the
+shortlist, shortlist size, and whether the right blueprint is among the first three suggested.
+
 ### 6.4 `code_site` (later, code blueprints 17, 23, 24, 25)
 
 INQUEST's examine step: one file per step with the file on screen, a fixed verdict (`cause`,
@@ -390,6 +424,9 @@ commit as arm A.
 4. **Prepared for partner logs** (section 3), though they have none today. (User.)
 5. **Logs never change a kernel verdict** (section 1).
 6. **No count index in the log path.** The join is computed from a slice (section 3.4).
+7. **Logs also narrow WHERE to look** (user, 26-11): a shortlist of services and the kinds of fault
+   to try first, when the agent does not know where to start (section 6.5). Priority, never
+   exclusion.
 
 ## 12. Still open
 

@@ -12,3 +12,14 @@
   fooled (its baseline is the run's first 40 s).
 - The safety check first refused all of Train Ticket (a service is called
   ts-verification-code-service). Now it matches label files at the start of a name only.
+
+## Logs narrow where to look (user's point), measured on the full sweep
+
+- A second job for logs beside early warning: when the agent has no suspect, a shortlist of
+  services and the kinds of fault to try first (LOGS-PLAN 6.5).
+- The flagged service is usually the CALLER of the culprit. On 102 Sock Shop single-target runs:
+  culprit among the flagged 44; among the flagged plus what they call **98**, median shortlist 6 of
+  ~15 containers. Call graph from Sock Shop's wiring for now; it should come from the run's spans
+  (or the kernel's TCP connections where there are no spans).
+- Silent logs are also a hint: they point to the resource and scheduling faults. A priority,
+  never a reason to rule a blueprint out.
