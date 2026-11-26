@@ -290,3 +290,15 @@ Calibrated and NOT collected, with the reason: `io_cap` (no service waits for th
 `oom_restart_loop` (v2 `svc_mem_cap` is already a restart loop), inode exhaustion (nothing
 creates files at steady load). Details: `progress-notes/24-11-2026` and `25-11-2026`,
 `Blueprint/latency/CANDIDATE-PROBLEMS.md` section "Removed".
+
+### 2026-11-26: four more v3 families, registered BEFORE their first run
+
+Written before calibration or collection. The "predicted" column is the claim to be tested; the
+measured result is added below it as a later entry, never by editing this one.
+
+| family | recipe | mechanism | predicted best modality | predicted signal |
+|---|---|---|---|---|
+| `rt_hog` (A8) | `faults/rt_hog.sh` | one SCHED_FIFO busy process pinned to the last CPU | kernel | one CPU about 95% real-time; normal threads there wait or migrate; metrics show at most a small rise; logs and spans nothing |
+| `mtu_blackhole` (D5) | `faults/mtu_blackhole.sh` | MTU 576 on the host side of the catalogue's link, 1500 inside | kernel, spans | large segments from the catalogue sent again and again, small ones normal; requests with large answers time out |
+| `login_bruteforce` (G2) | `faults/login_bruteforce.sh` | 50 wrong-password logins per second for one account, from the host | logs, metrics | 401s at the front-end and in the user service; kernel only more short requests |
+| `unexpected_exec` (G3) | `faults/unexpected_exec.sh` | a shell with read-only reconnaissance commands inside the front-end container, every 20 s | kernel | exec of sh, id, uname, ls, cat, ps in the front-end's namespaces, never seen there before; metrics, logs, spans nothing |
