@@ -384,3 +384,25 @@ long as the load generator keeps placing orders with its old sessions.
   (the earlier defect families are clean). My calibration swapped under load; re-done the safe way.
 - This very likely explains `conntrack_full` ("the load generator never recovered"): any fault
   that makes the front-end restart turns into a crash loop. Not checked on that run's logs.
+
+### Group 2 calibration, done the safe way (26-11, 02:55-03:25 UTC)
+
+Image swapped first, then a fresh 150-user load (so the front-end crash loop cannot start).
+
+| defect | off | on | after cleanup |
+|---|---|---|---|
+| `spin_loop` | catalogue p95 4.8 ms, 0.14 cores | 21 ms, 0.74-0.79 cores, rate unchanged | back |
+| `thread_leak` | catalogue 17 threads | 147, 361, 580 at +30/+60/+90 s; nothing else moves | stays (678): by design, cleared by disarm |
+| `large_payload` | catalogue sends 2.8 Mbit/s | 18.1-18.9 Mbit/s; answer times unchanged | back |
+| `regex_backtrack` 26:0.002 | front-end p95 66-76 ms | 187-204 ms, p50 unchanged, rate 291 -> 153-238/s | back |
+| `regex_backtrack` 27:0.005 | | 207 -> 764 ms in 90 s, still rising | not used: an outage in the making |
+
+Verification targets: catalogue p95 (abs 12 ms), `go_threads` of the catalogue (abs 100),
+catalogue network transmit (abs 1 MB/s), front-end p95 (abs 0.13 s). The metrics see all four.
+
+**Collection runs ON THE VM** (`~/chain_g2.sh` with `~/chkg.sh`), not from the laptop: the local
+monitors were killed by low laptop memory four times on 25-11. The chain does a check run per
+family, then runs 2-5, checks every run (verification confirmed, all gates, site 200, stock
+images and a running front-end afterwards) and stops at the first failure. Order: spin_loop,
+large_payload, regex_backtrack, thread_leak (last, because its threads persist until disarm).
+Started 03:28 UTC.
