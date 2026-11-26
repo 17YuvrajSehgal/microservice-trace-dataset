@@ -564,5 +564,53 @@
    "expected_to_fail": true,
    "note": "v3, MEASURED 2026-11-25 in calibration: no metric and no log line sees this fault. 200 connection attempts per second from the front-end's address to ports 1-1024 of the 15 other containers (19,253 tried in 96 s, 16 open, 19,237 refused): catalogue and front-end rate, errors and answer times unchanged, host 48% -> 50% busy, 0 log lines about refused or reset connections in any service. Marked expected_to_fail so the run reads no_metric_signature; the proof that the scan ran is the scanner's own count in the run log, checked by run_family.sh, and the refused connects in the kernel trace."
   }
+ ],
+ "code_spin_loop": [
+  {
+   "canonical": true,
+   "name": "catalogue_p95_latency",
+   "promql": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"catalogue\"}[1m])) by (le))",
+   "direction": "increase",
+   "threshold_sigma": 4,
+   "abs_threshold": 0.012,
+   "min_fraction": 0.6,
+   "why": "v3, calibrated 2026-11-26 on the VM under the 150-user load, image swapped before the load started. spin_loop: catalogue p95 4.8 -> 21 ms, CPU 0.14 -> 0.79 cores, rate unchanged, nothing fails; back at once after cleanup."
+  }
+ ],
+ "code_thread_leak": [
+  {
+   "canonical": true,
+   "name": "catalogue_go_threads",
+   "promql": "max(go_threads{job=\"catalogue\"})",
+   "direction": "increase",
+   "threshold_sigma": 4,
+   "abs_threshold": 100,
+   "min_fraction": 0.6,
+   "why": "v3, calibrated 2026-11-26 on the VM under the 150-user load, image swapped before the load started. thread_leak: catalogue threads 17 -> 147, 361, 580 at +30, +60, +90 s (about 7 per second); answer times, rates and errors unchanged. The leaked threads stay after cleanup (678), so the recovery window does NOT recover - by design; the process is restarted by disarm after tracing."
+  }
+ ],
+ "code_large_payload": [
+  {
+   "canonical": true,
+   "name": "catalogue_network_transmit",
+   "promql": "sum(rate(container_network_transmit_bytes_total{name=~\".*catalogue_1$\"}[1m]))",
+   "direction": "increase",
+   "threshold_sigma": 4,
+   "abs_threshold": 1000000,
+   "min_fraction": 0.6,
+   "why": "v3, calibrated 2026-11-26 on the VM under the 150-user load, image swapped before the load started. large_payload: the catalogue sends 2.8 -> 18.1-18.9 Mbit/s (interface counter), about 0.36 -> 2.4 MB/s in the cAdvisor series; answer times, rates and errors unchanged."
+  }
+ ],
+ "code_regex_backtrack": [
+  {
+   "canonical": true,
+   "name": "frontend_p95_latency",
+   "promql": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"frontend\"}[1m])) by (le))",
+   "direction": "increase",
+   "threshold_sigma": 3,
+   "abs_threshold": 0.13,
+   "min_fraction": 0.6,
+   "why": "v3, calibrated 2026-11-26 on the VM under the 150-user load, image swapped before the load started. regex_backtrack:26:0.002: front-end p95 66-76 -> 187-204 ms, p50 unchanged, rate 291 -> 153-238/s; back at once after cleanup. 27:0.005 grew to 764 ms within 90 s and still rising (an outage in the making), not used."
+  }
  ]
 }
