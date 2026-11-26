@@ -359,3 +359,28 @@ The baseline was slower than in the aggressive runs and in calibration; not look
 effect is about 6 times in every run, but the 0.2 s bar is close to this baseline.
 All 9 subtle runs are now in `v3/sockshop/subtle/` (db_table_lock 3, net_bandwidth 3,
 cpu_weight 3), 0 checksum errors. VM stopped.
+
+## Group 2: four code defects (26-11, 01:50-02:40 UTC)
+
+- Added to `faults/code-defects/inject_defects.py`: `spin_loop`, `thread_leak`, `large_payload`
+  (catalogue, Go, on the List path) and `regex_backtrack` (front-end, Node; the flag carries
+  input length and share, `regex_backtrack:N:P`). Images `catalogue-bugs:v3` and
+  `frontend-bugs:v3` built and verified on the VM (start and serve with the defect off); v2
+  images kept for the old families. Recipes `faults/code_{spin_loop,thread_leak,large_payload,regex_backtrack}.sh`.
+- Regex timing on the laptop (Node 24): 25 characters about 100 ms, doubling per character.
+  At the 2% share first planned the single Node thread would be busy all the time - an outage,
+  not stalls - so the share is now set from the flag and calibrated.
+- `spin_loop` calibration: catalogue p95 4.8 -> 21 ms, CPU 0.14 -> 0.74-0.79 cores, nothing
+  fails, back at once after cleanup.
+
+**A weakness of the application found on the way: the stock front-end crash-loops after any
+restart under load.** Measured: swapping the catalogue's image under load; the front-end then
+restarted 10 times in 3 minutes (stock image) and the site answered 502 until the load
+stopped. Cause, `api/orders/index.js:67`: it reads `_links.customer` from the user service's
+answer; after a restart the sessions (kept in the front-end's memory) are gone, the customer ID
+is empty, the answer has no `_links`, and the uncaught TypeError kills the process again, as
+long as the load generator keeps placing orders with its old sessions.
+- The campaign driver swaps images BEFORE the load starts, so collected runs are not affected
+  (the earlier defect families are clean). My calibration swapped under load; re-done the safe way.
+- This very likely explains `conntrack_full` ("the load generator never recovered"): any fault
+  that makes the front-end restart turns into a crash loop. Not checked on that run's logs.
