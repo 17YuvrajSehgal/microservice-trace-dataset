@@ -108,3 +108,15 @@ Changed after seeing data, and said in each blueprint:
   segments above the cut-off resent: 3/5, swings 37-78%). Final rule: the size split. Also
   names the RECEIVING end. A slice 40 s into the fault finds nothing (circuit breaker).
 Not done yet: the earlier runs (SLURM job), as for 33-38.
+
+## Group 5 (late evening; the VM's clock says 27-11 UTC)
+
+- **Picked F3, H3, F6, F8 and D10.** Each one adds a new mechanism: a slow descriptor leak, zombies, extra calls between services, a blocking wait while off the CPU, and a wrong DNS answer. The four code defects are on one new image build (v4). The predictions were registered before calibration.
+- **Calibration changed two things:**
+  - **blocking_wait:** p50 doubled (21 to 45 ms). This goes against the registered "p50 almost unchanged". The prediction stays as written; the measurement is in the target.
+  - **zombie_procs:** no metric counts zombies, so it runs with `expected_to_fail`, like unexpected_exec.
+- **wrong_dns (D10) parked.**
+  - A hosts entry alone does nothing, because Node reuses its open connections.
+  - With those connections closed, the front-end crash-loops (restarts 11 to 20) and the site stays down after cleanup.
+  - This is the same as conntrack_full, so the next step is the same: a milder setting, or a fix for the front-end restart crash first.
+- **chatty_calls was getting worse at +90 s** (catalogue p95 562 ms). It is kept at full strength, and the per-run check will show if a run collapses.
