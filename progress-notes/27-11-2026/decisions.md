@@ -42,3 +42,9 @@
 - **NOT on Trillium yet.** The Trillium session went stale at about 16:10 UTC (master process alive, no answer). A new login needs the user's Duo approval. The two families (48 GB) are on the VM's disk and the VM is stopped.
 - **To finish:** log in to Trillium, start the VM, run the pull with `DEST=.../v3/sockshop` for `net_latency` and `dns_delay_jvm`, check the checksums, then delete on the VM. The script is `tr122.sh` in the session scratchpad; only `VM_HOST` needs the new address.
 - **Collection stops here for now.** The 14 ready candidates left need a design choice by the user.
+
+## Group 7 on Trillium
+
+- After the user logged in again: 10 runs pulled, extracted, 0 checksum errors. Deleted on the VM. The VM is stopped.
+- Day total: 50 runs, 10 new families (groups 5, 6, 7), all verified on Trillium. v3 Sock Shop now has 28 families.
+- Open after today: tools and blueprints for the 10 new families; the false-alarm sweep for tools 33 to 42 on the earlier runs (needs a SLURM job, not requested yet).
