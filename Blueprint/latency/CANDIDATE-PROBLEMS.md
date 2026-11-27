@@ -1,15 +1,15 @@
 # Candidate problems for the next collection (towards about 100)
 
-**Updated 26-11-2026 (evening).** Status of every candidate, in one place:
+**Updated 27-11-2026.** Status of every candidate, in one place:
 
 | status | count | which |
 |---|---|---|
-| collected in v3 | 18 | A1, A2, A4, A8, C1, D1, D4, D5, E6, F1, F2, F4, F5, G1, G2, G3, H2, and `slow_client` (new, in place of E3) |
-| parked | 7 | D7, and B1, B6, E1, E2, H5, H6 (reasons in "Parked") |
+| collected in v3 | 22 | A1, A2, A4, A8, C1, D1, D4, D5, E6, F1, F2, F3, F4, F5, F6, F8, G1, G2, G3, H2, H3, and `slow_client` (new, in place of E3) |
+| parked | 8 | D7, D10, and B1, B6, E1, E2, H5, H6 (reasons in "Parked") |
 | removed (cancelled) | 8 | B3, B8, C2, C4, D12, E3, E13, G4 (reasons in "Removed") |
-| left, not started | 38 | see "Left" below |
+| left, not started | 33 | see "Left" below (4 of them are group 6, in calibration: A3, D3, D6, D9) |
 
-The 18 collected families have 5 aggressive runs each (Sock Shop, on Trillium) and three of
+The 22 collected families have 5 aggressive runs each (Sock Shop, on Trillium) and three of
 them also 3 subtle runs. Rows in the tables are marked with their status.
 
 Written 17-11-2026. **Everything in the tables below is a prediction, not a measurement.**
@@ -92,7 +92,7 @@ Column "best": K = kernel trace, L = logs, M = metrics, T = distributed traces (
 | D7 | conntrack table full **(PARKED: calibrated, a host-wide outage; see "Parked")** | tiny `nf_conntrack_max` | new connections dropped, old ones fine | K, L | `conn_pool_exhaustion` | - |
 | D8 | pure latency | `netem delay` on one service | no loss, every exchange slower by one constant | T, K | `anomaly_net`, `nagle_delayed_ack` | - |
 | D9 | packet reordering | `netem reorder` | duplicate ACKs without loss | K | `svc_net` | - |
-| D10 | wrong DNS answer | resolver returns a dead address | connects to an address nothing answers on | L, T | `dependency_outage` | - |
+| D10 | wrong DNS answer **(PARKED: front-end crash loop; see "Parked")** | resolver returns a dead address | connects to an address nothing answers on | L, T | `dependency_outage` | - |
 | D11 | DNS slow on a glibc or JVM resolver | delay the resolver for a Java service | lookups slow in a resolver `dns_retry.py` cannot see today | K | `dns_delay` (musl only) | - |
 
 ## E. Dependency and application behaviour (12)
@@ -118,12 +118,12 @@ Column "best": K = kernel trace, L = logs, M = metrics, T = distributed traces (
 |---|---|---|---|---|---|---|
 | F1 | lock across I/O at real load **(collected: `code_lock_contended`, blueprint 25)** | rerun `code_lock_across_io` at 4-8 times the load | calls to the dependency stop overlapping | K, T | `lock_contention` | higher load |
 | F2 | thread leak **(collected: `code_thread_leak`, blueprint 35)** | a thread per request that never ends | thread count of one pid only grows | K, M | `dependency_outage` pile-up (blueprint 24 note) | - |
-| F3 | slow descriptor leak | never close one file or socket per N requests | highest fd climbs for minutes, then EMFILE | K, M | `fd_exhaustion` (step) | long runs |
+| F3 | slow descriptor leak **(collected: `code_fd_leak`)** | never close one file or socket per N requests | highest fd climbs for minutes, then EMFILE | K, M | `fd_exhaustion` (step) | long runs |
 | F4 | regex backtracking **(collected: `code_regex_backtrack`, blueprint 38)** | a bad pattern on user input | one thread on CPU for seconds on some requests only | K, T | `event_loop_block` | - |
 | F5 | large payloads **(collected: `code_large_payload`, blueprint 37)** | return the whole table | bytes per answer up, calls unchanged | K, T | `data_exfiltration` | - |
-| F6 | chatty calls | N small calls where one would do, between services | calls per request up between two services | T, K | `code_n_plus_one` | - |
+| F6 | chatty calls **(collected: `code_chatty_calls`)** | N small calls where one would do, between services | calls per request up between two services | T, K | `code_n_plus_one` | - |
 | F7 | unbounded queue | producer faster than an in-process worker | memory grows, latency grows with it | M, K | `code_unbounded_cache` | - |
-| F8 | blocking call in async code | a sync file read in a Node or async Java handler | event thread in D-state or long syscall, requests stall | K | `event_loop_block` (on CPU) | - |
+| F8 | blocking call in async code **(collected: `code_blocking_wait`)** | a sync file read in a Node or async Java handler | event thread in D-state or long syscall, requests stall | K | `event_loop_block` (on CPU) | - |
 
 ## G. Security (5)
 
@@ -141,7 +141,7 @@ Column "best": K = kernel trace, L = logs, M = metrics, T = distributed traces (
 |---|---|---|---|---|---|---|
 | H1 | kernel hot path | a table the kernel scans per event (large route or rule table) | one syscall long ON CPU inside the kernel | K | `syscall_stall` | function durations (kprobe or function_graph) |
 | H2 | process limit reached **(collected: `pid_limit`, blueprint 29)** | `pids.max` on one container | `clone` returns -11 (EAGAIN) | K, L | `fd_exhaustion` | - |
-| H3 | zombie build-up | a parent that never waits for children | exits with no reaping, process table grows | K | `fork_storm` | - |
+| H3 | zombie build-up **(collected: `code_zombie_procs`)** | a parent that never waits for children | exits with no reaping, process table grows | K | `fork_storm` | - |
 | H4 | uninterruptible I/O stall | freeze the block device briefly | long D-state for all writers, no completions | K | `anomaly_disk` | - |
 | H5 | clock step (parked as `clock_skew`) | step the clock on one container's host view | timers fire early or late; span times inconsistent | T | none | risky: can corrupt run timestamps |
 | H6 | compound fault (parked) | two existing recipes at once | both signatures present | all | each of its parts | a wrapper that runs two recipes |
@@ -168,7 +168,12 @@ Column "best": K = kernel trace, L = logs, M = metrics, T = distributed traces (
 | D5 | `mtu_blackhole` | 5 | `big_resends.py`, 40 | every catalogue request fails (not only large answers); errors last through the recovery window |
 | G2 | `login_bruteforce` | 5 | `log_errors.py`, 41 | user service 500/s 0 -> 12-17; the front-end has no 401 series |
 | G3 | `unexpected_exec` | 5 | `new_programs.py`, 42 | no metric signature; shell rounds in the front-end |
+| F3 | `code_fd_leak` | 5 | none yet | catalogue open files about 20 -> 290 in the fault; nothing slows; the files stay open after cleanup (by design) |
+| H3 | `code_zombie_procs` | 5 | none yet | no metric signature; about 3 zombies per second |
+| F8 | `code_blocking_wait` | 5 | none yet | front-end span p95 about 140 -> 190 ms, p50 50 -> 80 ms; the Prometheus p95 has little room (tops out near 0.24 s); run 5 was re-collected (noisy baseline) |
+| F6 | `code_chatty_calls` | 5 | none yet | catalogue calls about 190 -> 555/s; front-end span p95 about 145 -> 300 ms |
 
+Group 5 (code defects, images `catalogue-bugs:v4` and `frontend-bugs:v4`) collected 27-11-2026.
 Group 2 (code defects, images `catalogue-bugs:v3` and `frontend-bugs:v3`) collected 26-11-2026.
 
 ## Parked (may come back; not cancelled)
@@ -176,6 +181,7 @@ Group 2 (code defects, images `catalogue-bugs:v3` and `frontend-bugs:v3`) collec
 | # | Problem | Why parked |
 |---|---|---|
 | D7 | conntrack table full | calibrated 25-11-2026: at the current entry count the whole host stops (site, metrics, name resolution) and the load generator does not recover; very likely the front-end crash loop after a restart under load (progress-notes 25-11). Needs a milder setting first. Recipe `faults/conntrack_full.sh` |
+| D10 | wrong DNS answer | calibrated 27-11-2026: a wrong hosts entry alone does nothing (Node reuses its open connections); with the connections closed the front-end crash-loops and the site stays down after cleanup. Same blocker as D7. Recipe `faults/wrong_dns.sh` |
 | B1 | slow memory leak | needs runs of 10 minutes or more |
 | B6 | cold start | needs page-fault events and a restart that does not crash-loop the front-end |
 | E1 | retry storm | needs a design that keeps the baseline clean (a start-up change) |
@@ -184,16 +190,16 @@ Group 2 (code defects, images `catalogue-bugs:v3` and `frontend-bugs:v3`) collec
 | H6 | compound fault | needs a wrapper that runs two recipes |
 | - | `io_cap` (C4) | kept as a possible kernel-only family: the limit holds the database's writes back (68.6 -> 16.0 KB/s) but no service notices. User decision 25-11: leave for now |
 
-## Left, not started (38)
+## Left, not started (33)
 
 | group | candidates | what they need |
 |---|---|---|
-| ready with what we have | A3, A6, B5, C3, C6, D3, D6, D8, D9, D10, D11, E4, E5, E7, E8, E9, E11, E12, F3, F6, F7, F8, G5, H3, H4 | a recipe and a calibration; some need a code defect (F3, F6, F7, F8) or a new load pattern |
+| ready with what we have | A3, A6, B5, C3, C6, D3, D6, D8, D9, D11, E4, E5, E7, E8, E9, E11, E12, F7, G5, H4 | a recipe and a calibration; some need a code defect (F7) or a new load pattern |
 | need a start-up change | B4, D2, E10 | a design that keeps the baseline clean |
 | need events we do not record yet | A5 (interrupts), A7 (CPU frequency, now in the profile: to check), B2 and B7 (memory reclaim, swap), C5 and C8 (a device mapper target on the VM), C7 (writeback), G6 (file names on `openat`), H1 (kernel function timing) | a tracing profile change, checked on a recorded trace |
 | need a change to the application or load | E14 (a correctness check in the load generator) | |
 
-Counted in "ready" are 25; "start-up change" 3; "events" 9; "application" 1.
+Counted in "ready" are 20; "start-up change" 3; "events" 9; "application" 1.
 
 ## Removed (cancelled)
 
