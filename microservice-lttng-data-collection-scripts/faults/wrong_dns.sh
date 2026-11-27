@@ -26,6 +26,8 @@
 #
 # Usage:
 #   ./wrong_dns.sh inject [subtle|aggressive] | cleanup | status
+# PARKED 27-11-2026: with the connections closed, the front-end crash-looped (restarts 11 -> 20)
+# and the site served nothing, also after cleanup - the same host-wide outage as conntrack_full.
 #   env: WRONG_IP (default 10.255.255.1: a private address with no host behind it)
 set -euo pipefail
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/fault_lib.sh"
