@@ -4,12 +4,12 @@
 
 | status | count | which |
 |---|---|---|
-| collected in v3 | 22 | A1, A2, A4, A8, C1, D1, D4, D5, E6, F1, F2, F3, F4, F5, F6, F8, G1, G2, G3, H2, H3, and `slow_client` (new, in place of E3) |
+| collected in v3 | 26 | A1, A2, A3, A4, A8, C1, D1, D3, D4, D5, D6, D9, E6, F1, F2, F3, F4, F5, F6, F8, G1, G2, G3, H2, H3, and `slow_client` (new, in place of E3) |
 | parked | 8 | D7, D10, and B1, B6, E1, E2, H5, H6 (reasons in "Parked") |
 | removed (cancelled) | 8 | B3, B8, C2, C4, D12, E3, E13, G4 (reasons in "Removed") |
-| left, not started | 33 | see "Left" below (4 of them are group 6, in calibration: A3, D3, D6, D9) |
+| left, not started | 29 | see "Left" below (2 of them are group 7, in calibration: D8, D11) |
 
-The 22 collected families have 5 aggressive runs each (Sock Shop, on Trillium) and three of
+The 26 collected families have 5 aggressive runs each (Sock Shop, on Trillium) and three of
 them also 3 subtle runs. Rows in the tables are marked with their status.
 
 Written 17-11-2026. **Everything in the tables below is a prediction, not a measurement.**
@@ -50,7 +50,7 @@ Column "best": K = kernel trace, L = logs, M = metrics, T = distributed traces (
 |---|---|---|---|---|---|---|
 | A1 | cpuset too small **(collected: `svc_cpuset`, blueprint 26)** | `docker update --cpuset-cpus` to 1 core on a busy service | service runs on one CPU only while others idle; run-queue waits | K | `svc_cpu_cap` (quota, has a period; this has none) | - |
 | A2 | low CPU weight **(collected: `cpu_weight`, blueprint 33; also 3 subtle runs)** | `--cpu-shares 2` on one service plus a busy neighbour | waits only when the neighbour runs; no fixed period | K | `noisy_neighbor` | - |
-| A3 | context-switch storm | thread pool of 2,000 in one service | very high `sched_switch` rate for one pid, short runs | K | `lock_contention` | - |
+| A3 | context-switch storm **(collected: `code_ctxswitch_storm`)** | thread pool of 2,000 in one service | very high `sched_switch` rate for one pid, short runs | K | `lock_contention` | - |
 | A4 | spin loop **(collected: `code_spin_loop`, blueprint 36)** | a busy-wait in a handler (code flag) | one thread 100% on CPU with no system calls, requests still served | K | `event_loop_block` (there requests stop) | - |
 | A5 | interrupt storm | flood one NIC queue with small packets from outside the stack | `irq_handler_entry` rate, softirq time on one CPU | K | `irq_imbalance` | irq events on the VM |
 | A6 | timer jitter | a periodic thread plus CPU pressure on its core | wake-up latency of one periodic thread grows | K | `cpu_starvation` | - |
@@ -85,13 +85,13 @@ Column "best": K = kernel trace, L = logs, M = metrics, T = distributed traces (
 |---|---|---|---|---|---|---|
 | D1 | ephemeral port exhaustion **(collected: `port_exhaustion`, blueprint 28)** | shrink `ip_local_port_range` in one netns | `connect` returns -99 (EADDRNOTAVAIL) | K, L | `fd_exhaustion` | - |
 | D2 | listen queue overflow | `somaxconn` 1 on a busy service | SYN retransmits to one port, slow accepts | K | `svc_net` (loss) | - |
-| D3 | slow reader (zero window) | a client that reads slowly | zero-window advertisements, sender blocked in `sendmsg` | K | `nagle_delayed_ack` | - |
+| D3 | slow reader (zero window) **(collected: `slow_reader`)** | a client that reads slowly | zero-window advertisements, sender blocked in `sendmsg` | K | `nagle_delayed_ack` | - |
 | D4 | bandwidth cap **(collected: `net_bandwidth`)** | `tc tbf` on one container | steady low throughput, queue drops at one device | K, M | `svc_net` | - |
 | D5 | MTU blackhole **(collected: `mtu_blackhole`, blueprint 40)** | lower MTU on a path and drop ICMP | small packets pass, large ones retransmit forever | K | `svc_net` | - |
-| D6 | connection churn | disable keep-alive in one client | one SYN per request, many short connections | K, T | `error_storm` (opens then resets) | - |
+| D6 | connection churn **(collected: `code_conn_churn`)** | disable keep-alive in one client | one SYN per request, many short connections | K, T | `error_storm` (opens then resets) | - |
 | D7 | conntrack table full **(PARKED: calibrated, a host-wide outage; see "Parked")** | tiny `nf_conntrack_max` | new connections dropped, old ones fine | K, L | `conn_pool_exhaustion` | - |
 | D8 | pure latency | `netem delay` on one service | no loss, every exchange slower by one constant | T, K | `anomaly_net`, `nagle_delayed_ack` | - |
-| D9 | packet reordering | `netem reorder` | duplicate ACKs without loss | K | `svc_net` | - |
+| D9 | packet reordering **(collected: `net_reorder`)** | `netem reorder` | duplicate ACKs without loss | K | `svc_net` | - |
 | D10 | wrong DNS answer **(PARKED: front-end crash loop; see "Parked")** | resolver returns a dead address | connects to an address nothing answers on | L, T | `dependency_outage` | - |
 | D11 | DNS slow on a glibc or JVM resolver | delay the resolver for a Java service | lookups slow in a resolver `dns_retry.py` cannot see today | K | `dns_delay` (musl only) | - |
 
@@ -172,7 +172,12 @@ Column "best": K = kernel trace, L = logs, M = metrics, T = distributed traces (
 | H3 | `code_zombie_procs` | 5 | none yet | no metric signature; about 3 zombies per second |
 | F8 | `code_blocking_wait` | 5 | none yet | front-end span p95 about 140 -> 190 ms, p50 50 -> 80 ms; the Prometheus p95 has little room (tops out near 0.24 s); run 5 was re-collected (noisy baseline) |
 | F6 | `code_chatty_calls` | 5 | none yet | catalogue calls about 190 -> 555/s; front-end span p95 about 145 -> 300 ms |
+| D9 | `net_reorder` | 5 | none yet | catalogue p95 6 -> 89 ms with only a 10 ms delay; nothing is lost |
+| D3 | `slow_reader` | 5 | none yet | no metric signature; 200 clients, about 40 zero-window messages per second |
+| D6 | `code_conn_churn` | 5 | none yet | 248 new connections per second to the catalogue; front-end p50 about 49 -> 93 ms |
+| A3 | `code_ctxswitch_storm` | 5 | none yet | 400 threads, context switches 126k -> 328k/s; catalogue p95 6 -> 87 ms in the traced runs (32 ms in calibration) |
 
+Group 6 (images `catalogue-bugs:v5` and `frontend-bugs:v5`) collected 27-11-2026.
 Group 5 (code defects, images `catalogue-bugs:v4` and `frontend-bugs:v4`) collected 27-11-2026.
 Group 2 (code defects, images `catalogue-bugs:v3` and `frontend-bugs:v3`) collected 26-11-2026.
 
@@ -190,16 +195,16 @@ Group 2 (code defects, images `catalogue-bugs:v3` and `frontend-bugs:v3`) collec
 | H6 | compound fault | needs a wrapper that runs two recipes |
 | - | `io_cap` (C4) | kept as a possible kernel-only family: the limit holds the database's writes back (68.6 -> 16.0 KB/s) but no service notices. User decision 25-11: leave for now |
 
-## Left, not started (33)
+## Left, not started (29)
 
 | group | candidates | what they need |
 |---|---|---|
-| ready with what we have | A3, A6, B5, C3, C6, D3, D6, D8, D9, D11, E4, E5, E7, E8, E9, E11, E12, F7, G5, H4 | a recipe and a calibration; some need a code defect (F7) or a new load pattern |
+| ready with what we have | A6, B5, C3, C6, D8, D11, E4, E5, E7, E8, E9, E11, E12, F7, G5, H4 | a recipe and a calibration; some need a code defect (F7) or a new load pattern |
 | need a start-up change | B4, D2, E10 | a design that keeps the baseline clean |
 | need events we do not record yet | A5 (interrupts), A7 (CPU frequency, now in the profile: to check), B2 and B7 (memory reclaim, swap), C5 and C8 (a device mapper target on the VM), C7 (writeback), G6 (file names on `openat`), H1 (kernel function timing) | a tracing profile change, checked on a recorded trace |
 | need a change to the application or load | E14 (a correctness check in the load generator) | |
 
-Counted in "ready" are 20; "start-up change" 3; "events" 9; "application" 1.
+Counted in "ready" are 16; "start-up change" 3; "events" 9; "application" 1.
 
 ## Removed (cancelled)
 
