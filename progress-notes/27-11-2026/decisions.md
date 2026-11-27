@@ -34,3 +34,11 @@
   - `net_latency` 20 ms: catalogue p50 2.6 to 45 ms, p95 4.9 to 226 ms, no errors. The registered "service's own time unchanged" was wrong, because the delay is also on the catalogue's calls to its database.
   - `dns_delay_jvm`: at a 60% drop the front-end errors come and go; at 90% they are steady at 13 to 15 per second. The family uses 90%. The orders service's own metrics do not move; the errors show at the front-end.
 - **Lesson:** `dns_delay.sh` is not executable in git, so a wrapper must call it through `bash`. New recipes written on Windows have the same problem; the driver already calls recipes through `bash`.
+
+## Group 7 collected; transfer waits for a Trillium login
+
+- **Group 7: 10 of 10 runs passed, no lost events.** `net_latency` 5/5 (catalogue span p50 1.5 to 43 ms, p95 7.5 to 110 ms, 0 errors). `dns_delay_jvm` 5/5 (front-end 5xx 0 to 7-12 per second, about 1,000 to 1,500 failed requests per run).
+  - In `dns_delay_jvm` the errors go on into the recovery window in 4 of 5 runs (5xx 5 to 8 per second in the metric). The JVM keeps failed lookups for a while. A blueprint must not read the recovery window as healthy.
+- **NOT on Trillium yet.** The Trillium session went stale at about 16:10 UTC (master process alive, no answer). A new login needs the user's Duo approval. The two families (48 GB) are on the VM's disk and the VM is stopped.
+- **To finish:** log in to Trillium, start the VM, run the pull with `DEST=.../v3/sockshop` for `net_latency` and `dns_delay_jvm`, check the checksums, then delete on the VM. The script is `tr122.sh` in the session scratchpad; only `VM_HOST` needs the new address.
+- **Collection stops here for now.** The 14 ready candidates left need a design choice by the user.
