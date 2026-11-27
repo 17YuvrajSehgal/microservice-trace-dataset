@@ -66,7 +66,7 @@ set -euo pipefail
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/fault_lib.sh"
 
 FAULT_FAMILY="I_configuration"
-FAULT_NAME="dns_delay"
+FAULT_NAME="${DNS_FAULT_NAME:-dns_delay}"   # dns_delay_jvm.sh sets another name
 FAULT_SCOPE="service"
 if [[ "${STRATA_APP:-sockshop}" == "trainticket" ]]; then
     TARGET_SVC="${TARGET_SVC:-ts-gateway-service}"

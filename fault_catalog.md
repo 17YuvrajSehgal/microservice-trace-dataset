@@ -331,3 +331,10 @@ measured result is added below it as a later entry, never by editing this one.
 | `code_conn_churn` (D6) | `faults/code_conn_churn.sh` | front-end sends `Connection: close` on every call to the catalogue | kernel | one TCP handshake and one close per call where the baseline has almost none; same number of calls, a little slower |
 | `net_reorder` (D9) | `faults/net_reorder.sh` | netem on the catalogue: 10 ms delay, 25% of packets skip it | kernel | out-of-order segments, duplicate ACKs and resends with no packet dropped; answer time up by about the delay |
 | `slow_reader` (D3) | `faults/slow_reader.sh` | 200 clients read a large catalogue answer at 256 bytes per second through a 2 kB receive buffer | kernel | zero-window advertisements from one peer, the service's sends to it stalled; the service answers everyone else, so metrics may show nothing |
+
+### 2026-11-27: two more v3 families (group 7), registered BEFORE their first run
+
+| family | recipe | mechanism | predicted best modality | predicted signal |
+|---|---|---|---|---|
+| `net_latency` (D8) | `faults/net_latency.sh` | netem on the catalogue: a constant 20 ms delay, no jitter, no loss | spans, kernel | every exchange slower by one constant, no resends; the caller's view of the service slower by about the delay, the service's own time unchanged |
+| `dns_delay_jvm` (D11) | `faults/dns_delay_jvm.sh` | 60% of the orders service's DNS queries are dropped in its own namespace | kernel | repeated DNS queries from the JVM seconds apart and a stall before a new connection; lookups are rare (JVM cache, pooled connections), so metrics may show nothing |
