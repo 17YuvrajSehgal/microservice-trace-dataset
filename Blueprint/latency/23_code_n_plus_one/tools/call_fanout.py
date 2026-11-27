@@ -13,6 +13,8 @@
 # Usage:
 #   python3 call_fanout.py <net_slice.txt> <slice_seconds> [baseline_slice.txt]
 #   python3 call_fanout.py --selftest
+#   add --slower-ok to also get a verdict when the calls per request at least double AND the
+#   answers get slower (a caller that makes extra calls and overloads the server with them)
 #
 #   The baseline must be at the SAME steady load as the suspect slice. Calls per request
 #   depend on what the users are doing: measured on our runs, a baseline cut while the load
@@ -31,6 +33,10 @@ MIN_RATIO_UP = 1.35    # amplification: calls per received request grew by this 
                        # the 6 labelled runs are at 1.45-1.57, the next healthy pair at 1.28
 MAX_SLOWER = 1.1       # ... while the answers did not get slower than this factor (more calls
                        # to a slow or lossy dependency are retries, a different fault)
+MIN_RATIO_BIG = 2.0    # with --slower-ok: calls per received request at least doubled, the server got at
+                       # least twice the calls, and its answers got slower. Set after run 1 of
+                       # code_chatty_calls (27-11-2026: 3.5x there, answers 9x slower); runs 2-5 not seen first.
+SLOWER_OK = False      # set by --slower-ok. Without it the tool behaves exactly as before.
 KERNEL_CTX = ("swapper/", "ksoftirqd/", "kworker/")
 
 re_time = re.compile(r'^\[(\d+):(\d+):(\d+)\.(\d+)\]')
@@ -148,6 +154,17 @@ def report(cur, secs, base=None):
                        f"per request it receives, {b['per_in']:.1f} in the baseline ({r['per_in'] / b['per_in']:.1f}x); "
                        f"each answer takes {r['rt']:.2f} ms ({b['rt']:.2f} before)")
             hits += 1
+    if SLOWER_OK:
+        for k, r in sorted(rows.items(), key=lambda kv: -kv[1]["calls"]):
+            b = brow.get(k)
+            if (b and r["per_in"] >= MIN_RATIO_BIG * b["per_in"] and r["calls"] >= MIN_RATIO_BIG * b["calls"]
+                    and r["rt"] > MAX_SLOWER * b["rt"]):
+                out.append(f"VERDICT: MORE CALLS PER REQUEST AND SLOWER ANSWERS: {name(k[0])} at {k[0]} makes {r['per_in']:.1f} "
+                           f"calls to {k[1]}:{k[2]} per request it receives, {b['per_in']:.1f} in the baseline "
+                           f"({r['per_in'] / b['per_in']:.1f}x); the server gets {r['calls'] / secs:.0f} calls per second "
+                           f"({b['calls'] / secs:.0f} before) and each answer takes {r['rt']:.2f} ms ({b['rt']:.2f} before) - "
+                           f"either the extra calls slow the server, or a slow server is being called again")
+                hits += 1
     if not hits:
         best = max(((r["per_in"] / brow[k]["per_in"], k) for k, r in rows.items()
                     if k in brow and r["rt"] <= MAX_SLOWER * brow[k]["rt"]), default=None)
@@ -192,8 +209,11 @@ if __name__ == "__main__":
     if "--selftest" in sys.argv:
         selftest()
         sys.exit(0)
+    if "--slower-ok" in sys.argv:
+        sys.argv.remove("--slower-ok")
+        SLOWER_OK = True
     if len(sys.argv) < 3:
-        print("usage: call_fanout.py <net_slice.txt> <slice_seconds> [baseline_slice.txt]", file=sys.stderr)
+        print("usage: call_fanout.py <net_slice.txt> <slice_seconds> [baseline_slice.txt] [--slower-ok]", file=sys.stderr)
         sys.exit(1)
     with open(sys.argv[1], errors="replace") as f:
         cur = read(f)
