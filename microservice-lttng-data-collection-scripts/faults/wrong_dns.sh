@@ -10,6 +10,12 @@
 # callee is fine and the lookup is fast and wrong: the caller talks to an address that is not
 # the service. A stale DNS record or a bad hosts entry after a migration does this.
 #
+# OPEN CONNECTIONS. Measured 27-11-2026: with only the hosts entry nothing happened at all - Node
+# 20 keeps HTTP connections open and reuses them, so the front-end never looked the name up again.
+# A wrong record bites when connections are renewed (a deploy, a reset). So after the edit the
+# recipe closes the caller's open connections to the real address (`ss -K` in its network
+# namespace), as a redeploy of the callee would; new connections then go to the wrong address.
+#
 # Restart-free: the hosts file is edited on the HOST (docker inspect HostsPath), because the
 # containers run with a read-only file system. Cleanup removes the line and checks it is gone.
 #
@@ -53,6 +59,10 @@ case "${1:-}" in
     # gt_begin FIRST: it stamps the start of the incident window.
     gt_begin "$INTENSITY" "{\"caller\": \"$CALLER\", \"name\": \"$TARGET_SVC\", \"wrong_ip\": \"$WRONG_IP\", \"real_ip\": \"$REAL_IP\", \"hosts_file\": \"$HOSTS\"}"
     echo "$WRONG_IP $TARGET_SVC $MARK" | sudo tee -a "$HOSTS" > /dev/null
+    CPID="$(docker inspect -f '{{.State.Pid}}' "$CALLER")"
+    K=$(sudo nsenter -t "$CPID" -n ss -tnH state established dst "$REAL_IP" | wc -l)
+    sudo nsenter -t "$CPID" -n ss -K -tn dst "$REAL_IP" > /dev/null 2>&1 || true
+    echo "[$FAULT_NAME] closed $K open connections from $CALLER to $REAL_IP (left: $(sudo nsenter -t "$CPID" -n ss -tnH state established dst "$REAL_IP" | wc -l))"
     echo "[$FAULT_NAME] $CALLER now resolves $TARGET_SVC to $WRONG_IP (real $REAL_IP); entries: $(present)"
     ;;
   cleanup)
