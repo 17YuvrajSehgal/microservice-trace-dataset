@@ -710,5 +710,54 @@
       "min_fraction": 0.6,
       "why": "v3, calibrated 2026-11-27 on the VM under the 150-user load, image swapped before the load started. blocking_wait:30:0.02: front-end p95 88 -> 192-200 ms, p50 21 -> 43-48 ms (the pre-registered 'p50 almost unchanged' was wrong), rate 290 -> 257-264/s. 50:0.02 gave p95 230-245 ms and p50 72-105 ms, not used. Back after cleanup."
     }
+  ],
+  "code_ctxswitch_storm": [
+    {
+      "canonical": true,
+      "name": "catalogue_p95_latency",
+      "promql": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"catalogue\"}[1m])) by (le))",
+      "direction": "increase",
+      "threshold_sigma": 4,
+      "abs_threshold": 0.012,
+      "min_fraction": 0.6,
+      "why": "v3, calibrated 2026-11-27 on the VM under the 150-user load. ctxswitch_storm:400:5000 (image armed before the load): host context switches 126k -> 328k/s, catalogue threads 18 -> 419, CPU 0.17 -> 1.24-1.41 cores (the pre-registered 'CPU up a little' was wrong), catalogue p95 4.8 -> 22-32 ms, front-end p95 131 -> 200 ms. Back at once after cleanup (threads 19). 1000:2000 gave catalogue p95 155-185 ms, not used."
+    }
+  ],
+  "code_conn_churn": [
+    {
+      "canonical": true,
+      "name": "frontend_p50_latency",
+      "promql": "histogram_quantile(0.5, sum(rate(http_request_duration_seconds_bucket{job=\"frontend\"}[1m])) by (le))",
+      "direction": "increase",
+      "threshold_sigma": 3,
+      "abs_threshold": 0.01,
+      "min_fraction": 0.6,
+      "why": "v3, calibrated 2026-11-27 on the VM under the 150-user load. conn_churn (image armed before the load): new connections accepted by the catalogue 0 -> 246-252/s, catalogue resends 0 -> 25/s, front-end p50 31 -> 49-60 ms and p95 141 -> 195-203 ms; the catalogue's own answer time and rate unchanged. p50 is used because the front-end p95 baseline moves between 113 and 178 ms and tops out near 0.24 s. No metric counts connections inside a container."
+    }
+  ],
+  "net_reorder_catalogue": [
+    {
+      "canonical": true,
+      "name": "catalogue_p95_latency",
+      "promql": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"catalogue\"}[1m])) by (le))",
+      "direction": "increase",
+      "threshold_sigma": 4,
+      "abs_threshold": 0.03,
+      "min_fraction": 0.6,
+      "why": "v3, calibrated 2026-11-27 on the VM under the 150-user load. netem delay 10 ms reorder 25% 50% on the catalogue: catalogue p50 2.6 -> 18-23 ms, p95 4.8 -> 86-90 ms (far more than the delay; the pre-registered 'up by about the delay' was wrong), resends 3-6/s, rate 253 -> 235/s, front-end p95 154 -> 204 ms. Back at once. 20 ms and 40% gave p95 101-142 ms, not used."
+    }
+  ],
+  "slow_reader_catalogue": [
+    {
+      "canonical": true,
+      "name": "catalogue_p95_latency_flat_expected",
+      "promql": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"catalogue\"}[1m])) by (le))",
+      "direction": "increase",
+      "threshold_sigma": 4,
+      "abs_threshold": 0.012,
+      "min_fraction": 0.6,
+      "expected_to_fail": true,
+      "note": "v3, calibrated 2026-11-27 on the VM under the 150-user load. 200 slow readers on /catalogue/images/holy_1.jpeg (42,201 bytes), 256 bytes per second each: 40 zero-window advertisements per second on the host, catalogue threads 17 -> 58 (they stay), no rate or answer time moves. 1,000 readers: 200 advertisements per second, still no effect on the service. No metric signature is expected."
+    }
   ]
 }

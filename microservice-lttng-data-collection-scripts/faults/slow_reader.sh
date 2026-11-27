@@ -36,7 +36,8 @@ TARGET_TRACE_VISIBILITY="${TARGET_TRACE_VISIBILITY:-covered}"
 REMEDIATION="close the slow connections (stop the client, or set a write timeout on the service)"
 
 CONTAINER="$(resolve_container "$TARGET_SVC")"
-SLOW_PATH="${SLOW_PATH:-/catalogue?size=500}"
+# Calibrated 27-11-2026: the list answer is 2,795 bytes, too small to fill a window; an image is 42,201.
+SLOW_PATH="${SLOW_PATH:-/catalogue/images/holy_1.jpeg}"
 PIDFILE="$FAULT_STATE_DIR/${FAULT_NAME}.pid"
 LOG="$FAULT_STATE_DIR/${FAULT_NAME}.client.log"
 running() { [[ -f "$PIDFILE" ]] && kill -0 "$(cat "$PIDFILE")" 2>/dev/null; }
