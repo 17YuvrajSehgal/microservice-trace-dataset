@@ -11,3 +11,16 @@
   - This is a re-collection after a failed check, as the collection rules say. It must be reported with the dataset: one run replaced, reason a noisy baseline.
 - **The front-end p95 metric tops out near 0.235 to 0.245 s in the fault window** (histogram buckets), while baselines range from 0.17 to 0.23 s. So the metric target for this family has little room. The spans are the better evidence for it.
 - **Databases keep growing over the campaign** (25,853 customers, 38,039 orders on 27-11). Baselines are not slower than on 26-11, but this should be watched, or the databases reset between groups.
+
+## Group 5 finished, group 6 started (the user is away; decisions taken alone)
+
+- **Group 5 is on Trillium:** 20 runs, 0 checksum errors, deleted on the VM after the check. `code_chatty_calls` 5/5 confirmed.
+- **Group 6 picks: A3, D6, D9, D3.** Chosen because none needs a front-end restart under load or a new trace event. Predictions registered before calibration (commit 6714e91).
+- **Calibration, all four usable:**
+  - `code_ctxswitch_storm` 400 threads, 5 ms: context switches 126k to 328k/s, catalogue p95 4.8 to 32 ms. CPU went up by 1.2 cores, so the registered "CPU up a little" was wrong.
+  - `code_conn_churn`: 248 new connections per second, front-end p50 31 to 52 ms. The target uses p50, because the front-end p95 has too little room (seen in group 5).
+  - `net_reorder` 10 ms, 25%: catalogue p95 4.8 to 89 ms. Far more than the delay, so the registered "up by about the delay" was wrong. Worth explaining in the blueprint.
+  - `slow_reader`: 40 zero-window messages per second, no service slows. Runs with `expected_to_fail`.
+- **Chain rule changed for unattended running:** a family whose check run fails is skipped and the chain continues. Before, the chain stopped at the first failure.
+- **Trace buffers raised to 96 sub-buffers for `code_ctxswitch_storm`**, before its first run, because it adds about 200,000 scheduler events per second.
+- **VM start race:** starting the VM within about a minute of the chain's own shutdown makes it go down again. Wait until the status is TERMINATED before starting.
