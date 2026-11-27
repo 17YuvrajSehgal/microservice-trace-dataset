@@ -14,4 +14,6 @@
 # Usage: ./dns_delay_jvm.sh inject [subtle|aggressive] | prove | cleanup | status
 export TARGET_SVC="${TARGET_SVC:-orders}"
 export DNS_FAULT_NAME="dns_delay_jvm"
+# Calibrated 27-11-2026: at 0.60 the front-end errors come and go; at 0.90 they are steady (13-15/s).
+export PROB="${PROB:-0.9}"
 exec bash "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/dns_delay.sh" "$@"

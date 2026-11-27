@@ -759,5 +759,29 @@
       "expected_to_fail": true,
       "note": "v3, calibrated 2026-11-27 on the VM under the 150-user load. 200 slow readers on /catalogue/images/holy_1.jpeg (42,201 bytes), 256 bytes per second each: 40 zero-window advertisements per second on the host, catalogue threads 17 -> 58 (they stay), no rate or answer time moves. 1,000 readers: 200 advertisements per second, still no effect on the service. No metric signature is expected."
     }
+  ],
+  "net_latency_catalogue": [
+    {
+      "canonical": true,
+      "name": "catalogue_p95_latency",
+      "promql": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"catalogue\"}[1m])) by (le))",
+      "direction": "increase",
+      "threshold_sigma": 4,
+      "abs_threshold": 0.03,
+      "min_fraction": 0.6,
+      "why": "v3, calibrated 2026-11-27 on the VM under the 150-user load. netem delay 20 ms on the catalogue, no jitter, no loss: catalogue p50 2.6 -> 45.5 ms and p95 4.9 -> 226 ms (the pre-registered 'service's own time unchanged' was wrong: the delay also sits on its calls to the database), rate 247 -> 223/s, front-end p50 29 -> 85 ms, no errors. 5 ms gave p50 20 and p95 46 ms. Back at once."
+    }
+  ],
+  "dns_delay_jvm": [
+    {
+      "canonical": true,
+      "name": "frontend_5xx_rate",
+      "promql": "sum(rate(http_request_duration_seconds_count{job=\"frontend\",status_code=~\"5..\"}[1m]))",
+      "direction": "increase",
+      "threshold_sigma": 4,
+      "abs_threshold": 5,
+      "min_fraction": 0.5,
+      "why": "v3, calibrated 2026-11-27 on the VM under the 150-user load. 90% of the orders service's DNS queries dropped: front-end 5xx 0 -> 13.5-15.3/s for the whole window, 27 queries dropped in 90 s; orders' own rate and answer time unchanged; back at once. At 60% the errors come and go (11.3/s in one of three readings, 11 queries dropped), not used."
+    }
   ]
 }
