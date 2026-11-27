@@ -66,15 +66,15 @@ SCHED = {'sched_switch', 'sched_waking', 'sched_wakeup', 'sched_wakeup_new',
 #           were the consequence of a clone stall (its D-state blocks are bigger: D-state line)
 #   card C  commsTx prio 100: share 4.6%, max 5.56 ms, 0 waits >= 10 ms    -> NOT STARVED
 #           (already raised by the engineers; it did not help - the earlier false CROWD call)
-STARVED_MAX_MS = 25
-STARVED_SHARE = 0.06
-MILD_MAX_MS = 10
-MILD_COUNT10 = 3
+STARVED_MAX_MS = 25      # longest single wait must be at least 25 ms
+STARVED_SHARE  = 0.06    # and waiting must be at least 6% of its time
+MILD_MAX_MS    = 10      # a 10 ms wait counts as "mild"
+MILD_COUNT10   = 3       # 3 or more waits of 10 ms is also "mild"
 # a victim whose priority already beats the occupants holding OUTRANK_SHARE of its waiting
 # time is not held by a crowd: a higher priority cannot help it
-OUTRANK_SHARE = 0.8
-CROWD_SHARE = 0.6
-IDLE_ELSEWHERE = 0.5
+OUTRANK_SHARE  = 0.8     # if the victim already outranks 80% of who held its CPU, a higher priority cannot help
+CROWD_SHARE    = 0.6     # "crowd" if 60% of its waiting was behind one priority class
+IDLE_ELSEWHERE = 0.5     # "other CPUs idle" if they were idle at least half the time it waited
 
 
 def _pct(vals, q):

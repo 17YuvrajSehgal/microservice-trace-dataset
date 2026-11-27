@@ -1,0 +1,123 @@
+# Blueprint 52 as a structure (28-11-2026). The source of BLUEPRINT.md (bp_render.py) and of the agent's steps.
+
+id: dns_delay_jvm
+fault_type: dns_delay_jvm
+title: a Java service's name lookups time out
+problem_class: Network (name resolution)
+confirms: 'A Java service''s DNS queries are lost: each lookup waits 5 s and is sent again, and requests that need
+  the name fail or wait.'
+evidence: An LTTng kernel trace only
+not_used: Logs, metrics, spans, source code
+when_to_use: A caller of one Java service returns errors in bursts while that service's own metrics look normal.
+status: Calibrated on its 5 v3 runs; tested on all 50 runs of groups 5-7. Not yet checked on the earlier runs. Not
+  run by an agent yet.
+background: '`dns_retry.py` (from blueprint 21) finds lookups whose wait for the answer timed out and that were
+  sent again by the same thread.
+
+
+  | | this fault | normal |
+
+  |---|---|---|
+
+  | lookups by the JVM in 60 s | 6-8 | |
+
+  | of those, timed out and sent again | **5-8 (83-100%)** | 0 |
+
+  | wait per timed-out lookup | 5.0 s | |
+
+
+  The JVM looks names up rarely (it keeps answers), so the numbers are small. The front-end returned 968 to 1,547
+  errors per run.
+
+  '
+lookalikes: 'The same fault on a Node service (blueprint 21): many more lookups, the same verdict.
+
+  A dependency that is down (blueprint 15): lookups work, connections fail.
+
+  A wrong DNS answer: the lookup is fast; not covered here.'
+tools:
+  idx_summary.py:
+    does: Date, span, health
+    usage: idx_summary.py <trace_dir> [--rate SECONDS]
+  extract_slice.sh:
+    does: Cuts one slice with the events you name
+    usage: extract_slice.sh <trace_dir> <date> <time> <secs> <out> '<regex>'
+  dns_retry.py:
+    does: Lookups that timed out and were sent again, per program; the verdict
+    usage: dns_retry.py <slice> <secs>
+vars:
+  EV: syscall_entry_sendto|syscall_entry_sendmmsg|syscall_entry_poll|syscall_exit_poll|syscall_entry_close|sched_process_exec
+facts:
+  day: trace date, YYYY-MM-DD (UTC)
+  trace_start: first packet time, HH:MM:SS
+  trace_end: last packet time, HH:MM:SS
+  fault_time: start of the suspect slice, HH:MM:SS
+  base_time: start of the baseline slice, HH:MM:SS
+start: check_trace
+steps:
+  check_trace:
+    kind: fixed
+    goal: Know the date, when the trace starts and ends, and whether it is healthy.
+    run:
+    - - idx_summary.py
+      - $TRACE
+    extract:
+      day: ^date \(UTC\)\s*:\s*(\S+)
+      trace_start: ^trace start\s*:\s*(\d\d:\d\d:\d\d)
+      trace_end: ^trace end\s*:\s*(\d\d:\d\d:\d\d)
+      duration_s: ^duration\s*:\s*([\d.]+)
+      lost_events: ^lost events\s*:\s*(.+)$
+    next: orient
+  orient:
+    kind: guided
+    goal: Pick a suspect time and a baseline time, 60 s each.
+    suggested:
+    - idx_summary.py $TRACE --rate 10
+    read: 'The last table is the trace data written per 10 s. If you were given a suspect time, take a 60 s slice
+      that starts at it (lookups are rare).
+
+      The baseline slice is the same length, just before the suspect time, with the same traffic. Both must lie
+      inside the trace.
+
+      '
+    sets:
+    - fault_time
+    - base_time
+    budget: 3
+    outcomes:
+      times_chosen:
+        when: both times are chosen
+        next: measure
+  measure:
+    kind: guided
+    goal: Run the tool on the suspect slice.
+    suggested:
+    - extract_slice.sh $TRACE <day> <fault_time> 60 $WORK/d.txt $EV
+    - dns_retry.py $WORK/d.txt 60
+    read: 'One table and one VERDICT line naming the program.
+
+      '
+    sets: []
+    budget: 5
+    outcomes:
+      'yes':
+        when: the tool reads NAME LOOKUPS TIME OUT
+        line: 'VERDICT: NAME LOOKUPS TIME OUT'
+        verdict: confirmed
+        fault_type: dns_delay_jvm
+        next: report
+      'no':
+        when: the tool reads NO LOOKUP TIMEOUTS
+        line: 'VERDICT: NO LOOKUP TIMEOUTS'
+        stop: No program's lookups time out. Not this fault.
+report: 'fault_type: dns_delay_jvm. Copy the VERDICT line. Fix: repair the resolver; cache answers; note that errors
+  can go on for a while after the fix.
+
+  '
+measured:
+- 'Per-run lines: `RESULTS.md` next to this file.'
+- '**Own runs: 5 of 5**; reversed quiet (the tool takes one slice; the baseline slices are the reversed test).'
+- '**Quiet on the other 45 runs** (at most 1 timed-out lookup of 95).'
+- '**The tool is unchanged from blueprint 21.** Nothing was fitted to this family.'
+- '**Errors continue into the recovery window in 4 of 5 runs**; do not read that window as healthy.'
+- '**Not yet run on the earlier runs.**'

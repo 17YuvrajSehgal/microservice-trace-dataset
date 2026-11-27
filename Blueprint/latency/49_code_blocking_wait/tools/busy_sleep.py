@@ -30,6 +30,12 @@ FIXED = 1.5            # the sleeps have one length when the 90th percentile is 
 # The bars were set on run 1 of code_blocking_wait (27-11-2026): the front-end's main thread was
 # on the CPU 84-95% of every slice looked at, had 0 sleeps of 15 ms or more in the baseline and
 # under three other faults, and 39 of 25-40 ms in 10 s under this one. Runs 2-5 were not seen first.
+# CHANGED AFTER THE 50-RUN TEST (27-11-2026): the verdict is now given only for sleeps of ONE FIXED
+# LENGTH. A MongoDB connection thread (conn34, conn57, conn66) was on the CPU 50-56% of some healthy
+# slices and slept 42-53 times for 18 to 182 ms: it works on a slow query and then waits for the next
+# one. From the scheduler alone, waiting for work and a blocking call of varying length look the same,
+# so sleeps of mixed length are listed without a verdict. The first version fired on two healthy
+# baselines because of this. A blocking call whose length varies is therefore not confirmed here.
 
 re_time = re.compile(r'^\[(\d+):(\d+):(\d+)\.(\d+)\]')
 re_ctx = re.compile(r'\{ pid = (\d+), tid = (\d+), procname = "([^"]*)".*?pid_ns = (\d+)')
@@ -90,12 +96,15 @@ def report(base, fault, secs):
     for t, lg, b in rows:
         if len(lg) < MIN_LONG * secs or b > MAX_BASE * len(lg):
             continue
-        fixed = pct(lg, 0.9) <= FIXED * pct(lg, 0.1)
-        kind = (f"all about {pct(lg, 0.5) * 1e3:.0f} ms long (KIND: A WAIT OF ONE FIXED LENGTH)" if fixed else
-                f"{pct(lg, 0.1) * 1e3:.0f} to {pct(lg, 0.9) * 1e3:.0f} ms long (KIND: WAITS OF MIXED LENGTH)")
+        if pct(lg, 0.9) > FIXED * pct(lg, 0.1):
+            out.append(f"OTHER LONG SLEEPS (mixed length, no verdict): {info[t][0]} (tid {t}, pid_ns {info[t][2]}) is on the CPU "
+                       f"{oncpu[t] / secs:.0%} of the slice and slept {len(lg)} times for {pct(lg, 0.1) * 1e3:.0f} to "
+                       f"{pct(lg, 0.9) * 1e3:.0f} ms, {b} times in the baseline - this can be a thread that waits for its next piece of work")
+            continue
         out.append(f"VERDICT: A BUSY THREAD KEEPS STOPPING: {info[t][0]} (tid {t}, pid {info[t][1]}, pid_ns {info[t][2]}) is on the CPU "
                    f"{oncpu[t] / secs:.0%} of the slice and slept {len(lg)} times for {LONG_MS:.0f} ms or more in {secs:.0f} s, {b} times in "
-                   f"the baseline; the sleeps are {kind} and took {sum(lg):.2f} s in total - a blocking call on a thread that has work waiting")
+                   f"the baseline; the sleeps are all about {pct(lg, 0.5) * 1e3:.0f} ms long (from {pct(lg, 0.1) * 1e3:.0f} to "
+                   f"{pct(lg, 0.9) * 1e3:.0f}) and took {sum(lg):.2f} s in total - a blocking call of one fixed length on a thread that has work waiting")
         hits += 1
     if not hits:
         why = (f"most: {info[rows[0][0]][0]} (tid {rows[0][0]}) {len(rows[0][1])} long sleeps, {rows[0][2]} in the baseline" if rows
@@ -122,7 +131,7 @@ def selftest():
         return o
 
     out = "\n".join(report(read(loop()), read(loop(20)), 10))
-    assert "A BUSY THREAD KEEPS STOPPING: node (tid 50, pid 50, pid_ns 7) is on the CPU 82% of the slice and slept 45 times for 15 ms or more in 10 s, 0 times in the baseline; the sleeps are all about 30 ms long (KIND: A WAIT OF ONE FIXED LENGTH) and took 1.35 s in total" in out, out
+    assert "A BUSY THREAD KEEPS STOPPING: node (tid 50, pid 50, pid_ns 7) is on the CPU 82% of the slice and slept 45 times for 15 ms or more in 10 s, 0 times in the baseline; the sleeps are all about 30 ms long (from 30 to 30) and took 1.35 s in total" in out, out
     assert out.count("VERDICT") == 1, out
     out = "\n".join(report(read(loop()), read(loop()), 10))
     assert "NO BUSY THREAD STOPS (most: node (tid 50) 0 long sleeps, 0 in the baseline" in out, out

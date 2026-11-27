@@ -168,16 +168,16 @@ Column "best": K = kernel trace, L = logs, M = metrics, T = distributed traces (
 | D5 | `mtu_blackhole` | 5 | `big_resends.py`, 40 | every catalogue request fails (not only large answers); errors last through the recovery window |
 | G2 | `login_bruteforce` | 5 | `log_errors.py`, 41 | user service 500/s 0 -> 12-17; the front-end has no 401 series |
 | G3 | `unexpected_exec` | 5 | `new_programs.py`, 42 | no metric signature; shell rounds in the front-end |
-| F3 | `code_fd_leak` | 5 | none yet | catalogue open files about 20 -> 290 in the fault; nothing slows; the files stay open after cleanup (by design) |
-| H3 | `code_zombie_procs` | 5 | none yet | no metric signature; about 3 zombies per second |
-| F8 | `code_blocking_wait` | 5 | none yet | front-end span p95 about 140 -> 190 ms, p50 50 -> 80 ms; the Prometheus p95 has little room (tops out near 0.24 s); run 5 was re-collected (noisy baseline) |
-| F6 | `code_chatty_calls` | 5 | none yet | catalogue calls about 190 -> 555/s; front-end span p95 about 145 -> 300 ms |
-| D9 | `net_reorder` | 5 | none yet | catalogue p95 6 -> 89 ms with only a 10 ms delay; nothing is lost |
-| D3 | `slow_reader` | 5 | none yet | no metric signature; 200 clients, about 40 zero-window messages per second |
-| D6 | `code_conn_churn` | 5 | none yet | 248 new connections per second to the catalogue; front-end p50 about 49 -> 93 ms |
-| A3 | `code_ctxswitch_storm` | 5 | none yet | 400 threads, context switches 126k -> 328k/s; catalogue p95 6 -> 87 ms in the traced runs (32 ms in calibration) |
-| D8 | `net_latency` | 5 | none yet | 20 ms constant delay; catalogue span p50 1.5 -> 43 ms, p95 7.5 -> 110 ms, 0 errors; the delay also sits on the catalogue's database calls |
-| D11 | `dns_delay_jvm` | 5 | none yet | 90% of the orders service's DNS queries dropped; front-end 5xx 0 -> 7-12/s; errors continue into the recovery window in 4 of 5 runs |
+| F3 | `code_fd_leak` | 5 | `fd_growth.py`, 47 | catalogue open files about 20 -> 290 in the fault; nothing slows; the files stay open after cleanup (by design) |
+| H3 | `code_zombie_procs` | 5 | `unreaped.py`, 48 | no metric signature; about 3 zombies per second |
+| F8 | `code_blocking_wait` | 5 | `busy_sleep.py`, 49 | front-end span p95 about 140 -> 190 ms, p50 50 -> 80 ms; the Prometheus p95 has little room (tops out near 0.24 s); run 5 was re-collected (noisy baseline) |
+| F6 | `code_chatty_calls` | 5 | `call_fanout.py --slower-ok`, 50 | catalogue calls about 190 -> 555/s; front-end span p95 about 145 -> 300 ms |
+| D9 | `net_reorder` | 5 | `pkt_order.py`, 46 | catalogue p95 6 -> 89 ms with only a 10 ms delay; nothing is lost |
+| D3 | `slow_reader` | 5 | `zero_window.py`, 44 | no metric signature; 200 clients, about 40 zero-window messages per second |
+| D6 | `code_conn_churn` | 5 | `conn_rate.py`, 45 | 248 new connections per second to the catalogue; front-end p50 about 49 -> 93 ms |
+| A3 | `code_ctxswitch_storm` | 5 | `switch_rate.py`, 43 | 400 threads, context switches 126k -> 328k/s; catalogue p95 6 -> 87 ms in the traced runs (32 ms in calibration) |
+| D8 | `net_latency` | 5 | `dev_delay.py`, 51 | 20 ms constant delay; catalogue span p50 1.5 -> 43 ms, p95 7.5 -> 110 ms, 0 errors; the delay also sits on the catalogue's database calls |
+| D11 | `dns_delay_jvm` | 5 | `dns_retry.py`, 52 | 90% of the orders service's DNS queries dropped; front-end 5xx 0 -> 7-12/s; errors continue into the recovery window in 4 of 5 runs |
 
 Group 7 collected 27-11-2026.
 Group 6 (images `catalogue-bugs:v5` and `frontend-bugs:v5`) collected 27-11-2026.

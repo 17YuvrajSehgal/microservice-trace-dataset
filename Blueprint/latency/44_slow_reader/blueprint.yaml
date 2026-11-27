@@ -1,0 +1,125 @@
+# Blueprint 44 as a structure (28-11-2026). The source of BLUEPRINT.md (bp_render.py) and of the agent's steps.
+
+id: slow_reader
+fault_type: slow_reader
+title: a peer reads so slowly that the sender must stop
+problem_class: Network (flow control)
+confirms: 'A client takes a large answer very slowly: it advertises a receive window of zero, and the service cannot
+  send the rest.'
+evidence: An LTTng kernel trace only
+not_used: Logs, metrics, spans, source code
+when_to_use: Connections to one service stay open for minutes and its send buffers are full, while the service is
+  fast for everyone else.
+status: Calibrated on its 5 v3 runs; tested on all 50 runs of groups 5-7. Not yet checked on the earlier runs. Not
+  run by an agent yet.
+background: 'Every TCP segment carries the sender''s receive window: how much more data it can take. A reader that
+  does not read
+
+  advertises zero. `zero_window.py` counts those segments per reader and per server port.
+
+
+  | | this fault | normal |
+
+  |---|---|---|
+
+  | zero-window segments in 20 s | **800, on 200 connections** | 0 |
+
+  | the service | no change in rate or answer time | |
+
+
+  No metric shows this fault (the family runs with `no_metric_signature`).
+
+  '
+lookalikes: 'A slow client on the SENDING side (blueprint 31): the service waits to read a request; no zero window.
+
+  A reset carries a window of zero too: resets and connection attempts are left out.
+
+  A delayed ACK (blueprint 20): a fixed 40 ms stall, the window stays open.'
+tools:
+  idx_summary.py:
+    does: Date, span, health
+    usage: idx_summary.py <trace_dir> [--rate SECONDS]
+  extract_slice.sh:
+    does: Cuts one slice with the events you name
+    usage: extract_slice.sh <trace_dir> <date> <time> <secs> <out> '<regex>'
+  zero_window.py:
+    does: Zero-window segments per reader and server port; the verdict
+    usage: zero_window.py <fault_slice> <secs> [baseline_slice]
+vars:
+  EV: net_dev_queue
+facts:
+  day: trace date, YYYY-MM-DD (UTC)
+  trace_start: first packet time, HH:MM:SS
+  trace_end: last packet time, HH:MM:SS
+  fault_time: start of the suspect slice, HH:MM:SS
+  base_time: start of the baseline slice, HH:MM:SS
+start: check_trace
+steps:
+  check_trace:
+    kind: fixed
+    goal: Know the date, when the trace starts and ends, and whether it is healthy.
+    run:
+    - - idx_summary.py
+      - $TRACE
+    extract:
+      day: ^date \(UTC\)\s*:\s*(\S+)
+      trace_start: ^trace start\s*:\s*(\d\d:\d\d:\d\d)
+      trace_end: ^trace end\s*:\s*(\d\d:\d\d:\d\d)
+      duration_s: ^duration\s*:\s*([\d.]+)
+      lost_events: ^lost events\s*:\s*(.+)$
+    next: orient
+  orient:
+    kind: guided
+    goal: Pick a suspect time and a baseline time, 20 s each.
+    suggested:
+    - idx_summary.py $TRACE --rate 10
+    read: 'The last table is the trace data written per 10 s. If you were given a suspect time, take a slice that
+      starts 40 s after it.
+
+      The baseline slice is the same length, just before the suspect time, with the same traffic. Both must lie
+      inside the trace.
+
+      '
+    sets:
+    - fault_time
+    - base_time
+    budget: 3
+    outcomes:
+      times_chosen:
+        when: both times are chosen
+        next: measure
+  measure:
+    kind: guided
+    goal: Run the tool on the two slices.
+    suggested:
+    - extract_slice.sh $TRACE <day> <base_time> 20 $WORK/b.txt $EV
+    - extract_slice.sh $TRACE <day> <fault_time> 20 $WORK/f.txt $EV
+    - zero_window.py $WORK/f.txt 20 $WORK/b.txt
+    read: 'One table and one VERDICT line.
+
+      '
+    sets: []
+    budget: 5
+    outcomes:
+      'yes':
+        when: the tool reads A PEER READS TOO SLOWLY
+        line: 'VERDICT: A PEER READS TOO SLOWLY'
+        verdict: confirmed
+        fault_type: slow_reader
+        next: report
+      'no':
+        when: the tool reads NO SLOW READER
+        line: 'VERDICT: NO SLOW READER'
+        stop: No peer advertises a zero window. Not this fault.
+report: 'fault_type: slow_reader. Copy the VERDICT line. Fix: close the slow connections; set a write timeout on
+  the service.
+
+  '
+measured:
+- 'Per-run lines: `RESULTS.md` next to this file.'
+- '**Own runs: 5 of 5**; reversed quiet.'
+- '**Quiet on the other 45 runs**: not one zero-window segment in the 95 other slices.'
+- '**The reader is named by address and interface, not by program.** Its address (the host''s bridge) is shared
+  by several programs. The tool adds which program was running when the stopped side sent its next data (`python3`,
+  the slow readers); between containers on one host that is the reader, because its read opens the window.'
+- '**Not yet run on the earlier runs.**'

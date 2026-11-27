@@ -48,3 +48,21 @@
 - After the user logged in again: 10 runs pulled, extracted, 0 checksum errors. Deleted on the VM. The VM is stopped.
 - Day total: 50 runs, 10 new families (groups 5, 6, 7), all verified on Trillium. v3 Sock Shop now has 28 families.
 - Open after today: tools and blueprints for the 10 new families; the false-alarm sweep for tools 33 to 42 on the earlier runs (needs a SLURM job, not requested yet).
+
+## Blueprints 43 to 52 (the 10 families of groups 5, 6, 7)
+
+- **Result: every tool finds its own family in 5 of 5 runs, 0 hits on the other 45 runs, 0 reversed.** Tested on the Trillium login node on all 50 runs. All ten blueprints pass `bp_check.py`.
+- **7 new tools:** `switch_rate`, `zero_window`, `conn_rate`, `pkt_order`, `fd_growth`, `unreaped`, `busy_sleep`. **3 existing tools reused:** `dev_delay` and `dns_retry` unchanged; `call_fanout` got an optional `--slower-ok` rule (default behaviour unchanged, so blueprint 23 holds).
+- **Rules changed after seeing data, all written in the tool headers and RESULTS:**
+  - `fd_growth`: four changes after run 1 (it first missed its own family, then fired on two others). The verdict is now for files only. A socket leak is not confirmed by it.
+  - `pkt_order`: share bar 2% to 0.5% after run 1.
+  - `busy_sleep`: bars set on run 1; narrowed to fixed-length sleeps after the 50-run test found two false alarms on healthy baselines (a MongoDB connection thread). A blocking call of varying length is not confirmed by it.
+  - `zero_window`: wrong field name (`window` for `window_size`), and wrong reader naming. The self-test had the same wrong name, so it passed. Lesson: build self-test lines from a real trace line, not from memory.
+  - `call_fanout --slower-ok`: added after run 1. Not tested against a retry storm, because we have no such runs.
+- **Unchanged from first setting:** `switch_rate`, `conn_rate`, `unreaped`, and the two reused tools. These five are the cleanest results.
+- **Side findings:**
+  - The healthy catalogue opens a new database connection for most requests (50 to 95 per second).
+  - A MongoDB connection thread is on the CPU about half the time in some healthy baselines. This may be the growing databases (noted this morning); not checked.
+  - `dns_retry.py` works on the JVM's resolver without a change, although its header says it reads the C library resolver.
+- **Trillium login node:** processes there are killed when the laptop goes off, also with `nohup`. Long work needs the laptop on, or a SLURM job.
+- **Open:** these ten tools and tools 33 to 42 are not yet run on the earlier v2 and v3 runs. That needs a SLURM job, which the user has not asked for.
