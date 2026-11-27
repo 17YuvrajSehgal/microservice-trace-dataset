@@ -51,6 +51,8 @@ CATALOGUE = [
         "// the control. With STRATA_BUG unset or \"none\" this file behaves exactly as upstream.\n"
         "var strataMu sync.Mutex\n"
         "var strataLeaks int64\n"
+        "var strataFilesMu sync.Mutex\n"
+        "var strataFiles []*os.File\n"
         "\n"
         "// TOGGLED THROUGH A FILE, NOT THE ENVIRONMENT. An environment variable cannot\n"
         "// change without recreating the container, and a restart inside the measured\n"
@@ -136,8 +138,26 @@ CATALOGUE = [
         "\t\tfor i := range socks {\n"
         "\t\t\tsocks[i].Description += pad\n"
         "\t\t}\n"
+        # v4 DEFECT fd_leak: every 10th List request opens a file and keeps it; it is never
+        # closed (the slice keeps a reference, so the garbage collector cannot close it either).
+        # The process's descriptor count only grows.
+        "\tcase \"fd_leak\":\n"
+        "\t\tif atomic.AddInt64(&strataLeaks, 1)%10 == 0 {\n"
+        "\t\t\tif f, err := os.Open(\"/app\"); err == nil {\n"
+        "\t\t\t\tstrataFilesMu.Lock()\n"
+        "\t\t\t\tstrataFiles = append(strataFiles, f)\n"
+        "\t\t\t\tstrataFilesMu.Unlock()\n"
+        "\t\t\t}\n"
+        "\t\t}\n"
+        # v4 DEFECT zombie_procs: every 10th List request starts a short child process (the
+        # service's own binary with an unknown flag: it prints its usage and exits) and never
+        # waits for it. Each child stays in the process table as a zombie until the service ends.
+        "\tcase \"zombie_procs\":\n"
+        "\t\tif atomic.AddInt64(&strataLeaks, 1)%10 == 0 {\n"
+        "\t\t\t_, _ = os.StartProcess(\"/app\", []string{\"/app\", \"-strata-child\"}, &os.ProcAttr{})\n"
+        "\t\t}\n"
         "\t}\n",
-        "v3: spin_loop, thread_leak and large_payload on the List path",
+        "v3/v4: spin_loop, thread_leak, large_payload, fd_leak and zombie_procs on the List path",
     ),
 ]
 
@@ -206,6 +226,22 @@ FRONTEND = [
         "        /^(a+)+$/.test(new Array(parseInt(_rp[1] || '26', 10) + 1).join('a') + '!');\n"
         "      }\n"
         "    }\n"
+        "    if (_bug === 'chatty_calls') {\n"
+        # v4 DEFECT chatty_calls: three extra identical calls to the same service for every
+        # request, whose answers are thrown away. Calls between the front-end and the service
+        # rise four times; each answer is unchanged.
+        "      for (var _c = 0; _c < 3; _c++) { request.get(url, function () {}); }\n"
+        "    }\n"
+        "    if (_bug.indexOf('blocking_wait') === 0) {\n"
+        # v4 DEFECT blocking_wait: on a small share of requests the ONLY thread blocks in a
+        # synchronous wait (Atomics.wait: a futex sleep) for some milliseconds. The thread is
+        # OFF the CPU, unlike event_loop_block and regex_backtrack, but the service still stops.
+        # The flag may carry the wait and the share: blocking_wait:MS:P (default 30 and 0.02).
+        "      var _bw = _bug.split(':');\n"
+        "      if (Math.random() < parseFloat(_bw[2] || '0.02')) {\n"
+        "        Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, parseInt(_bw[1] || '30', 10));\n"
+        "      }\n"
+        "    }\n"
         "    if (_bug === 'serial_awaits') {\n"
         # DEFECT 5: work that should be parallel done one at a time. Latency grows linearly
         # with the number of items, which looks exactly like a slow dependency.
@@ -220,8 +256,8 @@ FRONTEND = [
 SERVICES = {"catalogue": CATALOGUE, "front-end": FRONTEND}
 
 BUGS = {
-    "catalogue": ["lock_across_io", "n_plus_one", "spin_loop", "thread_leak", "large_payload"],
-    "front-end": ["event_loop_block", "unbounded_cache", "serial_awaits", "regex_backtrack"],
+    "catalogue": ["lock_across_io", "n_plus_one", "spin_loop", "thread_leak", "large_payload", "fd_leak", "zombie_procs"],
+    "front-end": ["event_loop_block", "unbounded_cache", "serial_awaits", "regex_backtrack", "chatty_calls", "blocking_wait"],
 }
 
 

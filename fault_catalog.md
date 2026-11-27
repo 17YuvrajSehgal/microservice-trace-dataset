@@ -312,3 +312,13 @@ measured result is added below it as a later entry, never by editing this one.
 - `login_bruteforce`: as predicted for logs (2,206 lines); the front-end's metrics have no 401
   series at all, the user service's 500 rate is what moves (0 -> 20-24/s).
 - `unexpected_exec`: as predicted; nothing outside the kernel.
+
+### 2026-11-27: five more v3 families (group 5), registered BEFORE their first run
+
+| family | recipe | mechanism | predicted best modality | predicted signal |
+|---|---|---|---|---|
+| `code_fd_leak` (F3) | `faults/code_fd_leak.sh` | catalogue keeps a file open on every 10th list request | kernel, metrics | one process opening a file at a steady rate and never closing it; open descriptors grow; nothing else moves |
+| `code_zombie_procs` (H3) | `faults/code_zombie_procs.sh` | catalogue starts a child on every 10th list request and never waits for it | kernel | steady fork and exec of a child, every child exits, none reaped; metrics barely move |
+| `code_chatty_calls` (F6) | `faults/code_chatty_calls.sh` | front-end makes 3 extra identical calls per forwarded request | spans, kernel, metrics | four client calls per request to the same service; the callee's rate up four times |
+| `code_blocking_wait` (F8) | `faults/code_blocking_wait.sh` | front-end's thread blocks in a futex wait (30 ms on 2% of requests) | kernel | the main thread asleep in a futex wait with requests waiting and no CPU used; p95 up, p50 almost unchanged |
+| `wrong_dns` (D10) | `faults/wrong_dns.sh` | front-end's hosts file maps the catalogue's name to 10.255.255.1 | kernel, logs | connection attempts to an address that never answers, no packets to the real catalogue; catalogue pages fail or are slow; the catalogue's own rate drops |
