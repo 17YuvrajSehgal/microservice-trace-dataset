@@ -38,8 +38,8 @@ CATALOGUE = [
     (
         "service.go",
         'import (\n\t"errors"\n\t"strings"\n\t"time"\n',
-        'import (\n\t"errors"\n\t"io/ioutil"\n\t"os"\n\t"runtime"\n\t"strings"\n\t"sync"\n\t"sync/atomic"\n\t"time"\n',
-        "add os, io/ioutil, runtime, sync and sync/atomic for the defect gate",
+        'import (\n\t"errors"\n\t"io/ioutil"\n\t"os"\n\t"runtime"\n\t"strconv"\n\t"strings"\n\t"sync"\n\t"sync/atomic"\n\t"time"\n',
+        "add os, io/ioutil, runtime, strconv, sync and sync/atomic for the defect gate",
     ),
     (
         "service.go",
@@ -51,6 +51,7 @@ CATALOGUE = [
         "// the control. With STRATA_BUG unset or \"none\" this file behaves exactly as upstream.\n"
         "var strataMu sync.Mutex\n"
         "var strataLeaks int64\n"
+        "var strataStorm int64\n"
         "var strataFilesMu sync.Mutex\n"
         "var strataFiles []*os.File\n"
         "\n"
@@ -116,6 +117,36 @@ CATALOGUE = [
         "service.go",
         "\t// DEMO: Change 0 to 850\n\ttime.Sleep(0 * time.Millisecond)\n",
         "\t// DEMO: Change 0 to 850\n\ttime.Sleep(0 * time.Millisecond)\n"
+        # v5 DEFECT ctxswitch_storm: a pool of far too many threads that each wake up very often
+        # and do nothing. Every wake-up is a context switch; each thread uses almost no CPU. The
+        # first List request after the flag is set starts the pool; the threads end by themselves
+        # when the flag changes. The flag may carry the pool size and the sleep in microseconds:
+        # ctxswitch_storm:N:US (default 400 and 5000).
+        "\tif b := strataBug(); strings.HasPrefix(b, \"ctxswitch_storm\") && atomic.CompareAndSwapInt64(&strataStorm, 0, 1) {\n"
+        "\t\tn, us := 400, 5000\n"
+        "\t\tif p := strings.Split(b, \":\"); len(p) == 3 {\n"
+        "\t\t\tn, _ = strconv.Atoi(p[1])\n"
+        "\t\t\tus, _ = strconv.Atoi(p[2])\n"
+        "\t\t}\n"
+        "\t\tgo func() {\n"
+        "\t\t\tvar wg sync.WaitGroup\n"
+        "\t\t\tfor i := 0; i < n; i++ {\n"
+        "\t\t\t\twg.Add(1)\n"
+        "\t\t\t\tgo func() {\n"
+        "\t\t\t\t\tdefer wg.Done()\n"
+        "\t\t\t\t\truntime.LockOSThread() // never unlocked: the thread ends with the goroutine\n"
+        "\t\t\t\t\tfor k := 0; ; k++ {\n"
+        "\t\t\t\t\t\tif k%100 == 0 && !strings.HasPrefix(strataBug(), \"ctxswitch_storm\") {\n"
+        "\t\t\t\t\t\t\treturn\n"
+        "\t\t\t\t\t\t}\n"
+        "\t\t\t\t\t\ttime.Sleep(time.Duration(us) * time.Microsecond)\n"
+        "\t\t\t\t\t}\n"
+        "\t\t\t\t}()\n"
+        "\t\t\t}\n"
+        "\t\t\twg.Wait()\n"
+        "\t\t\tatomic.StoreInt64(&strataStorm, 0)\n"
+        "\t\t}()\n"
+        "\t}\n"
         "\tswitch strataBug() {\n"
         # v3 DEFECT spin_loop: a busy-wait inside the handler. time.Since reads the clock through
         # the vDSO, so the loop makes no system call. Go serves other requests on other threads,
@@ -242,13 +273,16 @@ FRONTEND = [
         "        Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, parseInt(_bw[1] || '30', 10));\n"
         "      }\n"
         "    }\n"
+        # v5 DEFECT conn_churn: keep-alive is switched off for the calls to the service, so every
+        # call opens a new TCP connection and closes it after one answer.
+        "    var _ropt = (_bug === 'conn_churn') ? { url: url, forever: false, headers: { 'Connection': 'close' } } : url;\n"
         "    if (_bug === 'serial_awaits') {\n"
         # DEFECT 5: work that should be parallel done one at a time. Latency grows linearly
         # with the number of items, which looks exactly like a slow dependency.
         "      var _t = Date.now() + 40;\n"
         "      while (Date.now() < _t) { /* serialised wait, as if awaiting in a loop */ }\n"
         "    }\n"
-        "    request.get(url, function(error, response, body) {",
+        "    request.get(_ropt, function(error, response, body) {",
         "event_loop_block, unbounded_cache and serial_awaits on the shared request path",
     ),
 ]
@@ -256,8 +290,8 @@ FRONTEND = [
 SERVICES = {"catalogue": CATALOGUE, "front-end": FRONTEND}
 
 BUGS = {
-    "catalogue": ["lock_across_io", "n_plus_one", "spin_loop", "thread_leak", "large_payload", "fd_leak", "zombie_procs"],
-    "front-end": ["event_loop_block", "unbounded_cache", "serial_awaits", "regex_backtrack", "chatty_calls", "blocking_wait"],
+    "catalogue": ["lock_across_io", "n_plus_one", "spin_loop", "thread_leak", "large_payload", "fd_leak", "zombie_procs", "ctxswitch_storm"],
+    "front-end": ["event_loop_block", "unbounded_cache", "serial_awaits", "regex_backtrack", "chatty_calls", "blocking_wait", "conn_churn"],
 }
 
 

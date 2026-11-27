@@ -322,3 +322,12 @@ measured result is added below it as a later entry, never by editing this one.
 | `code_chatty_calls` (F6) | `faults/code_chatty_calls.sh` | front-end makes 3 extra identical calls per forwarded request | spans, kernel, metrics | four client calls per request to the same service; the callee's rate up four times |
 | `code_blocking_wait` (F8) | `faults/code_blocking_wait.sh` | front-end's thread blocks in a futex wait (30 ms on 2% of requests) | kernel | the main thread asleep in a futex wait with requests waiting and no CPU used; p95 up, p50 almost unchanged |
 | `wrong_dns` (D10) | `faults/wrong_dns.sh` | front-end's hosts file maps the catalogue's name to 10.255.255.1 | kernel, logs | connection attempts to an address that never answers, no packets to the real catalogue; catalogue pages fail or are slow; the catalogue's own rate drops |
+
+### 2026-11-27: four more v3 families (group 6), registered BEFORE their first run
+
+| family | recipe | mechanism | predicted best modality | predicted signal |
+|---|---|---|---|---|
+| `code_ctxswitch_storm` (A3) | `faults/code_ctxswitch_storm.sh` | catalogue starts a pool of 400 threads that each sleep 5 ms in a loop | kernel | a very high `sched_switch` rate for one process over hundreds of threads with very short runs; CPU up a little; answer times about the same |
+| `code_conn_churn` (D6) | `faults/code_conn_churn.sh` | front-end sends `Connection: close` on every call to the catalogue | kernel | one TCP handshake and one close per call where the baseline has almost none; same number of calls, a little slower |
+| `net_reorder` (D9) | `faults/net_reorder.sh` | netem on the catalogue: 10 ms delay, 25% of packets skip it | kernel | out-of-order segments, duplicate ACKs and resends with no packet dropped; answer time up by about the delay |
+| `slow_reader` (D3) | `faults/slow_reader.sh` | 200 clients read a large catalogue answer at 256 bytes per second through a 2 kB receive buffer | kernel | zero-window advertisements from one peer, the service's sends to it stalled; the service answers everyone else, so metrics may show nothing |
