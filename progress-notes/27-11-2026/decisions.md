@@ -24,3 +24,13 @@
 - **Chain rule changed for unattended running:** a family whose check run fails is skipped and the chain continues. Before, the chain stopped at the first failure.
 - **Trace buffers raised to 96 sub-buffers for `code_ctxswitch_storm`**, before its first run, because it adds about 200,000 scheduler events per second.
 - **VM start race:** starting the VM within about a minute of the chain's own shutdown makes it go down again. Wait until the status is TERMINATED before starting.
+
+## Group 6 done, group 7 started (still unattended)
+
+- **Group 6 is on Trillium:** 20 runs, all checks passed, 0 checksum errors, deleted on the VM.
+  - `code_ctxswitch_storm` slowed the catalogue more in the traced runs (p95 about 87 ms) than in calibration (32 ms). A likely cause is the tracing cost per context switch. Not checked yet; look at it when the blueprint is built, and report it as a caveat if it holds.
+- **Group 7 picks: D8 `net_latency` and D11 `dns_delay_jvm`.** Small on purpose: the other ready candidates need a design decision from the user. G5 (SYN flood) is left out of the unattended plan.
+- **Calibration:**
+  - `net_latency` 20 ms: catalogue p50 2.6 to 45 ms, p95 4.9 to 226 ms, no errors. The registered "service's own time unchanged" was wrong, because the delay is also on the catalogue's calls to its database.
+  - `dns_delay_jvm`: at a 60% drop the front-end errors come and go; at 90% they are steady at 13 to 15 per second. The family uses 90%. The orders service's own metrics do not move; the errors show at the front-end.
+- **Lesson:** `dns_delay.sh` is not executable in git, so a wrapper must call it through `bash`. New recipes written on Windows have the same problem; the driver already calls recipes through `bash`.
