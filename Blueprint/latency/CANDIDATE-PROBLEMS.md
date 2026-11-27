@@ -55,7 +55,7 @@ Column "best": K = kernel trace, L = logs, M = metrics, T = distributed traces (
 | A5 | interrupt storm | flood one NIC queue with small packets from outside the stack | `irq_handler_entry` rate, softirq time on one CPU | K | `irq_imbalance` | irq events on the VM |
 | A6 | timer jitter | a periodic thread plus CPU pressure on its core | wake-up latency of one periodic thread grows | K | `cpu_starvation` | - |
 | A7 | CPU frequency drop | cap `scaling_max_freq` on the host | `power_cpu_frequency` falls; same work takes longer on CPU | K, M | `anomaly_cpu` | power events (now in the profile) |
-| A8 | real-time thread hog **(collected: `rt_hog`, 5 runs; tool not built yet)** | one `SCHED_FIFO` thread that never sleeps | one CPU never schedules normal threads | K | `cpu_starvation` | - |
+| A8 | real-time thread hog **(collected: `rt_hog`, blueprint 39)** | one `SCHED_FIFO` thread that never sleeps | one CPU never schedules normal threads | K | `cpu_starvation` | - |
 
 ## B. Memory (6)
 
@@ -87,7 +87,7 @@ Column "best": K = kernel trace, L = logs, M = metrics, T = distributed traces (
 | D2 | listen queue overflow | `somaxconn` 1 on a busy service | SYN retransmits to one port, slow accepts | K | `svc_net` (loss) | - |
 | D3 | slow reader (zero window) | a client that reads slowly | zero-window advertisements, sender blocked in `sendmsg` | K | `nagle_delayed_ack` | - |
 | D4 | bandwidth cap **(collected: `net_bandwidth`)** | `tc tbf` on one container | steady low throughput, queue drops at one device | K, M | `svc_net` | - |
-| D5 | MTU blackhole **(collected: `mtu_blackhole`, 5 runs; tool not built yet)** | lower MTU on a path and drop ICMP | small packets pass, large ones retransmit forever | K | `svc_net` | - |
+| D5 | MTU blackhole **(collected: `mtu_blackhole`, blueprint 40)** | lower MTU on a path and drop ICMP | small packets pass, large ones retransmit forever | K | `svc_net` | - |
 | D6 | connection churn | disable keep-alive in one client | one SYN per request, many short connections | K, T | `error_storm` (opens then resets) | - |
 | D7 | conntrack table full **(PARKED: calibrated, a host-wide outage; see "Parked")** | tiny `nf_conntrack_max` | new connections dropped, old ones fine | K, L | `conn_pool_exhaustion` | - |
 | D8 | pure latency | `netem delay` on one service | no loss, every exchange slower by one constant | T, K | `anomaly_net`, `nagle_delayed_ack` | - |
@@ -130,8 +130,8 @@ Column "best": K = kernel trace, L = logs, M = metrics, T = distributed traces (
 | # | Problem | How to inject | Expected kernel signal | Best | Nearest existing family | Needs |
 |---|---|---|---|---|---|---|
 | G1 | port scan **(collected: `port_scan`, blueprint 34)** | one container connects to every port of every peer | many refused connects from one source to many ports | K | `resource_abuse` | - |
-| G2 | login brute force **(collected: `login_bruteforce`, 5 runs; tool not built yet)** | repeated failing logins at one endpoint | steady stream of fast error answers from one client | L, T | `error_storm` | - |
-| G3 | unexpected program start **(collected: `unexpected_exec`, 5 runs; tool not built yet)** | a service spawns a shell | `exec` of a program never seen in that container | K | `fork_storm` (rate; here once) | - |
+| G2 | login brute force **(collected: `login_bruteforce`, blueprint 41)** | repeated failing logins at one endpoint | steady stream of fast error answers from one client | L, T | `error_storm` | - |
+| G3 | unexpected program start **(collected: `unexpected_exec`, blueprint 42)** | a service spawns a shell | `exec` of a program never seen in that container | K | `fork_storm` (rate; here once) | - |
 | G5 | SYN flood | half-open connections from outside | SYNs with no third packet, listen queue full | K | D2 | - |
 | G6 | unusual file access | read many files outside the service's normal set | `openat` on paths never seen before | K | `data_exfiltration` | `openat` with file names |
 
@@ -164,10 +164,10 @@ Column "best": K = kernel trace, L = logs, M = metrics, T = distributed traces (
 | F5 | `code_large_payload` | 5 | `bytes_per_call.py`, 37 | catalogue sends about 7 times more bytes; answer times barely change |
 | F4 | `code_regex_backtrack` | 5 | `cpu_runs.py`, 38 | front-end p95 about 0.09 -> 0.21 s, p50 barely moves |
 | F2 | `code_thread_leak` | 5 | `thread_growth.py`, 35 | catalogue threads 16 -> about 300 in the fault, about 520 after (by design) |
-| A8 | `rt_hog` | 5 | to build | last CPU idle 0.35-0.40 -> about 0.03; no service moves |
-| D5 | `mtu_blackhole` | 5 | to build | every catalogue request fails (not only large answers); errors last through the recovery window |
-| G2 | `login_bruteforce` | 5 | to build | user service 500/s 0 -> 12-17; the front-end has no 401 series |
-| G3 | `unexpected_exec` | 5 | to build | no metric signature; shell rounds in the front-end |
+| A8 | `rt_hog` | 5 | `rt_cpu.py`, 39 | last CPU idle 0.35-0.40 -> about 0.03; no service moves |
+| D5 | `mtu_blackhole` | 5 | `big_resends.py`, 40 | every catalogue request fails (not only large answers); errors last through the recovery window |
+| G2 | `login_bruteforce` | 5 | `log_errors.py`, 41 | user service 500/s 0 -> 12-17; the front-end has no 401 series |
+| G3 | `unexpected_exec` | 5 | `new_programs.py`, 42 | no metric signature; shell rounds in the front-end |
 
 Group 2 (code defects, images `catalogue-bugs:v3` and `frontend-bugs:v3`) collected 26-11-2026.
 

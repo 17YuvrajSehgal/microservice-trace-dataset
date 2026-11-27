@@ -1,0 +1,131 @@
+# Blueprint 41 as a structure (27-11-2026). The source of BLUEPRINT.md (bp_render.py) and of the agent's steps.
+
+id: login_bruteforce
+fault_type: login_bruteforce
+title: 'a new stream of error messages in one service''s log (here: failed logins)'
+problem_class: Security (credential guessing)
+confirms: One client tries passwords for an account many times per second; every attempt fails and the user service
+  logs each failure.
+evidence: The per-container log files of the run (Docker's timestamped lines)
+not_used: Kernel trace, metrics, spans
+when_to_use: Something may be attacking the shop, or a service suddenly logs one error over and over.
+status: Calibrated on its 5 v3 runs; tested on all 20 group-4 runs. One rule added after run 1. Not yet checked
+  on the earlier runs. Not run by an agent yet.
+background: '`log_errors.py` keeps the log lines that look like errors, turns each into a template (numbers and
+  ids replaced)
+
+  and compares every template''s rate in a suspect window and the window just before. The span-export lines the
+
+  Java agents print are left out: they carry status codes and are not messages.
+
+
+  The tool finds NEW ERROR STREAMS, whatever their cause: it also fires on `mtu_blackhole` (the catalogue''s ''circuit
+
+  breaker is open''). The MESSAGE says which fault it is.
+
+
+  | | `login_bruteforce` | `mtu_blackhole` |
+
+  |---|---|---|
+
+  | user service | `err=Unauthorized`, 13-19 per second | - |
+
+  | front-end | `Error with log in`, the same count | circuit breaker errors, about 30 per second |
+
+  '
+lookalikes: 'Any fault that makes a service fail: its error stream is found too; read the message.
+
+  A real user who mistypes a password: a few lines, far under 1 per second.
+
+  Lines that are not messages (span exports): left out by name.'
+tools:
+  idx_summary.py:
+    does: Date, span, health
+    usage: idx_summary.py <trace_dir> [--rate SECONDS]
+  extract_slice.sh:
+    does: Cuts one slice with the events you name
+    usage: extract_slice.sh <trace_dir> <date> <time> <secs> <out> '<regex>'
+  log_errors.py:
+    does: Error-like log lines per container and message, before and now; the verdict
+    usage: log_errors.py <logs_dir> <suspect_start_utc> <window_seconds>
+vars:
+  LOGS: the run's logs/ directory
+facts:
+  day: trace date, YYYY-MM-DD (UTC)
+  trace_start: first packet time, HH:MM:SS
+  trace_end: last packet time, HH:MM:SS
+  fault_time: start of the suspect slice, HH:MM:SS
+  base_time: start of the baseline slice, HH:MM:SS
+  fault_utc: the suspect time as YYYY-MM-DDTHH:MM:SSZ
+start: check_trace
+steps:
+  check_trace:
+    kind: fixed
+    goal: Know the date, when the trace starts and ends, and whether it is healthy.
+    run:
+    - - idx_summary.py
+      - $TRACE
+    extract:
+      day: ^date \(UTC\)\s*:\s*(\S+)
+      trace_start: ^trace start\s*:\s*(\d\d:\d\d:\d\d)
+      trace_end: ^trace end\s*:\s*(\d\d:\d\d:\d\d)
+      duration_s: ^duration\s*:\s*([\d.]+)
+      lost_events: ^lost events\s*:\s*(.+)$
+    next: orient
+  orient:
+    kind: guided
+    goal: Pick the suspect time.
+    suggested:
+    - idx_summary.py $TRACE --rate 10
+    read: 'If you were given a suspect time, use it. The logs of a run start about 60 s before the injection; the
+      window
+
+      before the suspect time must be inside them, or the tool says NOT JUDGED.
+
+      '
+    sets:
+    - fault_utc
+    budget: 3
+    outcomes:
+      times_chosen:
+        when: the time is chosen
+        next: measure
+  measure:
+    kind: guided
+    goal: Compare error messages per container before and after the suspect time.
+    suggested:
+    - log_errors.py $LOGS <fault_utc> 60
+    read: 'A table of error messages per container and up to 3 VERDICT lines with a sample of each message. Read
+      the message: it names the fault.
+
+      '
+    sets: []
+    budget: 5
+    outcomes:
+      stream:
+        when: the tool reads A NEW STREAM OF ERRORS and the message is about failed logins (Unauthorized, log in)
+        line: 'VERDICT: A NEW STREAM OF ERRORS'
+        verdict: confirmed
+        fault_type: login_bruteforce
+        next: report
+      other_stream:
+        when: the tool reads A NEW STREAM OF ERRORS about something else
+        line: 'VERDICT: A NEW STREAM OF ERRORS'
+        stop: 'A new error stream, but not failed logins. Follow the message (for example a circuit breaker: see
+          the network blueprints).'
+      none:
+        when: the tool reads NO NEW STREAM OF ERRORS or NOT JUDGED
+        line: 'VERDICT: NO NEW STREAM OF ERRORS'
+        stop: No new error stream. Not this fault.
+report: 'fault_type: login_bruteforce. The containers and messages on the verdict lines. Fix: block the client,
+  rate-limit or lock logins for the account.
+
+  '
+measured:
+- 'Per-run lines: `RESULTS.md` next to this file.'
+- '**Own runs: 5 of 5**; reversed quiet (every reversed window inside the logs).'
+- '**Also fires on all 5 `mtu_blackhole` runs** (real error streams); quiet on `rt_hog` and `unexpected_exec`. It
+  is a locator for error streams; the message decides.'
+- '**One rule added after run 1**: the span-export lines are left out (they made every reversed check fire).'
+- '**The logs cannot show the source address** of the attempts here; the user service does not log it.'
+- '**Not yet run on the earlier runs.**'

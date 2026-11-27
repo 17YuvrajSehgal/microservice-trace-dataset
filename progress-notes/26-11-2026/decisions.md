@@ -91,3 +91,20 @@ stopped at 22:42 with nothing idle. Transfer to Trillium started 23:05.
 - Transfer done 23:40: 20 runs, 0 checksum errors (`mtu_blackhole` again without the pull's OK
   line, extracted completely). Deleted on the VM; VM stopped. v3: 18 families, 90 aggressive
   runs + 9 subtle.
+
+## Blueprints 39-42 for group 4 (26/27-11, login node only)
+
+| bp | family | tool | own 5 runs | other 15 group-4 runs | reversed (20) |
+|---|---|---|---|---|---|
+| 39 | `rt_hog` | `rt_cpu.py` | 5/5 (CPU 11 held 88-98%, 0% before) | quiet | quiet |
+| 40 | `mtu_blackhole` | `big_resends.py` | 5/5 in a slice AT the injection (146-149 resends into the catalogue, all 596+ bytes, 0% of smaller ones) | quiet | quiet |
+| 41 | `login_bruteforce` | `log_errors.py` (logs) | 5/5 (user `err=Unauthorized` 13-19/s, 0 before) | fires on all 5 `mtu_blackhole` (real error streams), quiet on the other 10 | quiet |
+| 42 | `unexpected_exec` | `new_programs.py` | 5/5 (8 new programs in the front-end) | quiet | quiet |
+
+Changed after seeing data, and said in each blueprint:
+- `log_errors.py`: span-export lines left out (every reversed check fired); "not judged" when the
+  logs start inside the baseline window.
+- `big_resends.py`: changed twice on the 5 mtu runs (fixed 1,000-byte cut-off: 0/5; share of
+  segments above the cut-off resent: 3/5, swings 37-78%). Final rule: the size split. Also
+  names the RECEIVING end. A slice 40 s into the fault finds nothing (circuit breaker).
+Not done yet: the earlier runs (SLURM job), as for 33-38.
