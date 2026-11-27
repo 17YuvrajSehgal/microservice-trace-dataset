@@ -14,4 +14,4 @@
 # Usage: ./dns_delay_jvm.sh inject [subtle|aggressive] | prove | cleanup | status
 export TARGET_SVC="${TARGET_SVC:-orders}"
 export DNS_FAULT_NAME="dns_delay_jvm"
-exec "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/dns_delay.sh" "$@"
+exec bash "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/dns_delay.sh" "$@"
