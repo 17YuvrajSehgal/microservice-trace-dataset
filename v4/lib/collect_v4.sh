@@ -29,6 +29,8 @@ source "$V4/lib/common.sh"
 # shellcheck source=/dev/null
 source "$V4/problems/$PROBLEM/problem.sh" || { echo "no problem $PROBLEM"; exit 1; }
 [[ " $LANGS " == *" $LANG_ "* ]] || { echo "$PROBLEM has no $LANG_ program (languages: $LANGS)"; exit 1; }
+# A problem may check a different number in one language (KPI_python=done ...): see lock_contention.
+eval "KPI=\${KPI_${LANG_}:-\$KPI}; KPI_DIR=\${KPI_DIR_${LANG_}:-\$KPI_DIR}; KPI_FACTOR=\${KPI_FACTOR_${LANG_}:-\$KPI_FACTOR}"
 [[ -d "$ARCH/$RUN" ]] && { log "already collected - skipped"; exit 0; }
 
 rm -rf "$OUT"; mkdir -p "$OUT/logs" "$OUT/meta" "$ARCH"
@@ -103,7 +105,7 @@ python3 - "$OUT/ground_truth.json" <<PY
 import json, sys
 json.dump({"fault": {"family": "$FAM", "name": "$PROBLEM", "language": "$LANG_", "mode": "$MODE",
                      "candidate": "$CAND", "mechanism": """$MECH""", "target_process": "$(program_comm "$LANG_")",
-                     "pid": $PID, "pinned_cpu": "${PIN:-none}",
+                     "pid": $PID, "pinned_cpu": "${PIN:-${ROLE_CPU:-none}}",
                      "injection_start_utc": "$FAULT_START", "injection_end_utc": "$FAULT_END",
                      "note": "in a healthy run nothing was switched on; the times mark the same windows"},
            "remediation": {"action": """$REMEDIATION"""}, "trace": {"start_utc": "$TRACE_START", "end_utc": "$TRACE_END"},

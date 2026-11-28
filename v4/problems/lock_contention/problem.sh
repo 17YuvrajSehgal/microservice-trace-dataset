@@ -8,3 +8,7 @@ REMEDIATION="shorten the critical section, or split the lock (one lock per shard
 LANGS="c go java python node"
 SHORT=lockcont
 KPI=wait_avg_ms; KPI_DIR=up; KPI_FACTOR=5
+# Python: the waiting moves to the GIL (a worker spinning in the critical section holds it), so
+# the measured wait for M stays near 0 while the work done falls (smoke run 28-11-2026: about
+# 14,650 -> 1,000-4,700 per second). Python is checked on the work done instead.
+KPI_python=done; KPI_DIR_python=down; KPI_FACTOR_python=3

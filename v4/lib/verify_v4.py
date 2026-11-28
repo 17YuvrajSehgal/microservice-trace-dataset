@@ -30,7 +30,7 @@ for line in open(f"{run}/logs/program.log", errors="replace"):
     elif 20 <= (t - a).total_seconds() and t < b:
         during.append(v)
 res = {"kpi": kpi, "direction": direction, "factor": factor, "mode": gt["mode"], "n_before": len(before), "n_during": len(during)}
-if len(before) < 10 or len(during) < 10:
+if len(before) < 10 or len(during) < 5:      # a starved program prints less often (Python under its GIL)
     res.update(verdict="no_data", note="too few stats lines: did the program stop printing?")
 else:
     mb, md = statistics.median(before), statistics.median(during)

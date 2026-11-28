@@ -11,16 +11,20 @@ MECH="low (normal) holds L 5 ms in 20; high (FIFO 50) needs L every 10 ms; with 
 REMEDIATION="use a lock with priority inheritance (PTHREAD_PRIO_INHERIT), or do not mix real-time and normal threads on one lock"
 LANGS="c go java python"
 SHORT=prioinv
-PIN_CPU=11
+# Only the four role threads are put on one CPU (in post_start). The first version pinned the
+# whole program there; then the spinning mids also starved its own reporting thread (smoke run
+# 28-11-2026: stats lines 6 s apart), and the runtime's own threads (JIT, GC) shared that CPU.
+ROLE_CPU=11
 KPI=high_wait_max_ms; KPI_DIR=up; KPI_FACTOR=4
 post_start() {
     wait_tids 4 || return 1
     local role tid
     while read -r role tid; do
+        sudo taskset -pc "$ROLE_CPU" "$tid" > /dev/null
         case "$role" in
             high) sudo chrt -f -p 50 "$tid" ;;
             mid*) sudo chrt -f -p 30 "$tid" ;;
         esac
     done < "$V4_TIDS"
-    echo "[v4] priorities set: $(while read -r r t; do echo -n "$r=$(chrt -p "$t" | sed -n 's/.*policy: //p')/$(chrt -p "$t" | sed -n 's/.*priority: //p') "; done < "$V4_TIDS")"
+    echo "[v4] roles on CPU $ROLE_CPU, priorities set: $(while read -r r t; do echo -n "$r=$(chrt -p "$t" | sed -n 's/.*policy: //p')/$(chrt -p "$t" | sed -n 's/.*priority: //p') "; done < "$V4_TIDS")"
 }
