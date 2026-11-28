@@ -36,3 +36,16 @@
 - **Unchanged from first setting:** `half_open` (cleanest result), `log_errors`.
 - **Finding:** "too many requests" is also gobreaker's half-open answer, so the message alone cannot prove a rate limit; the absence of dependency errors does. My 429 mapping also catches those half-open answers (noted for the paper's description of the family).
 - **Pattern:** in `slow_query` the knock-on service shows as "the server waits" and the root as "the server works longer". This is a good example for the agent's step of picking the root among several verdicts.
+
+## v4: the controlled tier (user's idea, agreed today)
+
+- **What:** small programs with one problem each, in C, Go, Java, Python and Node.js, run on the VM's host (Sock Shop stopped) and traced with exactly the v3 kernel profile. Every run has the same background noise (a web server and client, gzip, sha256sum), and every problem and language has a healthy twin. Code in `v4/`.
+- **Why two tiers:** v4 gives fast, varied, labelled runs, and the problems Sock Shop cannot make (deadlock, slow consumer, I/O stall), plus labelled data for the bare-metal blueprints 8 to 11. Sock Shop and Train Ticket stay the realistic tier. The noise and the healthy twins answer "toy programs".
+- **Pilot:** deadlock, lock_contention, priority_inversion, cpu_starvation, slow_consumer, io_stall. 28 problem-and-language pairs, 3 fault runs and 1 healthy twin each (112 runs, about 7.5 h). Predictions registered before the first collection run.
+- **The smoke test (short runs, not in the dataset) found:**
+  - Priority inversion: pinning the whole program to one CPU starved its own reporting thread; now only the 4 role threads are pinned.
+  - Priority inversion does not form in Python (the interpreter lock decides who runs). Python is left out of that problem; a real runtime difference.
+  - Lock contention in Python moves the waiting to the interpreter lock; it is checked on work done.
+  - I/O stall: the freezes work (about 2,035 ms writes once every 6 s), but a median check cannot see them; it now uses the 90th percentile.
+  - One short run is 25 to 70 MB packed; a full run should be about 75 to 200 MB, so the pilot is about 15 GB in total.
+- **Next after the pilot:** run the existing blueprints on it first (deadlock 14, priority inversion 11, CPU starvation 8, lock tools), then v4 versions of the families already collected, as the user asked, to test the blueprints' robustness.
