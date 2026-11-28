@@ -9,7 +9,10 @@
 CAND="(blueprint 11 priority_inversion, v4 controlled tier)"
 MECH="low (normal) holds L 5 ms in 20; high (FIFO 50) needs L every 10 ms; with the fault two mid threads (FIFO 30) spin on the same CPU"
 REMEDIATION="use a lock with priority inheritance (PTHREAD_PRIO_INHERIT), or do not mix real-time and normal threads on one lock"
-LANGS="c go java python"
+# Python is left out too: measured in two smoke runs (28-11-2026) no inversion forms. The interpreter
+# lock decides which thread runs, the low thread rarely holds L when high wants it, and high's longest
+# wait stayed at 0.005-0.006 ms with the fault on. A real difference between runtimes, kept as a note.
+LANGS="c go java"
 SHORT=prioinv
 # Only the four role threads are put on one CPU (in post_start). The first version pinned the
 # whole program there; then the spinning mids also starved its own reporting thread (smoke run
