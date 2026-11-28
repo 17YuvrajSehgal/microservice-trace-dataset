@@ -19,7 +19,7 @@ sudo add-apt-repository -y ppa:lttng/stable-2.15 || true
 sudo apt-get update -qq
 sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq \
     lttng-tools lttng-modules-dkms python3-lttngust babeltrace2 \
-    stress-ng jq gh git curl python3 \
+    stress-ng jq gh git curl python3 hping3 \
     python3-matplotlib
 # python3-matplotlib is NOT optional despite verify_injection treating it as such.
 # v1 evidence: Sock Shop asked for --plot on all 50 runs and produced ZERO images, because
