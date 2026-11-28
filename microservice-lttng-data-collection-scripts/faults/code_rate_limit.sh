@@ -11,6 +11,11 @@
 # switched on at run time through the flag file /dev/shm/strata_bug, so the baseline and the
 # control are the SAME binary with the defect off. `arm` (before tracing) puts the service on
 # that image with the defect off; `inject` writes the flag; `cleanup` writes "none".
+# MEASURED 28-11-2026 (check run r1): most failures are NOT the 429s. The catalogue's own circuit
+# breaker on the list path (stock gobreaker: opens after 5 failures in a row, stays open 30 s)
+# counts the 429s as failures and opens, and then every list request fails at once with 500
+# ("circuit breaker is open"). r1 had 4,191 of those and 27 rate-limit rejections. The breaker is
+# Sock Shop's own code and is left as it is: a limit that trips a breaker is a real cascade.
 # Built by faults/code-defects/build_defect_images.sh (v6 images, 28-11-2026).
 #
 # Pre-registered expectations (v3, CANDIDATE-PROBLEMS E11): the KERNEL shows the catalogue answering part of its list requests at once with a short

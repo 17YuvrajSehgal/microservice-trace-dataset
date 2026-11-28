@@ -799,13 +799,13 @@
   "code_rate_limit": [
     {
       "canonical": true,
-      "name": "catalogue_429_rate",
-      "promql": "sum(rate(http_request_duration_seconds_count{job=\"catalogue\",status_code=\"429\"}[1m]))",
+      "name": "catalogue_error_rate",
+      "promql": "sum(rate(http_request_duration_seconds_count{job=\"catalogue\",status_code=~\"429|5..\"}[1m]))",
       "direction": "increase",
       "threshold_sigma": 4,
       "abs_threshold": 10,
       "min_fraction": 0.6,
-      "why": "v3, calibrated 2026-11-28 on the VM under the 150-user load. the catalogue's list path gets only about 30-46 requests per second, so limits of 60 and 120 never fired. At 8 per second: 30-39 rejected per second, catalogue p95 7.3 -> 5.0 ms (rejections are fast), front-end unchanged. Those rejections were answered with 500 because go-kit 0.4 wraps the error; fixed in catalogue-bugs:v7 to answer 429. The 429 target is checked on the first v7 run."
+      "why": "v3, calibrated 2026-11-28 on the VM under the 150-user load. the catalogue's list path gets only about 30-46 requests per second, so limits of 60 and 120 never fired. At 8 per second: 30-39 rejected per second, catalogue p95 7.3 -> 5.0 ms (rejections are fast), front-end unchanged. Those rejections were answered with 500 because go-kit 0.4 wraps the error; fixed in catalogue-bugs:v7 to answer 429. The 429 target is checked on the first v7 run. CHANGED 28-11-2026 after check run r1 failed on the 429-only target: the catalogue's stock circuit breaker on the List path (gobreaker, opens after 5 failures in a row, stays open 30 s) turns a few rate-limit rejections into a stream of fast 500s. In r1 the catalogue logged 4,191 'circuit breaker is open' and 27 'too many requests'; 429s were 0.18/s. The target now counts both. r1 is deleted and the family re-collected with this target."
     }
   ],
   "code_unbounded_queue": [
