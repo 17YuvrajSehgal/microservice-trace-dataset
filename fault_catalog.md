@@ -353,3 +353,16 @@ Not collected from the planned batch, decided 28-11-2026 from measurements on th
 - E8 slow consumer: only 3 shipping messages arrive in 20 s, and slowing each one needs a code change in `queue-master`, which has no fork. Parked.
 - H4 I/O stall: the databases acknowledge a write before it reaches the disk (the same finding as `io_cap`), so freezing the device is not expected to reach any service. Parked with `io_cap`.
 - 2026-11-28, after check run r1 of `code_rate_limit` (the prediction above is kept as written): the 429s were few (27 in the run); the catalogue's stock circuit breaker opened and answered about 4,190 list requests with 500 ("circuit breaker is open"). The family is a rate limit that trips a circuit breaker. Its verification target now counts 429 and 5xx; r1 was deleted and the family re-collected.
+
+### 2026-11-28: v4 (the controlled tier) pilot, registered BEFORE the first collection run
+
+Small programs on the VM's host, one problem each, in C, Go, Java, Python and Node.js (priority inversion: no Node), with the same background noise in every run and a healthy twin for each. Same LTTng kernel profile as v2 and v3. Short smoke runs were made first to check the programs work; they are not part of the dataset.
+
+| family | mechanism | predicted best modality | predicted kernel signal | expected differences between languages |
+|---|---|---|---|---|
+| `v4_deadlock` | 8 workers lock A then B; one thread locks B then A; a pair waits forever and the rest wait behind it | kernel | the workers asleep in futex waits that never end, no CPU, the program's work drops to 0 | Go parks goroutines in its own scheduler, so its OS threads go idle with no per-goroutine futex wait; Python and Node show futex waits as in C and Java |
+| `v4_lock_contention` | 16 workers share one lock held 2 ms instead of 20 us | kernel | many short futex waits on one address, threads waking each other in turn, CPU near one core | Python's GIL adds a second shared lock; Go's mutex spins a little before parking |
+| `v4_priority_inversion` | low (normal) holds L 5 ms in 20; high (FIFO 50) needs L; mid threads (FIFO 30) spin on the same CPU | kernel | the high-priority thread waiting on a lock while real-time mid threads run and the low thread that holds the lock waits runnable | Python's GIL makes every thread wait for the same lock as well |
+| `v4_cpu_starvation` | a 10 ms periodic task pinned to CPU 10; 3 busy processes start on the same CPU | kernel | the task waiting runnable on CPU 10 behind stress-ng processes, its wake-up lateness up | small: the fault is outside the program |
+| `v4_slow_consumer` | producer 500 items/s; consumer 1 ms per item, 3 ms sleeping with the fault | metrics, kernel | the consumer thread sleeping 3 ms per item while the producer keeps its pace; the program's memory growing | Node runs both on one thread (timers); the others use two threads and a queue |
+| `v4_io_stall` | 4 KB write + fsync every 5 ms on /mnt/v4io; the file system frozen 2 s in every 6 s | kernel | the writer blocked for about 2 s inside write or fsync, no block I/O for that device meanwhile, then a burst | Node blocks its event loop (synchronous calls); the others block one thread |
