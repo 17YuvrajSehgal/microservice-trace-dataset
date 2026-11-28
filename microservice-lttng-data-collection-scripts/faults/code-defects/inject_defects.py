@@ -52,6 +52,10 @@ CATALOGUE = [
         "var strataMu sync.Mutex\n"
         "var strataLeaks int64\n"
         "var strataStorm int64\n"
+        "var strataRLSec, strataRLCount int64\n"
+        "\n"
+        "// ErrRateLimited is returned by the rate_limit defect; transport.go answers it with 429.\n"
+        "var ErrRateLimited = errors.New(\"too many requests\")\n"
         "var strataFilesMu sync.Mutex\n"
         "var strataFiles []*os.File\n"
         "\n"
@@ -98,6 +102,24 @@ CATALOGUE = [
         # DEFECT 1: the lock is held across the database round trip, so every List request
         # serialises behind one mutex. The single most common real concurrency bug in service
         # code, and the honest counterpart to the synthetic lock_contention recipe.
+        # v6 DEFECT rate_limit: the List path accepts at most N requests per second and answers
+        # the rest at once with 429, before any work is done. Nothing is slow; above N it fails
+        # fast. The flag carries N: rate_limit:N (default 60).
+        "\tif b := strataBug(); strings.HasPrefix(b, \"rate_limit\") {\n"
+        "\t\tlimit := int64(60)\n"
+        "\t\tif p := strings.Split(b, \":\"); len(p) == 2 {\n"
+        "\t\t\tif v, err := strconv.Atoi(p[1]); err == nil {\n"
+        "\t\t\t\tlimit = int64(v)\n"
+        "\t\t\t}\n"
+        "\t\t}\n"
+        "\t\tnow := time.Now().Unix()\n"
+        "\t\tif atomic.SwapInt64(&strataRLSec, now) != now {\n"
+        "\t\t\tatomic.StoreInt64(&strataRLCount, 0)\n"
+        "\t\t}\n"
+        "\t\tif atomic.AddInt64(&strataRLCount, 1) > limit {\n"
+        "\t\t\treturn []Sock{}, ErrRateLimited\n"
+        "\t\t}\n"
+        "\t}\n"
         "\tif strataBug() == \"lock_across_io\" {\n"
         "\t\tstrataMu.Lock()\n"
         "\t\tdefer strataMu.Unlock()\n"
@@ -111,7 +133,14 @@ CATALOGUE = [
         "\t\t\t_ = s.db.Get(&one, \"SELECT * FROM sock WHERE sock_id = ?;\", socks[i].ID)\n"
         "\t\t}\n"
         "\t}",
-        "lock_across_io and n_plus_one, both on the List query path",
+        "rate_limit (v6), lock_across_io and n_plus_one, all on the List query path",
+    ),
+    (
+        "transport.go",
+        "\tcase ErrNotFound:\n\t\tcode = http.StatusNotFound\n",
+        "\tcase ErrNotFound:\n\t\tcode = http.StatusNotFound\n"
+        "\tcase ErrRateLimited:\n\t\tcode = http.StatusTooManyRequests\n",
+        "v6: the rate_limit defect is answered with 429",
     ),
     (
         "service.go",
@@ -223,6 +252,7 @@ FRONTEND = [
         "    return v;\n"
         "  };\n"
         "  var strataCache = [];   // deliberately unbounded, for the cache defect\n"
+        "  var strataQ = [], strataQTimer = null;   // the queue of the unbounded_queue defect\n"
         "  var crypto = require('crypto');\n",
         "add the defect gate to the shared helper module",
     ),
@@ -276,6 +306,27 @@ FRONTEND = [
         # v5 DEFECT conn_churn: keep-alive is switched off for the calls to the service, so every
         # call opens a new TCP connection and closes it after one answer.
         "    var _ropt = (_bug === 'conn_churn') ? { url: url, forever: false, headers: { 'Connection': 'close' } } : url;\n"
+        # v6 DEFECT unbounded_queue: every call to a service is put in an in-process queue, and one
+        # worker takes R calls per second from it (a batch every 10 ms). When more calls arrive than
+        # R, the queue only grows: memory grows and every call waits longer than the one before.
+        # The flag carries R: unbounded_queue:R (default 150). When the flag is cleared the worker
+        # empties the queue at once and stops.
+        "    if (_bug.indexOf('unbounded_queue') === 0) {\n"
+        "      var _uq = _bug.split(':'), _rate = parseInt(_uq[1] || '150', 10);\n"
+        "      strataQ.push(function () { request.get(_ropt, function(error, response, body) {\n"
+        "        if (error) return next(error);\n"
+        "        helpers.respondSuccessBody(res, body);\n"
+        "      }); });\n"
+        "      if (!strataQTimer) {\n"
+        "        strataQTimer = setInterval(function () {\n"
+        "          var on = strataBug().indexOf('unbounded_queue') === 0;\n"
+        "          var k = on ? Math.max(1, Math.round(_rate / 100)) : strataQ.length;\n"
+        "          while (k-- > 0 && strataQ.length) { strataQ.shift()(); }\n"
+        "          if (!on && !strataQ.length) { clearInterval(strataQTimer); strataQTimer = null; }\n"
+        "        }, 10);\n"
+        "      }\n"
+        "      return;\n"
+        "    }\n"
         "    if (_bug === 'serial_awaits') {\n"
         # DEFECT 5: work that should be parallel done one at a time. Latency grows linearly
         # with the number of items, which looks exactly like a slow dependency.
@@ -290,8 +341,8 @@ FRONTEND = [
 SERVICES = {"catalogue": CATALOGUE, "front-end": FRONTEND}
 
 BUGS = {
-    "catalogue": ["lock_across_io", "n_plus_one", "spin_loop", "thread_leak", "large_payload", "fd_leak", "zombie_procs", "ctxswitch_storm"],
-    "front-end": ["event_loop_block", "unbounded_cache", "serial_awaits", "regex_backtrack", "chatty_calls", "blocking_wait", "conn_churn"],
+    "catalogue": ["lock_across_io", "n_plus_one", "spin_loop", "thread_leak", "large_payload", "fd_leak", "zombie_procs", "ctxswitch_storm", "rate_limit"],
+    "front-end": ["event_loop_block", "unbounded_cache", "serial_awaits", "regex_backtrack", "chatty_calls", "blocking_wait", "conn_churn", "unbounded_queue"],
 }
 
 

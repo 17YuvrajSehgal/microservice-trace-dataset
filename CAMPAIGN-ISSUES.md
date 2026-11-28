@@ -982,3 +982,30 @@ for these runs. The relay now also follows Train Ticket containers (not tested o
    ground truth, meta, logs, spans). The large CTF streams are protected by the gzip check of
    the archive during the pull, not by a per-file checksum.
 8. **The fault families were entered in `fault_catalog.md` after collection**, not before.
+
+## Issue 28 - the MongoDB collections grow with every run, and three of them have no index for their main query
+
+Found 28-11-2026 while designing the `slow_query` family. **Not fixed; decision pending.**
+
+The load generator registers users and places orders in every run, and nothing resets the
+databases between runs. On 28-11-2026:
+
+| collection | documents | index on the field the service looks up | one lookup (explain) |
+|---|---|---|---|
+| `data.customerOrder` (orders-db) | 48,461 | none (only `_id`) | reads all 48,461 documents, 13 ms; 27 ms on average under load |
+| `data.cart` (carts-db) | 28,894 | none (only `_id`) | reads all 28,894 documents, 11 ms |
+| `data.item` (carts-db) | 227,345 | none (only `_id`) | not measured |
+| `users.customers` (user-db) | 32,903 | `username` | reads 1 document, 0 ms |
+
+What it means for the data:
+- Every order and cart lookup reads the whole collection, so the orders and carts services get
+  a little slower with every run. Runs of the same family are collected back to back, so within
+  a family the drift is small. Between families collected days apart it is not.
+- The front-end's baseline answer times did not move much over v3 (113 to 148 ms p95 in the group
+  5 checks), but the orders and carts services were not checked.
+- Before comparing baselines across families, read the collection sizes. They can be counted
+  from each run's metrics and load logs.
+
+Options: (a) leave it and report it; (b) reset the three databases to one saved state before
+each family; (c) add the missing indexes. (b) keeps the system as designed; (c) changes it.
+Option (b) or (c) would make new runs differ from the 149 v3 runs already collected.

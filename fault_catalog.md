@@ -338,3 +338,17 @@ measured result is added below it as a later entry, never by editing this one.
 |---|---|---|---|---|
 | `net_latency` (D8) | `faults/net_latency.sh` | netem on the catalogue: a constant 20 ms delay, no jitter, no loss | spans, kernel | every exchange slower by one constant, no resends; the caller's view of the service slower by about the delay, the service's own time unchanged |
 | `dns_delay_jvm` (D11) | `faults/dns_delay_jvm.sh` | 60% of the orders service's DNS queries are dropped in its own namespace | kernel | repeated DNS queries from the JVM seconds apart and a stall before a new connection; lookups are rare (JVM cache, pooled connections), so metrics may show nothing |
+
+### 2026-11-28: four more v3 families (group 8), registered BEFORE their first run
+
+| family | recipe | mechanism | predicted best modality | predicted signal |
+|---|---|---|---|---|
+| `slow_query` (E5) | `faults/slow_query.sh` | the `username` index on `users.customers` is dropped; every login reads the whole collection | kernel, metrics | user-db's mongod on the CPU for each login, the user service waiting on its database socket; the user service's login answer time and user-db's CPU up |
+| `code_rate_limit` (E11) | `faults/code_rate_limit.sh` | the catalogue's list path accepts 60 requests per second and answers the rest at once with 429 | metrics, kernel | catalogue 429s with an unchanged or lower answer time; short answers with no database call; logs may show nothing |
+| `code_unbounded_queue` (F7) | `faults/code_unbounded_queue.sh` | the front-end puts its calls to services in a queue served at 150 per second | metrics, spans | the front-end's memory and answer time rising together through the window; its main thread mostly idle, waking every 10 ms; server spans growing while client spans stay short |
+| `syn_flood` (G5) | `faults/syn_flood.sh` | 20,000 SYNs per second to the front-end's port from an unused address on its own network | kernel | thousands of attempts per second to one port from one address, all answered and none finished, the answers sent again; little or nothing in metrics (SYN cookies) |
+
+Not collected from the planned batch, decided 28-11-2026 from measurements on the VM:
+- E7 database deadlock: no Sock Shop service writes to MySQL (the catalogue only reads), and MongoDB has no lock-order deadlock. Moved to the Train Ticket list (its services write to MySQL).
+- E8 slow consumer: only 3 shipping messages arrive in 20 s, and slowing each one needs a code change in `queue-master`, which has no fork. Parked.
+- H4 I/O stall: the databases acknowledge a write before it reaches the disk (the same finding as `io_cap`), so freezing the device is not expected to reach any service. Parked with `io_cap`.

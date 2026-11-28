@@ -91,9 +91,9 @@ EOF
 }
 
 mkdir -p "$WORK"
-build_one catalogue otel-instrumentation catalogue-bugs:v5 \
+build_one catalogue otel-instrumentation catalogue-bugs:v6 \
     -f "$WORK/catalogue/docker/catalogue/Dockerfile"
-build_one front-end otel-instrumentation frontend-bugs:v5
+build_one front-end otel-instrumentation frontend-bugs:v6
 
 echo
 if [[ "$CHECK_ONLY" -eq 1 ]]; then
