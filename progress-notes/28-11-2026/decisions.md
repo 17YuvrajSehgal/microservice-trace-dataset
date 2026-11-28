@@ -16,3 +16,10 @@
 - **SYN flood safety:** the fake source is an unused address on the service's own Docker network, so no packet leaves the VM. Checked before each start.
 - **Issue 28 (new, decision pending):** MongoDB collections grow every run, and orders and carts have no index for their lookup (a 48,000-document scan, 27 ms under load). Nothing changed, to stay comparable with the 149 v3 runs. Options are in CAMPAIGN-ISSUES.
 - **Laptop memory:** Claude Code keeps killing the local watchers. The chains run on the VM and shut it down themselves, so nothing is lost; status is checked by hand.
+
+## Group 8 collected and on Trillium
+
+- 20 runs, all checks passed, no lost events; on Trillium with 0 checksum errors; deleted on the VM; VM stopped.
+- `code_rate_limit` was re-collected in full after its first check run failed on the 429-only target (the circuit breaker).
+- `syn_flood` DOES move the front-end's p95 under tracing (+30 to +75 ms in all 5 runs), while the calibration without tracing showed +4 to +16 ms. The "no metric signature" note was wrong and is corrected in the target. This is the second family that is harsher under tracing (after `code_ctxswitch_storm`); both add many kernel events per second. Worth a line in the paper's threats to validity.
+- v3 Sock Shop now has 32 families (160 aggressive runs plus 9 subtle). 20 candidates are not started, 7 of them ready.

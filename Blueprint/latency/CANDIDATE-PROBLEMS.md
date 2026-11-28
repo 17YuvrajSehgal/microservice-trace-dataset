@@ -1,15 +1,15 @@
 # Candidate problems for the next collection (towards about 100)
 
-**Updated 27-11-2026.** Status of every candidate, in one place:
+**Updated 28-11-2026.** Status of every candidate, in one place:
 
 | status | count | which |
 |---|---|---|
-| collected in v3 | 28 | A1, A2, A3, A4, A8, C1, D1, D3, D4, D5, D6, D8, D9, D11, E6, F1, F2, F3, F4, F5, F6, F8, G1, G2, G3, H2, H3, and `slow_client` (new, in place of E3) |
-| parked | 8 | D7, D10, and B1, B6, E1, E2, H5, H6 (reasons in "Parked") |
-| removed (cancelled) | 8 | B3, B8, C2, C4, D12, E3, E13, G4 (reasons in "Removed") |
-| left, not started | 27 | see "Left" below |
+| collected in v3 | 32 | A1, A2, A3, A4, A8, C1, D1, D3, D4, D5, D6, D8, D9, D11, E5, E6, E11, F1, F2, F3, F4, F5, F6, F7, F8, G1, G2, G3, G5, H2, H3, and `slow_client` (new, in place of E3) |
+| parked | 10 | D7, D10, E8, H4, and B1, B6, E1, E2, H5, H6 (reasons in "Parked") |
+| removed (cancelled) | 9 | B3, B8, C2, C4, D12, E3, E7, E13, G4 (reasons in "Removed") |
+| left, not started | 20 | see "Left" below |
 
-The 28 collected families have 5 aggressive runs each (Sock Shop, on Trillium) and three of
+The 32 collected families have 5 aggressive runs each (Sock Shop, on Trillium) and three of
 them also 3 subtle runs. Rows in the tables are marked with their status.
 
 Written 17-11-2026. **Everything in the tables below is a prediction, not a measurement.**
@@ -102,13 +102,13 @@ Column "best": K = kernel trace, L = logs, M = metrics, T = distributed traces (
 | E1 | retry storm (parked) | short timeout plus retries against a slow service | calls per request up AND answers slower | T, K | `code_n_plus_one` (answers not slower) | - |
 | E2 | wrong timeout (parked) | timeout far too long or too short in one client | waits end at one constant; or resets by the client | T, L | `nagle_delayed_ack` | - |
 | E4 | cache stampede | flush a cache under load | sudden burst of identical calls to the store | T, K | `code_n_plus_one` | a cache in the app |
-| E5 | slow query | drop an index | one statement type slow, database CPU up | T, M | `slow_db` (proxy delay, DB idle) | - |
+| E5 | slow query **(collected: `slow_query`)** | drop an index | one statement type slow, database CPU up | T, M | `slow_db` (proxy delay, DB idle) | - |
 | E6 | row lock wait **(collected as a TABLE lock: `db_table_lock`, blueprint 30; a row lock does nothing to a service that only reads)** | a long transaction holding a row lock | database threads sleep, queries hang then finish together | K, L | `lock_contention` | - |
-| E7 | database deadlock | two transactions in opposite order | one is aborted with an error; no hang | L | `deadlock` (threads hang forever) | - |
-| E8 | slow consumer | consumer sleeps per message | queue grows, consumer alive and slow | M, K | `queue_backlog` (consumer frozen) | - |
+| E7 | database deadlock **(REMOVED for Sock Shop: no service writes to MySQL)** | two transactions in opposite order | one is aborted with an error; no hang | L | `deadlock` (threads hang forever) | - |
+| E8 | slow consumer **(PARKED: needs a queue-master code change)** | consumer sleeps per message | queue grows, consumer alive and slow | M, K | `queue_backlog` (consumer frozen) | - |
 | E9 | poison message | one message that always fails | same message redelivered in a loop | L | `error_storm` | - |
 | E10 | crash loop | service exits on start | exec and exit of one name, port refused in between | L, K | `fd_exhaustion` restarts | - |
-| E11 | rate limiting | limit one upstream to N requests/s | fast error answers above N, nothing slow | L, T | `error_storm` | - |
+| E11 | rate limiting **(collected: `code_rate_limit`)** | limit one upstream to N requests/s | fast error answers above N, nothing slow | L, T | `error_storm` | - |
 | E12 | bad configuration | wrong address for one dependency after a restart | connects refused or to nowhere from the first request | L | `dependency_outage` | - |
 | E14 | wrong results | handler returns wrong data, same speed | none expected | T, L | none | a correctness check in the load generator |
 
@@ -122,7 +122,7 @@ Column "best": K = kernel trace, L = logs, M = metrics, T = distributed traces (
 | F4 | regex backtracking **(collected: `code_regex_backtrack`, blueprint 38)** | a bad pattern on user input | one thread on CPU for seconds on some requests only | K, T | `event_loop_block` | - |
 | F5 | large payloads **(collected: `code_large_payload`, blueprint 37)** | return the whole table | bytes per answer up, calls unchanged | K, T | `data_exfiltration` | - |
 | F6 | chatty calls **(collected: `code_chatty_calls`)** | N small calls where one would do, between services | calls per request up between two services | T, K | `code_n_plus_one` | - |
-| F7 | unbounded queue | producer faster than an in-process worker | memory grows, latency grows with it | M, K | `code_unbounded_cache` | - |
+| F7 | unbounded queue **(collected: `code_unbounded_queue`)** | producer faster than an in-process worker | memory grows, latency grows with it | M, K | `code_unbounded_cache` | - |
 | F8 | blocking call in async code **(collected: `code_blocking_wait`)** | a sync file read in a Node or async Java handler | event thread in D-state or long syscall, requests stall | K | `event_loop_block` (on CPU) | - |
 
 ## G. Security (5)
@@ -132,7 +132,7 @@ Column "best": K = kernel trace, L = logs, M = metrics, T = distributed traces (
 | G1 | port scan **(collected: `port_scan`, blueprint 34)** | one container connects to every port of every peer | many refused connects from one source to many ports | K | `resource_abuse` | - |
 | G2 | login brute force **(collected: `login_bruteforce`, blueprint 41)** | repeated failing logins at one endpoint | steady stream of fast error answers from one client | L, T | `error_storm` | - |
 | G3 | unexpected program start **(collected: `unexpected_exec`, blueprint 42)** | a service spawns a shell | `exec` of a program never seen in that container | K | `fork_storm` (rate; here once) | - |
-| G5 | SYN flood | half-open connections from outside | SYNs with no third packet, listen queue full | K | D2 | - |
+| G5 | SYN flood **(collected: `syn_flood`)** | half-open connections from outside | SYNs with no third packet, listen queue full | K | D2 | - |
 | G6 | unusual file access | read many files outside the service's normal set | `openat` on paths never seen before | K | `data_exfiltration` | `openat` with file names |
 
 ## H. Kernel and host (6)
@@ -142,7 +142,7 @@ Column "best": K = kernel trace, L = logs, M = metrics, T = distributed traces (
 | H1 | kernel hot path | a table the kernel scans per event (large route or rule table) | one syscall long ON CPU inside the kernel | K | `syscall_stall` | function durations (kprobe or function_graph) |
 | H2 | process limit reached **(collected: `pid_limit`, blueprint 29)** | `pids.max` on one container | `clone` returns -11 (EAGAIN) | K, L | `fd_exhaustion` | - |
 | H3 | zombie build-up **(collected: `code_zombie_procs`)** | a parent that never waits for children | exits with no reaping, process table grows | K | `fork_storm` | - |
-| H4 | uninterruptible I/O stall | freeze the block device briefly | long D-state for all writers, no completions | K | `anomaly_disk` | - |
+| H4 | uninterruptible I/O stall **(PARKED with `io_cap`)** | freeze the block device briefly | long D-state for all writers, no completions | K | `anomaly_disk` | - |
 | H5 | clock step (parked as `clock_skew`) | step the clock on one container's host view | timers fire early or late; span times inconsistent | T | none | risky: can corrupt run timestamps |
 | H6 | compound fault (parked) | two existing recipes at once | both signatures present | all | each of its parts | a wrapper that runs two recipes |
 
@@ -178,7 +178,12 @@ Column "best": K = kernel trace, L = logs, M = metrics, T = distributed traces (
 | A3 | `code_ctxswitch_storm` | 5 | `switch_rate.py`, 43 | 400 threads, context switches 126k -> 328k/s; catalogue p95 6 -> 87 ms in the traced runs (32 ms in calibration) |
 | D8 | `net_latency` | 5 | `dev_delay.py`, 51 | 20 ms constant delay; catalogue span p50 1.5 -> 43 ms, p95 7.5 -> 110 ms, 0 errors; the delay also sits on the catalogue's database calls |
 | D11 | `dns_delay_jvm` | 5 | `dns_retry.py`, 52 | 90% of the orders service's DNS queries dropped; front-end 5xx 0 -> 7-12/s; errors continue into the recovery window in 4 of 5 runs |
+| E5 | `slow_query` | 5 | none yet | `username` index dropped on users.customers; user service p95 4.8 -> about 24 ms, user-db CPU 5 -> 35%; nothing else moves |
+| E11 | `code_rate_limit` | 5 | none yet | limit 8/s on the catalogue's list path; the catalogue's own circuit breaker opens, so most failures are 500 "circuit breaker is open" (about 31 errors per second), few are 429 |
+| F7 | `code_unbounded_queue` | 5 | none yet | worker serves 200 calls/s; front-end p50 65-74 -> about 147 ms; memory flat (the 150 users wait, so the queue cannot grow without limit) |
+| G5 | `syn_flood` | 5 | none yet | 20,000 SYNs/s from an unused address on the front-end's network; about 12,000 SYN cookies/s; front-end p95 +30 to +75 ms under tracing |
 
+Group 8 (images `catalogue-bugs:v7` and `frontend-bugs:v6`) collected 28-11-2026.
 Group 7 collected 27-11-2026.
 Group 6 (images `catalogue-bugs:v5` and `frontend-bugs:v5`) collected 27-11-2026.
 Group 5 (code defects, images `catalogue-bugs:v4` and `frontend-bugs:v4`) collected 27-11-2026.
@@ -190,6 +195,8 @@ Group 2 (code defects, images `catalogue-bugs:v3` and `frontend-bugs:v3`) collec
 |---|---|---|
 | D7 | conntrack table full | calibrated 25-11-2026: at the current entry count the whole host stops (site, metrics, name resolution) and the load generator does not recover; very likely the front-end crash loop after a restart under load (progress-notes 25-11). Needs a milder setting first. Recipe `faults/conntrack_full.sh` |
 | D10 | wrong DNS answer | calibrated 27-11-2026: a wrong hosts entry alone does nothing (Node reuses its open connections); with the connections closed the front-end crash-loops and the site stays down after cleanup. Same blocker as D7. Recipe `faults/wrong_dns.sh` |
+| E8 | slow consumer | measured 28-11-2026: 3 shipping messages per 20 s, and slowing each needs a `queue-master` code change (no fork) |
+| H4 | I/O stall | the databases acknowledge a write before it reaches the disk (as for `io_cap`), so no service is expected to notice; parked with `io_cap` |
 | B1 | slow memory leak | needs runs of 10 minutes or more |
 | B6 | cold start | needs page-fault events and a restart that does not crash-loop the front-end |
 | E1 | retry storm | needs a design that keeps the baseline clean (a start-up change) |
@@ -198,16 +205,16 @@ Group 2 (code defects, images `catalogue-bugs:v3` and `frontend-bugs:v3`) collec
 | H6 | compound fault | needs a wrapper that runs two recipes |
 | - | `io_cap` (C4) | kept as a possible kernel-only family: the limit holds the database's writes back (68.6 -> 16.0 KB/s) but no service notices. User decision 25-11: leave for now |
 
-## Left, not started (27)
+## Left, not started (20)
 
 | group | candidates | what they need |
 |---|---|---|
-| ready with what we have | A6, B5, C3, C6, E4, E5, E7, E8, E9, E11, E12, F7, G5, H4 | a recipe and a calibration; some need a code defect (F7) or a new load pattern |
+| ready with what we have | A6, B5, C3, C6, E4, E9, E12 | a recipe and a calibration; E4 needs a cache in the app, E12 a restart (front-end crash risk) |
 | need a start-up change | B4, D2, E10 | a design that keeps the baseline clean |
 | need events we do not record yet | A5 (interrupts), A7 (CPU frequency, now in the profile: to check), B2 and B7 (memory reclaim, swap), C5 and C8 (a device mapper target on the VM), C7 (writeback), G6 (file names on `openat`), H1 (kernel function timing) | a tracing profile change, checked on a recorded trace |
 | need a change to the application or load | E14 (a correctness check in the load generator) | |
 
-Counted in "ready" are 14; "start-up change" 3; "events" 9; "application" 1.
+Counted in "ready" are 7; "start-up change" 3; "events" 9; "application" 1.
 
 ## Removed (cancelled)
 
@@ -220,6 +227,7 @@ Counted in "ready" are 14; "start-up change" 3; "events" 9; "application" 1.
 | B3 | kill-and-restart loop | already in v2. Calibrated 25-11-2026: at 160 MB (the v2 `svc_mem_cap` aggressive limit) carts is killed and restarted 9 times in 2 minutes and serves nothing. The v2 logs agree: the subtle runs (300 MB) show 8-9 JVM start banners per run and the aggressive runs none until the limit is lifted. So `svc_mem_cap` IS a restart loop at both settings. Recipe kept in `faults/oom_restart_loop.sh` |
 | C2 | inode exhaustion | measured 25-11-2026 with bpftrace: no program on the host created a file or a directory in 20 s of the 150-user load, so a volume with no free inodes changes nothing |
 | D12 | TLS handshake storm | neither application uses TLS between services |
+| E7 | database deadlock | measured 28-11-2026: no Sock Shop service writes to MySQL (the catalogue only reads) and MongoDB has no lock-order deadlock. Kept for Train Ticket, whose services write to MySQL |
 | E13 | certificate expiry | neither application uses TLS between services |
 
 ## Cost to plan for (rough)

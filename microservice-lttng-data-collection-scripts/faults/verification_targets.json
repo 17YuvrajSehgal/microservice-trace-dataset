@@ -830,7 +830,7 @@
       "abs_threshold": 0.05,
       "min_fraction": 0.6,
       "expected_to_fail": true,
-      "note": "v3, calibrated 2026-11-28 on the VM under the 150-user load. 20,000 SYNs per second to front-end:8079 from an unused address: about 12,100 SYN cookies per second, the half-open queue full at 512, no listen overflows; front-end p95 207 -> 211-223 ms, p50 51 -> 54-65 ms, no errors. No metric counts SYNs inside the front-end's network namespace, so no metric signature is expected. 2,000 per second gave about 1,730 cookies per second."
+      "note": "v3, calibrated 2026-11-28 on the VM under the 150-user load. 20,000 SYNs per second to front-end:8079 from an unused address: about 12,100 SYN cookies per second, the half-open queue full at 512, no listen overflows; front-end p95 207 -> 211-223 ms, p50 51 -> 54-65 ms, no errors. No metric counts SYNs inside the front-end's network namespace, so no metric signature is expected. 2,000 per second gave about 1,730 cookies per second. CORRECTED 28-11-2026 after the 5 traced runs: front-end p95 0.223-0.232 -> 0.251-0.302 s in all 5 (the flat-expected target crossed, verification 'confirmed'). Under tracing the flood does reach the metrics; the calibration without tracing showed +4 to +16 ms only. Likely the per-packet tracing cost; not checked."
     }
   ]
 }
