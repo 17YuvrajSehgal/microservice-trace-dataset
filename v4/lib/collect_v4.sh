@@ -111,7 +111,7 @@ json.dump({"fault": {"family": "$FAM", "name": "$PROBLEM", "language": "$LANG_",
            "remediation": {"action": """$REMEDIATION"""}, "trace": {"start_utc": "$TRACE_START", "end_utc": "$TRACE_END"},
            "event_loss": "${LOSS:-none}"}, open(sys.argv[1], "w"), indent=2)
 PY
-python3 "$V4/lib/verify_v4.py" "$OUT" "$KPI" "$KPI_DIR" "$KPI_FACTOR" > "$OUT/verification.json"
+python3 "$V4/lib/verify_v4.py" "$OUT" "$KPI" "$KPI_DIR" "$KPI_FACTOR" "${KPI_STAT:-median}" > "$OUT/verification.json"
 VERDICT=$(python3 -c "import json; print(json.load(open('$OUT/verification.json'))['verdict'])")
 sudo chown -R "$USER" "$OUT"
 find "$OUT/kernel" -type f ! -name metadata ! -path '*/index/*' -size +1M -print0 | xargs -0 -r pigz -p 6

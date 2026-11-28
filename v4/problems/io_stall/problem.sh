@@ -9,6 +9,9 @@ REMEDIATION="find what freezes or stalls the device (a snapshot, a backup tool, 
 LANGS="c go java python node"
 SHORT=iostall
 KPI=op_max_ms; KPI_DIR=up; KPI_FACTOR=10
+# The 90th percentile, not the median: only 1 second in 6 holds a frozen write (smoke run 28-11-2026:
+# op_max about 2,035 ms once every 6 s, about 3 ms in the other seconds), so the median never moves.
+KPI_STAT=p90
 MNT=/mnt/v4io
 FREEZER=/dev/shm/v4_freezer.pid
 setup_run() {
