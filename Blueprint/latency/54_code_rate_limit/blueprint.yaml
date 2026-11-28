@@ -1,0 +1,143 @@
+# Blueprint 54 as a structure (28-11-2026). The source of BLUEPRINT.md (bp_render.py) and of the agent's steps.
+
+id: code_rate_limit
+fault_type: code_rate_limit
+title: a service's own rate limit trips its circuit breaker
+problem_class: Dependency protection (rate limit, circuit breaker)
+confirms: A service rejects requests above a rate; its own circuit breaker counts the rejections as failures, opens,
+  and then fails every request on that path at once.
+evidence: The per-container log files of the run (Docker's timestamped lines)
+not_used: Kernel trace, metrics, spans
+when_to_use: A service suddenly answers part of its requests with fast errors (500 or 429), and nothing it depends
+  on is slow.
+status: Calibrated on its 5 v3 runs; tested on all 70 runs of groups 5-8 and the 20 of group 4. The second tool's
+  bars were set after seeing 10 of those runs. Not run by an agent yet.
+background: 'Two tools on the logs. `log_errors.py` (from blueprint 41) finds a NEW STREAM of one error message.
+  Here it is the
+
+  catalogue''s `circuit breaker is open`. That message only says that the breaker opened; `breaker_cause.py` says
+  why,
+
+  from the catalogue''s other server-side errors in the same window:
+
+
+  | 60 s window | `code_rate_limit` | `mtu_blackhole` (a failing database path) |
+
+  |---|---|---|
+
+  | `circuit breaker is open` | **1,960-2,095** | 10,667-11,401 |
+
+  | `too many requests` | 13-20 | 0-4 |
+
+  | `database connection error` | **0** | 21 in each run |
+
+
+  `too many requests` is also what the breaker library (gobreaker) answers while it is half-open, so it is not proof
+
+  on its own; the verdict rests on the ABSENCE of dependency errors.
+
+  '
+lookalikes: 'A failing dependency behind the breaker (`mtu_blackhole`, `error_storm`): the dependency''s error is
+  logged; `breaker_cause.py` names it.
+
+  Any other new error stream (in `dns_delay_jvm` the orders service logs connection errors): `log_errors.py` fires,
+  the message differs.
+
+  A real rate limiter in front of the service (a proxy): the service itself logs nothing; not covered by these tools.'
+tools:
+  idx_summary.py:
+    does: Date, span, health
+    usage: idx_summary.py <trace_dir> [--rate SECONDS]
+  extract_slice.sh:
+    does: Cuts one slice with the events you name
+    usage: extract_slice.sh <trace_dir> <date> <time> <secs> <out> '<regex>'
+  log_errors.py:
+    does: Error-like log lines per container and message, before and now; the verdict
+    usage: log_errors.py <logs_dir> <suspect_start_utc> <window_seconds>
+  breaker_cause.py:
+    does: 'Why a go-kit service''s circuit breaker opened: a dependency, or its own rejections'
+    usage: breaker_cause.py <logs_dir> <suspect_start_utc> <window_seconds>
+vars:
+  LOGS: the run's logs/ directory
+facts:
+  day: trace date, YYYY-MM-DD (UTC)
+  trace_start: first packet time, HH:MM:SS
+  trace_end: last packet time, HH:MM:SS
+  fault_time: start of the suspect slice, HH:MM:SS
+  base_time: start of the baseline slice, HH:MM:SS
+  fault_utc: the suspect time as YYYY-MM-DDTHH:MM:SSZ
+start: check_trace
+steps:
+  check_trace:
+    kind: fixed
+    goal: Know the date, when the trace starts and ends, and whether it is healthy.
+    run:
+    - - idx_summary.py
+      - $TRACE
+    extract:
+      day: ^date \(UTC\)\s*:\s*(\S+)
+      trace_start: ^trace start\s*:\s*(\d\d:\d\d:\d\d)
+      trace_end: ^trace end\s*:\s*(\d\d:\d\d:\d\d)
+      duration_s: ^duration\s*:\s*([\d.]+)
+      lost_events: ^lost events\s*:\s*(.+)$
+    next: orient
+  orient:
+    kind: guided
+    goal: Pick the suspect time.
+    suggested:
+    - idx_summary.py $TRACE --rate 10
+    read: 'If you were given a suspect time, use it. The logs of a run start about 60 s before the injection; the
+      window
+
+      before the suspect time must be inside them, or the tools say NOT JUDGED.
+
+      '
+    sets:
+    - fault_utc
+    budget: 3
+    outcomes:
+      times_chosen:
+        when: the time is chosen
+        next: measure
+  measure:
+    kind: guided
+    goal: Find a new error stream, then say why the breaker opened.
+    suggested:
+    - log_errors.py $LOGS <fault_utc> 60
+    - breaker_cause.py $LOGS <fault_utc> 60
+    read: '`log_errors.py`: up to 3 VERDICT lines with a sample message. `breaker_cause.py`: one VERDICT line. This
+      fault is a
+
+      `circuit breaker is open` stream AND THE BREAKER OPENED ON THE SERVICE''S OWN REJECTIONS.
+
+      '
+    sets: []
+    budget: 5
+    outcomes:
+      own:
+        when: breaker_cause.py reads THE BREAKER OPENED ON THE SERVICE'S OWN REJECTIONS
+        line: 'VERDICT: THE BREAKER OPENED ON THE SERVICE''S OWN REJECTIONS'
+        verdict: confirmed
+        fault_type: code_rate_limit
+        next: report
+      dep:
+        when: breaker_cause.py reads THE BREAKER OPENED BECAUSE A DEPENDENCY FAILS
+        line: 'VERDICT: THE BREAKER OPENED BECAUSE A DEPENDENCY FAILS'
+        stop: The breaker opened on a failing dependency. Follow the dependency (for example blueprints 22 and 40).
+      none:
+        when: breaker_cause.py reads NO NEW OPEN BREAKER
+        line: 'VERDICT: NO NEW OPEN BREAKER'
+        stop: No breaker opened. Not this fault.
+report: 'fault_type: code_rate_limit. The service on the verdict line. Fix: raise the limit or make callers back
+  off; do not count rejections as breaker failures.
+
+  '
+measured:
+- 'Per-run lines: `RESULTS.md` next to this file.'
+- '**Own runs: 5 of 5** with both tools; reversed quiet.'
+- '**`log_errors.py` also fires on all 5 `dns_delay_jvm` runs** (a different message); `breaker_cause.py` is quiet
+  there.'
+- '**`breaker_cause.py` separates this family from `mtu_blackhole` (5 of 5 each way)**, but its bars were set after
+  seeing those 10 runs.'
+- '**It reads go-kit''s server error lines only** (the catalogue and the user service here).'
+- '**Not yet run on the earlier runs.**'

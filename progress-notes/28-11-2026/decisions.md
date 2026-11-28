@@ -23,3 +23,16 @@
 - `code_rate_limit` was re-collected in full after its first check run failed on the 429-only target (the circuit breaker).
 - `syn_flood` DOES move the front-end's p95 under tracing (+30 to +75 ms in all 5 runs), while the calibration without tracing showed +4 to +16 ms. The "no metric signature" note was wrong and is corrected in the target. This is the second family that is harsher under tracing (after `code_ctxswitch_storm`); both add many kernel events per second. Worth a line in the paper's threats to validity.
 - v3 Sock Shop now has 32 families (160 aggressive runs plus 9 subtle). 20 candidates are not started, 7 of them ready.
+
+## Blueprints 53 to 56 (group 8)
+
+- **Result on all 70 runs of groups 5 to 8, forward and reversed:** every tool finds its own family 5 of 5, with 0 false alarms on the other 65 and 0 of 70 reversed. One exception: `log_errors.py` also fires on `dns_delay_jvm` (a different, real error message); the blueprint judges by the second tool.
+- **New tools:** `slow_answers` (53), `breaker_cause` (54), `paced_calls` (55), `half_open` (56). `log_errors` reused unchanged.
+- **Changed after seeing data, written in each tool and RESULTS:**
+  - `slow_answers` and `paced_calls`: the server of a connection is the side with a port below 32768. The first version took the first sender in the slice as the client, and on connections already open that is often the server. This flaw was in my new code only, not in `call_fanout.py`.
+  - `slow_answers`: median may rise by at most 25%, to keep load shifts out.
+  - `paced_calls`: the clock is looked for from 4 ms and must be a bump.
+  - `breaker_cause`: bars set after seeing the 10 runs it separates (`code_rate_limit` and `mtu_blackhole`). A fit, not a test.
+- **Unchanged from first setting:** `half_open` (cleanest result), `log_errors`.
+- **Finding:** "too many requests" is also gobreaker's half-open answer, so the message alone cannot prove a rate limit; the absence of dependency errors does. My 429 mapping also catches those half-open answers (noted for the paper's description of the family).
+- **Pattern:** in `slow_query` the knock-on service shows as "the server waits" and the root as "the server works longer". This is a good example for the agent's step of picking the root among several verdicts.

@@ -178,10 +178,10 @@ Column "best": K = kernel trace, L = logs, M = metrics, T = distributed traces (
 | A3 | `code_ctxswitch_storm` | 5 | `switch_rate.py`, 43 | 400 threads, context switches 126k -> 328k/s; catalogue p95 6 -> 87 ms in the traced runs (32 ms in calibration) |
 | D8 | `net_latency` | 5 | `dev_delay.py`, 51 | 20 ms constant delay; catalogue span p50 1.5 -> 43 ms, p95 7.5 -> 110 ms, 0 errors; the delay also sits on the catalogue's database calls |
 | D11 | `dns_delay_jvm` | 5 | `dns_retry.py`, 52 | 90% of the orders service's DNS queries dropped; front-end 5xx 0 -> 7-12/s; errors continue into the recovery window in 4 of 5 runs |
-| E5 | `slow_query` | 5 | none yet | `username` index dropped on users.customers; user service p95 4.8 -> about 24 ms, user-db CPU 5 -> 35%; nothing else moves |
-| E11 | `code_rate_limit` | 5 | none yet | limit 8/s on the catalogue's list path; the catalogue's own circuit breaker opens, so most failures are 500 "circuit breaker is open" (about 31 errors per second), few are 429 |
-| F7 | `code_unbounded_queue` | 5 | none yet | worker serves 200 calls/s; front-end p50 65-74 -> about 147 ms; memory flat (the 150 users wait, so the queue cannot grow without limit) |
-| G5 | `syn_flood` | 5 | none yet | 20,000 SYNs/s from an unused address on the front-end's network; about 12,000 SYN cookies/s; front-end p95 +30 to +75 ms under tracing |
+| E5 | `slow_query` | 5 | `slow_answers.py`, 53 | `username` index dropped on users.customers; user service p95 4.8 -> about 24 ms, user-db CPU 5 -> 35%; nothing else moves |
+| E11 | `code_rate_limit` | 5 | `log_errors.py` + `breaker_cause.py`, 54 | limit 8/s on the catalogue's list path; the catalogue's own circuit breaker opens, so most failures are 500 "circuit breaker is open" (about 31 errors per second), few are 429 |
+| F7 | `code_unbounded_queue` | 5 | `paced_calls.py`, 55 | worker serves 200 calls/s; front-end p50 65-74 -> about 147 ms; memory flat (the 150 users wait, so the queue cannot grow without limit) |
+| G5 | `syn_flood` | 5 | `half_open.py`, 56 | 20,000 SYNs/s from an unused address on the front-end's network; about 12,000 SYN cookies/s; front-end p95 +30 to +75 ms under tracing |
 
 Group 8 (images `catalogue-bugs:v7` and `frontend-bugs:v6`) collected 28-11-2026.
 Group 7 collected 27-11-2026.
