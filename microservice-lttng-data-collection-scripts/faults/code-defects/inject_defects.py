@@ -139,8 +139,13 @@ CATALOGUE = [
         "transport.go",
         "\tcase ErrNotFound:\n\t\tcode = http.StatusNotFound\n",
         "\tcase ErrNotFound:\n\t\tcode = http.StatusNotFound\n"
-        "\tcase ErrRateLimited:\n\t\tcode = http.StatusTooManyRequests\n",
-        "v6: the rate_limit defect is answered with 429",
+        "\t}\n"
+        # go-kit 0.4 wraps the service's error in its own type ("Do: <message>"), so comparing the
+        # error itself never matches (the stock ErrNotFound case above never fires either; left as
+        # it is). Measured 28-11-2026: the first version answered the rate limit with 500.
+        "\tif strings.HasSuffix(err.Error(), ErrRateLimited.Error()) {\n"
+        "\t\tcode = http.StatusTooManyRequests\n",
+        "v6: the rate_limit defect is answered with 429 (matched on the message: go-kit wraps the error)",
     ),
     (
         "service.go",

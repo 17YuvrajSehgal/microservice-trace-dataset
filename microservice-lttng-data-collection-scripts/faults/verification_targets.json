@@ -783,5 +783,54 @@
       "min_fraction": 0.5,
       "why": "v3, calibrated 2026-11-27 on the VM under the 150-user load. 90% of the orders service's DNS queries dropped: front-end 5xx 0 -> 13.5-15.3/s for the whole window, 27 queries dropped in 90 s; orders' own rate and answer time unchanged; back at once. At 60% the errors come and go (11.3/s in one of three readings, 11 queries dropped), not used."
     }
+  ],
+  "slow_query": [
+    {
+      "canonical": true,
+      "name": "user_p95_latency",
+      "promql": "histogram_quantile(0.95, sum(rate(request_duration_seconds_bucket{job=\"user\"}[1m])) by (le))",
+      "direction": "increase",
+      "threshold_sigma": 4,
+      "abs_threshold": 0.008,
+      "min_fraction": 0.6,
+      "why": "v3, calibrated 2026-11-28 on the VM under the 150-user load. username index dropped on users.customers (33,203 documents): user service p95 4.8 -> 19.4-20.8 ms, p50 2.5 -> 2.8 ms, user-db CPU 5% -> 25-35%; front-end and catalogue unchanged. Back at once when the index is rebuilt."
+    }
+  ],
+  "code_rate_limit": [
+    {
+      "canonical": true,
+      "name": "catalogue_429_rate",
+      "promql": "sum(rate(http_request_duration_seconds_count{job=\"catalogue\",status_code=\"429\"}[1m]))",
+      "direction": "increase",
+      "threshold_sigma": 4,
+      "abs_threshold": 10,
+      "min_fraction": 0.6,
+      "why": "v3, calibrated 2026-11-28 on the VM under the 150-user load. the catalogue's list path gets only about 30-46 requests per second, so limits of 60 and 120 never fired. At 8 per second: 30-39 rejected per second, catalogue p95 7.3 -> 5.0 ms (rejections are fast), front-end unchanged. Those rejections were answered with 500 because go-kit 0.4 wraps the error; fixed in catalogue-bugs:v7 to answer 429. The 429 target is checked on the first v7 run."
+    }
+  ],
+  "code_unbounded_queue": [
+    {
+      "canonical": true,
+      "name": "frontend_p50_latency",
+      "promql": "histogram_quantile(0.5, sum(rate(http_request_duration_seconds_bucket{job=\"frontend\"}[1m])) by (le))",
+      "direction": "increase",
+      "threshold_sigma": 3,
+      "abs_threshold": 0.04,
+      "min_fraction": 0.6,
+      "why": "v3, calibrated 2026-11-28 on the VM under the 150-user load. unbounded_queue:200: front-end p50 47 -> 126-132 ms, p95 205 -> 238 ms, rate 264 -> 234-241/s, catalogue rate 230 -> 210/s; memory flat (173-177 MiB) because the 150 users wait for their answers, so the queue cannot grow without limit (the pre-registered 'memory rising' was wrong). 120 gave p50 about 580 ms and halved the rate, not used."
+    }
+  ],
+  "syn_flood_front-end": [
+    {
+      "canonical": true,
+      "name": "frontend_p95_latency_flat_expected",
+      "promql": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"frontend\"}[1m])) by (le))",
+      "direction": "increase",
+      "threshold_sigma": 3,
+      "abs_threshold": 0.05,
+      "min_fraction": 0.6,
+      "expected_to_fail": true,
+      "note": "v3, calibrated 2026-11-28 on the VM under the 150-user load. 20,000 SYNs per second to front-end:8079 from an unused address: about 12,100 SYN cookies per second, the half-open queue full at 512, no listen overflows; front-end p95 207 -> 211-223 ms, p50 51 -> 54-65 ms, no errors. No metric counts SYNs inside the front-end's network namespace, so no metric signature is expected. 2,000 per second gave about 1,730 cookies per second."
+    }
   ]
 }

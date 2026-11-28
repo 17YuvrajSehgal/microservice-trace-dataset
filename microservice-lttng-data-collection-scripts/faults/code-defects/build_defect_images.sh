@@ -91,7 +91,7 @@ EOF
 }
 
 mkdir -p "$WORK"
-build_one catalogue otel-instrumentation catalogue-bugs:v6 \
+build_one catalogue otel-instrumentation catalogue-bugs:v7 \
     -f "$WORK/catalogue/docker/catalogue/Dockerfile"
 build_one front-end otel-instrumentation frontend-bugs:v6
 

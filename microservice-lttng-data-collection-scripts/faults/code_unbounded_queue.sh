@@ -35,7 +35,7 @@ TARGET_TRACE_VISIBILITY="${TARGET_TRACE_VISIBILITY:-covered}"
 REMEDIATION="bound the queue and reject or shed load when it is full; size the worker to the arrival rate"
 
 DEFECT_SERVICE="front-end"
-DEFECT_BUG="${DEFECT_BUG:-unbounded_queue:150}"
+DEFECT_BUG="${DEFECT_BUG:-unbounded_queue:200}"
 DEFECT_IMAGE="${DEFECT_IMAGE:-frontend-bugs:v6}"
 DEFECT_CMD=""
 DEFECT_MECHANISM="calls to services go into a queue served at R per second; above R the queue only grows"

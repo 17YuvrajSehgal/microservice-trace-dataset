@@ -7,7 +7,7 @@
 # WHY THIS ONE. Errors with nothing slow behind them. error_storm fails on a broken database connection
 # after the work started; here the service refuses at the door, fast, and only above a rate.
 #
-# HOW IT IS INJECTED. Like every code defect here: one image per service (catalogue-bugs:v6), the defect
+# HOW IT IS INJECTED. Like every code defect here: one image per service (catalogue-bugs:v7), the defect
 # switched on at run time through the flag file /dev/shm/strata_bug, so the baseline and the
 # control are the SAME binary with the defect off. `arm` (before tracing) puts the service on
 # that image with the defect off; `inject` writes the flag; `cleanup` writes "none".
@@ -33,8 +33,8 @@ TARGET_TRACE_VISIBILITY="${TARGET_TRACE_VISIBILITY:-covered}"
 REMEDIATION="raise the limit, or make the caller back off and retry later"
 
 DEFECT_SERVICE="catalogue"
-DEFECT_BUG="${DEFECT_BUG:-rate_limit:60}"
-DEFECT_IMAGE="${DEFECT_IMAGE:-catalogue-bugs:v6}"
+DEFECT_BUG="${DEFECT_BUG:-rate_limit:8}"
+DEFECT_IMAGE="${DEFECT_IMAGE:-catalogue-bugs:v7}"
 DEFECT_CMD="/app -port=80"
 DEFECT_MECHANISM="at most N list requests per second; the rest are answered at once with 429"
 DEFECT_FIX="raise the limit, or make the caller back off and retry later"
